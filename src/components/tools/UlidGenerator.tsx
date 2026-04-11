@@ -1,7 +1,8 @@
-import { useState, useCallback, type CSSProperties } from 'react';
+import { useState, useCallback } from 'react';
 import { ulid } from 'ulidx';
 import { CopyButton } from '../ui/CopyButton';
 import { copyToClipboard } from '../../utils/clipboard';
+import { bodyEmphasis, caption, micro } from '../../utils/styles';
 
 function RowCopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -26,9 +27,6 @@ function RowCopyButton({ text }: { text: string }) {
   );
 }
 
-const bodyEmphasis: CSSProperties = { fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px' };
-const caption: CSSProperties = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.29, letterSpacing: '-0.224px' };
-const micro: CSSProperties = { fontSize: '0.75rem', fontWeight: 400, lineHeight: 1.33, letterSpacing: '-0.12px' };
 
 interface UlidRow {
   id: string;
