@@ -1,6 +1,30 @@
-import { useState, useCallback, useEffect, type CSSProperties } from 'react';
+import { useState, useCallback, type CSSProperties } from 'react';
 import { ulid } from 'ulidx';
 import { CopyButton } from '../ui/CopyButton';
+import { copyToClipboard } from '../../utils/clipboard';
+
+function RowCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleClick = async () => {
+    const ok = await copyToClipboard(text);
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+  };
+  return (
+    <button
+      onClick={handleClick}
+      aria-label={copied ? 'コピーしました' : 'コピー'}
+      className="rounded-md transition-colors"
+      style={{
+        fontSize: '0.75rem', padding: '0.25rem 0.5rem',
+        background: copied ? '#e3f5e1' : '#f5f5f7',
+        color: copied ? '#1a6b1a' : 'rgba(0,0,0,0.48)',
+        border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+      }}
+    >
+      {copied ? '✓' : '📋'}
+    </button>
+  );
+}
 
 const bodyEmphasis: CSSProperties = { fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px' };
 const caption: CSSProperties = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.29, letterSpacing: '-0.224px' };
@@ -21,21 +45,18 @@ function generateRows(count: number): UlidRow[] {
   });
 }
 
+type QuoteStyle = 'none' | 'single' | 'double';
+
 export function UlidGenerator() {
   const [count, setCount] = useState(10);
   const [countInput, setCountInput] = useState('10');
   const [rows, setRows] = useState<UlidRow[]>([]);
+  const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
 
   const generate = useCallback(() => {
     const n = Math.min(100, Math.max(1, count));
     setRows(generateRows(n));
   }, [count]);
-
-  // ページロード時に自動生成
-  useEffect(() => {
-    generate();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleCountChange = (value: string) => {
     setCountInput(value);
@@ -59,19 +80,24 @@ export function UlidGenerator() {
     }
   };
 
-  const allUlids = rows.map((r) => r.id).join('\n');
+  const allUlids = rows.map((r, i) => {
+    const isLast = i === rows.length - 1;
+    if (quoteStyle === 'double') return `"${r.id}"${isLast ? '' : ','}`;
+    if (quoteStyle === 'single') return `'${r.id}'${isLast ? '' : ','}`;
+    return r.id;
+  }).join('\n');
 
   return (
     <div className="space-y-4">
       {/* コントロール */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label
-            htmlFor="ulid-count"
-            style={{ ...bodyEmphasis, color: '#1d1d1f', display: 'block', marginBottom: '0.25rem' }}
-          >
-            生成数
-          </label>
+      <div>
+        <label
+          htmlFor="ulid-count"
+          style={{ ...bodyEmphasis, color: '#1d1d1f', display: 'block', marginBottom: '0.25rem' }}
+        >
+          生成数
+        </label>
+        <div className="flex items-center gap-3">
           <input
             id="ulid-count"
             type="number"
@@ -80,6 +106,7 @@ export function UlidGenerator() {
             value={countInput}
             onChange={(e) => handleCountChange(e.target.value)}
             onBlur={handleCountBlur}
+            onKeyDown={(e) => { if (e.key === 'Enter') { handleCountBlur(); generate(); } }}
             className="rounded-lg px-3 py-2"
             style={{
               ...caption,
@@ -98,30 +125,30 @@ export function UlidGenerator() {
             }}
             aria-describedby="ulid-count-hint"
           />
-          <p id="ulid-count-hint" style={{ ...micro, color: 'rgba(0,0,0,0.48)', marginTop: '0.25rem' }}>
-            1〜100
-          </p>
+          <button
+            onClick={generate}
+            className="rounded-lg px-4 py-2 transition-colors"
+            style={{
+              ...caption,
+              fontWeight: 600,
+              background: '#0071e3',
+              color: '#ffffff',
+              border: 'none',
+            }}
+            onFocus={(e) => {
+              (e.target as HTMLButtonElement).style.outline = '2px solid #0071e3';
+              (e.target as HTMLButtonElement).style.outlineOffset = '2px';
+            }}
+            onBlur={(e) => {
+              (e.target as HTMLButtonElement).style.outline = 'none';
+            }}
+          >
+            生成
+          </button>
         </div>
-        <button
-          onClick={generate}
-          className="rounded-lg px-4 py-2 transition-colors"
-          style={{
-            ...caption,
-            fontWeight: 600,
-            background: '#0071e3',
-            color: '#ffffff',
-            border: 'none',
-          }}
-          onFocus={(e) => {
-            (e.target as HTMLButtonElement).style.outline = '2px solid #0071e3';
-            (e.target as HTMLButtonElement).style.outlineOffset = '2px';
-          }}
-          onBlur={(e) => {
-            (e.target as HTMLButtonElement).style.outline = 'none';
-          }}
-        >
-          生成
-        </button>
+        <p id="ulid-count-hint" style={{ ...micro, color: 'rgba(0,0,0,0.48)', marginTop: '0.25rem' }}>
+          1〜100
+        </p>
       </div>
 
       {/* 結果テーブル */}
@@ -136,6 +163,33 @@ export function UlidGenerator() {
               {rows.length} 件生成
             </span>
             <div className="flex items-center gap-2">
+              {/* クォートスタイル選択 */}
+              <div
+                className="flex items-center rounded-lg overflow-hidden"
+                style={{ border: '1px solid rgba(0,0,0,0.15)' }}
+                role="group"
+                aria-label="クォートスタイル"
+              >
+                {([['none', 'なし'], ['double', '"..."'], ['single', "'...'"]] as [QuoteStyle, string][]).map(([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => setQuoteStyle(value)}
+                    style={{
+                      ...micro,
+                      padding: '0.25rem 0.625rem',
+                      background: quoteStyle === value ? '#0071e3' : '#ffffff',
+                      color: quoteStyle === value ? '#ffffff' : 'rgba(0,0,0,0.6)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontFamily: value !== 'none' ? 'monospace' : 'inherit',
+                      borderRight: value !== 'single' ? '1px solid rgba(0,0,0,0.15)' : 'none',
+                    }}
+                    aria-pressed={quoteStyle === value}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <CopyButton text={allUlids} label="すべてコピー" />
               <button
                 onClick={() => setRows([])}
@@ -252,8 +306,12 @@ export function UlidGenerator() {
                     >
                       {row.timestamp}
                     </td>
-                    <td style={{ padding: '0.25rem 0.75rem', textAlign: 'center' }}>
-                      <CopyButton text={row.id} label="コピー" />
+                    <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <RowCopyButton text={
+                        quoteStyle === 'double' ? `"${row.id}"` :
+                        quoteStyle === 'single' ? `'${row.id}'` :
+                        row.id
+                      } />
                     </td>
                   </tr>
                 ))}
