@@ -72,11 +72,12 @@ function PayloadValue({ k, v }: { k: string; v: unknown }) {
   const isTs = TIMESTAMP_KEYS.includes(k) && typeof v === 'number';
   return (
     <span>
-      <span className="text-blue-600 dark:text-blue-400">"{k}"</span>
-      <span className="text-gray-700 dark:text-gray-300">: </span>
-      <span className="text-amber-700 dark:text-amber-400">{JSON.stringify(v)}</span>
+      {/* Link Blue on light bg */}
+      <span style={{ color: '#0066cc' }}>"{k}"</span>
+      <span style={{ color: 'rgba(0,0,0,0.8)' }}>: </span>
+      <span style={{ color: '#6e4f0e' }}>{JSON.stringify(v)}</span>
       {isTs && (
-        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+        <span className="ml-2" style={{ fontSize: '0.75rem', color: 'rgba(0,0,0,0.48)' }}>
           → {formatTimestamp(v as number)}
         </span>
       )}
@@ -86,34 +87,36 @@ function PayloadValue({ k, v }: { k: string; v: unknown }) {
 
 interface SectionProps {
   title: string;
-  colorClass: string;
+  accentColor: string;
   data: Record<string, unknown>;
   renderValue?: (k: string, v: unknown) => React.ReactNode;
 }
 
-function Section({ title, colorClass, data, renderValue }: SectionProps) {
+function Section({ title, accentColor, data, renderValue }: SectionProps) {
   const json = JSON.stringify(data, null, 2);
   return (
-    <div className={`rounded-lg border-l-4 bg-gray-50 p-4 dark:bg-gray-900 ${colorClass}`}>
+    <div className="rounded-lg p-4" style={{ background: '#f5f5f7', borderLeft: `4px solid ${accentColor}` }}>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{title}</h3>
+        {/* Body Emphasis: 17px weight 600, tracking -0.374px */}
+        <h3 style={{ fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px', color: '#1d1d1f' }}>{title}</h3>
         <CopyButton text={json} label="コピー" />
       </div>
-      <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-gray-800 dark:text-gray-200">
-        <span className="text-gray-500">{'{'}</span>
+      {/* Micro: 12px, font-mono */}
+      <pre className="overflow-x-auto font-mono" style={{ fontSize: '0.75rem', lineHeight: 1.33, letterSpacing: '-0.12px', color: 'rgba(0,0,0,0.8)' }}>
+        <span style={{ color: 'rgba(0,0,0,0.48)' }}>{'{'}</span>
         {'\n'}
         {Object.entries(data).map(([k, v]) => (
           <span key={k} className="block pl-4">
             {renderValue ? renderValue(k, v) : (
               <>
-                <span className="text-blue-600 dark:text-blue-400">"{k}"</span>
-                <span className="text-gray-700 dark:text-gray-300">: </span>
-                <span className="text-amber-700 dark:text-amber-400">{JSON.stringify(v)}</span>
+                <span style={{ color: '#0066cc' }}>"{k}"</span>
+                <span style={{ color: 'rgba(0,0,0,0.8)' }}>: </span>
+                <span style={{ color: '#6e4f0e' }}>{JSON.stringify(v)}</span>
               </>
             )}
           </span>
         ))}
-        <span className="text-gray-500">{'}'}</span>
+        <span style={{ color: 'rgba(0,0,0,0.48)' }}>{'}'}</span>
       </pre>
     </div>
   );
@@ -124,10 +127,10 @@ export function JwtDecoder() {
   const parsed = useMemo(() => (token.trim() ? parseJwt(token) : null), [token]);
   const isInvalid = token.trim() !== '' && parsed === null;
 
-  const statusBadge: Record<Status, { label: string; cls: string }> = {
-    valid: { label: '✅ 有効', cls: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
-    expired: { label: '❌ 期限切れ', cls: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
-    'no-exp': { label: '⚠️ 期限なし', cls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' },
+  const statusBadge: Record<Status, { label: string; style: React.CSSProperties }> = {
+    valid:    { label: '✅ 有効',    style: { background: '#e3f5e1', color: '#1a6b1a' } },
+    expired:  { label: '❌ 期限切れ', style: { background: '#fde8e8', color: '#b91c1c' } },
+    'no-exp': { label: '⚠️ 期限なし', style: { background: '#fef3cd', color: '#854d0e' } },
   };
 
   return (
@@ -135,12 +138,15 @@ export function JwtDecoder() {
       {/* 入力 */}
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <label htmlFor="jwt-input" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {/* Body Emphasis: 17px weight 600 */}
+          <label htmlFor="jwt-input" style={{ fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px', color: '#1d1d1f' }}>
             JWTトークンを貼り付け
           </label>
+          {/* Link: 14px, color #0066cc */}
           <button
             onClick={() => setToken(SAMPLE_JWT)}
-            className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+            style={{ fontSize: '0.875rem', lineHeight: 1.43, letterSpacing: '-0.224px', color: '#0066cc' }}
+            className="hover:underline"
           >
             サンプル入力
           </button>
@@ -151,12 +157,23 @@ export function JwtDecoder() {
           onInput={(e) => setToken((e.target as HTMLTextAreaElement).value)}
           placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
           rows={4}
-          className={`w-full rounded-lg border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-white
-            ${isInvalid ? 'border-red-400 dark:border-red-600' : 'border-gray-300 dark:border-gray-700'}`}
+          className="w-full rounded-lg px-3 py-2 font-mono"
+          style={{
+            fontSize: '0.875rem',
+            lineHeight: 1.29,
+            letterSpacing: '-0.224px',
+            border: `1px solid ${isInvalid ? '#dc2626' : 'rgba(0,0,0,0.2)'}`,
+            outline: 'none',
+            background: '#ffffff',
+            color: '#1d1d1f',
+          }}
+          onFocus={(e) => { e.target.style.outline = '2px solid #0071e3'; e.target.style.outlineOffset = '2px'; }}
+          onBlur={(e) => { e.target.style.outline = 'none'; }}
           aria-describedby={isInvalid ? 'jwt-error' : undefined}
         />
         {isInvalid && (
-          <p id="jwt-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
+          /* Caption: 14px */
+          <p id="jwt-error" role="alert" style={{ fontSize: '0.875rem', lineHeight: 1.29, letterSpacing: '-0.224px', color: '#dc2626', marginTop: '0.25rem' }}>
             有効なJWTトークンではありません
           </p>
         )}
@@ -165,8 +182,12 @@ export function JwtDecoder() {
       {/* ステータス */}
       {parsed && (
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">ステータス:</span>
-          <span className={`rounded-full px-3 py-0.5 text-sm font-medium ${statusBadge[parsed.status].cls}`}>
+          {/* Body: 17px */}
+          <span style={{ fontSize: '1.06rem', fontWeight: 400, lineHeight: 1.47, letterSpacing: '-0.374px', color: '#1d1d1f' }}>ステータス:</span>
+          <span
+            className="rounded-full px-3 py-0.5"
+            style={{ fontSize: '0.875rem', fontWeight: 500, ...statusBadge[parsed.status].style }}
+          >
             {statusBadge[parsed.status].label}
             {parsed.status === 'valid' && parsed.remainingMs !== undefined && (
               <span className="ml-1 opacity-75">({formatRemaining(parsed.remainingMs)})</span>
@@ -180,22 +201,22 @@ export function JwtDecoder() {
         <div className="space-y-3">
           <Section
             title="Header (JOSE)"
-            colorClass="border-red-400 dark:border-red-600"
+            accentColor="#dc2626"
             data={parsed.header}
           />
           <Section
             title="Payload (Claims)"
-            colorClass="border-purple-400 dark:border-purple-600"
+            accentColor="#9333ea"
             data={parsed.payload}
             renderValue={(k, v) => <PayloadValue k={k} v={v} />}
           />
-          <div className="rounded-lg border-l-4 border-blue-400 bg-gray-50 p-4 dark:border-blue-600 dark:bg-gray-900">
+          <div className="rounded-lg p-4" style={{ background: '#f5f5f7', borderLeft: '4px solid #0071e3' }}>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Signature</h3>
+              <h3 style={{ fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px', color: '#1d1d1f' }}>Signature</h3>
               <CopyButton text={parsed.signature} label="コピー" />
             </div>
-            <p className="break-all font-mono text-xs text-gray-700 dark:text-gray-300">{parsed.signature}</p>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">⚠️ 署名の検証は行っていません</p>
+            <p className="break-all font-mono" style={{ fontSize: '0.75rem', lineHeight: 1.33, letterSpacing: '-0.12px', color: 'rgba(0,0,0,0.8)' }}>{parsed.signature}</p>
+            <p className="mt-2" style={{ fontSize: '0.75rem', lineHeight: 1.33, letterSpacing: '-0.12px', color: 'rgba(0,0,0,0.48)' }}>署名の検証は行っていません</p>
           </div>
         </div>
       )}
@@ -205,7 +226,8 @@ export function JwtDecoder() {
         <div className="flex justify-end">
           <button
             onClick={() => setToken('')}
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="rounded-lg px-3 py-1.5 transition-colors hover:bg-[#f5f5f7]"
+            style={{ fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.29, letterSpacing: '-0.224px', color: 'rgba(0,0,0,0.48)' }}
           >
             クリア
           </button>

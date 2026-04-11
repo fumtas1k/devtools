@@ -20,23 +20,25 @@ const { tool } = Astro.props;
 
     <!-- メインコンテンツ -->
     <main class="min-w-0 flex-1" id="main-content">
-      <!-- パンくずリスト -->
-      <nav aria-label="パンくずリスト" class="mb-4 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
-        <a href="/" class="hover:text-gray-900 dark:hover:text-white">ホーム</a>
+      <!-- パンくずリスト: Caption 14px, tracking -0.224px -->
+      <nav aria-label="パンくずリスト" class="mb-4 flex items-center gap-1.5" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.48);">
+        <a href="/" class="hover:text-[#0071e3] transition-colors">ホーム</a>
         <span>/</span>
         <span>{categoryLabel[tool.category]}</span>
         <span>/</span>
-        <span class="text-gray-900 dark:text-white">{tool.name}</span>
+        <span class="text-[#1d1d1f] dark:text-white">{tool.name}</span>
       </nav>
 
       <!-- ツールヘッダー -->
       <div class="mb-6 flex items-center gap-3">
-        <span class="text-3xl">{tool.icon}</span>
+        <span style="font-size: 2rem;">{tool.icon}</span>
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{tool.name}</h1>
-          <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{tool.description}</p>
+          <!-- Tile Heading: 28px, weight 400, line-height 1.14, tracking 0.196px -->
+          <h1 class="text-[#1d1d1f] dark:text-white" style="font-size: 1.75rem; font-weight: 400; line-height: 1.14; letter-spacing: 0.196px;">{tool.name}</h1>
+          <!-- Caption: 14px, weight 400, line-height 1.29, tracking -0.224px -->
+          <p class="mt-1" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.48);">{tool.description}</p>
         </div>
-        <span class={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColor[tool.category]}`}>
+        <span class="ml-auto rounded-full px-2.5 py-0.5" style="font-size: 0.75rem; font-weight: 500; background: #f5f5f7; color: rgba(0,0,0,0.48);">
           {categoryLabel[tool.category]}
         </span>
       </div>

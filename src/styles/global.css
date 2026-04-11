@@ -6,8 +6,17 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Noto Sans JP", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --color-accent: #2563eb;
-  --color-accent-dark: #60a5fa;
+  --color-accent: #0071e3;
+  --color-accent-dark: #2997ff;
+  --color-apple-light: #f5f5f7;
+  --color-apple-dark: #1d1d1f;
+  --color-apple-surface: #272729;
+}
+
+/* Apple Design tokens */
+:root {
+  --sk-focus-color: #0071e3;
+  --card-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
 }
