@@ -36,7 +36,7 @@ const categories: ToolCategory[] = ['generate', 'convert'];
           {tools.filter((t) => t.category === cat).map((tool) => (
             <a
               href={`/tools/${tool.slug}`}
-              class="group rounded-lg bg-white p-6 transition-colors block border border-transparent hover:border-[#0071e3]"
+              class="group rounded-lg bg-white p-6 transition-colors block border border-transparent hover:border-accent"
             >
               <div class="mb-4 flex items-start justify-between">
                 <span style="font-size: 1.5rem;">{tool.icon}</span>
