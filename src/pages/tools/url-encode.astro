@@ -1,0 +1,27 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import { UrlEncoder } from '../../components/tools/UrlEncoder';
+import { tools } from '../../data/tools';
+
+const tool = tools.find((t) => t.slug === 'url-encode')!;
+---
+
+<ToolLayout tool={tool}>
+  <UrlEncoder client:load />
+
+  <section class="mt-10 rounded-xl border border-gray-200 p-5 dark:border-gray-800">
+    <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">このツールについて</h2>
+    <p class="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+      URLエンコードとは、URLに使えない文字（日本語・スペース・記号など）を
+      <code class="rounded bg-gray-100 px-1 font-mono dark:bg-gray-800">%XX</code>
+      形式に変換する処理です。<br />
+      フォームのGETパラメータや API のクエリ文字列を組み立てるときに活用できます。
+    </p>
+    <h3 class="mb-2 mt-4 text-sm font-semibold text-gray-800 dark:text-gray-200">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 text-sm text-gray-600 dark:text-gray-400">
+      <li>APIのクエリパラメータに日本語を渡したい</li>
+      <li>URLに含めるデータを安全にエンコードしたい</li>
+      <li>エンコードされた文字列を元のテキストに戻したい</li>
+    </ul>
+  </section>
+</ToolLayout>
