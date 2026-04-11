@@ -72,11 +72,11 @@ function PayloadValue({ k, v }: { k: string; v: unknown }) {
   const isTs = TIMESTAMP_KEYS.includes(k) && typeof v === 'number';
   return (
     <span>
-      <span class="text-blue-600 dark:text-blue-400">"{k}"</span>
-      <span class="text-gray-700 dark:text-gray-300">: </span>
-      <span class="text-amber-700 dark:text-amber-400">{JSON.stringify(v)}</span>
+      <span className="text-blue-600 dark:text-blue-400">"{k}"</span>
+      <span className="text-gray-700 dark:text-gray-300">: </span>
+      <span className="text-amber-700 dark:text-amber-400">{JSON.stringify(v)}</span>
       {isTs && (
-        <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
+        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
           → {formatTimestamp(v as number)}
         </span>
       )}
@@ -94,26 +94,26 @@ interface SectionProps {
 function Section({ title, colorClass, data, renderValue }: SectionProps) {
   const json = JSON.stringify(data, null, 2);
   return (
-    <div class={`rounded-lg border-l-4 bg-gray-50 p-4 dark:bg-gray-900 ${colorClass}`}>
-      <div class="mb-2 flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">{title}</h3>
+    <div className={`rounded-lg border-l-4 bg-gray-50 p-4 dark:bg-gray-900 ${colorClass}`}>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{title}</h3>
         <CopyButton text={json} label="コピー" />
       </div>
-      <pre class="overflow-x-auto font-mono text-xs leading-relaxed text-gray-800 dark:text-gray-200">
-        <span class="text-gray-500">{'{'}</span>
+      <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-gray-800 dark:text-gray-200">
+        <span className="text-gray-500">{'{'}</span>
         {'\n'}
         {Object.entries(data).map(([k, v]) => (
-          <span key={k} class="block pl-4">
+          <span key={k} className="block pl-4">
             {renderValue ? renderValue(k, v) : (
               <>
-                <span class="text-blue-600 dark:text-blue-400">"{k}"</span>
-                <span class="text-gray-700 dark:text-gray-300">: </span>
-                <span class="text-amber-700 dark:text-amber-400">{JSON.stringify(v)}</span>
+                <span className="text-blue-600 dark:text-blue-400">"{k}"</span>
+                <span className="text-gray-700 dark:text-gray-300">: </span>
+                <span className="text-amber-700 dark:text-amber-400">{JSON.stringify(v)}</span>
               </>
             )}
           </span>
         ))}
-        <span class="text-gray-500">{'}'}</span>
+        <span className="text-gray-500">{'}'}</span>
       </pre>
     </div>
   );
@@ -131,16 +131,16 @@ export function JwtDecoder() {
   };
 
   return (
-    <div class="space-y-4">
+    <div className="space-y-4">
       {/* 入力 */}
       <div>
-        <div class="mb-1 flex items-center justify-between">
-          <label for="jwt-input" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="mb-1 flex items-center justify-between">
+          <label htmlFor="jwt-input" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             JWTトークンを貼り付け
           </label>
           <button
             onClick={() => setToken(SAMPLE_JWT)}
-            class="text-xs text-blue-600 hover:underline dark:text-blue-400"
+            className="text-xs text-blue-600 hover:underline dark:text-blue-400"
           >
             サンプル入力
           </button>
@@ -151,12 +151,12 @@ export function JwtDecoder() {
           onInput={(e) => setToken((e.target as HTMLTextAreaElement).value)}
           placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
           rows={4}
-          class={`w-full rounded-lg border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-white
+          className={`w-full rounded-lg border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-white
             ${isInvalid ? 'border-red-400 dark:border-red-600' : 'border-gray-300 dark:border-gray-700'}`}
           aria-describedby={isInvalid ? 'jwt-error' : undefined}
         />
         {isInvalid && (
-          <p id="jwt-error" role="alert" class="mt-1 text-sm text-red-600 dark:text-red-400">
+          <p id="jwt-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
             有効なJWTトークンではありません
           </p>
         )}
@@ -164,12 +164,12 @@ export function JwtDecoder() {
 
       {/* ステータス */}
       {parsed && (
-        <div class="flex items-center gap-3">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">ステータス:</span>
-          <span class={`rounded-full px-3 py-0.5 text-sm font-medium ${statusBadge[parsed.status].cls}`}>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">ステータス:</span>
+          <span className={`rounded-full px-3 py-0.5 text-sm font-medium ${statusBadge[parsed.status].cls}`}>
             {statusBadge[parsed.status].label}
             {parsed.status === 'valid' && parsed.remainingMs !== undefined && (
-              <span class="ml-1 opacity-75">({formatRemaining(parsed.remainingMs)})</span>
+              <span className="ml-1 opacity-75">({formatRemaining(parsed.remainingMs)})</span>
             )}
           </span>
         </div>
@@ -177,7 +177,7 @@ export function JwtDecoder() {
 
       {/* デコード結果 */}
       {parsed && (
-        <div class="space-y-3">
+        <div className="space-y-3">
           <Section
             title="Header (JOSE)"
             colorClass="border-red-400 dark:border-red-600"
@@ -189,23 +189,23 @@ export function JwtDecoder() {
             data={parsed.payload}
             renderValue={(k, v) => <PayloadValue k={k} v={v} />}
           />
-          <div class="rounded-lg border-l-4 border-blue-400 bg-gray-50 p-4 dark:border-blue-600 dark:bg-gray-900">
-            <div class="mb-2 flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Signature</h3>
+          <div className="rounded-lg border-l-4 border-blue-400 bg-gray-50 p-4 dark:border-blue-600 dark:bg-gray-900">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Signature</h3>
               <CopyButton text={parsed.signature} label="コピー" />
             </div>
-            <p class="break-all font-mono text-xs text-gray-700 dark:text-gray-300">{parsed.signature}</p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">⚠️ 署名の検証は行っていません</p>
+            <p className="break-all font-mono text-xs text-gray-700 dark:text-gray-300">{parsed.signature}</p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">⚠️ 署名の検証は行っていません</p>
           </div>
         </div>
       )}
 
       {/* クリア */}
       {token && (
-        <div class="flex justify-end">
+        <div className="flex justify-end">
           <button
             onClick={() => setToken('')}
-            class="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
           >
             クリア
           </button>

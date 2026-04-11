@@ -58,15 +58,15 @@ export function UrlEncoder() {
   };
 
   return (
-    <div class="space-y-4">
+    <div className="space-y-4">
       {/* モード切替 */}
-      <div class="flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+      <div className="flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
         {(['encode', 'decode'] as Mode[]).map((m) => (
           <button
             key={m}
             onClick={() => handleModeChange(m)}
             aria-pressed={mode === m}
-            class={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors
+            className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors
               ${mode === m
                 ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
@@ -79,13 +79,13 @@ export function UrlEncoder() {
 
       {/* 入力 */}
       <div>
-        <div class="mb-1 flex items-center justify-between">
-          <label for="url-input" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="mb-1 flex items-center justify-between">
+          <label htmlFor="url-input" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             入力
           </label>
           <button
             onClick={() => handleInput(SAMPLE[mode])}
-            class="text-xs text-blue-600 hover:underline dark:text-blue-400"
+            className="text-xs text-blue-600 hover:underline dark:text-blue-400"
           >
             サンプル入力
           </button>
@@ -96,7 +96,7 @@ export function UrlEncoder() {
           onInput={(e) => handleInput((e.target as HTMLTextAreaElement).value)}
           placeholder={mode === 'encode' ? 'https://example.com/検索?q=テスト' : 'https%3A%2F%2Fexample.com%2F...'}
           rows={4}
-          class={`w-full rounded-lg border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-white
+          className={`w-full rounded-lg border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-white
             ${error
               ? 'border-red-400 dark:border-red-600'
               : 'border-gray-300 dark:border-gray-700'
@@ -104,7 +104,7 @@ export function UrlEncoder() {
           aria-describedby={error ? 'url-error' : undefined}
         />
         {error && (
-          <p id="url-error" role="alert" class="mt-1 text-sm text-red-600 dark:text-red-400">
+          <p id="url-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
             {error}
           </p>
         )}
@@ -112,24 +112,24 @@ export function UrlEncoder() {
 
       {/* 出力 */}
       <div>
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
           出力
         </label>
         <textarea
           readOnly
           value={output}
           rows={4}
-          class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 font-mono text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 font-mono text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
           aria-label="変換結果"
         />
       </div>
 
       {/* アクション */}
-      <div class="flex justify-end gap-2">
+      <div className="flex justify-end gap-2">
         {output && <CopyButton text={output} label="出力をコピー" />}
         <button
           onClick={handleClear}
-          class="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+          className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
         >
           クリア
         </button>
