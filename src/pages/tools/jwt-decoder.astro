@@ -10,7 +10,7 @@ const tool = tools.find((t) => t.slug === 'jwt-decoder')!;
   <JwtDecoder client:load />
 
   <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 text-[#1d1d1f] dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">このツールについて</h2>
+    <h2 class="mb-3 text-apple-dark dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">このツールについて</h2>
     <p style="font-size: 1.06rem; font-weight: 400; line-height: 1.47; letter-spacing: -0.374px; color: rgba(0,0,0,0.8);">
       JWTトークンを <code class="rounded px-1 font-mono" style="background: #f5f5f7; font-size: 0.875rem;">.</code> で分割し、
       Base64URL デコードして Header・Payload・署名を表示します。
@@ -19,7 +19,7 @@ const tool = tools.find((t) => t.slug === 'jwt-decoder')!;
       <code class="rounded px-1 font-mono" style="background: #f5f5f7; font-size: 0.875rem;">nbf</code> は人間が読める日時に変換します。
       署名の検証は行いません。
     </p>
-    <h3 class="mb-2 mt-4 text-[#1d1d1f] dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">ユースケース</h3>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">ユースケース</h3>
     <ul class="list-inside list-disc space-y-1" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.8);">
       <li>APIレスポンスのJWTトークンの中身を素早く確認したい</li>
       <li>有効期限（exp）が切れていないか確認したい</li>

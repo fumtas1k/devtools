@@ -25,8 +25,8 @@ const categories: ToolCategory[] = ['generate', 'convert'];
                 aria-current={currentSlug === tool.slug ? 'page' : undefined}
                 class={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors
                   ${currentSlug === tool.slug
-                    ? 'font-medium text-[#0071e3] bg-white'
-                    : 'text-[#1d1d1f] hover:bg-white dark:text-white dark:hover:bg-[#272729]'
+                    ? 'font-medium text-accent bg-white'
+                    : 'text-apple-dark hover:bg-white dark:text-white dark:hover:bg-apple-surface'
                   }`}
               >
                 <span>{tool.icon}</span>

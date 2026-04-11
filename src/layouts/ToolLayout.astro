@@ -12,7 +12,7 @@ const { tool } = Astro.props;
 ---
 
 <BaseLayout title={tool.name} description={tool.description}>
-  <div class="mx-auto flex max-w-screen-xl gap-6 px-4 py-6">
+  <div class="mx-auto flex max-w-7xl gap-6 px-4 py-6">
     <!-- サイドバー (デスクトップ) -->
     <div class="hidden lg:block">
       <Sidebar currentSlug={tool.slug} />
@@ -22,11 +22,11 @@ const { tool } = Astro.props;
     <main class="min-w-0 flex-1" id="main-content">
       <!-- パンくずリスト: Caption 14px, tracking -0.224px -->
       <nav aria-label="パンくずリスト" class="mb-4 flex items-center gap-1.5" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.48);">
-        <a href="/" class="hover:text-[#0071e3] transition-colors">ホーム</a>
+        <a href="/" class="hover:text-accent transition-colors">ホーム</a>
         <span>/</span>
         <span>{categoryLabel[tool.category]}</span>
         <span>/</span>
-        <span class="text-[#1d1d1f] dark:text-white">{tool.name}</span>
+        <span class="text-apple-dark dark:text-white">{tool.name}</span>
       </nav>
 
       <!-- ツールヘッダー -->
@@ -34,7 +34,7 @@ const { tool } = Astro.props;
         <span style="font-size: 2rem;">{tool.icon}</span>
         <div>
           <!-- Tile Heading: 28px, weight 400, line-height 1.14, tracking 0.196px -->
-          <h1 class="text-[#1d1d1f] dark:text-white" style="font-size: 1.75rem; font-weight: 400; line-height: 1.14; letter-spacing: 0.196px;">{tool.name}</h1>
+          <h1 class="text-apple-dark dark:text-white" style="font-size: 1.75rem; font-weight: 400; line-height: 1.14; letter-spacing: 0.196px;">{tool.name}</h1>
           <!-- Caption: 14px, weight 400, line-height 1.29, tracking -0.224px -->
           <p class="mt-1" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.48);">{tool.description}</p>
         </div>

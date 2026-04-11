@@ -153,7 +153,7 @@ export function UrlEncoder() {
         {output && <CopyButton text={output} label="出力をコピー" />}
         <button
           onClick={handleClear}
-          className="rounded-lg px-3 py-1.5 transition-colors hover:bg-[#f5f5f7]"
+          className="rounded-lg px-3 py-1.5 transition-colors hover:bg-apple-light"
           style={{ ...captionStyle, color: 'rgba(0,0,0,0.48)' }}
         >
           クリア
