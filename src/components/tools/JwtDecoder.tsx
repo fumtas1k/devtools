@@ -200,7 +200,7 @@ const bodyEmphasis = { fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, l
 const caption = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.29, letterSpacing: '-0.224px' } as const;
 const micro = { fontSize: '0.75rem', fontWeight: 400, lineHeight: 1.33, letterSpacing: '-0.12px' } as const;
 
-export function JwtDecoder() {
+export function JwtDecoderTool() {
   const [token, setToken] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [verifyExp, setVerifyExp] = useState(true);

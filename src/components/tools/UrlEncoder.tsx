@@ -3,7 +3,7 @@ import { CopyButton } from '../ui/CopyButton';
 
 type Mode = 'encode' | 'decode';
 
-export function UrlEncoder() {
+export function UrlEncoderTool() {
   const [mode, setMode] = useState<Mode>('encode');
   const [input, setInput] = useState('');
   const [error, setError] = useState('');

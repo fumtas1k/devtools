@@ -54,7 +54,7 @@ function generateText(type: CharType, length: number): string {
   return result.join('');
 }
 
-export function DummyText() {
+export function DummyTextTool() {
   const [charType, setCharType] = useState<CharType>('japanese');
   const [length, setLength] = useState(10);
   const [lengthInput, setLengthInput] = useState('10');

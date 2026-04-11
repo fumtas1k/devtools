@@ -1,13 +1,13 @@
 ---
 import ToolLayout from '../../layouts/ToolLayout.astro';
-import { UrlEncoder } from '../../components/tools/UrlEncoder';
+import { UrlEncoderTool } from '../../components/tools/UrlEncoder';
 import { tools } from '../../data/tools';
 
 const tool = tools.find((t) => t.slug === 'url-encode')!;
 ---
 
 <ToolLayout tool={tool}>
-  <UrlEncoder client:load />
+  <UrlEncoderTool client:load />
 
   <!-- Body Emphasis: 17px weight 600, line-height 1.24, tracking -0.374px -->
   <!-- Body: 17px weight 400, line-height 1.47, tracking -0.374px -->

@@ -45,7 +45,7 @@ function generateRows(count: number): UlidRow[] {
 
 type QuoteStyle = 'none' | 'single' | 'double';
 
-export function UlidGenerator() {
+export function UlidGeneratorTool() {
   const [count, setCount] = useState(10);
   const [countInput, setCountInput] = useState('10');
   const [rows, setRows] = useState<UlidRow[]>([]);

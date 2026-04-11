@@ -1,13 +1,13 @@
 ---
 import ToolLayout from '../../layouts/ToolLayout.astro';
-import { DummyText } from '../../components/tools/DummyText';
+import { DummyTextTool } from '../../components/tools/DummyText';
 import { tools } from '../../data/tools';
 
 const tool = tools.find((t) => t.slug === 'dummy-text')!;
 ---
 
 <ToolLayout tool={tool}>
-  <DummyText client:load />
+  <DummyTextTool client:load />
 
   <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
     <h2 class="mb-3 text-apple-dark dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">このツールについて</h2>
