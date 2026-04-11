@@ -28,5 +28,8 @@
   },
   "devDependencies": {
     "@types/jsbarcode": "^3.11.4"
+  },
+  "overrides": {
+    "vite": "7.3.1"
   }
 }
