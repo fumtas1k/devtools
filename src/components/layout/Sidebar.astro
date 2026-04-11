@@ -1,0 +1,41 @@
+---
+import { tools, categoryLabel, categoryColor, type ToolCategory } from '../../data/tools';
+
+interface Props {
+  currentSlug?: string;
+}
+
+const { currentSlug } = Astro.props;
+
+const categories: ToolCategory[] = ['generate', 'convert'];
+---
+
+<aside class="w-56 shrink-0">
+  <nav aria-label="ツール一覧">
+    {categories.map((cat) => (
+      <div class="mb-4">
+        <h2 class="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {categoryLabel[cat]}
+        </h2>
+        <ul>
+          {tools.filter((t) => t.category === cat).map((tool) => (
+            <li>
+              <a
+                href={`/tools/${tool.slug}`}
+                aria-current={currentSlug === tool.slug ? 'page' : undefined}
+                class={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors
+                  ${currentSlug === tool.slug
+                    ? 'bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                  }`}
+              >
+                <span>{tool.icon}</span>
+                <span>{tool.name}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </nav>
+</aside>

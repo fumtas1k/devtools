@@ -1,0 +1,48 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Sidebar from '../components/layout/Sidebar.astro';
+import { categoryLabel, categoryColor } from '../data/tools';
+import type { Tool } from '../data/tools';
+
+interface Props {
+  tool: Tool;
+}
+
+const { tool } = Astro.props;
+---
+
+<BaseLayout title={tool.name} description={tool.description}>
+  <div class="mx-auto flex max-w-screen-xl gap-6 px-4 py-6">
+    <!-- サイドバー (デスクトップ) -->
+    <div class="hidden lg:block">
+      <Sidebar currentSlug={tool.slug} />
+    </div>
+
+    <!-- メインコンテンツ -->
+    <main class="min-w-0 flex-1" id="main-content">
+      <!-- パンくずリスト -->
+      <nav aria-label="パンくずリスト" class="mb-4 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+        <a href="/" class="hover:text-gray-900 dark:hover:text-white">ホーム</a>
+        <span>/</span>
+        <span>{categoryLabel[tool.category]}</span>
+        <span>/</span>
+        <span class="text-gray-900 dark:text-white">{tool.name}</span>
+      </nav>
+
+      <!-- ツールヘッダー -->
+      <div class="mb-6 flex items-center gap-3">
+        <span class="text-3xl">{tool.icon}</span>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{tool.name}</h1>
+          <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{tool.description}</p>
+        </div>
+        <span class={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColor[tool.category]}`}>
+          {categoryLabel[tool.category]}
+        </span>
+      </div>
+
+      <!-- ツール本体 -->
+      <slot />
+    </main>
+  </div>
+</BaseLayout>
