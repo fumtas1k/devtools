@@ -23,7 +23,7 @@ function generateQrSvg(text: string, errorLevel: ErrorLevel): string | null {
   }
 }
 
-export function QrCode() {
+export function QrCodeGenerator() {
   const [text, setText] = useState('');
   const [errorLevel, setErrorLevel] = useState<ErrorLevel>('M');
   const [svgHtml, setSvgHtml] = useState<string | null>(null);
