@@ -1,0 +1,29 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import { JwtDecoder } from '../../components/tools/JwtDecoder';
+import { tools } from '../../data/tools';
+
+const tool = tools.find((t) => t.slug === 'jwt-decoder')!;
+---
+
+<ToolLayout tool={tool}>
+  <JwtDecoder client:load />
+
+  <section class="mt-10 rounded-xl border border-gray-200 p-5 dark:border-gray-800">
+    <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">このツールについて</h2>
+    <p class="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+      JWTトークンを <code class="rounded bg-gray-100 px-1 font-mono dark:bg-gray-800">.</code> で分割し、
+      Base64URL デコードして Header・Payload・署名を表示します。
+      <code class="rounded bg-gray-100 px-1 font-mono dark:bg-gray-800">exp</code>・
+      <code class="rounded bg-gray-100 px-1 font-mono dark:bg-gray-800">iat</code>・
+      <code class="rounded bg-gray-100 px-1 font-mono dark:bg-gray-800">nbf</code> は人間が読める日時に変換します。
+      <strong class="font-medium text-gray-800 dark:text-gray-200">署名の検証は行いません。</strong>
+    </p>
+    <h3 class="mb-2 mt-4 text-sm font-semibold text-gray-800 dark:text-gray-200">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 text-sm text-gray-600 dark:text-gray-400">
+      <li>APIレスポンスのJWTトークンの中身を素早く確認したい</li>
+      <li>有効期限（exp）が切れていないか確認したい</li>
+      <li>Payloadに含まれるクレームを確認したい</li>
+    </ul>
+  </section>
+</ToolLayout>
