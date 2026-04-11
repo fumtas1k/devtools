@@ -1,0 +1,24 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import { UlidGenerator } from '../../components/tools/UlidGenerator';
+import { tools } from '../../data/tools';
+
+const tool = tools.find((t) => t.slug === 'ulid-generator')!;
+---
+
+<ToolLayout tool={tool}>
+  <UlidGenerator client:load />
+
+  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
+    <h2 class="mb-3 text-apple-dark dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">このツールについて</h2>
+    <p style="font-size: 1.06rem; font-weight: 400; line-height: 1.47; letter-spacing: -0.374px; color: rgba(0,0,0,0.8);">
+      ULIDはUUID v4の代替となるソート可能な一意識別子です。タイムスタンプ部分（最初の10文字）と乱数部分（残り16文字）で構成されます。
+    </p>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.8);">
+      <li>データベースのプライマリキーとして使いたい</li>
+      <li>時系列ソート可能なIDが必要</li>
+      <li>UUIDより読みやすいIDが欲しい</li>
+    </ul>
+  </section>
+</ToolLayout>
