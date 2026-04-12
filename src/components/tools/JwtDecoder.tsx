@@ -196,9 +196,9 @@ function Section({ title, accentColor, data, renderValue }: SectionProps) {
   );
 }
 
-const bodyEmphasis = { fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px' } as const;
-const caption = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.29, letterSpacing: '-0.224px' } as const;
-const micro = { fontSize: '0.75rem', fontWeight: 400, lineHeight: 1.33, letterSpacing: '-0.12px' } as const;
+const bodyEmphasis = { fontSize: '1.0625rem', fontWeight: 700, lineHeight: 1.7, letterSpacing: '0.02em' } as const;
+const caption = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.7, letterSpacing: '0.02em' } as const;
+const micro = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.7, letterSpacing: '0.02em' } as const;
 
 export function JwtDecoderTool() {
   const [token, setToken] = useState('');

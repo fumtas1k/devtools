@@ -1,34 +1,14 @@
 ---
 ---
 
-<header class="sticky top-0 z-50 h-12" style="background: rgba(0,0,0,0.8); backdrop-filter: saturate(180%) blur(20px);">
-  <div class="mx-auto flex h-12 max-w-7xl items-center justify-between px-4">
-    <a href="/" class="text-sm font-semibold text-white hover:opacity-80 transition-opacity">
+<header class="sticky top-0 z-50 bg-white border-b border-neutral-200" style="height: 64px;">
+  <div class="mx-auto flex h-full max-w-280 items-center px-6">
+    <a
+      href="/"
+      class="text-xl font-bold text-primary transition-opacity hover:opacity-80"
+      style="letter-spacing: 0.02em;"
+    >
       DevTools
     </a>
-
-    <button
-      id="theme-toggle"
-      aria-label="ダークモード切替"
-      class="rounded-md p-2 text-white/70 hover:text-white transition-colors text-sm"
-    >
-      <span id="theme-icon-light" class="hidden dark:block">☀️</span>
-      <span id="theme-icon-dark" class="block dark:hidden">🌙</span>
-    </button>
   </div>
 </header>
-
-<script>
-  const btn = document.getElementById('theme-toggle');
-  const html = document.documentElement;
-
-  const saved = localStorage.getItem('theme');
-  if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    html.classList.add('dark');
-  }
-
-  btn?.addEventListener('click', () => {
-    html.classList.toggle('dark');
-    localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
-  });
-</script>

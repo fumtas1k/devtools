@@ -1,5 +1,25 @@
 import type { CSSProperties } from 'react';
 
-export const bodyEmphasis: CSSProperties = { fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px' };
-export const caption: CSSProperties = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.29, letterSpacing: '-0.224px' };
-export const micro: CSSProperties = { fontSize: '0.75rem', fontWeight: 400, lineHeight: 1.33, letterSpacing: '-0.12px' };
+/** 本文強調: 17px Bold */
+export const bodyEmphasis: CSSProperties = {
+  fontSize: '1.0625rem',
+  fontWeight: 700,
+  lineHeight: 1.7,
+  letterSpacing: '0.02em',
+};
+
+/** キャプション: 14px（UI制約がある場合の最小サイズ） */
+export const caption: CSSProperties = {
+  fontSize: '0.875rem',
+  fontWeight: 400,
+  lineHeight: 1.7,
+  letterSpacing: '0.02em',
+};
+
+/** ヒント・補足テキスト: 14px（DADS最小サイズ、12px禁止のため引き上げ） */
+export const micro: CSSProperties = {
+  fontSize: '0.875rem',
+  fontWeight: 400,
+  lineHeight: 1.7,
+  letterSpacing: '0.02em',
+};
