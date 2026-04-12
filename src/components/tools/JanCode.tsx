@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { CopyButton } from '../ui/CopyButton';
 import { calcJan, validateJanInput, type JanMode } from '../../utils/jan-code';
-import { bodyEmphasis, caption, shadows } from '../../utils/styles';
+import { bodyEmphasis, caption, shadows, colors } from '../../utils/styles';
 
 export function JanCodeTool() {
   const [mode, setMode] = useState<JanMode>('jan13');
@@ -94,7 +94,7 @@ export function JanCodeTool() {
         className="flex gap-1 rounded p-1"
         role="tablist"
         aria-label="JANコードモード"
-        style={{ background: '#F3F4F6' }}
+        style={{ background: colors.bgSubtle }}
       >
         {(['jan13', 'jan8'] as JanMode[]).map((m) => (
           <button
@@ -106,8 +106,8 @@ export function JanCodeTool() {
             style={{
               ...caption,
               fontWeight: 700,
-              background: mode === m ? '#ffffff' : 'transparent',
-              color: mode === m ? '#111827' : '#6B7280',
+              background: mode === m ? colors.bg : 'transparent',
+              color: mode === m ? colors.text : colors.muted,
               boxShadow: mode === m ? shadows.tab : 'none',
             }}
           >
@@ -119,12 +119,12 @@ export function JanCodeTool() {
       {/* 入力 */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <label htmlFor="jan-input" style={{ ...bodyEmphasis, color: '#111827' }}>
+          <label htmlFor="jan-input" style={{ ...bodyEmphasis, color: colors.text }}>
             {mode === 'jan13' ? '12桁を入力' : '7桁を入力'}
           </label>
           <button
             onClick={() => handleInput(SAMPLE[mode])}
-            style={{ ...caption, color: '#2563EB' }}
+            style={{ ...caption, color: colors.link }}
             className="hover:underline"
           >
             サンプル入力
@@ -141,21 +141,21 @@ export function JanCodeTool() {
           className="w-full rounded px-3 py-2 font-mono"
           style={{
             ...caption,
-            border: `1px solid ${error ? '#DC2626' : '#D1D5DB'}`,
+            border: `1px solid ${error ? colors.error : colors.borderInput}`,
             outline: 'none',
-            background: '#ffffff',
-            color: '#111827',
+            background: colors.bg,
+            color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = '2px solid #2563EB'; e.target.style.outlineOffset = '2px'; }}
+          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
           onBlur={(e) => { e.target.style.outline = 'none'; }}
           aria-describedby={error ? 'jan-error' : 'jan-hint'}
         />
         {error ? (
-          <p id="jan-error" role="alert" style={{ ...caption, color: '#DC2626', marginTop: '0.25rem' }}>
+          <p id="jan-error" role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
             {error}
           </p>
         ) : (
-          <p id="jan-hint" style={{ ...caption, color: '#6B7280', marginTop: '0.25rem' }}>
+          <p id="jan-hint" style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
             {input.length} / {mode === 'jan13' ? 12 : 7} 桁
           </p>
         )}
@@ -167,16 +167,16 @@ export function JanCodeTool() {
           {/* チェックディジット・完成コード */}
           <div
             className="rounded-lg p-4 space-y-3"
-            style={{ border: '1px solid #E5E7EB', background: '#F9FAFB' }}
+            style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
           >
             <div className="flex items-center justify-between">
-              <span style={{ ...caption, color: '#6B7280' }}>チェックディジット</span>
-              <span style={{ ...bodyEmphasis, color: '#1A56DB' }}>{result.checkDigit}</span>
+              <span style={{ ...caption, color: colors.muted }}>チェックディジット</span>
+              <span style={{ ...bodyEmphasis, color: colors.primary }}>{result.checkDigit}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ ...caption, color: '#6B7280' }}>完成コード</span>
+              <span style={{ ...caption, color: colors.muted }}>完成コード</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono" style={{ ...bodyEmphasis, color: '#111827', letterSpacing: '0.1em' }}>
+                <span className="font-mono" style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}>
                   {result.fullCode}
                 </span>
                 <CopyButton text={result.fullCode} label="コピー" />
@@ -185,14 +185,14 @@ export function JanCodeTool() {
           </div>
 
           {/* 計算過程 */}
-          <details className="rounded-lg" style={{ border: '1px solid #E5E7EB' }}>
+          <details className="rounded-lg" style={{ border: `1px solid ${colors.border}` }}>
             <summary
               className="cursor-pointer px-4 py-3 font-bold text-neutral-700 hover:bg-neutral-50 rounded-lg"
               style={{ ...caption, fontWeight: 700, listStyle: 'none' }}
             >
               計算過程を見る
             </summary>
-            <div className="px-4 pb-4 pt-2 space-y-1 font-mono" style={{ ...caption, color: '#374151' }}>
+            <div className="px-4 pb-4 pt-2 space-y-1 font-mono" style={{ ...caption, color: colors.text }}>
               {mode === 'jan13' ? (
                 <>
                   <p>奇数位（×1）: {result.steps.weight1Digits.join(' + ')} = {result.steps.weight1Sum}</p>
@@ -218,21 +218,21 @@ export function JanCodeTool() {
           {/* バーコードプレビュー */}
           <div
             className="rounded-lg flex flex-col items-center gap-4 p-4"
-            style={{ border: '1px solid #E5E7EB', background: '#ffffff' }}
+            style={{ border: `1px solid ${colors.border}`, background: colors.bg }}
           >
             <svg ref={svgRef} aria-label={`JANコード ${result.fullCode} のバーコード`} />
             <div className="flex gap-2">
               <button
                 onClick={downloadSvg}
                 className="rounded px-4 py-2 font-bold transition-colors hover:bg-blue-50"
-                style={{ ...caption, fontWeight: 700, border: '1px solid #1A56DB', color: '#1A56DB' }}
+                style={{ ...caption, fontWeight: 700, border: `1px solid ${colors.primary}`, color: colors.primary }}
               >
                 SVGダウンロード
               </button>
               <button
                 onClick={downloadPng}
                 className="rounded px-4 py-2 font-bold text-white transition-colors hover:opacity-90"
-                style={{ ...caption, fontWeight: 700, background: '#1A56DB' }}
+                style={{ ...caption, fontWeight: 700, background: colors.primary }}
               >
                 PNGダウンロード
               </button>

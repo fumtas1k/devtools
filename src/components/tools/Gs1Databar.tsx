@@ -9,7 +9,7 @@ import {
   AI_DEFS,
   type AiCode,
 } from '../../utils/gs1-databar';
-import { bodyEmphasis, caption } from '../../utils/styles';
+import { bodyEmphasis, caption, colors } from '../../utils/styles';
 
 interface AiFieldState {
   ai: AiCode;
@@ -83,8 +83,8 @@ function svgToPngBlob(svgContent: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const m = svgContent.match(/width="(\d+)" height="(\d+)"/);
     if (!m) { reject(new Error('SVG に width/height がありません')); return; }
-    const svgW = parseInt(m[1]);
-    const svgH = parseInt(m[2]);
+    const svgW = parseInt(m[1], 10);
+    const svgH = parseInt(m[2], 10);
 
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -114,20 +114,21 @@ function svgToPngBlob(svgContent: string): Promise<Blob> {
 // ─────────────────────────────────────────────
 
 interface BarcodeCardProps {
+  cardId: string;
   index: number;
   canRemove: boolean;
   onRemove: () => void;
   onSvgChange: (svg: string, gtin: string) => void;
 }
 
-function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardProps) {
+function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: BarcodeCardProps) {
   const [gtinInput, setGtinInput] = useState('');
   const [gtinError, setGtinError] = useState('');
   const [aiFields, setAiFields] = useState<AiFieldState[]>(DEFAULT_AI_FIELDS);
   const [svgContent, setSvgContent] = useState('');
   const [bwipError, setBwipError] = useState('');
 
-  const inputId = `gtin-input-${index}`;
+  const inputId = `gtin-input-${cardId}`;
 
   const gtinResult =
     gtinInput && !gtinError && gtinInput.length === 13
@@ -234,23 +235,33 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
 
   const usedAis = new Set(aiFields.map((f) => f.ai));
   const canAddField = aiFields.length < AI_DEFS.length;
-
   const sampleGtin = SAMPLE_GTINS[index % SAMPLE_GTINS.length];
+  const gs1String = gtinResult
+    ? buildBwipText(gtinResult.fullGtin, aiFields.map((f) => ({ ai: f.ai, value: f.value })))
+    : '';
+
+  const focusRingOn = (e: React.FocusEvent<HTMLElement>) => {
+    e.target.style.outline = `2px solid ${colors.link}`;
+    e.target.style.outlineOffset = '2px';
+  };
+  const focusRingOff = (e: React.FocusEvent<HTMLElement>) => {
+    e.target.style.outline = 'none';
+  };
 
   return (
     <div
       className="rounded-lg"
-      style={{ border: '1px solid #D1D5DB', background: '#ffffff' }}
+      style={{ border: `1px solid ${colors.borderInput}`, background: colors.bg }}
     >
       {/* カードヘッダー */}
       <div
         className="flex items-center justify-between px-4 py-3 rounded-t-lg"
-        style={{ background: '#F3F4F6', borderBottom: '1px solid #E5E7EB' }}
+        style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
       >
-        <span style={{ ...caption, fontWeight: 700, color: '#374151' }}>
+        <span style={{ ...caption, fontWeight: 700, color: colors.text }}>
           バーコード {index + 1}
           {gtinResult && (
-            <span className="font-mono ml-2" style={{ ...caption, color: '#6B7280', fontWeight: 400 }}>
+            <span className="font-mono ml-2" style={{ ...caption, color: colors.muted, fontWeight: 400 }}>
               — {gtinResult.fullGtin}
             </span>
           )}
@@ -259,7 +270,7 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
           <button
             onClick={onRemove}
             className="rounded px-2 py-1 hover:bg-red-50 transition-colors"
-            style={{ ...caption, color: '#DC2626' }}
+            style={{ ...caption, color: colors.error }}
             aria-label={`バーコード ${index + 1} を削除`}
           >
             削除
@@ -272,12 +283,12 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
         {/* GTIN入力 */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <label htmlFor={inputId} style={{ ...caption, color: '#374151', fontWeight: 600 }}>
+            <label htmlFor={inputId} style={{ ...caption, color: colors.text, fontWeight: 600 }}>
               GTIN-14（先頭13桁）
             </label>
             <button
               onClick={() => handleGtinInput(sampleGtin)}
-              style={{ ...caption, color: '#2563EB' }}
+              style={{ ...caption, color: colors.link }}
               className="hover:underline"
             >
               サンプル入力
@@ -294,21 +305,21 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
             className="w-full rounded px-3 py-2 font-mono"
             style={{
               ...caption,
-              border: `1px solid ${gtinError ? '#DC2626' : '#D1D5DB'}`,
+              border: `1px solid ${gtinError ? colors.error : colors.borderInput}`,
               outline: 'none',
-              background: '#ffffff',
-              color: '#111827',
+              background: colors.bg,
+              color: colors.text,
             }}
-            onFocus={(e) => { e.target.style.outline = '2px solid #2563EB'; e.target.style.outlineOffset = '2px'; }}
-            onBlur={(e) => { e.target.style.outline = 'none'; }}
+            onFocus={focusRingOn}
+            onBlur={focusRingOff}
             aria-describedby={gtinError ? `${inputId}-error` : `${inputId}-hint`}
           />
           {gtinError ? (
-            <p id={`${inputId}-error`} role="alert" style={{ ...caption, color: '#DC2626', marginTop: '0.25rem' }}>
+            <p id={`${inputId}-error`} role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
               {gtinError}
             </p>
           ) : (
-            <p id={`${inputId}-hint`} style={{ ...caption, color: '#6B7280', marginTop: '0.25rem' }}>
+            <p id={`${inputId}-hint`} style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
               {gtinInput.length} / 13 桁
             </p>
           )}
@@ -318,15 +329,15 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
         {gtinResult && (
           <div
             className="rounded-lg p-3 flex flex-wrap items-center gap-x-6 gap-y-2"
-            style={{ border: '1px solid #E5E7EB', background: '#F9FAFB' }}
+            style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
           >
             <div className="flex items-center gap-2">
-              <span style={{ ...caption, color: '#6B7280' }}>チェックディジット</span>
-              <span style={{ ...bodyEmphasis, color: '#1A56DB' }}>{gtinResult.checkDigit}</span>
+              <span style={{ ...caption, color: colors.muted }}>チェックディジット</span>
+              <span style={{ ...bodyEmphasis, color: colors.primary }}>{gtinResult.checkDigit}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span style={{ ...caption, color: '#6B7280' }}>GTIN-14</span>
-              <span className="font-mono" style={{ ...bodyEmphasis, color: '#111827', letterSpacing: '0.1em' }}>
+              <span style={{ ...caption, color: colors.muted }}>GTIN-14</span>
+              <span className="font-mono" style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}>
                 {gtinResult.fullGtin}
               </span>
               <CopyButton text={gtinResult.fullGtin} label="コピー" />
@@ -337,11 +348,11 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
         {/* AIフィールド */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <span style={{ ...caption, color: '#374151', fontWeight: 600 }}>合成シンボル（任意）</span>
+            <span style={{ ...caption, color: colors.text, fontWeight: 600 }}>合成シンボル（任意）</span>
             {canAddField && (
               <button
                 onClick={addAiField}
-                style={{ ...caption, color: '#2563EB' }}
+                style={{ ...caption, color: colors.link }}
                 className="hover:underline"
               >
                 + フィールド追加
@@ -359,9 +370,9 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
                     className="rounded px-2 py-2 shrink-0"
                     style={{
                       ...caption,
-                      border: '1px solid #D1D5DB',
-                      background: '#ffffff',
-                      color: '#111827',
+                      border: `1px solid ${colors.borderInput}`,
+                      background: colors.bg,
+                      color: colors.text,
                       width: '200px',
                     }}
                   >
@@ -380,16 +391,16 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
                       className="w-full rounded px-3 py-2 font-mono"
                       style={{
                         ...caption,
-                        border: `1px solid ${field.error ? '#DC2626' : '#D1D5DB'}`,
+                        border: `1px solid ${field.error ? colors.error : colors.borderInput}`,
                         outline: 'none',
-                        background: '#ffffff',
-                        color: '#111827',
+                        background: colors.bg,
+                        color: colors.text,
                       }}
-                      onFocus={(e) => { e.target.style.outline = '2px solid #2563EB'; e.target.style.outlineOffset = '2px'; }}
-                      onBlur={(e) => { e.target.style.outline = 'none'; }}
+                      onFocus={focusRingOn}
+                      onBlur={focusRingOff}
                     />
                     {field.error && (
-                      <p role="alert" style={{ ...caption, color: '#DC2626', marginTop: '0.25rem' }}>
+                      <p role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
                         {field.error}
                       </p>
                     )}
@@ -397,7 +408,7 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
                   <button
                     onClick={() => removeAiField(i)}
                     className="rounded p-2 hover:bg-neutral-100 transition-colors shrink-0"
-                    style={{ ...caption, color: '#6B7280', marginTop: '2px' }}
+                    style={{ ...caption, color: colors.muted, marginTop: '2px' }}
                     aria-label="フィールドを削除"
                   >
                     ✕
@@ -412,7 +423,7 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
         {svgContent && (
           <div
             className="rounded-lg flex flex-col items-center gap-4 p-5"
-            style={{ border: '1px solid #E5E7EB', background: '#FAFAFA' }}
+            style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
           >
             <div
               aria-label={`GS1 DataBar ${gtinResult?.fullGtin} のバーコード`}
@@ -422,14 +433,14 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
               <button
                 onClick={downloadSvg}
                 className="rounded px-4 py-2 font-bold transition-colors hover:bg-blue-50"
-                style={{ ...caption, fontWeight: 700, border: '1px solid #1A56DB', color: '#1A56DB' }}
+                style={{ ...caption, fontWeight: 700, border: `1px solid ${colors.primary}`, color: colors.primary }}
               >
                 SVGダウンロード
               </button>
               <button
                 onClick={downloadPng}
                 className="rounded px-4 py-2 font-bold text-white transition-colors hover:opacity-90"
-                style={{ ...caption, fontWeight: 700, background: '#1A56DB' }}
+                style={{ ...caption, fontWeight: 700, background: colors.primary }}
               >
                 PNGダウンロード
               </button>
@@ -440,18 +451,18 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
         {bwipError && (
           <div
             className="rounded-lg p-4"
-            style={{ border: '1px solid #DC2626', background: '#FEF2F2' }}
+            style={{ border: `1px solid ${colors.error}`, background: colors.errorBg }}
           >
-            <p style={{ ...caption, color: '#DC2626' }}>バーコード生成エラー: {bwipError}</p>
+            <p style={{ ...caption, color: colors.error }}>バーコード生成エラー: {bwipError}</p>
           </div>
         )}
 
         {/* GS1文字列プレビュー */}
         {gtinResult && (
-          <details className="rounded-lg" style={{ border: '1px solid #E5E7EB' }}>
+          <details className="rounded-lg" style={{ border: `1px solid ${colors.border}` }}>
             <summary
               className="cursor-pointer px-4 py-3 hover:bg-neutral-50 rounded-lg"
-              style={{ ...caption, fontWeight: 700, color: '#374151', listStyle: 'none' }}
+              style={{ ...caption, fontWeight: 700, color: colors.text, listStyle: 'none' }}
             >
               GS1文字列を見る
             </summary>
@@ -459,20 +470,11 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
               <div className="flex items-center gap-2">
                 <code
                   className="flex-1 rounded px-3 py-2 font-mono break-all"
-                  style={{ ...caption, background: '#F3F4F6', color: '#111827' }}
+                  style={{ ...caption, background: colors.bgSubtle, color: colors.text }}
                 >
-                  {buildBwipText(
-                    gtinResult.fullGtin,
-                    aiFields.map((f) => ({ ai: f.ai, value: f.value })),
-                  )}
+                  {gs1String}
                 </code>
-                <CopyButton
-                  text={buildBwipText(
-                    gtinResult.fullGtin,
-                    aiFields.map((f) => ({ ai: f.ai, value: f.value })),
-                  )}
-                  label="コピー"
-                />
+                <CopyButton text={gs1String} label="コピー" />
               </div>
             </div>
           </details>
@@ -487,7 +489,7 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
 // ─────────────────────────────────────────────
 
 interface CardMeta {
-  id: number;
+  id: string;
 }
 
 interface CardSvgState {
@@ -495,19 +497,17 @@ interface CardSvgState {
   gtin: string;
 }
 
-let nextId = 1;
-
 export function Gs1DatabarTool() {
-  const [cards, setCards] = useState<CardMeta[]>([{ id: nextId++ }]);
-  const [cardSvgs, setCardSvgs] = useState<Record<number, CardSvgState>>({});
+  const [cards, setCards] = useState<CardMeta[]>(() => [{ id: crypto.randomUUID() }]);
+  const [cardSvgs, setCardSvgs] = useState<Record<string, CardSvgState>>({});
   const [isZipping, setIsZipping] = useState(false);
 
   const addCard = () => {
     if (cards.length >= MAX_CARDS) return;
-    setCards((prev) => [...prev, { id: nextId++ }]);
+    setCards((prev) => [...prev, { id: crypto.randomUUID() }]);
   };
 
-  const removeCard = (id: number) => {
+  const removeCard = (id: string) => {
     setCards((prev) => prev.filter((c) => c.id !== id));
     setCardSvgs((prev) => {
       const next = { ...prev };
@@ -516,7 +516,7 @@ export function Gs1DatabarTool() {
     });
   };
 
-  const handleSvgChange = useCallback((id: number, svg: string, gtin: string) => {
+  const handleSvgChange = useCallback((id: string, svg: string, gtin: string) => {
     setCardSvgs((prev) => ({ ...prev, [id]: { svg, gtin } }));
   }, []);
 
@@ -556,6 +556,7 @@ export function Gs1DatabarTool() {
       {cards.map((card, index) => (
         <BarcodeCard
           key={card.id}
+          cardId={card.id}
           index={index}
           canRemove={cards.length > 1}
           onRemove={() => removeCard(card.id)}
@@ -569,13 +570,13 @@ export function Gs1DatabarTool() {
           <button
             onClick={addCard}
             className="rounded px-4 py-2 transition-colors hover:bg-blue-50"
-            style={{ ...caption, fontWeight: 700, border: '1px solid #1A56DB', color: '#1A56DB' }}
+            style={{ ...caption, fontWeight: 700, border: `1px solid ${colors.primary}`, color: colors.primary }}
           >
             + バーコードを追加
           </button>
         )}
         {cards.length >= MAX_CARDS && (
-          <span style={{ ...caption, color: '#6B7280' }}>最大 {MAX_CARDS} 件まで追加できます</span>
+          <span style={{ ...caption, color: colors.muted }}>最大 {MAX_CARDS} 件まで追加できます</span>
         )}
 
         {canDownloadAll && (
@@ -583,7 +584,7 @@ export function Gs1DatabarTool() {
             onClick={downloadAllZip}
             disabled={isZipping}
             className="rounded px-4 py-2 font-bold text-white transition-colors hover:opacity-90 disabled:opacity-50"
-            style={{ ...caption, fontWeight: 700, background: '#1A56DB' }}
+            style={{ ...caption, fontWeight: 700, background: colors.primary }}
           >
             {isZipping ? 'ZIP作成中...' : `全件ZIPダウンロード（${validEntries.length}件）`}
           </button>

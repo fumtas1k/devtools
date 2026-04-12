@@ -1,0 +1,48 @@
+#!/bin/sh
+# ドキュメント更新チェック（警告のみ・コミットはブロックしない）
+#
+# 重要ファイルが変更されているのに対応ドキュメントが未更新の場合に警告を出す。
+# CLAUDE.md の「ドキュメント更新ルール」と対応している。
+
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+staged=$(git diff --cached --name-only)
+
+decisions_updated=$(echo "$staged" | grep -c "^docs/decisions\.md$")
+spec_updated=$(echo "$staged"      | grep -c "^SPEC\.md$")
+readme_updated=$(echo "$staged"    | grep -c "^README\.md$")
+
+warn() {
+  printf "${YELLOW}⚠  docs check: %s${NC}\n" "$1" >&2
+}
+
+# package.json → SPEC.md (2.3節ライブラリ表) + docs/decisions.md
+if echo "$staged" | grep -q "^package\.json$"; then
+  [ "$decisions_updated" -eq 0 ] && warn "package.json が変更されています。docs/decisions.md の更新を確認してください。"
+  [ "$spec_updated"      -eq 0 ] && warn "package.json が変更されています。SPEC.md (2.3節) の更新を確認してください。"
+fi
+
+# .npmrc → docs/decisions.md
+if echo "$staged" | grep -q "^\.npmrc$"; then
+  [ "$decisions_updated" -eq 0 ] && warn ".npmrc が変更されています。docs/decisions.md の更新を確認してください。"
+fi
+
+# CI設定 → docs/decisions.md
+if echo "$staged" | grep -q "^\.github/workflows/"; then
+  [ "$decisions_updated" -eq 0 ] && warn "CI設定が変更されています。docs/decisions.md の更新を確認してください。"
+fi
+
+# デザインシステム → docs/decisions.md
+if echo "$staged" | grep -qE "^src/styles/global\.css$|^src/utils/styles\.ts$"; then
+  [ "$decisions_updated" -eq 0 ] && warn "デザインシステムファイルが変更されています。重要な変更は docs/decisions.md に記録してください。"
+fi
+
+# 新規ツールページ → README.md + SPEC.md + docs/decisions.md
+if echo "$staged" | grep -q "^src/pages/tools/[^/]*\.astro$"; then
+  [ "$readme_updated"    -eq 0 ] && warn "ツールページが追加されています。README.md (ツール一覧) の更新を確認してください。"
+  [ "$spec_updated"      -eq 0 ] && warn "ツールページが追加されています。SPEC.md の更新を確認してください。"
+  [ "$decisions_updated" -eq 0 ] && warn "ツールページが追加されています。docs/decisions.md の更新を確認してください。"
+fi
+
+exit 0
