@@ -65,8 +65,8 @@ description: デジタル庁デザインシステム（DADS）準拠でウェブ
   --color-success-bg:  #F0FDF4;
   --color-error:       #DC2626;  /* エラー（赤） */
   --color-error-bg:    #FEF2F2;
-  --color-warning:     #D97706;  /* 警告（オレンジ） */
-  --color-warning-bg:  #FFFBEB;
+  --color-warning:     #854D0E;  /* 警告テキスト（amber-800）※ amber-600 は白背景で3.3:1しか出ず WCAG AA 不合格のため暗くする */
+  --color-warning-bg:  #FEF3C7; /* 警告背景（amber-100） */
 
   /* === 機能カラー === */
   --color-link:        #2563EB;  /* リンクテキスト（青） */
@@ -334,3 +334,73 @@ a:focus-visible {
 ReactでTailwindを使わない場合は、上記CSS変数を`index.css`に定義し、コンポーネントから参照する。
 
 Tailwind環境では、CSS変数の値をtailwind.config.jsのextendに設定して使用する。
+
+---
+
+## 10. このプロジェクト固有の実装パターン
+
+> **重要**: このプロジェクトではCSS変数を直接使わず、TypeScriptの定数オブジェクトでトークンを管理している。
+
+### カラー・タイポグラフィの参照方法
+
+```tsx
+// ✅ 正しい: styles.ts のトークンを使う
+import { colors, caption, bodyEmphasis } from '../../utils/styles';
+
+<p style={{ ...caption, color: colors.muted }}>ヒントテキスト</p>
+<span style={{ ...bodyEmphasis, color: colors.primary }}>強調テキスト</span>
+<input style={{ border: `1px solid ${colors.borderInput}` }} />
+```
+
+```tsx
+// ❌ 誤り: 生のhex値を直書きしない
+<p style={{ color: '#6B7280' }}>ヒントテキスト</p>
+```
+
+### styles.ts のトークン一覧
+
+| トークン | 値 | 用途 |
+|---|---|---|
+| `colors.text` | `#111827` | 本文テキスト |
+| `colors.muted` | `#6B7280` | ヒント・補足テキスト |
+| `colors.primary` | `#1A56DB` | CTA・強調 |
+| `colors.link` | `#2563EB` | リンク・フォーカスリング |
+| `colors.bg` | `#ffffff` | 基本背景 |
+| `colors.bgSurface` | `#F9FAFB` | カード・パネル背景 |
+| `colors.bgSubtle` | `#F3F4F6` | ヘッダー・subtle背景 |
+| `colors.border` | `#E5E7EB` | 区切り線・カード枠 |
+| `colors.borderInput` | `#D1D5DB` | 入力欄の枠線 |
+| `colors.error` | `#DC2626` | エラーテキスト・枠線 |
+| `colors.errorBg` | `#FEF2F2` | エラー背景 |
+| `colors.warning` | `#854D0E` | 警告テキスト（amber-800、コントラスト確保） |
+| `colors.warningBg` | `#FEF3C7` | 警告背景 |
+| `colors.success` | `#16A34A` | 成功テキスト |
+| `colors.successBg` | `#F0FDF4` | 成功背景 |
+
+### タイポグラフィスタイル
+
+| 定数 | サイズ | weight | 用途 |
+|---|---|---|---|
+| `bodyEmphasis` | 17px | 700 | 強調本文・ラベル見出し |
+| `caption` | 14px | 400 | UI制約のある小テキスト |
+| `micro` | `caption` のエイリアス | — | ヒント・補足テキスト |
+
+### Tailwind との使い分け
+
+- **Tailwind**: レイアウト・余白・フレックス・グリッド（`flex`, `gap-4`, `rounded`, `space-y-4` 等）
+- **`colors.*` インラインスタイル**: 色・フォント（Tailwindのカラークラスは使わない）
+
+### フォーカスリング
+
+```tsx
+// インラインハンドラーでフォーカスリングを実装
+const focusRingOn = (e: React.FocusEvent<HTMLElement>) => {
+  e.target.style.outline = `2px solid ${colors.link}`;
+  e.target.style.outlineOffset = '2px';
+};
+const focusRingOff = (e: React.FocusEvent<HTMLElement>) => {
+  e.target.style.outline = 'none';
+};
+
+<input onFocus={focusRingOn} onBlur={focusRingOff} />
+```
