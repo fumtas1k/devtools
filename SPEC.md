@@ -60,6 +60,8 @@
 | `bwip-js` | GS1バーコード描画（SVG） | GS1 DataBar生成 |
 | `jszip` | 複数バーコードのZIPパッケージング | GS1 DataBar生成 |
 | `@fontsource/noto-sans-jp` | フォントセルフホスト | 全ページ共通 |
+| `@astrojs/check` | Astro/TypeScript 型チェック（devDependency） | 開発ツール共通 |
+| `typescript` | TypeScript コンパイラ（devDependency） | 開発ツール共通 |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
