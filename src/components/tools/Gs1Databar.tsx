@@ -83,8 +83,8 @@ function svgToPngBlob(svgContent: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const m = svgContent.match(/width="(\d+)" height="(\d+)"/);
     if (!m) { reject(new Error('SVG に width/height がありません')); return; }
-    const svgW = parseInt(m[1]);
-    const svgH = parseInt(m[2]);
+    const svgW = parseInt(m[1], 10);
+    const svgH = parseInt(m[2], 10);
 
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -114,20 +114,21 @@ function svgToPngBlob(svgContent: string): Promise<Blob> {
 // ─────────────────────────────────────────────
 
 interface BarcodeCardProps {
+  cardId: string;
   index: number;
   canRemove: boolean;
   onRemove: () => void;
   onSvgChange: (svg: string, gtin: string) => void;
 }
 
-function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardProps) {
+function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: BarcodeCardProps) {
   const [gtinInput, setGtinInput] = useState('');
   const [gtinError, setGtinError] = useState('');
   const [aiFields, setAiFields] = useState<AiFieldState[]>(DEFAULT_AI_FIELDS);
   const [svgContent, setSvgContent] = useState('');
   const [bwipError, setBwipError] = useState('');
 
-  const inputId = `gtin-input-${index}`;
+  const inputId = `gtin-input-${cardId}`;
 
   const gtinResult =
     gtinInput && !gtinError && gtinInput.length === 13
@@ -234,8 +235,10 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
 
   const usedAis = new Set(aiFields.map((f) => f.ai));
   const canAddField = aiFields.length < AI_DEFS.length;
-
   const sampleGtin = SAMPLE_GTINS[index % SAMPLE_GTINS.length];
+  const gs1String = gtinResult
+    ? buildBwipText(gtinResult.fullGtin, aiFields.map((f) => ({ ai: f.ai, value: f.value })))
+    : '';
 
   return (
     <div
@@ -461,18 +464,9 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
                   className="flex-1 rounded px-3 py-2 font-mono break-all"
                   style={{ ...caption, background: '#F3F4F6', color: '#111827' }}
                 >
-                  {buildBwipText(
-                    gtinResult.fullGtin,
-                    aiFields.map((f) => ({ ai: f.ai, value: f.value })),
-                  )}
+                  {gs1String}
                 </code>
-                <CopyButton
-                  text={buildBwipText(
-                    gtinResult.fullGtin,
-                    aiFields.map((f) => ({ ai: f.ai, value: f.value })),
-                  )}
-                  label="コピー"
-                />
+                <CopyButton text={gs1String} label="コピー" />
               </div>
             </div>
           </details>
@@ -487,7 +481,7 @@ function BarcodeCard({ index, canRemove, onRemove, onSvgChange }: BarcodeCardPro
 // ─────────────────────────────────────────────
 
 interface CardMeta {
-  id: number;
+  id: string;
 }
 
 interface CardSvgState {
@@ -495,19 +489,17 @@ interface CardSvgState {
   gtin: string;
 }
 
-let nextId = 1;
-
 export function Gs1DatabarTool() {
-  const [cards, setCards] = useState<CardMeta[]>([{ id: nextId++ }]);
-  const [cardSvgs, setCardSvgs] = useState<Record<number, CardSvgState>>({});
+  const [cards, setCards] = useState<CardMeta[]>(() => [{ id: crypto.randomUUID() }]);
+  const [cardSvgs, setCardSvgs] = useState<Record<string, CardSvgState>>({});
   const [isZipping, setIsZipping] = useState(false);
 
   const addCard = () => {
     if (cards.length >= MAX_CARDS) return;
-    setCards((prev) => [...prev, { id: nextId++ }]);
+    setCards((prev) => [...prev, { id: crypto.randomUUID() }]);
   };
 
-  const removeCard = (id: number) => {
+  const removeCard = (id: string) => {
     setCards((prev) => prev.filter((c) => c.id !== id));
     setCardSvgs((prev) => {
       const next = { ...prev };
@@ -516,7 +508,7 @@ export function Gs1DatabarTool() {
     });
   };
 
-  const handleSvgChange = useCallback((id: number, svg: string, gtin: string) => {
+  const handleSvgChange = useCallback((id: string, svg: string, gtin: string) => {
     setCardSvgs((prev) => ({ ...prev, [id]: { svg, gtin } }));
   }, []);
 
@@ -556,6 +548,7 @@ export function Gs1DatabarTool() {
       {cards.map((card, index) => (
         <BarcodeCard
           key={card.id}
+          cardId={card.id}
           index={index}
           canRemove={cards.length > 1}
           onRemove={() => removeCard(card.id)}
