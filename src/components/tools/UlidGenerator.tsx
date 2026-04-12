@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { ulid } from 'ulidx';
 import { CopyButton } from '../ui/CopyButton';
 import { copyToClipboard } from '../../utils/clipboard';
-import { bodyEmphasis, caption, micro } from '../../utils/styles';
+import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
 
 function RowCopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -17,8 +17,8 @@ function RowCopyButton({ text }: { text: string }) {
       className="rounded-md transition-colors"
       style={{
         fontSize: '0.75rem', padding: '0.25rem 0.5rem',
-        background: copied ? '#e3f5e1' : '#f5f5f7',
-        color: copied ? '#1a6b1a' : 'rgba(0,0,0,0.48)',
+        background: copied ? colors.successBg : colors.bgSubtle,
+        color: copied ? colors.success : colors.muted,
         border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
       }}
     >
@@ -91,7 +91,7 @@ export function UlidGeneratorTool() {
       <div>
         <label
           htmlFor="ulid-count"
-          style={{ ...bodyEmphasis, color: '#1d1d1f', display: 'block', marginBottom: '0.25rem' }}
+          style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}
         >
           生成数
         </label>
@@ -109,13 +109,13 @@ export function UlidGeneratorTool() {
             style={{
               ...caption,
               width: '6rem',
-              border: '1px solid rgba(0,0,0,0.2)',
+              border: `1px solid ${colors.borderInput}`,
               outline: 'none',
-              background: '#ffffff',
-              color: '#1d1d1f',
+              background: colors.bg,
+              color: colors.text,
             }}
             onFocus={(e) => {
-              e.target.style.outline = '2px solid #0071e3';
+              e.target.style.outline = `2px solid ${colors.link}`;
               e.target.style.outlineOffset = '2px';
             }}
             onBlurCapture={(e) => {
@@ -129,12 +129,12 @@ export function UlidGeneratorTool() {
             style={{
               ...caption,
               fontWeight: 600,
-              background: '#0071e3',
+              background: colors.primary,
               color: '#ffffff',
               border: 'none',
             }}
             onFocus={(e) => {
-              (e.target as HTMLButtonElement).style.outline = '2px solid #0071e3';
+              (e.target as HTMLButtonElement).style.outline = `2px solid ${colors.link}`;
               (e.target as HTMLButtonElement).style.outlineOffset = '2px';
             }}
             onBlur={(e) => {
@@ -144,27 +144,27 @@ export function UlidGeneratorTool() {
             生成
           </button>
         </div>
-        <p id="ulid-count-hint" style={{ ...micro, color: 'rgba(0,0,0,0.48)', marginTop: '0.25rem' }}>
+        <p id="ulid-count-hint" style={{ ...micro, color: colors.muted, marginTop: '0.25rem' }}>
           1〜100
         </p>
       </div>
 
       {/* 結果テーブル */}
       {rows.length > 0 && (
-        <div className="rounded-lg" style={{ border: '1px solid rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+        <div className="rounded-lg" style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
           {/* テーブルヘッダー + 操作ボタン */}
           <div
             className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
-            style={{ background: '#f5f5f7', borderBottom: '1px solid rgba(0,0,0,0.1)' }}
+            style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
           >
-            <span style={{ ...bodyEmphasis, color: '#1d1d1f' }}>
+            <span style={{ ...bodyEmphasis, color: colors.text }}>
               {rows.length} 件生成
             </span>
             <div className="flex items-center gap-2">
               {/* クォートスタイル選択 */}
               <div
                 className="flex items-center rounded-lg overflow-hidden"
-                style={{ border: '1px solid rgba(0,0,0,0.15)' }}
+                style={{ border: `1px solid ${colors.borderInput}` }}
                 role="group"
                 aria-label="クォートスタイル"
               >
@@ -175,12 +175,12 @@ export function UlidGeneratorTool() {
                     style={{
                       ...micro,
                       padding: '0.25rem 0.625rem',
-                      background: quoteStyle === value ? '#0071e3' : '#ffffff',
-                      color: quoteStyle === value ? '#ffffff' : 'rgba(0,0,0,0.6)',
+                      background: quoteStyle === value ? colors.primary : colors.bg,
+                      color: quoteStyle === value ? '#ffffff' : colors.muted,
                       border: 'none',
                       cursor: 'pointer',
                       fontFamily: value !== 'none' ? 'monospace' : 'inherit',
-                      borderRight: value !== 'single' ? '1px solid rgba(0,0,0,0.15)' : 'none',
+                      borderRight: value !== 'single' ? `1px solid ${colors.borderInput}` : 'none',
                     }}
                     aria-pressed={quoteStyle === value}
                   >
@@ -191,8 +191,8 @@ export function UlidGeneratorTool() {
               <CopyButton text={allUlids} label="すべてコピー" />
               <button
                 onClick={() => setRows([])}
-                className="rounded-lg px-3 py-1.5 transition-colors hover:bg-apple-light"
-                style={{ ...caption, color: 'rgba(0,0,0,0.48)' }}
+                className="rounded-lg px-3 py-1.5 transition-colors"
+                style={{ ...caption, color: colors.muted }}
               >
                 クリア
               </button>
@@ -203,12 +203,12 @@ export function UlidGeneratorTool() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#fafafa', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                <tr style={{ background: colors.bgSurface, borderBottom: `1px solid ${colors.border}` }}>
                   <th
                     scope="col"
                     style={{
                       ...micro,
-                      color: 'rgba(0,0,0,0.48)',
+                      color: colors.muted,
                       textAlign: 'right',
                       padding: '0.5rem 0.75rem',
                       whiteSpace: 'nowrap',
@@ -222,7 +222,7 @@ export function UlidGeneratorTool() {
                     scope="col"
                     style={{
                       ...micro,
-                      color: 'rgba(0,0,0,0.48)',
+                      color: colors.muted,
                       textAlign: 'left',
                       padding: '0.5rem 0.75rem',
                       whiteSpace: 'nowrap',
@@ -235,7 +235,7 @@ export function UlidGeneratorTool() {
                     scope="col"
                     style={{
                       ...micro,
-                      color: 'rgba(0,0,0,0.48)',
+                      color: colors.muted,
                       textAlign: 'left',
                       padding: '0.5rem 0.75rem',
                       whiteSpace: 'nowrap',
@@ -248,7 +248,7 @@ export function UlidGeneratorTool() {
                     scope="col"
                     style={{
                       ...micro,
-                      color: 'rgba(0,0,0,0.48)',
+                      color: colors.muted,
                       textAlign: 'center',
                       padding: '0.5rem 0.75rem',
                       whiteSpace: 'nowrap',
@@ -265,14 +265,14 @@ export function UlidGeneratorTool() {
                   <tr
                     key={row.id}
                     style={{
-                      borderBottom: i < rows.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
-                      background: i % 2 === 0 ? '#ffffff' : '#fafafa',
+                      borderBottom: i < rows.length - 1 ? `1px solid ${colors.border}` : 'none',
+                      background: i % 2 === 0 ? colors.bg : colors.bgSurface,
                     }}
                   >
                     <td
                       style={{
                         ...micro,
-                        color: 'rgba(0,0,0,0.48)',
+                        color: colors.muted,
                         textAlign: 'right',
                         padding: '0.5rem 0.75rem',
                         fontVariantNumeric: 'tabular-nums',
@@ -284,20 +284,20 @@ export function UlidGeneratorTool() {
                       className="font-mono"
                       style={{
                         ...micro,
-                        color: '#1d1d1f',
+                        color: colors.text,
                         padding: '0.5rem 0.75rem',
                         whiteSpace: 'nowrap',
                         letterSpacing: '0.02em',
                       }}
                     >
-                      <span style={{ color: '#0071e3' }}>{row.id.slice(0, 10)}</span>
+                      <span style={{ color: colors.primary }}>{row.id.slice(0, 10)}</span>
                       <span>{row.id.slice(10)}</span>
                     </td>
                     <td
                       className="font-mono"
                       style={{
                         ...micro,
-                        color: 'rgba(0,0,0,0.64)',
+                        color: colors.muted,
                         padding: '0.5rem 0.75rem',
                         whiteSpace: 'nowrap',
                       }}

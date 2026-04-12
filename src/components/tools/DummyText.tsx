@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, micro } from '../../utils/styles';
+import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
 
 type CharType = 'hiragana' | 'katakana' | 'japanese' | 'alphanumeric' | 'lorem';
 
@@ -109,7 +109,7 @@ export function DummyTextTool() {
     <div className="space-y-6">
       {/* 文字種 */}
       <div>
-        <p style={{ ...bodyEmphasis, color: '#1d1d1f', marginBottom: '0.75rem' }}>文字種</p>
+        <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.75rem' }}>文字種</p>
         <div className="flex flex-wrap gap-2">
           {CHAR_TYPES.map(({ value, label }) => (
             <button
@@ -119,9 +119,9 @@ export function DummyTextTool() {
                 ...caption,
                 padding: '0.5rem 1rem',
                 borderRadius: '999px',
-                border: charType === value ? '1.5px solid #0071e3' : '1.5px solid rgba(0,0,0,0.2)',
-                background: charType === value ? '#e8f1fb' : '#ffffff',
-                color: charType === value ? '#0071e3' : 'rgba(0,0,0,0.6)',
+                border: charType === value ? `1.5px solid ${colors.primary}` : `1.5px solid ${colors.borderInput}`,
+                background: charType === value ? colors.primaryBg : colors.bg,
+                color: charType === value ? colors.primary : colors.muted,
                 cursor: 'pointer',
                 fontWeight: charType === value ? 600 : 400,
               }}
@@ -137,7 +137,7 @@ export function DummyTextTool() {
       <div>
         <label
           htmlFor="dummy-length"
-          style={{ ...bodyEmphasis, color: '#1d1d1f', display: 'block', marginBottom: '0.25rem' }}
+          style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}
         >
           文字数
         </label>
@@ -154,24 +154,24 @@ export function DummyTextTool() {
           style={{
             ...caption,
             width: '8rem',
-            border: '1px solid rgba(0,0,0,0.2)',
+            border: `1px solid ${colors.borderInput}`,
             outline: 'none',
-            background: '#ffffff',
-            color: '#1d1d1f',
+            background: colors.bg,
+            color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = '2px solid #0071e3'; e.target.style.outlineOffset = '2px'; }}
+          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
           onBlurCapture={(e) => { e.target.style.outline = 'none'; }}
         />
-        <p style={{ ...micro, color: 'rgba(0,0,0,0.48)', marginTop: '0.25rem' }}>1〜5000文字</p>
+        <p style={{ ...micro, color: colors.muted, marginTop: '0.25rem' }}>1〜5000文字</p>
       </div>
 
       {/* 改行 */}
       <div>
-        <p style={{ ...bodyEmphasis, color: '#1d1d1f', marginBottom: '0.25rem' }}>改行</p>
+        <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.25rem' }}>改行</p>
         <div className="flex items-center gap-3 flex-wrap">
           <div
             className="flex rounded-lg overflow-hidden"
-            style={{ border: '1px solid rgba(0,0,0,0.2)', display: 'inline-flex' }}
+            style={{ border: `1px solid ${colors.borderInput}`, display: 'inline-flex' }}
             role="group"
             aria-label="改行設定"
           >
@@ -182,10 +182,10 @@ export function DummyTextTool() {
                 style={{
                   ...caption,
                   padding: '0.5rem 1.25rem',
-                  background: lineBreak === val ? '#0071e3' : '#ffffff',
-                  color: lineBreak === val ? '#ffffff' : 'rgba(0,0,0,0.6)',
+                  background: lineBreak === val ? colors.primary : colors.bg,
+                  color: lineBreak === val ? '#ffffff' : colors.muted,
                   border: 'none',
-                  borderRight: !val ? '1px solid rgba(0,0,0,0.2)' : 'none',
+                  borderRight: !val ? `1px solid ${colors.borderInput}` : 'none',
                   cursor: 'pointer',
                   fontWeight: lineBreak === val ? 600 : 400,
                 }}
@@ -197,7 +197,7 @@ export function DummyTextTool() {
           </div>
           {lineBreak && (
             <div className="flex items-center gap-2">
-              <label htmlFor="chunk-size" style={{ ...caption, color: 'rgba(0,0,0,0.6)' }}>間隔</label>
+              <label htmlFor="chunk-size" style={{ ...caption, color: colors.muted }}>間隔</label>
               <input
                 id="chunk-size"
                 type="number"
@@ -210,15 +210,15 @@ export function DummyTextTool() {
                 style={{
                   ...caption,
                   width: '5rem',
-                  border: '1px solid rgba(0,0,0,0.2)',
+                  border: `1px solid ${colors.borderInput}`,
                   outline: 'none',
-                  background: '#ffffff',
-                  color: '#1d1d1f',
+                  background: colors.bg,
+                  color: colors.text,
                 }}
-                onFocus={(e) => { e.target.style.outline = '2px solid #0071e3'; e.target.style.outlineOffset = '2px'; }}
+                onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
                 onBlurCapture={(e) => { e.target.style.outline = 'none'; }}
               />
-              <span style={{ ...micro, color: 'rgba(0,0,0,0.48)' }}>文字ごと（1〜1000）</span>
+              <span style={{ ...micro, color: colors.muted }}>文字ごと（1〜1000）</span>
             </div>
           )}
         </div>
@@ -228,28 +228,28 @@ export function DummyTextTool() {
 
       {/* 結果 */}
       {result && (
-        <div className="rounded-lg" style={{ border: '1px solid rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+        <div className="rounded-lg" style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
           <div
             className="flex items-center justify-between gap-2 px-4 py-3"
-            style={{ background: '#f5f5f7', borderBottom: '1px solid rgba(0,0,0,0.1)' }}
+            style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
           >
-            <span style={{ ...bodyEmphasis, color: '#1d1d1f' }}>{result.length} 文字</span>
+            <span style={{ ...bodyEmphasis, color: colors.text }}>{result.length} 文字</span>
             <div className="flex items-center gap-2">
               <CopyButton text={result} label="コピー" />
               <button
                 onClick={() => setResult('')}
-                className="rounded-lg px-3 py-1.5 transition-colors hover:bg-apple-light"
-                style={{ ...caption, color: 'rgba(0,0,0,0.48)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                className="rounded-lg px-3 py-1.5 transition-colors"
+                style={{ ...caption, color: colors.muted, background: 'transparent', border: 'none', cursor: 'pointer' }}
               >
                 クリア
               </button>
             </div>
           </div>
-          <div className="px-4 py-4" style={{ background: '#ffffff' }}>
+          <div className="px-4 py-4" style={{ background: colors.bg }}>
             <p
               style={{
                 ...caption,
-                color: '#1d1d1f',
+                color: colors.text,
                 lineHeight: 1.8,
                 wordBreak: 'break-all',
                 whiteSpace: 'pre-wrap',

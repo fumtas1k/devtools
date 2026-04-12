@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { CopyButton } from '../ui/CopyButton';
 import { calcJan, validateJanInput, type JanMode } from '../../utils/jan-code';
-import { bodyEmphasis, caption } from '../../utils/styles';
+import { bodyEmphasis, caption, shadows } from '../../utils/styles';
 
 export function JanCodeTool() {
   const [mode, setMode] = useState<JanMode>('jan13');
@@ -108,7 +108,7 @@ export function JanCodeTool() {
               fontWeight: 700,
               background: mode === m ? '#ffffff' : 'transparent',
               color: mode === m ? '#111827' : '#6B7280',
-              boxShadow: mode === m ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              boxShadow: mode === m ? shadows.tab : 'none',
             }}
           >
             {m === 'jan13' ? 'JAN-13' : 'JAN-8'}
