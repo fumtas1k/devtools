@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import Sidebar from '../components/layout/Sidebar.astro';
+import ToolIcon from '../components/ui/ToolIcon.astro';
 import { categoryLabel } from '../data/tools';
 import type { Tool } from '../data/tools';
 
@@ -35,7 +36,7 @@ const { tool } = Astro.props;
 
       <!-- ツールヘッダー -->
       <div class="mb-8 flex items-center gap-4">
-        <span style="font-size: 2rem;" aria-hidden="true">{tool.icon}</span>
+        <ToolIcon slug={tool.slug} size={32} class="text-primary shrink-0" />
         <div class="min-w-0 flex-1">
           <h1
             class="font-bold text-neutral-900"
