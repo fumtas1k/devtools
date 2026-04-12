@@ -6,10 +6,12 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description?: string;
+  jsonLd?: object;
 }
 
-const { title, description = 'ブラウザで完結する無料の開発者ツール集' } = Astro.props;
+const { title, description = 'ブラウザで完結する無料の開発者ツール集', jsonLd } = Astro.props;
 const pageTitle = `${title} | DevTools`;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
 ---
 
 <!doctype html>
@@ -20,10 +22,17 @@ const pageTitle = `${title} | DevTools`;
     <meta name="generator" content={Astro.generator} />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DevTools" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
     <meta property="og:image" content="/og-image.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {jsonLd && (
+      <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    )}
   </head>
   <body class="bg-neutral-50 text-neutral-900 min-h-screen">
     <Header />

@@ -10,9 +10,25 @@ interface Props {
 }
 
 const { tool } = Astro.props;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: tool.name,
+  url: new URL(`/tools/${tool.slug}`, Astro.site).href,
+  description: tool.description,
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Any',
+  inLanguage: 'ja',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'JPY',
+  },
+};
 ---
 
-<BaseLayout title={tool.name} description={tool.description}>
+<BaseLayout title={tool.name} description={tool.description} jsonLd={jsonLd}>
   <div class="mx-auto flex max-w-280 gap-6 px-6 py-8">
     <!-- サイドバー (デスクトップ) -->
     <div class="hidden lg:block">

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CopyButton } from '../ui/CopyButton';
+import { bodyEmphasis, caption, colors, shadows } from '../../utils/styles';
 import { encodeUrl, decodeUrl, validateDecodeInput } from '../../utils/url-encode';
 
 type Mode = 'encode' | 'decode';
@@ -38,17 +39,10 @@ export function UrlEncoderTool() {
     decode: 'https%3A%2F%2Fexample.com%2F%E6%A4%9C%E7%B4%A2%3Fq%3D%E3%83%86%E3%82%B9%E3%83%88%26lang%3Dja',
   };
 
-  /* Body: 17px, weight 400, line-height 1.47, tracking -0.374px */
-  const bodyStyle = { fontSize: '1.06rem', fontWeight: 400, lineHeight: 1.47, letterSpacing: '-0.374px' } as const;
-  /* Body Emphasis: 17px, weight 600, line-height 1.24 */
-  const bodyEmphasisStyle = { fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px' } as const;
-  /* Caption: 14px, weight 400, line-height 1.29, tracking -0.224px */
-  const captionStyle = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.29, letterSpacing: '-0.224px' } as const;
-
   return (
     <div className="space-y-4">
       {/* モード切替: Filter/Search Button style */}
-      <div className="flex gap-1 rounded-lg p-1" style={{ background: '#f5f5f7' }}>
+      <div className="flex gap-1 rounded-lg p-1" style={{ background: colors.bgSubtle }}>
         {(['encode', 'decode'] as Mode[]).map((m) => (
           <button
             key={m}
@@ -56,11 +50,11 @@ export function UrlEncoderTool() {
             aria-pressed={mode === m}
             className="flex-1 rounded-lg py-1.5 transition-colors"
             style={{
-              ...captionStyle,
+              ...caption,
               fontWeight: 500,
-              background: mode === m ? '#ffffff' : 'transparent',
-              color: mode === m ? '#1d1d1f' : 'rgba(0,0,0,0.48)',
-              boxShadow: mode === m ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              background: mode === m ? colors.bg : 'transparent',
+              color: mode === m ? colors.text : colors.muted,
+              boxShadow: mode === m ? shadows.tab : 'none',
             }}
           >
             {m === 'encode' ? 'エンコード' : 'デコード'}
@@ -71,14 +65,12 @@ export function UrlEncoderTool() {
       {/* 入力 */}
       <div>
         <div className="mb-1 flex items-center justify-between">
-          {/* Body Emphasis */}
-          <label htmlFor="url-input" style={{ ...bodyEmphasisStyle, color: '#1d1d1f' }}>
+          <label htmlFor="url-input" style={{ ...bodyEmphasis, color: colors.text }}>
             入力
           </label>
-          {/* Link: 14px, color #0066cc */}
           <button
             onClick={() => handleInput(SAMPLE[mode])}
-            style={{ ...captionStyle, color: '#0066cc' }}
+            style={{ ...caption, color: colors.link }}
             className="hover:underline"
           >
             サンプル入力
@@ -92,18 +84,18 @@ export function UrlEncoderTool() {
           rows={4}
           className="w-full rounded-lg px-3 py-2 font-mono"
           style={{
-            ...captionStyle,
-            border: `1px solid ${error ? '#dc2626' : 'rgba(0,0,0,0.2)'}`,
+            ...caption,
+            border: `1px solid ${error ? colors.error : colors.borderInput}`,
             outline: 'none',
-            background: '#ffffff',
-            color: '#1d1d1f',
+            background: colors.bg,
+            color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = '2px solid #0071e3'; e.target.style.outlineOffset = '2px'; }}
+          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
           onBlur={(e) => { e.target.style.outline = 'none'; }}
           aria-describedby={error ? 'url-error' : undefined}
         />
         {error && (
-          <p id="url-error" role="alert" style={{ ...captionStyle, color: '#dc2626', marginTop: '0.25rem' }}>
+          <p id="url-error" role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
             {error}
           </p>
         )}
@@ -111,7 +103,7 @@ export function UrlEncoderTool() {
 
       {/* 出力 */}
       <div>
-        <label className="mb-1 block" style={{ ...bodyEmphasisStyle, color: '#1d1d1f' }}>
+        <label className="mb-1 block" style={{ ...bodyEmphasis, color: colors.text }}>
           出力
         </label>
         <textarea
@@ -120,10 +112,10 @@ export function UrlEncoderTool() {
           rows={4}
           className="w-full rounded-lg px-3 py-2 font-mono"
           style={{
-            ...captionStyle,
-            border: '1px solid rgba(0,0,0,0.12)',
-            background: '#f5f5f7',
-            color: '#1d1d1f',
+            ...caption,
+            border: `1px solid ${colors.border}`,
+            background: colors.bgSubtle,
+            color: colors.text,
           }}
           aria-label="変換結果"
         />
@@ -134,8 +126,8 @@ export function UrlEncoderTool() {
         {output && <CopyButton text={output} label="出力をコピー" />}
         <button
           onClick={handleClear}
-          className="rounded-lg px-3 py-1.5 transition-colors hover:bg-apple-light"
-          style={{ ...captionStyle, color: 'rgba(0,0,0,0.48)' }}
+          className="rounded-lg px-3 py-1.5 transition-colors"
+          style={{ ...caption, color: colors.muted }}
         >
           クリア
         </button>

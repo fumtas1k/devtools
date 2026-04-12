@@ -4,9 +4,18 @@ import ToolIcon from '../components/ui/ToolIcon.astro';
 import { tools, categoryLabel, type ToolCategory } from '../data/tools';
 
 const categories: ToolCategory[] = ['generate', 'convert'];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'DevTools',
+  url: Astro.site?.href ?? 'https://devtools-d9w.pages.dev/',
+  description: 'ブラウザで完結する無料の開発者ツール集',
+  inLanguage: 'ja',
+};
 ---
 
-<BaseLayout title="無料オンライン開発者ツール集" description="ブラウザで完結する無料の開発者ツール集。URLエンコード、JWTデコード、ULID生成など。">
+<BaseLayout title="無料オンライン開発者ツール集" description="ブラウザで完結する無料の開発者ツール集。URLエンコード、JWTデコード、ULID生成など。" jsonLd={jsonLd}>
   <!-- ヒーロー -->
   <section class="bg-blue-50 text-center px-4 py-8" style="border-bottom: 1px solid #DBEAFE;">
     <h1

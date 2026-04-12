@@ -1,11 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CopyButton } from '../ui/CopyButton';
+import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
 import {
   parseJwt, formatTimestamp, formatRemaining, base64UrlToBytes,
   type ExpStatus,
 } from '../../utils/jwt';
 
 const SAMPLE_SECRET = 'your-256-bit-secret';
+
+// JWT syntax highlight colors (not UI colors — kept local)
+const jsonKeyColor = colors.link;
+const jsonValueColor = '#6e4f0e';
 
 function toBase64Url(str: string): string {
   const bytes = new TextEncoder().encode(str);
@@ -97,11 +102,11 @@ function PayloadValue({ k, v }: { k: string; v: unknown }) {
   const isTs = TIMESTAMP_KEYS.includes(k) && typeof v === 'number';
   return (
     <span>
-      <span style={{ color: '#0066cc' }}>"{k}"</span>
-      <span style={{ color: 'rgba(0,0,0,0.8)' }}>: </span>
-      <span style={{ color: '#6e4f0e' }}>{JSON.stringify(v)}</span>
+      <span style={{ color: jsonKeyColor }}>"{k}"</span>
+      <span style={{ color: colors.text }}>: </span>
+      <span style={{ color: jsonValueColor }}>{JSON.stringify(v)}</span>
       {isTs && (
-        <span className="ml-2" style={{ fontSize: '0.75rem', color: 'rgba(0,0,0,0.48)' }}>
+        <span className="ml-2" style={{ fontSize: '0.75rem', color: colors.muted }}>
           → {formatTimestamp(v as number)}
         </span>
       )}
@@ -119,33 +124,29 @@ interface SectionProps {
 function Section({ title, accentColor, data, renderValue }: SectionProps) {
   const json = JSON.stringify(data, null, 2);
   return (
-    <div className="rounded-lg p-4" style={{ background: '#f5f5f7', borderLeft: `4px solid ${accentColor}` }}>
+    <div className="rounded-lg p-4" style={{ background: colors.bgSubtle, borderLeft: `4px solid ${accentColor}` }}>
       <div className="mb-2 flex items-center justify-between">
-        <h3 style={{ fontSize: '1.06rem', fontWeight: 600, lineHeight: 1.24, letterSpacing: '-0.374px', color: '#1d1d1f' }}>{title}</h3>
+        <h3 style={{ ...bodyEmphasis, color: colors.text }}>{title}</h3>
         <CopyButton text={json} label="コピー" />
       </div>
-      <pre className="overflow-x-auto font-mono" style={{ fontSize: '0.75rem', lineHeight: 1.33, letterSpacing: '-0.12px', color: 'rgba(0,0,0,0.8)' }}>
-        <span style={{ color: 'rgba(0,0,0,0.48)' }}>{'{'}</span>{'\n'}
+      <pre className="overflow-x-auto font-mono" style={{ fontSize: '0.75rem', lineHeight: 1.33, letterSpacing: '-0.12px', color: colors.text }}>
+        <span style={{ color: colors.muted }}>{'{'}</span>{'\n'}
         {Object.entries(data).map(([k, v]) => (
           <span key={k} className="block pl-4">
             {renderValue ? renderValue(k, v) : (
               <>
-                <span style={{ color: '#0066cc' }}>"{k}"</span>
-                <span style={{ color: 'rgba(0,0,0,0.8)' }}>: </span>
-                <span style={{ color: '#6e4f0e' }}>{JSON.stringify(v)}</span>
+                <span style={{ color: jsonKeyColor }}>"{k}"</span>
+                <span style={{ color: colors.text }}>: </span>
+                <span style={{ color: jsonValueColor }}>{JSON.stringify(v)}</span>
               </>
             )}
           </span>
         ))}
-        <span style={{ color: 'rgba(0,0,0,0.48)' }}>{'}'}</span>
+        <span style={{ color: colors.muted }}>{'}'}</span>
       </pre>
     </div>
   );
 }
-
-const bodyEmphasis = { fontSize: '1.0625rem', fontWeight: 700, lineHeight: 1.7, letterSpacing: '0.02em' } as const;
-const caption = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.7, letterSpacing: '0.02em' } as const;
-const micro = { fontSize: '0.875rem', fontWeight: 400, lineHeight: 1.7, letterSpacing: '0.02em' } as const;
 
 export function JwtDecoderTool() {
   const [token, setToken] = useState('');
@@ -173,18 +174,18 @@ export function JwtDecoderTool() {
   }, [parsed, secretKey]);
 
   const expBadge: Record<ExpStatus, { label: string; style: React.CSSProperties }> = {
-    valid:    { label: '有効', style: { background: '#e3f5e1', color: '#1a6b1a' } },
-    expired:  { label: '期限切れ', style: { background: '#fde8e8', color: '#b91c1c' } },
-    'no-exp': { label: 'exp なし', style: { background: '#fef3cd', color: '#854d0e' } },
+    valid:    { label: '有効', style: { background: colors.successBg, color: colors.success } },
+    expired:  { label: '期限切れ', style: { background: colors.errorBg, color: colors.errorText } },
+    'no-exp': { label: 'exp なし', style: { background: colors.warningBg, color: colors.warning } },
   };
 
   const sigBadge: Record<SigStatus, { label: string; style: React.CSSProperties } | null> = {
     unchecked:   null,
-    verifying:   { label: '検証中…', style: { background: '#f5f5f7', color: 'rgba(0,0,0,0.48)' } },
-    valid:       { label: '署名: 有効', style: { background: '#e3f5e1', color: '#1a6b1a' } },
-    invalid:     { label: '署名: 無効', style: { background: '#fde8e8', color: '#b91c1c' } },
-    unsupported: { label: '署名: 未対応アルゴリズム', style: { background: '#f5f5f7', color: 'rgba(0,0,0,0.48)' } },
-    error:       { label: '署名: 検証エラー（キー形式を確認）', style: { background: '#fde8e8', color: '#b91c1c' } },
+    verifying:   { label: '検証中…', style: { background: colors.bgSubtle, color: colors.muted } },
+    valid:       { label: '署名: 有効', style: { background: colors.successBg, color: colors.success } },
+    invalid:     { label: '署名: 無効', style: { background: colors.errorBg, color: colors.errorText } },
+    unsupported: { label: '署名: 未対応アルゴリズム', style: { background: colors.bgSubtle, color: colors.muted } },
+    error:       { label: '署名: 検証エラー（キー形式を確認）', style: { background: colors.errorBg, color: colors.errorText } },
   };
 
   return (
@@ -192,10 +193,10 @@ export function JwtDecoderTool() {
       {/* トークン入力 */}
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <label htmlFor="jwt-input" style={{ ...bodyEmphasis, color: '#1d1d1f' }}>JWTトークンを貼り付け</label>
+          <label htmlFor="jwt-input" style={{ ...bodyEmphasis, color: colors.text }}>JWTトークンを貼り付け</label>
           <button
             onClick={async () => { setSecretKey(SAMPLE_SECRET); setToken(await generateSampleJwt(SAMPLE_SECRET)); }}
-            style={{ ...caption, color: '#0066cc' }}
+            style={{ ...caption, color: colors.link }}
             className="hover:underline"
           >
             サンプル入力
@@ -210,17 +211,17 @@ export function JwtDecoderTool() {
           className="w-full rounded-lg px-3 py-2 font-mono"
           style={{
             ...caption,
-            border: `1px solid ${isInvalid ? '#dc2626' : 'rgba(0,0,0,0.2)'}`,
+            border: `1px solid ${isInvalid ? colors.error : colors.borderInput}`,
             outline: 'none',
-            background: '#ffffff',
-            color: '#1d1d1f',
+            background: colors.bg,
+            color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = '2px solid #0071e3'; e.target.style.outlineOffset = '2px'; }}
+          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
           onBlur={(e) => { e.target.style.outline = 'none'; }}
           aria-describedby={isInvalid ? 'jwt-error' : undefined}
         />
         {isInvalid && (
-          <p id="jwt-error" role="alert" style={{ ...caption, color: '#dc2626', marginTop: '0.25rem' }}>
+          <p id="jwt-error" role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
             有効なJWTトークンではありません
           </p>
         )}
@@ -229,9 +230,9 @@ export function JwtDecoderTool() {
       {/* 署名検証キー入力 */}
       {parsed && (
         <div>
-          <label htmlFor="jwt-secret" style={{ ...bodyEmphasis, color: '#1d1d1f', display: 'block', marginBottom: '0.25rem' }}>
+          <label htmlFor="jwt-secret" style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}>
             {keyLabel}
-            <span style={{ ...micro, color: 'rgba(0,0,0,0.48)', fontWeight: 400, marginLeft: '0.5rem' }}>（任意）</span>
+            <span style={{ ...micro, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}>（任意）</span>
           </label>
           <textarea
             id="jwt-secret"
@@ -242,13 +243,13 @@ export function JwtDecoderTool() {
             className="w-full rounded-lg px-3 py-2 font-mono"
             style={{
               ...caption,
-              border: '1px solid rgba(0,0,0,0.2)',
+              border: `1px solid ${colors.borderInput}`,
               outline: 'none',
-              background: '#ffffff',
-              color: '#1d1d1f',
+              background: colors.bg,
+              color: colors.text,
               resize: 'vertical',
             }}
-            onFocus={(e) => { e.target.style.outline = '2px solid #0071e3'; e.target.style.outlineOffset = '2px'; }}
+            onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
             onBlur={(e) => { e.target.style.outline = 'none'; }}
           />
         </div>
@@ -256,12 +257,12 @@ export function JwtDecoderTool() {
 
       {/* 有効期限チェックトグル */}
       {parsed && (
-        <label className="flex items-center gap-2 cursor-pointer" style={{ ...caption, color: '#1d1d1f' }}>
+        <label className="flex items-center gap-2 cursor-pointer" style={{ ...caption, color: colors.text }}>
           <input
             type="checkbox"
             checked={verifyExp}
             onChange={(e) => setVerifyExp(e.target.checked)}
-            style={{ accentColor: '#0071e3', width: '1rem', height: '1rem' }}
+            style={{ accentColor: colors.link, width: '1rem', height: '1rem' }}
           />
           有効期限（exp）チェックを行う
         </label>
@@ -302,13 +303,13 @@ export function JwtDecoderTool() {
             data={parsed.payload}
             renderValue={(k, v) => <PayloadValue k={k} v={v} />}
           />
-          <div className="rounded-lg p-4" style={{ background: '#f5f5f7', borderLeft: '4px solid #0071e3' }}>
+          <div className="rounded-lg p-4" style={{ background: colors.bgSubtle, borderLeft: `4px solid ${colors.primary}` }}>
             <div className="mb-2 flex items-center justify-between">
-              <h3 style={{ ...bodyEmphasis, color: '#1d1d1f' }}>Signature</h3>
+              <h3 style={{ ...bodyEmphasis, color: colors.text }}>Signature</h3>
               <CopyButton text={parsed.signature} label="コピー" />
             </div>
-            <p className="break-all font-mono" style={{ ...micro, color: 'rgba(0,0,0,0.8)' }}>{parsed.signature}</p>
-            <p className="mt-2" style={{ ...micro, color: 'rgba(0,0,0,0.48)' }}>
+            <p className="break-all font-mono" style={{ ...micro, color: colors.text }}>{parsed.signature}</p>
+            <p className="mt-2" style={{ ...micro, color: colors.muted }}>
               {secretKey.trim() ? '上記のキーで署名を検証しています' : 'キーを入力すると署名を検証します'}
             </p>
           </div>
@@ -320,8 +321,8 @@ export function JwtDecoderTool() {
         <div className="flex justify-end">
           <button
             onClick={() => { setToken(''); setSecretKey(''); setSigStatus('unchecked'); }}
-            className="rounded-lg px-3 py-1.5 transition-colors hover:bg-apple-light"
-            style={{ ...caption, color: 'rgba(0,0,0,0.48)' }}
+            className="rounded-lg px-3 py-1.5 transition-colors"
+            style={{ ...caption, color: colors.muted }}
           >
             クリア
           </button>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import qrcode from 'qrcode-generator';
-import { bodyEmphasis, caption, micro } from '../../utils/styles';
+import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
 
 type ErrorLevel = 'L' | 'M' | 'Q' | 'H';
 
@@ -67,7 +67,7 @@ export function QrCodeGenerator() {
       <div>
         <label
           htmlFor="qr-text"
-          style={{ ...bodyEmphasis, color: '#1d1d1f', display: 'block', marginBottom: '0.25rem' }}
+          style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}
         >
           テキスト / URL
         </label>
@@ -80,25 +80,25 @@ export function QrCodeGenerator() {
           className="w-full rounded-lg px-3 py-2"
           style={{
             ...caption,
-            border: '1px solid rgba(0,0,0,0.2)',
+            border: `1px solid ${colors.borderInput}`,
             outline: 'none',
-            background: '#ffffff',
-            color: '#1d1d1f',
+            background: colors.bg,
+            color: colors.text,
             resize: 'vertical',
             fontFamily: 'inherit',
           }}
-          onFocus={(e) => { e.target.style.outline = '2px solid #0071e3'; e.target.style.outlineOffset = '2px'; }}
+          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
           onBlur={(e) => { e.target.style.outline = 'none'; }}
         />
       </div>
 
       {/* 誤り訂正レベル */}
       <div>
-        <p style={{ ...bodyEmphasis, color: '#1d1d1f', marginBottom: '0.25rem' }}>誤り訂正レベル</p>
+        <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.25rem' }}>誤り訂正レベル</p>
         <div className="flex items-center gap-2 flex-wrap">
           <div
             className="flex rounded-lg overflow-hidden"
-            style={{ border: '1px solid rgba(0,0,0,0.2)', display: 'inline-flex' }}
+            style={{ border: `1px solid ${colors.borderInput}`, display: 'inline-flex' }}
             role="group"
             aria-label="誤り訂正レベル"
           >
@@ -109,10 +109,10 @@ export function QrCodeGenerator() {
                 style={{
                   ...caption,
                   padding: '0.5rem 1rem',
-                  background: errorLevel === value ? '#0071e3' : '#ffffff',
-                  color: errorLevel === value ? '#ffffff' : 'rgba(0,0,0,0.6)',
+                  background: errorLevel === value ? colors.primary : colors.bg,
+                  color: errorLevel === value ? '#ffffff' : colors.muted,
                   border: 'none',
-                  borderRight: i < ERROR_LEVELS.length - 1 ? '1px solid rgba(0,0,0,0.2)' : 'none',
+                  borderRight: i < ERROR_LEVELS.length - 1 ? `1px solid ${colors.borderInput}` : 'none',
                   cursor: 'pointer',
                   fontWeight: errorLevel === value ? 600 : 400,
                 }}
@@ -122,7 +122,7 @@ export function QrCodeGenerator() {
               </button>
             ))}
           </div>
-          <span style={{ ...micro, color: 'rgba(0,0,0,0.48)' }}>
+          <span style={{ ...micro, color: colors.muted }}>
             復元率: {ERROR_LEVELS.find(e => e.value === errorLevel)?.desc}
           </span>
         </div>
@@ -130,33 +130,33 @@ export function QrCodeGenerator() {
 
       {/* エラー */}
       {error && (
-        <p style={{ ...caption, color: '#d70015' }}>{error}</p>
+        <p style={{ ...caption, color: colors.error }}>{error}</p>
       )}
 
       {/* QRコード表示 */}
       {svgHtml && (
-        <div className="rounded-lg" style={{ border: '1px solid rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+        <div className="rounded-lg" style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
           <div
             className="flex items-center justify-between gap-2 px-4 py-3"
-            style={{ background: '#f5f5f7', borderBottom: '1px solid rgba(0,0,0,0.1)' }}
+            style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
           >
-            <span style={{ ...bodyEmphasis, color: '#1d1d1f' }}>プレビュー</span>
+            <span style={{ ...bodyEmphasis, color: colors.text }}>プレビュー</span>
             <button
               onClick={handleDownload}
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5"
               style={{
                 ...caption,
                 fontWeight: 600,
-                background: '#f5f5f7',
-                color: 'rgba(0,0,0,0.8)',
-                border: '1px solid rgba(0,0,0,0.15)',
+                background: colors.bgSubtle,
+                color: colors.text,
+                border: `1px solid ${colors.borderInput}`,
                 cursor: 'pointer',
               }}
             >
               SVG ダウンロード
             </button>
           </div>
-          <div className="flex justify-center p-8" style={{ background: '#ffffff' }}>
+          <div className="flex justify-center p-8" style={{ background: colors.bg }}>
             <div
               ref={containerRef}
               style={{ width: '200px', height: '200px' }}
