@@ -55,16 +55,27 @@ function injectCompositeText(svg: string, text: string): string {
 
   const vbMatch = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
   if (!vbMatch) return svg;
-  const w = parseFloat(vbMatch[1]);
+  const barcodeW = parseFloat(vbMatch[1]);
   const h = parseFloat(vbMatch[2]);
 
   const fontSize = 18;
   const textRowH = fontSize + 6;
+
+  // Courier New monospace: ~0.6em per character
+  const charW = fontSize * 0.6;
+  const padding = 16;
+  const estimatedTextW = text.length * charW + padding;
+
+  // Expand width if text is wider than barcode
+  const newW = Math.max(barcodeW, estimatedTextW);
   const newH = h + textRowH;
 
+  // If width expanded, center the barcode horizontally
+  const barcodeOffsetX = (newW - barcodeW) / 2;
+
   let result = svg
-    .replace(/viewBox="0 0 [\d.]+ [\d.]+"/, `viewBox="0 0 ${w} ${newH}"`)
-    .replace(/width="\d+"/, `width="${Math.round(w)}"`)
+    .replace(/viewBox="0 0 [\d.]+ [\d.]+"/, `viewBox="0 0 ${newW.toFixed(1)} ${newH.toFixed(1)}"`)
+    .replace(/width="\d+"/, `width="${Math.round(newW)}"`)
     .replace(/height="\d+"/, `height="${Math.round(newH)}"`);
 
   const openEnd = result.indexOf('>') + 1;
@@ -72,11 +83,13 @@ function injectCompositeText(svg: string, text: string): string {
   const openTag = result.slice(0, openEnd);
   const inner = result.slice(openEnd, closeStart);
 
-  const textEl = `<text x="${(w / 2).toFixed(1)}" y="${textRowH - 3}" `
+  const textEl = `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" `
     + `text-anchor="middle" font-family="'Courier New',Courier,monospace" `
     + `font-size="${fontSize}" fill="#000000">${text}</text>`;
 
-  return `${openTag}${textEl}<g transform="translate(0,${textRowH})">${inner}</g></svg>`;
+  const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
+
+  return `${openTag}${textEl}<g transform="${barcodeTranslate}">${inner}</g></svg>`;
 }
 
 function svgToPngBlob(svgContent: string): Promise<Blob> {
