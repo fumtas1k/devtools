@@ -44,6 +44,12 @@ export const tools: Tool[] = [
     description: '12桁からチェックディジットを計算してバーコードを生成します',
     category: 'generate',
   },
+  {
+    slug: 'gs1-databar',
+    name: 'GS1 DataBar 生成',
+    description: 'GTIN-14からGS1 DataBar Limited合成シンボルを生成します',
+    category: 'generate',
+  },
 ];
 
 export const categoryLabel: Record<ToolCategory, string> = {

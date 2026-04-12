@@ -1,0 +1,11 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import { Gs1DatabarTool } from '../../components/tools/Gs1Databar';
+import { tools } from '../../data/tools';
+
+const tool = tools.find((t) => t.slug === 'gs1-databar')!;
+---
+
+<ToolLayout tool={tool}>
+  <Gs1DatabarTool client:load />
+</ToolLayout>
