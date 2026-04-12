@@ -1,0 +1,11 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import { JanCodeTool } from '../../components/tools/JanCode';
+import { tools } from '../../data/tools';
+
+const tool = tools.find((t) => t.slug === 'jan-code')!;
+---
+
+<ToolLayout tool={tool}>
+  <JanCodeTool client:load />
+</ToolLayout>
