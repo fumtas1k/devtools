@@ -29,7 +29,7 @@
 ## 開発
 
 ```bash
-npm install
+npm ci
 npm run dev      # 開発サーバー起動 (http://localhost:4321)
 npm run build    # 本番ビルド
 npm run preview  # ビルド結果をプレビュー
