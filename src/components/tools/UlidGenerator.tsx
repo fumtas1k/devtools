@@ -154,16 +154,16 @@ export function UlidGeneratorTool() {
         <div className="rounded-lg" style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
           {/* テーブルヘッダー + 操作ボタン */}
           <div
-            className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+            className="flex flex-col gap-2 px-4 py-3"
             style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
           >
             <span style={{ ...bodyEmphasis, color: colors.text }}>
               {rows.length} 件生成
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* クォートスタイル選択 */}
               <div
-                className="flex items-center rounded-lg overflow-hidden"
+                className="flex items-center rounded-lg overflow-hidden shrink-0"
                 style={{ border: `1px solid ${colors.borderInput}` }}
                 role="group"
                 aria-label="クォートスタイル"
@@ -179,6 +179,7 @@ export function UlidGeneratorTool() {
                       color: quoteStyle === value ? '#ffffff' : colors.muted,
                       border: 'none',
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
                       fontFamily: value !== 'none' ? 'monospace' : 'inherit',
                       borderRight: value !== 'single' ? `1px solid ${colors.borderInput}` : 'none',
                     }}
@@ -188,11 +189,13 @@ export function UlidGeneratorTool() {
                   </button>
                 ))}
               </div>
-              <CopyButton text={allUlids} label="すべてコピー" />
+              <div className="shrink-0">
+                <CopyButton text={allUlids} label="すべてコピー" />
+              </div>
               <button
                 onClick={() => setRows([])}
-                className="rounded-lg px-3 py-1.5 transition-colors"
-                style={{ ...caption, color: colors.muted }}
+                className="rounded-lg px-3 py-1.5 transition-colors shrink-0"
+                style={{ ...caption, color: colors.muted, whiteSpace: 'nowrap' }}
               >
                 クリア
               </button>
@@ -201,7 +204,7 @@ export function UlidGeneratorTool() {
 
           {/* スクロール対応テーブル */}
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: '36rem', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: colors.bgSurface, borderBottom: `1px solid ${colors.border}` }}>
                   <th
