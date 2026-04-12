@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CopyButton } from '../ui/CopyButton';
+import { encodeUrl, decodeUrl, validateDecodeInput } from '../../utils/url-encode';
 
 type Mode = 'encode' | 'decode';
 
@@ -8,31 +9,11 @@ export function UrlEncoderTool() {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
 
-  const convert = (value: string, currentMode: Mode): string => {
-    if (!value) return '';
-    try {
-      if (currentMode === 'encode') {
-        return encodeURIComponent(value);
-      } else {
-        return decodeURIComponent(value);
-      }
-    } catch {
-      return '';
-    }
-  };
+  const convert = (value: string, currentMode: Mode): string =>
+    currentMode === 'encode' ? encodeUrl(value) : decodeUrl(value);
 
-  const validate = (value: string, currentMode: Mode): string => {
-    if (!value) return '';
-    if (currentMode === 'decode') {
-      try {
-        decodeURIComponent(value);
-        return '';
-      } catch {
-        return '不正なURLエンコード文字列です';
-      }
-    }
-    return '';
-  };
+  const validate = (value: string, currentMode: Mode): string =>
+    currentMode === 'decode' ? validateDecodeInput(value) : '';
 
   const output = convert(input, mode);
 
