@@ -1,24 +1,28 @@
 import type { CSSProperties } from 'react';
 
-/** DADSカラーシステム */
+/**
+ * DADSカラーシステム
+ * 値はすべて CSS 変数参照。実際の色値は global.css の @theme / :root で管理。
+ * ダークモード追加時は global.css の .dark ブロックで上書きするだけでよい。
+ */
 export const colors = {
-  text: '#111827',        // neutral-900
-  muted: '#6B7280',       // neutral-500
-  primary: '#1A56DB',     // DADS primary blue
-  link: '#2563EB',        // DADS link / focus ring
-  bg: '#ffffff',
-  bgSurface: '#F9FAFB',   // neutral-50
-  bgSubtle: '#F3F4F6',    // neutral-100
-  border: '#E5E7EB',      // neutral-200
-  borderInput: '#D1D5DB', // neutral-300
-  primaryBg: '#EFF6FF',   // blue-50 (active chip background)
-  error: '#DC2626',       // red-600
-  errorText: '#B91C1C',   // red-700
-  errorBg: '#FEF2F2',     // red-50
-  success: '#16A34A',     // green-600
-  successBg: '#F0FDF4',   // green-50
-  warning: '#854D0E',     // amber-800
-  warningBg: '#FEF3C7',   // amber-100
+  text:         'var(--color-text)',
+  muted:        'var(--color-muted)',
+  primary:      'var(--color-primary)',
+  link:         'var(--color-link)',
+  bg:           'var(--color-bg)',
+  bgSurface:    'var(--color-bg-surface)',
+  bgSubtle:     'var(--color-bg-subtle)',
+  border:       'var(--color-border)',
+  borderInput:  'var(--color-border-input)',
+  primaryBg:    'var(--color-background)',
+  error:        'var(--color-error)',
+  errorText:    'var(--color-error-text)',
+  errorBg:      'var(--color-error-bg)',
+  success:      'var(--color-success)',
+  successBg:    'var(--color-success-bg)',
+  warning:      'var(--color-warning)',
+  warningBg:    'var(--color-warning-bg)',
 } as const;
 
 export const shadows = {

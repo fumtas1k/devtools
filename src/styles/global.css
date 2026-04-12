@@ -44,8 +44,8 @@
   --color-success-bg:       #F0FDF4;
   --color-error:            #DC2626;
   --color-error-bg:         #FEF2F2;
-  --color-warning:          #D97706;
-  --color-warning-bg:       #FFFBEB;
+  --color-warning:          #854D0E;  /* amber-800: amber-600 は白背景で WCAG AA 不合格 */
+  --color-warning-bg:       #FEF3C7; /* amber-100 */
 
   /* === 機能カラー === */
   --color-link:             #2563EB;
@@ -69,4 +69,15 @@
 
 :root {
   --focus-ring: 2px solid var(--color-focus);
+
+  /* === セマンティックエイリアス（React インラインスタイル用） === */
+  /* ダークモード追加時はここを .dark でオーバーライドする */
+  --color-text:         #111827; /* neutral-900 */
+  --color-muted:        #6B7280; /* neutral-500 */
+  --color-bg:           #FFFFFF;
+  --color-bg-surface:   #F9FAFB; /* neutral-50 */
+  --color-bg-subtle:    #F3F4F6; /* neutral-100 */
+  --color-border:       #E5E7EB; /* neutral-200 */
+  --color-border-input: #D1D5DB; /* neutral-300 */
+  --color-error-text:   #B91C1C; /* red-700 */
 }

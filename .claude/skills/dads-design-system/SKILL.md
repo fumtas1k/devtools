@@ -339,7 +339,20 @@ Tailwind環境では、CSS変数の値をtailwind.config.jsのextendに設定し
 
 ## 10. このプロジェクト固有の実装パターン
 
-> **重要**: このプロジェクトではCSS変数を直接使わず、TypeScriptの定数オブジェクトでトークンを管理している。
+### カラー管理の構造
+
+色の実値は `src/styles/global.css` の CSS 変数で一元管理。
+`src/utils/styles.ts` の `colors` オブジェクトは `var(--color-*)` の参照のみを持つ。
+
+```
+global.css (@theme / :root) ← 実際の色値はここだけ
+    ↑
+styles.ts (colors.*)        ← var(--color-*) 参照
+    ↑
+各コンポーネント             ← colors.* を import して使う
+```
+
+**ダークモード追加時は `global.css` に `.dark { }` を追加するだけでよい。コンポーネントは変更不要。**
 
 ### カラー・タイポグラフィの参照方法
 
@@ -357,25 +370,27 @@ import { colors, caption, bodyEmphasis } from '../../utils/styles';
 <p style={{ color: '#6B7280' }}>ヒントテキスト</p>
 ```
 
+> **注意**: JsBarcode・bwip-js 等のサードパーティレンダラーに渡す色は CSS 変数を解釈できないため hex で直書きする（例: `background: '#ffffff'`）。
+
 ### styles.ts のトークン一覧
 
-| トークン | 値 | 用途 |
+| トークン | CSS 変数 | 用途 |
 |---|---|---|
-| `colors.text` | `#111827` | 本文テキスト |
-| `colors.muted` | `#6B7280` | ヒント・補足テキスト |
-| `colors.primary` | `#1A56DB` | CTA・強調 |
-| `colors.link` | `#2563EB` | リンク・フォーカスリング |
-| `colors.bg` | `#ffffff` | 基本背景 |
-| `colors.bgSurface` | `#F9FAFB` | カード・パネル背景 |
-| `colors.bgSubtle` | `#F3F4F6` | ヘッダー・subtle背景 |
-| `colors.border` | `#E5E7EB` | 区切り線・カード枠 |
-| `colors.borderInput` | `#D1D5DB` | 入力欄の枠線 |
-| `colors.error` | `#DC2626` | エラーテキスト・枠線 |
-| `colors.errorBg` | `#FEF2F2` | エラー背景 |
-| `colors.warning` | `#854D0E` | 警告テキスト（amber-800、コントラスト確保） |
-| `colors.warningBg` | `#FEF3C7` | 警告背景 |
-| `colors.success` | `#16A34A` | 成功テキスト |
-| `colors.successBg` | `#F0FDF4` | 成功背景 |
+| `colors.text` | `--color-text` | 本文テキスト |
+| `colors.muted` | `--color-muted` | ヒント・補足テキスト |
+| `colors.primary` | `--color-primary` | CTA・強調 |
+| `colors.link` | `--color-link` | リンク・フォーカスリング |
+| `colors.bg` | `--color-bg` | 基本背景 |
+| `colors.bgSurface` | `--color-bg-surface` | カード・パネル背景 |
+| `colors.bgSubtle` | `--color-bg-subtle` | ヘッダー・subtle背景 |
+| `colors.border` | `--color-border` | 区切り線・カード枠 |
+| `colors.borderInput` | `--color-border-input` | 入力欄の枠線 |
+| `colors.error` | `--color-error` | エラーテキスト・枠線 |
+| `colors.errorBg` | `--color-error-bg` | エラー背景 |
+| `colors.warning` | `--color-warning` | 警告テキスト（amber-800、WCAG AA 確保） |
+| `colors.warningBg` | `--color-warning-bg` | 警告背景 |
+| `colors.success` | `--color-success` | 成功テキスト |
+| `colors.successBg` | `--color-success-bg` | 成功背景 |
 
 ### タイポグラフィスタイル
 
@@ -388,12 +403,11 @@ import { colors, caption, bodyEmphasis } from '../../utils/styles';
 ### Tailwind との使い分け
 
 - **Tailwind**: レイアウト・余白・フレックス・グリッド（`flex`, `gap-4`, `rounded`, `space-y-4` 等）
-- **`colors.*` インラインスタイル**: 色・フォント（Tailwindのカラークラスは使わない）
+- **`colors.*` インラインスタイル**: 色（Tailwindのカラークラスは使わない）
 
 ### フォーカスリング
 
 ```tsx
-// インラインハンドラーでフォーカスリングを実装
 const focusRingOn = (e: React.FocusEvent<HTMLElement>) => {
   e.target.style.outline = `2px solid ${colors.link}`;
   e.target.style.outlineOffset = '2px';

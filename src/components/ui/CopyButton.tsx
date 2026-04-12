@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { copyToClipboard } from '../../utils/clipboard';
+import { colors } from '../../utils/styles';
 
 interface Props {
   text: string;
@@ -27,9 +28,9 @@ export function CopyButton({ text, label = 'コピー', className = '' }: Props)
         fontSize: '0.875rem',
         lineHeight: 1,
         letterSpacing: '0.02em',
-        background: copied ? '#F0FDF4' : '#F3F4F6',
-        color: copied ? '#16A34A' : '#111827',
-        border: `1px solid ${copied ? '#16A34A' : '#E5E7EB'}`,
+        background: copied ? colors.successBg : colors.bgSubtle,
+        color: copied ? colors.success : colors.text,
+        border: `1px solid ${copied ? colors.success : colors.border}`,
       }}
     >
       {copied ? '✓ コピーしました' : `📋 ${label}`}
