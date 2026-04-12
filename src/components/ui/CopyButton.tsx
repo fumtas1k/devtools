@@ -23,7 +23,7 @@ export function CopyButton({ text, label = 'コピー', className = '' }: Props)
     <button
       onClick={handleClick}
       aria-label={copied ? 'コピーしました' : label}
-      className={`inline-flex items-center gap-1.5 rounded px-3 py-2 font-bold transition-colors ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded px-3 py-2 font-bold transition-colors whitespace-nowrap ${className}`}
       style={{
         fontSize: '0.875rem',
         lineHeight: 1,
