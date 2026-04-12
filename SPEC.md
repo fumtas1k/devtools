@@ -434,15 +434,15 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] JWTデコーダー（HS/RS/ES署名検証対応）
 - [x] トップページ（カテゴリタブ + ツールカードグリッド）
 
-### Phase 1b: MVP 完成（残り3ツール）🔄 進行中
+### Phase 1b: MVP 完成（残り3ツール）✅ 完了
 - [x] ULID生成
 - [x] ダミーテキスト生成
 - [x] QRコード生成
 - [x] JANコード生成
 - [x] GS1 DataBar Limited 合成シンボル生成
-- [ ] SEO基盤（sitemap / robots.txt / JSON-LD）
-- [ ] about / privacy ページ
-- [ ] Cloudflare Pages デプロイ
+- [x] SEO基盤（sitemap / robots.txt / JSON-LD）
+- [x] about / privacy ページ
+- [x] Cloudflare Pages デプロイ
 
 ### Phase 2: 拡充
 - [ ] ダークモード（DADS 準拠で再設計）

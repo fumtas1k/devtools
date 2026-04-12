@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://devtools-d9w.pages.dev/sitemap-index.xml

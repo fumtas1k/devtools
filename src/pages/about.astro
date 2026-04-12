@@ -1,0 +1,109 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { tools } from '../data/tools';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'About | DevTools',
+  url: new URL('/about', Astro.site).href,
+  description: 'DevTools について — ブラウザで完結する無料の開発者ツール集',
+  inLanguage: 'ja',
+};
+---
+
+<BaseLayout
+  title="About"
+  description="DevTools について — ブラウザで完結する無料の開発者ツール集"
+  jsonLd={jsonLd}
+>
+  <main class="mx-auto max-w-2xl px-6 py-12" id="main-content">
+    <h1
+      class="mb-8 font-bold text-neutral-900"
+      style="font-size: 1.75rem; line-height: 1.4; letter-spacing: 0.02em;"
+    >
+      About
+    </h1>
+
+    <section class="mb-10">
+      <h2
+        class="mb-3 font-bold text-neutral-900"
+        style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
+      >
+        DevTools とは
+      </h2>
+      <p
+        class="text-neutral-700"
+        style="font-size: 1rem; line-height: 1.8; letter-spacing: 0.02em;"
+      >
+        DevTools は、ブラウザだけで完結する無料の開発者向けユーティリティです。
+        インストール不要・ユーザー登録不要で、すべての処理をクライアントサイドで実行します。
+        入力したデータが外部サーバーに送信されることはありません。
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2
+        class="mb-3 font-bold text-neutral-900"
+        style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
+      >
+        設計方針
+      </h2>
+      <ul
+        class="space-y-2 text-neutral-700"
+        style="font-size: 1rem; line-height: 1.8; letter-spacing: 0.02em;"
+      >
+        <li><strong>ブラウザ完結</strong> — すべての処理はブラウザ内で完結します。データは外部に送信されません。</li>
+        <li><strong>依存最小化</strong> — ツールごとに必要な最小限のライブラリのみ使用します。</li>
+        <li><strong>プライバシー重視</strong> — アクセス解析・広告・トラッキングは一切行いません。</li>
+        <li><strong>アクセシビリティ</strong> — デジタル庁デザインシステム（DADS）に準拠した設計です。</li>
+      </ul>
+    </section>
+
+    <section class="mb-10">
+      <h2
+        class="mb-4 font-bold text-neutral-900"
+        style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
+      >
+        ツール一覧
+      </h2>
+      <ul class="space-y-2">
+        {tools.map((tool) => (
+          <li>
+            <a
+              href={`/tools/${tool.slug}`}
+              class="text-link underline hover:no-underline transition-colors"
+              style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em;"
+            >
+              {tool.name}
+            </a>
+            <span
+              class="ml-2 text-neutral-500"
+              style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+            >
+              — {tool.description}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section>
+      <h2
+        class="mb-3 font-bold text-neutral-900"
+        style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
+      >
+        技術スタック
+      </h2>
+      <ul
+        class="space-y-1 text-neutral-700"
+        style="font-size: 1rem; line-height: 1.8; letter-spacing: 0.02em;"
+      >
+        <li><strong>フレームワーク:</strong> Astro 6 + React 19</li>
+        <li><strong>スタイリング:</strong> Tailwind CSS v4</li>
+        <li><strong>言語:</strong> TypeScript</li>
+        <li><strong>ホスティング:</strong> Cloudflare Pages</li>
+      </ul>
+    </section>
+  </main>
+</BaseLayout>
