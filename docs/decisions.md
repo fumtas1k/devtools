@@ -242,3 +242,74 @@ npm パッケージを通じたサプライチェーン攻撃（悪意ある pos
 - ✅ 公開直後の汚染パッケージ（7日以内）をブロック
 - ✅ バージョン範囲の意図しない広がりを防止
 - ⚠️ `ignore-scripts=true` により、スクリプトに依存するパッケージ（一部ネイティブモジュール等）は別途 `--ignore-scripts=false` が必要になる場合がある
+
+## [010] カラートークンを CSS 変数に移行（ダークモード対応準備）
+
+**2026-04-12 | ステータス: 採用**
+
+### 背景
+当初ダークモードの実装を予定していたが、デザイン見直しの際に一時棚上げした。
+`src/utils/styles.ts` の `colors` オブジェクトが hex 値を直接持っていたため、
+将来ダークモードを追加する際にコンポーネントを全件修正しなければならない構造だった。
+
+### 決断
+`colors.*` の値を hex から CSS 変数参照（`var(--color-*)`）に変更する。
+実際の色値は `src/styles/global.css` の `@theme` / `:root` ブロックに集約する。
+
+```
+global.css (@theme / :root)  ← 色値の唯一の定義場所
+    ↑ var(--color-*)
+styles.ts (colors.*)         ← CSS 変数参照のみ
+    ↑ colors.*
+各コンポーネント              ← 変更不要
+```
+
+ダークモード追加時は `global.css` に `.dark { }` ブロックを追加するだけでよく、
+コンポーネントは一切変更不要になる。
+
+あわせて `CopyButton.tsx`・`JanCode.tsx` の hex 直書きも `colors.*` に統一した。
+
+**注意**: JsBarcode・bwip-js 等のサードパーティレンダラーに渡す色は CSS 変数を解釈できないため、
+それらの設定値（`background: '#ffffff'` 等）は hex 直書きのままとする。
+
+### 却下した選択肢
+- **現状維持（hex 直値）**: ダークモード追加時に全コンポーネントの修正が必要になる。
+- **Tailwind のカラークラスを使う**: Tailwind クラスはインラインスタイルと混在させると管理が複雑になる。このプロジェクトは Tailwind をレイアウトのみに限定し、色はインラインスタイルで統一する方針。
+
+### 結果・トレードオフ
+- ✅ ダークモード追加時のコンポーネント変更がゼロになる
+- ✅ 色値の定義が `global.css` に一元化され、重複がなくなった
+- ✅ `--color-warning` の誤った値（amber-600 → WCAG AA 不合格）を amber-800 に修正できた
+- ⚠️ `var(--color-*)` 文字列は TypeScript の型推論が効かないため、typo はビルド時に検出されない
+
+## [011] pre-commit フックによるドキュメント更新チェック
+
+**2026-04-12 | ステータス: 採用**
+
+### 背景
+`package.json`・`.npmrc`・デザインシステムファイル等の変更後に `docs/decisions.md` や `SPEC.md` の更新を忘れるケースが繰り返し発生した。
+CLAUDE.md にルールを記載するだけでは実効性が低かった。
+
+### 決断
+`.githooks/pre-commit` スクリプトを追加し、重要ファイルの変更時に対応ドキュメントが未更新であれば警告を出す。
+コミットはブロックしない（exit 0）。
+
+| トリガー | 警告対象 |
+|---|---|
+| `package.json` 変更 | `docs/decisions.md`・`SPEC.md` |
+| `.npmrc` 変更 | `docs/decisions.md` |
+| `.github/workflows/` 変更 | `docs/decisions.md` |
+| `global.css`・`styles.ts` 変更 | `docs/decisions.md` |
+| 新規ツールページ追加 | `README.md`・`SPEC.md`・`docs/decisions.md` |
+
+`git config core.hooksPath .githooks` を初回セットアップ時に実行することで有効になる。
+
+### 却下した選択肢
+- **コミットブロック**: 緊急時や意図的にスキップしたいケースで邪魔になる。警告のみで十分。
+- **husky 等のツール導入**: 依存を増やしたくない。シェルスクリプトで十分な機能を実現できる。
+- **`prepare` npm スクリプトで自動設定**: `.npmrc` の `ignore-scripts=true` により実行されないため使えない。
+
+### 結果・トレードオフ
+- ✅ コミット時に自動チェックが走り、Claude・人間どちらの操作にも有効
+- ✅ 依存ゼロ（シェルスクリプトのみ）
+- ⚠️ 初回クローン後に `git config core.hooksPath .githooks` を手動実行する必要がある
