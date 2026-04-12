@@ -24,15 +24,8 @@ const pageTitle = `${title} | DevTools`;
     <meta property="og:description" content={description} />
     <meta property="og:image" content="/og-image.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script is:inline>
-      // ダークモードのフラッシュを防ぐ
-      const saved = localStorage.getItem('theme');
-      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-      }
-    </script>
   </head>
-  <body class="bg-apple-light text-apple-dark dark:bg-black dark:text-white">
+  <body class="bg-neutral-50 text-neutral-900 min-h-screen">
     <Header />
     <slot />
     <Footer />

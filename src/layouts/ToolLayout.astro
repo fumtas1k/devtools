@@ -1,7 +1,8 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import Sidebar from '../components/layout/Sidebar.astro';
-import { categoryLabel, categoryColor } from '../data/tools';
+import ToolIcon from '../components/ui/ToolIcon.astro';
+import { categoryLabel } from '../data/tools';
 import type { Tool } from '../data/tools';
 
 interface Props {
@@ -12,7 +13,7 @@ const { tool } = Astro.props;
 ---
 
 <BaseLayout title={tool.name} description={tool.description}>
-  <div class="mx-auto flex max-w-7xl gap-6 px-4 py-6">
+  <div class="mx-auto flex max-w-280 gap-6 px-6 py-8">
     <!-- サイドバー (デスクトップ) -->
     <div class="hidden lg:block">
       <Sidebar currentSlug={tool.slug} />
@@ -20,25 +21,40 @@ const { tool } = Astro.props;
 
     <!-- メインコンテンツ -->
     <main class="min-w-0 flex-1" id="main-content">
-      <!-- パンくずリスト: Caption 14px, tracking -0.224px -->
-      <nav aria-label="パンくずリスト" class="mb-4 flex items-center gap-1.5" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.48);">
-        <a href="/" class="hover:text-accent transition-colors">ホーム</a>
-        <span>/</span>
+      <!-- パンくずリスト -->
+      <nav
+        aria-label="パンくずリスト"
+        class="mb-6 flex items-center gap-1.5 text-neutral-500"
+        style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+      >
+        <a href="/" class="text-link underline hover:no-underline transition-colors">ホーム</a>
+        <span aria-hidden="true">›</span>
         <span>{categoryLabel[tool.category]}</span>
-        <span>/</span>
-        <span class="text-apple-dark dark:text-white">{tool.name}</span>
+        <span aria-hidden="true">›</span>
+        <span class="text-neutral-900">{tool.name}</span>
       </nav>
 
       <!-- ツールヘッダー -->
-      <div class="mb-6 flex items-center gap-3">
-        <span style="font-size: 2rem;">{tool.icon}</span>
-        <div>
-          <!-- Tile Heading: 28px, weight 400, line-height 1.14, tracking 0.196px -->
-          <h1 class="text-apple-dark dark:text-white" style="font-size: 1.75rem; font-weight: 400; line-height: 1.14; letter-spacing: 0.196px;">{tool.name}</h1>
-          <!-- Caption: 14px, weight 400, line-height 1.29, tracking -0.224px -->
-          <p class="mt-1" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.48);">{tool.description}</p>
+      <div class="mb-8 flex items-center gap-4">
+        <ToolIcon slug={tool.slug} size={32} class="text-primary shrink-0" />
+        <div class="min-w-0 flex-1">
+          <h1
+            class="font-bold text-neutral-900"
+            style="font-size: 1.625rem; line-height: 1.5; letter-spacing: 0.02em;"
+          >
+            {tool.name}
+          </h1>
+          <p
+            class="mt-1 text-neutral-500"
+            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+          >
+            {tool.description}
+          </p>
         </div>
-        <span class="ml-auto rounded-full px-2.5 py-0.5" style="font-size: 0.75rem; font-weight: 500; background: #f5f5f7; color: rgba(0,0,0,0.48);">
+        <span
+          class="shrink-0 rounded-full px-3 py-1 font-bold text-blue-800 bg-blue-100"
+          style="font-size: 0.875rem; line-height: 1; letter-spacing: 0.02em;"
+        >
           {categoryLabel[tool.category]}
         </span>
       </div>

@@ -1,64 +1,126 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { tools, categoryLabel, categoryColor, type ToolCategory } from '../data/tools';
+import ToolIcon from '../components/ui/ToolIcon.astro';
+import { tools, categoryLabel, type ToolCategory } from '../data/tools';
 
 const categories: ToolCategory[] = ['generate', 'convert'];
 ---
 
 <BaseLayout title="無料オンライン開発者ツール集" description="ブラウザで完結する無料の開発者ツール集。URLエンコード、JWTデコード、ULID生成など。">
-  <!-- ヒーロー (黒背景) -->
-  <section class="bg-black text-white text-center px-4 py-10">
-    <!-- Section Heading: 40px, weight 600, line-height 1.10 -->
-    <h1 class="mb-2" style="font-size: 2.5rem; font-weight: 600; line-height: 1.10; letter-spacing: -0.28px;">
+  <!-- ヒーロー -->
+  <section class="bg-blue-50 text-center px-4 py-8" style="border-bottom: 1px solid #DBEAFE;">
+    <h1
+      class="mb-2 font-bold text-neutral-900"
+      style="font-size: 2rem; line-height: 1.4; letter-spacing: 0.01em;"
+    >
       DevTools
     </h1>
-    <!-- Body: 17px, weight 400, line-height 1.47, tracking -0.374px -->
-    <p class="mb-4" style="font-size: 1.06rem; font-weight: 400; line-height: 1.47; letter-spacing: -0.374px; color: rgba(255,255,255,0.8);">
+    <p
+      class="text-neutral-600"
+      style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em;"
+    >
       ブラウザで完結する無料の開発者ツール集
     </p>
-    <!-- Micro: 12px -->
-    <div class="flex flex-wrap justify-center gap-4" style="font-size: 0.75rem; line-height: 1.33; letter-spacing: -0.12px; color: rgba(255,255,255,0.48);">
-      <span>データはブラウザ内のみ</span>
-      <span>インストール不要</span>
-      <span>完全無料・登録不要</span>
-    </div>
   </section>
 
   <!-- ツール一覧 -->
-  <main class="mx-auto max-w-7xl px-4 py-8">
-    {categories.map((cat) => (
-      <section class="mb-12">
-        <!-- Micro Bold: 12px, weight 600, line-height 1.33, tracking -0.12px -->
-        <h2 class="mb-6 uppercase" style="font-size: 0.75rem; font-weight: 600; line-height: 1.33; letter-spacing: 0.08em; color: rgba(0,0,0,0.48);">
-          {categoryLabel[cat]}ツール
-        </h2>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tools.filter((t) => t.category === cat).map((tool) => (
-            <a
-              href={`/tools/${tool.slug}`}
-              class="group rounded-lg bg-white p-6 transition-colors block border border-transparent hover:border-[#0071e3]"
+  <main class="mx-auto max-w-280 px-6 py-8">
+    <!-- タブ -->
+    <div
+      id="tab-bar"
+      role="tablist"
+      aria-label="カテゴリ絞り込み"
+      class="mb-6 flex gap-1 border-b border-neutral-200"
+    >
+      <button
+        role="tab"
+        aria-selected="true"
+        aria-controls="tool-grid"
+        data-category="all"
+        class="tab-btn px-4 py-2 font-bold text-primary border-b-2 border-primary -mb-px transition-colors"
+        style="font-size: 0.875rem; letter-spacing: 0.02em;"
+      >
+        すべて
+      </button>
+      {categories.map((cat) => (
+        <button
+          role="tab"
+          aria-selected="false"
+          aria-controls="tool-grid"
+          data-category={cat}
+          class="tab-btn px-4 py-2 font-bold text-neutral-500 border-b-2 border-transparent -mb-px hover:text-primary hover:border-primary transition-colors"
+          style="font-size: 0.875rem; letter-spacing: 0.02em;"
+        >
+          {categoryLabel[cat]}
+        </button>
+      ))}
+    </div>
+
+    <!-- ツールグリッド -->
+    <div id="tool-grid" role="tabpanel" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {tools.map((tool) => (
+        <a
+          href={`/tools/${tool.slug}`}
+          data-category={tool.category}
+          class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
+          style="border: 1px solid #E5E7EB;"
+        >
+          <div class="mb-4 flex items-start justify-between">
+            <ToolIcon slug={tool.slug} size={28} class="text-primary" />
+            <span
+              class="rounded-full px-3 py-0.5 font-bold text-blue-800 bg-blue-100"
+              style="font-size: 0.875rem; line-height: 1; letter-spacing: 0.02em;"
             >
-              <div class="mb-4 flex items-start justify-between">
-                <span style="font-size: 1.5rem;">{tool.icon}</span>
-                <!-- Caption: 12px -->
-                <span class="rounded-full px-2 py-0.5" style="font-size: 0.75rem; font-weight: 500; background: #f5f5f7; color: rgba(0,0,0,0.48);">
-                  {categoryLabel[tool.category]}
-                </span>
-              </div>
-              <!-- Sub-heading: 21px, weight 400, line-height 1.19, tracking 0.231px -->
-              <h3 class="mb-2 text-apple-dark group-hover:text-accent transition-colors" style="font-size: 1.31rem; font-weight: 400; line-height: 1.19; letter-spacing: 0.231px;">
-                {tool.name}
-              </h3>
-              <!-- Caption: 14px, line-height 1.29, tracking -0.224px -->
-              <p class="mb-4" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.48);">{tool.description}</p>
-              <!-- Link: 14px, tracking -0.224px, color #0066cc -->
-              <span class="transition-colors" style="font-size: 0.875rem; line-height: 1.43; letter-spacing: -0.224px; color: #0066cc;">
-                開く &rsaquo;
-              </span>
-            </a>
-          ))}
-        </div>
-      </section>
-    ))}
+              {categoryLabel[tool.category]}
+            </span>
+          </div>
+          <h2
+            class="mb-2 font-bold text-neutral-900 group-hover:text-primary transition-colors"
+            style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
+          >
+            {tool.name}
+          </h2>
+          <p
+            class="mb-4 text-neutral-500"
+            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+          >
+            {tool.description}
+          </p>
+          <span
+            class="text-link transition-colors"
+            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+          >
+            開く &rsaquo;
+          </span>
+        </a>
+      ))}
+    </div>
   </main>
 </BaseLayout>
+
+<script>
+  const tabs = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
+  const cards = document.querySelectorAll<HTMLElement>('.tool-card');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const selected = tab.dataset.category!;
+
+      // タブ状態更新
+      tabs.forEach((t) => {
+        const active = t.dataset.category === selected;
+        t.setAttribute('aria-selected', String(active));
+        t.classList.toggle('text-primary', active);
+        t.classList.toggle('border-primary', active);
+        t.classList.toggle('text-neutral-500', !active);
+        t.classList.toggle('border-transparent', !active);
+      });
+
+      // カード表示切り替え
+      cards.forEach((card) => {
+        const match = selected === 'all' || card.dataset.category === selected;
+        card.style.display = match ? '' : 'none';
+      });
+    });
+  });
+</script>

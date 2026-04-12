@@ -1,0 +1,25 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import { DummyTextTool } from '../../components/tools/DummyText';
+import { tools } from '../../data/tools';
+
+const tool = tools.find((t) => t.slug === 'dummy-text')!;
+---
+
+<ToolLayout tool={tool}>
+  <DummyTextTool client:load />
+
+  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
+    <h2 class="mb-3 text-apple-dark dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">このツールについて</h2>
+    <p style="font-size: 1.06rem; font-weight: 400; line-height: 1.47; letter-spacing: -0.374px; color: rgba(0,0,0,0.8);">
+      UI・デザインのモックアップや動作確認用に、任意の文字数のダミーテキストを生成します。
+    </p>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white" style="font-size: 1.06rem; font-weight: 600; line-height: 1.24; letter-spacing: -0.374px;">文字種について</h3>
+    <ul class="list-inside list-disc space-y-1" style="font-size: 0.875rem; line-height: 1.29; letter-spacing: -0.224px; color: rgba(0,0,0,0.8);">
+      <li>ひらがな・カタカナ：ランダムな仮名文字を生成</li>
+      <li>漢字混じり日本語：漢字・ひらがな・助詞をミックス</li>
+      <li>英数字：a-z・A-Z・0-9 をランダムに生成</li>
+      <li>Lorem Ipsum：古典的な欧文ダミーテキスト</li>
+    </ul>
+  </section>
+</ToolLayout>

@@ -9,7 +9,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@astrojs/react": "5.0.2",
@@ -27,7 +29,8 @@
     "ulidx": "^2.4.1"
   },
   "devDependencies": {
-    "@types/jsbarcode": "^3.11.4"
+    "@types/jsbarcode": "^3.11.4",
+    "vitest": "^4.1.2"
   },
   "overrides": {
     "vite": "7.3.1"
