@@ -1,4 +1,4 @@
-# DevTools — プロジェクト仕様書 v1.4
+# DevTools — プロジェクト仕様書 v1.5
 
 ## 1. プロジェクト概要
 
@@ -57,6 +57,7 @@
 | 手動デコード（Base64URL）| JWTデコード・署名検証 | JWTデコーダー |
 | `qrcode-generator` | QRコード生成 | QRコード生成 |
 | `JsBarcode` | バーコード描画 | JANコード生成 |
+| `bwip-js` | GS1バーコード描画（SVG） | GS1 DataBar生成 |
 | `@fontsource/noto-sans-jp` | フォントセルフホスト | 全ページ共通 |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
@@ -94,7 +95,8 @@ devtools/
     │       ├── DummyText.tsx
     │       ├── UrlEncoder.tsx
     │       ├── QrCode.tsx
-    │       └── JanCode.tsx
+    │       ├── JanCode.tsx
+    │       └── Gs1Databar.tsx
     ├── layouts/
     │   ├── BaseLayout.astro
     │   └── ToolLayout.astro
@@ -108,7 +110,8 @@ devtools/
     │       ├── dummy-text.astro
     │       ├── url-encode.astro
     │       ├── qr-code.astro
-    │       └── jan-code.astro
+    │       ├── jan-code.astro
+    │       └── gs1-databar.astro
     ├── data/
     │   └── tools.ts
     ├── styles/
@@ -117,10 +120,14 @@ devtools/
         ├── clipboard.ts
         ├── jwt.ts              # JWT パース・フォーマット関数
         ├── url-encode.ts       # URLエンコード/デコード関数
+        ├── jan-code.ts         # JANコード チェックディジット計算
+        ├── gs1-databar.ts      # GTIN-14計算・GS1 AIビルダー
         ├── styles.ts           # 共通タイポグラフィ定数
         └── __tests__/
             ├── jwt.test.ts
-            └── url-encode.test.ts
+            ├── url-encode.test.ts
+            ├── jan-code.test.ts
+            └── gs1-databar.test.ts
 ```
 
 ---
@@ -164,7 +171,7 @@ devtools/
 
 ---
 
-## 4. MVP ツール一覧（Phase 1: 6ツール）
+## 4. MVP ツール一覧（Phase 1: 7ツール）
 
 ### カテゴリ A: 生成ツール
 
@@ -174,13 +181,14 @@ devtools/
 | 2 | ダミーテキスト生成 | `dummy-text` | 文字種（全角ひらがな/カタカナ/漢字混じり/半角英数）と文字数を指定して生成 |
 | 3 | QRコード生成 | `qr-code` | テキスト/URL入力 → QRコード画像生成。PNG/SVGダウンロード |
 | 4 | JANコード生成 | `jan-code` | 12桁入力 → チェックディジット自動計算 → バーコード画像生成 |
+| 5 | GS1 DataBar 生成 | `gs1-databar` | GTIN-14入力 → GS1 DataBar Limited合成シンボル生成。CC-A対応（AI: 17/10/11/15/21）|
 
 ### カテゴリ B: 変換・解析ツール
 
 | # | ツール名 | slug | 概要 |
 |---|---------|------|------|
-| 5 | JWTデコーダー | `jwt-decoder` | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応 |
-| 6 | URLエンコード/デコード | `url-encode` | テキスト⇔URLエンコード相互変換 |
+| 6 | JWTデコーダー | `jwt-decoder` | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応 |
+| 7 | URLエンコード/デコード | `url-encode` | テキスト⇔URLエンコード相互変換 |
 
 ---
 
@@ -426,11 +434,12 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] JWTデコーダー（HS/RS/ES署名検証対応）
 - [x] トップページ（カテゴリタブ + ツールカードグリッド）
 
-### Phase 1b: MVP 完成（残り4ツール）🔄 進行中
+### Phase 1b: MVP 完成（残り3ツール）🔄 進行中
 - [x] ULID生成
 - [x] ダミーテキスト生成
 - [x] QRコード生成
-- [ ] JANコード生成
+- [x] JANコード生成
+- [x] GS1 DataBar Limited 合成シンボル生成
 - [ ] SEO基盤（sitemap / robots.txt / JSON-LD）
 - [ ] about / privacy ページ
 - [ ] Cloudflare Pages デプロイ
