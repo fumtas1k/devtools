@@ -29,7 +29,8 @@
 ## 開発
 
 ```bash
-npm ci
+git config core.hooksPath .githooks  # git フック有効化（初回クローン後に1回だけ実行）
+npm ci                               # 依存関係インストール
 npm run dev      # 開発サーバー起動 (http://localhost:4321)
 npm run build    # 本番ビルド
 npm run preview  # ビルド結果をプレビュー
