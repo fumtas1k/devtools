@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { CopyButton } from '../ui/CopyButton';
 import { ToggleGroup } from '../ui/ToggleGroup';
-import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { InputField } from '../ui/InputField';
+import { bodyEmphasis, caption, colors } from '../../utils/styles';
 import { encodeUrl, decodeUrl, validateDecodeInput } from '../../utils/url-encode';
 
 type Mode = 'encode' | 'decode';
@@ -54,43 +55,18 @@ export function UrlEncoderTool() {
       />
 
       {/* 入力 */}
-      <div>
-        <div className="mb-1 flex items-center justify-between">
-          <label htmlFor="url-input" style={{ ...bodyEmphasis, color: colors.text }}>
-            入力
-          </label>
-          <button
-            onClick={() => handleInput(SAMPLE[mode])}
-            style={{ ...caption, color: colors.link }}
-            className="hover:underline"
-          >
-            サンプル入力
-          </button>
-        </div>
-        <textarea
-          id="url-input"
-          value={input}
-          onInput={(e) => handleInput((e.target as HTMLTextAreaElement).value)}
-          placeholder={mode === 'encode' ? 'https://example.com/検索?q=テスト' : 'https%3A%2F%2Fexample.com%2F...'}
-          rows={4}
-          className="w-full rounded-lg px-3 py-2 font-mono"
-          style={{
-            ...caption,
-            border: `1px solid ${error ? colors.error : colors.borderInput}`,
-            outline: 'none',
-            background: colors.bg,
-            color: colors.text,
-          }}
-          onFocus={onFocusRing}
-          onBlur={onBlurRing}
-          aria-describedby={error ? 'url-error' : undefined}
-        />
-        {error && (
-          <p id="url-error" role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
-            {error}
-          </p>
-        )}
-      </div>
+      <InputField
+        id="url-input"
+        label="入力"
+        value={input}
+        onChange={handleInput}
+        placeholder={mode === 'encode' ? 'https://example.com/検索?q=テスト' : 'https%3A%2F%2Fexample.com%2F...'}
+        multiline
+        rows={4}
+        error={error || undefined}
+        onSampleClick={() => handleInput(SAMPLE[mode])}
+        mono
+      />
 
       {/* 出力 */}
       <div>

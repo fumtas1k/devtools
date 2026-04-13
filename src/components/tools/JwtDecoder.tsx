@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
+import { InputField } from '../ui/InputField';
 import {
   parseJwt, formatTimestamp, formatRemaining, base64UrlToBytes,
   type ExpStatus,
@@ -191,68 +192,32 @@ export function JwtDecoderTool() {
   return (
     <div className="space-y-4">
       {/* トークン入力 */}
-      <div>
-        <div className="mb-1 flex items-center justify-between">
-          <label htmlFor="jwt-input" style={{ ...bodyEmphasis, color: colors.text }}>JWTトークンを貼り付け</label>
-          <button
-            onClick={async () => { setSecretKey(SAMPLE_SECRET); setToken(await generateSampleJwt(SAMPLE_SECRET)); }}
-            style={{ ...caption, color: colors.link }}
-            className="hover:underline"
-          >
-            サンプル入力
-          </button>
-        </div>
-        <textarea
-          id="jwt-input"
-          value={token}
-          onInput={(e) => setToken((e.target as HTMLTextAreaElement).value)}
-          placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          rows={4}
-          className="w-full rounded-lg px-3 py-2 font-mono"
-          style={{
-            ...caption,
-            border: `1px solid ${isInvalid ? colors.error : colors.borderInput}`,
-            outline: 'none',
-            background: colors.bg,
-            color: colors.text,
-          }}
-          onFocus={onFocusRing}
-          onBlur={onBlurRing}
-          aria-describedby={isInvalid ? 'jwt-error' : undefined}
-        />
-        {isInvalid && (
-          <p id="jwt-error" role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
-            有効なJWTトークンではありません
-          </p>
-        )}
-      </div>
+      <InputField
+        id="jwt-input"
+        label="JWTトークンを貼り付け"
+        value={token}
+        onChange={setToken}
+        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        multiline
+        rows={4}
+        error={isInvalid ? '有効なJWTトークンではありません' : undefined}
+        onSampleClick={async () => { setSecretKey(SAMPLE_SECRET); setToken(await generateSampleJwt(SAMPLE_SECRET)); }}
+        mono
+      />
 
       {/* 署名検証キー入力 */}
       {parsed && (
-        <div>
-          <label htmlFor="jwt-secret" style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}>
-            {keyLabel}
-            <span style={{ ...micro, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}>（任意）</span>
-          </label>
-          <textarea
-            id="jwt-secret"
-            value={secretKey}
-            onInput={(e) => setSecretKey((e.target as HTMLTextAreaElement).value)}
-            placeholder={keyPlaceholder}
-            rows={isHmac ? 2 : 4}
-            className="w-full rounded-lg px-3 py-2 font-mono"
-            style={{
-              ...caption,
-              border: `1px solid ${colors.borderInput}`,
-              outline: 'none',
-              background: colors.bg,
-              color: colors.text,
-              resize: 'vertical',
-            }}
-            onFocus={onFocusRing}
-            onBlur={onBlurRing}
-          />
-        </div>
+        <InputField
+          id="jwt-secret"
+          label={<>{keyLabel}<span style={{ ...micro, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}>（任意）</span></>}
+          value={secretKey}
+          onChange={setSecretKey}
+          placeholder={keyPlaceholder}
+          multiline
+          rows={isHmac ? 2 : 4}
+          mono
+          resize
+        />
       )}
 
       {/* 有効期限チェックトグル */}

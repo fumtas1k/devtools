@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { CopyButton } from '../ui/CopyButton';
 import { ToggleGroup } from '../ui/ToggleGroup';
+import { InputField } from '../ui/InputField';
+import { DownloadButtonGroup } from '../ui/DownloadButtonGroup';
 import { calcJan, validateJanInput, type JanMode } from '../../utils/jan-code';
-import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { bodyEmphasis, caption, colors } from '../../utils/styles';
 import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '../../utils/download';
 
 export function JanCodeTool() {
@@ -77,49 +79,19 @@ export function JanCodeTool() {
       />
 
       {/* 入力 */}
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <label htmlFor="jan-input" style={{ ...bodyEmphasis, color: colors.text }}>
-            {mode === 'jan13' ? '12桁を入力' : '7桁を入力'}
-          </label>
-          <button
-            onClick={() => handleInput(SAMPLE[mode])}
-            style={{ ...caption, color: colors.link }}
-            className="hover:underline"
-          >
-            サンプル入力
-          </button>
-        </div>
-        <input
-          id="jan-input"
-          type="text"
-          inputMode="numeric"
-          maxLength={mode === 'jan13' ? 12 : 7}
-          value={input}
-          onChange={(e) => handleInput(e.target.value)}
-          placeholder={mode === 'jan13' ? '490123456789（12桁）' : '4901234（7桁）'}
-          className="w-full rounded px-3 py-2 font-mono"
-          style={{
-            ...caption,
-            border: `1px solid ${error ? colors.error : colors.borderInput}`,
-            outline: 'none',
-            background: colors.bg,
-            color: colors.text,
-          }}
-          onFocus={onFocusRing}
-          onBlur={onBlurRing}
-          aria-describedby={error ? 'jan-error' : 'jan-hint'}
-        />
-        {error ? (
-          <p id="jan-error" role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
-            {error}
-          </p>
-        ) : (
-          <p id="jan-hint" style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
-            {input.length} / {mode === 'jan13' ? 12 : 7} 桁
-          </p>
-        )}
-      </div>
+      <InputField
+        id="jan-input"
+        label={mode === 'jan13' ? '12桁を入力' : '7桁を入力'}
+        value={input}
+        onChange={handleInput}
+        placeholder={mode === 'jan13' ? '490123456789（12桁）' : '4901234（7桁）'}
+        inputMode="numeric"
+        maxLength={mode === 'jan13' ? 12 : 7}
+        error={error || undefined}
+        hint={`${input.length} / ${mode === 'jan13' ? 12 : 7} 桁`}
+        onSampleClick={() => handleInput(SAMPLE[mode])}
+        mono
+      />
 
       {/* 結果 */}
       {result && (
@@ -181,22 +153,7 @@ export function JanCodeTool() {
             style={{ border: `1px solid ${colors.border}`, background: colors.bg }}
           >
             <svg ref={svgRef} aria-label={`JANコード ${result.fullCode} のバーコード`} />
-            <div className="flex gap-2">
-              <button
-                onClick={downloadSvg}
-                className="rounded px-4 py-2 font-bold transition-colors hover:bg-blue-50"
-                style={{ ...caption, fontWeight: 700, border: `1px solid ${colors.primary}`, color: colors.primary }}
-              >
-                SVGダウンロード
-              </button>
-              <button
-                onClick={downloadPng}
-                className="rounded px-4 py-2 font-bold text-white transition-colors hover:opacity-90"
-                style={{ ...caption, fontWeight: 700, background: colors.primary }}
-              >
-                PNGダウンロード
-              </button>
-            </div>
+            <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
           </div>
         </div>
       )}

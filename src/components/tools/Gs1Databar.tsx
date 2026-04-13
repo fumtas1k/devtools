@@ -10,6 +10,8 @@ import {
   type AiCode,
 } from '../../utils/gs1-databar';
 import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { InputField } from '../ui/InputField';
+import { DownloadButtonGroup } from '../ui/DownloadButtonGroup';
 import { downloadSvg as downloadSvgFile, downloadPngFromSvgContent, svgContentToPngBlob } from '../../utils/download';
 
 interface AiFieldState {
@@ -244,49 +246,19 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
       {/* カード本体 */}
       <div className="p-4 space-y-5">
         {/* GTIN入力 */}
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label htmlFor={inputId} style={{ ...caption, color: colors.text, fontWeight: 600 }}>
-              GTIN-14（先頭13桁）
-            </label>
-            <button
-              onClick={() => handleGtinInput(sampleGtin)}
-              style={{ ...caption, color: colors.link }}
-              className="hover:underline"
-            >
-              サンプル入力
-            </button>
-          </div>
-          <input
-            id={inputId}
-            type="text"
-            inputMode="numeric"
-            maxLength={13}
-            value={gtinInput}
-            onChange={(e) => handleGtinInput(e.target.value)}
-            placeholder="0498700000001（13桁、先頭は0か1）"
-            className="w-full rounded px-3 py-2 font-mono"
-            style={{
-              ...caption,
-              border: `1px solid ${gtinError ? colors.error : colors.borderInput}`,
-              outline: 'none',
-              background: colors.bg,
-              color: colors.text,
-            }}
-            onFocus={onFocusRing}
-            onBlur={onBlurRing}
-            aria-describedby={gtinError ? `${inputId}-error` : `${inputId}-hint`}
-          />
-          {gtinError ? (
-            <p id={`${inputId}-error`} role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
-              {gtinError}
-            </p>
-          ) : (
-            <p id={`${inputId}-hint`} style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
-              {gtinInput.length} / 13 桁
-            </p>
-          )}
-        </div>
+        <InputField
+          id={inputId}
+          label="GTIN-14（先頭13桁）"
+          value={gtinInput}
+          onChange={handleGtinInput}
+          placeholder="0498700000001（13桁、先頭は0か1）"
+          inputMode="numeric"
+          maxLength={13}
+          error={gtinError || undefined}
+          hint={`${gtinInput.length} / 13 桁`}
+          onSampleClick={() => handleGtinInput(sampleGtin)}
+          mono
+        />
 
         {/* GTIN計算結果 */}
         {gtinResult && (
@@ -392,22 +364,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
               aria-label={`GS1 DataBar ${gtinResult?.fullGtin} のバーコード`}
               dangerouslySetInnerHTML={{ __html: svgContent }}
             />
-            <div className="flex gap-2">
-              <button
-                onClick={downloadSvg}
-                className="rounded px-4 py-2 font-bold transition-colors hover:bg-blue-50"
-                style={{ ...caption, fontWeight: 700, border: `1px solid ${colors.primary}`, color: colors.primary }}
-              >
-                SVGダウンロード
-              </button>
-              <button
-                onClick={downloadPng}
-                className="rounded px-4 py-2 font-bold text-white transition-colors hover:opacity-90"
-                style={{ ...caption, fontWeight: 700, background: colors.primary }}
-              >
-                PNGダウンロード
-              </button>
-            </div>
+            <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
           </div>
         )}
 
