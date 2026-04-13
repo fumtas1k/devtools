@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { CopyButton } from '../ui/CopyButton';
+import { ToggleGroup } from '../ui/ToggleGroup';
 import { calcJan, validateJanInput, type JanMode } from '../../utils/jan-code';
-import { bodyEmphasis, caption, shadows, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '../../utils/styles';
 import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '../../utils/download';
 
 export function JanCodeTool() {
@@ -65,31 +66,15 @@ export function JanCodeTool() {
   return (
     <div className="space-y-6">
       {/* モード切替 */}
-      <div
-        className="flex gap-1 rounded p-1"
-        role="tablist"
-        aria-label="JANコードモード"
-        style={{ background: colors.bgSubtle }}
-      >
-        {(['jan13', 'jan8'] as JanMode[]).map((m) => (
-          <button
-            key={m}
-            role="tab"
-            aria-selected={mode === m}
-            onClick={() => handleModeChange(m)}
-            className="flex-1 rounded py-1.5 transition-colors"
-            style={{
-              ...caption,
-              fontWeight: 700,
-              background: mode === m ? colors.bg : 'transparent',
-              color: mode === m ? colors.text : colors.muted,
-              boxShadow: mode === m ? shadows.tab : 'none',
-            }}
-          >
-            {m === 'jan13' ? 'JAN-13' : 'JAN-8'}
-          </button>
-        ))}
-      </div>
+      <ToggleGroup
+        options={[
+          { value: 'jan13', label: 'JAN-13' },
+          { value: 'jan8', label: 'JAN-8' },
+        ]}
+        value={mode}
+        onChange={handleModeChange}
+        ariaLabel="JANコードモード"
+      />
 
       {/* 入力 */}
       <div>

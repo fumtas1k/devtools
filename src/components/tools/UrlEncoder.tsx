@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, colors, shadows, onFocusRing, onBlurRing } from '../../utils/styles';
+import { ToggleGroup } from '../ui/ToggleGroup';
+import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '../../utils/styles';
 import { encodeUrl, decodeUrl, validateDecodeInput } from '../../utils/url-encode';
 
 type Mode = 'encode' | 'decode';
@@ -41,26 +42,16 @@ export function UrlEncoderTool() {
 
   return (
     <div className="space-y-4">
-      {/* モード切替: Filter/Search Button style */}
-      <div className="flex gap-1 rounded-lg p-1" style={{ background: colors.bgSubtle }}>
-        {(['encode', 'decode'] as Mode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => handleModeChange(m)}
-            aria-pressed={mode === m}
-            className="flex-1 rounded-lg py-1.5 transition-colors"
-            style={{
-              ...caption,
-              fontWeight: 500,
-              background: mode === m ? colors.bg : 'transparent',
-              color: mode === m ? colors.text : colors.muted,
-              boxShadow: mode === m ? shadows.tab : 'none',
-            }}
-          >
-            {m === 'encode' ? 'エンコード' : 'デコード'}
-          </button>
-        ))}
-      </div>
+      {/* モード切替 */}
+      <ToggleGroup
+        options={[
+          { value: 'encode', label: 'エンコード' },
+          { value: 'decode', label: 'デコード' },
+        ]}
+        value={mode}
+        onChange={handleModeChange}
+        ariaLabel="変換モード"
+      />
 
       {/* 入力 */}
       <div>

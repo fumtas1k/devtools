@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { ulid } from 'ulidx';
 import { CopyButton } from '../ui/CopyButton';
 import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { useClampedInput } from '../../hooks/useClampedInput';
 
 
 interface UlidRow {
@@ -22,37 +23,13 @@ function generateRows(count: number): UlidRow[] {
 type QuoteStyle = 'none' | 'single' | 'double';
 
 export function UlidGeneratorTool() {
-  const [count, setCount] = useState(10);
-  const [countInput, setCountInput] = useState('10');
+  const { value: count, inputStr: countInput, handleChange: handleCountChange, handleBlur: handleCountBlur } = useClampedInput(10, 1, 100);
   const [rows, setRows] = useState<UlidRow[]>([]);
   const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
 
   const generate = useCallback(() => {
-    const n = Math.min(100, Math.max(1, count));
-    setRows(generateRows(n));
+    setRows(generateRows(count));
   }, [count]);
-
-  const handleCountChange = (value: string) => {
-    setCountInput(value);
-    const n = parseInt(value, 10);
-    if (!isNaN(n) && n >= 1 && n <= 100) {
-      setCount(n);
-    }
-  };
-
-  const handleCountBlur = () => {
-    const n = parseInt(countInput, 10);
-    if (isNaN(n) || n < 1) {
-      setCount(1);
-      setCountInput('1');
-    } else if (n > 100) {
-      setCount(100);
-      setCountInput('100');
-    } else {
-      setCount(n);
-      setCountInput(String(n));
-    }
-  };
 
   const allUlids = rows.map((r, i) => {
     const isLast = i === rows.length - 1;

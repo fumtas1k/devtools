@@ -81,3 +81,26 @@
   --color-border-input: #D1D5DB; /* neutral-300 */
   --color-error-text:   #B91C1C; /* red-700 */
 }
+
+/* ツール説明セクションのテキストスタイル */
+.tool-info-heading {
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.24;
+  letter-spacing: -0.374px;
+}
+
+.tool-info-body {
+  font-size: 1.06rem;
+  font-weight: 400;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.tool-info-list {
+  font-size: 0.875rem;
+  line-height: 1.29;
+  letter-spacing: -0.224px;
+  color: rgba(0, 0, 0, 0.8);
+}
