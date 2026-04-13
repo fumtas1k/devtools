@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, FocusEvent } from 'react';
 
 /**
  * DADSカラーシステム
@@ -48,3 +48,14 @@ export const caption: CSSProperties = {
 
 /** ヒント・補足テキスト（caption と同値。DADS最小サイズ12px禁止のため14pxに統一） */
 export const micro = caption;
+
+/** フォーカスリング表示（onFocus に渡す） */
+export function onFocusRing(e: FocusEvent<HTMLElement>): void {
+  e.currentTarget.style.outline = `2px solid ${colors.link}`;
+  e.currentTarget.style.outlineOffset = '2px';
+}
+
+/** フォーカスリング非表示（onBlur / onBlurCapture に渡す） */
+export function onBlurRing(e: FocusEvent<HTMLElement>): void {
+  e.currentTarget.style.outline = 'none';
+}

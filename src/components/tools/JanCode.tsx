@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { CopyButton } from '../ui/CopyButton';
 import { calcJan, validateJanInput, type JanMode } from '../../utils/jan-code';
-import { bodyEmphasis, caption, shadows, colors } from '../../utils/styles';
+import { bodyEmphasis, caption, shadows, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '../../utils/download';
 
 export function JanCodeTool() {
   const [mode, setMode] = useState<JanMode>('jan13');
@@ -48,38 +49,12 @@ export function JanCodeTool() {
 
   const downloadSvg = () => {
     if (!svgRef.current) return;
-    const svg = svgRef.current.outerHTML;
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `jan-${result!.fullCode}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadSvgFile(svgRef.current.outerHTML, `jan-${result!.fullCode}.svg`);
   };
 
   const downloadPng = () => {
     if (!svgRef.current) return;
-    const svg = svgRef.current;
-    const { width, height } = svg.getBoundingClientRect();
-    const canvas = document.createElement('canvas');
-    const scale = 2; // Retina
-    canvas.width = width * scale;
-    canvas.height = height * scale;
-    const ctx = canvas.getContext('2d')!;
-    ctx.scale(scale, scale);
-    const img = new Image();
-    const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = `jan-${result!.fullCode}.png`;
-      a.click();
-    };
-    img.src = url;
+    downloadPngFromSvgElement(svgRef.current, `jan-${result!.fullCode}.png`);
   };
 
   const SAMPLE: Record<JanMode, string> = {
@@ -146,8 +121,8 @@ export function JanCodeTool() {
             background: colors.bg,
             color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlur={(e) => { e.target.style.outline = 'none'; }}
+          onFocus={onFocusRing}
+          onBlur={onBlurRing}
           aria-describedby={error ? 'jan-error' : 'jan-hint'}
         />
         {error ? (

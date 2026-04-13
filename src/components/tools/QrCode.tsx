@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import qrcode from 'qrcode-generator';
-import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
+import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { downloadSvgElement } from '../../utils/download';
 
 type ErrorLevel = 'L' | 'M' | 'Q' | 'H';
 
@@ -50,15 +51,7 @@ export function QrCodeGenerator() {
     if (!containerRef.current) return;
     const svgEl = containerRef.current.querySelector('svg');
     if (!svgEl) return;
-    const serializer = new XMLSerializer();
-    const svgStr = serializer.serializeToString(svgEl);
-    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'qrcode.svg';
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadSvgElement(svgEl, 'qrcode.svg');
   };
 
   return (
@@ -87,8 +80,8 @@ export function QrCodeGenerator() {
             resize: 'vertical',
             fontFamily: 'inherit',
           }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlur={(e) => { e.target.style.outline = 'none'; }}
+          onFocus={onFocusRing}
+          onBlur={onBlurRing}
         />
       </div>
 

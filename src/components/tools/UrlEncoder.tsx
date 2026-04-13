@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, colors, shadows } from '../../utils/styles';
+import { bodyEmphasis, caption, colors, shadows, onFocusRing, onBlurRing } from '../../utils/styles';
 import { encodeUrl, decodeUrl, validateDecodeInput } from '../../utils/url-encode';
 
 type Mode = 'encode' | 'decode';
@@ -90,8 +90,8 @@ export function UrlEncoderTool() {
             background: colors.bg,
             color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlur={(e) => { e.target.style.outline = 'none'; }}
+          onFocus={onFocusRing}
+          onBlur={onBlurRing}
           aria-describedby={error ? 'url-error' : undefined}
         />
         {error && (

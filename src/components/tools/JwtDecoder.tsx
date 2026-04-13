@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
+import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
 import {
   parseJwt, formatTimestamp, formatRemaining, base64UrlToBytes,
   type ExpStatus,
@@ -216,8 +216,8 @@ export function JwtDecoderTool() {
             background: colors.bg,
             color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlur={(e) => { e.target.style.outline = 'none'; }}
+          onFocus={onFocusRing}
+          onBlur={onBlurRing}
           aria-describedby={isInvalid ? 'jwt-error' : undefined}
         />
         {isInvalid && (
@@ -249,8 +249,8 @@ export function JwtDecoderTool() {
               color: colors.text,
               resize: 'vertical',
             }}
-            onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-            onBlur={(e) => { e.target.style.outline = 'none'; }}
+            onFocus={onFocusRing}
+            onBlur={onBlurRing}
           />
         </div>
       )}

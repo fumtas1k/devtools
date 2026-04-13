@@ -9,7 +9,8 @@ import {
   AI_DEFS,
   type AiCode,
 } from '../../utils/gs1-databar';
-import { bodyEmphasis, caption, colors } from '../../utils/styles';
+import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { downloadSvg as downloadSvgFile, downloadPngFromSvgContent, svgContentToPngBlob } from '../../utils/download';
 
 interface AiFieldState {
   ai: AiCode;
@@ -90,36 +91,6 @@ function injectCompositeText(svg: string, text: string): string {
   const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
 
   return `${openTag}${textEl}<g transform="${barcodeTranslate}">${inner}</g></svg>`;
-}
-
-function svgToPngBlob(svgContent: string): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const m = svgContent.match(/width="(\d+)" height="(\d+)"/);
-    if (!m) { reject(new Error('SVG に width/height がありません')); return; }
-    const svgW = parseInt(m[1], 10);
-    const svgH = parseInt(m[2], 10);
-
-    const scale = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = svgW * scale;
-    canvas.height = svgH * scale;
-    const ctx = canvas.getContext('2d')!;
-    ctx.scale(scale, scale);
-
-    const img = new Image();
-    const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((b) => {
-        if (b) resolve(b);
-        else reject(new Error('PNG 変換に失敗しました'));
-      }, 'image/png');
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG 読み込み失敗')); };
-    img.src = url;
-  });
 }
 
 // ─────────────────────────────────────────────
@@ -225,25 +196,12 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
   const downloadSvg = () => {
     if (!svgContent || !gtinResult) return;
-    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gs1-databar-${gtinResult.fullGtin}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadSvgFile(svgContent, `gs1-databar-${gtinResult.fullGtin}.svg`);
   };
 
   const downloadPng = () => {
     if (!svgContent || !gtinResult) return;
-    svgToPngBlob(svgContent).then((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `gs1-databar-${gtinResult!.fullGtin}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
+    downloadPngFromSvgContent(svgContent, `gs1-databar-${gtinResult.fullGtin}.png`);
   };
 
   const usedAis = new Set(aiFields.map((f) => f.ai));
@@ -252,14 +210,6 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   const gs1String = gtinResult
     ? buildBwipText(gtinResult.fullGtin, aiFields.map((f) => ({ ai: f.ai, value: f.value })))
     : '';
-
-  const focusRingOn = (e: React.FocusEvent<HTMLElement>) => {
-    e.target.style.outline = `2px solid ${colors.link}`;
-    e.target.style.outlineOffset = '2px';
-  };
-  const focusRingOff = (e: React.FocusEvent<HTMLElement>) => {
-    e.target.style.outline = 'none';
-  };
 
   return (
     <div
@@ -323,8 +273,8 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
               background: colors.bg,
               color: colors.text,
             }}
-            onFocus={focusRingOn}
-            onBlur={focusRingOff}
+            onFocus={onFocusRing}
+            onBlur={onBlurRing}
             aria-describedby={gtinError ? `${inputId}-error` : `${inputId}-hint`}
           />
           {gtinError ? (
@@ -409,8 +359,8 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                         background: colors.bg,
                         color: colors.text,
                       }}
-                      onFocus={focusRingOn}
-                      onBlur={focusRingOff}
+                      onFocus={onFocusRing}
+                      onBlur={onBlurRing}
                     />
                     {field.error && (
                       <p role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
@@ -546,7 +496,7 @@ export function Gs1DatabarTool() {
       await Promise.all(
         validEntries.map(async ([, { svg, gtin }]) => {
           folder.file(`gs1-databar-${gtin}.svg`, svg);
-          const pngBlob = await svgToPngBlob(svg);
+          const pngBlob = await svgContentToPngBlob(svg);
           folder.file(`gs1-databar-${gtin}.png`, pngBlob);
         }),
       );

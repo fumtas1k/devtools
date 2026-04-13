@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
+import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
 
 type CharType = 'hiragana' | 'katakana' | 'japanese' | 'alphanumeric' | 'lorem';
 
@@ -159,8 +159,8 @@ export function DummyTextTool() {
             background: colors.bg,
             color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlurCapture={(e) => { e.target.style.outline = 'none'; }}
+          onFocus={onFocusRing}
+          onBlurCapture={onBlurRing}
         />
         <p style={{ ...micro, color: colors.muted, marginTop: '0.25rem' }}>1〜5000文字</p>
       </div>
