@@ -13,34 +13,39 @@ const categories: ToolCategory[] = ['generate', 'convert'];
 
 <aside class="w-56 shrink-0">
   <nav aria-label="ツール一覧">
-    {categories.map((cat) => (
-      <div class="mb-6">
-        <h2
-          class="mb-2 px-3 font-bold text-neutral-500 uppercase"
-          style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.08em;"
-        >
-          {categoryLabel[cat]}
-        </h2>
-        <ul>
-          {tools.filter((t) => t.category === cat).map((tool) => (
-            <li>
-              <a
-                href={`/tools/${tool.slug}`}
-                aria-current={currentSlug === tool.slug ? 'page' : undefined}
-                class={`flex items-center gap-2 rounded px-3 py-2 transition-colors
-                  ${currentSlug === tool.slug
-                    ? 'font-bold text-primary bg-blue-50'
-                    : 'text-neutral-700 hover:bg-neutral-100'
+    {
+      categories.map((cat) => (
+        <div class="mb-6">
+          <h2
+            class="mb-2 px-3 font-bold text-neutral-500 uppercase"
+            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.08em;"
+          >
+            {categoryLabel[cat]}
+          </h2>
+          <ul>
+            {tools
+              .filter((t) => t.category === cat)
+              .map((tool) => (
+                <li>
+                  <a
+                    href={`/tools/${tool.slug}`}
+                    aria-current={currentSlug === tool.slug ? 'page' : undefined}
+                    class={`flex items-center gap-2 rounded px-3 py-2 transition-colors
+                  ${
+                    currentSlug === tool.slug
+                      ? 'font-bold text-primary bg-blue-50'
+                      : 'text-neutral-700 hover:bg-neutral-100'
                   }`}
-                style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
-              >
-                <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
-                <span>{tool.name}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ))}
+                    style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+                  >
+                    <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
+                    <span>{tool.name}</span>
+                  </a>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))
+    }
   </nav>
 </aside>

@@ -13,8 +13,10 @@ const CHAR_TYPES: { value: CharType; label: string }[] = [
   { value: 'lorem', label: 'Lorem Ipsum' },
 ];
 
-const HIRAGANA = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
-const KATAKANA = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+const HIRAGANA =
+  'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
+const KATAKANA =
+  'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
 const KANJI = '日本語文字漢字生成変換表示入力出力処理実行結果確認設定管理操作画面機能利用提供情報';
 const PARTICLES = 'はがをにでともやのへ';
 const ALPHANUMERIC = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -57,9 +59,19 @@ function generateText(type: CharType, length: number): string {
 
 export function DummyTextTool() {
   const [charType, setCharType] = useState<CharType>('japanese');
-  const { value: length, inputStr: lengthInput, handleChange: handleLengthChange, handleBlur: handleLengthBlur } = useClampedInput(10, 1, 5000);
+  const {
+    value: length,
+    inputStr: lengthInput,
+    handleChange: handleLengthChange,
+    handleBlur: handleLengthBlur,
+  } = useClampedInput(10, 1, 5000);
   const [lineBreak, setLineBreak] = useState(false);
-  const { value: chunkSize, inputStr: chunkInput, handleChange: handleChunkChange, handleBlur: handleChunkBlur } = useClampedInput(40, 1, 1000);
+  const {
+    value: chunkSize,
+    inputStr: chunkInput,
+    handleChange: handleChunkChange,
+    handleBlur: handleChunkBlur,
+  } = useClampedInput(40, 1, 1000);
   const [result, setResult] = useState('');
 
   const generate = useCallback(() => {
@@ -75,7 +87,9 @@ export function DummyTextTool() {
     }
   }, [charType, length, lineBreak, chunkSize]);
 
-  useEffect(() => { generate(); }, [generate]);
+  useEffect(() => {
+    generate();
+  }, [generate]);
 
   return (
     <div className="space-y-6">
@@ -91,7 +105,10 @@ export function DummyTextTool() {
                 ...caption,
                 padding: '0.5rem 1rem',
                 borderRadius: '999px',
-                border: charType === value ? `1.5px solid ${colors.primary}` : `1.5px solid ${colors.borderInput}`,
+                border:
+                  charType === value
+                    ? `1.5px solid ${colors.primary}`
+                    : `1.5px solid ${colors.borderInput}`,
                 background: charType === value ? colors.primaryBg : colors.bg,
                 color: charType === value ? colors.primary : colors.muted,
                 cursor: 'pointer',
@@ -121,7 +138,11 @@ export function DummyTextTool() {
           value={lengthInput}
           onChange={(e) => handleLengthChange(e.target.value)}
           onBlur={handleLengthBlur}
-          onKeyDown={(e) => { if (e.key === 'Enter') { handleLengthBlur(); } }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleLengthBlur();
+            }
+          }}
           className="rounded-lg px-3 py-2"
           style={{
             ...caption,
@@ -169,7 +190,9 @@ export function DummyTextTool() {
           </div>
           {lineBreak && (
             <div className="flex items-center gap-2">
-              <label htmlFor="chunk-size" style={{ ...caption, color: colors.muted }}>間隔</label>
+              <label htmlFor="chunk-size" style={{ ...caption, color: colors.muted }}>
+                間隔
+              </label>
               <input
                 id="chunk-size"
                 type="number"
@@ -187,8 +210,13 @@ export function DummyTextTool() {
                   background: colors.bg,
                   color: colors.text,
                 }}
-                onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-                onBlurCapture={(e) => { e.target.style.outline = 'none'; }}
+                onFocus={(e) => {
+                  e.target.style.outline = `2px solid ${colors.link}`;
+                  e.target.style.outlineOffset = '2px';
+                }}
+                onBlurCapture={(e) => {
+                  e.target.style.outline = 'none';
+                }}
               />
               <span style={{ ...micro, color: colors.muted }}>文字ごと（1〜1000）</span>
             </div>
@@ -196,11 +224,12 @@ export function DummyTextTool() {
         </div>
       </div>
 
-
-
       {/* 結果 */}
       {result && (
-        <div className="rounded-lg" style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
+        <div
+          className="rounded-lg"
+          style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}
+        >
           <div
             className="flex items-center justify-between gap-2 px-4 py-3"
             style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
@@ -211,7 +240,13 @@ export function DummyTextTool() {
               <button
                 onClick={() => setResult('')}
                 className="rounded-lg px-3 py-1.5 transition-colors"
-                style={{ ...caption, color: colors.muted, background: 'transparent', border: 'none', cursor: 'pointer' }}
+                style={{
+                  ...caption,
+                  color: colors.muted,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
               >
                 クリア
               </button>

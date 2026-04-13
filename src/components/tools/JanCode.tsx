@@ -14,9 +14,8 @@ export function JanCodeTool() {
   const [error, setError] = useState('');
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const result = input && !error && input.length === (mode === 'jan13' ? 12 : 7)
-    ? calcJan(input, mode)
-    : null;
+  const result =
+    input && !error && input.length === (mode === 'jan13' ? 12 : 7) ? calcJan(input, mode) : null;
 
   // バーコード描画
   useEffect(() => {
@@ -62,7 +61,7 @@ export function JanCodeTool() {
 
   const SAMPLE: Record<JanMode, string> = {
     jan13: '490123456789',
-    jan8:  '4901234',
+    jan8: '4901234',
   };
 
   return (
@@ -108,7 +107,10 @@ export function JanCodeTool() {
             <div className="flex items-center justify-between">
               <span style={{ ...caption, color: colors.muted }}>完成コード</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono" style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}>
+                <span
+                  className="font-mono"
+                  style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}
+                >
                   {result.fullCode}
                 </span>
                 <CopyButton text={result.fullCode} label="コピー" />
@@ -124,18 +126,37 @@ export function JanCodeTool() {
             >
               計算過程を見る
             </summary>
-            <div className="px-4 pb-4 pt-2 space-y-1 font-mono" style={{ ...caption, color: colors.text }}>
+            <div
+              className="px-4 pb-4 pt-2 space-y-1 font-mono"
+              style={{ ...caption, color: colors.text }}
+            >
               {mode === 'jan13' ? (
                 <>
-                  <p>奇数位（×1）: {result.steps.weight1Digits.join(' + ')} = {result.steps.weight1Sum}</p>
-                  <p>偶数位（×3）: {result.steps.weight3Digits.join(' + ')} = {result.steps.weight3Sum}</p>
-                  <p>{result.steps.weight3Sum} × 3 + {result.steps.weight1Sum} = {result.steps.total}</p>
+                  <p>
+                    奇数位（×1）: {result.steps.weight1Digits.join(' + ')} ={' '}
+                    {result.steps.weight1Sum}
+                  </p>
+                  <p>
+                    偶数位（×3）: {result.steps.weight3Digits.join(' + ')} ={' '}
+                    {result.steps.weight3Sum}
+                  </p>
+                  <p>
+                    {result.steps.weight3Sum} × 3 + {result.steps.weight1Sum} = {result.steps.total}
+                  </p>
                 </>
               ) : (
                 <>
-                  <p>奇数位（×3）: {result.steps.weight3Digits.join(' + ')} = {result.steps.weight3Sum}</p>
-                  <p>偶数位（×1）: {result.steps.weight1Digits.join(' + ')} = {result.steps.weight1Sum}</p>
-                  <p>{result.steps.weight3Sum} × 3 + {result.steps.weight1Sum} = {result.steps.total}</p>
+                  <p>
+                    奇数位（×3）: {result.steps.weight3Digits.join(' + ')} ={' '}
+                    {result.steps.weight3Sum}
+                  </p>
+                  <p>
+                    偶数位（×1）: {result.steps.weight1Digits.join(' + ')} ={' '}
+                    {result.steps.weight1Sum}
+                  </p>
+                  <p>
+                    {result.steps.weight3Sum} × 3 + {result.steps.weight1Sum} = {result.steps.total}
+                  </p>
                 </>
               )}
               <p>
@@ -162,7 +183,10 @@ export function JanCodeTool() {
       {input && (
         <div className="flex justify-end">
           <button
-            onClick={() => { setInput(''); setError(''); }}
+            onClick={() => {
+              setInput('');
+              setError('');
+            }}
             className="rounded px-3 py-2 transition-colors hover:bg-neutral-100"
             style={{ ...caption, color: '#6B7280' }}
           >

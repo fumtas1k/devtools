@@ -4,7 +4,6 @@ import { CopyButton } from '../ui/CopyButton';
 import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
 import { useClampedInput } from '../../hooks/useClampedInput';
 
-
 interface UlidRow {
   id: string;
   timestamp: string;
@@ -23,7 +22,12 @@ function generateRows(count: number): UlidRow[] {
 type QuoteStyle = 'none' | 'single' | 'double';
 
 export function UlidGeneratorTool() {
-  const { value: count, inputStr: countInput, handleChange: handleCountChange, handleBlur: handleCountBlur } = useClampedInput(10, 1, 100);
+  const {
+    value: count,
+    inputStr: countInput,
+    handleChange: handleCountChange,
+    handleBlur: handleCountBlur,
+  } = useClampedInput(10, 1, 100);
   const [rows, setRows] = useState<UlidRow[]>([]);
   const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
 
@@ -31,12 +35,14 @@ export function UlidGeneratorTool() {
     setRows(generateRows(count));
   }, [count]);
 
-  const allUlids = rows.map((r, i) => {
-    const isLast = i === rows.length - 1;
-    if (quoteStyle === 'double') return `"${r.id}"${isLast ? '' : ','}`;
-    if (quoteStyle === 'single') return `'${r.id}'${isLast ? '' : ','}`;
-    return r.id;
-  }).join('\n');
+  const allUlids = rows
+    .map((r, i) => {
+      const isLast = i === rows.length - 1;
+      if (quoteStyle === 'double') return `"${r.id}"${isLast ? '' : ','}`;
+      if (quoteStyle === 'single') return `'${r.id}'${isLast ? '' : ','}`;
+      return r.id;
+    })
+    .join('\n');
 
   return (
     <div className="space-y-4">
@@ -57,7 +63,12 @@ export function UlidGeneratorTool() {
             value={countInput}
             onChange={(e) => handleCountChange(e.target.value)}
             onBlur={handleCountBlur}
-            onKeyDown={(e) => { if (e.key === 'Enter') { handleCountBlur(); generate(); } }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCountBlur();
+                generate();
+              }
+            }}
             className="rounded-lg px-3 py-2"
             style={{
               ...caption,
@@ -94,15 +105,16 @@ export function UlidGeneratorTool() {
 
       {/* 結果テーブル */}
       {rows.length > 0 && (
-        <div className="rounded-lg" style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
+        <div
+          className="rounded-lg"
+          style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}
+        >
           {/* テーブルヘッダー + 操作ボタン */}
           <div
             className="flex flex-col gap-2 px-4 py-3"
             style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
           >
-            <span style={{ ...bodyEmphasis, color: colors.text }}>
-              {rows.length} 件生成
-            </span>
+            <span style={{ ...bodyEmphasis, color: colors.text }}>{rows.length} 件生成</span>
             <div className="flex flex-wrap items-center gap-2">
               {/* クォートスタイル選択 */}
               <div
@@ -111,7 +123,13 @@ export function UlidGeneratorTool() {
                 role="group"
                 aria-label="クォートスタイル"
               >
-                {([['none', 'なし'], ['double', '"..."'], ['single', "'...'"]] as [QuoteStyle, string][]).map(([value, label]) => (
+                {(
+                  [
+                    ['none', 'なし'],
+                    ['double', '"..."'],
+                    ['single', "'...'"],
+                  ] as [QuoteStyle, string][]
+                ).map(([value, label]) => (
                   <button
                     key={value}
                     onClick={() => setQuoteStyle(value)}
@@ -149,7 +167,12 @@ export function UlidGeneratorTool() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: '36rem', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: colors.bgSurface, borderBottom: `1px solid ${colors.border}` }}>
+                <tr
+                  style={{
+                    background: colors.bgSurface,
+                    borderBottom: `1px solid ${colors.border}`,
+                  }}
+                >
                   <th
                     scope="col"
                     style={{
@@ -250,12 +273,20 @@ export function UlidGeneratorTool() {
                     >
                       {row.timestamp}
                     </td>
-                    <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <td
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       <CopyButton
                         text={
-                          quoteStyle === 'double' ? `"${row.id}"` :
-                          quoteStyle === 'single' ? `'${row.id}'` :
-                          row.id
+                          quoteStyle === 'double'
+                            ? `"${row.id}"`
+                            : quoteStyle === 'single'
+                              ? `'${row.id}'`
+                              : row.id
                         }
                         compact
                       />

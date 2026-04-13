@@ -64,7 +64,14 @@ export function InputField({
           <button
             type="button"
             onClick={onSampleClick}
-            style={{ ...micro, color: colors.link, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{
+              ...micro,
+              color: colors.link,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
           >
             サンプルを入力
           </button>

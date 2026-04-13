@@ -38,7 +38,8 @@ export function UrlEncoderTool() {
 
   const SAMPLE: Record<Mode, string> = {
     encode: 'https://example.com/検索?q=テスト&lang=ja',
-    decode: 'https%3A%2F%2Fexample.com%2F%E6%A4%9C%E7%B4%A2%3Fq%3D%E3%83%86%E3%82%B9%E3%83%88%26lang%3Dja',
+    decode:
+      'https%3A%2F%2Fexample.com%2F%E6%A4%9C%E7%B4%A2%3Fq%3D%E3%83%86%E3%82%B9%E3%83%88%26lang%3Dja',
   };
 
   return (
@@ -60,7 +61,11 @@ export function UrlEncoderTool() {
         label="入力"
         value={input}
         onChange={handleInput}
-        placeholder={mode === 'encode' ? 'https://example.com/検索?q=テスト' : 'https%3A%2F%2Fexample.com%2F...'}
+        placeholder={
+          mode === 'encode'
+            ? 'https://example.com/検索?q=テスト'
+            : 'https%3A%2F%2Fexample.com%2F...'
+        }
         multiline
         rows={4}
         error={error || undefined}
