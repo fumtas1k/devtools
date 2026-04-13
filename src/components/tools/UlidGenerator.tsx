@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { ulid } from 'ulidx';
-import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
-import { useClampedInput } from '../../hooks/useClampedInput';
+import { CopyButton } from '@/components/ui/CopyButton';
+import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { useClampedInput } from '@/hooks/useClampedInput';
 
 interface UlidRow {
   id: string;

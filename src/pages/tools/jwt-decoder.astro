@@ -1,7 +1,7 @@
 ---
-import ToolLayout from '../../layouts/ToolLayout.astro';
-import { JwtDecoderTool } from '../../components/tools/JwtDecoder';
-import { tools } from '../../data/tools';
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import { JwtDecoderTool } from '@/components/tools/JwtDecoder';
+import { tools } from '@/data/tools';
 
 const tool = tools.find((t) => t.slug === 'jwt-decoder')!;
 ---

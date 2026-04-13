@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { base64UrlToBytes, parseJwt, formatTimestamp, formatRemaining } from '../jwt';
+import { base64UrlToBytes, parseJwt, formatTimestamp, formatRemaining } from '@/utils/jwt';
 
 // HS256 で署名されたサンプルトークン（有効期限なし）
 // header: {"alg":"HS256","typ":"JWT"}, payload: {"sub":"1234567890","name":"John Doe","iat":1516239022}

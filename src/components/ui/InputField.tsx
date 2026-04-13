@@ -1,6 +1,6 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
-import { ErrorMessage } from './ErrorMessage';
+import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
 
 interface Props {
   id: string;

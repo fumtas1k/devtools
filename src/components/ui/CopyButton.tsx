@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { copyToClipboard } from '../../utils/clipboard';
-import { colors } from '../../utils/styles';
+import { copyToClipboard } from '@/utils/clipboard';
+import { colors } from '@/utils/styles';
 
 interface Props {
   text: string;

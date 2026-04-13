@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useClampedInput } from '../../hooks/useClampedInput';
-import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { useClampedInput } from '@/hooks/useClampedInput';
+import { CopyButton } from '@/components/ui/CopyButton';
+import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@/utils/styles';
 
 type CharType = 'hiragana' | 'katakana' | 'japanese' | 'alphanumeric' | 'lorem';
 

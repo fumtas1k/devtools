@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcJan, validateJanInput } from '../jan-code';
+import { calcJan, validateJanInput } from '@/utils/jan-code';
 
 // ────────────────────────────────────────────
 // calcJan — JAN-13

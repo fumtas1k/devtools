@@ -1,7 +1,7 @@
 ---
-import ToolLayout from '../../layouts/ToolLayout.astro';
-import { DummyTextTool } from '../../components/tools/DummyText';
-import { tools } from '../../data/tools';
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import { DummyTextTool } from '@/components/tools/DummyText';
+import { tools } from '@/data/tools';
 
 const tool = tools.find((t) => t.slug === 'dummy-text')!;
 ---

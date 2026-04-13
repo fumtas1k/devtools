@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { encodeUrl, decodeUrl, validateDecodeInput } from '../url-encode';
+import { encodeUrl, decodeUrl, validateDecodeInput } from '@/utils/url-encode';
 
 // ────────────────────────────────────────────
 // encodeUrl

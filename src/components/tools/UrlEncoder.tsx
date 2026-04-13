@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { CopyButton } from '../ui/CopyButton';
-import { ToggleGroup } from '../ui/ToggleGroup';
-import { InputField } from '../ui/InputField';
-import { bodyEmphasis, caption, colors } from '../../utils/styles';
-import { encodeUrl, decodeUrl, validateDecodeInput } from '../../utils/url-encode';
+import { CopyButton } from '@/components/ui/CopyButton';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { InputField } from '@/components/ui/InputField';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { encodeUrl, decodeUrl, validateDecodeInput } from '@/utils/url-encode';
 
 type Mode = 'encode' | 'decode';
 

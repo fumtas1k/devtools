@@ -1,22 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import bwipjs from 'bwip-js';
 import JSZip from 'jszip';
-import { CopyButton } from '../ui/CopyButton';
+import { CopyButton } from '@/components/ui/CopyButton';
 import {
   calcGtin14CheckDigit,
   validateGtin14Input,
   buildBwipText,
   AI_DEFS,
   type AiCode,
-} from '../../utils/gs1-databar';
-import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '../../utils/styles';
-import { InputField } from '../ui/InputField';
-import { DownloadButtonGroup } from '../ui/DownloadButtonGroup';
+} from '@/utils/gs1-databar';
+import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { InputField } from '@/components/ui/InputField';
+import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import {
   downloadSvg as downloadSvgFile,
   downloadPngFromSvgContent,
   svgContentToPngBlob,
-} from '../../utils/download';
+} from '@/utils/download';
 
 interface AiFieldState {
   ai: AiCode;

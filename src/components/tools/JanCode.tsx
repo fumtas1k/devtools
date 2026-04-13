@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
-import { CopyButton } from '../ui/CopyButton';
-import { ToggleGroup } from '../ui/ToggleGroup';
-import { InputField } from '../ui/InputField';
-import { DownloadButtonGroup } from '../ui/DownloadButtonGroup';
-import { calcJan, validateJanInput, type JanMode } from '../../utils/jan-code';
-import { bodyEmphasis, caption, colors } from '../../utils/styles';
-import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '../../utils/download';
+import { CopyButton } from '@/components/ui/CopyButton';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { InputField } from '@/components/ui/InputField';
+import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
+import { calcJan, validateJanInput, type JanMode } from '@/utils/jan-code';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '@/utils/download';
 
 export function JanCodeTool() {
   const [mode, setMode] = useState<JanMode>('jan13');

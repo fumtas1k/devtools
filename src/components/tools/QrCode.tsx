@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import qrcode from 'qrcode-generator';
-import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
-import { InputField } from '../ui/InputField';
-import { ErrorMessage } from '../ui/ErrorMessage';
-import { downloadSvgElement } from '../../utils/download';
+import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
+import { InputField } from '@/components/ui/InputField';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { downloadSvgElement } from '@/utils/download';
 
 type ErrorLevel = 'L' | 'M' | 'Q' | 'H';
 

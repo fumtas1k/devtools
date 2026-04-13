@@ -4,7 +4,7 @@ import {
   validateGtin14Input,
   buildBwipText,
   type AiCode,
-} from '../gs1-databar';
+} from '@/utils/gs1-databar';
 
 // ────────────────────────────────────────────
 // calcGtin14CheckDigit

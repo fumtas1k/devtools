@@ -1,4 +1,4 @@
-import { caption, colors } from '../../utils/styles';
+import { caption, colors } from '@/utils/styles';
 
 interface Props {
   id?: string;

@@ -1,7 +1,7 @@
 ---
-import ToolLayout from '../../layouts/ToolLayout.astro';
-import { UrlEncoderTool } from '../../components/tools/UrlEncoder';
-import { tools } from '../../data/tools';
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import { UrlEncoderTool } from '@/components/tools/UrlEncoder';
+import { tools } from '@/data/tools';
 
 const tool = tools.find((t) => t.slug === 'url-encode')!;
 ---

@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
-import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
-import { InputField } from '../ui/InputField';
+import { CopyButton } from '@/components/ui/CopyButton';
+import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
+import { InputField } from '@/components/ui/InputField';
 import {
   parseJwt,
   formatTimestamp,
   formatRemaining,
   base64UrlToBytes,
   type ExpStatus,
-} from '../../utils/jwt';
+} from '@/utils/jwt';
 
 const SAMPLE_SECRET = 'your-256-bit-secret';
 
