@@ -59,10 +59,11 @@ SKILL.mdのCSS変数を前提として使用する。
 }
 .btn-text:hover { background: var(--blue-50); }
 
-/* 共通フォーカス */
+/* 共通フォーカス（DADS標準: 黒アウトライン＋黄色リング） */
 .btn:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 4px solid var(--color-focus-outline);
   outline-offset: 2px;
+  box-shadow: 0 0 0 0.125rem var(--color-focus-ring); /* DADS yellow-300 = #FFD43D */
 }
 
 /* 無効状態 */
@@ -150,8 +151,9 @@ SKILL.mdのCSS変数を前提として使用する。
 }
 .input-field:focus {
   border-color: var(--color-primary);
-  outline: 2px solid var(--color-focus);
-  outline-offset: -1px;
+  outline: 4px solid var(--color-focus-outline);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 0.125rem var(--color-focus-ring); /* DADS yellow-300 = #FFD43D */
 }
 .input-field::placeholder {
   color: var(--neutral-gray-400);
@@ -511,54 +513,50 @@ SKILL.mdのCSS変数を前提として使用する。
 
 ## React実装時の注意
 
-### CSS変数をReact + Tailwindで使う場合
+このファイルのCSSパターンはDADS標準のHTMLクラスベース実装。  
+Reactで使う際は以下の方針で選択する。
 
-```jsx
-// tailwind.config.js での拡張例
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        primary: 'var(--color-primary)',
-        secondary: 'var(--color-secondary)',
-        // ... 省略
-      }
-    }
-  }
-}
+### 方針1: DADSコードスニペットライブラリを使う（推奨）
+
+```bash
+npm install @digital-go-jp/design-system-example-components-react
 ```
 
-### React + インラインCSS変数（Tailwind不使用）
+- `react-aria-components` ベースでアクセシビリティ対応済み
+- `@digital-go-jp/tailwind-theme-plugin` が必要（Tailwind前提）
+- コンポーネント一覧・使い方はSKILL.mdのSection 10を参照
 
-```jsx
-// CSS変数を :root に定義した上で
-const Button = ({ children, variant = 'primary', ...props }) => (
+### 方針2: CSS変数 + インラインスタイル（Tailwindなし）
+
+`src/utils/styles.ts` の `colors.*` を使い、インラインスタイルで色を指定する。  
+このファイルのCSSパターンを参考に独自コンポーネントを実装する。
+
+```tsx
+// 例: このファイルのボタンCSSを参考にReactコンポーネント化
+import { colors, caption } from '../../utils/styles';
+
+const Button = ({ children, variant = 'primary', onClick }: Props) => (
   <button
-    className={`btn btn-${variant}`}
-    {...props}
+    onClick={onClick}
+    style={{
+      background: variant === 'primary' ? colors.primary : 'transparent',
+      color: variant === 'primary' ? '#fff' : colors.primary,
+      border: `2px solid ${variant === 'primary' ? 'transparent' : colors.primary}`,
+      padding: '12px 24px',
+      fontWeight: 700,
+      borderRadius: '4px',
+      cursor: 'pointer',
+    }}
   >
     {children}
   </button>
 );
 ```
 
+**フォーカスリング（DADS標準）**: `outline: 4px solid #000; box-shadow: 0 0 0 2px #FDE047`  
+**このプロジェクトの実装**: `onFocusRing` / `onBlurRing`（SKILL.md Section 11参照）
+
 ---
 
-## コンポーネント一覧（DADSで定義）
-
-参考用の全コンポーネントリスト:
-
-アコーディオン, イメージスライダー, インプットテキスト, 引用ブロック,
-カード, 箇条書きリスト, カルーセル, 緊急時バナー, グローバルメニュー,
-検索ボックス, スクロールトップボタン, ステップナビゲーション, 説明リスト,
-セレクトボックス, チェックボックス, チップタグ, チップラベル,
-ディスクロージャー, ディバイダー, テーブルコントロール,
-テーブル／データテーブル, テキストエリア, ドロワー,
-ノティフィケーションバナー, パンくずリスト, ハンバーガーメニューボタン,
-日付ピッカー／カレンダー, ファイルアップロード／ドロップエリア,
-プログレスインジケーター, ページナビゲーション, ヘッダーコンテナ,
-ボタン, ボトムナビゲーション, メガメニュー, メニューリスト,
-メニューリストボックス, モーダルダイアログ, モバイルメニュー,
-ユーティリティリンク, ラジオボタン, ランゲージセレクター, リソースリスト
-
-上記に記載のないコンポーネントが必要な場合は、DADSの原則（カラー・タイポグラフィ・余白・角の形状・アクセシビリティ）に従って設計する。
+> 上記に記載のないコンポーネントが必要な場合は、DADSの原則（カラー・タイポグラフィ・余白・角の形状・アクセシビリティ）に従って設計する。  
+> DADSの全コンポーネント一覧はSKILL.mdのSection 10を参照。
