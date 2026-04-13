@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useClampedInput } from '../../hooks/useClampedInput';
 import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
+import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
 
 type CharType = 'hiragana' | 'katakana' | 'japanese' | 'alphanumeric' | 'lorem';
 
@@ -56,16 +57,13 @@ function generateText(type: CharType, length: number): string {
 
 export function DummyTextTool() {
   const [charType, setCharType] = useState<CharType>('japanese');
-  const [length, setLength] = useState(10);
-  const [lengthInput, setLengthInput] = useState('10');
+  const { value: length, inputStr: lengthInput, handleChange: handleLengthChange, handleBlur: handleLengthBlur } = useClampedInput(10, 1, 5000);
   const [lineBreak, setLineBreak] = useState(false);
-  const [chunkSize, setChunkSize] = useState(40);
-  const [chunkInput, setChunkInput] = useState('40');
+  const { value: chunkSize, inputStr: chunkInput, handleChange: handleChunkChange, handleBlur: handleChunkBlur } = useClampedInput(40, 1, 1000);
   const [result, setResult] = useState('');
 
   const generate = useCallback(() => {
-    const n = Math.min(5000, Math.max(1, length));
-    const raw = generateText(charType, n);
+    const raw = generateText(charType, length);
     if (lineBreak) {
       const lines: string[] = [];
       for (let i = 0; i < raw.length; i += chunkSize) {
@@ -78,32 +76,6 @@ export function DummyTextTool() {
   }, [charType, length, lineBreak, chunkSize]);
 
   useEffect(() => { generate(); }, [generate]);
-
-  const handleChunkChange = (value: string) => {
-    setChunkInput(value);
-    const n = parseInt(value, 10);
-    if (!isNaN(n) && n >= 1 && n <= 1000) setChunkSize(n);
-  };
-
-  const handleChunkBlur = () => {
-    const n = parseInt(chunkInput, 10);
-    if (isNaN(n) || n < 1) { setChunkSize(1); setChunkInput('1'); }
-    else if (n > 1000) { setChunkSize(1000); setChunkInput('1000'); }
-    else { setChunkSize(n); setChunkInput(String(n)); }
-  };
-
-  const handleLengthChange = (value: string) => {
-    setLengthInput(value);
-    const n = parseInt(value, 10);
-    if (!isNaN(n) && n >= 1 && n <= 5000) setLength(n);
-  };
-
-  const handleLengthBlur = () => {
-    const n = parseInt(lengthInput, 10);
-    if (isNaN(n) || n < 1) { setLength(1); setLengthInput('1'); }
-    else if (n > 5000) { setLength(5000); setLengthInput('5000'); }
-    else { setLength(n); setLengthInput(String(n)); }
-  };
 
   return (
     <div className="space-y-6">
@@ -159,8 +131,8 @@ export function DummyTextTool() {
             background: colors.bg,
             color: colors.text,
           }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlurCapture={(e) => { e.target.style.outline = 'none'; }}
+          onFocus={onFocusRing}
+          onBlurCapture={onBlurRing}
         />
         <p style={{ ...micro, color: colors.muted, marginTop: '0.25rem' }}>1〜5000文字</p>
       </div>

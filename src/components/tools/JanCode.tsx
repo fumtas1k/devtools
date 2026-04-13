@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { CopyButton } from '../ui/CopyButton';
+import { ToggleGroup } from '../ui/ToggleGroup';
+import { InputField } from '../ui/InputField';
+import { DownloadButtonGroup } from '../ui/DownloadButtonGroup';
 import { calcJan, validateJanInput, type JanMode } from '../../utils/jan-code';
-import { bodyEmphasis, caption, shadows, colors } from '../../utils/styles';
+import { bodyEmphasis, caption, colors } from '../../utils/styles';
+import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '../../utils/download';
 
 export function JanCodeTool() {
   const [mode, setMode] = useState<JanMode>('jan13');
@@ -48,38 +52,12 @@ export function JanCodeTool() {
 
   const downloadSvg = () => {
     if (!svgRef.current) return;
-    const svg = svgRef.current.outerHTML;
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `jan-${result!.fullCode}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadSvgFile(svgRef.current.outerHTML, `jan-${result!.fullCode}.svg`);
   };
 
   const downloadPng = () => {
     if (!svgRef.current) return;
-    const svg = svgRef.current;
-    const { width, height } = svg.getBoundingClientRect();
-    const canvas = document.createElement('canvas');
-    const scale = 2; // Retina
-    canvas.width = width * scale;
-    canvas.height = height * scale;
-    const ctx = canvas.getContext('2d')!;
-    ctx.scale(scale, scale);
-    const img = new Image();
-    const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = `jan-${result!.fullCode}.png`;
-      a.click();
-    };
-    img.src = url;
+    downloadPngFromSvgElement(svgRef.current, `jan-${result!.fullCode}.png`);
   };
 
   const SAMPLE: Record<JanMode, string> = {
@@ -90,76 +68,30 @@ export function JanCodeTool() {
   return (
     <div className="space-y-6">
       {/* モード切替 */}
-      <div
-        className="flex gap-1 rounded p-1"
-        role="tablist"
-        aria-label="JANコードモード"
-        style={{ background: colors.bgSubtle }}
-      >
-        {(['jan13', 'jan8'] as JanMode[]).map((m) => (
-          <button
-            key={m}
-            role="tab"
-            aria-selected={mode === m}
-            onClick={() => handleModeChange(m)}
-            className="flex-1 rounded py-1.5 transition-colors"
-            style={{
-              ...caption,
-              fontWeight: 700,
-              background: mode === m ? colors.bg : 'transparent',
-              color: mode === m ? colors.text : colors.muted,
-              boxShadow: mode === m ? shadows.tab : 'none',
-            }}
-          >
-            {m === 'jan13' ? 'JAN-13' : 'JAN-8'}
-          </button>
-        ))}
-      </div>
+      <ToggleGroup
+        options={[
+          { value: 'jan13', label: 'JAN-13' },
+          { value: 'jan8', label: 'JAN-8' },
+        ]}
+        value={mode}
+        onChange={handleModeChange}
+        ariaLabel="JANコードモード"
+      />
 
       {/* 入力 */}
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <label htmlFor="jan-input" style={{ ...bodyEmphasis, color: colors.text }}>
-            {mode === 'jan13' ? '12桁を入力' : '7桁を入力'}
-          </label>
-          <button
-            onClick={() => handleInput(SAMPLE[mode])}
-            style={{ ...caption, color: colors.link }}
-            className="hover:underline"
-          >
-            サンプル入力
-          </button>
-        </div>
-        <input
-          id="jan-input"
-          type="text"
-          inputMode="numeric"
-          maxLength={mode === 'jan13' ? 12 : 7}
-          value={input}
-          onChange={(e) => handleInput(e.target.value)}
-          placeholder={mode === 'jan13' ? '490123456789（12桁）' : '4901234（7桁）'}
-          className="w-full rounded px-3 py-2 font-mono"
-          style={{
-            ...caption,
-            border: `1px solid ${error ? colors.error : colors.borderInput}`,
-            outline: 'none',
-            background: colors.bg,
-            color: colors.text,
-          }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlur={(e) => { e.target.style.outline = 'none'; }}
-          aria-describedby={error ? 'jan-error' : 'jan-hint'}
-        />
-        {error ? (
-          <p id="jan-error" role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
-            {error}
-          </p>
-        ) : (
-          <p id="jan-hint" style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
-            {input.length} / {mode === 'jan13' ? 12 : 7} 桁
-          </p>
-        )}
-      </div>
+      <InputField
+        id="jan-input"
+        label={mode === 'jan13' ? '12桁を入力' : '7桁を入力'}
+        value={input}
+        onChange={handleInput}
+        placeholder={mode === 'jan13' ? '490123456789（12桁）' : '4901234（7桁）'}
+        inputMode="numeric"
+        maxLength={mode === 'jan13' ? 12 : 7}
+        error={error || undefined}
+        hint={`${input.length} / ${mode === 'jan13' ? 12 : 7} 桁`}
+        onSampleClick={() => handleInput(SAMPLE[mode])}
+        mono
+      />
 
       {/* 結果 */}
       {result && (
@@ -221,22 +153,7 @@ export function JanCodeTool() {
             style={{ border: `1px solid ${colors.border}`, background: colors.bg }}
           >
             <svg ref={svgRef} aria-label={`JANコード ${result.fullCode} のバーコード`} />
-            <div className="flex gap-2">
-              <button
-                onClick={downloadSvg}
-                className="rounded px-4 py-2 font-bold transition-colors hover:bg-blue-50"
-                style={{ ...caption, fontWeight: 700, border: `1px solid ${colors.primary}`, color: colors.primary }}
-              >
-                SVGダウンロード
-              </button>
-              <button
-                onClick={downloadPng}
-                className="rounded px-4 py-2 font-bold text-white transition-colors hover:opacity-90"
-                style={{ ...caption, fontWeight: 700, background: colors.primary }}
-              >
-                PNGダウンロード
-              </button>
-            </div>
+            <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
           </div>
         </div>
       )}

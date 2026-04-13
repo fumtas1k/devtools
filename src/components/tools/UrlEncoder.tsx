@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { CopyButton } from '../ui/CopyButton';
-import { bodyEmphasis, caption, colors, shadows } from '../../utils/styles';
+import { ToggleGroup } from '../ui/ToggleGroup';
+import { InputField } from '../ui/InputField';
+import { bodyEmphasis, caption, colors } from '../../utils/styles';
 import { encodeUrl, decodeUrl, validateDecodeInput } from '../../utils/url-encode';
 
 type Mode = 'encode' | 'decode';
@@ -41,65 +43,30 @@ export function UrlEncoderTool() {
 
   return (
     <div className="space-y-4">
-      {/* モード切替: Filter/Search Button style */}
-      <div className="flex gap-1 rounded-lg p-1" style={{ background: colors.bgSubtle }}>
-        {(['encode', 'decode'] as Mode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => handleModeChange(m)}
-            aria-pressed={mode === m}
-            className="flex-1 rounded-lg py-1.5 transition-colors"
-            style={{
-              ...caption,
-              fontWeight: 500,
-              background: mode === m ? colors.bg : 'transparent',
-              color: mode === m ? colors.text : colors.muted,
-              boxShadow: mode === m ? shadows.tab : 'none',
-            }}
-          >
-            {m === 'encode' ? 'エンコード' : 'デコード'}
-          </button>
-        ))}
-      </div>
+      {/* モード切替 */}
+      <ToggleGroup
+        options={[
+          { value: 'encode', label: 'エンコード' },
+          { value: 'decode', label: 'デコード' },
+        ]}
+        value={mode}
+        onChange={handleModeChange}
+        ariaLabel="変換モード"
+      />
 
       {/* 入力 */}
-      <div>
-        <div className="mb-1 flex items-center justify-between">
-          <label htmlFor="url-input" style={{ ...bodyEmphasis, color: colors.text }}>
-            入力
-          </label>
-          <button
-            onClick={() => handleInput(SAMPLE[mode])}
-            style={{ ...caption, color: colors.link }}
-            className="hover:underline"
-          >
-            サンプル入力
-          </button>
-        </div>
-        <textarea
-          id="url-input"
-          value={input}
-          onInput={(e) => handleInput((e.target as HTMLTextAreaElement).value)}
-          placeholder={mode === 'encode' ? 'https://example.com/検索?q=テスト' : 'https%3A%2F%2Fexample.com%2F...'}
-          rows={4}
-          className="w-full rounded-lg px-3 py-2 font-mono"
-          style={{
-            ...caption,
-            border: `1px solid ${error ? colors.error : colors.borderInput}`,
-            outline: 'none',
-            background: colors.bg,
-            color: colors.text,
-          }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlur={(e) => { e.target.style.outline = 'none'; }}
-          aria-describedby={error ? 'url-error' : undefined}
-        />
-        {error && (
-          <p id="url-error" role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
-            {error}
-          </p>
-        )}
-      </div>
+      <InputField
+        id="url-input"
+        label="入力"
+        value={input}
+        onChange={handleInput}
+        placeholder={mode === 'encode' ? 'https://example.com/検索?q=テスト' : 'https%3A%2F%2Fexample.com%2F...'}
+        multiline
+        rows={4}
+        error={error || undefined}
+        onSampleClick={() => handleInput(SAMPLE[mode])}
+        mono
+      />
 
       {/* 出力 */}
       <div>

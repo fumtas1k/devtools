@@ -1,31 +1,8 @@
 import { useState, useCallback } from 'react';
 import { ulid } from 'ulidx';
 import { CopyButton } from '../ui/CopyButton';
-import { copyToClipboard } from '../../utils/clipboard';
-import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
-
-function RowCopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleClick = async () => {
-    const ok = await copyToClipboard(text);
-    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
-  };
-  return (
-    <button
-      onClick={handleClick}
-      aria-label={copied ? 'コピーしました' : 'コピー'}
-      className="rounded-md transition-colors"
-      style={{
-        fontSize: '0.75rem', padding: '0.25rem 0.5rem',
-        background: copied ? colors.successBg : colors.bgSubtle,
-        color: copied ? colors.success : colors.muted,
-        border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-      }}
-    >
-      {copied ? '✓' : '📋'}
-    </button>
-  );
-}
+import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '../../utils/styles';
+import { useClampedInput } from '../../hooks/useClampedInput';
 
 
 interface UlidRow {
@@ -46,37 +23,13 @@ function generateRows(count: number): UlidRow[] {
 type QuoteStyle = 'none' | 'single' | 'double';
 
 export function UlidGeneratorTool() {
-  const [count, setCount] = useState(10);
-  const [countInput, setCountInput] = useState('10');
+  const { value: count, inputStr: countInput, handleChange: handleCountChange, handleBlur: handleCountBlur } = useClampedInput(10, 1, 100);
   const [rows, setRows] = useState<UlidRow[]>([]);
   const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
 
   const generate = useCallback(() => {
-    const n = Math.min(100, Math.max(1, count));
-    setRows(generateRows(n));
+    setRows(generateRows(count));
   }, [count]);
-
-  const handleCountChange = (value: string) => {
-    setCountInput(value);
-    const n = parseInt(value, 10);
-    if (!isNaN(n) && n >= 1 && n <= 100) {
-      setCount(n);
-    }
-  };
-
-  const handleCountBlur = () => {
-    const n = parseInt(countInput, 10);
-    if (isNaN(n) || n < 1) {
-      setCount(1);
-      setCountInput('1');
-    } else if (n > 100) {
-      setCount(100);
-      setCountInput('100');
-    } else {
-      setCount(n);
-      setCountInput(String(n));
-    }
-  };
 
   const allUlids = rows.map((r, i) => {
     const isLast = i === rows.length - 1;
@@ -114,13 +67,8 @@ export function UlidGeneratorTool() {
               background: colors.bg,
               color: colors.text,
             }}
-            onFocus={(e) => {
-              e.target.style.outline = `2px solid ${colors.link}`;
-              e.target.style.outlineOffset = '2px';
-            }}
-            onBlurCapture={(e) => {
-              e.target.style.outline = 'none';
-            }}
+            onFocus={onFocusRing}
+            onBlurCapture={onBlurRing}
             aria-describedby="ulid-count-hint"
           />
           <button
@@ -133,13 +81,8 @@ export function UlidGeneratorTool() {
               color: '#ffffff',
               border: 'none',
             }}
-            onFocus={(e) => {
-              (e.target as HTMLButtonElement).style.outline = `2px solid ${colors.link}`;
-              (e.target as HTMLButtonElement).style.outlineOffset = '2px';
-            }}
-            onBlur={(e) => {
-              (e.target as HTMLButtonElement).style.outline = 'none';
-            }}
+            onFocus={onFocusRing}
+            onBlur={onBlurRing}
           >
             生成
           </button>
@@ -308,11 +251,14 @@ export function UlidGeneratorTool() {
                       {row.timestamp}
                     </td>
                     <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                      <RowCopyButton text={
-                        quoteStyle === 'double' ? `"${row.id}"` :
-                        quoteStyle === 'single' ? `'${row.id}'` :
-                        row.id
-                      } />
+                      <CopyButton
+                        text={
+                          quoteStyle === 'double' ? `"${row.id}"` :
+                          quoteStyle === 'single' ? `'${row.id}'` :
+                          row.id
+                        }
+                        compact
+                      />
                     </td>
                   </tr>
                 ))}

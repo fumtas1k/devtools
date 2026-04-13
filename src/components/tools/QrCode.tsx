@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import qrcode from 'qrcode-generator';
 import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
+import { InputField } from '../ui/InputField';
+import { ErrorMessage } from '../ui/ErrorMessage';
+import { downloadSvgElement } from '../../utils/download';
 
 type ErrorLevel = 'L' | 'M' | 'Q' | 'H';
 
@@ -50,47 +53,22 @@ export function QrCodeGenerator() {
     if (!containerRef.current) return;
     const svgEl = containerRef.current.querySelector('svg');
     if (!svgEl) return;
-    const serializer = new XMLSerializer();
-    const svgStr = serializer.serializeToString(svgEl);
-    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'qrcode.svg';
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadSvgElement(svgEl, 'qrcode.svg');
   };
 
   return (
     <div className="space-y-6">
       {/* テキスト入力 */}
-      <div>
-        <label
-          htmlFor="qr-text"
-          style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}
-        >
-          テキスト / URL
-        </label>
-        <textarea
-          id="qr-text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="https://example.com"
-          rows={3}
-          className="w-full rounded-lg px-3 py-2"
-          style={{
-            ...caption,
-            border: `1px solid ${colors.borderInput}`,
-            outline: 'none',
-            background: colors.bg,
-            color: colors.text,
-            resize: 'vertical',
-            fontFamily: 'inherit',
-          }}
-          onFocus={(e) => { e.target.style.outline = `2px solid ${colors.link}`; e.target.style.outlineOffset = '2px'; }}
-          onBlur={(e) => { e.target.style.outline = 'none'; }}
-        />
-      </div>
+      <InputField
+        id="qr-text"
+        label="テキスト / URL"
+        value={text}
+        onChange={setText}
+        placeholder="https://example.com"
+        multiline
+        rows={3}
+        resize
+      />
 
       {/* 誤り訂正レベル */}
       <div>
@@ -129,9 +107,7 @@ export function QrCodeGenerator() {
       </div>
 
       {/* エラー */}
-      {error && (
-        <p style={{ ...caption, color: colors.error }}>{error}</p>
-      )}
+      {error && <ErrorMessage message={error} />}
 
       {/* QRコード表示 */}
       {svgHtml && (

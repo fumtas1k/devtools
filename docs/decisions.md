@@ -336,3 +336,39 @@ TypeScript の警告がコミット前に検出されず、複数ファイル・
 - ✅ `.astro`・`.tsx`・`.ts` すべてをコミット前に型チェックできる
 - ✅ エラーのみブロック、hint/warning は通過させる（開発速度を損なわない）
 - ⚠️ `astro check` は初回起動がやや遅い（数秒）
+
+---
+
+## [013] 共通 UI コンポーネントを `src/components/ui/` に集約
+
+**2026-04-13 | ステータス: 採用**
+
+### 背景
+ツール数が7件に増えた段階で、各ツールコンポーネントに同じパターンが重複していた。
+
+- `label + input/textarea + error表示 + hint表示 + サンプルボタン` の組み合わせ（5ツールで重複）
+- `SVGダウンロード + PNGダウンロード` のボタンペア（JanCode・Gs1Databar で重複）
+- フォーカスリングハンドラ（`onFocusRing`/`onBlurRing`）の直書き（全ツールで重複）
+- `role="alert"` エラー表示の `<p>` タグ（複数ツールで重複）
+
+### 決断
+以下の共通コンポーネントを `src/components/ui/` に追加する。
+
+| コンポーネント | 責務 |
+|---|---|
+| `InputField` | label・input または textarea・error/hint・サンプルボタンを統合したフォームフィールド |
+| `ErrorMessage` | `role="alert"` 付きエラー表示。`id` を指定すると `aria-describedby` と連動できる |
+| `DownloadButtonGroup` | SVG/PNGダウンロードのボタンペア。`onDownloadPng` は省略可 |
+
+**新規ツールを作るときは、生の `<input>` / `<textarea>` ではなく `InputField` を使うこと。**
+
+### 却下した選択肢
+- **共通化せずに継続**: ツール数が増えるほど修正箇所が増える。フォーカスリングのスタイル変更1件でも全ツールを触ることになる。
+- **Astro コンポーネントで実装**: インタラクション（エラー状態・サンプル入力ボタン）を含むため、React コンポーネントとして実装するほうが自然。
+- **shadcn/ui 等の UI ライブラリ導入**: `.npmrc` の `min-release-age=7` 制約があり追加パッケージのリスクがある。DADSカラーシステムとの統合も複雑になる。
+
+### 結果・トレードオフ
+- ✅ フォームフィールド周りの変更が `InputField.tsx` 1ファイルの修正で全ツールに反映される
+- ✅ アクセシビリティ属性（`aria-describedby`・`aria-invalid`・`role="alert"`）の抜け漏れがなくなる
+- ✅ 各ツールコンポーネントのコード量が約 30〜40 行削減された
+- ⚠️ `InputField` のラベルスタイルは `bodyEmphasis`（17px Bold）に固定されるため、それと異なるスタイルが必要な場合は生の要素を使うこと
