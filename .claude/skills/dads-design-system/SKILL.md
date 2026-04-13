@@ -71,7 +71,8 @@ description: デジタル庁デザインシステム（DADS）準拠でウェブ
   /* === 機能カラー === */
   --color-link:        #2563EB;  /* リンクテキスト（青） */
   --color-link-visited:#7C3AED;  /* 訪問済みリンク（紫、赤み追加で青と区別） */
-  --color-focus:       #2563EB;  /* フォーカスリング */
+  --color-focus-outline: #000000;  /* フォーカスリング: アウトライン（黒） */
+  --color-focus-ring:    #FFD43D;  /* フォーカスリング: リング（DADS yellow-300） */
 }
 ```
 
@@ -96,8 +97,9 @@ description: デジタル庁デザインシステム（DADS）準拠でウェブ
   background: var(--blue-900);  /* さらに暗い */
 }
 .btn-primary:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 4px solid var(--color-focus-outline);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 ```
 
@@ -261,8 +263,9 @@ a:hover {
   text-decoration: none; /* or underline維持 */
 }
 a:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 4px solid var(--color-focus-outline);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 ```
 
@@ -291,7 +294,7 @@ a:focus-visible {
 
 - [ ] テキストコントラスト比 4.5:1以上
 - [ ] 非テキストUI要素のコントラスト比 3:1以上
-- [ ] フォーカスインジケーターが視覚的に明確
+- [ ] フォーカスインジケーターが視覚的に明確（黒アウトライン4px＋黄色リング）
 - [ ] 色だけで情報を伝えていない
 - [ ] フォントサイズ14px以上（16px以上推奨）
 - [ ] タッチターゲット 44×44px以上
@@ -329,15 +332,107 @@ a:focus-visible {
 </html>
 ```
 
-### React（Tailwind不使用・CSS変数版）の基本
+### フォーカスリング（DADS標準）
 
-ReactでTailwindを使わない場合は、上記CSS変数を`index.css`に定義し、コンポーネントから参照する。
+DADS標準のフォーカスリングは **黒アウトライン4px＋黄色リング（yellow-300）**。  
+公式コンポーネント（Button.tsx）の実装から確認済み。
 
-Tailwind環境では、CSS変数の値をtailwind.config.jsのextendに設定して使用する。
+```tsx
+// Tailwind クラスで実装する場合（@digital-go-jp/tailwind-theme-plugin 必須）
+// tailwind-theme-plugin の yellow-300 = #FFD43D（標準Tailwindの #FDE047 とは異なる）
+<button className="focus-visible:outline focus-visible:outline-4 focus-visible:outline-black focus-visible:outline-offset-[calc(2/16*1rem)] focus-visible:ring-[calc(2/16*1rem)] focus-visible:ring-yellow-300">
+  ボタン
+</button>
+```
+
+```css
+/* CSS で直接書く場合 */
+:focus-visible {
+  outline: 4px solid #000000;
+  outline-offset: 0.125rem;
+  box-shadow: 0 0 0 0.125rem #FFD43D; /* DADS yellow-300 */
+}
+```
+
+> このプロジェクト固有の実装（青フォーカスリング）については「11. このプロジェクト固有の実装パターン」を参照。
 
 ---
 
-## 10. このプロジェクト固有の実装パターン
+## 10. コードスニペットライブラリ（npm）
+
+デジタル庁が公式に提供する React コンポーネントのサンプル集。
+
+- **GitHub**: https://github.com/digital-go-jp/design-system-example-components-react
+- **Storybook**: https://design.digital.go.jp/dads/react/
+- **パッケージ**: `@digital-go-jp/design-system-example-components-react` (MIT, v2.7.0)
+
+> ⚠️ "コードスニペット集" であり完成品ライブラリではない。プロジェクトの要件に合わせて自由に拡張して使うことが前提（README明記）。
+
+### 前提依存
+
+```sh
+npm install @digital-go-jp/design-system-example-components-react \
+            @digital-go-jp/tailwind-theme-plugin \
+            react-aria-components
+```
+
+```js
+// tailwind.config.js
+const dadsPlugin = require('@digital-go-jp/tailwind-theme-plugin');
+module.exports = {
+  plugins: [dadsPlugin],
+};
+```
+
+`@digital-go-jp/tailwind-theme-plugin` が Tailwind に DADS 独自トークン（`text-blue-900`・`text-solid-gray-600`・`text-oln-16B-100` 等）を追加する。標準 Tailwind とは別のカラーネームスペースになる点に注意。
+
+### 利用可能なコンポーネント（35種）
+
+| カテゴリ | コンポーネント |
+|---|---|
+| フォーム | Input, Textarea, Label, Checkbox, Radio, Select, FileUpload |
+| フォームヘルパー | ErrorText, SupportText, RequirementBadge, Legend |
+| ボタン | Button（solid-fill / outline / text × lg/md/sm/xs） |
+| ナビゲーション | Breadcrumbs, HamburgerMenuButton, LanguageSelector |
+| バッジ・ラベル | StatusBadge, ChipLabel |
+| 通知 | NotificationBanner, EmergencyBanner |
+| レイアウト | Divider, Dl, List, Blockquote, Table |
+| コンテンツ | Accordion, Disclosure, Drawer, Carousel |
+| 日付 | Calendar, DatePicker, SeparatedDatePicker |
+| テキスト | Heading, Link, UtilityLink |
+| ユーティリティ | Slot（asChild パターン） |
+
+Calendar・DatePicker・Carousel 等の複雑なインタラクションは内部で `react-aria-components` を使用。
+
+### 使用例
+
+```tsx
+import {
+  Button, Input, Label, ErrorText, SupportText
+} from '@digital-go-jp/design-system-example-components-react';
+
+// フォームフィールド
+<div className="flex flex-col gap-2">
+  <Label htmlFor="email">メールアドレス <RequirementBadge>必須</RequirementBadge></Label>
+  <SupportText>登録済みのメールアドレスを入力してください</SupportText>
+  <Input id="email" type="email" isError={hasError} />
+  {hasError && <ErrorText>有効なメールアドレスを入力してください</ErrorText>}
+</div>
+
+// ボタン
+<Button size="md" variant="solid-fill">送信する</Button>
+<Button size="md" variant="outline">キャンセル</Button>
+```
+
+### 未実装コンポーネントへの対応
+
+このライブラリにないコンポーネントは:
+1. `react-aria-components` を使って実装（アクセシビリティを保証）
+2. [ARIA Authoring Practices Guide (APG)](https://www.w3.org/WAI/ARIA/apg/patterns/) を参考にスクラッチ実装
+
+---
+
+## 11. このプロジェクト固有の実装パターン
 
 ### カラー管理の構造
 
@@ -379,13 +474,15 @@ import { colors, caption, bodyEmphasis } from '../../utils/styles';
 | `colors.text` | `--color-text` | 本文テキスト |
 | `colors.muted` | `--color-muted` | ヒント・補足テキスト |
 | `colors.primary` | `--color-primary` | CTA・強調 |
-| `colors.link` | `--color-link` | リンク・フォーカスリング |
+| `colors.primaryBg` | `--color-background` | セクション背景（blue-50相当） |
+| `colors.link` | `--color-link` | リンク・このプロジェクトの青フォーカスリング |
 | `colors.bg` | `--color-bg` | 基本背景 |
 | `colors.bgSurface` | `--color-bg-surface` | カード・パネル背景 |
 | `colors.bgSubtle` | `--color-bg-subtle` | ヘッダー・subtle背景 |
 | `colors.border` | `--color-border` | 区切り線・カード枠 |
 | `colors.borderInput` | `--color-border-input` | 入力欄の枠線 |
-| `colors.error` | `--color-error` | エラーテキスト・枠線 |
+| `colors.error` | `--color-error` | エラー枠線 |
+| `colors.errorText` | `--color-error-text` | エラーテキスト |
 | `colors.errorBg` | `--color-error-bg` | エラー背景 |
 | `colors.warning` | `--color-warning` | 警告テキスト（amber-800、WCAG AA 確保） |
 | `colors.warningBg` | `--color-warning-bg` | 警告背景 |
@@ -405,16 +502,48 @@ import { colors, caption, bodyEmphasis } from '../../utils/styles';
 - **Tailwind**: レイアウト・余白・フレックス・グリッド（`flex`, `gap-4`, `rounded`, `space-y-4` 等）
 - **`colors.*` インラインスタイル**: 色（Tailwindのカラークラスは使わない）
 
-### フォーカスリング
+### フォーカスリング（このプロジェクト固有）
+
+> ⚠️ **DADS標準との差分**: DADS本来は「黒アウトライン4px＋黄色リング」だが、このプロジェクトは採用前に青フォーカスリングを実装済みのため変更していない。
+
+このプロジェクトでは `onFocusRing` / `onBlurRing` を `src/utils/styles.ts` からインポートして使う。`InputField` コンポーネントを使う場合は内部で処理されるため不要。
 
 ```tsx
-const focusRingOn = (e: React.FocusEvent<HTMLElement>) => {
-  e.target.style.outline = `2px solid ${colors.link}`;
-  e.target.style.outlineOffset = '2px';
-};
-const focusRingOff = (e: React.FocusEvent<HTMLElement>) => {
-  e.target.style.outline = 'none';
-};
+import { onFocusRing, onBlurRing } from '../../utils/styles';
 
-<input onFocus={focusRingOn} onBlur={focusRingOff} />
+// InputField を使わない生の <input> にのみ付与する
+<input onFocus={onFocusRing} onBlur={onBlurRing} />
 ```
+
+### 共通 UI コンポーネント（`src/components/ui/`）
+
+新規ツール作成時はこれらを使うこと。生の `<input>` / `<textarea>` / エラー `<p>` は原則使わない。
+
+| コンポーネント | ファイル | 用途 |
+|---|---|---|
+| `InputField` | `ui/InputField.tsx` | label・input または textarea・error/hint・サンプルボタンを統合。`multiline` `mono` `resize` `readOnly` 等のプロパティあり |
+| `ErrorMessage` | `ui/ErrorMessage.tsx` | `role="alert"` 付きエラー表示。`id` を渡すと `aria-describedby` と連動 |
+| `DownloadButtonGroup` | `ui/DownloadButtonGroup.tsx` | SVG/PNGダウンロードボタンペア。`onDownloadPng` は省略可 |
+| `CopyButton` | `ui/CopyButton.tsx` | クリップボードコピー。`compact` プロパティでアイコンのみ表示（テーブル行内用） |
+| `ToggleGroup<T>` | `ui/ToggleGroup.tsx` | モード切替タブ UI。`options`・`value`・`onChange`・`ariaLabel` を受け取るジェネリックコンポーネント |
+
+```tsx
+import { InputField } from '../ui/InputField';
+import { DownloadButtonGroup } from '../ui/DownloadButtonGroup';
+import { ErrorMessage } from '../ui/ErrorMessage';
+import { CopyButton } from '../ui/CopyButton';
+import { ToggleGroup } from '../ui/ToggleGroup';
+```
+
+### 共通フック（`src/hooks/`）
+
+| フック | ファイル | 用途 |
+|---|---|---|
+| `useClampedInput` | `hooks/useClampedInput.ts` | 数値入力の min/max クランプ処理。`{ value, inputStr, handleChange, handleBlur }` を返す |
+
+```tsx
+import { useClampedInput } from '../../hooks/useClampedInput';
+
+const { value: count, inputStr: countInput, handleChange, handleBlur } = useClampedInput(10, 1, 100);
+```
+
