@@ -136,9 +136,17 @@ export function JsonXmlTool() {
 
         {/* 出力 */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between" style={{ marginBottom: '0.25rem' }}>
+          <div style={{ position: 'relative', marginBottom: '0.25rem', display: 'flex', alignItems: 'center' }}>
             <label htmlFor="json-xml-output" style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
-            <span style={{ visibility: output ? 'visible' : 'hidden' }}>
+            <span
+              style={{
+                visibility: output ? 'visible' : 'hidden',
+                position: 'absolute',
+                right: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+            >
               <CopyButton text={output} label="コピー" />
             </span>
           </div>
