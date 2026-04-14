@@ -1,0 +1,41 @@
+name: main → develop 自動PR作成
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: main → develop のPRを作成（なければ）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh pr list \
+            --base develop \
+            --head main \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -n "$EXISTING" ]; then
+            echo "既存のPR #${EXISTING} があるためスキップします"
+            exit 0
+          fi
+
+          BODY=$(printf '## 概要\n\nmain ブランチへのマージをトリガーに自動生成されたPRです。\nmain の変更を develop へ取り込みます。\n\n> このPRは GitHub Actions により自動作成されました。')
+
+          gh pr create \
+            --base develop \
+            --head main \
+            --title "chore: main の変更を develop へ同期" \
+            --body "$BODY"
