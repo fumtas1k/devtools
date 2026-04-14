@@ -11,6 +11,11 @@ function triggerDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** テキストファイルをダウンロードする */
+export function downloadText(content: string, filename: string, mimeType = 'text/plain'): void {
+  triggerDownload(new Blob([content], { type: `${mimeType};charset=utf-8` }), filename);
+}
+
 /** SVG文字列をファイルとしてダウンロードする */
 export function downloadSvg(svgContent: string, filename: string): void {
   triggerDownload(new Blob([svgContent], { type: 'image/svg+xml' }), filename);

@@ -1,0 +1,11 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import { JsonCsvTool } from '@/components/tools/JsonCsv';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'json-csv')!;
+---
+
+<ToolLayout tool={tool}>
+  <JsonCsvTool client:load />
+</ToolLayout>

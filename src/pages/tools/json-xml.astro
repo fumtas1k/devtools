@@ -1,0 +1,11 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import { JsonXmlTool } from '@/components/tools/JsonXml';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'json-xml')!;
+---
+
+<ToolLayout tool={tool}>
+  <JsonXmlTool client:load />
+</ToolLayout>

@@ -50,6 +50,18 @@ export const tools: Tool[] = [
     description: 'GTIN-14からGS1 DataBar Limited合成シンボルを生成します',
     category: 'generate',
   },
+  {
+    slug: 'json-xml',
+    name: 'JSON / XML 変換',
+    description: 'JSONとXMLを相互変換します。ルートタグ名指定対応',
+    category: 'convert',
+  },
+  {
+    slug: 'json-csv',
+    name: 'JSON / CSV 変換',
+    description: 'JSONとCSVを相互変換します。ネストオブジェクトはドット記法でフラット化',
+    category: 'convert',
+  },
 ];
 
 export const categoryLabel: Record<ToolCategory, string> = {
