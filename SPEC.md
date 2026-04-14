@@ -40,7 +40,8 @@
 | UIコンポーネント | **React 19** (Astro Islands) | ツール部分のみインタラクティブ             |
 | スタイリング     | **Tailwind CSS 4**           | ユーティリティファーストで高速開発         |
 | ビルド           | Astro built-in (Vite 7)      | 高速ビルド                                 |
-| テスト           | **Vitest**                   | Vite 設定共有でゼロコンフィグ              |
+| テスト（ユニット）| **Vitest**                   | Vite 設定共有でゼロコンフィグ              |
+| テスト（E2E）    | **Playwright**               | ブラウザ上の実動作を検証するリグレッション  |
 | パッケージ管理   | **npm**                      | 標準・安定                                 |
 | 言語             | **TypeScript**               | 型安全性                                   |
 
@@ -69,6 +70,7 @@
 | `@fontsource/noto-sans-jp` | フォントセルフホスト                         | 全ページ共通    |
 | `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency） | 開発ツール共通  |
 | `typescript`               | TypeScript コンパイラ（devDependency）       | 開発ツール共通  |
+| `@playwright/test`         | E2Eリグレッションテスト（devDependency）     | 開発ツール共通  |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -80,11 +82,14 @@ devtools/
 ├── tsconfig.json
 ├── package.json
 ├── vitest.config.ts
+├── playwright.config.ts
 ├── .github/
 │   └── workflows/
 │       └── test.yml
 ├── docs/
 │   └── decisions.md        # 設計・実装の決断ログ
+├── tests/
+│   └── e2e/                # Playwright E2E テスト
 ├── public/
 │   ├── favicon.svg
 │   ├── og-image.png
@@ -605,10 +610,12 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 
 ### Phase 2: 拡充
 
+- [x] JSON / XML 変換（`json-xml`）
+- [x] JSON / CSV 変換（`json-csv`）
+- [x] Playwright E2E リグレッションテスト導入（`tests/e2e/`）
 - [ ] ダークモード（DADS 準拠で再設計）
 - [ ] ツール追加
-  - [ ] JSON / XML 変換（`json-xml`）
-  - [ ] JSON / CSV 変換（`json-csv`）
+  - [ ] JSON整形、Base64、Diff、パスワード生成、ハッシュ、文字数カウント等
   - [ ] JSON整形、Base64、Diff、パスワード生成、ハッシュ、文字数カウント等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
@@ -627,8 +634,8 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 ### 10.1 テスト
 
 - **Vitest**: ユニットテスト（`src/utils/__tests__/`）
+- **Playwright**: E2Eリグレッションテスト（`tests/e2e/`）— 各ツールの入出力動作を検証
 - **GitHub Actions**: PR・push・マージ時に自動実行
-- Playwright（E2E、Phase 2以降）
 
 ### 10.2 コード品質
 
