@@ -3,3 +3,5 @@ dist
 .astro
 .playwright-mcp
 .DS_Store
+test-results/
+playwright-report/
