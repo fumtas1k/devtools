@@ -138,7 +138,9 @@ export function JsonXmlTool() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between" style={{ marginBottom: '0.25rem' }}>
             <label htmlFor="json-xml-output" style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
-            {output && <CopyButton text={output} label="コピー" />}
+            <span style={{ visibility: output ? 'visible' : 'hidden' }}>
+              <CopyButton text={output} label="コピー" />
+            </span>
           </div>
           <textarea
             id="json-xml-output"
