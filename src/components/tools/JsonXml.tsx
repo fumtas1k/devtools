@@ -116,9 +116,9 @@ export function JsonXmlTool() {
       )}
 
       {/* 入力・出力（横並び） */}
-      <div className="flex gap-4" style={{ alignItems: 'flex-start' }}>
+      <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
         {/* 入力 */}
-        <div className="flex-1 min-w-0">
+        <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="json-xml-input"
             label="入力"
@@ -135,18 +135,10 @@ export function JsonXmlTool() {
         </div>
 
         {/* 出力 */}
-        <div className="flex-1 min-w-0">
-          <div style={{ position: 'relative', marginBottom: '0.75rem', display: 'flex', alignItems: 'center' }}>
+        <div className="w-full md:flex-1 min-w-0">
+          <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem' }}>
             <label htmlFor="json-xml-output" style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
-            <span
-              style={{
-                visibility: output ? 'visible' : 'hidden',
-                position: 'absolute',
-                right: 0,
-                top: '50%',
-                transform: 'translateY(-50%)',
-              }}
-            >
+            <span style={{ visibility: output ? 'visible' : 'hidden' }}>
               <CopyButton text={output} label="コピー" />
             </span>
           </div>
