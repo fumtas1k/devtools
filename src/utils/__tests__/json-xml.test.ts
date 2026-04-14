@@ -3,27 +3,27 @@ import { jsonToXml, xmlToJson } from '../json-xml';
 
 describe('jsonToXml', () => {
   it('シンプルなオブジェクトをXMLに変換する', () => {
-    const result = jsonToXml('{"name":"太郎","age":30}', 'user');
+    const result = jsonToXml('{"name":"太郎","age":30}');
     expect(result).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-    expect(result).toContain('<user>');
+    expect(result).toContain('<root>');
     expect(result).toContain('<name>太郎</name>');
     expect(result).toContain('<age>30</age>');
-    expect(result).toContain('</user>');
+    expect(result).toContain('</root>');
   });
 
-  it('デフォルトルートタグ（空文字）はrootになる', () => {
-    const result = jsonToXml('{"key":"value"}', '');
+  it('ルートタグは常に root になる', () => {
+    const result = jsonToXml('{"key":"value"}');
     expect(result).toContain('<root>');
   });
 
   it('@_プレフィックスのキーは属性として出力される', () => {
-    const result = jsonToXml('{"item":{"@_id":"1","#text":"テスト"}}', 'root');
+    const result = jsonToXml('{"item":{"@_id":"1","#text":"テスト"}}');
     expect(result).toContain('id="1"');
     expect(result).toContain('テスト');
   });
 
   it('不正なJSONでエラーを投げる', () => {
-    expect(() => jsonToXml('{invalid}', 'root')).toThrow('有効なJSONではありません');
+    expect(() => jsonToXml('{invalid}')).toThrow('有効なJSONではありません');
   });
 });
 

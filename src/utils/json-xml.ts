@@ -16,7 +16,7 @@ const BUILDER_OPTIONS = {
 };
 
 /** JSON文字列 → XML文字列。失敗時は Error を投げる */
-export function jsonToXml(jsonStr: string, rootTag: string): string {
+export function jsonToXml(jsonStr: string): string {
   let parsed: unknown;
   try {
     parsed = JSON.parse(jsonStr);
@@ -24,9 +24,8 @@ export function jsonToXml(jsonStr: string, rootTag: string): string {
     throw new Error('有効なJSONではありません');
   }
 
-  const tag = rootTag.trim() || 'root';
   const builder = new XMLBuilder(BUILDER_OPTIONS);
-  const xml: string = builder.build({ [tag]: parsed });
+  const xml: string = builder.build({ root: parsed });
   return `<?xml version="1.0" encoding="UTF-8"?>\n${xml}`;
 }
 

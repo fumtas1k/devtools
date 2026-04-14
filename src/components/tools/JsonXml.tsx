@@ -36,7 +36,6 @@ const SAMPLE: Record<Mode, string> = {
 export function JsonXmlTool() {
   const [mode, setMode] = useState<Mode>('json2xml');
   const [input, setInput] = useState('');
-  const [rootTag, setRootTag] = useState('root');
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
 
@@ -48,8 +47,7 @@ export function JsonXmlTool() {
     }
     const timer = setTimeout(() => {
       try {
-        const result =
-          mode === 'json2xml' ? jsonToXml(input, rootTag) : xmlToJson(input);
+        const result = mode === 'json2xml' ? jsonToXml(input) : xmlToJson(input);
         setOutput(result);
         setError('');
       } catch (e) {
@@ -58,7 +56,7 @@ export function JsonXmlTool() {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [input, mode, rootTag]);
+  }, [input, mode]);
 
   const handleModeChange = (next: Mode) => {
     setMode(next);
@@ -85,35 +83,6 @@ export function JsonXmlTool() {
         onChange={handleModeChange}
         ariaLabel="変換モード"
       />
-
-      {/* ルートタグ名（JSON→XML時のみ） */}
-      {mode === 'json2xml' && (
-        <div>
-          <label htmlFor="root-tag" style={{ ...bodyEmphasis, color: colors.text }}>
-            ルートタグ名
-          </label>
-          <input
-            id="root-tag"
-            type="text"
-            value={rootTag}
-            onChange={(e) => setRootTag(e.target.value)}
-            placeholder="root"
-            style={{
-              ...caption,
-              display: 'block',
-              marginTop: '0.25rem',
-              width: '12rem',
-              border: `1px solid ${colors.borderInput}`,
-              borderRadius: '0.5rem',
-              padding: '0.5rem 0.75rem',
-              background: colors.bg,
-              color: colors.text,
-              outline: 'none',
-              fontFamily: 'monospace',
-            }}
-          />
-        </div>
-      )}
 
       {/* 入力・出力（横並び） */}
       <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
