@@ -26,12 +26,14 @@ export function parseJwt(token: string): ParsedJwt | null {
   const parts = token.trim().split('.');
   if (parts.length !== 3) return null;
   try {
-    const header = JSON.parse(
-      new TextDecoder().decode(base64UrlToBytes(parts[0]))
-    ) as Record<string, unknown>;
-    const payload = JSON.parse(
-      new TextDecoder().decode(base64UrlToBytes(parts[1]))
-    ) as Record<string, unknown>;
+    const header = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[0]))) as Record<
+      string,
+      unknown
+    >;
+    const payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[1]))) as Record<
+      string,
+      unknown
+    >;
 
     let expStatus: ExpStatus = 'no-exp';
     let remainingMs: number | undefined;

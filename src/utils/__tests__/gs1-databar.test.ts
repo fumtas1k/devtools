@@ -4,7 +4,7 @@ import {
   validateGtin14Input,
   buildBwipText,
   type AiCode,
-} from '../gs1-databar';
+} from '@/utils/gs1-databar';
 
 // ────────────────────────────────────────────
 // calcGtin14CheckDigit
@@ -97,9 +97,7 @@ describe('buildBwipText', () => {
   });
 
   it('1つのAIフィールド', () => {
-    const result = buildBwipText('04987000000017', [
-      { ai: '17' as AiCode, value: '231231' },
-    ]);
+    const result = buildBwipText('04987000000017', [{ ai: '17' as AiCode, value: '231231' }]);
     expect(result).toBe('(01)04987000000017|(17)231231');
   });
 
@@ -112,9 +110,7 @@ describe('buildBwipText', () => {
   });
 
   it('値の前後スペースはトリムされる', () => {
-    const result = buildBwipText('04987000000017', [
-      { ai: '10' as AiCode, value: '  ABC  ' },
-    ]);
+    const result = buildBwipText('04987000000017', [{ ai: '10' as AiCode, value: '  ABC  ' }]);
     expect(result).toBe('(01)04987000000017|(10)ABC');
   });
 });

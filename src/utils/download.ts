@@ -11,6 +11,11 @@ function triggerDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** テキストファイルをダウンロードする */
+export function downloadText(content: string, filename: string, mimeType = 'text/plain'): void {
+  triggerDownload(new Blob([content], { type: `${mimeType};charset=utf-8` }), filename);
+}
+
 /** SVG文字列をファイルとしてダウンロードする */
 export function downloadSvg(svgContent: string, filename: string): void {
   triggerDownload(new Blob([svgContent], { type: 'image/svg+xml' }), filename);
@@ -25,7 +30,10 @@ export function downloadSvgElement(svgEl: Element, filename: string): void {
 export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const m = svgContent.match(/width="(\d+)" height="(\d+)"/);
-    if (!m) { reject(new Error('SVG に width/height がありません')); return; }
+    if (!m) {
+      reject(new Error('SVG に width/height がありません'));
+      return;
+    }
     const scale = 2;
     const canvas = document.createElement('canvas');
     canvas.width = parseInt(m[1], 10) * scale;
@@ -43,7 +51,10 @@ export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
         else reject(new Error('PNG 変換に失敗しました'));
       }, 'image/png');
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG 読み込み失敗')); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('SVG 読み込み失敗'));
+    };
     img.src = url;
   });
 }

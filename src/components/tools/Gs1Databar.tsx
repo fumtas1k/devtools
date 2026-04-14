@@ -1,18 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import bwipjs from 'bwip-js';
 import JSZip from 'jszip';
-import { CopyButton } from '../ui/CopyButton';
+import { CopyButton } from '@/components/ui/CopyButton';
 import {
   calcGtin14CheckDigit,
   validateGtin14Input,
   buildBwipText,
   AI_DEFS,
   type AiCode,
-} from '../../utils/gs1-databar';
-import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '../../utils/styles';
-import { InputField } from '../ui/InputField';
-import { DownloadButtonGroup } from '../ui/DownloadButtonGroup';
-import { downloadSvg as downloadSvgFile, downloadPngFromSvgContent, svgContentToPngBlob } from '../../utils/download';
+} from '@/utils/gs1-databar';
+import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { InputField } from '@/components/ui/InputField';
+import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
+import {
+  downloadSvg as downloadSvgFile,
+  downloadPngFromSvgContent,
+  svgContentToPngBlob,
+} from '@/utils/download';
 
 interface AiFieldState {
   ai: AiCode;
@@ -25,11 +29,7 @@ const DEFAULT_AI_FIELDS: AiFieldState[] = [
   { ai: '10', value: '', error: '' },
 ];
 
-const SAMPLE_GTINS = [
-  '0498700000001',
-  '0498700000018',
-  '0498700000025',
-];
+const SAMPLE_GTINS = ['0498700000001', '0498700000018', '0498700000025'];
 
 const MAX_CARDS = 10;
 
@@ -86,9 +86,10 @@ function injectCompositeText(svg: string, text: string): string {
   const openTag = result.slice(0, openEnd);
   const inner = result.slice(openEnd, closeStart);
 
-  const textEl = `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" `
-    + `text-anchor="middle" font-family="'Courier New',Courier,monospace" `
-    + `font-size="${fontSize}" fill="#000000">${text}</text>`;
+  const textEl =
+    `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" ` +
+    `text-anchor="middle" font-family="'Courier New',Courier,monospace" ` +
+    `font-size="${fontSize}" fill="#000000">${text}</text>`;
 
   const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
 
@@ -117,9 +118,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   const inputId = `gtin-input-${cardId}`;
 
   const gtinResult =
-    gtinInput && !gtinError && gtinInput.length === 13
-      ? calcGtin14CheckDigit(gtinInput)
-      : null;
+    gtinInput && !gtinError && gtinInput.length === 13 ? calcGtin14CheckDigit(gtinInput) : null;
 
   const allAiValid = aiFields.every((f) => f.error === '');
   const hasAnyAiValue = aiFields.some((f) => f.value.trim() !== '');
@@ -134,7 +133,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
     const bwipText = buildBwipText(
       gtinResult.fullGtin,
-      aiFields.map((f) => ({ ai: f.ai, value: f.value })),
+      aiFields.map((f) => ({ ai: f.ai, value: f.value }))
     );
 
     try {
@@ -163,7 +162,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
       setBwipError(e instanceof Error ? e.message : 'バーコード生成に失敗しました');
       onSvgChange('', '');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gtinInput, gtinError, aiFields]);
 
   const handleGtinInput = (value: string) => {
@@ -174,14 +173,12 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   const handleAiChange = (i: number, value: string) => {
     const def = AI_DEFS.find((d) => d.ai === aiFields[i].ai)!;
     setAiFields((prev) =>
-      prev.map((f, idx) => (idx === i ? { ...f, value, error: def.validate(value) } : f)),
+      prev.map((f, idx) => (idx === i ? { ...f, value, error: def.validate(value) } : f))
     );
   };
 
   const handleAiSelect = (i: number, ai: AiCode) => {
-    setAiFields((prev) =>
-      prev.map((f, idx) => (idx === i ? { ai, value: '', error: '' } : f)),
-    );
+    setAiFields((prev) => prev.map((f, idx) => (idx === i ? { ai, value: '', error: '' } : f)));
   };
 
   const addAiField = () => {
@@ -210,7 +207,10 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   const canAddField = aiFields.length < AI_DEFS.length;
   const sampleGtin = SAMPLE_GTINS[index % SAMPLE_GTINS.length];
   const gs1String = gtinResult
-    ? buildBwipText(gtinResult.fullGtin, aiFields.map((f) => ({ ai: f.ai, value: f.value })))
+    ? buildBwipText(
+        gtinResult.fullGtin,
+        aiFields.map((f) => ({ ai: f.ai, value: f.value }))
+      )
     : '';
 
   return (
@@ -226,7 +226,10 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         <span style={{ ...caption, fontWeight: 700, color: colors.text }}>
           バーコード {index + 1}
           {gtinResult && (
-            <span className="font-mono ml-2" style={{ ...caption, color: colors.muted, fontWeight: 400 }}>
+            <span
+              className="font-mono ml-2"
+              style={{ ...caption, color: colors.muted, fontWeight: 400 }}
+            >
               — {gtinResult.fullGtin}
             </span>
           )}
@@ -268,11 +271,16 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
           >
             <div className="flex items-center gap-2">
               <span style={{ ...caption, color: colors.muted }}>チェックディジット</span>
-              <span style={{ ...bodyEmphasis, color: colors.primary }}>{gtinResult.checkDigit}</span>
+              <span style={{ ...bodyEmphasis, color: colors.primary }}>
+                {gtinResult.checkDigit}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <span style={{ ...caption, color: colors.muted }}>GTIN-14</span>
-              <span className="font-mono" style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}>
+              <span
+                className="font-mono"
+                style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}
+              >
                 {gtinResult.fullGtin}
               </span>
               <CopyButton text={gtinResult.fullGtin} label="コピー" />
@@ -283,7 +291,9 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {/* AIフィールド */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <span style={{ ...caption, color: colors.text, fontWeight: 600 }}>合成シンボル（任意）</span>
+            <span style={{ ...caption, color: colors.text, fontWeight: 600 }}>
+              合成シンボル（任意）
+            </span>
             {canAddField && (
               <button
                 onClick={addAiField}
@@ -312,7 +322,11 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                     }}
                   >
                     {AI_DEFS.map((d) => (
-                      <option key={d.ai} value={d.ai} disabled={usedAis.has(d.ai) && d.ai !== field.ai}>
+                      <option
+                        key={d.ai}
+                        value={d.ai}
+                        disabled={usedAis.has(d.ai) && d.ai !== field.ai}
+                      >
                         {d.label}
                       </option>
                     ))}
@@ -335,7 +349,10 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                       onBlur={onBlurRing}
                     />
                     {field.error && (
-                      <p role="alert" style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}>
+                      <p
+                        role="alert"
+                        style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}
+                      >
                         {field.error}
                       </p>
                     )}
@@ -455,7 +472,7 @@ export function Gs1DatabarTool() {
           folder.file(`gs1-databar-${gtin}.svg`, svg);
           const pngBlob = await svgContentToPngBlob(svg);
           folder.file(`gs1-databar-${gtin}.png`, pngBlob);
-        }),
+        })
       );
 
       const blob = await zip.generateAsync({ type: 'blob' });
@@ -490,13 +507,20 @@ export function Gs1DatabarTool() {
           <button
             onClick={addCard}
             className="rounded px-4 py-2 transition-colors hover:bg-blue-50"
-            style={{ ...caption, fontWeight: 700, border: `1px solid ${colors.primary}`, color: colors.primary }}
+            style={{
+              ...caption,
+              fontWeight: 700,
+              border: `1px solid ${colors.primary}`,
+              color: colors.primary,
+            }}
           >
             + バーコードを追加
           </button>
         )}
         {cards.length >= MAX_CARDS && (
-          <span style={{ ...caption, color: colors.muted }}>最大 {MAX_CARDS} 件まで追加できます</span>
+          <span style={{ ...caption, color: colors.muted }}>
+            最大 {MAX_CARDS} 件まで追加できます
+          </span>
         )}
 
         {canDownloadAll && (

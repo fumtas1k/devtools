@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import qrcode from 'qrcode-generator';
-import { bodyEmphasis, caption, micro, colors } from '../../utils/styles';
-import { InputField } from '../ui/InputField';
-import { ErrorMessage } from '../ui/ErrorMessage';
-import { downloadSvgElement } from '../../utils/download';
+import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
+import { InputField } from '@/components/ui/InputField';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { downloadSvgElement } from '@/utils/download';
 
 type ErrorLevel = 'L' | 'M' | 'Q' | 'H';
 
@@ -72,7 +72,9 @@ export function QrCodeGenerator() {
 
       {/* 誤り訂正レベル */}
       <div>
-        <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.25rem' }}>誤り訂正レベル</p>
+        <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.25rem' }}>
+          誤り訂正レベル
+        </p>
         <div className="flex items-center gap-2 flex-wrap">
           <div
             className="flex rounded-lg overflow-hidden"
@@ -90,7 +92,8 @@ export function QrCodeGenerator() {
                   background: errorLevel === value ? colors.primary : colors.bg,
                   color: errorLevel === value ? '#ffffff' : colors.muted,
                   border: 'none',
-                  borderRight: i < ERROR_LEVELS.length - 1 ? `1px solid ${colors.borderInput}` : 'none',
+                  borderRight:
+                    i < ERROR_LEVELS.length - 1 ? `1px solid ${colors.borderInput}` : 'none',
                   cursor: 'pointer',
                   fontWeight: errorLevel === value ? 600 : 400,
                 }}
@@ -101,7 +104,7 @@ export function QrCodeGenerator() {
             ))}
           </div>
           <span style={{ ...micro, color: colors.muted }}>
-            復元率: {ERROR_LEVELS.find(e => e.value === errorLevel)?.desc}
+            復元率: {ERROR_LEVELS.find((e) => e.value === errorLevel)?.desc}
           </span>
         </div>
       </div>
@@ -111,7 +114,10 @@ export function QrCodeGenerator() {
 
       {/* QRコード表示 */}
       {svgHtml && (
-        <div className="rounded-lg" style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
+        <div
+          className="rounded-lg"
+          style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}
+        >
           <div
             className="flex items-center justify-between gap-2 px-4 py-3"
             style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}

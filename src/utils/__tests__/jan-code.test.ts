@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcJan, validateJanInput } from '../jan-code';
+import { calcJan, validateJanInput } from '@/utils/jan-code';
 
 // ────────────────────────────────────────────
 // calcJan — JAN-13
@@ -59,7 +59,7 @@ describe('calcJan JAN-8', () => {
   it('計算ステップが正しい', () => {
     const r = calcJan('2000001', 'jan8');
     expect(r.steps.weight3Digits).toEqual([2, 0, 0, 1]); // 奇数位（×3）
-    expect(r.steps.weight1Digits).toEqual([0, 0, 0]);     // 偶数位（×1）
+    expect(r.steps.weight1Digits).toEqual([0, 0, 0]); // 偶数位（×1）
     expect(r.steps.weight3Sum).toBe(3);
     expect(r.steps.weight1Sum).toBe(0);
     expect(r.steps.total).toBe(9); // 0×1 + 3×3

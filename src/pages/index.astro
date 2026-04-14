@@ -1,7 +1,7 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import ToolIcon from '../components/ui/ToolIcon.astro';
-import { tools, categoryLabel, type ToolCategory } from '../data/tools';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ToolIcon from '@/components/ui/ToolIcon.astro';
+import { tools, categoryLabel, type ToolCategory } from '@/data/tools';
 
 const categories: ToolCategory[] = ['generate', 'convert'];
 
@@ -15,7 +15,11 @@ const jsonLd = {
 };
 ---
 
-<BaseLayout title="無料オンライン開発者ツール集" description="ブラウザで完結する無料の開発者ツール集。URLエンコード、JWTデコード、ULID生成など。" jsonLd={jsonLd}>
+<BaseLayout
+  title="無料オンライン開発者ツール集"
+  description="ブラウザで完結する無料の開発者ツール集。URLエンコード、JWTデコード、ULID生成など。"
+  jsonLd={jsonLd}
+>
   <!-- ヒーロー -->
   <section class="bg-blue-50 text-center px-4 py-8" style="border-bottom: 1px solid #DBEAFE;">
     <h1
@@ -24,10 +28,7 @@ const jsonLd = {
     >
       DevTools
     </h1>
-    <p
-      class="text-neutral-600"
-      style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em;"
-    >
+    <p class="text-neutral-600" style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em;">
       ブラウザで完結する無料の開発者ツール集
     </p>
   </section>
@@ -51,58 +52,62 @@ const jsonLd = {
       >
         すべて
       </button>
-      {categories.map((cat) => (
-        <button
-          role="tab"
-          aria-selected="false"
-          aria-controls="tool-grid"
-          data-category={cat}
-          class="tab-btn px-4 py-2 font-bold text-neutral-500 border-b-2 border-transparent -mb-px hover:text-primary hover:border-primary transition-colors"
-          style="font-size: 0.875rem; letter-spacing: 0.02em;"
-        >
-          {categoryLabel[cat]}
-        </button>
-      ))}
+      {
+        categories.map((cat) => (
+          <button
+            role="tab"
+            aria-selected="false"
+            aria-controls="tool-grid"
+            data-category={cat}
+            class="tab-btn px-4 py-2 font-bold text-neutral-500 border-b-2 border-transparent -mb-px hover:text-primary hover:border-primary transition-colors"
+            style="font-size: 0.875rem; letter-spacing: 0.02em;"
+          >
+            {categoryLabel[cat]}
+          </button>
+        ))
+      }
     </div>
 
     <!-- ツールグリッド -->
     <div id="tool-grid" role="tabpanel" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {tools.map((tool) => (
-        <a
-          href={`/tools/${tool.slug}`}
-          data-category={tool.category}
-          class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
-          style="border: 1px solid #E5E7EB;"
-        >
-          <div class="mb-4 flex items-start justify-between">
-            <ToolIcon slug={tool.slug} size={28} class="text-primary" />
-            <span
-              class="rounded-full px-3 py-0.5 font-bold text-blue-800 bg-blue-100"
-              style="font-size: 0.875rem; line-height: 1; letter-spacing: 0.02em;"
+      {
+        tools.map((tool) => (
+          <a
+            href={`/tools/${tool.slug}`}
+            data-category={tool.category}
+            class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
+            style="border: 1px solid #E5E7EB;"
+          >
+            <div class="mb-4 flex items-start justify-between">
+              <ToolIcon slug={tool.slug} size={28} class="text-primary" />
+              <span
+                class="rounded-full px-3 py-0.5 font-bold text-blue-800 bg-blue-100"
+                style="font-size: 0.875rem; line-height: 1; letter-spacing: 0.02em;"
+              >
+                {categoryLabel[tool.category]}
+              </span>
+            </div>
+            <h2
+              class="mb-2 font-bold text-neutral-900 group-hover:text-primary transition-colors"
+              style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
             >
-              {categoryLabel[tool.category]}
+              {tool.name}
+            </h2>
+            <p
+              class="mb-4 text-neutral-500"
+              style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+            >
+              {tool.description}
+            </p>
+            <span
+              class="text-link transition-colors"
+              style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+            >
+              開く &rsaquo;
             </span>
-          </div>
-          <h2
-            class="mb-2 font-bold text-neutral-900 group-hover:text-primary transition-colors"
-            style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
-          >
-            {tool.name}
-          </h2>
-          <p
-            class="mb-4 text-neutral-500"
-            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
-          >
-            {tool.description}
-          </p>
-          <span
-            class="text-link transition-colors"
-            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
-          >
-            開く &rsaquo;
-          </span>
-        </a>
-      ))}
+          </a>
+        ))
+      }
     </div>
   </main>
 </BaseLayout>

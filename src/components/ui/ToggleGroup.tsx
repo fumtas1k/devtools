@@ -1,4 +1,4 @@
-import { caption, colors, shadows } from '../../utils/styles';
+import { caption, colors, shadows } from '@/utils/styles';
 
 interface Option<T> {
   value: T;

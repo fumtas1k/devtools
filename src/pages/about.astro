@@ -1,6 +1,6 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { tools } from '../data/tools';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { tools } from '@/data/tools';
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -53,10 +53,16 @@ const jsonLd = {
         class="space-y-2 text-neutral-700"
         style="font-size: 1rem; line-height: 1.8; letter-spacing: 0.02em;"
       >
-        <li><strong>ブラウザ完結</strong> — すべての処理はブラウザ内で完結します。データは外部に送信されません。</li>
+        <li>
+          <strong>ブラウザ完結</strong> — すべての処理はブラウザ内で完結します。データは外部に送信されません。
+        </li>
         <li><strong>依存最小化</strong> — ツールごとに必要な最小限のライブラリのみ使用します。</li>
-        <li><strong>プライバシー重視</strong> — アクセス解析・広告・トラッキングは一切行いません。</li>
-        <li><strong>アクセシビリティ</strong> — デジタル庁デザインシステム（DADS）に準拠した設計です。</li>
+        <li>
+          <strong>プライバシー重視</strong> — アクセス解析・広告・トラッキングは一切行いません。
+        </li>
+        <li>
+          <strong>アクセシビリティ</strong> — デジタル庁デザインシステム（DADS）に準拠した設計です。
+        </li>
       </ul>
     </section>
 
@@ -68,23 +74,25 @@ const jsonLd = {
         ツール一覧
       </h2>
       <ul class="space-y-2">
-        {tools.map((tool) => (
-          <li>
-            <a
-              href={`/tools/${tool.slug}`}
-              class="text-link underline hover:no-underline transition-colors"
-              style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em;"
-            >
-              {tool.name}
-            </a>
-            <span
-              class="ml-2 text-neutral-500"
-              style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
-            >
-              — {tool.description}
-            </span>
-          </li>
-        ))}
+        {
+          tools.map((tool) => (
+            <li>
+              <a
+                href={`/tools/${tool.slug}`}
+                class="text-link underline hover:no-underline transition-colors"
+                style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em;"
+              >
+                {tool.name}
+              </a>
+              <span
+                class="ml-2 text-neutral-500"
+                style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+              >
+                — {tool.description}
+              </span>
+            </li>
+          ))
+        }
       </ul>
     </section>
 

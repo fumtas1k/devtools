@@ -79,7 +79,8 @@ export const AI_DEFS: AiEntry[] = [
     placeholder: '英数字 (例: ABC123)',
     validate: (v) => {
       if (!v) return '';
-      if (!/^[\x20-\x7E]{1,20}$/.test(v)) return '最大20文字の印刷可能なASCII文字を入力してください';
+      if (!/^[\x20-\x7E]{1,20}$/.test(v))
+        return '最大20文字の印刷可能なASCII文字を入力してください';
       return '';
     },
   },
@@ -117,7 +118,8 @@ export const AI_DEFS: AiEntry[] = [
     placeholder: '英数字 (例: SN001)',
     validate: (v) => {
       if (!v) return '';
-      if (!/^[\x20-\x7E]{1,20}$/.test(v)) return '最大20文字の印刷可能なASCII文字を入力してください';
+      if (!/^[\x20-\x7E]{1,20}$/.test(v))
+        return '最大20文字の印刷可能なASCII文字を入力してください';
       return '';
     },
   },
@@ -132,7 +134,7 @@ export const AI_DEFS: AiEntry[] = [
  */
 export function buildBwipText(
   fullGtin: string,
-  compositeFields: { ai: AiCode; value: string }[],
+  compositeFields: { ai: AiCode; value: string }[]
 ): string {
   const linear = `(01)${fullGtin}`;
   const filledFields = compositeFields.filter((f) => f.value.trim() !== '');

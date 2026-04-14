@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  base64UrlToBytes,
-  parseJwt,
-  formatTimestamp,
-  formatRemaining,
-} from '../jwt';
+import { base64UrlToBytes, parseJwt, formatTimestamp, formatRemaining } from '@/utils/jwt';
 
 // HS256 で署名されたサンプルトークン（有効期限なし）
 // header: {"alg":"HS256","typ":"JWT"}, payload: {"sub":"1234567890","name":"John Doe","iat":1516239022}
@@ -16,9 +11,13 @@ const SAMPLE_TOKEN =
 // 有効期限付き（未来）
 function makeTokenWithExp(exp: number): string {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
   const payload = btoa(JSON.stringify({ sub: 'test', exp }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
   return `${header}.${payload}.fakesig`;
 }
 
@@ -41,8 +40,8 @@ describe('base64UrlToBytes', () => {
   it('パディングが不足しても補完してデコードできる', () => {
     // 1, 2, 3 バイトのケースでパディング補完が機能するか確認
     const cases: [string, number[]][] = [
-      ['YQ',   [97]],        // "a"   → 1バイト
-      ['YWI',  [97, 98]],    // "ab"  → 2バイト
+      ['YQ', [97]], // "a"   → 1バイト
+      ['YWI', [97, 98]], // "ab"  → 2バイト
       ['YWJj', [97, 98, 99]], // "abc" → 3バイト
     ];
     for (const [input, expected] of cases) {

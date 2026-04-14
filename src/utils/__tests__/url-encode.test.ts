@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { encodeUrl, decodeUrl, validateDecodeInput } from '../url-encode';
+import { encodeUrl, decodeUrl, validateDecodeInput } from '@/utils/url-encode';
 
 // ────────────────────────────────────────────
 // encodeUrl
@@ -27,7 +27,7 @@ describe('encodeUrl', () => {
     );
   });
 
-  it('encodeURIComponent で予約されない文字（- _ . ! ~ * \' ( )）はエンコードしない', () => {
+  it("encodeURIComponent で予約されない文字（- _ . ! ~ * ' ( )）はエンコードしない", () => {
     expect(encodeUrl("-_.!~*'()")).toBe("-_.!~*'()");
   });
 });
