@@ -106,6 +106,32 @@ tasks/
 
 ---
 
+## UIコンポーネント・レイアウト変更時の目視確認
+
+UIコンポーネントやレイアウトを変更した場合、コミット前に Playwright でPC・スマホ両方のスクリーンショットを撮影して確認する。
+
+### 確認手順
+
+1. `npm run dev` でサーバー起動（起動済みなら不要）
+2. Playwright で対象ツールページを開く（例: `http://localhost:4321/tools/json-csv`）
+3. **PCサイズ（1280×800）** でスクリーンショット撮影・確認
+4. **スマホサイズ（390×844）** にリサイズしてスクリーンショット撮影・確認
+5. 以下を目視で確認する：
+   - 入力・出力テキストエリアの上端が揃っているか
+   - スマホ幅で縦並びレイアウトに切り替わっているか
+   - ボタンが隠れたり重なったりしていないか
+   - ラベル行の高さが左右で揃っているか
+
+### Playwright ツール呼び出し例
+
+```
+browser_navigate → URL
+browser_resize → width: 1280, height: 800 → browser_take_screenshot
+browser_resize → width: 390, height: 844 → browser_take_screenshot
+```
+
+---
+
 ## 学びの記録
 
 ユーザーから修正を受けたら `tasks/lessons.md` に記録する。次のセッション開始時に確認する。
