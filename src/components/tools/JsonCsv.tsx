@@ -103,7 +103,7 @@ export function JsonCsvTool() {
 
         {/* 出力 */}
         <div className="w-full md:flex-1 min-w-0">
-          <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem' }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem', minHeight: '2rem' }}>
             <label htmlFor="json-csv-output" style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
             <div
               className="flex gap-2"
@@ -116,6 +116,7 @@ export function JsonCsvTool() {
                   className="rounded-lg px-3 py-1.5 transition-colors"
                   style={{
                     ...caption,
+                    lineHeight: 1,
                     color: colors.primary,
                     border: `1px solid ${colors.primary}`,
                     background: colors.bg,
