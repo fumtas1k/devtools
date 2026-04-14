@@ -104,7 +104,7 @@ export function JsonCsvTool() {
         {/* 出力 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between" style={{ marginBottom: '0.25rem' }}>
-            <label style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
+            <label htmlFor="json-csv-output" style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
             <div className="flex gap-2">
               {output && <CopyButton text={output} label="コピー" />}
               {output && mode === 'json2csv' && (
@@ -124,6 +124,7 @@ export function JsonCsvTool() {
             </div>
           </div>
           <textarea
+            id="json-csv-output"
             readOnly
             value={output}
             rows={16}
