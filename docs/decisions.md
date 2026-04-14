@@ -532,3 +532,34 @@ UIレイアウト変更のたびに手動でスクリーンショット確認を
 - ✅ `npm run dev` が起動済みの状態でテスト実行可能（CI にも組み込み可）
 - ⚠️ `@playwright/test` + ブラウザバイナリのインストールが必要（CI での初回セットアップコストあり）
 - ⚠️ `.npmrc` の `ignore-scripts=true` により `npx playwright install` を別途実行する必要がある
+
+---
+
+## [017] main → develop の自動同期に GitHub Actions を採用
+
+**2026-04-15 | ステータス: 採用**
+
+### 背景
+
+feature ブランチから main へのマージ後、develop への同期を手動で行っていた。
+忘れると develop が main より遅れたまま新機能開発が進み、後でコンフリクトが大きくなるリスクがあった。
+
+### 決断
+
+`.github/workflows/sync-main-to-develop.yml` を追加し、main への push をトリガーに
+`main → develop` の PR を自動作成する。
+
+- `gh pr list` で既存の同一 PR を確認し、重複作成を防ぐ
+- `GITHUB_TOKEN` の `pull-requests: write` 権限のみで動作する
+- PR 本文は `printf` で生成し、YAML のマルチライン文字列問題を回避する
+
+### 却下した選択肢
+
+- **`peter-evans/create-pull-request` Action**: サードパーティ Action の追加は `.npmrc` の `min-release-age` ポリシーとは直接関係しないが、外部依存を増やしたくないため `gh` CLI のみで実装。
+- **`git merge` による自動マージ**: コンフリクト発生時に CI が失敗して止まるより、PR として人間が確認できるほうが安全。
+
+### 結果・トレードオフ
+
+- ✅ main マージ後の develop 同期漏れを防止できる
+- ✅ `GITHUB_TOKEN` のみで動作し、追加 Secret 不要
+- ⚠️ develop ブランチに required status checks が設定されているため、main → develop の PR は CI が通るまでマージできない（意図した動作）
