@@ -115,45 +115,50 @@ export function JsonXmlTool() {
         </div>
       )}
 
-      {/* 入力 */}
-      <InputField
-        id="json-xml-input"
-        label="入力"
-        value={input}
-        onChange={setInput}
-        placeholder={mode === 'json2xml' ? '{"key": "value"}' : '<root><key>value</key></root>'}
-        multiline
-        rows={8}
-        error={error || undefined}
-        onSampleClick={() => setInput(SAMPLE[mode])}
-        mono
-        resize
-      />
+      {/* 入力・出力（横並び） */}
+      <div className="flex gap-4" style={{ alignItems: 'flex-start' }}>
+        {/* 入力 */}
+        <div className="flex-1 min-w-0">
+          <InputField
+            id="json-xml-input"
+            label="入力"
+            value={input}
+            onChange={setInput}
+            placeholder={mode === 'json2xml' ? '{"key": "value"}' : '<root><key>value</key></root>'}
+            multiline
+            rows={16}
+            error={error || undefined}
+            onSampleClick={() => setInput(SAMPLE[mode])}
+            mono
+            resize
+          />
+        </div>
 
-      {/* 出力 */}
-      <div>
-        <label className="mb-1 block" style={{ ...bodyEmphasis, color: colors.text }}>
-          出力
-        </label>
-        <textarea
-          readOnly
-          value={output}
-          rows={8}
-          className="w-full rounded-lg px-3 py-2 font-mono"
-          style={{
-            ...caption,
-            border: `1px solid ${colors.border}`,
-            background: colors.bgSubtle,
-            color: colors.text,
-            resize: 'vertical',
-          }}
-          aria-label="変換結果"
-        />
+        {/* 出力 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between" style={{ marginBottom: '0.25rem' }}>
+            <label style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
+            {output && <CopyButton text={output} label="コピー" />}
+          </div>
+          <textarea
+            readOnly
+            value={output}
+            rows={16}
+            className="w-full rounded-lg px-3 py-2 font-mono"
+            style={{
+              ...caption,
+              border: `1px solid ${colors.border}`,
+              background: colors.bgSubtle,
+              color: colors.text,
+              resize: 'vertical',
+            }}
+            aria-label="変換結果"
+          />
+        </div>
       </div>
 
       {/* アクション */}
       <div className="flex justify-end gap-2">
-        {output && <CopyButton text={output} label="出力をコピー" />}
         <button
           onClick={handleClear}
           className="rounded-lg px-3 py-1.5 transition-colors"
