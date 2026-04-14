@@ -17,7 +17,7 @@ test.describe('JANコード生成', () => {
 
   test('JAN-13: 12桁入力でチェックディジットと完成コードが表示される', async ({ page }) => {
     // pressSequentially で React の onChange を確実に発火させる
-    await page.locator('#jan-input').pressSequentially('490123456789');
+    await page.getByLabel(/桁を入力/).pressSequentially('490123456789');
     await expect(page.getByText('チェックディジット', { exact: true })).toBeVisible();
     await expect(page.getByText('完成コード', { exact: true })).toBeVisible();
   });
@@ -30,12 +30,12 @@ test.describe('JANコード生成', () => {
   });
 
   test('JAN-13: 数字以外の入力でエラーを表示する', async ({ page }) => {
-    await page.locator('#jan-input').pressSequentially('abc');
+    await page.getByLabel(/桁を入力/).pressSequentially('abc');
     await expect(page.getByRole('alert')).toContainText('数字のみ入力してください');
   });
 
   test('JAN-13: 入力が不完全な場合は結果を表示しない', async ({ page }) => {
-    await page.locator('#jan-input').pressSequentially('490');
+    await page.getByLabel(/桁を入力/).pressSequentially('490');
     await expect(page.getByText('チェックディジット', { exact: true })).not.toBeVisible();
   });
 

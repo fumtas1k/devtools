@@ -18,7 +18,7 @@ test.describe('ダミーテキスト生成', () => {
 
   test('文字数を変更すると指定文字数のテキストが生成される', async ({ page }) => {
     // number input は全選択してから入力
-    await page.locator('#dummy-length').click({ clickCount: 3 });
+    await page.getByLabel('文字数').click({ clickCount: 3 });
     await page.keyboard.type('50');
     // Tab キーで blur を発火（handleLengthBlur → generate 再実行）
     await page.keyboard.press('Tab');
