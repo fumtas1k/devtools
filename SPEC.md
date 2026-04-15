@@ -618,11 +618,11 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 - [x] JSON / XML 変換（`json-xml`）
 - [x] JSON / CSV 変換（`json-csv`）
 - [x] Playwright E2E リグレッションテスト導入（`tests/e2e/`）
-- [ ] **PWA対応**（→ 詳細仕様は §12 を参照）
-  - [ ] Web App Manifest（`public/manifest.webmanifest`）
-  - [ ] Service Worker（`public/sw.js`）
-  - [ ] PWAアイコン生成（`public/icons/icon-192.png`, `icon-512.png`）
-  - [ ] `BaseLayout.astro` に manifest・theme-color・SW登録を追加
+- [x] **PWA対応**（→ 詳細仕様は §12 を参照）
+  - [x] Web App Manifest（`public/manifest.webmanifest`）
+  - [x] Service Worker（`public/sw.js`）
+  - [x] PWAアイコン生成（`public/icons/icon-192.png`, `icon-512.png`）
+  - [x] `BaseLayout.astro` に manifest・theme-color・SW登録を追加
 - [ ] ダークモード（DADS 準拠で再設計）
 - [ ] ツール追加
   - [ ] JSON整形、Base64、Diff、パスワード生成、ハッシュ、文字数カウント等
