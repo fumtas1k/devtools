@@ -4,6 +4,7 @@ import ToolIcon from '@/components/ui/ToolIcon.astro';
 import { tools, categoryLabel, type ToolCategory } from '@/data/tools';
 
 const categories: ToolCategory[] = ['generate', 'convert'];
+const allCategories = ['all', ...categories] as const;
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -44,21 +45,23 @@ const jsonLd = {
     >
       <button
         role="tab"
+        id="tab-0"
         aria-selected="true"
-        aria-controls="tool-grid"
-        data-category="all"
+        aria-controls="panel-0"
+        data-index="0"
         class="tab-btn px-4 py-2 font-bold text-primary border-b-2 border-primary -mb-px transition-colors"
         style="font-size: 0.875rem; letter-spacing: 0.02em;"
       >
         すべて
       </button>
       {
-        categories.map((cat) => (
+        categories.map((cat, i) => (
           <button
             role="tab"
+            id={`tab-${i + 1}`}
             aria-selected="false"
-            aria-controls="tool-grid"
-            data-category={cat}
+            aria-controls={`panel-${i + 1}`}
+            data-index={i + 1}
             class="tab-btn px-4 py-2 font-bold text-neutral-500 border-b-2 border-transparent -mb-px hover:text-primary hover:border-primary transition-colors"
             style="font-size: 0.875rem; letter-spacing: 0.02em;"
           >
@@ -68,73 +71,98 @@ const jsonLd = {
       }
     </div>
 
-    <!-- ツールグリッド -->
-    <div id="tool-grid" role="tabpanel" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <!-- スワイプパネル -->
+    <div
+      id="panels"
+      class="flex"
+      style="overflow-x: scroll; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; -webkit-overflow-scrolling: touch;"
+    >
       {
-        tools.map((tool) => (
-          <a
-            href={`/tools/${tool.slug}`}
-            data-category={tool.category}
-            class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
-            style="border: 1px solid #E5E7EB;"
+        allCategories.map((cat, i) => (
+          <div
+            role="tabpanel"
+            id={`panel-${i}`}
+            aria-labelledby={`tab-${i}`}
+            style="flex: 0 0 100%; scroll-snap-align: start; min-width: 0;"
           >
-            <div class="mb-4 flex items-start justify-between">
-              <ToolIcon slug={tool.slug} size={28} class="text-primary" />
-              <span
-                class="rounded-full px-3 py-0.5 font-bold text-blue-800 bg-blue-100"
-                style="font-size: 0.875rem; line-height: 1; letter-spacing: 0.02em;"
-              >
-                {categoryLabel[tool.category]}
-              </span>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {tools
+                .filter((t) => cat === 'all' || t.category === cat)
+                .map((tool) => (
+                  <a
+                    href={`/tools/${tool.slug}`}
+                    class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
+                    style="border: 1px solid #E5E7EB;"
+                  >
+                    <div class="mb-4 flex items-start justify-between">
+                      <ToolIcon slug={tool.slug} size={28} class="text-primary" />
+                      <span
+                        class="rounded-full px-3 py-0.5 font-bold text-blue-800 bg-blue-100"
+                        style="font-size: 0.875rem; line-height: 1; letter-spacing: 0.02em;"
+                      >
+                        {categoryLabel[tool.category]}
+                      </span>
+                    </div>
+                    <h2
+                      class="mb-2 font-bold text-neutral-900 group-hover:text-primary transition-colors"
+                      style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
+                    >
+                      {tool.name}
+                    </h2>
+                    <p
+                      class="mb-4 text-neutral-500"
+                      style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+                    >
+                      {tool.description}
+                    </p>
+                    <span
+                      class="text-link transition-colors"
+                      style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+                    >
+                      開く &rsaquo;
+                    </span>
+                  </a>
+                ))}
             </div>
-            <h2
-              class="mb-2 font-bold text-neutral-900 group-hover:text-primary transition-colors"
-              style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
-            >
-              {tool.name}
-            </h2>
-            <p
-              class="mb-4 text-neutral-500"
-              style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
-            >
-              {tool.description}
-            </p>
-            <span
-              class="text-link transition-colors"
-              style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
-            >
-              開く &rsaquo;
-            </span>
-          </a>
+          </div>
         ))
       }
     </div>
   </main>
 </BaseLayout>
 
+<style>
+  #panels::-webkit-scrollbar {
+    display: none;
+  }
+</style>
+
 <script>
-  const tabs = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
-  const cards = document.querySelectorAll<HTMLElement>('.tool-card');
+  const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab-btn'));
+  const panels = document.getElementById('panels')!;
 
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      const selected = tab.dataset.category!;
-
-      // タブ状態更新
-      tabs.forEach((t) => {
-        const active = t.dataset.category === selected;
-        t.setAttribute('aria-selected', String(active));
-        t.classList.toggle('text-primary', active);
-        t.classList.toggle('border-primary', active);
-        t.classList.toggle('text-neutral-500', !active);
-        t.classList.toggle('border-transparent', !active);
-      });
-
-      // カード表示切り替え
-      cards.forEach((card) => {
-        const match = selected === 'all' || card.dataset.category === selected;
-        card.style.display = match ? '' : 'none';
-      });
+  function activateTab(index: number) {
+    tabs.forEach((t, i) => {
+      const active = i === index;
+      t.setAttribute('aria-selected', String(active));
+      t.classList.toggle('text-primary', active);
+      t.classList.toggle('border-primary', active);
+      t.classList.toggle('text-neutral-500', !active);
+      t.classList.toggle('border-transparent', !active);
     });
+  }
+
+  // タブクリックでパネルにスクロール
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => {
+      panels.scrollTo({ left: i * panels.clientWidth, behavior: 'smooth' });
+      activateTab(i);
+    });
+  });
+
+  // スワイプ後にタブを同期
+  panels.addEventListener('scrollend', () => {
+    const i = Math.round(panels.scrollLeft / panels.clientWidth);
+    activateTab(i);
   });
 </script>
