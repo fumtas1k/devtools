@@ -93,7 +93,12 @@ devtools/
 ├── public/
 │   ├── favicon.svg
 │   ├── og-image.png
-│   └── robots.txt
+│   ├── robots.txt
+│   ├── manifest.webmanifest   # PWA マニフェスト
+│   ├── sw.js                  # Service Worker
+│   └── icons/
+│       ├── icon-192.png       # PWAアイコン 192×192
+│       └── icon-512.png       # PWAアイコン 512×512
 └── src/
     ├── components/
     │   ├── layout/
@@ -613,9 +618,13 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 - [x] JSON / XML 変換（`json-xml`）
 - [x] JSON / CSV 変換（`json-csv`）
 - [x] Playwright E2E リグレッションテスト導入（`tests/e2e/`）
+- [ ] **PWA対応**（→ 詳細仕様は §12 を参照）
+  - [ ] Web App Manifest（`public/manifest.webmanifest`）
+  - [ ] Service Worker（`public/sw.js`）
+  - [ ] PWAアイコン生成（`public/icons/icon-192.png`, `icon-512.png`）
+  - [ ] `BaseLayout.astro` に manifest・theme-color・SW登録を追加
 - [ ] ダークモード（DADS 準拠で再設計）
 - [ ] ツール追加
-  - [ ] JSON整形、Base64、Diff、パスワード生成、ハッシュ、文字数カウント等
   - [ ] JSON整形、Base64、Diff、パスワード生成、ハッシュ、文字数カウント等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
@@ -624,7 +633,6 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 ### Phase 3: 成熟
 
 - [ ] 30+ツール
-- [ ] PWA対応
 - [ ] i18n（英語版）
 
 ---
@@ -668,4 +676,79 @@ style-src 'self' 'unsafe-inline';
 font-src 'self';
 img-src 'self' data: blob:;
 connect-src 'none';
+```
+
+---
+
+## 12. PWA 仕様
+
+### 12.1 目的
+
+Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリのように起動できるようにする。
+
+### 12.2 実装方針
+
+**手動実装**（`@vite-pwa/astro` は使わない）  
+理由: workbox の追加バンドルを避け、必要最小限の SW のみ配置する。  
+→ `docs/decisions.md` #006 参照
+
+### 12.3 追加ファイル
+
+| ファイル                     | 役割                                              |
+| ---------------------------- | ------------------------------------------------- |
+| `public/manifest.webmanifest`| Web App Manifest（名前・アイコン・表示モード等）   |
+| `public/sw.js`               | Service Worker（オフライン対応・キャッシュ制御）  |
+| `public/icons/icon-192.png`  | PWAアイコン 192×192px（Android 標準）             |
+| `public/icons/icon-512.png`  | PWAアイコン 512×512px（スプラッシュ・マスカブル） |
+
+### 12.4 Web App Manifest
+
+```json
+{
+  "name": "DevTools",
+  "short_name": "DevTools",
+  "description": "ブラウザで完結する無料の開発者ツール集",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EFF6FF",
+  "theme_color": "#1A56DB",
+  "lang": "ja",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
+```
+
+### 12.5 Service Worker 戦略
+
+| リクエスト種別                     | 戦略                                |
+| ---------------------------------- | ----------------------------------- |
+| ナビゲーション（HTML）             | Network-first → オフライン時は `/` を返す |
+| 静的アセット（JS/CSS/フォント）    | Cache-first（初回フェッチ後キャッシュ）  |
+
+キャッシュバージョン管理: `CACHE_NAME = 'devtools-v1'`（更新時にインクリメント）
+
+### 12.6 アイコン生成
+
+`favicon.svg`（32×32 の `</>` ロゴ SVG）を元に、`scripts/generate-icons.mjs` で  
+`sharp`（Astro の推移的依存として利用可能）を使い PNG を生成する。  
+スクリプトは実行後に削除する。
+
+### 12.7 BaseLayout.astro 変更点
+
+```html
+<!-- manifest リンク -->
+<link rel="manifest" href="/manifest.webmanifest" />
+<!-- iOS ホーム画面アイコン -->
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<!-- テーマカラー（Androidアドレスバー） -->
+<meta name="theme-color" content="#1A56DB" />
+```
+
+Service Worker 登録（`<body>` 末尾にインラインスクリプト）:
+```js
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
 ```
