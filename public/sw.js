@@ -24,6 +24,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // GET かつ http/https のみ対象（POST や chrome-extension:// は除外）
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+    return;
+  }
+
   // ナビゲーションリクエスト（HTMLページ）: Network-first
   if (event.request.mode === 'navigate') {
     event.respondWith(
