@@ -27,6 +27,12 @@ export const tools: Tool[] = [
     category: 'generate',
   },
   {
+    slug: 'uuid-v7',
+    name: 'UUID v7 生成',
+    description: 'UUID v7を一括生成します。タイムスタンプ・フィールド分解表示付き',
+    category: 'generate',
+  },
+  {
     slug: 'dummy-text',
     name: 'ダミーテキスト生成',
     description: '文字種と文字数を指定してダミーテキストを生成します',

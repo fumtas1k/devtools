@@ -1,0 +1,34 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import { UuidV7GeneratorTool } from '@/components/tools/UuidV7Generator';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'uuid-v7')!;
+---
+
+<ToolLayout tool={tool}>
+  <UuidV7GeneratorTool client:load />
+
+  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
+    <h2 class="mb-3 text-apple-dark dark:text-white tool-info-heading">このツールについて</h2>
+    <p class="tool-info-body">
+      UUID v7 は RFC 9562 で標準化された、時刻順ソートが可能なバージョンの UUID です。
+      先頭 48 ビットにミリ秒精度の UNIX タイムスタンプを埋め込むため、データベースのインデックス効率が高く、
+      UUID v4 の代替として注目されています。
+    </p>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">フィールド構成</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li><strong>unix_ts_ms</strong> (48bit): ミリ秒 UNIX タイムスタンプ</li>
+      <li><strong>ver</strong> (4bit): バージョン番号（常に <code>7</code>）</li>
+      <li><strong>rand_a</strong> (12bit): ランダムビット</li>
+      <li><strong>var</strong> (2bit): バリアント（RFC 4122 = <code>10</code> 進数の 8〜b）</li>
+      <li><strong>rand_b</strong> (62bit): ランダムビット</li>
+    </ul>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>データベースのプライマリキーに時刻順ソート性を持たせたい</li>
+      <li>UUID v4 より挿入パフォーマンスを改善したい（B-Tree インデックス断片化を抑制）</li>
+      <li>ID からタイムスタンプを取り出したい</li>
+    </ul>
+  </section>
+</ToolLayout>
