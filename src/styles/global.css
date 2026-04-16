@@ -3,6 +3,9 @@
 @import '@fontsource/noto-sans-jp/700.css';
 @import '@fontsource/jetbrains-mono/400.css';
 
+/* ダークモード未サポート: dark: クラスはメディアクエリではなく .dark クラス指定時のみ適用 */
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans:
     'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
