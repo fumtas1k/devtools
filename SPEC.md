@@ -732,7 +732,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] `BaseLayout.astro` に manifest・theme-color・SW登録を追加
 - [ ] ダークモード（DADS 準拠で再設計）
 - [ ] ツール追加
-  - [ ] UUID v7 生成（`uuid-v7`）
+  - [x] UUID v7 生成（`uuid-v7`）
   - [ ] Base64 エンコード/デコード（`base64`）
   - [ ] JSON整形、Diff、パスワード生成、ハッシュ、文字数カウント等
 - [ ] 全文検索
