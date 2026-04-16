@@ -27,6 +27,12 @@ export const tools: Tool[] = [
     category: 'generate',
   },
   {
+    slug: 'uuid-v7',
+    name: 'UUID v7 生成',
+    description: 'UUID v7を一括生成します。タイムスタンプ・フィールド分解表示付き',
+    category: 'generate',
+  },
+  {
     slug: 'dummy-text',
     name: 'ダミーテキスト生成',
     description: '文字種と文字数を指定してダミーテキストを生成します',
@@ -51,9 +57,15 @@ export const tools: Tool[] = [
     category: 'generate',
   },
   {
+    slug: 'base64',
+    name: 'Base64 エンコード/デコード',
+    description: 'テキストと Base64 を相互変換します。標準・URL-safe 両形式に対応',
+    category: 'convert',
+  },
+  {
     slug: 'json-xml',
     name: 'JSON / XML 変換',
-    description: 'JSONとXMLを相互変換します。ルートタグ名指定対応',
+    description: 'JSONとXMLを相互変換します。ルートタグは root 固定',
     category: 'convert',
   },
   {

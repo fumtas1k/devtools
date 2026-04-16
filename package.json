@@ -37,12 +37,14 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwindcss": "^4.2.2",
-    "ulidx": "^2.4.1"
+    "ulidx": "^2.4.1",
+    "uuid": "13.0.0"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.8",
     "@playwright/test": "1.59.1",
     "@types/jsbarcode": "^3.11.4",
+    "@types/uuid": "10.0.0",
     "prettier": "3.8.1",
     "prettier-plugin-astro": "0.14.1",
     "typescript": "5.9.3",

@@ -8,4 +8,31 @@ const tool = tools.find((t) => t.slug === 'gs1-databar')!;
 
 <ToolLayout tool={tool}>
   <Gs1DatabarTool client:load />
+
+  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
+    <h2 class="mb-3 text-apple-dark dark:text-white tool-info-heading">このツールについて</h2>
+    <p class="tool-info-body">
+      GS1 DataBar Limited 合成シンボルは、GTIN-14（商品識別コード）を格納するリニアバーコードと、
+      賞味期限・ロット番号などの追加情報を格納する CC-A（2次元合成コンポーネント）を組み合わせたバーコードです。
+    </p>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">FNC1（区切り文字）について</h3>
+    <p class="tool-info-body">
+      GS1 DataBar では、可変長のアプリケーション識別子（AI）の後に続く AI との区切りとして
+      <strong>FNC1（Function 1 Character）</strong> を挿入する必要があります。
+    </p>
+    <ul class="list-inside list-disc space-y-1 tool-info-list mt-2">
+      <li><strong>固定長 AI</strong>（例: <code>17</code> 賞味期限・<code>11</code> 製造日）— 長さが決まっているため FNC1 不要</li>
+      <li><strong>可変長 AI</strong>（例: <code>10</code> ロット番号・<code>21</code> シリアル番号）— 後続 AI がある場合に FNC1 が必要</li>
+    </ul>
+    <p class="tool-info-body mt-2">
+      このツールでは FNC1 の挿入を自動で行います（バーコード描画ライブラリ bwip-js が処理）。
+      入力時に FNC1 を意識する必要はありません。
+    </p>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>食品・医薬品のトレーサビリティ管理（賞味期限・ロット番号の印字）</li>
+      <li>物流ラベルへの GTIN + シリアル番号の組み合わせ印字</li>
+      <li>GS1 準拠バーコードの検証・テスト用サンプル生成</li>
+    </ul>
+  </section>
 </ToolLayout>
