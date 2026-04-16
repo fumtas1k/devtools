@@ -96,12 +96,12 @@
   font-weight: 400;
   line-height: 1.47;
   letter-spacing: -0.374px;
-  color: rgba(0, 0, 0, 0.8);
+  color: var(--color-text);
 }
 
 .tool-info-list {
   font-size: 0.875rem;
   line-height: 1.29;
   letter-spacing: -0.224px;
-  color: rgba(0, 0, 0, 0.8);
+  color: var(--color-text);
 }

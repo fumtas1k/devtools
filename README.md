@@ -22,7 +22,7 @@
 | URLエンコード/デコード | テキストとURLエンコード形式を相互変換                 |
 | Base64 エンコード/デコード | テキストと Base64 を相互変換。標準・URL-safe 両形式に対応 |
 | JWTデコーダー          | Header・Payload・署名を分解表示。HS/RS/ES署名検証対応 |
-| JSON / XML 変換        | JSONとXMLを相互変換。ルートタグ名指定対応             |
+| JSON / XML 変換        | JSONとXMLを相互変換。ルートタグは root 固定           |
 | JSON / CSV 変換        | JSONとCSVを相互変換。ネストオブジェクトはドット記法でフラット化 |
 
 ## 技術スタック

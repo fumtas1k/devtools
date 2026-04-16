@@ -219,7 +219,7 @@ devtools/
 | 7   | JWTデコーダー          | `jwt-decoder` | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応 |
 | 8   | URLエンコード/デコード | `url-encode`  | テキスト⇔URLエンコード相互変換                                            |
 | 9   | Base64エンコード/デコード | `base64`   | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応          |
-| 10  | JSON / XML 変換        | `json-xml`    | JSON⇔XML 相互変換。ルートタグ名指定対応、XML属性は `@_` プレフィックス形式 |
+| 10  | JSON / XML 変換        | `json-xml`    | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式 |
 | 11  | JSON / CSV 変換        | `json-csv`    | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化              |
 
 ---
