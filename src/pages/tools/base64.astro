@@ -1,0 +1,30 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import { Base64CodecTool } from '@/components/tools/Base64Codec';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'base64')!;
+---
+
+<ToolLayout tool={tool}>
+  <Base64CodecTool client:load />
+
+  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
+    <h2 class="mb-3 text-apple-dark dark:text-white tool-info-heading">このツールについて</h2>
+    <p class="tool-info-body">
+      テキストを Base64 形式にエンコード、またはデコードします。
+      外部サーバーへの送信は一切なく、すべての処理はブラウザ内で完結します。
+    </p>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">標準 Base64 と URL-safe Base64 の違い</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li><strong>標準 Base64</strong>: RFC 4648 準拠。<code>+</code> / <code>/</code> を使用し、末尾に <code>=</code> パディングあり</li>
+      <li><strong>URL-safe Base64</strong>: <code>+</code> → <code>-</code>、<code>/</code> → <code>_</code> に置換し、パディング（<code>=</code>）を除去。URL やファイル名に安全に使用できる</li>
+    </ul>
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>画像や JSON データの Base64 埋め込みを確認・テストしたい</li>
+      <li>JWT のペイロード部分（URL-safe Base64）をデコードして確認したい</li>
+      <li>API レスポンスの Base64 エンコードされたデータをデコードしたい</li>
+    </ul>
+  </section>
+</ToolLayout>

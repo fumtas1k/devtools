@@ -57,6 +57,12 @@ export const tools: Tool[] = [
     category: 'generate',
   },
   {
+    slug: 'base64',
+    name: 'Base64 エンコード/デコード',
+    description: 'テキストと Base64 を相互変換します。標準・URL-safe 両形式に対応',
+    category: 'convert',
+  },
+  {
     slug: 'json-xml',
     name: 'JSON / XML 変換',
     description: 'JSONとXMLを相互変換します。ルートタグ名指定対応',
