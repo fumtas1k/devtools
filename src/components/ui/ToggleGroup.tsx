@@ -15,17 +15,17 @@ interface Props<T extends string> {
 export function ToggleGroup<T extends string>({ options, value, onChange, ariaLabel }: Props<T>) {
   return (
     <div
-      className="flex gap-1 rounded-lg p-1"
+      className="grid gap-1 rounded-lg p-1"
       role="group"
       aria-label={ariaLabel}
-      style={{ background: colors.bgSubtle }}
+      style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)`, background: colors.bgSubtle }}
     >
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
-          className="flex-1 rounded-lg py-1.5 transition-colors"
+          className="rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors"
           style={{
             ...caption,
             fontWeight: 600,

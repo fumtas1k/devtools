@@ -9,8 +9,8 @@ type Mode = 'encode' | 'decode';
 type Format = 'standard' | 'urlsafe';
 
 const SAMPLE_ENCODE = 'Hello, DevTools! 🎉\nこんにちは世界';
-const SAMPLE_DECODE_STANDARD = 'SGVsbG8sIERldlRvb2xzISA477+9Cgrjgb3jgpPjgavjgaHjga/kuJbnlYw=';
-const SAMPLE_DECODE_URLSAFE  = 'SGVsbG8sIERldlRvb2xzISA477-9Cgrjgb3jgpPjgavjgaHjga_kuJbnlYw';
+const SAMPLE_DECODE_STANDARD = 'SGVsbG8sIERldlRvb2xzISDwn46JCuOBk+OCk+OBq+OBoeOBr+S4lueVjA==';
+const SAMPLE_DECODE_URLSAFE  = 'SGVsbG8sIERldlRvb2xzISDwn46JCuOBk-OCk-OBq-OBoeOBr-S4lueVjA';
 
 export function Base64CodecTool() {
   const [mode, setMode] = useState<Mode>('encode');
@@ -49,7 +49,6 @@ export function Base64CodecTool() {
 
   const handleFormatChange = (next: Format) => {
     setFormat(next);
-    setInput('');
     setOutput('');
     setError('');
   };
@@ -85,7 +84,7 @@ export function Base64CodecTool() {
         <span style={{ ...caption, color: colors.muted }}>形式:</span>
         <ToggleGroup
           options={[
-            { value: 'standard', label: '標準 Base64' },
+            { value: 'standard', label: '標準' },
             { value: 'urlsafe', label: 'URL-safe' },
           ]}
           value={format}
