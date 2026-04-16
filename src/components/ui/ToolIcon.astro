@@ -129,6 +129,17 @@ const attrs = {
 }
 
 {
+  slug === 'base64' && (
+    <svg {...attrs}>
+      {/* < > タグ + 二重矢印（変換） */}
+      <path d="M8 6H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" />
+      <path d="M16 6h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  )
+}
+
+{
   slug === 'json-csv' && (
     <svg {...attrs}>
       {/* ヘッダー行 */}
