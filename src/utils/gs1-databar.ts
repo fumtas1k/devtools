@@ -54,6 +54,13 @@ export interface AiEntry {
   ai: AiCode;
   label: string;
   placeholder: string;
+  /**
+   * 可変長AIかどうか。
+   * true の場合、後続AIが存在するときバーコード内でFNC1区切りが必要。
+   * FNC1の挿入は bwip-js の gs1process() が自動で処理するため、
+   * buildBwipText() での明示的な挿入は不要。
+   */
+  isVariableLength: boolean;
   /** 入力値のバリデーション。エラーメッセージを返す（正常時は空文字） */
   validate: (value: string) => string;
 }
@@ -63,6 +70,7 @@ export const AI_DEFS: AiEntry[] = [
     ai: '17',
     label: '賞味/消費期限 (17)',
     placeholder: 'YYMMDD (例: 231231)',
+    isVariableLength: false,
     validate: (v) => {
       if (!v) return '';
       if (!/^\d{6}$/.test(v)) return 'YYMMDD形式の6桁を入力してください';
@@ -77,6 +85,7 @@ export const AI_DEFS: AiEntry[] = [
     ai: '10',
     label: 'ロット番号 (10)',
     placeholder: '英数字 (例: ABC123)',
+    isVariableLength: true,
     validate: (v) => {
       if (!v) return '';
       if (!/^[\x20-\x7E]{1,20}$/.test(v))
@@ -88,6 +97,7 @@ export const AI_DEFS: AiEntry[] = [
     ai: '11',
     label: '製造日 (11)',
     placeholder: 'YYMMDD (例: 230101)',
+    isVariableLength: false,
     validate: (v) => {
       if (!v) return '';
       if (!/^\d{6}$/.test(v)) return 'YYMMDD形式の6桁を入力してください';
@@ -102,6 +112,7 @@ export const AI_DEFS: AiEntry[] = [
     ai: '15',
     label: '最良品質保持期限 (15)',
     placeholder: 'YYMMDD (例: 231231)',
+    isVariableLength: false,
     validate: (v) => {
       if (!v) return '';
       if (!/^\d{6}$/.test(v)) return 'YYMMDD形式の6桁を入力してください';
@@ -116,6 +127,7 @@ export const AI_DEFS: AiEntry[] = [
     ai: '21',
     label: 'シリアル番号 (21)',
     placeholder: '英数字 (例: SN001)',
+    isVariableLength: true,
     validate: (v) => {
       if (!v) return '';
       if (!/^[\x20-\x7E]{1,20}$/.test(v))
@@ -128,6 +140,10 @@ export const AI_DEFS: AiEntry[] = [
 /**
  * bwip-js の databarlimitedcomposite 用テキスト文字列を組み立てる
  * フォーマット: (01)GTIN14|(AI1)value1(AI2)value2...
+ *
+ * FNC1（可変長AIの終端区切り文字）の挿入は bwip-js の gs1process() が
+ * 自動で処理する。isVariableLength=true のAIが後続AIを持つ場合、
+ * ライブラリ内部でFNC1が自動挿入されるため、この関数での明示的な挿入は不要。
  *
  * @param fullGtin - 14桁のGTIN
  * @param compositeFields - AI→値のペア配列（値が空のものは除外）

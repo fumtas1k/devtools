@@ -3,8 +3,30 @@ import {
   calcGtin14CheckDigit,
   validateGtin14Input,
   buildBwipText,
+  AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
+
+// ────────────────────────────────────────────
+// AI_DEFS: isVariableLength
+// ────────────────────────────────────────────
+describe('AI_DEFS isVariableLength', () => {
+  it('固定長AI (17, 11, 15) は isVariableLength=false', () => {
+    const fixedAis = ['17', '11', '15'];
+    for (const ai of fixedAis) {
+      const def = AI_DEFS.find((d) => d.ai === ai);
+      expect(def?.isVariableLength, `AI ${ai} should be fixed-length`).toBe(false);
+    }
+  });
+
+  it('可変長AI (10, 21) は isVariableLength=true', () => {
+    const variableAis = ['10', '21'];
+    for (const ai of variableAis) {
+      const def = AI_DEFS.find((d) => d.ai === ai);
+      expect(def?.isVariableLength, `AI ${ai} should be variable-length`).toBe(true);
+    }
+  });
+});
 
 // ────────────────────────────────────────────
 // calcGtin14CheckDigit
