@@ -65,7 +65,7 @@ export const tools: Tool[] = [
   {
     slug: 'json-xml',
     name: 'JSON / XML 変換',
-    description: 'JSONとXMLを相互変換します。ルートタグ名指定対応',
+    description: 'JSONとXMLを相互変換します。ルートタグは root 固定',
     category: 'convert',
   },
   {
