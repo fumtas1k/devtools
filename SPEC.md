@@ -68,6 +68,7 @@
 | `jszip`                    | 複数バーコードのZIPパッケージング            | GS1 DataBar生成 |
 | `fast-xml-parser`          | JSON⇔XML 相互変換                            | JSON/XML変換    |
 | `papaparse`                | JSON⇔CSV 相互変換・パース                    | JSON/CSV変換    |
+| `jsqr`                     | QRコードデコード（カメラ・画像）             | QRチケット      |
 | `@fontsource/noto-sans-jp` | フォントセルフホスト                         | 全ページ共通    |
 | `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency） | 開発ツール共通  |
 | `typescript`               | TypeScript コンパイラ（devDependency）       | 開発ツール共通  |
