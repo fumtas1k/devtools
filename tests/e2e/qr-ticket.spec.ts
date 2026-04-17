@@ -171,11 +171,12 @@ test.describe('QRチケット', () => {
     await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
 
     // 3. 生成されたQR SVGをPNGに変換
+    //    dangerouslySetInnerHTML で注入された SVG は data-testid="qr-code-container" の div 内にある。
+    //    ページ上の他の SVG（アイコン等）と区別するため、このコンテナを使用して取得する。
     const pngBase64 = await page.evaluate((): Promise<string> => {
       return new Promise((resolve, reject) => {
-        const container = Array.from(document.querySelectorAll<HTMLElement>('div')).find(
-          (d) => d.style.width === '160px' && d.style.height === '160px'
-        );
+        // QRカードのコンテナ内の SVG を取得
+        const container = document.querySelector('[data-testid="qr-code-container"]');
         const svgEl = container?.querySelector('svg') as SVGSVGElement | null;
         if (!svgEl) {
           reject(new Error('QR SVG not found'));
