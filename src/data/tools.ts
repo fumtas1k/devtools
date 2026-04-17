@@ -74,6 +74,12 @@ export const tools: Tool[] = [
     description: 'JSONとCSVを相互変換します。ネストオブジェクトはドット記法でフラット化',
     category: 'convert',
   },
+  {
+    slug: 'qr-ticket',
+    name: 'QRチケット',
+    description: 'ECDSA署名付きQRチケットを生成し、公開鍵でオフライン検証します',
+    category: 'generate',
+  },
 ];
 
 export const categoryLabel: Record<ToolCategory, string> = {

@@ -1,0 +1,42 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import { QrTicketTool } from '@/components/tools/QrTicket';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'qr-ticket')!;
+---
+
+<ToolLayout tool={tool}>
+  <QrTicketTool client:load />
+
+  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
+    <h2 class="mb-3 text-apple-dark dark:text-white tool-info-heading">このツールについて</h2>
+    <p class="tool-info-body">
+      ECDSA（楕円曲線デジタル署名）でチケットデータに署名し、QRコードとして出力します。
+      公開鍵のみで署名を検証できるため、主催者が秘密鍵を手放さずに複数スタッフへ検証権限を配布できます。
+      すべての処理はブラウザ内で完結し、データは外部サーバーへ送信されません。
+    </p>
+
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">使い方</h3>
+    <ol class="list-inside list-decimal space-y-1 tool-info-list">
+      <li>「生成」タブで鍵ペアを生成し、秘密鍵を安全に保管します</li>
+      <li>公開鍵を検証スタッフへ共有します（秘密鍵は不要）</li>
+      <li>イベント情報・チケットリストを入力して一括生成します</li>
+      <li>「検証」タブでカメラまたは画像アップロードからQRコードを読み取ります</li>
+      <li>公開鍵でオフライン検証し、有効・無効・期限切れを即時判定します</li>
+    </ol>
+
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">QRコードのデータ形式</h3>
+    <p class="tool-info-body">
+      QRコードにはコンパクトなJSON（イベントID・チケットID・有効期限・任意の参加者名・料金区分・ECDSA署名）が
+      埋め込まれています。署名はペイロード文字列に対するECDSA P-256 / SHA-256署名をBase64URLエンコードしたものです。
+    </p>
+
+    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">注意事項</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>このツールはステートレス検証のため、同一QRコードの重複スキャン防止は行いません</li>
+      <li>秘密鍵はブラウザを閉じると失われます。必ずコピーして安全な場所に保管してください</li>
+      <li>カメラ読み取りはHTTPS環境またはlocalhostでのみ動作します</li>
+    </ul>
+  </section>
+</ToolLayout>
