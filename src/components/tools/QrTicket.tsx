@@ -32,6 +32,7 @@ interface TicketRow {
 }
 
 interface GeneratedQr {
+  _key: number;   // チケット行の安定識別子（チケットID重複時のkey衝突を防ぐ）
   ticket: SignedTicket;
   svg: string;
   qrString: string;
@@ -287,7 +288,7 @@ export function QrTicketTool() {
           setGenerating(false);
           return;
         }
-        results.push({ ticket: signed, svg, qrString });
+        results.push({ _key: row._key, ticket: signed, svg, qrString });
       }
       setGeneratedQrs(results);
     } catch {
@@ -825,7 +826,7 @@ function GenerateTab({
           >
             {generatedQrs.map((qr) => (
               <div
-                key={qr.ticket.t}
+                key={qr._key}
                 className="flex flex-col items-center gap-2 rounded-lg p-3"
                 style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
               >

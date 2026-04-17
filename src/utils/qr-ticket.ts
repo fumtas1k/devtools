@@ -172,12 +172,13 @@ export async function verifyTicket(
 
 // ─── QR生成 ──────────────────────────────────────────────
 
-/** SignedTicket をコンパクトなJSON文字列に変換（undefined項目を除外） */
+/** SignedTicket をコンパクトなJSON文字列に変換（undefined項目を除外、キー昇順ソート） */
 export function ticketToQrString(ticket: SignedTicket): string {
-  const obj: Record<string, string> = { e: ticket.e, t: ticket.t, x: ticket.x, s: ticket.s };
+  const obj: Record<string, string> = { e: ticket.e, s: ticket.s, t: ticket.t, x: ticket.x };
   if (ticket.n) obj.n = ticket.n;
   if (ticket.p) obj.p = ticket.p;
-  return JSON.stringify(obj);
+  const sorted = Object.fromEntries(Object.entries(obj).sort(([a], [b]) => a.localeCompare(b)));
+  return JSON.stringify(sorted);
 }
 
 /**
