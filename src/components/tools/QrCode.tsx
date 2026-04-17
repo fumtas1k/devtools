@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import qrcode from 'qrcode-generator';
+import qrcode from '@/utils/qrcode';
 import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
