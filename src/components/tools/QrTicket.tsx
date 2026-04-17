@@ -25,6 +25,7 @@ import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@
 // ─── 内部型定義 ───────────────────────────────────────────
 
 interface TicketRow {
+  _key: number;   // React key用の安定した識別子（削除・並び替え時の取り違えを防ぐ）
   id: string;
   name: string;
   category: string;
@@ -62,6 +63,7 @@ const sectionHeaderStyle = {
   ...bodyEmphasis,
   color: colors.text,
   padding: '0.75rem 1rem',
+  margin: 0,
   background: colors.bgSubtle,
   borderBottom: `1px solid ${colors.border}`,
 };
@@ -138,13 +140,15 @@ export function QrTicketTool() {
   // 生成タブ状態
   const [eventId, setEventId] = useState('');
   const [expiry, setExpiry] = useState('');
+  const ticketKeyRef = useRef(1);
   const [tickets, setTickets] = useState<TicketRow[]>([
-    { id: generateTicketId(1), name: '', category: '' },
+    { _key: 1, id: generateTicketId(1), name: '', category: '' },
   ]);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState('');
   const [generatedQrs, setGeneratedQrs] = useState<GeneratedQr[]>([]);
   const [zipping, setZipping] = useState(false);
+  const [zipError, setZipError] = useState('');
 
   // 検証タブ状態
   const [verifyPubKeyStr, setVerifyPubKeyStr] = useState('');
@@ -237,9 +241,11 @@ export function QrTicketTool() {
 
   const addTicket = () => {
     if (tickets.length >= MAX_TICKETS) return;
+    ticketKeyRef.current += 1;
+    const newKey = ticketKeyRef.current;
     setTickets((prev) => [
       ...prev,
-      { id: generateTicketId(prev.length + 1), name: '', category: '' },
+      { _key: newKey, id: generateTicketId(prev.length + 1), name: '', category: '' },
     ]);
   };
 
@@ -298,6 +304,7 @@ export function QrTicketTool() {
   const handleDownloadZip = async () => {
     if (generatedQrs.length === 0 || zipping) return;
     setZipping(true);
+    setZipError('');
     try {
       const zip = new JSZip();
       const folder = zip.folder('tickets')!;
@@ -311,6 +318,8 @@ export function QrTicketTool() {
       a.download = 'tickets.zip';
       a.click();
       URL.revokeObjectURL(url);
+    } catch {
+      setZipError('ZIPの作成に失敗しました');
     } finally {
       setZipping(false);
     }
@@ -458,6 +467,7 @@ export function QrTicketTool() {
           generateError={generateError}
           generatedQrs={generatedQrs}
           zipping={zipping}
+          zipError={zipError}
           onGenerateKeys={handleGenerateKeys}
           onToggleImport={() => setShowImport((v) => !v)}
           onImportStrChange={setImportStr}
@@ -510,6 +520,7 @@ function GenerateTab({
   generateError,
   generatedQrs,
   zipping,
+  zipError,
   onGenerateKeys,
   onToggleImport,
   onImportStrChange,
@@ -537,6 +548,7 @@ function GenerateTab({
   generateError: string;
   generatedQrs: GeneratedQr[];
   zipping: boolean;
+  zipError: string;
   onGenerateKeys: () => void;
   onToggleImport: () => void;
   onImportStrChange: (v: string) => void;
@@ -554,7 +566,7 @@ function GenerateTab({
     <div className="space-y-4">
       {/* 鍵ペアセクション */}
       <div style={sectionStyle}>
-        <p style={sectionHeaderStyle}>鍵ペア</p>
+        <h3 style={sectionHeaderStyle}>鍵ペア</h3>
         <div className="space-y-3" style={sectionBodyStyle}>
           <div className="flex flex-wrap items-center gap-2">
             <ActionButton onClick={onGenerateKeys} disabled={keyGenerating} variant="primary">
@@ -642,7 +654,7 @@ function GenerateTab({
 
       {/* イベント情報セクション */}
       <div style={sectionStyle}>
-        <p style={sectionHeaderStyle}>イベント情報</p>
+        <h3 style={sectionHeaderStyle}>イベント情報</h3>
         <div className="space-y-3" style={sectionBodyStyle}>
           <InputField
             id="event-id"
@@ -682,7 +694,7 @@ function GenerateTab({
 
       {/* チケットリストセクション */}
       <div style={sectionStyle}>
-        <p style={sectionHeaderStyle}>チケットリスト（最大{MAX_TICKETS}件）</p>
+        <h3 style={sectionHeaderStyle}>チケットリスト（最大{MAX_TICKETS}件）</h3>
         <div style={sectionBodyStyle}>
           <div className="space-y-2">
             {/* ヘッダ行 */}
@@ -698,7 +710,7 @@ function GenerateTab({
             </div>
             {tickets.map((row, i) => (
               <div
-                key={i}
+                key={row._key}
                 className="grid gap-2"
                 style={{ gridTemplateColumns: '1fr 1fr 1fr auto', alignItems: 'center' }}
               >
@@ -806,6 +818,7 @@ function GenerateTab({
               </ActionButton>
             )}
           </div>
+          {zipError && <div style={{ padding: '0.5rem 1rem', borderBottom: `1px solid ${colors.border}` }}><ErrorMessage message={zipError} /></div>}
           <div
             className="grid gap-4 p-4"
             style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', background: colors.bg }}
@@ -886,7 +899,7 @@ function VerifyTab({
     <div className="space-y-4">
       {/* 公開鍵セクション */}
       <div style={sectionStyle}>
-        <p style={sectionHeaderStyle}>公開鍵</p>
+        <h3 style={sectionHeaderStyle}>公開鍵</h3>
         <div style={sectionBodyStyle}>
           <InputField
             id="verify-pubkey"
@@ -904,7 +917,7 @@ function VerifyTab({
 
       {/* QR読取セクション */}
       <div style={sectionStyle}>
-        <p style={sectionHeaderStyle}>QR読取</p>
+        <h3 style={sectionHeaderStyle}>QR読取</h3>
         <div className="space-y-3" style={sectionBodyStyle}>
           <ToggleGroup
             options={SCAN_OPTIONS}
@@ -990,7 +1003,7 @@ function VerifyTab({
       {/* 検証結果セクション */}
       {(verifying || verificationResult) && (
         <div style={sectionStyle}>
-          <p style={sectionHeaderStyle}>検証結果</p>
+          <h3 style={sectionHeaderStyle}>検証結果</h3>
           <div style={sectionBodyStyle}>
             {verifying ? (
               <p style={{ ...caption, color: colors.muted }}>検証中…</p>

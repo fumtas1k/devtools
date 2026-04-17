@@ -201,14 +201,3 @@ export function generateTicketId(index: number): string {
   return `T-${String(index).padStart(5, '0')}`;
 }
 
-// ─── QR読取 ──────────────────────────────────────────────
-
-/**
- * ImageData からQRコードをデコードする
- * jsQR ライブラリのラッパー。デコード失敗時は null を返す。
- */
-export async function decodeQrFromImageData(imageData: ImageData): Promise<string | null> {
-  const { default: jsQR } = await import('jsqr');
-  const result = jsQR(imageData.data, imageData.width, imageData.height);
-  return result ? result.data : null;
-}
