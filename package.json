@@ -31,6 +31,7 @@
     "bwip-js": "^4.9.0",
     "fast-xml-parser": "5.5.10",
     "jsbarcode": "^3.12.3",
+    "jsqr": "1.4.0",
     "jszip": "^3.10.1",
     "papaparse": "5.5.3",
     "qrcode-generator": "^2.0.4",
