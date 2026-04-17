@@ -103,14 +103,12 @@ test.describe('QRチケット', () => {
     await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
 
     // 3. 生成されたQR SVGをPNGに変換
-    //    dangerouslySetInnerHTML で注入された SVG は width=160px の div 内にある。
-    //    ページ上の他の SVG（アイコン等）と区別するため、親コンテナで絞り込む。
+    //    dangerouslySetInnerHTML で注入された SVG は data-testid="qr-code-container" の div 内にある。
+    //    ページ上の他の SVG（アイコン等）と区別するため、このコンテナを使用して取得する。
     const pngBase64 = await page.evaluate((): Promise<string> => {
       return new Promise((resolve, reject) => {
-        // QRカードの 160×160 コンテナ内の SVG を取得
-        const container = Array.from(document.querySelectorAll<HTMLElement>('div')).find(
-          (d) => d.style.width === '160px' && d.style.height === '160px',
-        );
+        // QRカードのコンテナ内の SVG を取得
+        const container = document.querySelector('[data-testid="qr-code-container"]');
         const svgEl = container?.querySelector('svg') as SVGSVGElement | null;
         if (!svgEl) { reject(new Error('QR SVG not found')); return; }
 
@@ -158,5 +156,75 @@ test.describe('QRチケット', () => {
 
     // 7. 検証結果を確認
     await expect(page.getByText('有効なチケット')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('日本語を含むイベント情報を画像アップロードで検証できる', async ({ page }) => {
+    // 1. 鍵ペア生成
+    await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
+    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
+
+    // 2. 日本語を含むイベント情報入力・QR生成
+    await page.getByLabel('イベントID').pressSequentially('春 of プログラミング 2026');
+    await page.getByLabel('参加者名 1').pressSequentially('山田 太郎');
+    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await page.getByRole('button', { name: '一括生成' }).click();
+    await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
+
+    // 3. 生成されたQR SVGをPNGに変換
+    //    dangerouslySetInnerHTML で注入された SVG は data-testid="qr-code-container" の div 内にある。
+    //    ページ上の他の SVG（アイコン等）と区別するため、このコンテナを使用して取得する。
+    const pngBase64 = await page.evaluate((): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        // QRカードのコンテナ内の SVG を取得
+        const container = document.querySelector('[data-testid="qr-code-container"]');
+        const svgEl = container?.querySelector('svg') as SVGSVGElement | null;
+        if (!svgEl) {
+          reject(new Error('QR SVG not found'));
+          return;
+        }
+
+        const vb = svgEl.getAttribute('viewBox');
+        const dim = vb ? parseInt(vb.split(' ')[2]) : 200;
+        const clone = svgEl.cloneNode(true) as SVGSVGElement;
+        clone.setAttribute('width', String(dim));
+        clone.setAttribute('height', String(dim));
+
+        const svgStr = new XMLSerializer().serializeToString(clone);
+        const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+
+        const img = new Image();
+        img.onload = () => {
+          const size = 768;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d')!;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, size, size);
+          ctx.drawImage(img, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, ''));
+        };
+        img.onerror = () => reject(new Error('SVG image load failed'));
+        img.src = dataUrl;
+      });
+    });
+
+    // 4. 検証タブに切替
+    await page.getByRole('button', { name: '検証' }).click();
+
+    // 5. 画像アップロードモードを選択
+    await page.getByRole('button', { name: '画像アップロード' }).click();
+
+    // 6. PNG を fileInput にセット
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'ticket-ja.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(pngBase64, 'base64'),
+    });
+
+    // 7. 検証結果を確認（日本語が正しく表示されることも確認）
+    await expect(page.getByText('有効なチケット')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('春 of プログラミング 2026')).toBeVisible();
+    await expect(page.getByText('山田 太郎')).toBeVisible();
   });
 });

@@ -5,7 +5,7 @@
  * QR生成はqrcode-generator（既存依存）を使用。
  */
 
-import qrcode from 'qrcode-generator';
+import qrcode from '@/utils/qrcode';
 
 // ─── 型定義 ───────────────────────────────────────────────
 

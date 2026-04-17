@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import qrcode from 'qrcode-generator';
+import qrcode from '@/utils/qrcode';
 import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -141,6 +141,7 @@ export function QrCodeGenerator() {
           <div className="flex justify-center p-8" style={{ background: colors.bg }}>
             <div
               ref={containerRef}
+              data-testid="qr-code-container"
               style={{ width: '200px', height: '200px' }}
               dangerouslySetInnerHTML={{ __html: svgHtml }}
             />
