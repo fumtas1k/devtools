@@ -54,13 +54,18 @@ function base64UrlToBuffer(str: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+/** オブジェクトのキーを昇順ソートした JSON 文字列を返す */
+function sortedStringify(obj: Record<string, string>): string {
+  const sorted = Object.fromEntries(Object.entries(obj).sort(([a], [b]) => a.localeCompare(b)));
+  return JSON.stringify(sorted);
+}
+
 /** 署名対象のペイロード文字列を構築（キー昇順ソートで決定論的出力） */
 export function buildPayload(ticket: TicketPayload): string {
   const obj: Record<string, string> = { e: ticket.e, t: ticket.t, x: ticket.x };
   if (ticket.n) obj.n = ticket.n;
   if (ticket.p) obj.p = ticket.p;
-  const sorted = Object.fromEntries(Object.entries(obj).sort(([a], [b]) => a.localeCompare(b)));
-  return JSON.stringify(sorted);
+  return sortedStringify(obj);
 }
 
 // ─── 鍵操作 ──────────────────────────────────────────────
@@ -177,8 +182,7 @@ export function ticketToQrString(ticket: SignedTicket): string {
   const obj: Record<string, string> = { e: ticket.e, s: ticket.s, t: ticket.t, x: ticket.x };
   if (ticket.n) obj.n = ticket.n;
   if (ticket.p) obj.p = ticket.p;
-  const sorted = Object.fromEntries(Object.entries(obj).sort(([a], [b]) => a.localeCompare(b)));
-  return JSON.stringify(sorted);
+  return sortedStringify(obj);
 }
 
 /**

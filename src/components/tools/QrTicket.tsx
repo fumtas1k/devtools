@@ -166,6 +166,9 @@ export function QrTicketTool() {
   const rafRef = useRef<number | null>(null);
   const scanningRef = useRef(false);
 
+  // アンマウント検知 ref（非同期処理後のステート更新ガード用）
+  const mountedRef = useRef(true);
+
   // カメラ停止（useEffect cleanup 用）
   const stopCamera = useCallback(() => {
     if (rafRef.current !== null) {
@@ -185,8 +188,14 @@ export function QrTicketTool() {
     if (mode !== 'verify') stopCamera();
   }, [mode, stopCamera]);
 
-  // アンマウント時にカメラを停止
-  useEffect(() => () => stopCamera(), [stopCamera]);
+  // アンマウント時にカメラを停止 + mountedRef を false にセット
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stopCamera();
+    };
+  }, [stopCamera]);
 
   // ─── 鍵操作 ──────────────────────────────────────────────
 
@@ -217,6 +226,10 @@ export function QrTicketTool() {
       jwk = JSON.parse(importStr) as JsonWebKey;
     } catch {
       setKeyError('JSON形式が不正です');
+      return;
+    }
+    if (!('d' in jwk)) {
+      setKeyError('これは公開鍵です。秘密鍵（"d" フィールドを含むJWK）を入力してください。');
       return;
     }
     try {
@@ -336,6 +349,7 @@ export function QrTicketTool() {
         const jwk = JSON.parse(verifyPubKeyStr) as JsonWebKey;
         pubKey = await importPublicKey(jwk);
       } catch {
+        if (!mountedRef.current) return;
         setVerificationResult({
           valid: false,
           ticket: null,
@@ -346,6 +360,7 @@ export function QrTicketTool() {
         return;
       }
       const result = await verifyTicket(rawData, pubKey);
+      if (!mountedRef.current) return;
       setVerificationResult(result);
       setVerifying(false);
     },
