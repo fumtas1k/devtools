@@ -846,6 +846,7 @@ function GenerateTab({
                 style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
               >
                 <div
+                  data-testid="qr-code-container"
                   style={{ width: '160px', height: '160px' }}
                   dangerouslySetInnerHTML={{ __html: qr.svg }}
                 />
