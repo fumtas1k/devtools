@@ -941,25 +941,25 @@ function VerifyTab({
                   公開鍵を入力してからカメラを起動してください
                 </p>
               )}
+              {/* video/canvas は常時レンダリングして videoRef を確保する。
+                  cameraActive=true になる前にsrcObjectをセットするため。 */}
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                style={{
+                  width: '100%',
+                  maxWidth: '400px',
+                  borderRadius: '0.5rem',
+                  display: cameraActive ? 'block' : 'none',
+                  background: '#000',
+                }}
+                aria-label="カメラプレビュー"
+              />
               {cameraActive && (
-                <div className="space-y-2">
-                  <video
-                    ref={videoRef}
-                    playsInline
-                    muted
-                    style={{
-                      width: '100%',
-                      maxWidth: '400px',
-                      borderRadius: '0.5rem',
-                      display: 'block',
-                      background: '#000',
-                    }}
-                    aria-label="カメラプレビュー"
-                  />
-                  <ActionButton onClick={onStopCamera} variant="danger">
-                    カメラを停止
-                  </ActionButton>
-                </div>
+                <ActionButton onClick={onStopCamera} variant="danger">
+                  カメラを停止
+                </ActionButton>
               )}
               <canvas ref={canvasRef} style={{ display: 'none' }} aria-hidden="true" />
             </div>
