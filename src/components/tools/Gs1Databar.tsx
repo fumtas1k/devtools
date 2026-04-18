@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import bwipjs from 'bwip-js';
 import JSZip from 'jszip';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -123,11 +123,17 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   const allAiValid = aiFields.every((f) => f.error === '');
   const hasAnyAiValue = aiFields.some((f) => f.value.trim() !== '');
 
+  // stale closure を防ぐため ref で最新のコールバックを保持（親の inline arrow 対策）
+  const onSvgChangeRef = useRef(onSvgChange);
+  useEffect(() => {
+    onSvgChangeRef.current = onSvgChange;
+  }, [onSvgChange]);
+
   useEffect(() => {
     if (!gtinResult || !allAiValid) {
       setSvgContent('');
       setBwipError('');
-      onSvgChange('', '');
+      onSvgChangeRef.current('', '');
       return;
     }
 
@@ -156,14 +162,13 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
       const finalSvg = compositeText ? injectCompositeText(sizedSvg, compositeText) : sizedSvg;
       setSvgContent(finalSvg);
       setBwipError('');
-      onSvgChange(finalSvg, gtinResult.fullGtin);
+      onSvgChangeRef.current(finalSvg, gtinResult.fullGtin);
     } catch (e) {
       setSvgContent('');
       setBwipError(e instanceof Error ? e.message : 'バーコード生成に失敗しました');
-      onSvgChange('', '');
+      onSvgChangeRef.current('', '');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gtinInput, gtinError, aiFields]);
+  }, [gtinInput, gtinError, aiFields, gtinResult, allAiValid, hasAnyAiValue]);
 
   const handleGtinInput = (value: string) => {
     setGtinInput(value);
@@ -203,15 +208,19 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
     downloadPngFromSvgContent(svgContent, `gs1-databar-${gtinResult.fullGtin}.png`);
   };
 
-  const usedAis = new Set(aiFields.map((f) => f.ai));
+  const usedAis = useMemo(() => new Set(aiFields.map((f) => f.ai)), [aiFields]);
   const canAddField = aiFields.length < AI_DEFS.length;
   const sampleGtin = SAMPLE_GTINS[index % SAMPLE_GTINS.length];
-  const gs1String = gtinResult
-    ? buildBwipText(
-        gtinResult.fullGtin,
-        aiFields.map((f) => ({ ai: f.ai, value: f.value }))
-      )
-    : '';
+  const gs1String = useMemo(
+    () =>
+      gtinResult
+        ? buildBwipText(
+            gtinResult.fullGtin,
+            aiFields.map((f) => ({ ai: f.ai, value: f.value }))
+          )
+        : '',
+    [gtinResult, aiFields]
+  );
 
   return (
     <div
