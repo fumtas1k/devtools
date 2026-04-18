@@ -60,6 +60,17 @@
 - `usedAis`, `gs1String` を `useMemo` 化
 - ファイル: `src/components/tools/Gs1Databar.tsx`
 
-### Phase 4: サブコンポーネント分離
-- `JwtDecoder.tsx`: `Section`, `PayloadValue` を同ファイル上部に移動
-- `UuidV7Generator.tsx`: `ColoredUuid` を整理
+### Phase 4: サブコンポーネント分離 ✅（確認済み・変更不要）
+調査の結果、対象コンポーネントはすべて既にメイン関数より前のモジュールレベルで定義済みだった。
+
+| ファイル | コンポーネント | 定義位置 |
+|---|---|---|
+| `JwtDecoder.tsx` | `PayloadValue` | 133行目（`JwtDecoderTool` の前） |
+| `JwtDecoder.tsx` | `Section` | 156行目（`JwtDecoderTool` の前） |
+| `UuidV7Generator.tsx` | `ColoredUuid` | 32行目（`UuidV7GeneratorTool` の前） |
+| `UuidV7Generator.tsx` | `FieldBreakdownPanel` | 52行目（`UuidV7GeneratorTool` の前） |
+
+分析時に「インライン定義」と誤判定したが、実際はベストプラクティス通り。
+
+**残余の改善余地（スコープ外・任意）:**
+`JwtDecoder.tsx` 内の純粋なユーティリティ関数（`toBase64Url`・`generateSampleJwt`・`pemToArrayBuffer`・`verifySignature`）を `utils/jwt.ts` へ移動するとテスタビリティが向上する。
