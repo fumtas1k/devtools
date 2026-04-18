@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { copyToClipboard } from '@/utils/clipboard';
 import { colors } from '@/utils/styles';
 
@@ -49,12 +49,20 @@ interface Props {
 
 export function CopyButton({ text, label = 'コピー', className = '', compact = false }: Props) {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const handleClick = async () => {
     const ok = await copyToClipboard(text);
     if (ok) {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
     }
   };
 
