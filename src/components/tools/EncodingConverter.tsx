@@ -24,7 +24,7 @@ import {
 type Mode = 'detect' | 'convert';
 type InputMethod = 'text' | 'file';
 
-const SAMPLE_TEXT = '文字化けサンプル：Shift_JIS ファイルを UTF-8 として開くと起こる\nカラム名,値\nテキスト,あいうえお';
+const SAMPLE_TEXT = 'カラム名,値\nテキスト,あいうえお\n名前,山田 太郎\n住所,東京都渋谷区';
 
 function hexPreview(bytes: Uint8Array, limit = 32): string {
   const end = Math.min(bytes.length, limit);
