@@ -73,6 +73,7 @@
 | `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency） | 開発ツール共通  |
 | `typescript`               | TypeScript コンパイラ（devDependency）       | 開発ツール共通  |
 | `@playwright/test`         | E2Eリグレッションテスト（devDependency）     | 開発ツール共通  |
+| `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16） | 文字コード判定・変換 |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -122,7 +123,8 @@ devtools/
     │       ├── UrlEncoder.tsx
     │       ├── QrCode.tsx
     │       ├── JanCode.tsx
-    │       └── Gs1Databar.tsx
+    │       ├── Gs1Databar.tsx
+    │       └── EncodingConverter.tsx
     ├── layouts/
     │   ├── BaseLayout.astro
     │   └── ToolLayout.astro
@@ -139,7 +141,8 @@ devtools/
     │       ├── url-encode.astro
     │       ├── qr-code.astro
     │       ├── jan-code.astro
-    │       └── gs1-databar.astro
+    │       ├── gs1-databar.astro
+    │       └── encoding-converter.astro
     ├── data/
     │   └── tools.ts
     ├── styles/
@@ -150,6 +153,8 @@ devtools/
         ├── url-encode.ts       # URLエンコード/デコード関数
         ├── jan-code.ts         # JANコード チェックディジット計算
         ├── gs1-databar.ts      # GTIN-14計算・GS1 AIビルダー
+        ├── encoding.ts         # 文字コード判定・変換ラッパー（encoding-japanese）
+        ├── download.ts         # バイナリファイルダウンロードユーティリティ
         ├── styles.ts           # 共通タイポグラフィ定数
         └── __tests__/
             ├── jwt.test.ts
@@ -202,7 +207,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全11ツール）
+## 4. ツール一覧（全12ツール）
 
 ### カテゴリ A: 生成ツール
 
@@ -224,6 +229,7 @@ devtools/
 | 9   | Base64エンコード/デコード | `base64`   | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応          |
 | 10  | JSON / XML 変換        | `json-xml`    | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式 |
 | 11  | JSON / CSV 変換        | `json-csv`    | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化              |
+| 12  | 文字コード判定・変換   | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS・EUC-JP 等へ変換 |
 
 ---
 
@@ -658,6 +664,92 @@ devtools/
 
 ---
 
+### 5.12 文字コード判定・変換（`encoding-converter`）
+
+**入力:**
+
+- 入力方式トグル: [テキスト] / [ファイル]
+- テキスト: テキストエリア（貼り付け。ブラウザ内では UTF-8 として扱われる）
+- ファイル: ファイルアップロード（上限 10 MB）
+
+**モード:**
+
+- [判定]: 入力バイト列の文字コードを自動判定し、結果カードに表示
+- [変換]: 元エンコーディングを指定（または自動判定）して、指定エンコーディングに変換
+
+**処理:**（`src/utils/encoding.ts`、`encoding-japanese` 使用）
+
+- BOM 先頭バイトを自前で検出（UTF-8: `EF BB BF` / UTF-16LE: `FF FE` / UTF-16BE: `FE FF`）
+- `encoding-japanese` の `Encoding.detect()` で文字コードを判定し、内部の `EncodingName` 型に正規化
+- デコード: `Encoding.convert({ to: 'UNICODE', from })` → `String.fromCharCode` チャンク処理（8192 刻み、スタック溢れ防止）
+- 変換: `Encoding.convert({ to, from, type: 'array' })` でバイト列変換
+- BOM 付与: UTF-8 BOM は手動プリペンド `[0xef, 0xbb, 0xbf]`、UTF-16 は `to:'UTF16'` + `bom:'LE'/'BE'` オプションで付与
+
+**対応文字コード:**
+
+| 内部名     | 表示名        |
+| ---------- | ------------- |
+| `UTF8`     | UTF-8         |
+| `SJIS`     | Shift_JIS     |
+| `EUCJP`    | EUC-JP        |
+| `JIS`      | ISO-2022-JP   |
+| `UTF16LE`  | UTF-16 LE     |
+| `UTF16BE`  | UTF-16 BE     |
+| `ASCII`    | ASCII         |
+
+**出力（判定モード）:**
+
+- 検出エンコーディング名
+- BOM 有無
+- バイトサイズ
+- デコードプレビュー（先頭 500 文字）
+
+**出力（変換モード）:**
+
+- 変換後テキストプレビュー（先頭 500 文字）+ [コピー] ボタン
+- 変換後バイト列の先頭 16 バイト hex プレビュー
+- [ダウンロード] ボタン（`application/octet-stream` で保存）
+
+**エラー処理:**
+
+- 10 MB 超過: 「ファイルが大きすぎます（上限 10 MB）」
+- 文字コード判定不能（非テキストバイナリ等）: `UNKNOWN` として表示
+- 変換失敗: 「変換に失敗しました」
+
+**UI:**
+
+```
+┌──────────────────────────────────────────────────────┐
+│  [判定]  [変換]                                        │
+│  入力: [テキスト]  [ファイル]                           │
+├──────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────┐    │
+│  │  テキスト入力エリア（multiline）  [サンプル]   │    │
+│  └──────────────────────────────────────────────┘    │
+├──────────────────────────────────────────────────────┤
+│  判定結果: UTF-8  BOM: なし  サイズ: 123 B             │
+│  ┌────────────────────────────────────────────┐      │
+│  │  プレビュー（デコード済みテキスト）            │      │
+│  └────────────────────────────────────────────┘      │
+├──────────────────────────────────────────────────────┤
+│  （変換モード時のみ）                                   │
+│  元の文字コード: [自動判定] [UTF-8] [SJIS] [EUC-JP]    │
+│                [JIS] [UTF-16LE] [UTF-16BE]            │
+│  変換後:        [UTF-8] [SJIS] [EUC-JP]               │
+│                [JIS] [UTF-16LE] [UTF-16BE]            │
+│  □ BOM を付与する                                      │
+├──────────────────────────────────────────────────────┤
+│  変換結果プレビュー:            [コピー] [ダウンロード] │
+│  ┌────────────────────────────────────────────┐      │
+│  │                                              │      │
+│  └────────────────────────────────────────────┘      │
+│  123 B  先頭: EF BB BF ...                            │
+│                                              [クリア]  │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -787,6 +879,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 - [ ] ツール追加
   - [x] UUID v7 生成（`uuid-v7`）
   - [x] Base64 エンコード/デコード（`base64`）
+  - [x] 文字コード判定・変換（`encoding-converter`）
   - [ ] JSON整形、Diff、パスワード生成、ハッシュ、文字数カウント等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）

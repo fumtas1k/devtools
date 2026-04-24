@@ -7,7 +7,7 @@ interface Option<T> {
 
 interface Props<T extends string> {
   options: Option<T>[];
-  value: T;
+  value: T | undefined;
   onChange: (value: T) => void;
   ariaLabel?: string;
 }
@@ -18,7 +18,7 @@ export function ToggleGroup<T extends string>({ options, value, onChange, ariaLa
       className="grid gap-1 rounded-lg p-1"
       role="group"
       aria-label={ariaLabel}
-      style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)`, background: colors.bgSubtle }}
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`, background: colors.bgSubtle }}
     >
       {options.map((opt) => (
         <button

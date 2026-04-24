@@ -170,6 +170,19 @@ const attrs = {
 }
 
 {
+  slug === 'encoding-converter' && (
+    <svg {...attrs}>
+      {/* 文字 "A" */}
+      <path d="M4 20 L8 4 L12 20" />
+      <line x1="5.5" y1="14" x2="10.5" y2="14" />
+      {/* 変換矢印 */}
+      <path d="M15 10 L20 10 M18 7 L21 10 L18 13" />
+      <path d="M20 18 L15 18 M17 15 L14 18 L17 21" />
+    </svg>
+  )
+}
+
+{
   slug === 'qr-ticket' && (
     <svg {...attrs}>
       {/* QRパターン（左上隅） */}
