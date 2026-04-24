@@ -193,4 +193,15 @@ describe('injectCompositeText', () => {
     expect(width).toBeLessThan(200); // 286 より明らかに小さいことを確認
     expect(width).toBe(100);
   });
+
+  it('テキストが空の場合は元の SVG を返す', () => {
+    const result = injectCompositeText(mockSvg, '');
+    expect(result).toBe(mockSvg);
+  });
+
+  it('viewBox が存在しない場合は元の SVG を返す', () => {
+    const noVbSvg = '<svg width="100" height="100"><rect /></svg>';
+    const result = injectCompositeText(noVbSvg, 'test');
+    expect(result).toBe(noVbSvg);
+  });
 });

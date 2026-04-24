@@ -4,6 +4,47 @@
 
 ---
 
+## [2026-04-25] SVG 手動組立時の XSS 対策（GS1データバー）
+
+### 現象
+
+ライブラリが生成した SVG 文字列に、ユーザー入力（AIフィールドの値）を文字列結合で `<text>` 要素として挿入していた。この際、エスケープを行わずに `dangerouslySetInnerHTML` で描画していたため、反射型 XSS の脆弱性が発生した。
+
+### 原因
+
+- `dangerouslySetInnerHTML` を使用して生の文字列を HTML としてレンダリングしていた。
+- ライブラリ（bwip-js）の制限により SVG を手動加工する必要があったが、その際のセキュリティ考慮（エスケープ）が漏れていた。
+- AI 10/21 などのフィールドが `<>&"` などの特殊文字をバリデーションで許可していた。
+
+### 教訓
+
+**`dangerouslySetInnerHTML` を使用する場合、外部からの入力（ユーザー入力、APIレスポンス等）は必ずエスケープまたはサニタイズする。**
+
+特に SVG を文字列として組み立てる際は以下の点に注意する：
+1. テキスト要素として挿入する値には、`escapeHtml` などの関数でエンティティエスケープを適用する。
+2. SVG の幅や高さを計算する場合、エスケープ後の文字列長（`&amp;` は 5 文字）ではなく、元の文字列長（`&` は 1 文字）を使用する（ブラウザ描画上の幅と一致させるため）。
+
+### 修正パターン
+
+```typescript
+// ❌ 脆弱な実装
+const textEl = `<text x="50" y="20">${userInput}</text>`;
+return `${openTag}${textEl}${inner}</svg>`;
+
+// ✅ 安全な実装
+const escapedText = escapeHtml(userInput);
+const textEl = `<text x="50" y="20">${escapedText}</text>`;
+return `${openTag}${textEl}${inner}</svg>`;
+```
+
+### 予防策
+
+- `dangerouslySetInnerHTML` の使用箇所を grep で定期的に確認する。
+- 可能な限り、文字列結合ではなく JSX や DOM API を使用して SVG を構築する。
+- 設計判断（`docs/decisions.md` [028]）としてルールを明文化し、レビュー時に確認する。
+
+---
+
 ## [2026-04-25] develop に直接コミットしない
 
 ### 現象
