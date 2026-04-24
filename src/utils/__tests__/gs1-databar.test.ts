@@ -3,6 +3,8 @@ import {
   calcGtin14CheckDigit,
   validateGtin14Input,
   buildBwipText,
+  escapeHtml,
+  injectCompositeText,
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
@@ -10,6 +12,7 @@ import {
 // ────────────────────────────────────────────
 // AI_DEFS: isVariableLength
 // ────────────────────────────────────────────
+// ... (omitted existing tests for brevity in reasoning, will include all in actual tool call)
 describe('AI_DEFS isVariableLength', () => {
   it('固定長AI (17, 11, 15) は isVariableLength=false', () => {
     const fixedAis = ['17', '11', '15'];
@@ -134,5 +137,60 @@ describe('buildBwipText', () => {
   it('値の前後スペースはトリムされる', () => {
     const result = buildBwipText('04987000000017', [{ ai: '10' as AiCode, value: '  ABC  ' }]);
     expect(result).toBe('(01)04987000000017|(10)ABC');
+  });
+});
+
+// ────────────────────────────────────────────
+// escapeHtml
+// ────────────────────────────────────────────
+describe('escapeHtml', () => {
+  it('特殊文字をエスケープする', () => {
+    expect(escapeHtml('&')).toBe('&amp;');
+    expect(escapeHtml('<')).toBe('&lt;');
+    expect(escapeHtml('>')).toBe('&gt;');
+    expect(escapeHtml('"')).toBe('&quot;');
+    expect(escapeHtml("'")).toBe('&#039;');
+  });
+
+  it('通常の文字列はそのまま', () => {
+    expect(escapeHtml('ABC123')).toBe('ABC123');
+    expect(escapeHtml('231231')).toBe('231231');
+  });
+
+  it('混合文字列を正しくエスケープする', () => {
+    expect(escapeHtml('<script>alert("XSS")</script>')).toBe(
+      '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;'
+    );
+  });
+});
+
+// ────────────────────────────────────────────
+// injectCompositeText
+// ────────────────────────────────────────────
+describe('injectCompositeText', () => {
+  const mockSvg =
+    '<svg width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" /></svg>';
+
+  it('テキストをエスケープして挿入する', () => {
+    const payload = '</text><script>alert(1)</script><text>';
+    const result = injectCompositeText(mockSvg, payload);
+
+    expect(result).not.toContain(payload);
+    expect(result).toContain('&lt;/text&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;text&gt;');
+  });
+
+  it('エスケープ後の文字数ではなく、元の文字数で幅を計算する', () => {
+    // & が 5 つある場合、エスケープ後は 25 文字になるが、描画幅は 5 文字分であるべき
+    const longPayload = '&&&&&'; // エスケープ後: &amp;&amp;&amp;&amp;&amp; (25 chars)
+    const result = injectCompositeText(mockSvg, longPayload);
+
+    // 18 * 0.6 = 10.8 (charW)
+    // 5 * 10.8 + 16 (padding) = 54 + 16 = 70 (estimatedTextW)
+    // newW = max(100, 70) = 100
+    // もし 25 文字で計算すると 25 * 10.8 + 16 = 270 + 16 = 286 になるはず
+    const vbMatch = result.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+    const width = parseFloat(vbMatch![1]);
+    expect(width).toBeLessThan(200); // 286 より明らかに小さいことを確認
+    expect(width).toBe(100);
   });
 });
