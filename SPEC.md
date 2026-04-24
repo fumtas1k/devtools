@@ -684,6 +684,9 @@ devtools/
 - デコード: `Encoding.convert({ to: 'UNICODE', from })` → `String.fromCharCode` チャンク処理（8192 刻み、スタック溢れ防止）
 - 変換: `Encoding.convert({ to, from, type: 'array' })` でバイト列変換
 - BOM 付与: UTF-8 BOM は手動プリペンド `[0xef, 0xbb, 0xbf]`、UTF-16 は `to:'UTF16'` + `bom:'LE'/'BE'` オプションで付与
+- 改行コード正規化: 変換後バイト列に対してバイト単位で適用（UTF-8/SJIS/EUC-JP/JIS/ASCII が対象。UTF-16 は対象外）
+  - LF: `0x0D 0x0A` → `0x0A`（単独 CR は保持）
+  - CRLF: 単独 `0x0A` → `0x0D 0x0A`（既存 CRLF の LF は重複変換しない）
 
 **対応文字コード:**
 
@@ -737,6 +740,7 @@ devtools/
 │                [JIS] [UTF-16LE] [UTF-16BE]            │
 │  変換後:        [UTF-8] [SJIS] [EUC-JP]               │
 │                [JIS] [UTF-16LE] [UTF-16BE]            │
+│  改行コード:   [そのまま] [LF] [CRLF]                  │
 │  □ BOM を付与する                                      │
 ├──────────────────────────────────────────────────────┤
 │  変換結果プレビュー:            [コピー] [ダウンロード] │
