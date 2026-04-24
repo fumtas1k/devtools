@@ -780,6 +780,48 @@ QRチケットツールは自己完結型（DBサーバー不要）のチケッ�
 - ✅ JWK形式で鍵をテキストとしてコピー・保存・共有できる
 - ⚠️ ステートレス検証のため同一QRの重複スキャン防止は行わない（設計上の意図的な制約）
 
+## [025] 文字コード判定・変換に encoding-japanese を採用
+
+**2026-04-24 | ステータス: 採用**
+
+### 背景
+
+文字コード判定・変換ツールの追加にあたり、UTF-8・Shift_JIS・EUC-JP・ISO-2022-JP・UTF-16LE/BE の相互変換と自動判定をブラウザ完結で実現する必要があった。
+日本語レガシーデータ（SJIS CSV、EUC-JP ログ、ISO-2022-JP メール等）を扱う現場での文字化け問題が解決の動機。
+
+### 決断
+
+`encoding-japanese@2.2.0` を採用する。
+
+- `Encoding.detect()` による文字コード自動判定と `Encoding.convert()` による相互変換を 1 パッケージで提供
+- ピュア JavaScript でブラウザ・Node.js 両対応（Vitest でのユニットテストも可能）
+- ~60 KB minified。Astro のページ単位コード分割により、他ツールのバンドルへの影響ゼロ
+- MIT ライセンス、バージョン固定（`save-exact=true`）で固定管理
+
+**実装上の注意点:**
+
+- `Encoding.detect()` の戻り値は `'UTF16'` / `'UNICODE'` 等の表記揺れがあるため、`EJ_NORMALIZE` マップで内部 `EncodingName` 型に正規化している
+- BOM 判定は `Encoding.detect()` だけでは不十分なため、先頭バイトを自前で確認（UTF-8: `EF BB BF` / UTF-16LE: `FF FE` / UTF-16BE: `FE FF`）
+- UTF-8 BOM の付与: `encoding-japanese` の `bom: true` オプションは UTF-8 BOM を付与しない（UTF-16 にのみ有効）。UTF-8 BOM は `[0xef, 0xbb, 0xbf, ...result]` で手動プリペンドする
+- UTF-16 BOM の付与: `to: 'UTF16'` + `bom: 'LE'/'BE'` を使用する（`to: 'UTF16LE'/'UTF16BE'` と `bom: true` の組み合わせでは BOM が付かない）
+- 巨大文字列の `String.fromCharCode` によるスタック溢れ防止: 8192 刻みのチャンク処理を実装
+
+### 却下した選択肢
+
+- **`TextDecoder` 単独**: UTF-8 以外へのエンコードができないため変換機能が成立しない
+- **`iconv-lite`**: Node.js 前提で `Buffer` 依存。ブラウザバンドルが重い
+- **`jschardet`**: 判定のみで変換機能がなく、変換には別ライブラリが必要になり二重依存になる
+
+### 結果・トレードオフ
+
+- ✅ 判定・変換を 1 パッケージで完結できる
+- ✅ ブラウザ完結（サーバー不要）で動作
+- ✅ E2E テストで SJIS/EUC-JP/UTF-8 BOM の変換バイト列を検証済み
+- ⚠️ テキスト入力（ブラウザ内は常に UTF-8）から SJIS/EUC-JP 等への変換は、入力を UTF-8 として扱う前提になる
+- ⚠️ 入力サイズ上限を 10 MB に設定（ブラウザメモリ保護のため）
+
+---
+
 ## [024] QRチケットのデータ形式にJSONを採用（JWTではなく）
 
 **2026-04-18 | ステータス: 採用**

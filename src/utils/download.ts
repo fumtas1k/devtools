@@ -16,6 +16,11 @@ export function downloadText(content: string, filename: string, mimeType = 'text
   triggerDownload(new Blob([content], { type: `${mimeType};charset=utf-8` }), filename);
 }
 
+/** バイナリをファイルとしてダウンロードする */
+export function downloadBytes(bytes: Uint8Array, filename: string): void {
+  triggerDownload(new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }), filename);
+}
+
 /** SVG文字列をファイルとしてダウンロードする */
 export function downloadSvg(svgContent: string, filename: string): void {
   triggerDownload(new Blob([svgContent], { type: 'image/svg+xml' }), filename);
