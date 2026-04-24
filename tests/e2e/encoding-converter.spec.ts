@@ -142,6 +142,23 @@ test.describe('文字コード判定・変換', () => {
     await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
   });
 
+  test('ケースJ: ファイルアップロード変換時のダウンロード名が元拡張子を保持する', async ({ page }) => {
+    await page.getByRole('button', { name: '変換' }).click();
+    await page.getByRole('button', { name: 'ファイル' }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'test_sjis.csv',
+      mimeType: 'text/csv',
+      buffer: SJIS_AIUEO,
+    });
+
+    await expect(page.locator('#enc-output')).toContainText('あいうえお', { timeout: 3000 });
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('test_sjis_utf8.csv');
+  });
+
   test('サンプルボタンでサンプルテキストが入力される', async ({ page }) => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByLabel('入力テキスト')).not.toBeEmpty();

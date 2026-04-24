@@ -170,8 +170,9 @@ export function EncodingConverterTool() {
 
   function handleDownload() {
     if (!outputBytes) return;
+    const match = fileName.match(/\.([^.]+)$/);
+    const ext = match ? match[1] : 'txt';
     const baseName = fileName ? fileName.replace(/\.[^.]+$/, '') : 'converted';
-    const ext = targetEnc === 'UTF8' ? 'txt' : targetEnc === 'SJIS' ? 'txt' : targetEnc === 'JIS' ? 'txt' : 'txt';
     downloadBytes(outputBytes, `${baseName}_${targetEnc.toLowerCase()}.${ext}`);
   }
 
