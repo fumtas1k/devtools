@@ -6,6 +6,7 @@ import {
   calcGtin14CheckDigit,
   validateGtin14Input,
   buildBwipText,
+  injectCompositeText,
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
@@ -46,54 +47,6 @@ function addSvgDimensions(svg: string): string {
   const w = Math.round(parseFloat(m[1]));
   const h = Math.round(parseFloat(m[2]));
   return svg.replace('<svg viewBox=', `<svg width="${w}" height="${h}" viewBox=`);
-}
-
-/**
- * 合成シンボルの上に AI テキストを挿入する。
- * bwip-js の includetext は composite 部上のテキストを出力しないため、
- * SVG 文字列を直接操作してテキスト要素を追加する。
- */
-function injectCompositeText(svg: string, text: string): string {
-  if (!text) return svg;
-
-  const vbMatch = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
-  if (!vbMatch) return svg;
-  const barcodeW = parseFloat(vbMatch[1]);
-  const h = parseFloat(vbMatch[2]);
-
-  const fontSize = 18;
-  const textRowH = fontSize + 6;
-
-  // Courier New monospace: ~0.6em per character
-  const charW = fontSize * 0.6;
-  const padding = 16;
-  const estimatedTextW = text.length * charW + padding;
-
-  // Expand width if text is wider than barcode
-  const newW = Math.max(barcodeW, estimatedTextW);
-  const newH = h + textRowH;
-
-  // If width expanded, center the barcode horizontally
-  const barcodeOffsetX = (newW - barcodeW) / 2;
-
-  let result = svg
-    .replace(/viewBox="0 0 [\d.]+ [\d.]+"/, `viewBox="0 0 ${newW.toFixed(1)} ${newH.toFixed(1)}"`)
-    .replace(/width="\d+"/, `width="${Math.round(newW)}"`)
-    .replace(/height="\d+"/, `height="${Math.round(newH)}"`);
-
-  const openEnd = result.indexOf('>') + 1;
-  const closeStart = result.lastIndexOf('</svg>');
-  const openTag = result.slice(0, openEnd);
-  const inner = result.slice(openEnd, closeStart);
-
-  const textEl =
-    `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" ` +
-    `text-anchor="middle" font-family="'Courier New',Courier,monospace" ` +
-    `font-size="${fontSize}" fill="#000000">${text}</text>`;
-
-  const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
-
-  return `${openTag}${textEl}<g transform="${barcodeTranslate}">${inner}</g></svg>`;
 }
 
 // ─────────────────────────────────────────────
