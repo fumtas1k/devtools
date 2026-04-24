@@ -389,7 +389,8 @@ export function EncodingConverterTool() {
               変換結果プレビュー
             </label>
             <span className="flex items-center gap-2" style={{ visibility: outputPreview ? 'visible' : 'hidden' }}>
-              <CopyButton text={outputPreview} label="コピー" />
+              {/* クリップボードは Unicode テキストのみ保持できるため UTF-8 変換時のみ表示 */}
+              {targetEnc === 'UTF8' && <CopyButton text={outputPreview} label="コピー" />}
               <button
                 onClick={handleDownload}
                 className="rounded-lg px-3 py-1.5 transition-colors"
