@@ -4,6 +4,35 @@
 
 ---
 
+## [2026-04-25] Playwright 確認前にブラウザキャッシュをクリアする
+
+### 現象
+
+Playwright でスクリーンショットを撮影したとき、Service Worker キャッシュや localStorage に古いデータが残っており、実際の変更が映り込まなかった。ユーザーが毎回ブラウザの「デバイス上のサイトデータ」を手動削除する必要があった。
+
+### 教訓
+
+**Playwright でスクリーンショット確認をする前に、必ずキャッシュをクリアしてからリロードする。**
+
+### 手順
+
+```js
+// 1. browser_evaluate でキャッシュ削除
+const keys = await caches.keys();
+await Promise.all(keys.map(k => caches.delete(k)));
+localStorage.clear();
+sessionStorage.clear();
+
+// 2. browser_navigate でリロード（キャッシュなし再取得）
+// 3. その後スクリーンショット撮影
+```
+
+### 予防策
+
+UIコンポーネント・レイアウト変更後の Playwright 確認手順に「キャッシュクリア → リロード → 撮影」を必ず含める。
+
+---
+
 ## [2026-04-25] SVG 手動組立時の XSS 対策（GS1データバー）
 
 ### 現象
