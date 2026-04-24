@@ -9,16 +9,20 @@ import {
   detectEncoding,
   decodeToText,
   convertBytes,
+  normalizeNewlines,
   textToUtf8Bytes,
   ENCODING_LABELS,
   BOM_ENCODINGS,
+  UTF16_ENCODINGS,
   SOURCE_ENCODINGS_ROW1,
   SOURCE_ENCODINGS_ROW2,
   TARGET_ENCODINGS_ROW1,
   TARGET_ENCODINGS_ROW2,
+  NEWLINE_OPTIONS,
   type EncodingName,
   type SourceEncoding,
   type DetectionResult,
+  type NewlineMode,
 } from '@/utils/encoding';
 
 type Mode = 'detect' | 'convert';
@@ -54,6 +58,7 @@ export function EncodingConverterTool() {
   const [sourceEnc, setSourceEnc] = useState<SourceEncoding>('AUTO');
   const [targetEnc, setTargetEnc] = useState<EncodingName>('UTF8');
   const [withBom, setWithBom] = useState(false);
+  const [newlineMode, setNewlineMode] = useState<NewlineMode>('keep');
 
   const [outputBytes, setOutputBytes] = useState<Uint8Array | null>(null);
   const [outputPreview, setOutputPreview] = useState('');
@@ -111,18 +116,20 @@ export function EncodingConverterTool() {
     }
     const timer = setTimeout(() => runConvert(activeBytes), 300);
     return () => clearTimeout(timer);
-  }, [activeBytes, inputMethod, mode, sourceEnc, targetEnc, withBom]);
+  }, [activeBytes, inputMethod, mode, sourceEnc, targetEnc, withBom, newlineMode]);
 
   function runConvert(bytes: Uint8Array) {
     try {
       const converted = convertBytes(bytes, sourceEnc, targetEnc, withBom);
-      setOutputBytes(converted);
+      const effectiveMode: NewlineMode = UTF16_ENCODINGS.has(targetEnc) ? 'keep' : newlineMode;
+      const normalized = normalizeNewlines(converted, effectiveMode);
+      setOutputBytes(normalized);
       setError('');
       // プレビューは変換後バイトを UTF-8 デコード (SJIS/EUC-JP → UNICODE 経由)
       if (targetEnc === 'UTF8') {
-        setOutputPreview(new TextDecoder('utf-8').decode(converted).slice(0, 500));
+        setOutputPreview(new TextDecoder('utf-8').decode(normalized).slice(0, 500));
       } else {
-        const preview = decodeToText(converted, targetEnc);
+        const preview = decodeToText(normalized, targetEnc);
         setOutputPreview(preview.slice(0, 500));
       }
     } catch (e) {
@@ -364,6 +371,24 @@ export function EncodingConverterTool() {
               />
             </div>
           </div>
+
+          {UTF16_ENCODINGS.has(targetEnc) ? (
+            <div style={{ ...caption, color: colors.muted }}>
+              改行コード: UTF-16 では改行コード正規化は適用されません
+            </div>
+          ) : (
+            <div>
+              <div style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>
+                改行コード:
+              </div>
+              <ToggleGroup
+                options={NEWLINE_OPTIONS}
+                value={newlineMode}
+                onChange={(v) => setNewlineMode(v as NewlineMode)}
+                ariaLabel="改行コード"
+              />
+            </div>
+          )}
 
           {bomActive && (
             <label className="flex items-center gap-2 cursor-pointer" style={{ ...caption, color: colors.text }}>

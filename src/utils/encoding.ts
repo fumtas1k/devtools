@@ -122,6 +122,36 @@ export function textToUtf8Bytes(text: string): Uint8Array {
 
 export const BOM_ENCODINGS: ReadonlySet<EncodingName> = new Set(['UTF8', 'UTF16LE', 'UTF16BE']);
 
+export const UTF16_ENCODINGS: ReadonlySet<EncodingName> = new Set(['UTF16LE', 'UTF16BE']);
+
+export type NewlineMode = 'keep' | 'lf' | 'crlf';
+
+export const NEWLINE_OPTIONS: Array<{ value: NewlineMode; label: string }> = [
+  { value: 'keep', label: 'そのまま' },
+  { value: 'lf', label: 'LF' },
+  { value: 'crlf', label: 'CRLF' },
+];
+
+// UTF-8 / SJIS / EUC-JP / JIS / ASCII 向けのバイト単位正規化。
+// UTF-16 は呼び出し元で除外すること（BOM バイトは 0x0A/0x0D を含まないため分離不要）。
+export function normalizeNewlines(bytes: Uint8Array, mode: NewlineMode): Uint8Array {
+  if (mode === 'keep' || bytes.length === 0) return bytes;
+
+  const out: number[] = [];
+  if (mode === 'lf') {
+    for (let i = 0; i < bytes.length; i++) {
+      if (bytes[i] === 0x0d && bytes[i + 1] === 0x0a) continue; // CR を捨てて次で LF を出力
+      out.push(bytes[i]);
+    }
+  } else {
+    for (let i = 0; i < bytes.length; i++) {
+      if (bytes[i] === 0x0a && bytes[i - 1] !== 0x0d) out.push(0x0d);
+      out.push(bytes[i]);
+    }
+  }
+  return Uint8Array.from(out);
+}
+
 // トグルボタン用の短縮ラベル (4文字以内 or ASCII)。検出結果カードの表示には ENCODING_LABELS を使う
 export const SOURCE_ENCODINGS_ROW1: Array<{ value: SourceEncoding; label: string }> = [
   { value: 'AUTO', label: '自動判定' },

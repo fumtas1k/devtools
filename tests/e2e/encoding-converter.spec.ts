@@ -1,8 +1,15 @@
+import * as fs from 'fs';
 import { test, expect } from '@playwright/test';
 import { waitForReactHydration } from './helpers';
 
 // Shift_JIS "あいうえお\n" (0x82A0 82A2 82A4 82A6 82A8 0A)
 const SJIS_AIUEO = Buffer.from([0x82, 0xa0, 0x82, 0xa2, 0x82, 0xa4, 0x82, 0xa6, 0x82, 0xa8, 0x0a]);
+
+// Shift_JIS "あ\r\nい" (CRLF あり)
+const SJIS_CRLF = Buffer.from([0x82, 0xa0, 0x0d, 0x0a, 0x82, 0xa2]);
+
+// UTF-8 "あ\nい" (LF のみ)
+const UTF8_LF = Buffer.from([0xe3, 0x81, 0x82, 0x0a, 0xe3, 0x81, 0x84]);
 
 // EUC-JP "あいうえお\n" (0xA4A2 A4A4 A4A6 A4A8 A4AA 0A)
 const EUCJP_AIUEO = Buffer.from([0xa4, 0xa2, 0xa4, 0xa4, 0xa4, 0xa6, 0xa4, 0xa8, 0xa4, 0xaa, 0x0a]);
@@ -163,5 +170,95 @@ test.describe('文字コード判定・変換', () => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByLabel('入力テキスト')).not.toBeEmpty();
     await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8', { timeout: 2000 });
+  });
+
+  test('ケースK: 改行コード「そのまま」でCRLFがそのまま保持される', async ({ page }) => {
+    await page.getByRole('button', { name: '変換' }).click();
+    await page.getByRole('button', { name: 'ファイル' }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'test_sjis_crlf.txt',
+      mimeType: 'text/plain',
+      buffer: SJIS_CRLF,
+    });
+
+    // デフォルトは「そのまま」
+    await expect(page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'そのまま' })).toHaveAttribute('aria-pressed', 'true', { timeout: 3000 });
+    await expect(page.locator('#enc-output')).not.toBeEmpty({ timeout: 3000 });
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    const bytes = fs.readFileSync(downloadPath!);
+
+    // CRLF (0x0D 0x0A) が保持されている
+    expect(bytes.indexOf(Buffer.from([0x0d, 0x0a]))).toBeGreaterThan(-1);
+  });
+
+  test('ケースL: 改行コード「LF」でCRLFがLFに正規化される', async ({ page }) => {
+    await page.getByRole('button', { name: '変換' }).click();
+    await page.getByRole('button', { name: 'ファイル' }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'test_sjis_crlf.txt',
+      mimeType: 'text/plain',
+      buffer: SJIS_CRLF,
+    });
+
+    await expect(page.locator('#enc-output')).not.toBeEmpty({ timeout: 3000 });
+
+    await page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'LF', exact: true }).click();
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    const bytes = fs.readFileSync(downloadPath!);
+
+    // CRLF が除去されている（0x0D が残っていない）
+    expect(bytes.indexOf(0x0d)).toBe(-1);
+    // LF は残っている
+    expect(bytes.indexOf(0x0a)).toBeGreaterThan(-1);
+  });
+
+  test('ケースM: 改行コード「CRLF」でLFがCRLFに正規化される', async ({ page }) => {
+    await page.getByRole('button', { name: '変換' }).click();
+    await page.getByRole('button', { name: 'ファイル' }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'test_utf8_lf.txt',
+      mimeType: 'text/plain',
+      buffer: UTF8_LF,
+    });
+
+    await expect(page.locator('#enc-output')).not.toBeEmpty({ timeout: 3000 });
+
+    await page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'CRLF' }).click();
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    const bytes = fs.readFileSync(downloadPath!);
+
+    // CRLF に変換されている
+    expect(bytes.indexOf(Buffer.from([0x0d, 0x0a]))).toBeGreaterThan(-1);
+  });
+
+  test('ケースN: UTF-16LE ターゲット選択時は改行コードトグルが非表示になる', async ({ page }) => {
+    await page.getByRole('button', { name: '変換' }).click();
+
+    // UTF-8 ターゲットでは改行コードトグルが表示される
+    await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible({ timeout: 2000 });
+
+    // UTF-16LE ターゲットに切り替えると非表示になる
+    const targetRow2 = page.getByRole('group', { name: '変換後の文字コード (JIS・UTF-16)' });
+    await targetRow2.getByRole('button', { name: 'UTF-16LE' }).click();
+    await expect(page.getByRole('group', { name: '改行コード' })).not.toBeVisible();
+    // UTF-16 向けの注記が表示される
+    await expect(page.getByText('UTF-16 では改行コード正規化は適用されません')).toBeVisible();
+
+    // UTF-8 に戻すと再表示される
+    const targetRow1 = page.getByRole('group', { name: '変換後の文字コード (UTF-8・SJIS・EUC-JP)' });
+    await targetRow1.getByRole('button', { name: 'UTF-8' }).click();
+    await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible();
   });
 });
