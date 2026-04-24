@@ -245,7 +245,12 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
               >
                 {gtinResult.fullGtin}
               </span>
-              <CopyButton text={gtinResult.fullGtin} label="コピー" />
+              <span className="hidden sm:inline-flex">
+                <CopyButton text={gtinResult.fullGtin} label="コピー" />
+              </span>
+              <span className="sm:hidden inline-flex">
+                <CopyButton text={gtinResult.fullGtin} compact />
+              </span>
             </div>
           </div>
         )}
