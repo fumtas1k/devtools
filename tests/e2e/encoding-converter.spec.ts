@@ -124,6 +124,24 @@ test.describe('文字コード判定・変換', () => {
     }
   });
 
+  test('ケースI: UTF-8 以外ターゲット選択時はコピーボタンが非表示になる', async ({ page }) => {
+    await page.getByRole('button', { name: '変換' }).click();
+    await page.getByLabel('入力テキスト').fill('あいうえお');
+
+    // UTF-8 ターゲット（デフォルト）→ コピーボタンが表示される
+    const targetRow1 = page.getByRole('group', { name: '変換後の文字コード (UTF-8・SJIS・EUC-JP)' });
+    await targetRow1.getByRole('button', { name: 'UTF-8' }).click();
+    await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible({ timeout: 2000 });
+
+    // SJIS ターゲット → コピーボタンが非表示になる
+    await targetRow1.getByRole('button', { name: 'SJIS' }).click();
+    await expect(page.getByRole('button', { name: 'コピー' })).not.toBeVisible();
+
+    // UTF-8 に戻すとコピーボタンが再表示される
+    await targetRow1.getByRole('button', { name: 'UTF-8' }).click();
+    await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
+  });
+
   test('サンプルボタンでサンプルテキストが入力される', async ({ page }) => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByLabel('入力テキスト')).not.toBeEmpty();
