@@ -101,6 +101,29 @@ test.describe('文字コード判定・変換', () => {
     await expect(page.getByTestId('detection-result')).not.toBeVisible();
   });
 
+  test('ケースH: 変換モードで Row1 選択中は Row2 がハイライトされない', async ({ page }) => {
+    await page.getByRole('button', { name: '変換' }).click();
+
+    // 「元の文字コード」グループに絞って検証（source/target 両方に JIS があるため）
+    const srcRow1 = page.getByRole('group', { name: '元の文字コード (AUTO・UTF-8・SJIS・EUC-JP)' });
+    const srcRow2 = page.getByRole('group', { name: '元の文字コード (JIS・UTF-16)' });
+
+    // 初期状態: 自動判定(Row1) が選択中
+    await expect(srcRow1.getByRole('button', { name: '自動判定' })).toHaveAttribute('aria-pressed', 'true');
+
+    // Row2 のボタンは全て非選択（ここが以前バグっていた箇所）
+    for (const name of ['JIS', 'UTF-16LE', 'UTF-16BE']) {
+      await expect(srcRow2.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false');
+    }
+
+    // JIS (Row2) をクリックすると Row2 がアクティブになり Row1 は全て非選択
+    await srcRow2.getByRole('button', { name: 'JIS' }).click();
+    await expect(srcRow2.getByRole('button', { name: 'JIS' })).toHaveAttribute('aria-pressed', 'true');
+    for (const name of ['自動判定', 'UTF-8', 'SJIS', 'EUC-JP']) {
+      await expect(srcRow1.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false');
+    }
+  });
+
   test('サンプルボタンでサンプルテキストが入力される', async ({ page }) => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByLabel('入力テキスト')).not.toBeEmpty();
