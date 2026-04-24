@@ -7,7 +7,7 @@ interface Option<T> {
 
 interface Props<T extends string> {
   options: Option<T>[];
-  value: T;
+  value: T | undefined;
   onChange: (value: T) => void;
   ariaLabel?: string;
 }

@@ -331,13 +331,13 @@ export function EncodingConverterTool() {
             <div className="space-y-2">
               <ToggleGroup
                 options={SOURCE_ENCODINGS_ROW1}
-                value={SOURCE_ENCODINGS_ROW1.some((o) => o.value === sourceEnc) ? sourceEnc : 'AUTO'}
+                value={SOURCE_ENCODINGS_ROW1.some((o) => o.value === sourceEnc) ? sourceEnc : undefined}
                 onChange={(v) => setSourceEnc(v as SourceEncoding)}
                 ariaLabel="元の文字コード (AUTO・UTF-8・SJIS・EUC-JP)"
               />
               <ToggleGroup
                 options={SOURCE_ENCODINGS_ROW2}
-                value={SOURCE_ENCODINGS_ROW2.some((o) => o.value === sourceEnc) ? sourceEnc : SOURCE_ENCODINGS_ROW2[0].value}
+                value={SOURCE_ENCODINGS_ROW2.some((o) => o.value === sourceEnc) ? sourceEnc : undefined}
                 onChange={(v) => setSourceEnc(v as SourceEncoding)}
                 ariaLabel="元の文字コード (JIS・UTF-16)"
               />
@@ -351,13 +351,13 @@ export function EncodingConverterTool() {
             <div className="space-y-2">
               <ToggleGroup
                 options={TARGET_ENCODINGS_ROW1}
-                value={TARGET_ENCODINGS_ROW1.some((o) => o.value === targetEnc) ? targetEnc : TARGET_ENCODINGS_ROW1[0].value}
+                value={TARGET_ENCODINGS_ROW1.some((o) => o.value === targetEnc) ? targetEnc : undefined}
                 onChange={(v) => setTargetEnc(v as EncodingName)}
                 ariaLabel="変換後の文字コード (UTF-8・SJIS・EUC-JP)"
               />
               <ToggleGroup
                 options={TARGET_ENCODINGS_ROW2}
-                value={TARGET_ENCODINGS_ROW2.some((o) => o.value === targetEnc) ? targetEnc : TARGET_ENCODINGS_ROW2[0].value}
+                value={TARGET_ENCODINGS_ROW2.some((o) => o.value === targetEnc) ? targetEnc : undefined}
                 onChange={(v) => setTargetEnc(v as EncodingName)}
                 ariaLabel="変換後の文字コード (JIS・UTF-16)"
               />
