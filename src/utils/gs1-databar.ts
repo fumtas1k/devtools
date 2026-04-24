@@ -4,8 +4,11 @@ export const GTIN14_LENGTH = 14;
 /** GS1 DataBar Limited が受け付ける先頭桁 */
 export const DATABAR_LIMITED_FIRST_DIGITS = [0, 1] as const;
 
+/** GTIN-14 チェックディジット計算結果の型 */
 export interface Gs1CalcResult {
+  /** チェックディジット（1桁の数字） */
   checkDigit: number;
+  /** チェックディジットを含む14桁の完全なGTIN */
   fullGtin: string;
 }
 
@@ -15,6 +18,7 @@ export interface Gs1CalcResult {
  * check = (10 - sum%10) % 10
  *
  * @param digits13 - チェックディジットを除いた13桁の数字文字列
+ * @returns 計算結果（チェックディジットと完全なGTIN）
  */
 export function calcGtin14CheckDigit(digits13: string): Gs1CalcResult {
   const digits = digits13.split('').map(Number);
@@ -47,12 +51,16 @@ export function validateGtin14Input(input: string): string {
   return '';
 }
 
-/** サポートするアプリケーション識別子 (AI) */
+/** サポートするアプリケーション識別子 (AI) のコード定義 */
 export type AiCode = '17' | '10' | '11' | '15' | '21';
 
+/** アプリケーション識別子 (AI) の詳細定義インターフェース */
 export interface AiEntry {
+  /** AIコード（'17', '10' など） */
   ai: AiCode;
+  /** UI表示用のラベル */
   label: string;
+  /** 入力フィールドのプレースホルダー */
   placeholder: string;
   /**
    * 可変長AIかどうか。
@@ -157,4 +165,70 @@ export function buildBwipText(
   if (filledFields.length === 0) return linear;
   const composite = filledFields.map((f) => `(${f.ai})${f.value.trim()}`).join('');
   return `${linear}|${composite}`;
+}
+
+/**
+ * HTML/XML 特殊文字をエスケープする
+ */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * 合成シンボルの上に AI テキストを挿入する。
+ * bwip-js の includetext は composite 部上のテキストを出力しないため、
+ * SVG 文字列を直接操作してテキスト要素を追加する。
+ *
+ * @param svg - bwip-js が生成した SVG 文字列
+ * @param text - 挿入するテキスト
+ * @returns テキストを挿入した SVG 文字列
+ */
+export function injectCompositeText(svg: string, text: string): string {
+  if (!text) return svg;
+
+  const escapedText = escapeHtml(text);
+  const vbMatch = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  if (!vbMatch) return svg;
+  const barcodeW = parseFloat(vbMatch[1]);
+  const h = parseFloat(vbMatch[2]);
+
+  const fontSize = 18;
+  const textRowH = fontSize + 6;
+
+  // Courier New monospace: 1文字あたり約 0.6em
+  // 見積もりはエスケープ前の文字数で行う（ブラウザは実体参照を1文字分で描画するため）
+  const charW = fontSize * 0.6;
+  const padding = 16;
+  const estimatedTextW = text.length * charW + padding;
+
+  // テキストがバーコードより広い場合は幅を広げる
+  const newW = Math.max(barcodeW, estimatedTextW);
+  const newH = h + textRowH;
+
+  // 幅が広がった場合、バーコードを水平方向の中央に配置する
+  const barcodeOffsetX = (newW - barcodeW) / 2;
+
+  let result = svg
+    .replace(/viewBox="0 0 [\d.]+ [\d.]+"/, `viewBox="0 0 ${newW.toFixed(1)} ${newH.toFixed(1)}"`)
+    .replace(/width="\d+"/, `width="${Math.round(newW)}"`)
+    .replace(/height="\d+"/, `height="${Math.round(newH)}"`);
+
+  const openEnd = result.indexOf('>') + 1;
+  const closeStart = result.lastIndexOf('</svg>');
+  const openTag = result.slice(0, openEnd);
+  const inner = result.slice(openEnd, closeStart);
+
+  const textEl =
+    `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" ` +
+    `text-anchor="middle" font-family="'Courier New',Courier,monospace" ` +
+    `font-size="${fontSize}" fill="#000000">${escapedText}</text>`;
+
+  const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
+
+  return `${openTag}${textEl}<g transform="${barcodeTranslate}">${inner}</g></svg>`;
 }

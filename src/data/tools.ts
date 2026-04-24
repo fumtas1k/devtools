@@ -75,6 +75,12 @@ export const tools: Tool[] = [
     category: 'convert',
   },
   {
+    slug: 'encoding-converter',
+    name: '文字コード判定・変換',
+    description: 'ファイルやテキストの文字コードを自動判定し、UTF-8・Shift_JIS・EUC-JP 等へ変換します',
+    category: 'convert',
+  },
+  {
     slug: 'qr-ticket',
     name: 'QRチケット',
     description: 'ECDSA署名付きQRチケットを生成し、公開鍵でオフライン検証します',
