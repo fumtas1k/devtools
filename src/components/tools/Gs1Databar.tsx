@@ -48,6 +48,15 @@ function addSvgDimensions(svg: string): string {
   return svg.replace('<svg viewBox=', `<svg width="${w}" height="${h}" viewBox=`);
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 /**
  * 合成シンボルの上に AI テキストを挿入する。
  * bwip-js の includetext は composite 部上のテキストを出力しないため、
@@ -56,6 +65,7 @@ function addSvgDimensions(svg: string): string {
 function injectCompositeText(svg: string, text: string): string {
   if (!text) return svg;
 
+  const escapedText = escapeHtml(text);
   const vbMatch = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
   if (!vbMatch) return svg;
   const barcodeW = parseFloat(vbMatch[1]);
@@ -67,7 +77,7 @@ function injectCompositeText(svg: string, text: string): string {
   // Courier New monospace: ~0.6em per character
   const charW = fontSize * 0.6;
   const padding = 16;
-  const estimatedTextW = text.length * charW + padding;
+  const estimatedTextW = escapedText.length * charW + padding;
 
   // Expand width if text is wider than barcode
   const newW = Math.max(barcodeW, estimatedTextW);
@@ -89,7 +99,7 @@ function injectCompositeText(svg: string, text: string): string {
   const textEl =
     `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" ` +
     `text-anchor="middle" font-family="'Courier New',Courier,monospace" ` +
-    `font-size="${fontSize}" fill="#000000">${text}</text>`;
+    `font-size="${fontSize}" fill="#000000">${escapedText}</text>`;
 
   const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
 
