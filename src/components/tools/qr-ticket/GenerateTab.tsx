@@ -110,7 +110,7 @@ export function GenerateTab({
               <div>
                 <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem' }}>
                   <span style={{ ...caption, fontWeight: 600, color: colors.text }}>秘密鍵（主催者が保管）</span>
-                  <CopyButton text={privateKeyJwkStr} label="秘密鍵をコピー" />
+                  <CopyButton text={privateKeyJwkStr} label="コピー" />
                 </div>
                 <textarea
                   readOnly
@@ -132,7 +132,7 @@ export function GenerateTab({
               <div>
                 <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem' }}>
                   <span style={{ ...caption, fontWeight: 600, color: colors.text }}>公開鍵（検証スタッフへ共有）</span>
-                  <CopyButton text={publicKeyJwkStr} label="公開鍵をコピー" />
+                  <CopyButton text={publicKeyJwkStr} label="コピー" />
                 </div>
                 <textarea
                   readOnly
