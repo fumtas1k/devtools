@@ -344,7 +344,6 @@ export function EncodingConverterTool() {
               options={SOURCE_ENCODINGS}
               value={sourceEnc}
               onChange={(v) => setSourceEnc(v as SourceEncoding)}
-              ariaLabel="元の文字コード"
             />
           </div>
 
@@ -360,7 +359,6 @@ export function EncodingConverterTool() {
               options={TARGET_ENCODINGS}
               value={targetEnc}
               onChange={(v) => setTargetEnc(v as EncodingName)}
-              ariaLabel="変換後の文字コード"
             />
           </div>
 
