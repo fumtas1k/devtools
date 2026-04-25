@@ -302,3 +302,37 @@ export function base64UrlToBytes(str: string): Uint8Array<ArrayBuffer> { ... }
 
 - `new Uint8Array(length)` の戻り値は `Uint8Array<ArrayBuffer>` だが、関数戻り型を `Uint8Array` と書くと境界で `Uint8Array<ArrayBufferLike>` に広がる。
 - `crypto.subtle` 系・厳密な `BufferSource` を要求する API に渡す Uint8Array を返す関数は、戻り型を `Uint8Array<ArrayBuffer>` に絞り込むこと。
+
+---
+
+## [2026-04-25] トグルの「意味の重さ」でリセット要否を分ける
+
+### 現象
+
+Base64 ツールでは「モード切替（エンコード/デコード）」と「形式切替（標準/URL-safe）」の両方で入力がリセットされていた。形式切替は同じ Base64 のサブバリアントなので入力保持が便利だが、モード切替は入力の意味自体が変わる（プレーンテキスト ⇔ Base64 文字列）ため保持すると即エラーになりやすい。
+
+### 教訓
+
+**トグルがもたらす「入力の意味の変化」の大きさで、リセット要否を判断する。**
+
+| トグルの種類                                       | リセット | 理由                                               |
+| -------------------------------------------------- | -------- | -------------------------------------------------- |
+| 操作の種類が変わる（エンコード/デコードなど）      | する     | 入力に求められる形式が変わるため流用できないことが多い |
+| 同じ操作のサブバリアント（標準/URL-safe Base64 など） | しない   | 出力比較の用途で入力保持が役立つ                    |
+
+一貫性は若干損なわれるが、UX 上は妥当な区別。
+
+### パターン
+
+```tsx
+// モード切替: reset() を呼ぶ
+const handleModeChange = (next: Mode) => {
+  setMode(next);
+  reset();
+};
+
+// 形式切替: 直接 setter を渡す（入力保持）
+<ToggleGroup value={format} onChange={setFormat} ... />
+```
+
+`useCodec` の `useEffect` は `deps` 変更で自動再変換するため、形式切替で明示的なクリアは不要。
