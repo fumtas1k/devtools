@@ -1096,6 +1096,7 @@ CLAUDE.md（プロジェクト規約）で「Tailwind のカラークラス（`t
 
 ### 結果・トレードオフ
 
-- ✅ プロジェクト規約違反がゼロになり、`grep -E "(text|bg|hover:bg)-(red|blue|green|neutral|gray)-"` が空になる
+- ✅ ツール本体（`Gs1Databar` / `JanCode`）の Tailwind 色クラス違反が解消し、ホバー挙動も DADS トークンに統一
 - ✅ ダークモード追加（[003] 参照）時には CSS 変数値の差し替えだけで全箇所が追従
 - ⚠️ ホバー切替を毎回 `onMouseEnter`/`onMouseLeave` 2 行で書く必要がある。頻出するなら将来的に `useHoverStyle` フックに括り出す余地あり
+- ⚠️ ページ／レイアウト系（`src/pages/*.astro`、`src/components/layout/*`、`src/components/ui/DownloadButtonGroup.tsx`）には Tailwind 色クラスが残存している。今回はツール本体の規約違反のみをスコープとし、ページ／レイアウトは別タスクで扱う

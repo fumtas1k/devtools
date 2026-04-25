@@ -78,7 +78,7 @@ git commit -m "fix: 修正内容を日本語で説明"
 
 ## トラブルシューティング
 
-### ホックが実行されない
+### フックが実行されない
 
 ```bash
 # core.hooksPath の設定を確認
@@ -93,12 +93,11 @@ git config core.hooksPath .githooks
 **原則として推奨しません。** ただし、緊急時は以下のオプションで回避できます：
 
 ```bash
-# pre-commit をスキップ（ドキュメント警告を無視）
+# pre-commit / commit-msg の両方をスキップ
 git commit --no-verify
-
-# 注意: --no-verify は commit-msg チェックもスキップします。
-#      そのため、代わりに以下の方法で日本語チェックだけ通す方法はありません。
 ```
+
+`--no-verify` は `pre-commit`（ドキュメント警告）と `commit-msg`（日本語チェック）の両方をスキップします。日本語チェックだけを個別に無効化する手段は用意していません。
 
 ---
 
