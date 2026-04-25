@@ -13,6 +13,7 @@ import {
 } from '@/utils/gs1-databar';
 import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
+import { Select } from '@/components/ui/Select';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import {
   downloadSvg as downloadSvgFile,
@@ -279,35 +280,25 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
               const def = AI_DEFS.find((d) => d.ai === field.ai)!;
               return (
                 <div key={i} className="flex gap-2 items-start">
-                  <select
-                    value={field.ai}
-                    onChange={(e) => handleAiSelect(i, e.target.value as AiCode)}
-                    className="rounded px-2 py-2 shrink-0"
-                    style={{
-                      ...caption,
-                      border: `1px solid ${colors.borderInput}`,
-                      background: colors.bg,
-                      color: colors.text,
-                      width: '200px',
-                    }}
-                  >
-                    {AI_DEFS.map((d) => (
-                      <option
-                        key={d.ai}
-                        value={d.ai}
-                        disabled={usedAis.has(d.ai) && d.ai !== field.ai}
-                      >
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ width: '200px', flexShrink: 0 }}>
+                    <Select<AiCode>
+                      value={field.ai}
+                      onChange={(v) => handleAiSelect(i, v)}
+                      ariaLabel={`AI コード ${i + 1}`}
+                      options={AI_DEFS.map((d) => ({
+                        value: d.ai,
+                        label: d.label,
+                        disabled: usedAis.has(d.ai) && d.ai !== field.ai,
+                      }))}
+                    />
+                  </div>
                   <div className="flex-1">
                     <input
                       type="text"
                       value={field.value}
                       onChange={(e) => handleAiChange(i, e.target.value)}
                       placeholder={def.placeholder}
-                      className="w-full rounded px-3 py-2 font-mono"
+                      className="w-full rounded-lg px-3 py-2 font-mono"
                       style={{
                         ...caption,
                         border: `1px solid ${field.error ? colors.error : colors.borderInput}`,
@@ -329,7 +320,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                   </div>
                   <button
                     onClick={() => removeAiField(i)}
-                    className="rounded p-2 transition-colors shrink-0"
+                    className="rounded-lg p-2 transition-colors shrink-0"
                     style={{
                       ...caption,
                       color: colors.muted,

@@ -3,6 +3,7 @@ import { caption, colors, onFocusRing, onBlurRing } from '@/utils/styles';
 interface Option<T> {
   value: T;
   label: string;
+  disabled?: boolean;
 }
 
 interface Props<T extends string> {
@@ -34,7 +35,7 @@ export function Select<T extends string>({ options, value, onChange, ariaLabel, 
         }}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
+          <option key={opt.value} value={opt.value} disabled={opt.disabled}>
             {opt.label}
           </option>
         ))}
