@@ -229,7 +229,7 @@ devtools/
 | 9   | Base64エンコード/デコード | `base64`   | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応          |
 | 10  | JSON / XML 変換        | `json-xml`    | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式 |
 | 11  | JSON / CSV 変換        | `json-csv`    | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化              |
-| 12  | 文字コード判定・変換   | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS・EUC-JP 等へ変換 |
+| 12  | 文字コード判定・変換   | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換 |
 
 ---
 
@@ -693,7 +693,7 @@ devtools/
 | 内部名     | 表示名        |
 | ---------- | ------------- |
 | `UTF8`     | UTF-8         |
-| `SJIS`     | Shift_JIS     |
+| `SJIS`     | Shift_JIS (CP932) |
 | `EUCJP`    | EUC-JP        |
 | `JIS`      | ISO-2022-JP   |
 | `UTF16LE`  | UTF-16 LE     |

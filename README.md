@@ -25,7 +25,7 @@
 | JWTデコーダー          | Header・Payload・署名を分解表示。HS/RS/ES署名検証対応 |
 | JSON / XML 変換        | JSONとXMLを相互変換。ルートタグは root 固定           |
 | JSON / CSV 変換        | JSONとCSVを相互変換。ネストオブジェクトはドット記法でフラット化 |
-| 文字コード判定・変換   | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS・EUC-JP 等へ変換 |
+| 文字コード判定・変換   | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換 |
 
 ## 技術スタック
 
