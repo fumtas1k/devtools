@@ -11,7 +11,7 @@ export interface DetectionResult {
 
 export const ENCODING_LABELS: Record<EncodingName | 'UNKNOWN' | 'AUTO', string> = {
   UTF8: 'UTF-8',
-  SJIS: 'Shift_JIS',
+  SJIS: 'Shift_JIS (CP932)',
   EUCJP: 'EUC-JP',
   JIS: 'ISO-2022-JP',
   UTF16LE: 'UTF-16 LE',
