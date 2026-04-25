@@ -1,14 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { waitForReactHydration } from './helpers';
 
 test.describe('GS1 DataBar 生成', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/tools/gs1-databar');
-    // React のイベントハンドラが select 要素に紐付くまで待つ
-    await page.waitForFunction(() => {
-      const el = document.querySelector('select[aria-label="AI コード 1"]');
-      if (!el) return false;
-      return Object.keys(el).some((k) => k.startsWith('__react'));
-    });
+    await waitForReactHydration(page);
   });
 
   test('ページが正しく表示される', async ({ page }) => {
