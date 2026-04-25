@@ -30,11 +30,6 @@ export function Base64CodecTool() {
     reset();
   };
 
-  const handleFormatChange = (next: Format) => {
-    setFormat(next);
-    setInput('');
-  };
-
   const sampleValue =
     mode === 'encode'
       ? SAMPLE_ENCODE
@@ -64,7 +59,7 @@ export function Base64CodecTool() {
             { value: 'urlsafe', label: 'URL-safe' },
           ]}
           value={format}
-          onChange={handleFormatChange}
+          onChange={setFormat}
           ariaLabel="Base64 形式"
         />
       </div>
