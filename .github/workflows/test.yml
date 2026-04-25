@@ -45,7 +45,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md
-          git diff --quiet && git diff --staged --quiet || (git commit -m "docs: カバレッジバッジを更新 [skip ci]" && git pull --rebase origin main && git push)
+          git diff --staged --quiet || (git commit -m "docs: カバレッジバッジを更新 [skip ci]" && git pull --rebase origin main && git push)
 
   e2e:
     runs-on: ubuntu-latest
