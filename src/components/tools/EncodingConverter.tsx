@@ -4,6 +4,7 @@ import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { caption, colors } from '@/utils/styles';
+import { getErrorMessage } from '@/utils/errors';
 import { downloadBytes } from '@/utils/download';
 import {
   detectEncoding,
@@ -99,7 +100,7 @@ export function EncodingConverterTool() {
     } catch (e) {
       setDetection(null);
       setDecodedPreview('');
-      setError(e instanceof Error ? e.message : '判定に失敗しました');
+      setError(getErrorMessage(e, '判定に失敗しました'));
     }
   }
 
@@ -135,7 +136,7 @@ export function EncodingConverterTool() {
     } catch (e) {
       setOutputBytes(null);
       setOutputPreview('');
-      setError(e instanceof Error ? e.message : '変換に失敗しました');
+      setError(getErrorMessage(e, '変換に失敗しました'));
     }
   }
 

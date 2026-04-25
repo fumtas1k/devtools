@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { getErrorMessage } from '@/utils/errors';
 import bwipjs from 'bwip-js';
 import JSZip from 'jszip';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -118,7 +119,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
       onSvgChangeRef.current(finalSvg, gtinResult.fullGtin);
     } catch (e) {
       setSvgContent('');
-      setBwipError(e instanceof Error ? e.message : 'バーコード生成に失敗しました');
+      setBwipError(getErrorMessage(e, 'バーコード生成に失敗しました'));
       onSvgChangeRef.current('', '');
     }
   }, [gtinInput, gtinError, aiFields, gtinResult, allAiValid, hasAnyAiValue]);
