@@ -1,3 +1,5 @@
+import { base64UrlToBytes } from '@/utils/base64url';
+
 export type ExpStatus = 'valid' | 'expired' | 'no-exp';
 
 export interface ParsedJwt {
@@ -10,17 +12,8 @@ export interface ParsedJwt {
   remainingMs?: number;
 }
 
-export function base64UrlToBytes(str: string): Uint8Array<ArrayBuffer> {
-  const padded = str
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-    .padEnd(str.length + ((4 - (str.length % 4)) % 4), '=');
-  const binary = atob(padded);
-  const buf = new ArrayBuffer(binary.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
-  return view;
-}
+// 既存の利用箇所（JwtDecoder.tsx 等）の互換性のため再エクスポート
+export { base64UrlToBytes };
 
 export function parseJwt(token: string): ParsedJwt | null {
   const parts = token.trim().split('.');

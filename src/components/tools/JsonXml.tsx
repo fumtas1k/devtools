@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { CopyButton } from '@/components/ui/CopyButton';
+import { useState } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { OutputField } from '@/components/ui/OutputField';
+import { caption, colors } from '@/utils/styles';
 import { jsonToXml, xmlToJson } from '@/utils/json-xml';
+import { useCodec } from '@/hooks/useCodec';
 
 type Mode = 'json2xml' | 'xml2json';
 
@@ -35,40 +36,15 @@ const SAMPLE: Record<Mode, string> = {
 
 export function JsonXmlTool() {
   const [mode, setMode] = useState<Mode>('json2xml');
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!input.trim()) {
-      setOutput('');
-      setError('');
-      return;
-    }
-    const timer = setTimeout(() => {
-      try {
-        const result = mode === 'json2xml' ? jsonToXml(input) : xmlToJson(input);
-        setOutput(result);
-        setError('');
-      } catch (e) {
-        setOutput('');
-        setError(e instanceof Error ? e.message : '変換に失敗しました');
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [input, mode]);
+  const { input, setInput, output, error, reset } = useCodec(
+    (text) => (mode === 'json2xml' ? jsonToXml(text) : xmlToJson(text)),
+    [mode],
+  );
 
   const handleModeChange = (next: Mode) => {
     setMode(next);
-    setInput('');
-    setOutput('');
-    setError('');
-  };
-
-  const handleClear = () => {
-    setInput('');
-    setOutput('');
-    setError('');
+    reset();
   };
 
   return (
@@ -86,7 +62,6 @@ export function JsonXmlTool() {
 
       {/* 入力・出力（横並び） */}
       <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
-        {/* 入力 */}
         <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="json-xml-input"
@@ -103,28 +78,13 @@ export function JsonXmlTool() {
           />
         </div>
 
-        {/* 出力 */}
         <div className="w-full md:flex-1 min-w-0">
-          <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem', minHeight: '2rem' }}>
-            <label htmlFor="json-xml-output" style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
-            <span style={{ visibility: output ? 'visible' : 'hidden' }}>
-              <CopyButton text={output} label="コピー" />
-            </span>
-          </div>
-          <textarea
+          <OutputField
             id="json-xml-output"
-            readOnly
+            label="出力"
             value={output}
             rows={16}
-            className="w-full rounded-lg px-3 py-2 font-mono"
-            style={{
-              ...caption,
-              border: `1px solid ${colors.border}`,
-              background: colors.bgSubtle,
-              color: colors.text,
-              resize: 'vertical',
-            }}
-            aria-label="変換結果"
+            ariaLabel="変換結果"
           />
         </div>
       </div>
@@ -132,7 +92,7 @@ export function JsonXmlTool() {
       {/* アクション */}
       <div className="flex justify-end gap-2">
         <button
-          onClick={handleClear}
+          onClick={reset}
           className="rounded-lg px-3 py-1.5 transition-colors"
           style={{ ...caption, color: colors.muted }}
         >
