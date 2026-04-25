@@ -137,19 +137,25 @@ export const NEWLINE_OPTIONS: Array<{ value: NewlineMode; label: string }> = [
 export function normalizeNewlines(bytes: Uint8Array, mode: NewlineMode): Uint8Array {
   if (mode === 'keep' || bytes.length === 0) return bytes;
 
-  const out: number[] = [];
   if (mode === 'lf') {
+    // 出力は最大でも入力長（CRLF→LF は 1 バイト減のみ）
+    const out = new Uint8Array(bytes.length);
+    let w = 0;
     for (let i = 0; i < bytes.length; i++) {
       if (bytes[i] === 0x0d && bytes[i + 1] === 0x0a) continue; // CR を捨てて次で LF を出力
-      out.push(bytes[i]);
+      out[w++] = bytes[i];
     }
-  } else {
-    for (let i = 0; i < bytes.length; i++) {
-      if (bytes[i] === 0x0a && bytes[i - 1] !== 0x0d) out.push(0x0d);
-      out.push(bytes[i]);
-    }
+    return out.subarray(0, w);
   }
-  return Uint8Array.from(out);
+
+  // crlf: 出力は最大で入力長 * 2（全 LF が CRLF に変わるワースト）
+  const out = new Uint8Array(bytes.length * 2);
+  let w = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] === 0x0a && bytes[i - 1] !== 0x0d) out[w++] = 0x0d;
+    out[w++] = bytes[i];
+  }
+  return out.subarray(0, w);
 }
 
 // トグルボタン用の短縮ラベル (4文字以内 or ASCII)。検出結果カードの表示には ENCODING_LABELS を使う
