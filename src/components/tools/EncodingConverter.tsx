@@ -333,10 +333,14 @@ export function EncodingConverterTool() {
       {mode === 'convert' && (
         <div className="space-y-3">
           <div>
-            <div style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>
+            <label
+              htmlFor="enc-source"
+              style={{ ...caption, color: colors.muted, marginBottom: '0.5rem', display: 'block' }}
+            >
               元の文字コード:
-            </div>
+            </label>
             <Select
+              id="enc-source"
               options={SOURCE_ENCODINGS}
               value={sourceEnc}
               onChange={(v) => setSourceEnc(v as SourceEncoding)}
@@ -345,10 +349,14 @@ export function EncodingConverterTool() {
           </div>
 
           <div>
-            <div style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>
+            <label
+              htmlFor="enc-target"
+              style={{ ...caption, color: colors.muted, marginBottom: '0.5rem', display: 'block' }}
+            >
               変換後の文字コード:
-            </div>
+            </label>
             <Select
+              id="enc-target"
               options={TARGET_ENCODINGS}
               value={targetEnc}
               onChange={(v) => setTargetEnc(v as EncodingName)}
