@@ -228,6 +228,60 @@ UIレイアウト変更後は Playwright でPC（1280×800）とスマホ（390�
 
 ---
 
+## [2026-04-25] `<label htmlFor>` がある場合は Select に aria-label を併用しない
+
+### 状況
+
+`EncodingConverter.tsx` で `<label htmlFor="enc-source">` が存在するにもかかわらず、Select コンポーネントに `ariaLabel="元の文字コード"` も渡していた。
+
+### 教訓
+
+**`<label htmlFor>` で紐付け済みの場合、`aria-label` は不要（かつ冗長）。**
+
+- `aria-label` が存在すると `<label>` より優先されるため、意図した読み上げテキストと差異が出る可能性がある。
+- `<label>` を持たない要素（Gs1Databar の AI コード Select 等）には引き続き `ariaLabel` を使う。
+
+```tsx
+// ❌ 冗長
+<label htmlFor="enc-source">元の文字コード:</label>
+<Select id="enc-source" ariaLabel="元の文字コード" ... />
+
+// ✅ 正しい
+<label htmlFor="enc-source">元の文字コード:</label>
+<Select id="enc-source" ... />
+```
+
+---
+
+## [2026-04-25] Playwright では DOM 直接操作より expect オートリトライを優先
+
+### 状況
+
+`gs1-databar.spec.ts` で `page.evaluate` / `page.waitForFunction` で DOM を直接操作・監視していた。
+
+### 教訓
+
+**ロール/ラベルロケーター + `expect` のオートリトライで React の再レンダー後の状態変化を待つ。**
+
+```ts
+// ❌ 旧パターン
+await page.waitForFunction(() => {
+  const opt = document.querySelector('select[aria-label="..."] option[value="11"]');
+  return opt?.disabled === true;
+});
+const disabled = await page.locator('...').evaluate((el) => el.disabled);
+expect(disabled).toBe(false);
+
+// ✅ 新パターン
+await expect(page.getByLabel('AI コード 2').getByRole('option', { name: '製造日 (11)' })).toBeDisabled();
+await expect(page.getByLabel('AI コード 2').getByRole('option', { name: '賞味/消費期限 (17)' })).toBeEnabled();
+```
+
+- `page.evaluate` によるクリックより `getByRole('button', ...).first().click()` の方がシンプルで堅牢。
+- DOM 直接操作は `waitForReactHydration` が通った後でも flaky になりやすい。
+
+---
+
 ## 2026-04-25: `Uint8Array<ArrayBuffer>` の戻り型は `crypto.subtle.verify` で必須
 
 ### 状況

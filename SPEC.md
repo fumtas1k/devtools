@@ -117,6 +117,7 @@ devtools/
     │   │   ├── ErrorMessage.tsx
     │   │   ├── InputField.tsx
     │   │   ├── OutputField.tsx          # 出力カード共通UI（ラベル＋CopyButton＋readOnly textarea）
+    │   │   ├── Select.tsx               # ジェネリックセレクトボックス
     │   │   ├── ToggleGroup.tsx
     │   │   └── ToolIcon.astro           # slug → SVG アイコンマッピング
     │   └── tools/
@@ -795,6 +796,7 @@ devtools/
 | `ErrorMessage` | `role="alert"` 付きエラーテキスト |
 | `DownloadButtonGroup` | SVG／PNG ダウンロードボタンのペア |
 | `ToggleGroup<T>` | モード切替などの排他選択トグル |
+| `Select<T>` | 選択肢が多い場合（目安7択以上）のジェネリックセレクトボックス |
 
 #### 共通フック（`src/hooks/`）
 
