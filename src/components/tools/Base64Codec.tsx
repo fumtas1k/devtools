@@ -25,16 +25,6 @@ export function Base64CodecTool() {
     [mode, format],
   );
 
-  const handleModeChange = (next: Mode) => {
-    setMode(next);
-    reset();
-  };
-
-  const handleFormatChange = (next: Format) => {
-    setFormat(next);
-    setInput('');
-  };
-
   const sampleValue =
     mode === 'encode'
       ? SAMPLE_ENCODE
@@ -51,7 +41,7 @@ export function Base64CodecTool() {
           { value: 'decode', label: 'デコード' },
         ]}
         value={mode}
-        onChange={handleModeChange}
+        onChange={setMode}
         ariaLabel="変換モード"
       />
 
@@ -64,7 +54,7 @@ export function Base64CodecTool() {
             { value: 'urlsafe', label: 'URL-safe' },
           ]}
           value={format}
-          onChange={handleFormatChange}
+          onChange={setFormat}
           ariaLabel="Base64 形式"
         />
       </div>

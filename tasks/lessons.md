@@ -302,3 +302,32 @@ export function base64UrlToBytes(str: string): Uint8Array<ArrayBuffer> { ... }
 
 - `new Uint8Array(length)` の戻り値は `Uint8Array<ArrayBuffer>` だが、関数戻り型を `Uint8Array` と書くと境界で `Uint8Array<ArrayBufferLike>` に広がる。
 - `crypto.subtle` 系・厳密な `BufferSource` を要求する API に渡す Uint8Array を返す関数は、戻り型を `Uint8Array<ArrayBuffer>` に絞り込むこと。
+
+---
+
+## [2026-04-25] モード/形式トグル切替時に入力をクリアしない
+
+### 現象
+
+Base64 ツールでエンコード/デコード切替や標準/URL-safe 切替を行うと、入力欄がリセットされて再入力が必要だった。
+
+### 教訓
+
+**変換の方向や形式を切り替えるトグルでは、入力をクリアしないこと。** ユーザーは同じ入力で異なる変換結果を見比べたいケースが多い。
+
+### パターン
+
+`useCodec` のように `deps` に基づいて `useEffect` で再変換するフックを使っている場合、トグルの `onChange` は `setMode` / `setFormat` を直接渡せばよい。`reset()` や `setInput('')` を呼ぶと入力が消える。
+
+```tsx
+// ❌ 入力がクリアされる
+const handleModeChange = (next: Mode) => {
+  setMode(next);
+  reset(); // input/output/error を全クリア
+};
+
+// ✅ 入力を保持して再変換のみ走る
+<ToggleGroup value={mode} onChange={setMode} ... />
+```
+
+入力が新しい形式で不正になった場合は `useCodec` 内の `try/catch` がエラー表示するため UX 上問題ない。明示的なクリアは「クリア」ボタンに集約する。
