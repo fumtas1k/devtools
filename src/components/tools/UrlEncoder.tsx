@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { CopyButton } from '@/components/ui/CopyButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { OutputField } from '@/components/ui/OutputField';
+import { caption, colors } from '@/utils/styles';
 import { encodeUrl, decodeUrl, validateDecodeInput } from '@/utils/url-encode';
 
 type Mode = 'encode' | 'decode';
@@ -74,28 +74,18 @@ export function UrlEncoderTool() {
       />
 
       {/* 出力 */}
-      <div>
-        <label className="mb-1 block" style={{ ...bodyEmphasis, color: colors.text }}>
-          出力
-        </label>
-        <textarea
-          readOnly
-          value={output}
-          rows={4}
-          className="w-full rounded-lg px-3 py-2 font-mono"
-          style={{
-            ...caption,
-            border: `1px solid ${colors.border}`,
-            background: colors.bgSubtle,
-            color: colors.text,
-          }}
-          aria-label="変換結果"
-        />
-      </div>
+      <OutputField
+        id="url-output"
+        label="出力"
+        value={output}
+        rows={4}
+        ariaLabel="変換結果"
+        copyLabel="出力をコピー"
+        resize={false}
+      />
 
       {/* アクション */}
       <div className="flex justify-end gap-2">
-        {output && <CopyButton text={output} label="出力をコピー" />}
         <button
           onClick={handleClear}
           className="rounded-lg px-3 py-1.5 transition-colors"

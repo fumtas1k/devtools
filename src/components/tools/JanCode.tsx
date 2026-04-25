@@ -121,8 +121,16 @@ export function JanCodeTool() {
           {/* 計算過程 */}
           <details className="rounded-lg" style={{ border: `1px solid ${colors.border}` }}>
             <summary
-              className="cursor-pointer px-4 py-3 font-bold text-neutral-700 hover:bg-neutral-50 rounded-lg"
-              style={{ ...caption, fontWeight: 700, listStyle: 'none' }}
+              className="cursor-pointer px-4 py-3 font-bold rounded-lg transition-colors"
+              style={{
+                ...caption,
+                fontWeight: 700,
+                color: colors.muted,
+                listStyle: 'none',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               計算過程を見る
             </summary>
@@ -187,8 +195,10 @@ export function JanCodeTool() {
               setInput('');
               setError('');
             }}
-            className="rounded px-3 py-2 transition-colors hover:bg-neutral-100"
-            style={{ ...caption, color: '#6B7280' }}
+            className="rounded px-3 py-2 transition-colors"
+            style={{ ...caption, color: colors.muted, background: 'transparent' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             クリア
           </button>

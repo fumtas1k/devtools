@@ -198,3 +198,107 @@ UIレイアウト変更後は Playwright でPC（1280×800）とスマホ（390�
 
 - **横並び ↔ 縦並び切り替えには `w-full md:flex-1 min-w-0` がセット**。
 - `min-w-0` を忘れると長いコンテンツがはみ出す。
+
+---
+
+## 2026-04-25: ホバー時の色変化はインラインスタイル＋`onMouseEnter`/`onMouseLeave` で
+
+### 状況
+
+`hover:bg-red-50` のような Tailwind ホバークラスが `Gs1Databar.tsx` / `JanCode.tsx` に残存し、CLAUDE.md の色クラス禁止規約に違反していた。
+
+### 修正
+
+```tsx
+// ❌ 修正前
+<button className="hover:bg-red-50" style={{ color: colors.error }}>削除</button>
+
+// ✅ 修正後
+<button
+  style={{ background: 'transparent', color: colors.error }}
+  onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
+  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+>削除</button>
+```
+
+### 教訓
+
+- **CLAUDE.md の「色は `colors.*` インラインスタイル」規約は擬似クラスにも適用される**。`hover:bg-*` も Tailwind 色クラスの一種として扱う。
+- ホバー切替は既存の `onFocusRing` / `onBlurRing` と同じく `onMouseEnter` / `onMouseLeave` でインラインスタイルを差し替える流儀に揃える。
+
+---
+
+## [2026-04-25] `<label htmlFor>` がある場合は Select に aria-label を併用しない
+
+### 状況
+
+`EncodingConverter.tsx` で `<label htmlFor="enc-source">` が存在するにもかかわらず、Select コンポーネントに `ariaLabel="元の文字コード"` も渡していた。
+
+### 教訓
+
+**`<label htmlFor>` で紐付け済みの場合、`aria-label` は不要（かつ冗長）。**
+
+- `aria-label` が存在すると `<label>` より優先されるため、意図した読み上げテキストと差異が出る可能性がある。
+- `<label>` を持たない要素（Gs1Databar の AI コード Select 等）には引き続き `ariaLabel` を使う。
+
+```tsx
+// ❌ 冗長
+<label htmlFor="enc-source">元の文字コード:</label>
+<Select id="enc-source" ariaLabel="元の文字コード" ... />
+
+// ✅ 正しい
+<label htmlFor="enc-source">元の文字コード:</label>
+<Select id="enc-source" ... />
+```
+
+---
+
+## [2026-04-25] Playwright では DOM 直接操作より expect オートリトライを優先
+
+### 状況
+
+`gs1-databar.spec.ts` で `page.evaluate` / `page.waitForFunction` で DOM を直接操作・監視していた。
+
+### 教訓
+
+**ロール/ラベルロケーター + `expect` のオートリトライで React の再レンダー後の状態変化を待つ。**
+
+```ts
+// ❌ 旧パターン
+await page.waitForFunction(() => {
+  const opt = document.querySelector('select[aria-label="..."] option[value="11"]');
+  return opt?.disabled === true;
+});
+const disabled = await page.locator('...').evaluate((el) => el.disabled);
+expect(disabled).toBe(false);
+
+// ✅ 新パターン
+await expect(page.getByLabel('AI コード 2').getByRole('option', { name: '製造日 (11)' })).toBeDisabled();
+await expect(page.getByLabel('AI コード 2').getByRole('option', { name: '賞味/消費期限 (17)' })).toBeEnabled();
+```
+
+- `page.evaluate` によるクリックより `getByRole('button', ...).first().click()` の方がシンプルで堅牢。
+- DOM 直接操作は `waitForReactHydration` が通った後でも flaky になりやすい。
+
+---
+
+## 2026-04-25: `Uint8Array<ArrayBuffer>` の戻り型は `crypto.subtle.verify` で必須
+
+### 状況
+
+`base64UrlToBytes(str): Uint8Array` と書くと TS は `Uint8Array<ArrayBufferLike>` に展開し、`crypto.subtle.verify(..., signature, ...)` の `BufferSource = ArrayBufferView<ArrayBuffer>` 制約を満たせず型エラーになる。
+
+### 修正
+
+```ts
+// ❌ 修正前
+export function base64UrlToBytes(str: string): Uint8Array { ... }
+
+// ✅ 修正後
+export function base64UrlToBytes(str: string): Uint8Array<ArrayBuffer> { ... }
+```
+
+### 教訓
+
+- `new Uint8Array(length)` の戻り値は `Uint8Array<ArrayBuffer>` だが、関数戻り型を `Uint8Array` と書くと境界で `Uint8Array<ArrayBufferLike>` に広がる。
+- `crypto.subtle` 系・厳密な `BufferSource` を要求する API に渡す Uint8Array を返す関数は、戻り型を `Uint8Array<ArrayBuffer>` に絞り込むこと。

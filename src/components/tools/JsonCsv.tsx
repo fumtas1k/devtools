@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { CopyButton } from '@/components/ui/CopyButton';
+import { useState } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { OutputField } from '@/components/ui/OutputField';
+import { caption, colors } from '@/utils/styles';
 import { jsonToCsv, csvToJson } from '@/utils/json-csv';
 import { downloadText } from '@/utils/download';
+import { useCodec } from '@/hooks/useCodec';
 
 type Mode = 'json2csv' | 'csv2json';
 
@@ -24,46 +25,38 @@ const SAMPLE: Record<Mode, string> = {
 
 export function JsonCsvTool() {
   const [mode, setMode] = useState<Mode>('json2csv');
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!input.trim()) {
-      setOutput('');
-      setError('');
-      return;
-    }
-    const timer = setTimeout(() => {
-      try {
-        const result = mode === 'json2csv' ? jsonToCsv(input) : csvToJson(input);
-        setOutput(result);
-        setError('');
-      } catch (e) {
-        setOutput('');
-        setError(e instanceof Error ? e.message : '変換に失敗しました');
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [input, mode]);
+  const { input, setInput, output, error, reset } = useCodec(
+    (text) => (mode === 'json2csv' ? jsonToCsv(text) : csvToJson(text)),
+    [mode],
+  );
 
   const handleModeChange = (next: Mode) => {
     setMode(next);
-    setInput('');
-    setOutput('');
-    setError('');
-  };
-
-  const handleClear = () => {
-    setInput('');
-    setOutput('');
-    setError('');
+    reset();
   };
 
   const handleDownloadCsv = () => {
     if (!output) return;
     downloadText(output, 'output.csv', 'text/csv');
   };
+
+  const downloadButton =
+    mode === 'json2csv' ? (
+      <button
+        onClick={handleDownloadCsv}
+        className="rounded-lg px-3 py-1.5 transition-colors"
+        style={{
+          ...caption,
+          lineHeight: 1,
+          color: colors.primary,
+          border: `1px solid ${colors.primary}`,
+          background: colors.bg,
+        }}
+      >
+        CSVダウンロード
+      </button>
+    ) : null;
 
   return (
     <div className="space-y-4">
@@ -80,7 +73,6 @@ export function JsonCsvTool() {
 
       {/* 入力・出力（PC横並び・モバイル縦並び） */}
       <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
-        {/* 入力 */}
         <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="json-csv-input"
@@ -101,46 +93,14 @@ export function JsonCsvTool() {
           />
         </div>
 
-        {/* 出力 */}
         <div className="w-full md:flex-1 min-w-0">
-          <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem', minHeight: '2rem' }}>
-            <label htmlFor="json-csv-output" style={{ ...bodyEmphasis, color: colors.text }}>出力</label>
-            <div
-              className="flex gap-2"
-              style={{ visibility: output ? 'visible' : 'hidden' }}
-            >
-              <CopyButton text={output} label="コピー" />
-              {mode === 'json2csv' && (
-                <button
-                  onClick={handleDownloadCsv}
-                  className="rounded-lg px-3 py-1.5 transition-colors"
-                  style={{
-                    ...caption,
-                    lineHeight: 1,
-                    color: colors.primary,
-                    border: `1px solid ${colors.primary}`,
-                    background: colors.bg,
-                  }}
-                >
-                  CSVダウンロード
-                </button>
-              )}
-            </div>
-          </div>
-          <textarea
+          <OutputField
             id="json-csv-output"
-            readOnly
+            label="出力"
             value={output}
             rows={16}
-            className="w-full rounded-lg px-3 py-2 font-mono"
-            style={{
-              ...caption,
-              border: `1px solid ${colors.border}`,
-              background: colors.bgSubtle,
-              color: colors.text,
-              resize: 'vertical',
-            }}
-            aria-label="変換結果"
+            ariaLabel="変換結果"
+            rightSlot={downloadButton}
           />
         </div>
       </div>
@@ -148,7 +108,7 @@ export function JsonCsvTool() {
       {/* アクション */}
       <div className="flex justify-end gap-2">
         <button
-          onClick={handleClear}
+          onClick={reset}
           className="rounded-lg px-3 py-1.5 transition-colors"
           style={{ ...caption, color: colors.muted }}
         >

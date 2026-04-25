@@ -946,3 +946,217 @@ SVG 文字列を直接操作してユーザー入力を挿入する場合は、�
 - ✅ ライブラリの実際の動作とラベルが一致し、ユーザーの期待と齟齬が生じにくくなる
 - ✅ 実装ロジックへの変更ゼロで適用可能
 - ⚠️ "CP932" という補足表記が初見のユーザーには若干馴染みづらい可能性はあるが、知っている人には正確な情報として有益
+
+---
+
+## [030] base64url 変換を `src/utils/base64url.ts` に集約
+
+**2026-04-25 | ステータス: 採用**
+
+### 背景
+
+base64url（`+`→`-`, `/`→`_`, パディング `=` 除去）の相互変換ロジックが 3 箇所で独立に再実装されていた。
+
+- `src/utils/base64.ts` の urlSafe パス（テキスト⇄テキスト、UTF-8 経由）
+- `src/utils/jwt.ts` の `base64UrlToBytes`（バイト列向け）
+- `src/utils/qr-ticket.ts` の `bufferToBase64Url` / `base64UrlToBuffer`（ArrayBuffer 向け）
+
+それぞれパディング補完・正規化の実装が微妙に異なり、テストも個別に書かれていた。バグ修正や仕様追加が一箇所で済まない。
+
+### 決断
+
+`src/utils/base64url.ts` を新設し、低レベル（バイト／ArrayBuffer）⇄ base64url 文字列の変換を一元実装する。
+
+公開 API:
+- `bytesToBase64Url(bytes: Uint8Array): string`
+- `base64UrlToBytes(str: string): Uint8Array<ArrayBuffer>` — `crypto.subtle.verify` 等の `BufferSource` を要求する API に直接渡せるよう戻り型を絞り込む
+- `bufferToBase64Url(buf: ArrayBuffer): string`
+- `base64UrlToBuffer(str: string): ArrayBuffer`
+
+`jwt.ts` は `base64UrlToBytes` を再エクスポートして互換性を維持し、`qr-ticket.ts` は内部ローカル関数を削除して `base64url.ts` を直接利用する。`base64.ts` の Tool 公開 API（`encodeBase64` / `decodeBase64`）はエラーメッセージ仕様を維持するため触らない。
+
+### 却下した選択肢
+
+- **`base64.ts` の中に統合する**: 既存の `base64.ts` は UTF-8 テキスト⇄文字列のレイヤで、Error メッセージの詳細仕様（"有効なBase64文字列ではありません" など）が日本語ローカライズされた Tool API。バイト／ArrayBuffer のレイヤは責務が異なるため別ファイルに切る方が境界が明確。
+- **`Result<T, E>` 型を導入してエラーハンドリングを統一**: 全 utils を巻き込む大改修になるためスコープ外。今回は重複削除のみに絞る。
+
+### 結果・トレードオフ
+
+- ✅ 同一アルゴリズムの実装が 1 箇所に集約され、Vitest テスト（往復・パディング・全バイト域 0x00-0xFF・日本語 UTF-8）も一箇所で網羅
+- ✅ `jwt.ts` の `base64UrlToBytes` はモジュール外から見える挙動が変わらないため後方互換
+- ⚠️ `Uint8Array<ArrayBuffer>` という TS 5.7+ 由来の絞り込み戻り型を使用しており、TypeScript のバージョンを下げる場合は要再検討
+
+---
+
+## [031] 入力→デバウンス→変換→出力 パターンを `useCodec` フックに抽出
+
+**2026-04-25 | ステータス: 採用**
+
+### 背景
+
+Base64 / JSON↔XML / JSON↔CSV の各変換ツールで以下のボイラープレートがほぼ完全にコピーされていた。
+
+```tsx
+const [input, setInput] = useState('');
+const [output, setOutput] = useState('');
+const [error, setError] = useState('');
+
+useEffect(() => {
+  if (!input) { setOutput(''); setError(''); return; }
+  const timer = setTimeout(() => {
+    try { setOutput(transform(input)); setError(''); }
+    catch (e) {
+      setOutput('');
+      setError(e instanceof Error ? e.message : '変換に失敗しました');
+    }
+  }, 300);
+  return () => clearTimeout(timer);
+}, [input, ...deps]);
+```
+
+修正やデバウンス時間の調整・エラーフォールバック文言の統一が一箇所でできない。
+
+### 決断
+
+`src/hooks/useCodec.ts` を新設し、`useEffect` と同形のシグネチャ `useCodec(transform, deps, options?)` で上記パターンをカプセル化する。`{ input, setInput, output, setOutput, error, setError, reset }` を返し、利用側はモード切替時の即時クリアなどで個別セッターを使える余地を残す。
+
+適用ツール: `Base64Codec`、`JsonXml`、`JsonCsv`。
+
+### 却下した選択肢
+
+- **`UrlEncoder` にも適用**: 当ツールは同期計算＋ライブバリデーション（`validateDecodeInput` は throw せず空文字列／エラー文字列を返す）であり、`useCodec` を強制すると 300ms のデバウンス遅延が混入し UX を損なう。出力カードのみ `OutputField` に置換した。
+- **`EncodingConverter` にも適用**: 当ツールは入力種別（テキスト／ファイル）・モード（判定／変換）・複数のエンコーディングオプションが入り組んだ多次元状態で、単一の `transform: string => string` には収まらない。出力カードのみ `OutputField` に置換した。
+- **コールバック自体をメモ化必須にする API**: 利用側に `useCallback` を強制すると毎ツールで定義が増える。`useEffect` と同じ deps 配列方式に揃え、`react-hooks/exhaustive-deps` をフック内部で意図的に無効化する設計を選んだ。
+- **フック単体テストを追加**: 既存方針（[005][006]）で React Testing Library を不採用としているため、フック内部はテスト対象外。動作担保は既存の Playwright E2E（`base64.spec.ts` 等）で行う。
+
+### 結果・トレードオフ
+
+- ✅ 各ツールの行数が減り、デバウンス時間・エラー文言の統一が一箇所で可能
+- ✅ `useEffect` と同じ `(callback, deps)` 形式のシグネチャで学習コストが低い
+- ⚠️ フック内部は単体テストされていないため、リグレッションは E2E で検出する必要がある
+
+---
+
+## [032] 出力カードを `OutputField` 共通コンポーネントに集約
+
+**2026-04-25 | ステータス: 採用**
+
+### 背景
+
+出力エリアの DOM 構造（ラベル＋ visibility 制御 CopyButton ＋ readOnly textarea）が Base64 / JSON-XML / JSON-CSV / URL-encode / EncodingConverter で類似コピーされており、ヘッダ高さ（`minHeight: 2rem`）・空値時のレイアウト保持（`visibility: hidden`）・`monospace` 切替などの細部の差分管理が散らばっていた。
+
+### 決断
+
+`src/components/ui/OutputField.tsx` を新設し、上記 5 ツールに適用する。`rightSlot` プロップで CSV ダウンロード／変換ファイルダウンロードなどの追加要素をヘッダ右側に並置できるようにし、`showCopy={false}` で CopyButton を抑止できる（EncodingConverter で UTF-8 以外の出力時に使用）。
+
+ヘッダ全体（rightSlot ＋ CopyButton）を値が空のとき `visibility: hidden` でまとめて非表示にし、これまで個別ツールがバラバラに実装していたパターンを正規化した。
+
+### 却下した選択肢
+
+- **`InputField` に出力モードを追加（`readOnly` プロップ拡張）**: 入力欄と出力欄では「ヒント・サンプルボタン・エラー表示」の有無が大きく異なり、合流させるとプロップが増えて責務が曖昧になる。別コンポーネントに切る方が読みやすい。
+- **コンポーネント単体テストを追加**: フック同様、プロジェクト方針 [005][006] により対象外。
+
+### 結果・トレードオフ
+
+- ✅ 出力カードの細部仕様が一箇所に集約され、CopyButton の visibility・ヘッダ最小高さ・モノスペース切替の挙動が統一される
+- ✅ 各ツールの「出力」セクションが 30 行前後 → 数行に短縮
+- ⚠️ コンポーネント API の安定までは追加プロップが発生する可能性あり（例: 検索ハイライト、行番号表示などが将来要件として出てきた場合）
+
+---
+
+## [033] Tailwind 色クラス違反の根絶（`Gs1Databar` / `JanCode`）
+
+**2026-04-25 | ステータス: 採用**
+
+### 背景
+
+CLAUDE.md（プロジェクト規約）で「Tailwind のカラークラス（`text-blue-500` 等）は使わない。色はすべて `src/utils/styles.ts` の `colors.*` をインラインスタイルで指定する」と定めているにも関わらず、以下の違反が残っていた。
+
+- `Gs1Databar.tsx`: `hover:bg-red-50`, `hover:bg-neutral-100`, `hover:bg-neutral-50`, `hover:bg-blue-50`
+- `JanCode.tsx`: `text-neutral-700`, `hover:bg-neutral-50`, `hover:bg-neutral-100`, ハードコード hex `#6B7280`
+
+ホバー時の色変化はインラインスタイルで直接表現できないため、これまで Tailwind のホバークラスが残ってしまっていた。
+
+### 決断
+
+`onMouseEnter` / `onMouseLeave` でインラインスタイルを差し替えるパターン（既存の `onFocusRing` / `onBlurRing` と同流儀）を採用し、すべて `colors.errorBg` / `colors.bgSubtle` / `colors.primaryBg` などの DADS トークンに置換する。レイアウト系クラス（`flex`, `gap-*`, `rounded-lg` など）はそのまま残す。
+
+```tsx
+<button
+  style={{ background: 'transparent', color: colors.error }}
+  onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
+  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+>
+```
+
+### 却下した選択肢
+
+- **`hover:bg-[var(--color-error-bg)]` のような任意値 Tailwind**: 一見筋が通るが、CLAUDE.md の「Tailwind カラークラス禁止」規約を字義通り回避しようとする抜け道に近く、保守時に「これは OK／NG なのか」の判断が増える。インラインへの統一が明示的で読みやすい。
+- **CSS Modules や styled-components を導入**: ホバー擬似クラスを書きやすいが、依存追加と既存スタイルパターンの分裂を引き起こす。今回 1 ツールあたり数箇所のためインライン手法で十分。
+
+### 結果・トレードオフ
+
+- ✅ ツール本体（`Gs1Databar` / `JanCode`）の Tailwind 色クラス違反が解消し、ホバー挙動も DADS トークンに統一
+- ✅ ダークモード追加（[003] 参照）時には CSS 変数値の差し替えだけで全箇所が追従
+- ⚠️ ホバー切替を毎回 `onMouseEnter`/`onMouseLeave` 2 行で書く必要がある。頻出するなら将来的に `useHoverStyle` フックに括り出す余地あり
+- ⚠️ ページ／レイアウト系（`src/pages/*.astro`、`src/components/layout/*`、`src/components/ui/DownloadButtonGroup.tsx`）には Tailwind 色クラスが残存している。今回はツール本体の規約違反のみをスコープとし、ページ／レイアウトは別タスクで扱う
+
+---
+
+## [034] 文字コード選択UIを ToggleGroup から Select に変更
+
+### 背景
+
+`EncodingConverter.tsx` の文字コード選択は「元の文字コード（7択）」「変換後の文字コード（6択）」と選択肢が多い。`ToggleGroup` は `gridTemplateColumns: repeat(N, 1fr)` の単一行前提で、7択を1行に並べると横潰れ・スマホ崩れが発生するため、ROW1/ROW2 に分割して `some()` で「他行が選択中なら自分は非選択」とみなすワークアラウンドで実装していた。
+
+### 決断
+
+ネイティブ `<select>` を使った `Select<T>` 共通コンポーネント（`src/components/ui/Select.tsx`）を新規作成し、文字コード選択に採用する。`ToggleGroup` と同じジェネリック API 形状（`options / value / onChange / ariaLabel`）にして将来の置き換えも容易にした。
+
+理由:
+- **a11y**: ネイティブ要素のため矢印キー操作・スクリーンリーダー読み上げが OS 標準で完璧
+- **スマホ対応**: OS ネイティブピッカーが開くため幅不足の心配がない
+- **コード簡潔化**: `some()` ワークアラウンドと2行分の `ToggleGroup` が1行の `Select` に集約
+- **縦スペース節約**: ラベル＋2行が1行に収まる
+
+「自動判定」は Select の先頭オプションとして他の選択肢と同列に並べた。
+
+### 却下した選択肢
+
+- **ToggleGroup を flex-wrap 対応に改修**: 見た目は保てるが、`ToggleGroup` のアーキテクチャ（単一行 `grid`）から大きく外れ、`some()` ワークアラウンドは残ったまま。a11y 改善効果もない。
+- **ハイブリッド（「自動判定」のみ独立トグル + Select）**: 操作のアフォーダンスが混在して一貫性が下がる。ユーザーが「Select に統一」を選択したため採用しない。
+
+### 結果・トレードオフ
+
+- ✅ `some()` ワークアラウンドが解消し、`encoding.ts` の選択肢配列が統合（`SOURCE_ENCODINGS` / `TARGET_ENCODINGS`）
+- ✅ スマホ・タブレットでネイティブピッカーが使える
+- ✅ a11y 向上（矢印キー選択・スクリーンリーダー対応）
+- ⚠️ ToggleGroup に比べて「選択肢をひと目で見比べる」体験が失われる（クリックで開く必要がある）。ただし7択の文字コードは短縮名（UTF-8/SJIS 等）で差異が大きく、ひと目で比較するメリットは薄い
+
+---
+
+## [035] テストカバレッジの可視化
+
+### 背景
+
+プロジェクトの成長に伴い、テストの網羅性を客観的に把握する必要が出てきた。特に PR 時のデグレード防止や、未テスト箇所の特定を容易にしたいという要望があった。
+
+### 決断
+
+README.md にテストカバレッジのバッジを表示し、GitHub Actions で自動更新する仕組みを導入する。
+
+理由:
+- **品質の可視化**: 開発者がテストの不足を即座に認識できる。
+- **外部サービス不要**: GitHub Actions と Shields.io 完結で構成することで、設定の簡略化、コスト削減、およびプライバシー（コード情報の外部送信なし）を確保。
+- **自動運用**: `main` ブランチへのプッシュ時に `vitest` の `json-summary` レポーターから数値を抽出し、README.md を自動更新・コミットする。
+
+### 却下した選択肢
+
+- **Codecov / Coveralls 等の外部ツール**: 高機能だが、OSS 無料枠の制限や、コードベースを外部サービスにスキャンさせることへのプライバシー懸念がある。本プロジェクトは「ブラウザ完結・外部送信なし」をコンセプトとしているため、カバレッジ管理も極力セルフホストに近い形が望ましいと判断した。
+
+### 結果・トレードオフ
+
+- ✅ プロジェクトの品質状況をひと目で確認できるようになった
+- ✅ 外部サービス依存を排除し、GitHub 完結で安全な運用が可能
+- ⚠️ バッジ更新のための自動コミットが `main` ブランチに発生する（`[skip ci]` タグを付与して無限ループを防止）
+- ⚠️ `json-summary` のパースや `sed` による置換ロジックのメンテナンスが必要

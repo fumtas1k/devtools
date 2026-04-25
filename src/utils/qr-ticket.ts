@@ -6,6 +6,7 @@
  */
 
 import qrcode from '@/utils/qrcode';
+import { base64UrlToBuffer, bufferToBase64Url } from '@/utils/base64url';
 
 // ─── 型定義 ───────────────────────────────────────────────
 
@@ -34,25 +35,6 @@ export interface VerificationResult {
 }
 
 // ─── 内部ヘルパー ─────────────────────────────────────────
-
-/** ArrayBuffer を base64url 文字列に変換 */
-function bufferToBase64Url(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-/** base64url 文字列を ArrayBuffer に変換 */
-function base64UrlToBuffer(str: string): ArrayBuffer {
-  const normalized = str.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = normalized.length % 4;
-  const padded = pad === 2 ? normalized + '==' : pad === 3 ? normalized + '=' : normalized;
-  const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
-}
 
 /** オブジェクトのキーを昇順ソートした JSON 文字列を返す */
 function sortedStringify(obj: Record<string, string>): string {

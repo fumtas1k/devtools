@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { getErrorMessage } from '@/utils/errors';
 import bwipjs from 'bwip-js';
 import JSZip from 'jszip';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -12,6 +13,7 @@ import {
 } from '@/utils/gs1-databar';
 import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
+import { Select } from '@/components/ui/Select';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import {
   downloadSvg as downloadSvgFile,
@@ -118,7 +120,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
       onSvgChangeRef.current(finalSvg, gtinResult.fullGtin);
     } catch (e) {
       setSvgContent('');
-      setBwipError(e instanceof Error ? e.message : 'バーコード生成に失敗しました');
+      setBwipError(getErrorMessage(e, 'バーコード生成に失敗しました'));
       onSvgChangeRef.current('', '');
     }
   }, [gtinInput, gtinError, aiFields, gtinResult, allAiValid, hasAnyAiValue]);
@@ -199,8 +201,10 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {canRemove && (
           <button
             onClick={onRemove}
-            className="rounded px-2 py-1 hover:bg-red-50 transition-colors"
-            style={{ ...caption, color: colors.error }}
+            className="rounded px-2 py-1 transition-colors"
+            style={{ ...caption, color: colors.error, background: 'transparent' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             aria-label={`バーコード ${index + 1} を削除`}
           >
             削除
@@ -276,35 +280,25 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
               const def = AI_DEFS.find((d) => d.ai === field.ai)!;
               return (
                 <div key={i} className="flex gap-2 items-start">
-                  <select
-                    value={field.ai}
-                    onChange={(e) => handleAiSelect(i, e.target.value as AiCode)}
-                    className="rounded px-2 py-2 shrink-0"
-                    style={{
-                      ...caption,
-                      border: `1px solid ${colors.borderInput}`,
-                      background: colors.bg,
-                      color: colors.text,
-                      width: '200px',
-                    }}
-                  >
-                    {AI_DEFS.map((d) => (
-                      <option
-                        key={d.ai}
-                        value={d.ai}
-                        disabled={usedAis.has(d.ai) && d.ai !== field.ai}
-                      >
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ width: '200px', flexShrink: 0 }}>
+                    <Select<AiCode>
+                      value={field.ai}
+                      onChange={(v) => handleAiSelect(i, v)}
+                      ariaLabel={`AI コード ${i + 1}`}
+                      options={AI_DEFS.map((d) => ({
+                        value: d.ai,
+                        label: d.label,
+                        disabled: usedAis.has(d.ai) && d.ai !== field.ai,
+                      }))}
+                    />
+                  </div>
                   <div className="flex-1">
                     <input
                       type="text"
                       value={field.value}
                       onChange={(e) => handleAiChange(i, e.target.value)}
                       placeholder={def.placeholder}
-                      className="w-full rounded px-3 py-2 font-mono"
+                      className="w-full rounded-lg px-3 py-2 font-mono"
                       style={{
                         ...caption,
                         border: `1px solid ${field.error ? colors.error : colors.borderInput}`,
@@ -326,8 +320,15 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                   </div>
                   <button
                     onClick={() => removeAiField(i)}
-                    className="rounded p-2 hover:bg-neutral-100 transition-colors shrink-0"
-                    style={{ ...caption, color: colors.muted, marginTop: '2px' }}
+                    className="rounded-lg p-2 transition-colors shrink-0"
+                    style={{
+                      ...caption,
+                      color: colors.muted,
+                      marginTop: '2px',
+                      background: 'transparent',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     aria-label="フィールドを削除"
                   >
                     ✕
@@ -365,8 +366,16 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {gtinResult && (
           <details className="rounded-lg" style={{ border: `1px solid ${colors.border}` }}>
             <summary
-              className="cursor-pointer px-4 py-3 hover:bg-neutral-50 rounded-lg"
-              style={{ ...caption, fontWeight: 700, color: colors.text, listStyle: 'none' }}
+              className="cursor-pointer px-4 py-3 rounded-lg transition-colors"
+              style={{
+                ...caption,
+                fontWeight: 700,
+                color: colors.text,
+                listStyle: 'none',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               GS1文字列を見る
             </summary>
@@ -473,13 +482,16 @@ export function Gs1DatabarTool() {
         {cards.length < MAX_CARDS && (
           <button
             onClick={addCard}
-            className="rounded px-4 py-2 transition-colors hover:bg-blue-50"
+            className="rounded px-4 py-2 transition-colors"
             style={{
               ...caption,
               fontWeight: 700,
               border: `1px solid ${colors.primary}`,
               color: colors.primary,
+              background: 'transparent',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = colors.primaryBg)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             + バーコードを追加
           </button>

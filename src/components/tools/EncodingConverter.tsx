@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { CopyButton } from '@/components/ui/CopyButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { Select } from '@/components/ui/Select';
 import { InputField } from '@/components/ui/InputField';
+import { OutputField } from '@/components/ui/OutputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { caption, colors } from '@/utils/styles';
+import { getErrorMessage } from '@/utils/errors';
 import { downloadBytes } from '@/utils/download';
 import {
   detectEncoding,
@@ -14,10 +16,8 @@ import {
   ENCODING_LABELS,
   BOM_ENCODINGS,
   UTF16_ENCODINGS,
-  SOURCE_ENCODINGS_ROW1,
-  SOURCE_ENCODINGS_ROW2,
-  TARGET_ENCODINGS_ROW1,
-  TARGET_ENCODINGS_ROW2,
+  SOURCE_ENCODINGS,
+  TARGET_ENCODINGS,
   NEWLINE_OPTIONS,
   type EncodingName,
   type SourceEncoding,
@@ -99,7 +99,7 @@ export function EncodingConverterTool() {
     } catch (e) {
       setDetection(null);
       setDecodedPreview('');
-      setError(e instanceof Error ? e.message : '判定に失敗しました');
+      setError(getErrorMessage(e, '判定に失敗しました'));
     }
   }
 
@@ -135,7 +135,7 @@ export function EncodingConverterTool() {
     } catch (e) {
       setOutputBytes(null);
       setOutputPreview('');
-      setError(e instanceof Error ? e.message : '変換に失敗しました');
+      setError(getErrorMessage(e, '変換に失敗しました'));
     }
   }
 
@@ -333,43 +333,33 @@ export function EncodingConverterTool() {
       {mode === 'convert' && (
         <div className="space-y-3">
           <div>
-            <div style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>
+            <label
+              htmlFor="enc-source"
+              style={{ ...caption, color: colors.muted, marginBottom: '0.5rem', display: 'block' }}
+            >
               元の文字コード:
-            </div>
-            <div className="space-y-2">
-              <ToggleGroup
-                options={SOURCE_ENCODINGS_ROW1}
-                value={SOURCE_ENCODINGS_ROW1.some((o) => o.value === sourceEnc) ? sourceEnc : undefined}
-                onChange={(v) => setSourceEnc(v as SourceEncoding)}
-                ariaLabel="元の文字コード (AUTO・UTF-8・SJIS・EUC-JP)"
-              />
-              <ToggleGroup
-                options={SOURCE_ENCODINGS_ROW2}
-                value={SOURCE_ENCODINGS_ROW2.some((o) => o.value === sourceEnc) ? sourceEnc : undefined}
-                onChange={(v) => setSourceEnc(v as SourceEncoding)}
-                ariaLabel="元の文字コード (JIS・UTF-16)"
-              />
-            </div>
+            </label>
+            <Select
+              id="enc-source"
+              options={SOURCE_ENCODINGS}
+              value={sourceEnc}
+              onChange={(v) => setSourceEnc(v as SourceEncoding)}
+            />
           </div>
 
           <div>
-            <div style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>
+            <label
+              htmlFor="enc-target"
+              style={{ ...caption, color: colors.muted, marginBottom: '0.5rem', display: 'block' }}
+            >
               変換後の文字コード:
-            </div>
-            <div className="space-y-2">
-              <ToggleGroup
-                options={TARGET_ENCODINGS_ROW1}
-                value={TARGET_ENCODINGS_ROW1.some((o) => o.value === targetEnc) ? targetEnc : undefined}
-                onChange={(v) => setTargetEnc(v as EncodingName)}
-                ariaLabel="変換後の文字コード (UTF-8・SJIS・EUC-JP)"
-              />
-              <ToggleGroup
-                options={TARGET_ENCODINGS_ROW2}
-                value={TARGET_ENCODINGS_ROW2.some((o) => o.value === targetEnc) ? targetEnc : undefined}
-                onChange={(v) => setTargetEnc(v as EncodingName)}
-                ariaLabel="変換後の文字コード (JIS・UTF-16)"
-              />
-            </div>
+            </label>
+            <Select
+              id="enc-target"
+              options={TARGET_ENCODINGS}
+              value={targetEnc}
+              onChange={(v) => setTargetEnc(v as EncodingName)}
+            />
           </div>
 
           {UTF16_ENCODINGS.has(targetEnc) ? (
@@ -407,16 +397,15 @@ export function EncodingConverterTool() {
       {/* 変換出力 */}
       {mode === 'convert' && (
         <div>
-          <div
-            className="flex items-center justify-between"
-            style={{ marginBottom: '0.75rem', minHeight: '2rem' }}
-          >
-            <label htmlFor="enc-output" style={{ ...bodyEmphasis, color: colors.text }}>
-              変換結果プレビュー
-            </label>
-            <span className="flex items-center gap-2" style={{ visibility: outputPreview ? 'visible' : 'hidden' }}>
-              {/* クリップボードは Unicode テキストのみ保持できるため UTF-8 変換時のみ表示 */}
-              {targetEnc === 'UTF8' && <CopyButton text={outputPreview} label="コピー" />}
+          <OutputField
+            id="enc-output"
+            label="変換結果プレビュー"
+            value={outputPreview}
+            rows={8}
+            ariaLabel="変換結果"
+            // クリップボードは Unicode テキストのみ保持できるため UTF-8 変換時のみ表示
+            showCopy={targetEnc === 'UTF8'}
+            rightSlot={
               <button
                 onClick={handleDownload}
                 className="rounded-lg px-3 py-1.5 transition-colors"
@@ -430,22 +419,7 @@ export function EncodingConverterTool() {
               >
                 ダウンロード
               </button>
-            </span>
-          </div>
-          <textarea
-            id="enc-output"
-            readOnly
-            value={outputPreview}
-            rows={8}
-            className="w-full rounded-lg px-3 py-2 font-mono"
-            style={{
-              ...caption,
-              border: `1px solid ${colors.border}`,
-              background: colors.bgSubtle,
-              color: colors.text,
-              resize: 'vertical',
-            }}
-            aria-label="変換結果"
+            }
           />
           {outputBytes && (
             <div

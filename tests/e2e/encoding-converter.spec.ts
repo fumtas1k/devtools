@@ -108,44 +108,41 @@ test.describe('文字コード判定・変換', () => {
     await expect(page.getByTestId('detection-result')).not.toBeVisible();
   });
 
-  test('ケースH: 変換モードで Row1 選択中は Row2 がハイライトされない', async ({ page }) => {
+  test('ケースH: 変換モードの文字コード Select に全選択肢がありデフォルト値が正しい', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
 
-    // 「元の文字コード」グループに絞って検証（source/target 両方に JIS があるため）
-    const srcRow1 = page.getByRole('group', { name: '元の文字コード (AUTO・UTF-8・SJIS・EUC-JP)' });
-    const srcRow2 = page.getByRole('group', { name: '元の文字コード (JIS・UTF-16)' });
+    const srcSelect = page.getByLabel('元の文字コード');
+    const tgtSelect = page.getByLabel('変換後の文字コード');
 
-    // 初期状態: 自動判定(Row1) が選択中
-    await expect(srcRow1.getByRole('button', { name: '自動判定' })).toHaveAttribute('aria-pressed', 'true');
+    // デフォルト値
+    await expect(srcSelect).toHaveValue('AUTO');
+    await expect(tgtSelect).toHaveValue('UTF8');
 
-    // Row2 のボタンは全て非選択（ここが以前バグっていた箇所）
-    for (const name of ['JIS', 'UTF-16LE', 'UTF-16BE']) {
-      await expect(srcRow2.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false');
-    }
+    // 元の文字コードを JIS に変更できる
+    await srcSelect.selectOption('JIS');
+    await expect(srcSelect).toHaveValue('JIS');
 
-    // JIS (Row2) をクリックすると Row2 がアクティブになり Row1 は全て非選択
-    await srcRow2.getByRole('button', { name: 'JIS' }).click();
-    await expect(srcRow2.getByRole('button', { name: 'JIS' })).toHaveAttribute('aria-pressed', 'true');
-    for (const name of ['自動判定', 'UTF-8', 'SJIS', 'EUC-JP']) {
-      await expect(srcRow1.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false');
-    }
+    // 変換後の文字コードを SJIS に変更できる
+    await tgtSelect.selectOption('SJIS');
+    await expect(tgtSelect).toHaveValue('SJIS');
   });
 
   test('ケースI: UTF-8 以外ターゲット選択時はコピーボタンが非表示になる', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
     await page.getByLabel('入力テキスト').fill('あいうえお');
 
+    const tgtSelect = page.getByLabel('変換後の文字コード');
+
     // UTF-8 ターゲット（デフォルト）→ コピーボタンが表示される
-    const targetRow1 = page.getByRole('group', { name: '変換後の文字コード (UTF-8・SJIS・EUC-JP)' });
-    await targetRow1.getByRole('button', { name: 'UTF-8' }).click();
+    await tgtSelect.selectOption('UTF8');
     await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible({ timeout: 2000 });
 
     // SJIS ターゲット → コピーボタンが非表示になる
-    await targetRow1.getByRole('button', { name: 'SJIS' }).click();
+    await tgtSelect.selectOption('SJIS');
     await expect(page.getByRole('button', { name: 'コピー' })).not.toBeVisible();
 
     // UTF-8 に戻すとコピーボタンが再表示される
-    await targetRow1.getByRole('button', { name: 'UTF-8' }).click();
+    await tgtSelect.selectOption('UTF8');
     await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
   });
 
@@ -246,19 +243,19 @@ test.describe('文字コード判定・変換', () => {
   test('ケースN: UTF-16LE ターゲット選択時は改行コードトグルが非表示になる', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
 
+    const tgtSelect = page.getByLabel('変換後の文字コード');
+
     // UTF-8 ターゲットでは改行コードトグルが表示される
     await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible({ timeout: 2000 });
 
     // UTF-16LE ターゲットに切り替えると非表示になる
-    const targetRow2 = page.getByRole('group', { name: '変換後の文字コード (JIS・UTF-16)' });
-    await targetRow2.getByRole('button', { name: 'UTF-16LE' }).click();
+    await tgtSelect.selectOption('UTF16LE');
     await expect(page.getByRole('group', { name: '改行コード' })).not.toBeVisible();
     // UTF-16 向けの注記が表示される
     await expect(page.getByText('UTF-16 では改行コード正規化は適用されません')).toBeVisible();
 
     // UTF-8 に戻すと再表示される
-    const targetRow1 = page.getByRole('group', { name: '変換後の文字コード (UTF-8・SJIS・EUC-JP)' });
-    await targetRow1.getByRole('button', { name: 'UTF-8' }).click();
+    await tgtSelect.selectOption('UTF8');
     await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible();
   });
 });
