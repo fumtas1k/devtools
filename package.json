@@ -50,6 +50,7 @@
     "@types/encoding-japanese": "2.2.1",
     "@types/jsbarcode": "^3.11.4",
     "@types/uuid": "10.0.0",
+    "@vitest/coverage-v8": "4.1.4",
     "prettier": "3.8.2",
     "prettier-plugin-astro": "0.14.1",
     "typescript": "5.9.3",
