@@ -1100,3 +1100,16 @@ CLAUDE.md（プロジェクト規約）で「Tailwind のカラークラス（`t
 - ✅ ダークモード追加（[003] 参照）時には CSS 変数値の差し替えだけで全箇所が追従
 - ⚠️ ホバー切替を毎回 `onMouseEnter`/`onMouseLeave` 2 行で書く必要がある。頻出するなら将来的に `useHoverStyle` フックに括り出す余地あり
 - ⚠️ ページ／レイアウト系（`src/pages/*.astro`、`src/components/layout/*`、`src/components/ui/DownloadButtonGroup.tsx`）には Tailwind 色クラスが残存している。今回はツール本体の規約違反のみをスコープとし、ページ／レイアウトは別タスクで扱う
+
+## テストカバレッジの可視化 (2026-04-25)
+
+README.md にテストカバレッジのバッジを表示し、プロジェクトの品質状況をひと目で確認できるようにした。
+
+### 決定事項
+- カバレッジ測定には `vitest` 公式の `@vitest/coverage-v8` を使用する。
+- GitHub Actions (`test.yml`) で `main` ブランチへのプッシュ時にカバレッジを自動更新し、バッジに反映させる。
+- バッジの数値に応じて色を動的に変更する（例：90%以上で明るい緑）。
+
+### 理由
+- 開発者がテストの不足を早期に発見できるようにするため。
+- 外部サービス（Codecov等）を使用せず、GitHub Actions と Shields.io 完結で構成することで、設定の簡略化とプライバシーを確保した。
