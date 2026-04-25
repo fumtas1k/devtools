@@ -142,7 +142,7 @@ export function normalizeNewlines(bytes: Uint8Array, mode: NewlineMode): Uint8Ar
     const out = new Uint8Array(bytes.length);
     let w = 0;
     for (let i = 0; i < bytes.length; i++) {
-      if (bytes[i] === 0x0d && bytes[i + 1] === 0x0a) continue; // CR を捨てて次で LF を出力
+      if (bytes[i] === 0x0d && i + 1 < bytes.length && bytes[i + 1] === 0x0a) continue; // CR を捨てて次で LF を出力
       out[w++] = bytes[i];
     }
     return out.subarray(0, w);
@@ -152,7 +152,7 @@ export function normalizeNewlines(bytes: Uint8Array, mode: NewlineMode): Uint8Ar
   const out = new Uint8Array(bytes.length * 2);
   let w = 0;
   for (let i = 0; i < bytes.length; i++) {
-    if (bytes[i] === 0x0a && bytes[i - 1] !== 0x0d) out[w++] = 0x0d;
+    if (bytes[i] === 0x0a && (i === 0 || bytes[i - 1] !== 0x0d)) out[w++] = 0x0d;
     out[w++] = bytes[i];
   }
   return out.subarray(0, w);
