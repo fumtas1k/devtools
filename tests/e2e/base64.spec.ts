@@ -25,13 +25,14 @@ test.describe('Base64 エンコード/デコード', () => {
     await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8');
   });
 
-  test('モード切替時に入力が保持される', async ({ page }) => {
+  test('モード切替時に入力・出力がリセットされる', async ({ page }) => {
     await page.getByLabel('入力').fill('Hello');
     await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8=');
 
     await page.getByRole('button', { name: 'デコード' }).click();
 
-    await expect(page.getByLabel('入力')).toHaveValue('Hello');
+    await expect(page.getByLabel('入力')).toHaveValue('');
+    await expect(page.getByLabel('変換結果')).toHaveValue('');
   });
 
   test('形式切替時に入力が保持され出力が再計算される', async ({ page }) => {

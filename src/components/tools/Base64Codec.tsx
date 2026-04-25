@@ -25,6 +25,11 @@ export function Base64CodecTool() {
     [mode, format],
   );
 
+  const handleModeChange = (next: Mode) => {
+    setMode(next);
+    reset();
+  };
+
   const sampleValue =
     mode === 'encode'
       ? SAMPLE_ENCODE
@@ -41,7 +46,7 @@ export function Base64CodecTool() {
           { value: 'decode', label: 'デコード' },
         ]}
         value={mode}
-        onChange={setMode}
+        onChange={handleModeChange}
         ariaLabel="変換モード"
       />
 
