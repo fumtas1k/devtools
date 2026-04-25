@@ -11,6 +11,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -24,7 +27,27 @@ jobs:
 
       - run: npm ci
 
-      - run: npm test
+      - name: テストとカバレッジ測定を実行
+        run: npm test -- --coverage
+
+      - name: カバレッジバッジを更新
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          COVERAGE=$(node -e "console.log(require('./coverage/coverage-summary.json').total.statements.pct)")
+          COLOR=$(node -e "const pct = $COVERAGE; console.log(pct >= 90 ? 'brightgreen' : pct >= 80 ? 'green' : pct >= 70 ? 'yellowgreen' : pct >= 60 ? 'yellow' : 'red')")
+          sed -i "s/coverage-.*-green/coverage-$COVERAGE%25-$COLOR/g" README.md
+          sed -i "s/coverage-.*-yellowgreen/coverage-$COVERAGE%25-$COLOR/g" README.md
+          sed -i "s/coverage-.*-yellow/coverage-$COVERAGE%25-$COLOR/g" README.md
+          sed -i "s/coverage-.*-red/coverage-$COVERAGE%25-$COLOR/g" README.md
+          sed -i "s/coverage-.*-brightgreen/coverage-$COVERAGE%25-$COLOR/g" README.md
+
+      - name: 変更をコミットしてプッシュ
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git diff --quiet && git diff --staged --quiet || (git commit -m "docs: update coverage badge [skip ci]" && git push)
 
   e2e:
     runs-on: ubuntu-latest
