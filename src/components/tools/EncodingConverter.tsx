@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { CopyButton } from '@/components/ui/CopyButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
+import { OutputField } from '@/components/ui/OutputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { caption, colors } from '@/utils/styles';
 import { downloadBytes } from '@/utils/download';
 import {
   detectEncoding,
@@ -407,16 +407,15 @@ export function EncodingConverterTool() {
       {/* 変換出力 */}
       {mode === 'convert' && (
         <div>
-          <div
-            className="flex items-center justify-between"
-            style={{ marginBottom: '0.75rem', minHeight: '2rem' }}
-          >
-            <label htmlFor="enc-output" style={{ ...bodyEmphasis, color: colors.text }}>
-              変換結果プレビュー
-            </label>
-            <span className="flex items-center gap-2" style={{ visibility: outputPreview ? 'visible' : 'hidden' }}>
-              {/* クリップボードは Unicode テキストのみ保持できるため UTF-8 変換時のみ表示 */}
-              {targetEnc === 'UTF8' && <CopyButton text={outputPreview} label="コピー" />}
+          <OutputField
+            id="enc-output"
+            label="変換結果プレビュー"
+            value={outputPreview}
+            rows={8}
+            ariaLabel="変換結果"
+            // クリップボードは Unicode テキストのみ保持できるため UTF-8 変換時のみ表示
+            showCopy={targetEnc === 'UTF8'}
+            rightSlot={
               <button
                 onClick={handleDownload}
                 className="rounded-lg px-3 py-1.5 transition-colors"
@@ -430,22 +429,7 @@ export function EncodingConverterTool() {
               >
                 ダウンロード
               </button>
-            </span>
-          </div>
-          <textarea
-            id="enc-output"
-            readOnly
-            value={outputPreview}
-            rows={8}
-            className="w-full rounded-lg px-3 py-2 font-mono"
-            style={{
-              ...caption,
-              border: `1px solid ${colors.border}`,
-              background: colors.bgSubtle,
-              color: colors.text,
-              resize: 'vertical',
-            }}
-            aria-label="変換結果"
+            }
           />
           {outputBytes && (
             <div

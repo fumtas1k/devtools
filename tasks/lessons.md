@@ -198,3 +198,53 @@ UIレイアウト変更後は Playwright でPC（1280×800）とスマホ（390�
 
 - **横並び ↔ 縦並び切り替えには `w-full md:flex-1 min-w-0` がセット**。
 - `min-w-0` を忘れると長いコンテンツがはみ出す。
+
+---
+
+## 2026-04-25: ホバー時の色変化はインラインスタイル＋`onMouseEnter`/`onMouseLeave` で
+
+### 状況
+
+`hover:bg-red-50` のような Tailwind ホバークラスが `Gs1Databar.tsx` / `JanCode.tsx` に残存し、CLAUDE.md の色クラス禁止規約に違反していた。
+
+### 修正
+
+```tsx
+// ❌ 修正前
+<button className="hover:bg-red-50" style={{ color: colors.error }}>削除</button>
+
+// ✅ 修正後
+<button
+  style={{ background: 'transparent', color: colors.error }}
+  onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
+  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+>削除</button>
+```
+
+### 教訓
+
+- **CLAUDE.md の「色は `colors.*` インラインスタイル」規約は擬似クラスにも適用される**。`hover:bg-*` も Tailwind 色クラスの一種として扱う。
+- ホバー切替は既存の `onFocusRing` / `onBlurRing` と同じく `onMouseEnter` / `onMouseLeave` でインラインスタイルを差し替える流儀に揃える。
+
+---
+
+## 2026-04-25: `Uint8Array<ArrayBuffer>` の戻り型は `crypto.subtle.verify` で必須
+
+### 状況
+
+`base64UrlToBytes(str): Uint8Array` と書くと TS は `Uint8Array<ArrayBufferLike>` に展開し、`crypto.subtle.verify(..., signature, ...)` の `BufferSource = ArrayBufferView<ArrayBuffer>` 制約を満たせず型エラーになる。
+
+### 修正
+
+```ts
+// ❌ 修正前
+export function base64UrlToBytes(str: string): Uint8Array { ... }
+
+// ✅ 修正後
+export function base64UrlToBytes(str: string): Uint8Array<ArrayBuffer> { ... }
+```
+
+### 教訓
+
+- `new Uint8Array(length)` の戻り値は `Uint8Array<ArrayBuffer>` だが、関数戻り型を `Uint8Array` と書くと境界で `Uint8Array<ArrayBufferLike>` に広がる。
+- `crypto.subtle` 系・厳密な `BufferSource` を要求する API に渡す Uint8Array を返す関数は、戻り型を `Uint8Array<ArrayBuffer>` に絞り込むこと。

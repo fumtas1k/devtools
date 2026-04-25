@@ -199,8 +199,10 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {canRemove && (
           <button
             onClick={onRemove}
-            className="rounded px-2 py-1 hover:bg-red-50 transition-colors"
-            style={{ ...caption, color: colors.error }}
+            className="rounded px-2 py-1 transition-colors"
+            style={{ ...caption, color: colors.error, background: 'transparent' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             aria-label={`バーコード ${index + 1} を削除`}
           >
             削除
@@ -326,8 +328,15 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                   </div>
                   <button
                     onClick={() => removeAiField(i)}
-                    className="rounded p-2 hover:bg-neutral-100 transition-colors shrink-0"
-                    style={{ ...caption, color: colors.muted, marginTop: '2px' }}
+                    className="rounded p-2 transition-colors shrink-0"
+                    style={{
+                      ...caption,
+                      color: colors.muted,
+                      marginTop: '2px',
+                      background: 'transparent',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     aria-label="フィールドを削除"
                   >
                     ✕
@@ -365,8 +374,16 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {gtinResult && (
           <details className="rounded-lg" style={{ border: `1px solid ${colors.border}` }}>
             <summary
-              className="cursor-pointer px-4 py-3 hover:bg-neutral-50 rounded-lg"
-              style={{ ...caption, fontWeight: 700, color: colors.text, listStyle: 'none' }}
+              className="cursor-pointer px-4 py-3 rounded-lg transition-colors"
+              style={{
+                ...caption,
+                fontWeight: 700,
+                color: colors.text,
+                listStyle: 'none',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               GS1文字列を見る
             </summary>
@@ -473,13 +490,16 @@ export function Gs1DatabarTool() {
         {cards.length < MAX_CARDS && (
           <button
             onClick={addCard}
-            className="rounded px-4 py-2 transition-colors hover:bg-blue-50"
+            className="rounded px-4 py-2 transition-colors"
             style={{
               ...caption,
               fontWeight: 700,
               border: `1px solid ${colors.primary}`,
               color: colors.primary,
+              background: 'transparent',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = colors.primaryBg)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             + バーコードを追加
           </button>

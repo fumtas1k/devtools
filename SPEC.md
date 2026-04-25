@@ -112,8 +112,12 @@ devtools/
     │   │   └── Sidebar.astro
     │   ├── ui/
     │   │   ├── CopyButton.tsx
-    │   │   ├── ToolIcon.astro   # slug → SVG アイコンマッピング
-    │   │   └── DownloadButton.tsx
+    │   │   ├── DownloadButtonGroup.tsx
+    │   │   ├── ErrorMessage.tsx
+    │   │   ├── InputField.tsx
+    │   │   ├── OutputField.tsx          # 出力カード共通UI（ラベル＋CopyButton＋readOnly textarea）
+    │   │   ├── ToggleGroup.tsx
+    │   │   └── ToolIcon.astro           # slug → SVG アイコンマッピング
     │   └── tools/
     │       ├── UlidGenerator.tsx
     │       ├── UuidV7Generator.tsx
@@ -145,9 +149,15 @@ devtools/
     │       └── encoding-converter.astro
     ├── data/
     │   └── tools.ts
+    ├── hooks/
+    │   ├── useClampedInput.ts  # 数値入力の min/max クランプ
+    │   ├── useCodec.ts         # 入力→デバウンス→変換→出力＋エラーの共通フック
+    │   └── useQrCamera.ts
     ├── styles/
     │   └── global.css
     └── utils/
+        ├── base64.ts           # Base64 ツール用 UTF-8 ⇄ 文字列変換
+        ├── base64url.ts        # base64url 共通ヘルパー（jwt/qr-ticket が利用）
         ├── clipboard.ts
         ├── jwt.ts              # JWT パース・フォーマット関数
         ├── url-encode.ts       # URLエンコード/デコード関数
@@ -155,12 +165,22 @@ devtools/
         ├── gs1-databar.ts      # GTIN-14計算・GS1 AIビルダー
         ├── encoding.ts         # 文字コード判定・変換ラッパー（encoding-japanese）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
+        ├── qr-ticket.ts
+        ├── qrcode.ts
+        ├── uuid-v7.ts
         ├── styles.ts           # 共通タイポグラフィ定数
         └── __tests__/
-            ├── jwt.test.ts
-            ├── url-encode.test.ts
+            ├── base64.test.ts
+            ├── base64url.test.ts
+            ├── encoding.test.ts
+            ├── gs1-databar.test.ts
             ├── jan-code.test.ts
-            └── gs1-databar.test.ts
+            ├── json-csv.test.ts
+            ├── json-xml.test.ts
+            ├── jwt.test.ts
+            ├── qr-ticket.test.ts
+            ├── url-encode.test.ts
+            └── uuid-v7.test.ts
 ```
 
 ---
@@ -763,6 +783,25 @@ devtools/
 - **サンプル入力**: 各ツールに適切なサンプルデータセットボタン
 - **エラー表示**: 赤枠 + 枠直下にメッセージ
 - **レスポンシブ**: モバイルでは縦並び
+
+#### 共通コンポーネント（`src/components/ui/`）
+
+| コンポーネント | 用途 |
+| --- | --- |
+| `InputField` | ラベル＋入力欄（任意で multiline）＋エラー＋ヒント＋サンプルボタン |
+| `OutputField` | ラベル＋（CopyButton／追加要素）＋ readOnly textarea。値が空のときヘッダ部を `visibility: hidden` にして高さを保つ |
+| `CopyButton` | クリップボードコピー（標準／コンパクト 2 形態） |
+| `ErrorMessage` | `role="alert"` 付きエラーテキスト |
+| `DownloadButtonGroup` | SVG／PNG ダウンロードボタンのペア |
+| `ToggleGroup<T>` | モード切替などの排他選択トグル |
+
+#### 共通フック（`src/hooks/`）
+
+| フック | 用途 |
+| --- | --- |
+| `useCodec(transform, deps, options?)` | 入力→デバウンス→変換→出力＋エラー状態を一括管理。Base64／JSON-XML／JSON-CSV など同期変換ツールで利用 |
+| `useClampedInput(initial, min, max)` | 数値入力の min/max クランプ |
+| `useQrCamera()` | カメラ起動＋ rAF ベースの QR スキャンループ |
 
 ### 6.2 アクセシビリティ
 
