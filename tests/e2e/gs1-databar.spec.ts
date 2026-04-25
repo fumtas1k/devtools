@@ -32,40 +32,29 @@ test.describe('GS1 DataBar 生成', () => {
 
   test('1 行目の AI を変更すると 2 行目の disabled が連動する', async ({ page }) => {
     // 初期状態: Select1='17', Select2='10'。未使用の '11'（製造日）を 1 行目に選択
-    await page.locator('select[aria-label="AI コード 1"]').selectOption('11');
-    await expect(page.locator('select[aria-label="AI コード 1"]')).toHaveValue('11');
+    await page.getByLabel('AI コード 1').selectOption('11');
+    await expect(page.getByLabel('AI コード 1')).toHaveValue('11');
 
-    // React 再レンダリング後に '11' が Select 2 で disabled になるのを待つ
-    await page.waitForFunction(() => {
-      const opt = document.querySelector('select[aria-label="AI コード 2"] option[value="11"]') as HTMLOptionElement | null;
-      return opt?.disabled === true;
-    });
+    // React 再レンダリング後に '11' が Select 2 で disabled になるのを expect のオートリトライで待つ
+    await expect(
+      page.getByLabel('AI コード 2').getByRole('option', { name: '製造日 (11)' })
+    ).toBeDisabled();
 
-    // '17' は 2 行目で enabled になる（current の '10' は現在の field.ai なので enabled）
-    const opt17Disabled = await page
-      .locator('select[aria-label="AI コード 2"] option[value="17"]')
-      .evaluate((el) => (el as HTMLOptionElement).disabled);
-    expect(opt17Disabled).toBe(false);
+    // '17' は 2 行目で enabled になる
+    await expect(
+      page.getByLabel('AI コード 2').getByRole('option', { name: '賞味/消費期限 (17)' })
+    ).toBeEnabled();
   });
 
   test('削除ボタンでフィールドが減る', async ({ page }) => {
     // 初期状態: 2 フィールド
-    await expect(page.locator('select[aria-label="AI コード 1"]')).toBeVisible();
-    await expect(page.locator('select[aria-label="AI コード 2"]')).toBeVisible();
+    await expect(page.getByLabel('AI コード 1')).toBeVisible();
+    await expect(page.getByLabel('AI コード 2')).toBeVisible();
 
-    // 1 行目の削除（evaluate 経由で確実にクリック）
-    await page.evaluate(() => {
-      (document.querySelector('button[aria-label="フィールドを削除"]') as HTMLElement)?.click();
-    });
+    await page.getByRole('button', { name: 'フィールドを削除' }).first().click();
 
-    // React 再レンダリング後に Select 2 が消えるのを待つ
-    await page.waitForFunction(
-      () => !document.querySelector('select[aria-label="AI コード 2"]'),
-      undefined,
-      { timeout: 5000 }
-    );
-
-    await expect(page.locator('select[aria-label="AI コード 1"]')).toBeVisible();
+    await expect(page.getByLabel('AI コード 2')).toBeHidden();
+    await expect(page.getByLabel('AI コード 1')).toBeVisible();
   });
 
   test('+ フィールド追加でフィールドが増える', async ({ page }) => {
