@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { Select } from '@/components/ui/Select';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -15,10 +16,8 @@ import {
   ENCODING_LABELS,
   BOM_ENCODINGS,
   UTF16_ENCODINGS,
-  SOURCE_ENCODINGS_ROW1,
-  SOURCE_ENCODINGS_ROW2,
-  TARGET_ENCODINGS_ROW1,
-  TARGET_ENCODINGS_ROW2,
+  SOURCE_ENCODINGS,
+  TARGET_ENCODINGS,
   NEWLINE_OPTIONS,
   type EncodingName,
   type SourceEncoding,
@@ -334,43 +333,33 @@ export function EncodingConverterTool() {
       {mode === 'convert' && (
         <div className="space-y-3">
           <div>
-            <div style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>
+            <label
+              htmlFor="enc-source"
+              style={{ ...caption, color: colors.muted, marginBottom: '0.5rem', display: 'block' }}
+            >
               元の文字コード:
-            </div>
-            <div className="space-y-2">
-              <ToggleGroup
-                options={SOURCE_ENCODINGS_ROW1}
-                value={SOURCE_ENCODINGS_ROW1.some((o) => o.value === sourceEnc) ? sourceEnc : undefined}
-                onChange={(v) => setSourceEnc(v as SourceEncoding)}
-                ariaLabel="元の文字コード (AUTO・UTF-8・SJIS・EUC-JP)"
-              />
-              <ToggleGroup
-                options={SOURCE_ENCODINGS_ROW2}
-                value={SOURCE_ENCODINGS_ROW2.some((o) => o.value === sourceEnc) ? sourceEnc : undefined}
-                onChange={(v) => setSourceEnc(v as SourceEncoding)}
-                ariaLabel="元の文字コード (JIS・UTF-16)"
-              />
-            </div>
+            </label>
+            <Select
+              id="enc-source"
+              options={SOURCE_ENCODINGS}
+              value={sourceEnc}
+              onChange={(v) => setSourceEnc(v as SourceEncoding)}
+            />
           </div>
 
           <div>
-            <div style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>
+            <label
+              htmlFor="enc-target"
+              style={{ ...caption, color: colors.muted, marginBottom: '0.5rem', display: 'block' }}
+            >
               変換後の文字コード:
-            </div>
-            <div className="space-y-2">
-              <ToggleGroup
-                options={TARGET_ENCODINGS_ROW1}
-                value={TARGET_ENCODINGS_ROW1.some((o) => o.value === targetEnc) ? targetEnc : undefined}
-                onChange={(v) => setTargetEnc(v as EncodingName)}
-                ariaLabel="変換後の文字コード (UTF-8・SJIS・EUC-JP)"
-              />
-              <ToggleGroup
-                options={TARGET_ENCODINGS_ROW2}
-                value={TARGET_ENCODINGS_ROW2.some((o) => o.value === targetEnc) ? targetEnc : undefined}
-                onChange={(v) => setTargetEnc(v as EncodingName)}
-                ariaLabel="変換後の文字コード (JIS・UTF-16)"
-              />
-            </div>
+            </label>
+            <Select
+              id="enc-target"
+              options={TARGET_ENCODINGS}
+              value={targetEnc}
+              onChange={(v) => setTargetEnc(v as EncodingName)}
+            />
           </div>
 
           {UTF16_ENCODINGS.has(targetEnc) ? (

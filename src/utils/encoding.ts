@@ -158,25 +158,20 @@ export function normalizeNewlines(bytes: Uint8Array, mode: NewlineMode): Uint8Ar
   return out.subarray(0, w);
 }
 
-// トグルボタン用の短縮ラベル (4文字以内 or ASCII)。検出結果カードの表示には ENCODING_LABELS を使う
-export const SOURCE_ENCODINGS_ROW1: Array<{ value: SourceEncoding; label: string }> = [
+export const SOURCE_ENCODINGS: Array<{ value: SourceEncoding; label: string }> = [
   { value: 'AUTO', label: '自動判定' },
   { value: 'UTF8', label: 'UTF-8' },
   { value: 'SJIS', label: 'SJIS' },
   { value: 'EUCJP', label: 'EUC-JP' },
-];
-export const SOURCE_ENCODINGS_ROW2: Array<{ value: SourceEncoding; label: string }> = [
   { value: 'JIS', label: 'JIS' },
   { value: 'UTF16LE', label: 'UTF-16LE' },
   { value: 'UTF16BE', label: 'UTF-16BE' },
 ];
 
-export const TARGET_ENCODINGS_ROW1: Array<{ value: EncodingName; label: string }> = [
+export const TARGET_ENCODINGS: Array<{ value: EncodingName; label: string }> = [
   { value: 'UTF8', label: 'UTF-8' },
   { value: 'SJIS', label: 'SJIS' },
   { value: 'EUCJP', label: 'EUC-JP' },
-];
-export const TARGET_ENCODINGS_ROW2: Array<{ value: EncodingName; label: string }> = [
   { value: 'JIS', label: 'JIS' },
   { value: 'UTF16LE', label: 'UTF-16LE' },
   { value: 'UTF16BE', label: 'UTF-16BE' },

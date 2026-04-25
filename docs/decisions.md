@@ -1100,3 +1100,35 @@ CLAUDE.md（プロジェクト規約）で「Tailwind のカラークラス（`t
 - ✅ ダークモード追加（[003] 参照）時には CSS 変数値の差し替えだけで全箇所が追従
 - ⚠️ ホバー切替を毎回 `onMouseEnter`/`onMouseLeave` 2 行で書く必要がある。頻出するなら将来的に `useHoverStyle` フックに括り出す余地あり
 - ⚠️ ページ／レイアウト系（`src/pages/*.astro`、`src/components/layout/*`、`src/components/ui/DownloadButtonGroup.tsx`）には Tailwind 色クラスが残存している。今回はツール本体の規約違反のみをスコープとし、ページ／レイアウトは別タスクで扱う
+
+---
+
+## [034] 文字コード選択UIを ToggleGroup から Select に変更
+
+### 背景
+
+`EncodingConverter.tsx` の文字コード選択は「元の文字コード（7択）」「変換後の文字コード（6択）」と選択肢が多い。`ToggleGroup` は `gridTemplateColumns: repeat(N, 1fr)` の単一行前提で、7択を1行に並べると横潰れ・スマホ崩れが発生するため、ROW1/ROW2 に分割して `some()` で「他行が選択中なら自分は非選択」とみなすワークアラウンドで実装していた。
+
+### 決断
+
+ネイティブ `<select>` を使った `Select<T>` 共通コンポーネント（`src/components/ui/Select.tsx`）を新規作成し、文字コード選択に採用する。`ToggleGroup` と同じジェネリック API 形状（`options / value / onChange / ariaLabel`）にして将来の置き換えも容易にした。
+
+理由:
+- **a11y**: ネイティブ要素のため矢印キー操作・スクリーンリーダー読み上げが OS 標準で完璧
+- **スマホ対応**: OS ネイティブピッカーが開くため幅不足の心配がない
+- **コード簡潔化**: `some()` ワークアラウンドと2行分の `ToggleGroup` が1行の `Select` に集約
+- **縦スペース節約**: ラベル＋2行が1行に収まる
+
+「自動判定」は Select の先頭オプションとして他の選択肢と同列に並べた。
+
+### 却下した選択肢
+
+- **ToggleGroup を flex-wrap 対応に改修**: 見た目は保てるが、`ToggleGroup` のアーキテクチャ（単一行 `grid`）から大きく外れ、`some()` ワークアラウンドは残ったまま。a11y 改善効果もない。
+- **ハイブリッド（「自動判定」のみ独立トグル + Select）**: 操作のアフォーダンスが混在して一貫性が下がる。ユーザーが「Select に統一」を選択したため採用しない。
+
+### 結果・トレードオフ
+
+- ✅ `some()` ワークアラウンドが解消し、`encoding.ts` の選択肢配列が統合（`SOURCE_ENCODINGS` / `TARGET_ENCODINGS`）
+- ✅ スマホ・タブレットでネイティブピッカーが使える
+- ✅ a11y 向上（矢印キー選択・スクリーンリーダー対応）
+- ⚠️ ToggleGroup に比べて「選択肢をひと目で見比べる」体験が失われる（クリックで開く必要がある）。ただし7択の文字コードは短縮名（UTF-8/SJIS 等）で差異が大きく、ひと目で比較するメリットは薄い
