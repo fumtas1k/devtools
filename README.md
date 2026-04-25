@@ -1,7 +1,7 @@
 # DevTools
 
 [![Test](https://github.com/fumtas1k/devtools/actions/workflows/test.yml/badge.svg)](https://github.com/fumtas1k/devtools/actions/workflows/test.yml)
-![Coverage](https://img.shields.io/badge/coverage-75.88%25-green)
+![Coverage](https://img.shields.io/badge/coverage-76%25-yellowgreen)
 
 ブラウザで完結する無料の開発者ツール集。インストール不要・登録不要・データは外部送信なし。
 

@@ -12,7 +12,7 @@ export default defineConfig({
     include: ['src/**/__tests__/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json-summary', 'json'],
+      reporter: ['text', 'json-summary', 'json', 'html'],
     },
   },
 });
