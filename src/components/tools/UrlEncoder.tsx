@@ -80,7 +80,6 @@ export function UrlEncoderTool() {
         value={output}
         rows={4}
         ariaLabel="変換結果"
-        copyLabel="出力をコピー"
         resize={false}
       />
 
