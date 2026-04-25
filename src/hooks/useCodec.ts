@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { DependencyList } from 'react';
+import { getErrorMessage } from '@/utils/errors';
 
 interface UseCodecOptions {
   /** デバウンス（ms）。既定 300。 */
@@ -40,7 +41,7 @@ export function useCodec(
         setError('');
       } catch (e) {
         setOutput('');
-        setError(e instanceof Error ? e.message : fallbackError);
+        setError(getErrorMessage(e, fallbackError));
       }
     }, debounceMs);
     return () => clearTimeout(timer);
