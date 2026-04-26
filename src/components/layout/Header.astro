@@ -2,7 +2,7 @@
 import PageContainer from '@/components/ui/PageContainer.astro';
 ---
 
-<header class="sticky top-0 z-50 bg-white border-b border-neutral-200" style="height: 64px;">
+<header class="sticky top-0 z-50 border-b" style="height: 64px; background: var(--color-bg); border-color: var(--color-border);">
   <PageContainer class="flex h-full items-center justify-between">
     <a
       href="/"
@@ -15,8 +15,8 @@ import PageContainer from '@/components/ui/PageContainer.astro';
     <button
       id="mobile-menu-toggle"
       type="button"
-      class="lg:hidden flex items-center justify-center rounded-md transition-colors hover:bg-neutral-100"
-      style="width: 44px; height: 44px; color: #374151;"
+      class="lg:hidden flex items-center justify-center rounded-md transition-colors"
+      style="width: 44px; height: 44px; color: var(--color-neutral-700);"
       aria-label="メニューを開く"
       aria-expanded="false"
       aria-controls="mobile-drawer"
@@ -40,3 +40,7 @@ import PageContainer from '@/components/ui/PageContainer.astro';
     </button>
   </PageContainer>
 </header>
+
+<style>
+  #mobile-menu-toggle:hover { background: var(--color-bg-subtle); }
+</style>

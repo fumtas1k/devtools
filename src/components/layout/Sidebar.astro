@@ -15,8 +15,8 @@ const { currentSlug } = Astro.props;
       categories.map((cat) => (
         <div class="mb-6">
           <h2
-            class="mb-2 px-3 font-bold text-neutral-500 uppercase"
-            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.08em;"
+            class="mb-2 px-3 font-bold uppercase"
+            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.08em; color: var(--color-muted);"
           >
             {categoryLabel[cat]}
           </h2>
@@ -28,11 +28,11 @@ const { currentSlug } = Astro.props;
                   <a
                     href={`/tools/${tool.slug}`}
                     aria-current={currentSlug === tool.slug ? 'page' : undefined}
-                    class={`flex items-center gap-2 rounded px-3 transition-colors
+                    class={`flex items-center gap-2 rounded px-3 transition-colors sidebar-link
                   ${
                     currentSlug === tool.slug
-                      ? 'font-bold text-primary bg-blue-50'
-                      : 'text-neutral-700 hover:bg-neutral-100'
+                      ? 'font-bold text-primary sidebar-link--active'
+                      : 'sidebar-link--inactive'
                   }`}
                     style="min-height: 44px; font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
                   >
@@ -47,3 +47,9 @@ const { currentSlug } = Astro.props;
     }
   </nav>
 </aside>
+
+<style>
+  .sidebar-link--active { background: var(--color-background); }
+  .sidebar-link--inactive { color: var(--color-neutral-700); }
+  .sidebar-link--inactive:hover { background: var(--color-bg-subtle); }
+</style>
