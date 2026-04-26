@@ -1,4 +1,4 @@
-import { colors, caption, micro } from '@/utils/styles';
+import { colors, caption } from '@/utils/styles';
 import type { TicketPayload } from '@/utils/qr-ticket';
 
 function formatExpiry(iso: string): string {
@@ -31,7 +31,7 @@ export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
           <tr key={label}>
             <td
               style={{
-                ...micro,
+                ...caption,
                 color: colors.muted,
                 paddingRight: '1rem',
                 paddingBottom: '0.25rem',

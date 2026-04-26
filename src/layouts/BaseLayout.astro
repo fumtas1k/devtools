@@ -37,7 +37,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <meta name="theme-color" content="#1A56DB" />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
   </head>
-  <body class="bg-neutral-50 text-neutral-900 min-h-screen">
+  <body class="min-h-screen" style="background: var(--color-bg-surface); color: var(--color-text);">
     <a href="#main-content" class="skip-link">本文へスキップ</a>
     <Header />
     <MobileDrawer currentSlug={currentSlug} />

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import {
   parseJwt,
@@ -284,7 +284,7 @@ export function JwtDecoderTool() {
             <>
               {keyLabel}
               <span
-                style={{ ...micro, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}
+                style={{ ...caption, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}
               >
                 （任意）
               </span>
@@ -359,10 +359,10 @@ export function JwtDecoderTool() {
               <h3 style={{ ...bodyEmphasis, color: colors.text }}>Signature</h3>
               <CopyButton text={parsed.signature} label="コピー" />
             </div>
-            <p className="break-all font-mono" style={{ ...micro, color: colors.text }}>
+            <p className="break-all font-mono" style={{ ...caption, color: colors.text }}>
               {parsed.signature}
             </p>
-            <p className="mt-2" style={{ ...micro, color: colors.muted }}>
+            <p className="mt-2" style={{ ...caption, color: colors.muted }}>
               {secretKey.trim()
                 ? '上記のキーで署名を検証しています'
                 : 'キーを入力すると署名を検証します'}

@@ -1,4 +1,4 @@
-import type { CSSProperties, FocusEvent } from 'react';
+import type { CSSProperties } from 'react';
 
 /**
  * DADSカラーシステム
@@ -16,8 +16,6 @@ export const colors = {
   bgSurface: 'var(--color-bg-surface)',
   bgSubtle: 'var(--color-bg-subtle)',
   bgPrimary: 'var(--color-background)',
-  /** @deprecated `bgPrimary` を使用してください */
-  primaryBg: 'var(--color-background)',
   /** プライマリ色背景上のテキスト（白抜き文字）。ダークモード時も白を維持する意図 */
   textOnPrimary: 'var(--color-text-on-primary)',
   border: 'var(--color-border)',
@@ -48,11 +46,6 @@ export const radii = {
   full: 'var(--radius-full)',
 } as const;
 
-/** @deprecated `elevation.level2` を使用してください */
-export const shadows = {
-  tab: 'var(--elevation-2)',
-} as const;
-
 /** 本文強調: 17px Bold */
 export const bodyEmphasis: CSSProperties = {
   fontSize: '1.0625rem',
@@ -69,22 +62,3 @@ export const caption: CSSProperties = {
   letterSpacing: '0.02em',
 };
 
-/** @deprecated {@link caption} を使用してください */
-export const micro = caption;
-
-/**
- * @deprecated focus-visible は global.css の CSS ルールで一括適用されています。
- * このハンドラを onFocus に渡す必要はありません。
- */
-export function onFocusRing(e: FocusEvent<HTMLElement>): void {
-  e.currentTarget.style.outline = `2px solid ${colors.link}`;
-  e.currentTarget.style.outlineOffset = '2px';
-}
-
-/**
- * @deprecated focus-visible は global.css の CSS ルールで一括適用されています。
- * このハンドラを onBlur に渡す必要はありません。
- */
-export function onBlurRing(e: FocusEvent<HTMLElement>): void {
-  e.currentTarget.style.outline = 'none';
-}

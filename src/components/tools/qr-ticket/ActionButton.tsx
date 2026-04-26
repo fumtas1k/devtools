@@ -1,4 +1,4 @@
-import { colors, caption, onFocusRing, onBlurRing } from '@/utils/styles';
+import { colors, caption } from '@/utils/styles';
 
 interface ActionButtonProps {
   onClick: () => void;
@@ -45,8 +45,6 @@ export function ActionButton({
         cursor: disabled ? 'not-allowed' : 'pointer',
         whiteSpace: 'nowrap' as const,
       }}
-      onFocus={onFocusRing}
-      onBlur={onBlurRing}
     >
       {children}
     </button>

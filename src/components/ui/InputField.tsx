@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
-import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 
 interface Props {
@@ -64,7 +64,7 @@ export function InputField({
             type="button"
             onClick={onSampleClick}
             style={{
-              ...micro,
+              ...caption,
               color: colors.link,
               background: 'none',
               border: 'none',
@@ -109,7 +109,7 @@ export function InputField({
       {error ? (
         <ErrorMessage id={errorId} message={error} />
       ) : hint ? (
-        <p id={hintId} style={{ ...micro, color: colors.muted, marginTop: '0.25rem' }}>
+        <p id={hintId} style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
           {hint}
         </p>
       ) : null}

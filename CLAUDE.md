@@ -74,7 +74,9 @@ git commit --amend  # または git reset して修正後に再コミット
 
 ## スタイル・カラーシステム
 
-Tailwind のカラークラス（`text-blue-500` 等）は**使わない**。色はすべて `src/utils/styles.ts` の `colors.*` をインラインスタイルで指定する。
+Tailwind のカラークラス（`text-blue-500` 等）は **TSX・Astro を問わず使わない**。色はすべて CSS 変数（`var(--color-*)`）経由で指定する。
+
+**TSX コンポーネント**: `src/utils/styles.ts` の `colors.*` をインラインスタイルで指定する。
 
 ```tsx
 // ✅ 正しい
@@ -83,6 +85,18 @@ import { colors, caption, bodyEmphasis } from '../../utils/styles';
 
 // ❌ 誤り
 <p className="text-gray-500 text-sm">テキスト</p>
+```
+
+**Astro コンポーネント・ページ**: `colors.*` が使えないため CSS 変数を `style` 属性に直書きする。hover 等の擬似クラスは `<style>` ブロックで CSS 変数を使用する。
+
+```astro
+// ✅ 正しい（Astro）
+<p style="color: var(--color-muted);">テキスト</p>
+<a class="footer-link">リンク</a>
+<style>.footer-link:hover { color: var(--color-neutral-100); }</style>
+
+// ❌ 誤り（Astro）
+<p class="text-gray-500">テキスト</p>
 ```
 
 レイアウト（`flex`, `gap`, `p-*`, `rounded` 等）は Tailwind クラスを使ってよい。

@@ -1,7 +1,7 @@
 import { CopyButton } from '@/components/ui/CopyButton';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { generateTicketId } from '@/utils/qr-ticket';
 import { ActionButton } from './ActionButton';
 import { MAX_TICKETS, sectionStyle, sectionHeaderStyle, sectionBodyStyle } from './index';
@@ -79,7 +79,7 @@ export function GenerateTab({
             <button
               type="button"
               onClick={onToggleImport}
-              style={{ ...micro, color: colors.link, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              style={{ ...caption, color: colors.link, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
               {showImport ? '▲ 秘密鍵インポートを閉じる' : '▼ 既存の秘密鍵をインポート'}
             </button>
@@ -189,8 +189,6 @@ export function GenerateTab({
                 color: colors.text,
                 outline: 'none',
               }}
-              onFocus={onFocusRing}
-              onBlur={onBlurRing}
             />
           </div>
         </div>
@@ -207,7 +205,7 @@ export function GenerateTab({
               style={{ gridTemplateColumns: '1fr 1fr 1fr auto', alignItems: 'center' }}
             >
               {(['チケットID', '参加者名（任意）', '料金区分（任意）', ''] as const).map((h) => (
-                <span key={h} style={{ ...micro, color: colors.muted, fontWeight: 600 }}>
+                <span key={h} style={{ ...caption, color: colors.muted, fontWeight: 600 }}>
                   {h}
                 </span>
               ))}
@@ -234,8 +232,6 @@ export function GenerateTab({
                     width: '100%',
                   }}
                   aria-label={`チケットID ${i + 1}`}
-                  onFocus={onFocusRing}
-                  onBlur={onBlurRing}
                 />
                 <input
                   value={row.name}
@@ -252,8 +248,6 @@ export function GenerateTab({
                     width: '100%',
                   }}
                   aria-label={`参加者名 ${i + 1}`}
-                  onFocus={onFocusRing}
-                  onBlur={onBlurRing}
                 />
                 <input
                   value={row.category}
@@ -270,8 +264,6 @@ export function GenerateTab({
                     width: '100%',
                   }}
                   aria-label={`料金区分 ${i + 1}`}
-                  onFocus={onFocusRing}
-                  onBlur={onBlurRing}
                 />
                 <button
                   type="button"
@@ -346,16 +338,16 @@ export function GenerateTab({
                   style={{ width: '160px', height: '160px' }}
                   dangerouslySetInnerHTML={{ __html: qr.svg }}
                 />
-                <span style={{ ...micro, color: colors.text, fontFamily: 'monospace', fontWeight: 600 }}>
+                <span style={{ ...caption, color: colors.text, fontFamily: 'monospace', fontWeight: 600 }}>
                   {qr.ticket.t}
                 </span>
                 {qr.ticket.n && (
-                  <span style={{ ...micro, color: colors.muted }}>{qr.ticket.n}</span>
+                  <span style={{ ...caption, color: colors.muted }}>{qr.ticket.n}</span>
                 )}
                 {qr.ticket.p && (
                   <span
                     style={{
-                      ...micro,
+                      ...caption,
                       color: colors.primary,
                       border: `1px solid ${colors.primary}`,
                       borderRadius: '9999px',

@@ -11,7 +11,7 @@ import {
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
-import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { Select } from '@/components/ui/Select';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
@@ -307,8 +307,6 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                         background: colors.bg,
                         color: colors.text,
                       }}
-                      onFocus={onFocusRing}
-                      onBlur={onBlurRing}
                     />
                     {field.error && (
                       <p
@@ -486,7 +484,7 @@ export function Gs1DatabarTool() {
               color: colors.primary,
               background: 'transparent',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = colors.primaryBg)}
+            onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgPrimary)}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             + バーコードを追加
