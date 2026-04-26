@@ -70,7 +70,7 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
     return (
       <button
         onClick={handleClick}
-        aria-label={copied ? 'コピーしました' : label}
+        aria-label={label}
         className="rounded-md transition-colors"
         style={{
           fontSize: '0.75rem',
@@ -83,6 +83,9 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
         }}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
+        <span role="status" aria-live="polite" className="sr-only">
+          {copied ? 'コピーしました' : ''}
+        </span>
       </button>
     );
   }
@@ -90,7 +93,7 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
   return (
     <button
       onClick={handleClick}
-      aria-label={copied ? 'コピーしました' : label}
+      aria-label={label}
       className={`inline-flex items-center gap-1.5 rounded px-3 py-2 font-bold transition-colors whitespace-nowrap ${className}`}
       style={{
         fontSize: '0.875rem',
@@ -101,7 +104,11 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
         border: `1px solid ${copied ? colors.success : colors.border}`,
       }}
     >
-      {copied ? <><CheckIcon /> コピーしました</> : <><ClipboardIcon /> {label}</>}
+      {copied ? <CheckIcon /> : <ClipboardIcon />}
+      {label}
+      <span role="status" aria-live="polite" className="sr-only">
+        {copied ? 'コピーしました' : ''}
+      </span>
     </button>
   );
 }
