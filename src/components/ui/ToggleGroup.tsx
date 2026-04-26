@@ -24,16 +24,19 @@ export function ToggleGroup<T extends string>({
   size = 'md',
   layout = 'grid',
 }: Props<T>) {
+  const isWrap = layout === 'wrap';
+
   return (
     <div
-      className={`rounded-lg p-1 ${layout === 'grid' ? 'grid gap-1' : 'flex flex-wrap gap-1'}`}
+      className={`rounded-lg p-1 ${isWrap ? 'flex flex-wrap gap-1' : 'grid gap-1'}`}
       role="group"
       aria-label={ariaLabel}
       style={{
         background: colors.bgSubtle,
-        ...(layout === 'grid'
-          ? { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }
-          : {}),
+        border: `1px solid ${colors.borderInput}`,
+        ...(isWrap
+          ? { width: 'max-content', maxWidth: '100%' }
+          : { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }),
       }}
     >
       {options.map((opt) => (
