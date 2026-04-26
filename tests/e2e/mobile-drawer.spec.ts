@@ -78,8 +78,8 @@ test.describe('モバイルドロワー', () => {
     await page.getByRole('button', { name: 'メニューを開く' }).click();
     await expect(page.getByRole('dialog', { name: 'ナビゲーション' })).toBeVisible();
 
-    // ドロワーパネル幅 (256px) より右側の背景部分をクリック
-    await page.mouse.click(350, 400);
+    // ドロワーパネル (右 256px) より左側の背景部分をクリック
+    await page.mouse.click(40, 400);
 
     await expect(page.getByRole('dialog', { name: 'ナビゲーション' })).not.toBeVisible();
   });
