@@ -46,6 +46,8 @@ npm run dev      # 開発サーバー起動 (http://localhost:4321)
 npm run build    # 本番ビルド
 npm run preview  # ビルド結果をプレビュー
 npm test         # 単体テスト実行
+npm run test:e2e # E2Eテスト実行
+npm run format   # コード整形
 ```
 
 ## 設計方針
