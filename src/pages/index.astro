@@ -22,7 +22,7 @@ const jsonLd = {
   jsonLd={jsonLd}
 >
   <!-- ヒーロー -->
-  <section class="bg-blue-50 text-center px-4 py-8" style="border-bottom: 1px solid #DBEAFE;">
+  <section class="bg-blue-50 text-center px-4 py-8" style="border-bottom: 1px solid var(--color-blue-100);">
     <h1
       class="mb-2 font-bold text-neutral-900"
       style="font-size: 2rem; line-height: 1.4; letter-spacing: 0.01em;"
@@ -35,7 +35,7 @@ const jsonLd = {
   </section>
 
   <!-- ツール一覧 -->
-  <main class="mx-auto max-w-280 px-4 sm:px-6 py-8">
+  <main id="main-content" class="mx-auto max-w-280 px-4 sm:px-6 py-8">
     <!-- タブ -->
     <div
       id="tab-bar"
@@ -92,7 +92,7 @@ const jsonLd = {
                   <a
                     href={`/tools/${tool.slug}`}
                     class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
-                    style="border: 1px solid #E5E7EB;"
+                    style="border: 1px solid var(--color-border);"
                   >
                     <div class="mb-4 flex items-start justify-between">
                       <ToolIcon slug={tool.slug} size={28} class="text-primary" />

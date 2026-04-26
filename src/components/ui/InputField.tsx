@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 
 interface Props {
@@ -47,7 +47,6 @@ export function InputField({
     border: `1px solid ${error ? colors.error : colors.borderInput}`,
     borderRadius: '0.5rem',
     padding: '0.5rem 0.75rem',
-    outline: 'none',
     background: readOnly ? colors.bgSurface : colors.bg,
     color: colors.text,
     ...(mono ? { fontFamily: 'monospace', letterSpacing: '0.02em' } : {}),
@@ -90,8 +89,6 @@ export function InputField({
           aria-describedby={describedBy}
           aria-invalid={!!error}
           style={baseInputStyle}
-          onFocus={onFocusRing}
-          onBlur={onBlurRing}
         />
       ) : (
         <input
@@ -106,8 +103,6 @@ export function InputField({
           aria-describedby={describedBy}
           aria-invalid={!!error}
           style={baseInputStyle}
-          onFocus={onFocusRing}
-          onBlur={onBlurRing}
         />
       )}
 

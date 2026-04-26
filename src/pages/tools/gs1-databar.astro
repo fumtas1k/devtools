@@ -10,12 +10,12 @@ const tool = tools.find((t) => t.slug === 'gs1-databar')!;
   <Gs1DatabarTool client:load />
 
   <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 text-apple-dark dark:text-white tool-info-heading">このツールについて</h2>
+    <h2 class="mb-3 tool-info-heading">このツールについて</h2>
     <p class="tool-info-body">
       GS1 DataBar Limited 合成シンボルは、GTIN-14（商品識別コード）を格納するリニアバーコードと、
       賞味期限・ロット番号などの追加情報を格納する CC-A（2次元合成コンポーネント）を組み合わせたバーコードです。
     </p>
-    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">FNC1（区切り文字）について</h3>
+    <h3 class="mb-2 mt-4 tool-info-heading">FNC1（区切り文字）について</h3>
     <p class="tool-info-body">
       GS1 DataBar では、可変長のアプリケーション識別子（AI）の後に続く AI との区切りとして
       <strong>FNC1（Function 1 Character）</strong> を挿入する必要があります。
@@ -28,7 +28,7 @@ const tool = tools.find((t) => t.slug === 'gs1-databar')!;
       このツールでは FNC1 の挿入を自動で行います（バーコード描画ライブラリ bwip-js が処理）。
       入力時に FNC1 を意識する必要はありません。
     </p>
-    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">ユースケース</h3>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>食品・医薬品のトレーサビリティ管理（賞味期限・ロット番号の印字）</li>
       <li>物流ラベルへの GTIN + シリアル番号の組み合わせ印字</li>

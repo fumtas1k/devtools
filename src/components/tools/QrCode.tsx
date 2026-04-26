@@ -90,7 +90,7 @@ export function QrCodeGenerator() {
                   ...caption,
                   padding: '0.5rem 1rem',
                   background: errorLevel === value ? colors.primary : colors.bg,
-                  color: errorLevel === value ? '#ffffff' : colors.muted,
+                  color: errorLevel === value ? colors.textOnPrimary : colors.muted,
                   border: 'none',
                   borderRight:
                     i < ERROR_LEVELS.length - 1 ? `1px solid ${colors.borderInput}` : 'none',

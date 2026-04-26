@@ -343,7 +343,7 @@ export function JwtDecoderTool() {
       {/* デコード結果 */}
       {parsed && (
         <div className="space-y-3">
-          <Section title="Header (JOSE)" accentColor="#dc2626" data={parsed.header} />
+          <Section title="Header (JOSE)" accentColor={colors.error} data={parsed.header} />
           <Section
             title="Payload (Claims)"
             accentColor="#9333ea"

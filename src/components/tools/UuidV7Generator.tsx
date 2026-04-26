@@ -12,7 +12,7 @@ interface UuidRow {
 
 /** フィールド分解パネル用の色定義 */
 const FIELD_COLORS = {
-  unixTsMs: '#1A56DB', // primary blue
+  unixTsMs: colors.primary, // primary blue
   ver: '#7C3AED',      // purple
   randA: '#059669',    // green
   varNibble: '#D97706', // amber
@@ -171,11 +171,9 @@ export function UuidV7GeneratorTool() {
               ...caption,
               fontWeight: 600,
               background: colors.primary,
-              color: '#ffffff',
+              color: colors.textOnPrimary,
               border: 'none',
             }}
-            onFocus={onFocusRing}
-            onBlur={onBlurRing}
           >
             生成
           </button>
@@ -220,7 +218,7 @@ export function UuidV7GeneratorTool() {
                         ...micro,
                         padding: '0.25rem 0.625rem',
                         background: quoteStyle === value ? colors.primary : colors.bg,
-                        color: quoteStyle === value ? '#ffffff' : colors.muted,
+                        color: quoteStyle === value ? colors.textOnPrimary : colors.muted,
                         border: 'none',
                         cursor: 'pointer',
                         whiteSpace: 'nowrap',

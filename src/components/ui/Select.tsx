@@ -1,4 +1,4 @@
-import { caption, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { caption, colors } from '@/utils/styles';
 
 interface Option<T> {
   value: T;
@@ -22,8 +22,6 @@ export function Select<T extends string>({ options, value, onChange, ariaLabel, 
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
         aria-label={ariaLabel}
-        onFocus={onFocusRing}
-        onBlur={onBlurRing}
         className="rounded-lg px-3 py-2 w-full"
         style={{
           ...caption,

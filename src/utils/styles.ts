@@ -9,13 +9,19 @@ export const colors = {
   text: 'var(--color-text)',
   muted: 'var(--color-muted)',
   primary: 'var(--color-primary)',
+  secondary: 'var(--color-secondary)',
+  tertiary: 'var(--color-tertiary)',
   link: 'var(--color-link)',
   bg: 'var(--color-bg)',
   bgSurface: 'var(--color-bg-surface)',
   bgSubtle: 'var(--color-bg-subtle)',
+  bgPrimary: 'var(--color-background)',
+  /** @deprecated `bgPrimary` を使用してください */
+  primaryBg: 'var(--color-background)',
+  /** プライマリ色背景上のテキスト（白抜き文字）。ダークモード時も白を維持する意図 */
+  textOnPrimary: 'var(--color-text-on-primary)',
   border: 'var(--color-border)',
   borderInput: 'var(--color-border-input)',
-  primaryBg: 'var(--color-background)',
   error: 'var(--color-error)',
   errorText: 'var(--color-error-text)',
   errorBg: 'var(--color-error-bg)',
@@ -25,8 +31,26 @@ export const colors = {
   warningBg: 'var(--color-warning-bg)',
 } as const;
 
+/** エレベーション（box-shadow）。CSS変数参照。 */
+export const elevation = {
+  level1: 'var(--elevation-1)',
+  level2: 'var(--elevation-2)',
+  level3: 'var(--elevation-3)',
+  level4: 'var(--elevation-4)',
+  level5: 'var(--elevation-5)',
+} as const;
+
+/** 角丸。CSS変数参照。 */
+export const radii = {
+  sm: 'var(--radius-sm)',
+  md: 'var(--radius-md)',
+  lg: 'var(--radius-lg)',
+  full: 'var(--radius-full)',
+} as const;
+
+/** @deprecated `elevation.level2` を使用してください */
 export const shadows = {
-  tab: '0 1px 3px rgba(0,0,0,0.1)',
+  tab: 'var(--elevation-2)',
 } as const;
 
 /** 本文強調: 17px Bold */
@@ -45,16 +69,22 @@ export const caption: CSSProperties = {
   letterSpacing: '0.02em',
 };
 
-/** ヒント・補足テキスト（caption と同値。DADS最小サイズ12px禁止のため14pxに統一） */
+/** @deprecated {@link caption} を使用してください */
 export const micro = caption;
 
-/** フォーカスリング表示（onFocus に渡す） */
+/**
+ * @deprecated focus-visible は global.css の CSS ルールで一括適用されています。
+ * このハンドラを onFocus に渡す必要はありません。
+ */
 export function onFocusRing(e: FocusEvent<HTMLElement>): void {
   e.currentTarget.style.outline = `2px solid ${colors.link}`;
   e.currentTarget.style.outlineOffset = '2px';
 }
 
-/** フォーカスリング非表示（onBlur / onBlurCapture に渡す） */
+/**
+ * @deprecated focus-visible は global.css の CSS ルールで一括適用されています。
+ * このハンドラを onBlur に渡す必要はありません。
+ */
 export function onBlurRing(e: FocusEvent<HTMLElement>): void {
   e.currentTarget.style.outline = 'none';
 }

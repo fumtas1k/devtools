@@ -1160,3 +1160,63 @@ README.md にテストカバレッジのバッジを表示し、GitHub Actions �
 - ✅ 外部サービス依存を排除し、GitHub 完結で安全な運用が可能
 - ⚠️ バッジ更新のための自動コミットが `main` ブランチに発生する（`[skip ci]` タグを付与して無限ループを防止）
 - ⚠️ `json-summary` のパースや `sed` による置換ロジックのメンテナンスが必要
+
+---
+
+## [037] focus-visible をCSSで一括適用（JS ハンドラ廃止）
+
+**2026-04-26 | ステータス: 採用**
+
+### 背景
+
+`InputField`・`Select` コンポーネントの focus ring は `onFocusRing`/`onBlurRing` という React ハンドラ（インライン style で outline を JS 操作）で実装されていた。
+`ToggleGroup`・`DownloadButtonGroup`・`CopyButton` 等のボタン系は focus ring が存在しなかった。
+アクセシビリティ（キーボード操作）の観点で全インタラクティブ要素への一貫した focus ring が必要だった。
+
+### 決断
+
+`global.css` に `:where(button, a, [role="button"], input, textarea, select):focus-visible { outline: var(--focus-ring); outline-offset: 2px; }` を追加し、CSS で一括適用する。
+`InputField.tsx`・`Select.tsx` の `onFocusRing`/`onBlurRing` ハンドラと `outline: none` の inline style を削除。
+`styles.ts` の `onFocusRing`/`onBlurRing` 関数は `@deprecated` として残存（Phase 2 でツールコンポーネントから順次除去予定）。
+
+### 却下した選択肢
+
+- **JS ハンドラ継続**: 適用漏れが発生しやすく、新コンポーネント追加のたびに追加が必要。
+- **:focus（非 focus-visible）**: マウスクリック時にも outline が表示され、視覚ノイズになる。
+
+### 結果・トレードオフ
+
+- ✅ 全インタラクティブ要素に一貫した focus ring が自動適用される
+- ✅ 新コンポーネント追加時に追加対応不要
+- ⚠️ inline style で `outline` を指定しているコンポーネントは CSS より優先されるため、Phase 2 で順次 inline outline を除去する
+
+---
+
+## [038] デザイントークン整備（secondary/tertiary/elevation/radii）
+
+**2026-04-26 | ステータス: 採用**
+
+### 背景
+
+`src/utils/styles.ts` の `colors` に `secondary`・`tertiary` が未エクスポートで React 側から参照不可だった。
+`shadows.tab` が `--elevation-*` CSS 変数と二重管理されていた。
+`radii` トークンが `global.css` の `@theme` に定義済みだったが、React 側から利用できなかった。
+ツールコンポーネント内にハードコード hex（`#1A56DB`・`#ffffff`・`#f5f5f7`・`#DBEAFE`・`#E5E7EB` 等）が約15箇所存在した。
+
+### 決断
+
+- `colors` に `secondary`・`tertiary`・`bgPrimary` を追加（`primaryBg` は `@deprecated` として残存）
+- `shadows` を `@deprecated` 化し、`elevation` オブジェクト（CSS変数参照）で置換
+- `radii` オブジェクト（CSS変数参照）を新規追加
+- `micro` を `@deprecated`（`caption` の alias として残存）
+- ハードコード hex をすべてトークン参照に置換
+
+### 却下した選択肢
+
+- **ハードコード hex の維持**: ダークモード追加時に置換漏れが生じる。デザイン変更の際に修正箇所が散在する。
+
+### 結果・トレードオフ
+
+- ✅ React コンポーネントからすべてのセマンティックカラーにアクセス可能になった
+- ✅ バーコードライブラリ（JsBarcode）の描画オプション内の hex は DOM スタイルでないため変換対象外とした
+- ⚠️ `JwtDecoder.tsx` の syntax highlight 用カラー（`#6e4f0e`・`#9333ea`）は可視化専用色のためトークン化せず維持
