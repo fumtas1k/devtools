@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { ulid } from 'ulidx';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { useClampedInput } from '@/hooks/useClampedInput';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 
 interface UlidRow {
   id: string;
@@ -78,8 +79,6 @@ export function UlidGeneratorTool() {
               background: colors.bg,
               color: colors.text,
             }}
-            onFocus={onFocusRing}
-            onBlurCapture={onBlurRing}
             aria-describedby="ulid-count-hint"
           />
           <button
@@ -96,7 +95,7 @@ export function UlidGeneratorTool() {
             生成
           </button>
         </div>
-        <p id="ulid-count-hint" style={{ ...micro, color: colors.muted, marginTop: '0.25rem' }}>
+        <p id="ulid-count-hint" style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
           1〜100
         </p>
       </div>
@@ -115,38 +114,18 @@ export function UlidGeneratorTool() {
             <span style={{ ...bodyEmphasis, color: colors.text }}>{rows.length} 件生成</span>
             <div className="flex flex-wrap items-center gap-2">
               {/* クォートスタイル選択 */}
-              <div
-                className="flex items-center rounded-lg overflow-hidden shrink-0"
-                style={{ border: `1px solid ${colors.borderInput}` }}
-                role="group"
-                aria-label="クォートスタイル"
-              >
-                {(
-                  [
-                    ['none', 'なし'],
-                    ['double', '"..."'],
-                    ['single', "'...'"],
-                  ] as [QuoteStyle, string][]
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    onClick={() => setQuoteStyle(value)}
-                    style={{
-                      ...micro,
-                      padding: '0.25rem 0.625rem',
-                      background: quoteStyle === value ? colors.primary : colors.bg,
-                      color: quoteStyle === value ? colors.textOnPrimary : colors.muted,
-                      border: 'none',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      fontFamily: value !== 'none' ? 'monospace' : 'inherit',
-                      borderRight: value !== 'single' ? `1px solid ${colors.borderInput}` : 'none',
-                    }}
-                    aria-pressed={quoteStyle === value}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div className="shrink-0">
+                <ToggleGroup<QuoteStyle>
+                  options={[
+                    { value: 'none', label: 'なし' },
+                    { value: 'double', label: '"..."' },
+                    { value: 'single', label: "'...'" },
+                  ]}
+                  value={quoteStyle}
+                  onChange={setQuoteStyle}
+                  ariaLabel="クォートスタイル"
+                  size="sm"
+                />
               </div>
               <div className="shrink-0">
                 <CopyButton text={allUlids} label="すべてコピー" />
@@ -174,7 +153,7 @@ export function UlidGeneratorTool() {
                   <th
                     scope="col"
                     style={{
-                      ...micro,
+                      ...caption,
                       color: colors.muted,
                       textAlign: 'right',
                       padding: '0.5rem 0.75rem',
@@ -188,7 +167,7 @@ export function UlidGeneratorTool() {
                   <th
                     scope="col"
                     style={{
-                      ...micro,
+                      ...caption,
                       color: colors.muted,
                       textAlign: 'left',
                       padding: '0.5rem 0.75rem',
@@ -201,7 +180,7 @@ export function UlidGeneratorTool() {
                   <th
                     scope="col"
                     style={{
-                      ...micro,
+                      ...caption,
                       color: colors.muted,
                       textAlign: 'left',
                       padding: '0.5rem 0.75rem',
@@ -214,7 +193,7 @@ export function UlidGeneratorTool() {
                   <th
                     scope="col"
                     style={{
-                      ...micro,
+                      ...caption,
                       color: colors.muted,
                       textAlign: 'center',
                       padding: '0.5rem 0.75rem',
@@ -238,7 +217,7 @@ export function UlidGeneratorTool() {
                   >
                     <td
                       style={{
-                        ...micro,
+                        ...caption,
                         color: colors.muted,
                         textAlign: 'right',
                         padding: '0.5rem 0.75rem',
@@ -250,7 +229,7 @@ export function UlidGeneratorTool() {
                     <td
                       className="font-mono"
                       style={{
-                        ...micro,
+                        ...caption,
                         color: colors.text,
                         padding: '0.5rem 0.75rem',
                         whiteSpace: 'nowrap',
@@ -263,7 +242,7 @@ export function UlidGeneratorTool() {
                     <td
                       className="font-mono"
                       style={{
-                        ...micro,
+                        ...caption,
                         color: colors.muted,
                         padding: '0.5rem 0.75rem',
                         whiteSpace: 'nowrap',
