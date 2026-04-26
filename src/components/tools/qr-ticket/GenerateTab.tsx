@@ -67,7 +67,7 @@ export function GenerateTab({
   onDownloadZip,
 }: GenerateTabProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* 鍵ペアセクション */}
       <div style={sectionStyle}>
         <h3 style={sectionHeaderStyle}>鍵ペア</h3>

@@ -60,7 +60,7 @@ export function JsonCsvTool() {
     ) : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* モード切替 */}
       <ToggleGroup
         options={[

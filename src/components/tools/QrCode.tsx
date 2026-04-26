@@ -69,6 +69,7 @@ export function QrCodeGenerator() {
         multiline
         rows={3}
         resize
+        onSampleClick={() => setText('https://example.com')}
       />
 
       {/* 誤り訂正レベル */}

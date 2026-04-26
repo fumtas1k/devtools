@@ -39,7 +39,7 @@ export function Base64CodecTool() {
         : SAMPLE_DECODE_STANDARD;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* モード切替 */}
       <ToggleGroup
         options={[

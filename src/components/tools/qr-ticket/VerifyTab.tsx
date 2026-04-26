@@ -40,7 +40,7 @@ export function VerifyTab({
   onRescan,
 }: VerifyTabProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* 公開鍵セクション */}
       <div style={sectionStyle}>
         <h3 style={sectionHeaderStyle}>公開鍵</h3>
