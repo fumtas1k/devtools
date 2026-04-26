@@ -931,6 +931,15 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 - [ ] お気に入り（localStorage）
 - [ ] OGP画像自動生成
 
+### フロントエンドデザインリファクタリング
+
+- [x] **Phase 1**: 基盤整備（カラートークン統一・focus ring CSS化・skip-link・dead class除去）
+- [x] **Phase 2a**: ToggleGroup 統一（QrCode/DummyText/Ulid/UuidV7 の自前セグメント置換）
+- [x] **Phase 2b**: Astro パーシャル化（PageContainer / CategoryBadge / ToolInfoSection）
+- [x] **Phase 2c**: 共通 React UI（ClearButton / CountInput / ResultTable / ErrorMessage block variant）
+- [x] **Phase 3**: ツール一貫性適用（全ツール space-y-6 統一・QrCode サンプルボタン追加）
+- [ ] **Phase 4**: モバイル UX（ハンバーガーメニュー・タップ領域・focus トラップ）
+
 ### Phase 3: 成熟
 
 - [ ] 30+ツール
