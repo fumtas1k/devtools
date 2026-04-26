@@ -127,6 +127,7 @@ export function GenerateTab({
                     color: colors.text,
                     resize: 'none',
                   }}
+                  aria-label="秘密鍵（主催者が保管）"
                 />
               </div>
               <div>
@@ -149,6 +150,7 @@ export function GenerateTab({
                     color: colors.text,
                     resize: 'none',
                   }}
+                  aria-label="公開鍵（検証スタッフへ共有）"
                 />
               </div>
             </div>
