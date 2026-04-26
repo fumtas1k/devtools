@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
-import { caption, colors } from '@/utils/styles';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { encodeUrl, decodeUrl, validateDecodeInput } from '@/utils/url-encode';
 
 type Mode = 'encode' | 'decode';
@@ -85,13 +85,7 @@ export function UrlEncoderTool() {
 
       {/* アクション */}
       <div className="flex justify-end gap-2">
-        <button
-          onClick={handleClear}
-          className="rounded-lg px-3 py-1.5 transition-colors"
-          style={{ ...caption, color: colors.muted }}
-        >
-          クリア
-        </button>
+        <ClearButton onClick={handleClear} />
       </div>
     </div>
   );

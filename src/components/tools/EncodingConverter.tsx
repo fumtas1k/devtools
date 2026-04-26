@@ -4,6 +4,7 @@ import { Select } from '@/components/ui/Select';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { caption, colors } from '@/utils/styles';
 import { getErrorMessage } from '@/utils/errors';
 import { downloadBytes } from '@/utils/download';
@@ -434,13 +435,7 @@ export function EncodingConverterTool() {
 
       {/* アクション */}
       <div className="flex justify-end">
-        <button
-          onClick={handleClear}
-          className="rounded-lg px-3 py-1.5 transition-colors"
-          style={{ ...caption, color: colors.muted }}
-        >
-          クリア
-        </button>
+        <ClearButton onClick={handleClear} />
       </div>
     </div>
   );

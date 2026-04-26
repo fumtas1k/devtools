@@ -5,6 +5,7 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import { calcJan, validateJanInput, type JanMode } from '@/utils/jan-code';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '@/utils/download';
 
@@ -190,18 +191,12 @@ export function JanCodeTool() {
       {/* クリア */}
       {input && (
         <div className="flex justify-end">
-          <button
+          <ClearButton
             onClick={() => {
               setInput('');
               setError('');
             }}
-            className="rounded px-3 py-2 transition-colors"
-            style={{ ...caption, color: colors.muted, background: 'transparent' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-          >
-            クリア
-          </button>
+          />
         </div>
       )}
     </div>

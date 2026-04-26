@@ -15,6 +15,7 @@ import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '@/utils/
 import { InputField } from '@/components/ui/InputField';
 import { Select } from '@/components/ui/Select';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
   downloadSvg as downloadSvgFile,
   downloadPngFromSvgContent,
@@ -354,12 +355,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         )}
 
         {bwipError && (
-          <div
-            className="rounded-lg p-4"
-            style={{ border: `1px solid ${colors.error}`, background: colors.errorBg }}
-          >
-            <p style={{ ...caption, color: colors.error }}>バーコード生成エラー: {bwipError}</p>
-          </div>
+          <ErrorMessage message={`バーコード生成エラー: ${bwipError}`} variant="block" />
         )}
 
         {/* GS1文字列プレビュー */}

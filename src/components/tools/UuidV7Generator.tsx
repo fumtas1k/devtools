@@ -1,9 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { v7 as uuidv7 } from 'uuid';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
-import { useClampedInput } from '@/hooks/useClampedInput';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { CountInput } from '@/components/ui/CountInput';
+import { ClearButton } from '@/components/ui/ClearButton';
+import { ResultTable } from '@/components/ui/ResultTable';
+import type { TableColumn } from '@/components/ui/ResultTable';
 import { parseUuidV7Fields, extractUuidV7Timestamp } from '@/utils/uuid-v7';
 
 interface UuidRow {
@@ -13,11 +16,11 @@ interface UuidRow {
 
 /** フィールド分解パネル用の色定義 */
 const FIELD_COLORS = {
-  unixTsMs: colors.primary, // primary blue
-  ver: '#7C3AED',      // purple
-  randA: '#059669',    // green
-  varNibble: '#D97706', // amber
-  randB: '#0891B2',    // cyan
+  unixTsMs: colors.primary,
+  ver: '#7C3AED',
+  randA: '#059669',
+  varNibble: '#D97706',
+  randB: '#0891B2',
 } as const;
 
 function generateRows(count: number): UuidRow[] {
@@ -31,7 +34,6 @@ type QuoteStyle = 'none' | 'single' | 'double';
 
 /** UUID 文字列を色分けして表示する */
 function ColoredUuid({ uuid }: { uuid: string }) {
-  // tttttttt-tttt-7rrr-Vrrr-rrrrrrrrrrrr
   const parts = uuid.split('-');
   return (
     <span className="font-mono" style={{ ...caption, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
@@ -96,21 +98,15 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
 }
 
 export function UuidV7GeneratorTool() {
-  const {
-    value: count,
-    inputStr: countInput,
-    handleChange: handleCountChange,
-    handleBlur: handleCountBlur,
-  } = useClampedInput(1, 1, 100);
   const [rows, setRows] = useState<UuidRow[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
 
-  const generate = useCallback(() => {
-    const newRows = generateRows(count);
-    setRows(newRows);
-    setSelectedIndex(newRows.length > 0 ? 0 : null);
-  }, [count]);
+  const formatId = (id: string) => {
+    if (quoteStyle === 'double') return `"${id}"`;
+    if (quoteStyle === 'single') return `'${id}'`;
+    return id;
+  };
 
   const allUuids = rows
     .map((r, i) => {
@@ -121,262 +117,87 @@ export function UuidV7GeneratorTool() {
     })
     .join('\n');
 
-  const formatId = (id: string) => {
-    if (quoteStyle === 'double') return `"${id}"`;
-    if (quoteStyle === 'single') return `'${id}'`;
-    return id;
-  };
+  const columns: TableColumn<UuidRow>[] = [
+    {
+      key: 'no',
+      header: 'No.',
+      headerAlign: 'right',
+      cellAlign: 'right',
+      width: '3.5rem',
+      cellStyle: { ...caption, color: colors.muted, padding: '0.5rem 0.75rem', fontVariantNumeric: 'tabular-nums' },
+      render: (_, i) => i + 1,
+    },
+    {
+      key: 'uuid',
+      header: 'UUID',
+      cellStyle: { padding: '0.5rem 0.75rem' },
+      render: (row) => <ColoredUuid uuid={row.id} />,
+    },
+    {
+      key: 'timestamp',
+      header: 'タイムスタンプ（ISO 8601）',
+      className: 'font-mono',
+      cellStyle: { ...caption, color: colors.muted, padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' },
+      render: (row) => row.timestamp,
+    },
+    {
+      key: 'copy',
+      header: 'コピー',
+      headerAlign: 'center',
+      cellAlign: 'center',
+      width: '6rem',
+      cellStyle: { padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' },
+      render: (row) => <CopyButton text={formatId(row.id)} compact />,
+    },
+  ];
 
   return (
     <div className="space-y-4">
-      {/* コントロール */}
-      <div>
-        <label
-          htmlFor="uuid-count"
-          style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}
-        >
-          生成数
-        </label>
-        <div className="flex items-center gap-3">
-          <input
-            id="uuid-count"
-            type="number"
-            min={1}
-            max={100}
-            value={countInput}
-            onChange={(e) => handleCountChange(e.target.value)}
-            onBlur={handleCountBlur}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleCountBlur();
-                generate();
-              }
-            }}
-            className="rounded-lg px-3 py-2"
-            style={{
-              ...caption,
-              width: '6rem',
-              border: `1px solid ${colors.borderInput}`,
-              outline: 'none',
-              background: colors.bg,
-              color: colors.text,
-            }}
-            aria-describedby="uuid-count-hint"
-          />
-          <button
-            onClick={generate}
-            className="rounded-lg px-4 py-2 transition-colors"
-            style={{
-              ...caption,
-              fontWeight: 600,
-              background: colors.primary,
-              color: colors.textOnPrimary,
-              border: 'none',
-            }}
-          >
-            生成
-          </button>
-        </div>
-        <p id="uuid-count-hint" style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
-          1〜100
-        </p>
-      </div>
+      <CountInput
+        id="uuid-count"
+        defaultValue={1}
+        onGenerate={(count) => {
+          const newRows = generateRows(count);
+          setRows(newRows);
+          setSelectedIndex(newRows.length > 0 ? 0 : null);
+        }}
+      />
 
-      {/* 結果テーブル */}
       {rows.length > 0 && (
         <div className="space-y-3">
-          <div
-            className="rounded-lg"
-            style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}
-          >
-            {/* テーブルヘッダー + 操作ボタン */}
-            <div
-              className="flex flex-col gap-2 px-4 py-3"
-              style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
-            >
-              <span style={{ ...bodyEmphasis, color: colors.text }}>{rows.length} 件生成</span>
-              <div className="flex flex-wrap items-center gap-2">
-                {/* クォートスタイル選択 */}
-                <div className="shrink-0">
-                  <ToggleGroup<QuoteStyle>
-                    options={[
-                      { value: 'none', label: 'なし' },
-                      { value: 'double', label: '"..."' },
-                      { value: 'single', label: "'...'" },
-                    ]}
-                    value={quoteStyle}
-                    onChange={setQuoteStyle}
-                    ariaLabel="クォートスタイル"
-                    size="sm"
-                  />
+          <ResultTable
+            rows={rows}
+            columns={columns}
+            getKey={(row) => row.id}
+            minWidth="42rem"
+            selectedIndex={selectedIndex}
+            onRowClick={setSelectedIndex}
+            renderHeader={() => (
+              <>
+                <span style={{ ...bodyEmphasis, color: colors.text }}>{rows.length} 件生成</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="shrink-0">
+                    <ToggleGroup<QuoteStyle>
+                      options={[
+                        { value: 'none', label: 'なし' },
+                        { value: 'double', label: '"..."' },
+                        { value: 'single', label: "'...'" },
+                      ]}
+                      value={quoteStyle}
+                      onChange={setQuoteStyle}
+                      ariaLabel="クォートスタイル"
+                      size="sm"
+                    />
+                  </div>
+                  <div className="shrink-0">
+                    <CopyButton text={allUuids} label="すべてコピー" />
+                  </div>
+                  <ClearButton onClick={() => { setRows([]); setSelectedIndex(null); }} />
                 </div>
-                <div className="shrink-0">
-                  <CopyButton text={allUuids} label="すべてコピー" />
-                </div>
-                <button
-                  onClick={() => { setRows([]); setSelectedIndex(null); }}
-                  className="rounded-lg px-3 py-1.5 transition-colors shrink-0"
-                  style={{ ...caption, color: colors.muted, whiteSpace: 'nowrap' }}
-                >
-                  クリア
-                </button>
-              </div>
-            </div>
+              </>
+            )}
+          />
 
-            {/* スクロール対応テーブル */}
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', minWidth: '42rem', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr
-                    style={{
-                      background: colors.bgSurface,
-                      borderBottom: `1px solid ${colors.border}`,
-                    }}
-                  >
-                    <th
-                      scope="col"
-                      style={{
-                        ...caption,
-                        color: colors.muted,
-                        textAlign: 'right',
-                        padding: '0.5rem 0.75rem',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 600,
-                        width: '3.5rem',
-                      }}
-                    >
-                      No.
-                    </th>
-                    <th
-                      scope="col"
-                      style={{
-                        ...caption,
-                        color: colors.muted,
-                        textAlign: 'left',
-                        padding: '0.5rem 0.75rem',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 600,
-                      }}
-                    >
-                      UUID
-                    </th>
-                    <th
-                      scope="col"
-                      style={{
-                        ...caption,
-                        color: colors.muted,
-                        textAlign: 'left',
-                        padding: '0.5rem 0.75rem',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 600,
-                      }}
-                    >
-                      タイムスタンプ（ISO 8601）
-                    </th>
-                    <th
-                      scope="col"
-                      style={{
-                        ...caption,
-                        color: colors.muted,
-                        textAlign: 'center',
-                        padding: '0.5rem 0.75rem',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 600,
-                        width: '6rem',
-                      }}
-                    >
-                      コピー
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => {
-                    const isSelected = selectedIndex === i;
-                    return (
-                      <tr
-                        key={row.id}
-                        onClick={() => setSelectedIndex(i)}
-                        style={{
-                          background: isSelected
-                            ? 'color-mix(in srgb, var(--color-primary) 8%, var(--color-bg))'
-                            : i % 2 === 0
-                              ? colors.bg
-                              : colors.bgSurface,
-                          cursor: 'pointer',
-                        }}
-                        aria-selected={isSelected}
-                      >
-                        <td
-                          style={{
-                            ...caption,
-                            color: colors.muted,
-                            textAlign: 'right',
-                            padding: '0.5rem 0.75rem',
-                            fontVariantNumeric: 'tabular-nums',
-                            borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
-                            borderBottom: isSelected
-                              ? `2px solid ${colors.primary}`
-                              : i < rows.length - 1
-                                ? `1px solid ${colors.border}`
-                                : 'none',
-                          }}
-                        >
-                          {i + 1}
-                        </td>
-                        <td
-                          style={{
-                            padding: '0.5rem 0.75rem',
-                            borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
-                            borderBottom: isSelected
-                              ? `2px solid ${colors.primary}`
-                              : i < rows.length - 1
-                                ? `1px solid ${colors.border}`
-                                : 'none',
-                          }}
-                        >
-                          <ColoredUuid uuid={row.id} />
-                        </td>
-                        <td
-                          className="font-mono"
-                          style={{
-                            ...caption,
-                            color: colors.muted,
-                            padding: '0.5rem 0.75rem',
-                            whiteSpace: 'nowrap',
-                            borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
-                            borderBottom: isSelected
-                              ? `2px solid ${colors.primary}`
-                              : i < rows.length - 1
-                                ? `1px solid ${colors.border}`
-                                : 'none',
-                          }}
-                        >
-                          {row.timestamp}
-                        </td>
-                        <td
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            textAlign: 'center',
-                            whiteSpace: 'nowrap',
-                            borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
-                            borderBottom: isSelected
-                              ? `2px solid ${colors.primary}`
-                              : i < rows.length - 1
-                                ? `1px solid ${colors.border}`
-                                : 'none',
-                          }}
-                        >
-                          <CopyButton text={formatId(row.id)} compact />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* フィールド分解パネル */}
           {selectedIndex !== null && rows[selectedIndex] && (
             <FieldBreakdownPanel uuid={rows[selectedIndex].id} />
           )}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
-import { caption, colors } from '@/utils/styles';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { jsonToXml, xmlToJson } from '@/utils/json-xml';
 import { useCodec } from '@/hooks/useCodec';
 
@@ -91,13 +91,7 @@ export function JsonXmlTool() {
 
       {/* アクション */}
       <div className="flex justify-end gap-2">
-        <button
-          onClick={reset}
-          className="rounded-lg px-3 py-1.5 transition-colors"
-          style={{ ...caption, color: colors.muted }}
-        >
-          クリア
-        </button>
+        <ClearButton onClick={reset} />
       </div>
     </div>
   );
