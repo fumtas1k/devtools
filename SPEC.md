@@ -938,7 +938,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 - [x] **Phase 2b**: Astro パーシャル化（PageContainer / CategoryBadge / ToolInfoSection）
 - [x] **Phase 2c**: 共通 React UI（ClearButton / CountInput / ResultTable / ErrorMessage block variant）
 - [x] **Phase 3**: ツール一貫性適用（全ツール space-y-6 統一・QrCode サンプルボタン追加）
-- [ ] **Phase 4**: モバイル UX（ハンバーガーメニュー・タップ領域・focus トラップ）
+- [x] **Phase 4**: モバイル UX（ハンバーガーメニュー・タップ領域・focus トラップ）
 
 ### Phase 3: 成熟
 
