@@ -92,7 +92,8 @@ devtools/
 │   └── workflows/
 │       └── test.yml
 ├── docs/
-│   └── decisions.md        # 設計・実装の決断ログ
+│   ├── decisions.md        # 設計・実装の決断ログ
+│   └── shared-agent-rules.md # AIエージェント用プロジェクト共通開発規約
 ├── tests/
 │   └── e2e/                # Playwright E2E テスト
 ├── public/

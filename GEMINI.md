@@ -14,12 +14,7 @@
 
 ## 2. コマンドリファレンス
 
-### 🛠️ 基本コマンド
-
-- `npm ci`: 依存関係のインストール
-- `npm run dev`: 開発サーバー起動 (http://localhost:4321)
-- `npm run build`: 本番ビルド
-- `npm run preview`: ビルド結果のプレビュー
+開発・ビルド・フォーマット等の基本コマンドについては、`docs/shared-agent-rules.md` の「2. コマンドリファレンス」を参照してください。
 
 ### 🧪 テスト実行 (重要)
 
@@ -30,11 +25,6 @@
 - **E2Eテスト (Playwright)**: `npm run test:e2e`
   - ❌ **`npm run e2e` は存在しません。**
   - 特定のファイルのみ実行する場合: `npm run test:e2e tests/e2e/xxx.spec.ts`
-
-### 🧹 フォーマット
-
-- `npm run format`: Prettier による一括整形
-- `npm run format:check`: フォーマットが正しいかチェック
 
 ## 3. ユーザーからのヒント・教訓
 
