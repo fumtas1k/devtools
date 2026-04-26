@@ -136,6 +136,7 @@ export function VerifyTab({
                   style={{ display: 'none' }}
                   onChange={onImageUpload}
                   disabled={!verifyPubKeyStr.trim()}
+                  aria-label="画像を選択"
                 />
               </label>
               {!verifyPubKeyStr.trim() && (

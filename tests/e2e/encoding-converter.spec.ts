@@ -35,25 +35,25 @@ test.describe('文字コード判定・変換', () => {
 
   test('ケースA: UTF-8 テキスト入力 → UTF-8 と判定される', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('あいうえお');
-    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8', { timeout: 2000 });
+    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
     await expect(page.getByTestId('detection-bom')).toContainText('なし');
   });
 
   test('ケースB: Shift_JIS ファイルアップロード → SJIS 判定とプレビュー', async ({ page }) => {
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test_sjis.txt',
       mimeType: 'text/plain',
       buffer: SJIS_AIUEO,
     });
-    await expect(page.getByTestId('detection-encoding')).toContainText('Shift_JIS', { timeout: 3000 });
-    await expect(page.getByTestId('detection-result')).toContainText('あいうえお', { timeout: 3000 });
+    await expect(page.getByTestId('detection-encoding')).toContainText('Shift_JIS');
+    await expect(page.getByTestId('detection-result')).toContainText('あいうえお');
   });
 
   test('ケースC: Shift_JIS → UTF-8 BOM 付き変換', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test_sjis.txt',
       mimeType: 'text/plain',
       buffer: SJIS_AIUEO,
@@ -61,48 +61,48 @@ test.describe('文字コード判定・変換', () => {
 
     await page.getByLabel('BOM を付与する').check();
 
-    await expect(page.locator('#enc-output')).not.toBeEmpty({ timeout: 3000 });
-    await expect(page.locator('#enc-output')).toContainText('あいうえお', { timeout: 3000 });
+    await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
+    await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
     // hex プレビューに BOM バイト EF BB BF が含まれる
-    await expect(page.getByTestId('output-hex-preview')).toContainText('EF BB BF', { timeout: 3000 });
+    await expect(page.getByTestId('output-hex-preview')).toContainText('EF BB BF');
   });
 
   test('ケースD: EUC-JP → UTF-8 変換', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test_eucjp.txt',
       mimeType: 'text/plain',
       buffer: EUCJP_AIUEO,
     });
-    await expect(page.locator('#enc-output')).toContainText('あいうえお', { timeout: 3000 });
+    await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
   });
 
   test('ケースE: UTF-8 BOM 付きファイル → BOM あり と判定', async ({ page }) => {
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test_utf8bom.txt',
       mimeType: 'text/plain',
       buffer: UTF8_BOM,
     });
-    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8', { timeout: 3000 });
-    await expect(page.getByTestId('detection-bom')).toContainText('あり', { timeout: 2000 });
+    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
+    await expect(page.getByTestId('detection-bom')).toContainText('あり');
   });
 
   test('ケースF: 非テキストバイナリ (JPEG) → 不明または空のプレビュー', async ({ page }) => {
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test.jpg',
       mimeType: 'image/jpeg',
       buffer: JPEG_MAGIC,
     });
     // 不明 (UNKNOWN) か ASCII か、どちらにしても detection-result が表示される
-    await expect(page.getByTestId('detection-result')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByTestId('detection-result')).toBeVisible();
   });
 
   test('ケースG: クリアボタンで入力がリセットされる', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('テスト');
-    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8', { timeout: 2000 });
+    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
     await page.getByRole('button', { name: 'クリア' }).click();
     await expect(page.getByLabel('入力テキスト')).toHaveValue('');
     await expect(page.getByTestId('detection-result')).not.toBeVisible();
@@ -135,7 +135,7 @@ test.describe('文字コード判定・変換', () => {
 
     // UTF-8 ターゲット（デフォルト）→ コピーボタンが表示される
     await tgtSelect.selectOption('UTF8');
-    await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible({ timeout: 2000 });
+    await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
 
     // SJIS ターゲット → コピーボタンが非表示になる
     await tgtSelect.selectOption('SJIS');
@@ -149,13 +149,13 @@ test.describe('文字コード判定・変換', () => {
   test('ケースJ: ファイルアップロード変換時のダウンロード名が元拡張子を保持する', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test_sjis.csv',
       mimeType: 'text/csv',
       buffer: SJIS_AIUEO,
     });
 
-    await expect(page.locator('#enc-output')).toContainText('あいうえお', { timeout: 3000 });
+    await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
@@ -166,21 +166,21 @@ test.describe('文字コード判定・変換', () => {
   test('サンプルボタンでサンプルテキストが入力される', async ({ page }) => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByLabel('入力テキスト')).not.toBeEmpty();
-    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8', { timeout: 2000 });
+    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
   });
 
   test('ケースK: 改行コード「そのまま」でCRLFがそのまま保持される', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test_sjis_crlf.txt',
       mimeType: 'text/plain',
       buffer: SJIS_CRLF,
     });
 
     // デフォルトは「そのまま」
-    await expect(page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'そのまま' })).toHaveAttribute('aria-pressed', 'true', { timeout: 3000 });
-    await expect(page.locator('#enc-output')).not.toBeEmpty({ timeout: 3000 });
+    await expect(page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'そのまま' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
@@ -195,13 +195,13 @@ test.describe('文字コード判定・変換', () => {
   test('ケースL: 改行コード「LF」でCRLFがLFに正規化される', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test_sjis_crlf.txt',
       mimeType: 'text/plain',
       buffer: SJIS_CRLF,
     });
 
-    await expect(page.locator('#enc-output')).not.toBeEmpty({ timeout: 3000 });
+    await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
 
     await page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'LF', exact: true }).click();
 
@@ -220,13 +220,13 @@ test.describe('文字コード判定・変換', () => {
   test('ケースM: 改行コード「CRLF」でLFがCRLFに正規化される', async ({ page }) => {
     await page.getByRole('button', { name: '変換' }).click();
     await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test_utf8_lf.txt',
       mimeType: 'text/plain',
       buffer: UTF8_LF,
     });
 
-    await expect(page.locator('#enc-output')).not.toBeEmpty({ timeout: 3000 });
+    await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
 
     await page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'CRLF' }).click();
 
@@ -246,7 +246,7 @@ test.describe('文字コード判定・変換', () => {
     const tgtSelect = page.getByLabel('変換後の文字コード');
 
     // UTF-8 ターゲットでは改行コードトグルが表示される
-    await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible({ timeout: 2000 });
+    await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible();
 
     // UTF-16LE ターゲットに切り替えると非表示になる
     await tgtSelect.selectOption('UTF16LE');

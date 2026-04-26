@@ -21,15 +21,15 @@ test.describe('JWTデコーダー', () => {
   test('Headerに alg と typ が含まれる', async ({ page }) => {
     await page.getByLabel('JWTトークンを貼り付け').fill(SAMPLE_JWT);
     await expect(page.getByRole('heading', { name: 'Header (JOSE)' })).toBeVisible();
-    await expect(page.locator('pre').first()).toContainText('"HS256"');
-    await expect(page.locator('pre').first()).toContainText('"JWT"');
+    await expect(page.getByTestId('jwt-header')).toContainText('"HS256"');
+    await expect(page.getByTestId('jwt-header')).toContainText('"JWT"');
   });
 
   test('Payloadに sub と name が含まれる', async ({ page }) => {
     await page.getByLabel('JWTトークンを貼り付け').fill(SAMPLE_JWT);
     await expect(page.getByRole('heading', { name: 'Payload (Claims)' })).toBeVisible();
-    await expect(page.locator('pre').nth(1)).toContainText('"1234567890"');
-    await expect(page.locator('pre').nth(1)).toContainText('"John Doe"');
+    await expect(page.getByTestId('jwt-payload')).toContainText('"1234567890"');
+    await expect(page.getByTestId('jwt-payload')).toContainText('"John Doe"');
   });
 
   test('不正なJWTでエラーメッセージを表示する', async ({ page }) => {

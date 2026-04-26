@@ -403,7 +403,6 @@ export function EncodingConverterTool() {
             label="変換結果プレビュー"
             value={outputPreview}
             rows={8}
-            ariaLabel="変換結果"
             // クリップボードは Unicode テキストのみ保持できるため UTF-8 変換時のみ表示
             showCopy={targetEnc === 'UTF8'}
             rightSlot={

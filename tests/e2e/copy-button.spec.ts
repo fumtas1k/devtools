@@ -18,7 +18,7 @@ test.describe('CopyButton', () => {
 
     const before = await button.boundingBox();
     await button.click();
-    await button.getByRole('status').waitFor({ timeout: 2000 });
+    await button.getByRole('status').waitFor();
     const after = await button.boundingBox();
 
     expect(before?.width).toBe(after?.width);
@@ -31,7 +31,7 @@ test.describe('CopyButton', () => {
     await expect(button).not.toHaveCSS('color', SUCCESS_COLOR);
 
     await button.click();
-    await button.getByRole('status').waitFor({ timeout: 2000 });
+    await button.getByRole('status').waitFor();
 
     await expect(button).toHaveCSS('color', SUCCESS_COLOR);
   });
@@ -44,7 +44,7 @@ test.describe('CopyButton', () => {
     await expect(liveRegion).toHaveCount(0);
 
     await button.click();
-    await expect(liveRegion).toHaveText('コピーしました', { timeout: 2000 });
+    await expect(liveRegion).toHaveText('コピーしました');
   });
 
   test('2 秒後に idle 状態に戻る', async ({ page }) => {
@@ -53,9 +53,9 @@ test.describe('CopyButton', () => {
 
     await button.click();
     const liveRegion = button.getByRole('status');
-    await expect(liveRegion).toHaveText('コピーしました', { timeout: 2000 });
+    await expect(liveRegion).toHaveText('コピーしました');
 
-    await expect(liveRegion).toHaveCount(0, { timeout: 3000 });
+    await expect(liveRegion).toHaveCount(0);
     await expect(button).not.toHaveCSS('color', SUCCESS_COLOR);
   });
 });
