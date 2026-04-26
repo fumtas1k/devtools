@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { caption, colors } from '@/utils/styles';
 import { jsonToCsv, csvToJson } from '@/utils/json-csv';
 import { downloadText } from '@/utils/download';
@@ -59,7 +60,7 @@ export function JsonCsvTool() {
     ) : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* モード切替 */}
       <ToggleGroup
         options={[
@@ -107,13 +108,7 @@ export function JsonCsvTool() {
 
       {/* アクション */}
       <div className="flex justify-end gap-2">
-        <button
-          onClick={reset}
-          className="rounded-lg px-3 py-1.5 transition-colors"
-          style={{ ...caption, color: colors.muted }}
-        >
-          クリア
-        </button>
+        <ClearButton onClick={reset} />
       </div>
     </div>
   );

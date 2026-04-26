@@ -1,7 +1,7 @@
 import { InputField } from '@/components/ui/InputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import type { VerificationResult } from '@/utils/qr-ticket';
 import { ActionButton } from './ActionButton';
 import { TicketDetail } from './TicketDetail';
@@ -40,7 +40,7 @@ export function VerifyTab({
   onRescan,
 }: VerifyTabProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* 公開鍵セクション */}
       <div style={sectionStyle}>
         <h3 style={sectionHeaderStyle}>公開鍵</h3>
@@ -85,7 +85,7 @@ export function VerifyTab({
                 </ActionButton>
               )}
               {!verifyPubKeyStr.trim() && (
-                <p style={{ ...micro, color: colors.muted }}>
+                <p style={{ ...caption, color: colors.muted }}>
                   公開鍵を入力してからカメラを起動してください
                 </p>
               )}
@@ -139,7 +139,7 @@ export function VerifyTab({
                 />
               </label>
               {!verifyPubKeyStr.trim() && (
-                <p style={{ ...micro, color: colors.muted }}>公開鍵を入力してください</p>
+                <p style={{ ...caption, color: colors.muted }}>公開鍵を入力してください</p>
               )}
             </div>
           )}

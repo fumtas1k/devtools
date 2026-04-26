@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { JsonCsvTool } from '@/components/tools/JsonCsv';
 import { tools } from '@/data/tools';
 
@@ -8,4 +9,18 @@ const tool = tools.find((t) => t.slug === 'json-csv')!;
 
 <ToolLayout tool={tool}>
   <JsonCsvTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      JSONとCSVを相互変換します。JSON → CSV では配列をヘッダー付きCSVに変換し、
+      ネストしたオブジェクトはドット記法（例: <code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem;">address.city</code>）でフラット化します。
+      CSV → JSON ではヘッダー行をキーとしてオブジェクト配列に変換します。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>APIレスポンスのJSONをExcelで開くためにCSVに変換したい</li>
+      <li>CSVデータをAPIに渡すためにJSON化したい</li>
+      <li>ネストしたJSONのどのキーがCSV列に展開されるか確認したい</li>
+    </ul>
+  </ToolInfoSection>
 </ToolLayout>

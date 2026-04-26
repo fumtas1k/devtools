@@ -1,6 +1,7 @@
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { caption, colors } from '@/utils/styles';
 import { encodeBase64, decodeBase64 } from '@/utils/base64';
 import { useCodec } from '@/hooks/useCodec';
@@ -38,7 +39,7 @@ export function Base64CodecTool() {
         : SAMPLE_DECODE_STANDARD;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* モード切替 */}
       <ToggleGroup
         options={[
@@ -100,13 +101,7 @@ export function Base64CodecTool() {
 
       {/* アクション */}
       <div className="flex justify-end">
-        <button
-          onClick={reset}
-          className="rounded-lg px-3 py-1.5 transition-colors"
-          style={{ ...caption, color: colors.muted }}
-        >
-          クリア
-        </button>
+        <ClearButton onClick={reset} />
       </div>
     </div>
   );

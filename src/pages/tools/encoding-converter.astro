@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { EncodingConverterTool } from '@/components/tools/EncodingConverter';
 import { tools } from '@/data/tools';
 
@@ -9,14 +10,13 @@ const tool = tools.find((t) => t.slug === 'encoding-converter')!;
 <ToolLayout tool={tool}>
   <EncodingConverterTool client:load />
 
-  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 text-apple-dark dark:text-white tool-info-heading">このツールについて</h2>
+  <ToolInfoSection>
     <p class="tool-info-body">
       テキストやファイルの文字コードを自動判定し、他のエンコーディングへ変換します。
       すべての処理はブラウザ内で完結し、サーバーへの送信は一切ありません。
       テキストを貼り付けた場合はブラウザが UTF-8 として扱うため、Shift_JIS や EUC-JP の判定・変換には「ファイル」モードでアップロードしてください。
     </p>
-    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">対応する文字コード</h3>
+    <h3 class="mb-2 mt-4 tool-info-heading">対応する文字コード</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li><strong>UTF-8</strong>: Web 標準。BOM 付与オプションあり（Excel 対応 CSV に便利）</li>
       <li><strong>Shift_JIS (CP932)</strong>: Windows・旧来の日本語ファイルに多い</li>
@@ -24,11 +24,11 @@ const tool = tools.find((t) => t.slug === 'encoding-converter')!;
       <li><strong>ISO-2022-JP (JIS)</strong>: 日本語メール（RFC 2022）で使われる</li>
       <li><strong>UTF-16 LE / BE</strong>: Windows メモ帳・一部の Word ファイルで使われる</li>
     </ul>
-    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">ユースケース</h3>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>Shift_JIS の CSV を Excel で開くと文字化けするので UTF-8 BOM 付きに変換したい</li>
       <li>受け取ったテキストファイルがどの文字コードか不明なので判定したい</li>
       <li>EUC-JP のログファイルを UTF-8 に変換して確認したい</li>
     </ul>
-  </section>
+  </ToolInfoSection>
 </ToolLayout>

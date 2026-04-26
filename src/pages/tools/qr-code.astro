@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { QrCodeGenerator } from '@/components/tools/QrCode';
 import { tools } from '@/data/tools';
 
@@ -9,19 +10,16 @@ const tool = tools.find((t) => t.slug === 'qr-code')!;
 <ToolLayout tool={tool}>
   <QrCodeGenerator client:load />
 
-  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 text-apple-dark dark:text-white tool-info-heading">このツールについて</h2>
+  <ToolInfoSection>
     <p class="tool-info-body">
       テキストやURLを入力するとQRコードをリアルタイムに生成します。SVG形式でダウンロードできます。
     </p>
-    <h3 class="mb-2 mt-4 text-apple-dark dark:text-white tool-info-heading">
-      誤り訂正レベルについて
-    </h3>
+    <h3 class="mb-2 mt-4 tool-info-heading">誤り訂正レベルについて</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>L（7%）: データ量を優先。読み取り環境が良い場合に向く</li>
       <li>M（15%）: 標準的な用途に最適</li>
       <li>Q（25%）: 汚れや破損が想定される印刷物向け</li>
       <li>H（30%）: ロゴ埋め込みなど一部が隠れる場合に向く</li>
     </ul>
-  </section>
+  </ToolInfoSection>
 </ToolLayout>

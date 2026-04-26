@@ -1160,3 +1160,95 @@ README.md にテストカバレッジのバッジを表示し、GitHub Actions �
 - ✅ 外部サービス依存を排除し、GitHub 完結で安全な運用が可能
 - ⚠️ バッジ更新のための自動コミットが `main` ブランチに発生する（`[skip ci]` タグを付与して無限ループを防止）
 - ⚠️ `json-summary` のパースや `sed` による置換ロジックのメンテナンスが必要
+
+---
+
+## [037] focus-visible をCSSで一括適用（JS ハンドラ廃止）
+
+**2026-04-26 | ステータス: 採用**
+
+### 背景
+
+`InputField`・`Select` コンポーネントの focus ring は `onFocusRing`/`onBlurRing` という React ハンドラ（インライン style で outline を JS 操作）で実装されていた。
+`ToggleGroup`・`DownloadButtonGroup`・`CopyButton` 等のボタン系は focus ring が存在しなかった。
+アクセシビリティ（キーボード操作）の観点で全インタラクティブ要素への一貫した focus ring が必要だった。
+
+### 決断
+
+`global.css` に `:where(button, a, [role="button"], input, textarea, select):focus-visible { outline: var(--focus-ring); outline-offset: 2px; }` を追加し、CSS で一括適用する。
+`InputField.tsx`・`Select.tsx` の `onFocusRing`/`onBlurRing` ハンドラと `outline: none` の inline style を削除。
+`styles.ts` の `onFocusRing`/`onBlurRing` 関数は `@deprecated` として残存（Phase 2 でツールコンポーネントから順次除去予定）。
+
+### 却下した選択肢
+
+- **JS ハンドラ継続**: 適用漏れが発生しやすく、新コンポーネント追加のたびに追加が必要。
+- **:focus（非 focus-visible）**: マウスクリック時にも outline が表示され、視覚ノイズになる。
+
+### 結果・トレードオフ
+
+- ✅ 全インタラクティブ要素に一貫した focus ring が自動適用される
+- ✅ 新コンポーネント追加時に追加対応不要
+- ⚠️ inline style で `outline` を指定しているコンポーネントは CSS より優先されるため、Phase 2 で順次 inline outline を除去する
+
+---
+
+## [039] Astro 側の Tailwind カラークラスを CSS 変数経路に統一
+
+**2026-04-26 | ステータス: 採用**
+
+### 背景
+
+`src/components/layout/*.astro`・`src/layouts/*.astro`・`src/pages/*.astro` 等の Astro ファイルで `text-neutral-900`・`bg-blue-50`・`text-neutral-700` 等の Tailwind プリミティブカラークラスが約 30 箇所残存していた。TSX 側は [010][033][038] によって `colors.*` + CSS 変数経路に統一済みだったが、Astro では `colors.*` が使えないという事情から手つかずになっていた。ダークモード切替時（[003] 保留中）に `:root` を `.dark` でオーバーライドしても、Tailwind カラークラスはプリミティブ値のままハードコードされるため、対象箇所が取り残される問題があった。また同一要素内で Tailwind class と CSS 変数直書きが混在する箇所（`index.astro:27`）が見つかり、可読性の問題もあった。
+
+加えて、`styles.ts` の deprecated エントリ（`primaryBg`・`shadows`・`micro`・`onFocusRing`/`onBlurRing`）が [037][038] 後も TSX 5 ファイルから import されたままだった。
+
+### 決断
+
+1. **Astro 側のカラー置換**: Tailwind カラークラスを CSS 変数の `style` 属性直書きまたは `<style>` ブロックに置換。セマンティックエイリアス（`--color-text`・`--color-muted`・`--color-bg`・`--color-border` 等）が存在する場合はそれを優先し、存在しない場合はプリミティブ変数（`--color-neutral-700` 等）で 1:1 置換する。hover 等の擬似クラスは `<style>` ブロック内で CSS 変数を使用する。
+
+2. **deprecated 解消**: `micro` → `caption` に置換。`onFocusRing`/`onBlurRing` をすべての呼び出し箇所から削除（CSS の `:focus-visible` で一括適用済みのため不要）。`colors.primaryBg` → `colors.bgPrimary` に置換。置換完了後、`styles.ts` から deprecated 定義を削除。
+
+### 却下した選択肢
+
+- **完全 Tailwind 化**: `colors.*` を廃止し `bg-[var(--color-text)]` 等の arbitrary values に統一する。書き方は統一されるが、ダークモード対応で各箇所に `dark:` プレフィックスを追加する必要があり、CSS 変数一元管理の利点が失われる。
+- **現状維持**: ダークモード追加時に Astro 側のカラーが取り残される技術的負債が解消されない。
+
+### 結果・トレードオフ
+
+- ✅ Astro・TSX 共通で「色は CSS 変数経路」の原則が統一された
+- ✅ ダークモード追加時（[003]）に `:root` → `.dark` の 1 ブロック追加で全ページに波及できる
+- ✅ `styles.ts` から deprecated エントリが削除され、import 時の型補完ノイズがなくなった
+- ⚠️ Astro では `colors.*` が使えないため、CSS 変数を `style` 属性に直書きするパターンが TSX と異なる。新しく Astro ファイルを書く際は CLAUDE.md のルールを参照すること
+
+**補足（PRレビュー指摘対応）**: ナビ active 背景 (`bg-blue-50`) と バッジ背景 (`bg-blue-100`) にプリミティブ変数・キーカラー変数が混入していた指摘を受け、`:root` に `--color-bg-active` / `--color-badge-bg` を追加してセマンティック変数経路に揃えた。またタブの色切替を JS `classList.toggle` から CSS 属性セレクタ (`[aria-selected="true/false"]`) 宣言に移行し、詳細度競合を排除した。
+
+---
+
+## [038] デザイントークン整備（secondary/tertiary/elevation/radii）
+
+**2026-04-26 | ステータス: 採用**
+
+### 背景
+
+`src/utils/styles.ts` の `colors` に `secondary`・`tertiary` が未エクスポートで React 側から参照不可だった。
+`shadows.tab` が `--elevation-*` CSS 変数と二重管理されていた。
+`radii` トークンが `global.css` の `@theme` に定義済みだったが、React 側から利用できなかった。
+ツールコンポーネント内にハードコード hex（`#1A56DB`・`#ffffff`・`#f5f5f7`・`#DBEAFE`・`#E5E7EB` 等）が約15箇所存在した。
+
+### 決断
+
+- `colors` に `secondary`・`tertiary`・`bgPrimary` を追加（`primaryBg` は `@deprecated` として残存）
+- `shadows` を `@deprecated` 化し、`elevation` オブジェクト（CSS変数参照）で置換
+- `radii` オブジェクト（CSS変数参照）を新規追加
+- `micro` を `@deprecated`（`caption` の alias として残存）
+- ハードコード hex をすべてトークン参照に置換
+
+### 却下した選択肢
+
+- **ハードコード hex の維持**: ダークモード追加時に置換漏れが生じる。デザイン変更の際に修正箇所が散在する。
+
+### 結果・トレードオフ
+
+- ✅ React コンポーネントからすべてのセマンティックカラーにアクセス可能になった
+- ✅ バーコードライブラリ（JsBarcode）の描画オプション内の hex は DOM スタイルでないため変換対象外とした
+- ⚠️ `JwtDecoder.tsx` の syntax highlight 用カラー（`#6e4f0e`・`#9333ea`）は可視化専用色のためトークン化せず維持

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
+import { ClearButton } from '@/components/ui/ClearButton';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import {
   parseJwt,
@@ -257,7 +258,7 @@ export function JwtDecoderTool() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* トークン入力 */}
       <InputField
         id="jwt-input"
@@ -283,7 +284,7 @@ export function JwtDecoderTool() {
             <>
               {keyLabel}
               <span
-                style={{ ...micro, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}
+                style={{ ...caption, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}
               >
                 （任意）
               </span>
@@ -343,7 +344,7 @@ export function JwtDecoderTool() {
       {/* デコード結果 */}
       {parsed && (
         <div className="space-y-3">
-          <Section title="Header (JOSE)" accentColor="#dc2626" data={parsed.header} />
+          <Section title="Header (JOSE)" accentColor={colors.error} data={parsed.header} />
           <Section
             title="Payload (Claims)"
             accentColor="#9333ea"
@@ -358,10 +359,10 @@ export function JwtDecoderTool() {
               <h3 style={{ ...bodyEmphasis, color: colors.text }}>Signature</h3>
               <CopyButton text={parsed.signature} label="コピー" />
             </div>
-            <p className="break-all font-mono" style={{ ...micro, color: colors.text }}>
+            <p className="break-all font-mono" style={{ ...caption, color: colors.text }}>
               {parsed.signature}
             </p>
-            <p className="mt-2" style={{ ...micro, color: colors.muted }}>
+            <p className="mt-2" style={{ ...caption, color: colors.muted }}>
               {secretKey.trim()
                 ? '上記のキーで署名を検証しています'
                 : 'キーを入力すると署名を検証します'}
@@ -373,17 +374,13 @@ export function JwtDecoderTool() {
       {/* クリア */}
       {token && (
         <div className="flex justify-end">
-          <button
+          <ClearButton
             onClick={() => {
               setToken('');
               setSecretKey('');
               setSigStatus('unchecked');
             }}
-            className="rounded-lg px-3 py-1.5 transition-colors"
-            style={{ ...caption, color: colors.muted }}
-          >
-            クリア
-          </button>
+          />
         </div>
       )}
     </div>

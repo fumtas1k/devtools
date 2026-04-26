@@ -288,7 +288,7 @@ export function QrTicketTool() {
   // ─── レンダリング ─────────────────────────────────────────
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <ToggleGroup options={MODE_OPTIONS} value={mode} onChange={setMode} ariaLabel="動作モード" />
 
       {mode === 'generate' ? (

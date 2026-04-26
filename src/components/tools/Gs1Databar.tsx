@@ -11,10 +11,11 @@ import {
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
-import { bodyEmphasis, caption, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { Select } from '@/components/ui/Select';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
   downloadSvg as downloadSvgFile,
   downloadPngFromSvgContent,
@@ -306,8 +307,6 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                         background: colors.bg,
                         color: colors.text,
                       }}
-                      onFocus={onFocusRing}
-                      onBlur={onBlurRing}
                     />
                     {field.error && (
                       <p
@@ -354,12 +353,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         )}
 
         {bwipError && (
-          <div
-            className="rounded-lg p-4"
-            style={{ border: `1px solid ${colors.error}`, background: colors.errorBg }}
-          >
-            <p style={{ ...caption, color: colors.error }}>バーコード生成エラー: {bwipError}</p>
-          </div>
+          <ErrorMessage message={`バーコード生成エラー: ${bwipError}`} variant="block" />
         )}
 
         {/* GS1文字列プレビュー */}
@@ -464,7 +458,7 @@ export function Gs1DatabarTool() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* カードリスト */}
       {cards.map((card, index) => (
         <BarcodeCard
@@ -490,7 +484,7 @@ export function Gs1DatabarTool() {
               color: colors.primary,
               background: 'transparent',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = colors.primaryBg)}
+            onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgPrimary)}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             + バーコードを追加

@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useClampedInput } from '@/hooks/useClampedInput';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { ClearButton } from '@/components/ui/ClearButton';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 
 type CharType = 'hiragana' | 'katakana' | 'japanese' | 'alphanumeric' | 'lorem';
 
@@ -96,30 +98,13 @@ export function DummyTextTool() {
       {/* 文字種 */}
       <div>
         <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.75rem' }}>文字種</p>
-        <div className="flex flex-wrap gap-2">
-          {CHAR_TYPES.map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setCharType(value)}
-              style={{
-                ...caption,
-                padding: '0.5rem 1rem',
-                borderRadius: '999px',
-                border:
-                  charType === value
-                    ? `1.5px solid ${colors.primary}`
-                    : `1.5px solid ${colors.borderInput}`,
-                background: charType === value ? colors.primaryBg : colors.bg,
-                color: charType === value ? colors.primary : colors.muted,
-                cursor: 'pointer',
-                fontWeight: charType === value ? 600 : 400,
-              }}
-              aria-pressed={charType === value}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <ToggleGroup
+          options={CHAR_TYPES}
+          value={charType}
+          onChange={setCharType}
+          ariaLabel="文字種"
+          layout="wrap"
+        />
       </div>
 
       {/* 文字数 */}
@@ -152,42 +137,23 @@ export function DummyTextTool() {
             background: colors.bg,
             color: colors.text,
           }}
-          onFocus={onFocusRing}
-          onBlurCapture={onBlurRing}
         />
-        <p style={{ ...micro, color: colors.muted, marginTop: '0.25rem' }}>1〜5000文字</p>
+        <p style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>1〜5000文字</p>
       </div>
 
       {/* 改行 */}
       <div>
         <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.25rem' }}>改行</p>
         <div className="flex items-center gap-3 flex-wrap">
-          <div
-            className="flex rounded-lg overflow-hidden"
-            style={{ border: `1px solid ${colors.borderInput}`, display: 'inline-flex' }}
-            role="group"
-            aria-label="改行設定"
-          >
-            {([false, true] as const).map((val) => (
-              <button
-                key={String(val)}
-                onClick={() => setLineBreak(val)}
-                style={{
-                  ...caption,
-                  padding: '0.5rem 1.25rem',
-                  background: lineBreak === val ? colors.primary : colors.bg,
-                  color: lineBreak === val ? '#ffffff' : colors.muted,
-                  border: 'none',
-                  borderRight: !val ? `1px solid ${colors.borderInput}` : 'none',
-                  cursor: 'pointer',
-                  fontWeight: lineBreak === val ? 600 : 400,
-                }}
-                aria-pressed={lineBreak === val}
-              >
-                {val ? 'あり' : 'なし'}
-              </button>
-            ))}
-          </div>
+          <ToggleGroup<'false' | 'true'>
+            options={[
+              { value: 'false', label: 'なし' },
+              { value: 'true', label: 'あり' },
+            ]}
+            value={String(lineBreak) as 'false' | 'true'}
+            onChange={(v) => setLineBreak(v === 'true')}
+            ariaLabel="改行設定"
+          />
           {lineBreak && (
             <div className="flex items-center gap-2">
               <label htmlFor="chunk-size" style={{ ...caption, color: colors.muted }}>
@@ -210,15 +176,8 @@ export function DummyTextTool() {
                   background: colors.bg,
                   color: colors.text,
                 }}
-                onFocus={(e) => {
-                  e.target.style.outline = `2px solid ${colors.link}`;
-                  e.target.style.outlineOffset = '2px';
-                }}
-                onBlurCapture={(e) => {
-                  e.target.style.outline = 'none';
-                }}
               />
-              <span style={{ ...micro, color: colors.muted }}>文字ごと（1〜1000）</span>
+              <span style={{ ...caption, color: colors.muted }}>文字ごと（1〜1000）</span>
             </div>
           )}
         </div>
@@ -237,19 +196,7 @@ export function DummyTextTool() {
             <span style={{ ...bodyEmphasis, color: colors.text }}>{result.length} 文字</span>
             <div className="flex items-center gap-2">
               <CopyButton text={result} label="コピー" />
-              <button
-                onClick={() => setResult('')}
-                className="rounded-lg px-3 py-1.5 transition-colors"
-                style={{
-                  ...caption,
-                  color: colors.muted,
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                クリア
-              </button>
+              <ClearButton onClick={() => setResult('')} />
             </div>
           </div>
           <div className="px-4 py-4" style={{ background: colors.bg }}>

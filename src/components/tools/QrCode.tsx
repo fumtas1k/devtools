@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import qrcode from '@/utils/qrcode';
-import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { downloadSvgElement } from '@/utils/download';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 
 type ErrorLevel = 'L' | 'M' | 'Q' | 'H';
 
@@ -68,6 +69,7 @@ export function QrCodeGenerator() {
         multiline
         rows={3}
         resize
+        onSampleClick={() => setText('https://example.com')}
       />
 
       {/* 誤り訂正レベル */}
@@ -76,34 +78,13 @@ export function QrCodeGenerator() {
           誤り訂正レベル
         </p>
         <div className="flex items-center gap-2 flex-wrap">
-          <div
-            className="flex rounded-lg overflow-hidden"
-            style={{ border: `1px solid ${colors.borderInput}`, display: 'inline-flex' }}
-            role="group"
-            aria-label="誤り訂正レベル"
-          >
-            {ERROR_LEVELS.map(({ value, label }, i) => (
-              <button
-                key={value}
-                onClick={() => setErrorLevel(value)}
-                style={{
-                  ...caption,
-                  padding: '0.5rem 1rem',
-                  background: errorLevel === value ? colors.primary : colors.bg,
-                  color: errorLevel === value ? '#ffffff' : colors.muted,
-                  border: 'none',
-                  borderRight:
-                    i < ERROR_LEVELS.length - 1 ? `1px solid ${colors.borderInput}` : 'none',
-                  cursor: 'pointer',
-                  fontWeight: errorLevel === value ? 600 : 400,
-                }}
-                aria-pressed={errorLevel === value}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <span style={{ ...micro, color: colors.muted }}>
+          <ToggleGroup
+            options={ERROR_LEVELS.map(({ value, label }) => ({ value, label }))}
+            value={errorLevel}
+            onChange={setErrorLevel}
+            ariaLabel="誤り訂正レベル"
+          />
+          <span style={{ ...caption, color: colors.muted }}>
             復元率: {ERROR_LEVELS.find((e) => e.value === errorLevel)?.desc}
           </span>
         </div>

@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { JanCodeTool } from '@/components/tools/JanCode';
 import { tools } from '@/data/tools';
 
@@ -8,4 +9,18 @@ const tool = tools.find((t) => t.slug === 'jan-code')!;
 
 <ToolLayout tool={tool}>
   <JanCodeTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      JANコード（JAN: Japanese Article Number）は EAN-13 / EAN-8 と同規格の商品識別用バーコードです。
+      GS1 が管理し、国際的な流通システムで広く使われています。
+      最終桁のチェックデジットはモジュラス10 / ウェイト3で計算されます。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>商品バーコードのチェックデジットを素早く確認したい</li>
+      <li>JAN-13 / JAN-8 のサンプルを生成してバーコードリーダーでテストしたい</li>
+      <li>GS1 アプリケーション向けの商品コードを準備したい</li>
+    </ul>
+  </ToolInfoSection>
 </ToolLayout>

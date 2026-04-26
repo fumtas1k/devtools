@@ -1,0 +1,171 @@
+---
+import { tools, categoryLabel, categories } from '@/data/tools';
+import ToolIcon from '@/components/ui/ToolIcon.astro';
+
+interface Props {
+  currentSlug?: string;
+}
+
+const { currentSlug } = Astro.props;
+---
+
+<!-- モバイルドロワー (lg未満のみ表示) -->
+<div id="mobile-drawer-overlay" class="lg:hidden fixed inset-0" style="z-index: 60;" aria-hidden="true" hidden>
+  <!-- 背景 -->
+  <div
+    id="mobile-drawer-backdrop"
+    class="absolute inset-0"
+    style="background: rgba(17,24,39,0.5);"
+  ></div>
+
+  <!-- ドロワーパネル -->
+  <div
+    id="mobile-drawer"
+    role="dialog"
+    aria-label="ナビゲーション"
+    aria-modal="true"
+    class="absolute right-0 top-0 h-full w-64 overflow-y-auto shadow-xl"
+    style="padding: 1rem; background: var(--color-bg);"
+  >
+    <!-- 閉じるボタン -->
+    <div class="flex justify-start mb-2">
+      <button
+        id="mobile-drawer-close"
+        type="button"
+        class="drawer-close-btn flex items-center justify-center rounded-md transition-colors"
+        style="width: 44px; height: 44px; color: var(--color-neutral-700);"
+        aria-label="メニューを閉じる"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ツール一覧 -->
+    <nav aria-label="ツール一覧">
+      {
+        categories.map((cat) => (
+          <div class="mb-6">
+            <h2
+              class="mb-2 px-3 font-bold uppercase"
+              style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.08em; color: var(--color-muted);"
+            >
+              {categoryLabel[cat]}
+            </h2>
+            <ul>
+              {tools
+                .filter((t) => t.category === cat)
+                .map((tool) => {
+                  const isActive = currentSlug === tool.slug;
+                  return (
+                    <li>
+                      <a
+                        href={`/tools/${tool.slug}`}
+                        aria-current={isActive ? 'page' : undefined}
+                        class={`flex items-center gap-2 rounded px-3 transition-colors drawer-link ${isActive ? 'font-bold text-primary drawer-link--active' : 'drawer-link--inactive'}`}
+                        style="min-height: 44px; font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+                      >
+                        <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
+                        <span>{tool.name}</span>
+                      </a>
+                    </li>
+                  );
+                })}
+            </ul>
+          </div>
+        ))
+      }
+    </nav>
+  </div>
+</div>
+
+<style>
+  .drawer-close-btn:hover { background: var(--color-bg-subtle); }
+  .drawer-link--active { background: var(--color-bg-active); }
+  .drawer-link--inactive { color: var(--color-neutral-700); }
+  .drawer-link--inactive:hover { background: var(--color-bg-subtle); }
+</style>
+
+<script>
+  const toggle = document.getElementById('mobile-menu-toggle') as HTMLButtonElement | null;
+  const overlay = document.getElementById('mobile-drawer-overlay') as HTMLElement | null;
+  const backdrop = document.getElementById('mobile-drawer-backdrop') as HTMLElement | null;
+  const drawer = document.getElementById('mobile-drawer') as HTMLElement | null;
+  const closeBtn = document.getElementById('mobile-drawer-close') as HTMLButtonElement | null;
+
+  if (!overlay || !toggle) {
+    // ドロワーが存在しないページではボタンを非表示にする
+    if (toggle) toggle.style.display = 'none';
+  } else {
+    function openDrawer(): void {
+      overlay!.hidden = false;
+      overlay!.removeAttribute('aria-hidden');
+      toggle!.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+      // 閉じるボタンにフォーカス移動
+      closeBtn?.focus();
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    function closeDrawer(): void {
+      overlay!.hidden = true;
+      overlay!.setAttribute('aria-hidden', 'true');
+      toggle!.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', handleKeyDown);
+      toggle!.focus();
+    }
+
+    function getFocusable(): HTMLElement[] {
+      if (!drawer) return [];
+      return Array.from(
+        drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+    }
+
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        closeDrawer();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+
+      const focusable = getFocusable();
+      if (!focusable.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    toggle.addEventListener('click', openDrawer);
+    backdrop?.addEventListener('click', closeDrawer);
+    closeBtn?.addEventListener('click', closeDrawer);
+  }
+</script>

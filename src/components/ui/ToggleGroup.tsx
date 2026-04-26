@@ -1,4 +1,4 @@
-import { caption, colors, shadows } from '@/utils/styles';
+import { caption, elevation, colors } from '@/utils/styles';
 
 interface Option<T> {
   value: T;
@@ -10,28 +10,47 @@ interface Props<T extends string> {
   value: T | undefined;
   onChange: (value: T) => void;
   ariaLabel?: string;
+  /** ボタンサイズ。デフォルトは `md` */
+  size?: 'sm' | 'md';
+  /** `grid`: 等幅グリッド（デフォルト）。`wrap`: flex-wrap で自然幅 */
+  layout?: 'grid' | 'wrap';
 }
 
-export function ToggleGroup<T extends string>({ options, value, onChange, ariaLabel }: Props<T>) {
+export function ToggleGroup<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  size = 'md',
+  layout = 'grid',
+}: Props<T>) {
+  const isWrap = layout === 'wrap';
+
   return (
     <div
-      className="grid gap-1 rounded-lg p-1"
+      className={`rounded-lg p-1 ${isWrap ? 'flex flex-wrap gap-1' : 'grid gap-1'}`}
       role="group"
       aria-label={ariaLabel}
-      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`, background: colors.bgSubtle }}
+      style={{
+        background: colors.bgSubtle,
+        border: `1px solid ${colors.borderInput}`,
+        ...(isWrap
+          ? { width: 'max-content', maxWidth: '100%' }
+          : { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }),
+      }}
     >
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
-          className="rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors"
+          className={`rounded-lg whitespace-nowrap transition-colors ${size === 'sm' ? 'px-2.5 py-0.5' : 'px-3 py-1.5'}`}
           style={{
             ...caption,
             fontWeight: 600,
             background: value === opt.value ? colors.bg : 'transparent',
             color: value === opt.value ? colors.text : colors.muted,
-            boxShadow: value === opt.value ? shadows.tab : 'none',
+            boxShadow: value === opt.value ? elevation.level2 : 'none',
           }}
         >
           {opt.label}

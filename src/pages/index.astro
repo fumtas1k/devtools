@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ToolIcon from '@/components/ui/ToolIcon.astro';
+import PageContainer from '@/components/ui/PageContainer.astro';
+import CategoryBadge from '@/components/ui/CategoryBadge.astro';
 import { tools, categoryLabel, type ToolCategory } from '@/data/tools';
 
 const categories: ToolCategory[] = ['generate', 'convert'];
@@ -22,26 +24,28 @@ const jsonLd = {
   jsonLd={jsonLd}
 >
   <!-- ヒーロー -->
-  <section class="bg-blue-50 text-center px-4 py-8" style="border-bottom: 1px solid #DBEAFE;">
+  <section class="text-center px-4 py-8" style="background: var(--color-background); border-bottom: 1px solid var(--color-blue-100);">
     <h1
-      class="mb-2 font-bold text-neutral-900"
-      style="font-size: 2rem; line-height: 1.4; letter-spacing: 0.01em;"
+      class="mb-2 font-bold"
+      style="font-size: 2rem; line-height: 1.4; letter-spacing: 0.01em; color: var(--color-text);"
     >
       DevTools
     </h1>
-    <p class="text-neutral-600" style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em;">
+    <p style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-neutral-600);">
       ブラウザで完結する無料の開発者ツール集
     </p>
   </section>
 
   <!-- ツール一覧 -->
-  <main class="mx-auto max-w-280 px-4 sm:px-6 py-8">
+  <main id="main-content">
+  <PageContainer class="py-8">
     <!-- タブ -->
     <div
       id="tab-bar"
       role="tablist"
       aria-label="カテゴリ絞り込み"
-      class="mb-6 flex gap-1 border-b border-neutral-200"
+      class="mb-6 flex gap-1 border-b"
+      style="border-color: var(--color-border);"
     >
       <button
         role="tab"
@@ -49,7 +53,7 @@ const jsonLd = {
         aria-selected="true"
         aria-controls="panel-0"
         data-index="0"
-        class="tab-btn px-4 py-2 font-bold text-primary border-b-2 border-primary -mb-px transition-colors"
+        class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
         style="font-size: 0.875rem; letter-spacing: 0.02em;"
       >
         すべて
@@ -62,7 +66,7 @@ const jsonLd = {
             aria-selected="false"
             aria-controls={`panel-${i + 1}`}
             data-index={i + 1}
-            class="tab-btn px-4 py-2 font-bold text-neutral-500 border-b-2 border-transparent -mb-px hover:text-primary hover:border-primary transition-colors"
+            class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
             style="font-size: 0.875rem; letter-spacing: 0.02em;"
           >
             {categoryLabel[cat]}
@@ -92,26 +96,21 @@ const jsonLd = {
                   <a
                     href={`/tools/${tool.slug}`}
                     class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
-                    style="border: 1px solid #E5E7EB;"
+                    style="border: 1px solid var(--color-border);"
                   >
                     <div class="mb-4 flex items-start justify-between">
                       <ToolIcon slug={tool.slug} size={28} class="text-primary" />
-                      <span
-                        class="rounded-full px-3 py-0.5 font-bold text-blue-800 bg-blue-100"
-                        style="font-size: 0.875rem; line-height: 1; letter-spacing: 0.02em;"
-                      >
-                        {categoryLabel[tool.category]}
-                      </span>
+                      <CategoryBadge label={categoryLabel[tool.category]} class="py-0.5" />
                     </div>
                     <h2
-                      class="mb-2 font-bold text-neutral-900 group-hover:text-primary transition-colors"
-                      style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
+                      class="mb-2 font-bold group-hover:text-primary transition-colors"
+                      style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em; color: var(--color-text);"
                     >
                       {tool.name}
                     </h2>
                     <p
-                      class="mb-4 text-neutral-500"
-                      style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+                      class="mb-4"
+                      style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
                     >
                       {tool.description}
                     </p>
@@ -128,6 +127,7 @@ const jsonLd = {
         ))
       }
     </div>
+  </PageContainer>
   </main>
 </BaseLayout>
 
@@ -135,6 +135,9 @@ const jsonLd = {
   #panels::-webkit-scrollbar {
     display: none;
   }
+  .tab-btn[aria-selected="true"]  { color: var(--color-primary); border-color: var(--color-primary); }
+  .tab-btn[aria-selected="false"] { color: var(--color-muted);   border-color: transparent; }
+  .tab-btn[aria-selected="false"]:hover { color: var(--color-primary); border-color: var(--color-primary); }
 </style>
 
 <script>
@@ -143,12 +146,7 @@ const jsonLd = {
 
   function activateTab(index: number) {
     tabs.forEach((t, i) => {
-      const active = i === index;
-      t.setAttribute('aria-selected', String(active));
-      t.classList.toggle('text-primary', active);
-      t.classList.toggle('border-primary', active);
-      t.classList.toggle('text-neutral-500', !active);
-      t.classList.toggle('border-transparent', !active);
+      t.setAttribute('aria-selected', String(i === index));
     });
   }
 
