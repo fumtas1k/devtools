@@ -18,6 +18,8 @@ export const colors = {
   bgPrimary: 'var(--color-background)',
   /** @deprecated `bgPrimary` を使用してください */
   primaryBg: 'var(--color-background)',
+  /** プライマリ色背景上のテキスト（白抜き文字）。ダークモード時も白を維持する意図 */
+  textOnPrimary: 'var(--color-text-on-primary)',
   border: 'var(--color-border)',
   borderInput: 'var(--color-border-input)',
   error: 'var(--color-error)',
@@ -67,7 +69,7 @@ export const caption: CSSProperties = {
   letterSpacing: '0.02em',
 };
 
-/** @deprecated `caption` を使用してください */
+/** @deprecated {@link caption} を使用してください */
 export const micro = caption;
 
 /**

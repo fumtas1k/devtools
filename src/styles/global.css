@@ -84,6 +84,7 @@
   --color-border: #e5e7eb; /* neutral-200 */
   --color-border-input: #d1d5db; /* neutral-300 */
   --color-error-text: #b91c1c; /* red-700 */
+  --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
 }
 
 /* focus-visible を CSS で一括適用（JS の onFocusRing/onBlurRing ハンドラは不要） */

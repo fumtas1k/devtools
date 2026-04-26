@@ -176,7 +176,7 @@ export function DummyTextTool() {
                   ...caption,
                   padding: '0.5rem 1.25rem',
                   background: lineBreak === val ? colors.primary : colors.bg,
-                  color: lineBreak === val ? colors.bg : colors.muted,
+                  color: lineBreak === val ? colors.textOnPrimary : colors.muted,
                   border: 'none',
                   borderRight: !val ? `1px solid ${colors.borderInput}` : 'none',
                   cursor: 'pointer',
