@@ -39,6 +39,22 @@ function CheckIcon() {
   );
 }
 
+function copyStateColors(copied: boolean, idleColor: string) {
+  return {
+    background: copied ? colors.successBg : colors.bgSubtle,
+    color: copied ? colors.success : idleColor,
+  };
+}
+
+function CopyAnnounce({ copied }: { copied: boolean }) {
+  if (!copied) return null;
+  return (
+    <span role="status" aria-live="polite" className="sr-only">
+      コピーしました
+    </span>
+  );
+}
+
 interface Props {
   text: string;
   label?: string;
@@ -75,17 +91,14 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
         style={{
           fontSize: '0.75rem',
           padding: '0.25rem 0.5rem',
-          background: copied ? colors.successBg : colors.bgSubtle,
-          color: copied ? colors.success : colors.muted,
+          ...copyStateColors(copied, colors.muted),
           border: 'none',
           cursor: 'pointer',
           whiteSpace: 'nowrap' as const,
         }}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
-        <span role="status" aria-live="polite" className="sr-only">
-          {copied ? 'コピーしました' : ''}
-        </span>
+        <CopyAnnounce copied={copied} />
       </button>
     );
   }
@@ -99,16 +112,13 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
         fontSize: '0.875rem',
         lineHeight: 1,
         letterSpacing: '0.02em',
-        background: copied ? colors.successBg : colors.bgSubtle,
-        color: copied ? colors.success : colors.text,
+        ...copyStateColors(copied, colors.text),
         border: `1px solid ${copied ? colors.success : colors.border}`,
       }}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}
       {label}
-      <span role="status" aria-live="polite" className="sr-only">
-        {copied ? 'コピーしました' : ''}
-      </span>
+      <CopyAnnounce copied={copied} />
     </button>
   );
 }

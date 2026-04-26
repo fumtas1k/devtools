@@ -40,7 +40,7 @@ test.describe('CopyButton', () => {
     await button.waitFor({ state: 'visible' });
 
     const liveRegion = button.locator('[role="status"]');
-    await expect(liveRegion).toHaveText('');
+    await expect(liveRegion).toHaveCount(0);
 
     await button.click();
     await expect(liveRegion).toHaveText('コピーしました', { timeout: 2000 });
@@ -54,7 +54,7 @@ test.describe('CopyButton', () => {
     const liveRegion = button.locator('[role="status"]');
     await expect(liveRegion).toHaveText('コピーしました', { timeout: 2000 });
 
-    await expect(liveRegion).toHaveText('', { timeout: 3000 });
+    await expect(liveRegion).toHaveCount(0, { timeout: 3000 });
     await expect(button.locator('rect')).toBeVisible();
   });
 });
