@@ -87,6 +87,11 @@
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
 }
 
+/* ボタン・リンク類のカーソルを pointer に統一 */
+:where(button, a, [role="button"]) {
+  cursor: pointer;
+}
+
 /* focus-visible を CSS で一括適用（JS の onFocusRing/onBlurRing ハンドラは不要） */
 :where(button, a, [role="button"], input, textarea, select):focus-visible {
   outline: var(--focus-ring);
