@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useClampedInput } from '@/hooks/useClampedInput';
 import { CopyButton } from '@/components/ui/CopyButton';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 
@@ -195,19 +196,7 @@ export function DummyTextTool() {
             <span style={{ ...bodyEmphasis, color: colors.text }}>{result.length} 文字</span>
             <div className="flex items-center gap-2">
               <CopyButton text={result} label="コピー" />
-              <button
-                onClick={() => setResult('')}
-                className="rounded-lg px-3 py-1.5 transition-colors"
-                style={{
-                  ...caption,
-                  color: colors.muted,
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                クリア
-              </button>
+              <ClearButton onClick={() => setResult('')} />
             </div>
           </div>
           <div className="px-4 py-4" style={{ background: colors.bg }}>

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { bodyEmphasis, caption, micro, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import {
@@ -373,17 +374,13 @@ export function JwtDecoderTool() {
       {/* クリア */}
       {token && (
         <div className="flex justify-end">
-          <button
+          <ClearButton
             onClick={() => {
               setToken('');
               setSecretKey('');
               setSigStatus('unchecked');
             }}
-            className="rounded-lg px-3 py-1.5 transition-colors"
-            style={{ ...caption, color: colors.muted }}
-          >
-            クリア
-          </button>
+          />
         </div>
       )}
     </div>
