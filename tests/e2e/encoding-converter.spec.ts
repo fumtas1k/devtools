@@ -108,7 +108,9 @@ test.describe('文字コード判定・変換', () => {
     await expect(page.getByTestId('detection-result')).not.toBeVisible();
   });
 
-  test('ケースH: 変換モードの文字コード Select に全選択肢がありデフォルト値が正しい', async ({ page }) => {
+  test('ケースH: 変換モードの文字コード Select に全選択肢がありデフォルト値が正しい', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: '変換' }).click();
 
     const srcSelect = page.getByLabel('元の文字コード');
@@ -146,7 +148,9 @@ test.describe('文字コード判定・変換', () => {
     await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
   });
 
-  test('ケースJ: ファイルアップロード変換時のダウンロード名が元拡張子を保持する', async ({ page }) => {
+  test('ケースJ: ファイルアップロード変換時のダウンロード名が元拡張子を保持する', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: '変換' }).click();
     await page.getByRole('button', { name: 'ファイル' }).click();
     await page.getByLabel('ファイルを選択').setInputFiles({
@@ -179,7 +183,9 @@ test.describe('文字コード判定・変換', () => {
     });
 
     // デフォルトは「そのまま」
-    await expect(page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'そのまま' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'そのまま' })
+    ).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
 
     const downloadPromise = page.waitForEvent('download');
@@ -203,7 +209,10 @@ test.describe('文字コード判定・変換', () => {
 
     await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
 
-    await page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'LF', exact: true }).click();
+    await page
+      .getByRole('group', { name: '改行コード' })
+      .getByRole('button', { name: 'LF', exact: true })
+      .click();
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
@@ -228,7 +237,10 @@ test.describe('文字コード判定・変換', () => {
 
     await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
 
-    await page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'CRLF' }).click();
+    await page
+      .getByRole('group', { name: '改行コード' })
+      .getByRole('button', { name: 'CRLF' })
+      .click();
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();

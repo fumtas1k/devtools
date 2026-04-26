@@ -19,7 +19,7 @@ const SAMPLE: Record<Mode, string> = {
       },
     },
     null,
-    2,
+    2
   ),
   xml2json: `<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -39,7 +39,7 @@ export function JsonXmlTool() {
 
   const { input, setInput, output, error, reset } = useCodec(
     (text) => (mode === 'json2xml' ? jsonToXml(text) : xmlToJson(text)),
-    [mode],
+    [mode]
   );
 
   const handleModeChange = (next: Mode) => {

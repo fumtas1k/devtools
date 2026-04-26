@@ -768,7 +768,7 @@ QRチケットツールでチケットデータをQRコードにエンコード�
 署名フィールド（`s`）を含むフラットなJSONオブジェクトを採用する。
 
 ```json
-{"e":"イベントID","s":"base64url署名","t":"チケットID","x":"2026-04-20T18:00"}
+{ "e": "イベントID", "s": "base64url署名", "t": "チケットID", "x": "2026-04-20T18:00" }
 ```
 
 ### 却下した選択肢
@@ -799,12 +799,12 @@ Android でホーム画面に追加すると円形マスクが適用され、`</
 
 ### 決断
 
-1. **`any` と `maskable` を別ファイルに分離**（W3C 推奨）  
-   - `icon-192/512.png`：角丸背景。ブラウザ・iOS 向け。  
-   - `icon-maskable-192/512.png`：背景を canvas 端まで塗りつぶし、マークをセーフゾーン内に配置。  
-2. **マークを `>_`（ターミナルプロンプト）に変更**  
-   - 円形マスクでの視覚バランスが良い（マーク中心からの最大距離 ≈10.3 < セーフゾーン半径 12.8）。  
-   - 開発者ツールとしてのアイデンティティが明確。  
+1. **`any` と `maskable` を別ファイルに分離**（W3C 推奨）
+   - `icon-192/512.png`：角丸背景。ブラウザ・iOS 向け。
+   - `icon-maskable-192/512.png`：背景を canvas 端まで塗りつぶし、マークをセーフゾーン内に配置。
+2. **マークを `>_`（ターミナルプロンプト）に変更**
+   - 円形マスクでの視覚バランスが良い（マーク中心からの最大距離 ≈10.3 < セーフゾーン半径 12.8）。
+   - 開発者ツールとしてのアイデンティティが明確。
    - `favicon.svg` も同デザインに統一。
 
 ### 却下した選択肢
@@ -968,6 +968,7 @@ base64url（`+`→`-`, `/`→`_`, パディング `=` 除去）の相互変換�
 `src/utils/base64url.ts` を新設し、低レベル（バイト／ArrayBuffer）⇄ base64url 文字列の変換を一元実装する。
 
 公開 API:
+
 - `bytesToBase64Url(bytes: Uint8Array): string`
 - `base64UrlToBytes(str: string): Uint8Array<ArrayBuffer>` — `crypto.subtle.verify` 等の `BufferSource` を要求する API に直接渡せるよう戻り型を絞り込む
 - `bufferToBase64Url(buf: ArrayBuffer): string`
@@ -1002,10 +1003,16 @@ const [output, setOutput] = useState('');
 const [error, setError] = useState('');
 
 useEffect(() => {
-  if (!input) { setOutput(''); setError(''); return; }
+  if (!input) {
+    setOutput('');
+    setError('');
+    return;
+  }
   const timer = setTimeout(() => {
-    try { setOutput(transform(input)); setError(''); }
-    catch (e) {
+    try {
+      setOutput(transform(input));
+      setError('');
+    } catch (e) {
       setOutput('');
       setError(e instanceof Error ? e.message : '変換に失敗しました');
     }
@@ -1114,6 +1121,7 @@ CLAUDE.md（プロジェクト規約）で「Tailwind のカラークラス（`t
 ネイティブ `<select>` を使った `Select<T>` 共通コンポーネント（`src/components/ui/Select.tsx`）を新規作成し、文字コード選択に採用する。`ToggleGroup` と同じジェネリック API 形状（`options / value / onChange / ariaLabel`）にして将来の置き換えも容易にした。
 
 理由:
+
 - **a11y**: ネイティブ要素のため矢印キー操作・スクリーンリーダー読み上げが OS 標準で完璧
 - **スマホ対応**: OS ネイティブピッカーが開くため幅不足の心配がない
 - **コード簡潔化**: `some()` ワークアラウンドと2行分の `ToggleGroup` が1行の `Select` に集約
@@ -1146,6 +1154,7 @@ CLAUDE.md（プロジェクト規約）で「Tailwind のカラークラス（`t
 README.md にテストカバレッジのバッジを表示し、GitHub Actions で自動更新する仕組みを導入する。
 
 理由:
+
 - **品質の可視化**: 開発者がテストの不足を即座に認識できる。
 - **外部サービス不要**: GitHub Actions と Shields.io 完結で構成することで、設定の簡略化、コスト削減、およびプライバシー（コード情報の外部送信なし）を確保。
 - **自動運用**: `main` ブランチへのプッシュ時に `vitest` の `json-summary` レポーターから数値を抽出し、README.md を自動更新・コミットする。

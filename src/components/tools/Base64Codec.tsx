@@ -12,7 +12,7 @@ type Format = 'standard' | 'urlsafe';
 
 const SAMPLE_ENCODE = 'Hello, DevTools! 🎉\nこんにちは世界';
 const SAMPLE_DECODE_STANDARD = 'SGVsbG8sIERldlRvb2xzISDwn46JCuOBk+OCk+OBq+OBoeOBr+S4lueVjA==';
-const SAMPLE_DECODE_URLSAFE  = 'SGVsbG8sIERldlRvb2xzISDwn46JCuOBk-OCk-OBq-OBoeOBr-S4lueVjA';
+const SAMPLE_DECODE_URLSAFE = 'SGVsbG8sIERldlRvb2xzISDwn46JCuOBk-OCk-OBq-OBoeOBr-S4lueVjA';
 
 export function Base64CodecTool() {
   const [mode, setMode] = useState<Mode>('encode');
@@ -23,7 +23,7 @@ export function Base64CodecTool() {
       const urlSafe = format === 'urlsafe';
       return mode === 'encode' ? encodeBase64(text, urlSafe) : decodeBase64(text, urlSafe);
     },
-    [mode, format],
+    [mode, format]
   );
 
   const handleModeChange = (next: Mode) => {
@@ -73,11 +73,7 @@ export function Base64CodecTool() {
             label="入力"
             value={input}
             onChange={setInput}
-            placeholder={
-              mode === 'encode'
-                ? 'エンコードするテキストを入力'
-                : 'Base64 文字列を入力'
-            }
+            placeholder={mode === 'encode' ? 'エンコードするテキストを入力' : 'Base64 文字列を入力'}
             multiline
             rows={12}
             error={error || undefined}

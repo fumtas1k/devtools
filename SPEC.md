@@ -34,16 +34,16 @@
 
 ### 2.1 技術スタック
 
-| レイヤー         | 技術                         | 理由                                       |
-| ---------------- | ---------------------------- | ------------------------------------------ |
-| フレームワーク   | **Astro 6.1.3**              | 静的生成 + Islands Architecture でJS最小化 |
-| UIコンポーネント | **React 19** (Astro Islands) | ツール部分のみインタラクティブ             |
-| スタイリング     | **Tailwind CSS 4**           | ユーティリティファーストで高速開発         |
-| ビルド           | Astro built-in (Vite 7)      | 高速ビルド                                 |
-| テスト（ユニット）| **Vitest**                   | Vite 設定共有でゼロコンフィグ              |
-| テスト（E2E）    | **Playwright**               | ブラウザ上の実動作を検証するリグレッション  |
-| パッケージ管理   | **npm**                      | 標準・安定                                 |
-| 言語             | **TypeScript**               | 型安全性                                   |
+| レイヤー           | 技術                         | 理由                                       |
+| ------------------ | ---------------------------- | ------------------------------------------ |
+| フレームワーク     | **Astro 6.1.3**              | 静的生成 + Islands Architecture でJS最小化 |
+| UIコンポーネント   | **React 19** (Astro Islands) | ツール部分のみインタラクティブ             |
+| スタイリング       | **Tailwind CSS 4**           | ユーティリティファーストで高速開発         |
+| ビルド             | Astro built-in (Vite 7)      | 高速ビルド                                 |
+| テスト（ユニット） | **Vitest**                   | Vite 設定共有でゼロコンフィグ              |
+| テスト（E2E）      | **Playwright**               | ブラウザ上の実動作を検証するリグレッション |
+| パッケージ管理     | **npm**                      | 標準・安定                                 |
+| 言語               | **TypeScript**               | 型安全性                                   |
 
 ### 2.2 ホスティング・デプロイ
 
@@ -57,23 +57,23 @@
 
 ### 2.3 主要ライブラリ（MVP で使用）
 
-| ライブラリ                 | 用途                                         | ツール          |
-| -------------------------- | -------------------------------------------- | --------------- |
-| `ulidx`                    | ULID生成                                     | ULID生成        |
-| `uuid`                     | UUID v7 生成（`v7()` 関数）                  | UUID v7 生成    |
-| 手動デコード（Base64URL）  | JWTデコード・署名検証                        | JWTデコーダー   |
-| `qrcode-generator`         | QRコード生成                                 | QRコード生成    |
-| `JsBarcode`                | バーコード描画                               | JANコード生成   |
-| `bwip-js`                  | GS1バーコード描画（SVG）                     | GS1 DataBar生成 |
-| `jszip`                    | 複数バーコードのZIPパッケージング            | GS1 DataBar生成 |
-| `fast-xml-parser`          | JSON⇔XML 相互変換                            | JSON/XML変換    |
-| `papaparse`                | JSON⇔CSV 相互変換・パース                    | JSON/CSV変換    |
-| `jsqr`                     | QRコードデコード（カメラ・画像）             | QRチケット      |
-| `@fontsource/noto-sans-jp` | フォントセルフホスト                         | 全ページ共通    |
-| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency） | 開発ツール共通  |
-| `typescript`               | TypeScript コンパイラ（devDependency）       | 開発ツール共通  |
-| `@playwright/test`         | E2Eリグレッションテスト（devDependency）     | 開発ツール共通  |
-| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）        | 開発ツール共通  |
+| ライブラリ                 | 用途                                                     | ツール               |
+| -------------------------- | -------------------------------------------------------- | -------------------- |
+| `ulidx`                    | ULID生成                                                 | ULID生成             |
+| `uuid`                     | UUID v7 生成（`v7()` 関数）                              | UUID v7 生成         |
+| 手動デコード（Base64URL）  | JWTデコード・署名検証                                    | JWTデコーダー        |
+| `qrcode-generator`         | QRコード生成                                             | QRコード生成         |
+| `JsBarcode`                | バーコード描画                                           | JANコード生成        |
+| `bwip-js`                  | GS1バーコード描画（SVG）                                 | GS1 DataBar生成      |
+| `jszip`                    | 複数バーコードのZIPパッケージング                        | GS1 DataBar生成      |
+| `fast-xml-parser`          | JSON⇔XML 相互変換                                        | JSON/XML変換         |
+| `papaparse`                | JSON⇔CSV 相互変換・パース                                | JSON/CSV変換         |
+| `jsqr`                     | QRコードデコード（カメラ・画像）                         | QRチケット           |
+| `@fontsource/noto-sans-jp` | フォントセルフホスト                                     | 全ページ共通         |
+| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency）             | 開発ツール共通       |
+| `typescript`               | TypeScript コンパイラ（devDependency）                   | 開発ツール共通       |
+| `@playwright/test`         | E2Eリグレッションテスト（devDependency）                 | 開発ツール共通       |
+| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                    | 開発ツール共通       |
 | `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16） | 文字コード判定・変換 |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
@@ -244,14 +244,14 @@ devtools/
 
 ### カテゴリ B: 変換・解析ツール
 
-| #   | ツール名               | slug          | 概要                                                                      |
-| --- | ---------------------- | ------------- | ------------------------------------------------------------------------- |
-| 7   | JWTデコーダー          | `jwt-decoder` | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応 |
-| 8   | URLエンコード/デコード | `url-encode`  | テキスト⇔URLエンコード相互変換                                            |
-| 9   | Base64エンコード/デコード | `base64`   | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応          |
-| 10  | JSON / XML 変換        | `json-xml`    | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式 |
-| 11  | JSON / CSV 変換        | `json-csv`    | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化              |
-| 12  | 文字コード判定・変換   | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換 |
+| #   | ツール名                  | slug                 | 概要                                                                                 |
+| --- | ------------------------- | -------------------- | ------------------------------------------------------------------------------------ |
+| 7   | JWTデコーダー             | `jwt-decoder`        | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応            |
+| 8   | URLエンコード/デコード    | `url-encode`         | テキスト⇔URLエンコード相互変換                                                       |
+| 9   | Base64エンコード/デコード | `base64`             | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                    |
+| 10  | JSON / XML 変換           | `json-xml`           | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式       |
+| 11  | JSON / CSV 変換           | `json-csv`           | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                        |
+| 12  | 文字コード判定・変換      | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換 |
 
 ---
 
@@ -550,6 +550,7 @@ devtools/
 - [コピー] ボタン
 
 > **MVP 対象外・将来対応候補:**
+>
 > - ルートタグ名のユーザー指定（現在は `root` 固定）
 > - XML / JSON ファイルのダウンロード（`.xml` / `.json`）
 
@@ -677,7 +678,14 @@ devtools/
 **QRデータ形式:**
 
 ```json
-{"e":"イベントID","n":"参加者名","p":"料金区分","s":"base64url署名","t":"チケットID","x":"2026-04-20T18:00"}
+{
+  "e": "イベントID",
+  "n": "参加者名",
+  "p": "料金区分",
+  "s": "base64url署名",
+  "t": "チケットID",
+  "x": "2026-04-20T18:00"
+}
 ```
 
 ※ n・p は任意。署名対象はキー昇順ソート済みのJSON（s フィールドを除く）。
@@ -712,15 +720,15 @@ devtools/
 
 **対応文字コード:**
 
-| 内部名     | 表示名        |
-| ---------- | ------------- |
-| `UTF8`     | UTF-8         |
-| `SJIS`     | Shift_JIS (CP932) |
-| `EUCJP`    | EUC-JP        |
-| `JIS`      | ISO-2022-JP   |
-| `UTF16LE`  | UTF-16 LE     |
-| `UTF16BE`  | UTF-16 BE     |
-| `ASCII`    | ASCII         |
+| 内部名    | 表示名            |
+| --------- | ----------------- |
+| `UTF8`    | UTF-8             |
+| `SJIS`    | Shift_JIS (CP932) |
+| `EUCJP`   | EUC-JP            |
+| `JIS`     | ISO-2022-JP       |
+| `UTF16LE` | UTF-16 LE         |
+| `UTF16BE` | UTF-16 BE         |
+| `ASCII`   | ASCII             |
 
 **出力（判定モード）:**
 
@@ -788,23 +796,23 @@ devtools/
 
 #### 共通コンポーネント（`src/components/ui/`）
 
-| コンポーネント | 用途 |
-| --- | --- |
-| `InputField` | ラベル＋入力欄（任意で multiline）＋エラー＋ヒント＋サンプルボタン |
-| `OutputField` | ラベル＋（CopyButton／追加要素）＋ readOnly textarea。値が空のときヘッダ部を `visibility: hidden` にして高さを保つ |
-| `CopyButton` | クリップボードコピー（標準／コンパクト 2 形態） |
-| `ErrorMessage` | `role="alert"` 付きエラーテキスト |
-| `DownloadButtonGroup` | SVG／PNG ダウンロードボタンのペア |
-| `ToggleGroup<T>` | モード切替などの排他選択トグル |
-| `Select<T>` | 選択肢が多い場合（目安7択以上）のジェネリックセレクトボックス |
+| コンポーネント        | 用途                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `InputField`          | ラベル＋入力欄（任意で multiline）＋エラー＋ヒント＋サンプルボタン                                                 |
+| `OutputField`         | ラベル＋（CopyButton／追加要素）＋ readOnly textarea。値が空のときヘッダ部を `visibility: hidden` にして高さを保つ |
+| `CopyButton`          | クリップボードコピー（標準／コンパクト 2 形態）                                                                    |
+| `ErrorMessage`        | `role="alert"` 付きエラーテキスト                                                                                  |
+| `DownloadButtonGroup` | SVG／PNG ダウンロードボタンのペア                                                                                  |
+| `ToggleGroup<T>`      | モード切替などの排他選択トグル                                                                                     |
+| `Select<T>`           | 選択肢が多い場合（目安7択以上）のジェネリックセレクトボックス                                                      |
 
 #### 共通フック（`src/hooks/`）
 
-| フック | 用途 |
-| --- | --- |
+| フック                                | 用途                                                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `useCodec(transform, deps, options?)` | 入力→デバウンス→変換→出力＋エラー状態を一括管理。Base64／JSON-XML／JSON-CSV など同期変換ツールで利用 |
-| `useClampedInput(initial, min, max)` | 数値入力の min/max クランプ |
-| `useQrCamera()` | カメラ起動＋ rAF ベースの QR スキャンループ |
+| `useClampedInput(initial, min, max)`  | 数値入力の min/max クランプ                                                                          |
+| `useQrCamera()`                       | カメラ起動＋ rAF ベースの QR スキャンループ                                                          |
 
 ### 6.2 アクセシビリティ
 
@@ -1004,14 +1012,14 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
 
 ### 12.3 追加ファイル
 
-| ファイル                     | 役割                                              |
-| ---------------------------- | ------------------------------------------------- |
-| `public/manifest.webmanifest`| Web App Manifest（名前・アイコン・表示モード等）   |
-| `public/sw.js`               | Service Worker（オフライン対応・キャッシュ制御）  |
-| `public/icons/icon-192.png`          | PWAアイコン 192×192px（purpose: any）             |
-| `public/icons/icon-512.png`          | PWAアイコン 512×512px（purpose: any）             |
+| ファイル                             | 役割                                                            |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `public/manifest.webmanifest`        | Web App Manifest（名前・アイコン・表示モード等）                |
+| `public/sw.js`                       | Service Worker（オフライン対応・キャッシュ制御）                |
+| `public/icons/icon-192.png`          | PWAアイコン 192×192px（purpose: any）                           |
+| `public/icons/icon-512.png`          | PWAアイコン 512×512px（purpose: any）                           |
 | `public/icons/icon-maskable-192.png` | PWAアイコン 192×192px（purpose: maskable、Android円形マスク用） |
-| `public/icons/icon-maskable-512.png` | PWAアイコン 512×512px（purpose: maskable）        |
+| `public/icons/icon-maskable-512.png` | PWAアイコン 512×512px（purpose: maskable）                      |
 
 ### 12.4 Web App Manifest
 
@@ -1026,30 +1034,41 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
   "theme_color": "#1A56DB",
   "lang": "ja",
   "icons": [
-    { "src": "/icons/icon-192.png",          "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png",          "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
 ```
 
 ### 12.5 Service Worker 戦略
 
-| リクエスト種別                     | 戦略                                |
-| ---------------------------------- | ----------------------------------- |
-| ナビゲーション（HTML）             | Network-first → オフライン時は `/` を返す |
-| 静的アセット（JS/CSS/フォント）    | Cache-first（初回フェッチ後キャッシュ）  |
+| リクエスト種別                  | 戦略                                      |
+| ------------------------------- | ----------------------------------------- |
+| ナビゲーション（HTML）          | Network-first → オフライン時は `/` を返す |
+| 静的アセット（JS/CSS/フォント） | Cache-first（初回フェッチ後キャッシュ）   |
 
 キャッシュバージョン管理: `CACHE_NAME = 'devtools-v1'`（更新時にインクリメント）
 
 ### 12.6 アイコン生成
 
 `favicon.svg`（32×32 の `>_` ターミナルプロンプト SVG）を元に、`scripts/generate-icons.mjs` で  
-`sharp`（Astro の推移的依存として利用可能）を使い PNG 4 枚を生成する。  
-- `icon-192.png` / `icon-512.png`：`purpose: any` 用（角丸あり）  
+`sharp`（Astro の推移的依存として利用可能）を使い PNG 4 枚を生成する。
+
+- `icon-192.png` / `icon-512.png`：`purpose: any` 用（角丸あり）
 - `icon-maskable-192.png` / `icon-maskable-512.png`：`purpose: maskable` 用（背景を端まで塗り・セーフゾーン内にマーク）  
-スクリプトは実行後に削除する。
+  スクリプトは実行後に削除する。
 
 ### 12.7 BaseLayout.astro 変更点
 
@@ -1063,6 +1082,7 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
 ```
 
 Service Worker 登録（`<body>` 末尾にインラインスクリプト）:
+
 ```js
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js');

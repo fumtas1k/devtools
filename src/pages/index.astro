@@ -24,110 +24,115 @@ const jsonLd = {
   jsonLd={jsonLd}
 >
   <!-- ヒーロー -->
-  <section class="text-center px-4 py-8" style="background: var(--color-background); border-bottom: 1px solid var(--color-blue-100);">
+  <section
+    class="text-center px-4 py-8"
+    style="background: var(--color-background); border-bottom: 1px solid var(--color-blue-100);"
+  >
     <h1
       class="mb-2 font-bold"
       style="font-size: 2rem; line-height: 1.4; letter-spacing: 0.01em; color: var(--color-text);"
     >
       DevTools
     </h1>
-    <p style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-neutral-600);">
+    <p
+      style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-neutral-600);"
+    >
       ブラウザで完結する無料の開発者ツール集
     </p>
   </section>
 
   <!-- ツール一覧 -->
   <main id="main-content">
-  <PageContainer class="py-8">
-    <!-- タブ -->
-    <div
-      id="tab-bar"
-      role="tablist"
-      aria-label="カテゴリ絞り込み"
-      class="mb-6 flex gap-1 border-b"
-      style="border-color: var(--color-border);"
-    >
-      <button
-        role="tab"
-        id="tab-0"
-        aria-selected="true"
-        aria-controls="panel-0"
-        data-index="0"
-        class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
-        style="font-size: 0.875rem; letter-spacing: 0.02em;"
+    <PageContainer class="py-8">
+      <!-- タブ -->
+      <div
+        id="tab-bar"
+        role="tablist"
+        aria-label="カテゴリ絞り込み"
+        class="mb-6 flex gap-1 border-b"
+        style="border-color: var(--color-border);"
       >
-        すべて
-      </button>
-      {
-        categories.map((cat, i) => (
-          <button
-            role="tab"
-            id={`tab-${i + 1}`}
-            aria-selected="false"
-            aria-controls={`panel-${i + 1}`}
-            data-index={i + 1}
-            class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
-            style="font-size: 0.875rem; letter-spacing: 0.02em;"
-          >
-            {categoryLabel[cat]}
-          </button>
-        ))
-      }
-    </div>
+        <button
+          role="tab"
+          id="tab-0"
+          aria-selected="true"
+          aria-controls="panel-0"
+          data-index="0"
+          class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
+          style="font-size: 0.875rem; letter-spacing: 0.02em;"
+        >
+          すべて
+        </button>
+        {
+          categories.map((cat, i) => (
+            <button
+              role="tab"
+              id={`tab-${i + 1}`}
+              aria-selected="false"
+              aria-controls={`panel-${i + 1}`}
+              data-index={i + 1}
+              class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
+              style="font-size: 0.875rem; letter-spacing: 0.02em;"
+            >
+              {categoryLabel[cat]}
+            </button>
+          ))
+        }
+      </div>
 
-    <!-- スワイプパネル -->
-    <div
-      id="panels"
-      class="flex"
-      style="overflow-x: scroll; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; -webkit-overflow-scrolling: touch;"
-    >
-      {
-        allCategories.map((cat, i) => (
-          <div
-            role="tabpanel"
-            id={`panel-${i}`}
-            aria-labelledby={`tab-${i}`}
-            style="flex: 0 0 100%; scroll-snap-align: start; min-width: 0;"
-          >
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {tools
-                .filter((t) => cat === 'all' || t.category === cat)
-                .map((tool) => (
-                  <a
-                    href={`/tools/${tool.slug}`}
-                    class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
-                    style="border: 1px solid var(--color-border);"
-                  >
-                    <div class="mb-4 flex items-start justify-between">
-                      <ToolIcon slug={tool.slug} size={28} class="text-primary" />
-                      <CategoryBadge label={categoryLabel[tool.category]} class="py-0.5" />
-                    </div>
-                    <h2
-                      class="mb-2 font-bold group-hover:text-primary transition-colors"
-                      style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em; color: var(--color-text);"
+      <!-- スワイプパネル -->
+      <div
+        id="panels"
+        class="flex"
+        style="overflow-x: scroll; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; -webkit-overflow-scrolling: touch;"
+      >
+        {
+          allCategories.map((cat, i) => (
+            <div
+              role="tabpanel"
+              id={`panel-${i}`}
+              aria-labelledby={`tab-${i}`}
+              style="flex: 0 0 100%; scroll-snap-align: start; min-width: 0;"
+            >
+              <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {tools
+                  .filter((t) => cat === 'all' || t.category === cat)
+                  .map((tool) => (
+                    <a
+                      href={`/tools/${tool.slug}`}
+                      class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
+                      style="border: 1px solid var(--color-border);"
                     >
-                      {tool.name}
-                    </h2>
-                    <p
-                      class="mb-4"
-                      style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
-                    >
-                      {tool.description}
-                    </p>
-                    <span
-                      class="text-link transition-colors"
-                      style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
-                    >
-                      開く &rsaquo;
-                    </span>
-                  </a>
-                ))}
+                      <div class="mb-4 flex items-start justify-between">
+                        <ToolIcon slug={tool.slug} size={28} class="text-primary" />
+                        <CategoryBadge label={categoryLabel[tool.category]} class="py-0.5" />
+                      </div>
+                      <h2
+                        class="mb-2 font-bold group-hover:text-primary transition-colors"
+                        style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em; color: var(--color-text);"
+                      >
+                        {tool.name}
+                      </h2>
+                      <p
+                        class="mb-4"
+                        style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
+                      >
+                        {tool.description}
+                      </p>
+                      <span
+                        class="text-link transition-colors"
+                        style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+                      >
+                        開く &rsaquo;
+                      </span>
+                    </a>
+                  ))}
+              </div>
             </div>
-          </div>
-        ))
-      }
-    </div>
-  </PageContainer>
+          ))
+        }
+      </div>
+    </PageContainer>
   </main>
 </BaseLayout>
 
@@ -135,9 +140,18 @@ const jsonLd = {
   #panels::-webkit-scrollbar {
     display: none;
   }
-  .tab-btn[aria-selected="true"]  { color: var(--color-primary); border-color: var(--color-primary); }
-  .tab-btn[aria-selected="false"] { color: var(--color-muted);   border-color: transparent; }
-  .tab-btn[aria-selected="false"]:hover { color: var(--color-primary); border-color: var(--color-primary); }
+  .tab-btn[aria-selected='true'] {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+  .tab-btn[aria-selected='false'] {
+    color: var(--color-muted);
+    border-color: transparent;
+  }
+  .tab-btn[aria-selected='false']:hover {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+  }
 </style>
 
 <script>

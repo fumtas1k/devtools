@@ -18,7 +18,10 @@ export function downloadText(content: string, filename: string, mimeType = 'text
 
 /** バイナリをファイルとしてダウンロードする */
 export function downloadBytes(bytes: Uint8Array, filename: string): void {
-  triggerDownload(new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }), filename);
+  triggerDownload(
+    new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }),
+    filename
+  );
 }
 
 /** SVG文字列をファイルとしてダウンロードする */

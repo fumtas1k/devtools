@@ -55,7 +55,10 @@ export function InputField({
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem', minHeight: '2rem' }}>
+      <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: '0.75rem', minHeight: '2rem' }}
+      >
         <label htmlFor={id} style={{ ...bodyEmphasis, color: colors.text }}>
           {label}
         </label>

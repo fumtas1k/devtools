@@ -10,13 +10,16 @@ const { currentSlug } = Astro.props;
 ---
 
 <!-- モバイルドロワー (lg未満のみ表示) -->
-<div id="mobile-drawer-overlay" class="lg:hidden fixed inset-0" style="z-index: 60;" aria-hidden="true" hidden>
+<div
+  id="mobile-drawer-overlay"
+  class="lg:hidden fixed inset-0"
+  style="z-index: 60;"
+  aria-hidden="true"
+  hidden
+>
   <!-- 背景 -->
-  <div
-    id="mobile-drawer-backdrop"
-    class="absolute inset-0"
-    style="background: rgba(17,24,39,0.5);"
-  ></div>
+  <div id="mobile-drawer-backdrop" class="absolute inset-0" style="background: rgba(17,24,39,0.5);">
+  </div>
 
   <!-- ドロワーパネル -->
   <div
@@ -93,10 +96,18 @@ const { currentSlug } = Astro.props;
 </div>
 
 <style>
-  .drawer-close-btn:hover { background: var(--color-bg-subtle); }
-  .drawer-link--active { background: var(--color-bg-active); }
-  .drawer-link--inactive { color: var(--color-neutral-700); }
-  .drawer-link--inactive:hover { background: var(--color-bg-subtle); }
+  .drawer-close-btn:hover {
+    background: var(--color-bg-subtle);
+  }
+  .drawer-link--active {
+    background: var(--color-bg-active);
+  }
+  .drawer-link--inactive {
+    color: var(--color-neutral-700);
+  }
+  .drawer-link--inactive:hover {
+    background: var(--color-bg-subtle);
+  }
 </style>
 
 <script>
@@ -133,8 +144,8 @@ const { currentSlug } = Astro.props;
       if (!drawer) return [];
       return Array.from(
         drawer.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
       );
     }
 

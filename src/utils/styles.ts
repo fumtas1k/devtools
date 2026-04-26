@@ -61,4 +61,3 @@ export const caption: CSSProperties = {
   lineHeight: 1.7,
   letterSpacing: '0.02em',
 };
-

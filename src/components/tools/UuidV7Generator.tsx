@@ -84,8 +84,7 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
         {fieldDefs.map((f) => (
           <div key={f.key} className="flex flex-col gap-0.5">
             <span style={{ ...caption, color: colors.muted, fontSize: '0.75rem' }}>
-              {f.key}{' '}
-              <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>({f.bits})</span>
+              {f.key} <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>({f.bits})</span>
             </span>
             <code
               className="rounded px-1.5 py-0.5"
@@ -129,7 +128,12 @@ export function UuidV7GeneratorTool() {
       headerAlign: 'right',
       cellAlign: 'right',
       width: '3.5rem',
-      cellStyle: { ...caption, color: colors.muted, padding: '0.5rem 0.75rem', fontVariantNumeric: 'tabular-nums' },
+      cellStyle: {
+        ...caption,
+        color: colors.muted,
+        padding: '0.5rem 0.75rem',
+        fontVariantNumeric: 'tabular-nums',
+      },
       render: (_, i) => i + 1,
     },
     {
@@ -142,7 +146,12 @@ export function UuidV7GeneratorTool() {
       key: 'timestamp',
       header: 'タイムスタンプ（ISO 8601）',
       className: 'font-mono',
-      cellStyle: { ...caption, color: colors.muted, padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' },
+      cellStyle: {
+        ...caption,
+        color: colors.muted,
+        padding: '0.5rem 0.75rem',
+        whiteSpace: 'nowrap',
+      },
       render: (row) => row.timestamp,
     },
     {
@@ -197,7 +206,12 @@ export function UuidV7GeneratorTool() {
                   <div className="shrink-0">
                     <CopyButton text={allUuids} label="すべてコピー" />
                   </div>
-                  <ClearButton onClick={() => { setRows([]); setSelectedIndex(null); }} />
+                  <ClearButton
+                    onClick={() => {
+                      setRows([]);
+                      setSelectedIndex(null);
+                    }}
+                  />
                 </div>
               </>
             )}

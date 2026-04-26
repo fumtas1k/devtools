@@ -8,7 +8,9 @@ const FALLBACK = 'フォールバックメッセージ';
 // ────────────────────────────────────────────
 describe('getErrorMessage — Error インスタンス', () => {
   it('Error インスタンスは message を返す', () => {
-    expect(getErrorMessage(new Error('エラーが発生しました'), FALLBACK)).toBe('エラーが発生しました');
+    expect(getErrorMessage(new Error('エラーが発生しました'), FALLBACK)).toBe(
+      'エラーが発生しました'
+    );
   });
 
   it('TypeError などの Error サブクラスも message を返す', () => {

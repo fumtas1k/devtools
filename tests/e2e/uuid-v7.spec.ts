@@ -10,22 +10,24 @@ test.describe('UUID v7 生成', () => {
 
   test('UUIDを1件生成できる', async ({ page }) => {
     await page.getByRole('button', { name: '生成' }).click();
-    
+
     // 「1 件生成」というテキストが表示される
     await expect(page.getByText('1 件生成')).toBeVisible();
-    
+
     // テーブルに行が存在し、UUID形式（8-4-4-4-12）であることを確認
     const uuidCell = page.locator('table tbody tr').first().locator('td').nth(1);
     const uuidText = await uuidCell.textContent();
     // UUID v7 の正規表現 (バージョン 7 であることを確認)
-    expect(uuidText).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(uuidText).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
   });
 
   test('UUIDを複数件一括生成できる', async ({ page }) => {
     const countInput = page.getByLabel('生成数');
     await countInput.fill('5');
     await page.getByRole('button', { name: '生成' }).click();
-    
+
     await expect(page.getByText('5 件生成')).toBeVisible();
     const rows = page.locator('table tbody tr');
     await expect(rows).toHaveCount(5);
@@ -33,7 +35,7 @@ test.describe('UUID v7 生成', () => {
 
   test('クォートスタイルを切り替えられる', async ({ page }) => {
     await page.getByRole('button', { name: '生成' }).click();
-    
+
     const noneBtn = page.getByRole('button', { name: 'なし' });
     const doubleBtn = page.getByRole('button', { name: '"..."' });
     const singleBtn = page.getByRole('button', { name: "'...'" });
@@ -45,34 +47,43 @@ test.describe('UUID v7 生成', () => {
 
     const uuidCell = page.locator('table tbody tr').first().locator('td').nth(1);
     const coloredUuid = uuidCell.locator('span[aria-label]');
-    
+
     // UUID v7 の正規表現
     const uuidV7Regex = /[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
 
     // なしの状態ではクォートが含まれない
-    await expect(coloredUuid).toHaveAttribute('aria-label', new RegExp(`^${uuidV7Regex.source}$`, 'i'));
+    await expect(coloredUuid).toHaveAttribute(
+      'aria-label',
+      new RegExp(`^${uuidV7Regex.source}$`, 'i')
+    );
 
     // ダブルクォートに切り替え
     await doubleBtn.click();
     await expect(noneBtn).toHaveAttribute('aria-pressed', 'false');
     await expect(doubleBtn).toHaveAttribute('aria-pressed', 'true');
-    
-    await expect(coloredUuid).toHaveAttribute('aria-label', new RegExp(`^"${uuidV7Regex.source}"$`, 'i'));
-    
+
+    await expect(coloredUuid).toHaveAttribute(
+      'aria-label',
+      new RegExp(`^"${uuidV7Regex.source}"$`, 'i')
+    );
+
     // シングルクォートに切り替え
     await singleBtn.click();
     await expect(singleBtn).toHaveAttribute('aria-pressed', 'true');
     await expect(doubleBtn).toHaveAttribute('aria-pressed', 'false');
 
-    await expect(coloredUuid).toHaveAttribute('aria-label', new RegExp(`^'${uuidV7Regex.source}'$`, 'i'));
+    await expect(coloredUuid).toHaveAttribute(
+      'aria-label',
+      new RegExp(`^'${uuidV7Regex.source}'$`, 'i')
+    );
   });
 
   test('行をクリックするとフィールド分解パネルが表示される', async ({ page }) => {
     await page.getByRole('button', { name: '生成' }).click();
-    
+
     // 最初の行をクリック
     await page.locator('table tbody tr').first().click();
-    
+
     // フィールド分解パネルが表示されることを確認
     await expect(page.getByText('フィールド分解', { exact: true })).toBeVisible();
     await expect(page.getByText('unix_ts_ms', { exact: true })).toBeVisible();
@@ -82,7 +93,7 @@ test.describe('UUID v7 生成', () => {
   test('クリアボタンでリストをリセットできる', async ({ page }) => {
     await page.getByRole('button', { name: '生成' }).click();
     await expect(page.getByText('1 件生成')).toBeVisible();
-    
+
     // 最初の行をクリックしてフィールド分解パネルを表示
     await page.locator('table tbody tr').first().click();
     await expect(page.getByText('フィールド分解', { exact: true })).toBeVisible();

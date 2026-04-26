@@ -22,7 +22,7 @@ interface UseCodecOptions {
 export function useCodec(
   transform: (input: string) => string,
   deps: DependencyList,
-  options: UseCodecOptions = {},
+  options: UseCodecOptions = {}
 ) {
   const { debounceMs = 300, fallbackError = '変換に失敗しました' } = options;
   const [input, setInput] = useState('');

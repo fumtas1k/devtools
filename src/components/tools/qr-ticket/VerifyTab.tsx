@@ -179,11 +179,11 @@ export function VerifyTab({
                         : '✕ 無効なチケット'}
                   </p>
                   {verificationResult.error && !verificationResult.valid && (
-                    <p style={{ ...caption, color: colors.errorText }}>{verificationResult.error}</p>
+                    <p style={{ ...caption, color: colors.errorText }}>
+                      {verificationResult.error}
+                    </p>
                   )}
-                  {verificationResult.ticket && (
-                    <TicketDetail ticket={verificationResult.ticket} />
-                  )}
+                  {verificationResult.ticket && <TicketDetail ticket={verificationResult.ticket} />}
                 </div>
                 <ActionButton onClick={onRescan}>再スキャン</ActionButton>
               </div>

@@ -300,15 +300,15 @@ export function EncodingConverterTool() {
           <div className="flex flex-wrap gap-x-6 gap-y-1">
             <span data-testid="detection-encoding" style={{ ...caption, color: colors.muted }}>
               文字コード:{' '}
-              <strong style={{ color: colors.text }}>
-                {ENCODING_LABELS[detection.encoding]}
-              </strong>
+              <strong style={{ color: colors.text }}>{ENCODING_LABELS[detection.encoding]}</strong>
             </span>
             <span data-testid="detection-bom" style={{ ...caption, color: colors.muted }}>
-              BOM: <strong style={{ color: colors.text }}>{detection.hasBom ? 'あり' : 'なし'}</strong>
+              BOM:{' '}
+              <strong style={{ color: colors.text }}>{detection.hasBom ? 'あり' : 'なし'}</strong>
             </span>
             <span style={{ ...caption, color: colors.muted }}>
-              サイズ: <strong style={{ color: colors.text }}>{formatBytes(detection.byteLength)}</strong>
+              サイズ:{' '}
+              <strong style={{ color: colors.text }}>{formatBytes(detection.byteLength)}</strong>
             </span>
           </div>
           {decodedPreview && (
@@ -382,7 +382,10 @@ export function EncodingConverterTool() {
           )}
 
           {bomActive && (
-            <label className="flex items-center gap-2 cursor-pointer" style={{ ...caption, color: colors.text }}>
+            <label
+              className="flex items-center gap-2 cursor-pointer"
+              style={{ ...caption, color: colors.text }}
+            >
               <input
                 type="checkbox"
                 checked={withBom}

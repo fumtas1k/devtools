@@ -118,7 +118,7 @@ describe('generateKeyPair / exportKeyPair', () => {
 
     expect(exported.privateKey.kty).toBe('EC');
     expect(exported.privateKey.crv).toBe('P-256');
-    expect(exported.privateKey.d).toBeTruthy();   // 秘密鍵成分
+    expect(exported.privateKey.d).toBeTruthy(); // 秘密鍵成分
 
     expect(exported.publicKey.kty).toBe('EC');
     expect(exported.publicKey.crv).toBe('P-256');
@@ -148,7 +148,7 @@ describe('signTicket / verifyTicket', () => {
   const payload: TicketPayload = {
     e: 'event-2026',
     t: 'T-00001',
-    x: '2099-12-31T23:59',  // 十分先の日時
+    x: '2099-12-31T23:59', // 十分先の日時
   };
 
   it('正常系: 署名したチケットを公開鍵で検証できる', async () => {

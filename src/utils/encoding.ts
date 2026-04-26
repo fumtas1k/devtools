@@ -86,7 +86,7 @@ export function convertBytes(
   bytes: Uint8Array,
   from: SourceEncoding,
   to: EncodingName,
-  withBom: boolean,
+  withBom: boolean
 ): Uint8Array {
   const arr = Array.from(bytes);
 
@@ -98,12 +98,22 @@ export function convertBytes(
     }
     if (to === 'UTF16LE') {
       // to:'UTF16' + bom:'LE' で FF FE BOM 付き LE 出力
-      const result = Encoding.convert(arr, { to: 'UTF16', from: from as Encoding.Encoding, type: 'array', bom: 'LE' });
+      const result = Encoding.convert(arr, {
+        to: 'UTF16',
+        from: from as Encoding.Encoding,
+        type: 'array',
+        bom: 'LE',
+      });
       return new Uint8Array(result);
     }
     if (to === 'UTF16BE') {
       // to:'UTF16' + bom:'BE' で FE FF BOM 付き BE 出力
-      const result = Encoding.convert(arr, { to: 'UTF16', from: from as Encoding.Encoding, type: 'array', bom: 'BE' });
+      const result = Encoding.convert(arr, {
+        to: 'UTF16',
+        from: from as Encoding.Encoding,
+        type: 'array',
+        bom: 'BE',
+      });
       return new Uint8Array(result);
     }
   }

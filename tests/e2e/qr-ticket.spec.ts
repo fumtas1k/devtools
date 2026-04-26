@@ -112,7 +112,10 @@ test.describe('QRチケット', () => {
         // QRカードのコンテナ内の SVG を取得
         const container = document.querySelector('[data-testid="qr-code-container"]');
         const svgEl = container?.querySelector('svg') as SVGSVGElement | null;
-        if (!svgEl) { reject(new Error('QR SVG not found')); return; }
+        if (!svgEl) {
+          reject(new Error('QR SVG not found'));
+          return;
+        }
 
         // viewBox から実寸を取得して width/height を設定
         const vb = svgEl.getAttribute('viewBox');
