@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { EncodingConverterTool } from '@/components/tools/EncodingConverter';
 import { tools } from '@/data/tools';
 
@@ -9,8 +10,7 @@ const tool = tools.find((t) => t.slug === 'encoding-converter')!;
 <ToolLayout tool={tool}>
   <EncodingConverterTool client:load />
 
-  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 tool-info-heading">このツールについて</h2>
+  <ToolInfoSection>
     <p class="tool-info-body">
       テキストやファイルの文字コードを自動判定し、他のエンコーディングへ変換します。
       すべての処理はブラウザ内で完結し、サーバーへの送信は一切ありません。
@@ -30,5 +30,5 @@ const tool = tools.find((t) => t.slug === 'encoding-converter')!;
       <li>受け取ったテキストファイルがどの文字コードか不明なので判定したい</li>
       <li>EUC-JP のログファイルを UTF-8 に変換して確認したい</li>
     </ul>
-  </section>
+  </ToolInfoSection>
 </ToolLayout>

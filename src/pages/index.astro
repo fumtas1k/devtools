@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ToolIcon from '@/components/ui/ToolIcon.astro';
+import PageContainer from '@/components/ui/PageContainer.astro';
+import CategoryBadge from '@/components/ui/CategoryBadge.astro';
 import { tools, categoryLabel, type ToolCategory } from '@/data/tools';
 
 const categories: ToolCategory[] = ['generate', 'convert'];
@@ -35,7 +37,8 @@ const jsonLd = {
   </section>
 
   <!-- ツール一覧 -->
-  <main id="main-content" class="mx-auto max-w-280 px-4 sm:px-6 py-8">
+  <main id="main-content">
+  <PageContainer class="py-8">
     <!-- タブ -->
     <div
       id="tab-bar"
@@ -96,12 +99,7 @@ const jsonLd = {
                   >
                     <div class="mb-4 flex items-start justify-between">
                       <ToolIcon slug={tool.slug} size={28} class="text-primary" />
-                      <span
-                        class="rounded-full px-3 py-0.5 font-bold text-blue-800 bg-blue-100"
-                        style="font-size: 0.875rem; line-height: 1; letter-spacing: 0.02em;"
-                      >
-                        {categoryLabel[tool.category]}
-                      </span>
+                      <CategoryBadge label={categoryLabel[tool.category]} class="py-0.5" />
                     </div>
                     <h2
                       class="mb-2 font-bold text-neutral-900 group-hover:text-primary transition-colors"
@@ -128,6 +126,7 @@ const jsonLd = {
         ))
       }
     </div>
+  </PageContainer>
   </main>
 </BaseLayout>
 
