@@ -28,6 +28,7 @@
 - **ユニットテスト (Vitest)**: `npm run test`
 - **ユニットテスト (Watchモード)**: `npm run test:watch`
 - **E2Eテスト (Playwright)**: `npm run test:e2e`
+  - ❌ **`npm run e2e` は存在しません。**
   - 特定のファイルのみ実行する場合: `npm run test:e2e tests/e2e/xxx.spec.ts`
 
 ### 🧹 フォーマット
