@@ -258,7 +258,7 @@ export function JwtDecoderTool() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* トークン入力 */}
       <InputField
         id="jwt-input"

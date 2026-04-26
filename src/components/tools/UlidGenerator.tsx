@@ -83,7 +83,7 @@ export function UlidGeneratorTool() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <CountInput
         id="ulid-count"
         defaultValue={10}

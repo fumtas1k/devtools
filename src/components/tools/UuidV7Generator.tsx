@@ -152,7 +152,7 @@ export function UuidV7GeneratorTool() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <CountInput
         id="uuid-count"
         defaultValue={1}

@@ -460,7 +460,7 @@ export function Gs1DatabarTool() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* カードリスト */}
       {cards.map((card, index) => (
         <BarcodeCard
