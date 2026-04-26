@@ -92,3 +92,5 @@ export const categoryLabel: Record<ToolCategory, string> = {
   generate: '生成',
   convert: '変換・解析',
 };
+
+export const categories: ToolCategory[] = ['generate', 'convert'];

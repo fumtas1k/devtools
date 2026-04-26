@@ -3,7 +3,7 @@ import PageContainer from '@/components/ui/PageContainer.astro';
 ---
 
 <header class="sticky top-0 z-50 bg-white border-b border-neutral-200" style="height: 64px;">
-  <PageContainer class="flex h-full items-center">
+  <PageContainer class="flex h-full items-center justify-between">
     <a
       href="/"
       class="text-xl font-bold text-primary transition-opacity hover:opacity-80"
@@ -11,5 +11,32 @@ import PageContainer from '@/components/ui/PageContainer.astro';
     >
       DevTools
     </a>
+    <!-- ハンバーガーボタン (lg未満のみ表示) -->
+    <button
+      id="mobile-menu-toggle"
+      type="button"
+      class="lg:hidden flex items-center justify-center rounded-md transition-colors hover:bg-neutral-100"
+      style="width: 44px; height: 44px; color: #374151;"
+      aria-label="メニューを開く"
+      aria-expanded="false"
+      aria-controls="mobile-drawer"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
   </PageContainer>
 </header>

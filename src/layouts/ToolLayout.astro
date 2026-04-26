@@ -30,7 +30,7 @@ const jsonLd = {
 };
 ---
 
-<BaseLayout title={tool.name} description={tool.description} jsonLd={jsonLd}>
+<BaseLayout title={tool.name} description={tool.description} jsonLd={jsonLd} currentSlug={tool.slug}>
   <PageContainer class="flex gap-6 py-8">
     <!-- サイドバー (デスクトップ) -->
     <div class="hidden lg:block">
