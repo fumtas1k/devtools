@@ -6,3 +6,4 @@ dist
 test-results/
 playwright-report/
 coverage/
+.claude/scheduled_tasks.lock
