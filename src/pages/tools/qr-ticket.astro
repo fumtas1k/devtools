@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { QrTicketTool } from '@/components/tools/QrTicket';
 import { tools } from '@/data/tools';
 
@@ -9,8 +10,7 @@ const tool = tools.find((t) => t.slug === 'qr-ticket')!;
 <ToolLayout tool={tool}>
   <QrTicketTool client:load />
 
-  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 tool-info-heading">このツールについて</h2>
+  <ToolInfoSection>
     <p class="tool-info-body">
       ECDSA（楕円曲線デジタル署名）でチケットデータに署名し、QRコードとして出力します。
       公開鍵のみで署名を検証できるため、主催者が秘密鍵を手放さずに複数スタッフへ検証権限を配布できます。
@@ -38,5 +38,5 @@ const tool = tools.find((t) => t.slug === 'qr-ticket')!;
       <li>秘密鍵はブラウザを閉じると失われます。必ずコピーして安全な場所に保管してください</li>
       <li>カメラ読み取りはHTTPS環境またはlocalhostでのみ動作します</li>
     </ul>
-  </section>
+  </ToolInfoSection>
 </ToolLayout>

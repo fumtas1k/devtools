@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { JwtDecoderTool } from '@/components/tools/JwtDecoder';
 import { tools } from '@/data/tools';
 
@@ -9,8 +10,7 @@ const tool = tools.find((t) => t.slug === 'jwt-decoder')!;
 <ToolLayout tool={tool}>
   <JwtDecoderTool client:load />
 
-  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 tool-info-heading">このツールについて</h2>
+  <ToolInfoSection>
     <p class="tool-info-body">
       JWTトークンを <code
         class="rounded px-1 font-mono"
@@ -32,5 +32,5 @@ const tool = tools.find((t) => t.slug === 'jwt-decoder')!;
       <li>有効期限（exp）が切れていないか確認したい</li>
       <li>Payloadに含まれるクレームを確認したい</li>
     </ul>
-  </section>
+  </ToolInfoSection>
 </ToolLayout>

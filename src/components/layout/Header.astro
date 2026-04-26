@@ -1,9 +1,9 @@
 ---
-
+import PageContainer from '@/components/ui/PageContainer.astro';
 ---
 
 <header class="sticky top-0 z-50 bg-white border-b border-neutral-200" style="height: 64px;">
-  <div class="mx-auto flex h-full max-w-280 items-center px-4 sm:px-6">
+  <PageContainer class="flex h-full items-center">
     <a
       href="/"
       class="text-xl font-bold text-primary transition-opacity hover:opacity-80"
@@ -11,5 +11,5 @@
     >
       DevTools
     </a>
-  </div>
+  </PageContainer>
 </header>

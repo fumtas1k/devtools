@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { Gs1DatabarTool } from '@/components/tools/Gs1Databar';
 import { tools } from '@/data/tools';
 
@@ -9,8 +10,7 @@ const tool = tools.find((t) => t.slug === 'gs1-databar')!;
 <ToolLayout tool={tool}>
   <Gs1DatabarTool client:load />
 
-  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 tool-info-heading">このツールについて</h2>
+  <ToolInfoSection>
     <p class="tool-info-body">
       GS1 DataBar Limited 合成シンボルは、GTIN-14（商品識別コード）を格納するリニアバーコードと、
       賞味期限・ロット番号などの追加情報を格納する CC-A（2次元合成コンポーネント）を組み合わせたバーコードです。
@@ -34,5 +34,5 @@ const tool = tools.find((t) => t.slug === 'gs1-databar')!;
       <li>物流ラベルへの GTIN + シリアル番号の組み合わせ印字</li>
       <li>GS1 準拠バーコードの検証・テスト用サンプル生成</li>
     </ul>
-  </section>
+  </ToolInfoSection>
 </ToolLayout>

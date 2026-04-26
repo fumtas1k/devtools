@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { UuidV7GeneratorTool } from '@/components/tools/UuidV7Generator';
 import { tools } from '@/data/tools';
 
@@ -9,8 +10,7 @@ const tool = tools.find((t) => t.slug === 'uuid-v7')!;
 <ToolLayout tool={tool}>
   <UuidV7GeneratorTool client:load />
 
-  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 tool-info-heading">このツールについて</h2>
+  <ToolInfoSection>
     <p class="tool-info-body">
       UUID v7 は RFC 9562 で標準化された、時刻順ソートが可能なバージョンの UUID です。
       先頭 48 ビットにミリ秒精度の UNIX タイムスタンプを埋め込むため、データベースのインデックス効率が高く、
@@ -30,5 +30,5 @@ const tool = tools.find((t) => t.slug === 'uuid-v7')!;
       <li>UUID v4 より挿入パフォーマンスを改善したい（B-Tree インデックス断片化を抑制）</li>
       <li>ID からタイムスタンプを取り出したい</li>
     </ul>
-  </section>
+  </ToolInfoSection>
 </ToolLayout>

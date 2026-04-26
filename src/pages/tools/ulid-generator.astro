@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { UlidGeneratorTool } from '@/components/tools/UlidGenerator';
 import { tools } from '@/data/tools';
 
@@ -9,8 +10,7 @@ const tool = tools.find((t) => t.slug === 'ulid-generator')!;
 <ToolLayout tool={tool}>
   <UlidGeneratorTool client:load />
 
-  <section class="mt-10 rounded-lg bg-white p-6" style="border: 1px solid rgba(0,0,0,0.1);">
-    <h2 class="mb-3 tool-info-heading">このツールについて</h2>
+  <ToolInfoSection>
     <p class="tool-info-body">
       ULIDはUUID
       v4の代替となるソート可能な一意識別子です。タイムスタンプ部分（最初の10文字）と乱数部分（残り16文字）で構成されます。
@@ -21,5 +21,5 @@ const tool = tools.find((t) => t.slug === 'ulid-generator')!;
       <li>時系列ソート可能なIDが必要</li>
       <li>UUIDより読みやすいIDが欲しい</li>
     </ul>
-  </section>
+  </ToolInfoSection>
 </ToolLayout>

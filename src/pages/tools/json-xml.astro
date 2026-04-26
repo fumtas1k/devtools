@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
 import { JsonXmlTool } from '@/components/tools/JsonXml';
 import { tools } from '@/data/tools';
 
@@ -8,4 +9,17 @@ const tool = tools.find((t) => t.slug === 'json-xml')!;
 
 <ToolLayout tool={tool}>
   <JsonXmlTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      JSONとXMLを相互変換します。JSON → XML ではルートタグを <code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem;">root</code> として変換し、
+      XML → JSON では要素を再帰的にオブジェクトに展開します。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>JSONデータをXMLベースのAPIへ渡す形式に変換したい</li>
+      <li>XMLデータをJSONとして扱いたい</li>
+      <li>レガシーシステムとのデータ連携フォーマットを確認したい</li>
+    </ul>
+  </ToolInfoSection>
 </ToolLayout>
