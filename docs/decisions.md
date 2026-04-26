@@ -1220,6 +1220,8 @@ README.md にテストカバレッジのバッジを表示し、GitHub Actions �
 - ✅ `styles.ts` から deprecated エントリが削除され、import 時の型補完ノイズがなくなった
 - ⚠️ Astro では `colors.*` が使えないため、CSS 変数を `style` 属性に直書きするパターンが TSX と異なる。新しく Astro ファイルを書く際は CLAUDE.md のルールを参照すること
 
+**補足（PRレビュー指摘対応）**: ナビ active 背景 (`bg-blue-50`) と バッジ背景 (`bg-blue-100`) にプリミティブ変数・キーカラー変数が混入していた指摘を受け、`:root` に `--color-bg-active` / `--color-badge-bg` を追加してセマンティック変数経路に揃えた。またタブの色切替を JS `classList.toggle` から CSS 属性セレクタ (`[aria-selected="true/false"]`) 宣言に移行し、詳細度競合を排除した。
+
 ---
 
 ## [038] デザイントークン整備（secondary/tertiary/elevation/radii）

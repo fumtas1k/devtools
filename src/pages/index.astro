@@ -53,7 +53,7 @@ const jsonLd = {
         aria-selected="true"
         aria-controls="panel-0"
         data-index="0"
-        class="tab-btn px-4 py-2 font-bold text-primary border-b-2 border-primary -mb-px transition-colors"
+        class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
         style="font-size: 0.875rem; letter-spacing: 0.02em;"
       >
         すべて
@@ -66,7 +66,7 @@ const jsonLd = {
             aria-selected="false"
             aria-controls={`panel-${i + 1}`}
             data-index={i + 1}
-            class="tab-btn px-4 py-2 font-bold border-b-2 border-transparent -mb-px hover:text-primary hover:border-primary transition-colors"
+            class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
             style="font-size: 0.875rem; letter-spacing: 0.02em;"
           >
             {categoryLabel[cat]}
@@ -135,7 +135,9 @@ const jsonLd = {
   #panels::-webkit-scrollbar {
     display: none;
   }
-  .tab-btn[aria-selected="false"] { color: var(--color-muted); }
+  .tab-btn[aria-selected="true"]  { color: var(--color-primary); border-color: var(--color-primary); }
+  .tab-btn[aria-selected="false"] { color: var(--color-muted);   border-color: transparent; }
+  .tab-btn[aria-selected="false"]:hover { color: var(--color-primary); border-color: var(--color-primary); }
 </style>
 
 <script>
@@ -144,11 +146,7 @@ const jsonLd = {
 
   function activateTab(index: number) {
     tabs.forEach((t, i) => {
-      const active = i === index;
-      t.setAttribute('aria-selected', String(active));
-      t.classList.toggle('text-primary', active);
-      t.classList.toggle('border-primary', active);
-      t.classList.toggle('border-transparent', !active);
+      t.setAttribute('aria-selected', String(i === index));
     });
   }
 

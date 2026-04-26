@@ -85,6 +85,8 @@
   --color-border-input: #d1d5db; /* neutral-300 */
   --color-error-text: #b91c1c; /* red-700 */
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
+  --color-bg-active: #eff6ff; /* アクティブなナビ項目背景（blue-50） */
+  --color-badge-bg: #dbeafe; /* カテゴリバッジ背景（blue-100） */
 }
 
 /* ボタン・リンク類のカーソルを pointer に統一 */
