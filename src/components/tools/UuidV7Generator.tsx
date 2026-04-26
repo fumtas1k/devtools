@@ -36,9 +36,15 @@ type QuoteStyle = 'none' | 'single' | 'double';
 function ColoredUuid({ uuid, quoteStyle }: { uuid: string; quoteStyle: QuoteStyle }) {
   const parts = uuid.split('-');
   const quote = quoteStyle === 'double' ? '"' : quoteStyle === 'single' ? "'" : '';
+  const fullText = quoteStyle === 'double' ? `"${uuid}"` : quoteStyle === 'single' ? `'${uuid}'` : uuid;
 
   return (
-    <span className="font-mono" style={{ ...caption, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+    <span
+      className="font-mono"
+      style={{ ...caption, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}
+      aria-label={fullText}
+      title={fullText}
+    >
       {quote && <span style={{ color: colors.muted }}>{quote}</span>}
       <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[0]}</span>
       <span style={{ color: colors.muted }}>-</span>

@@ -44,26 +44,24 @@ test.describe('UUID v7 生成', () => {
     await expect(singleBtn).toHaveAttribute('aria-pressed', 'false');
 
     const uuidCell = page.locator('table tbody tr').first().locator('td').nth(1);
+    const coloredUuid = uuidCell.locator('span[aria-label]');
     
     // なしの状態ではクォートが含まれない
-    const textNone = await uuidCell.innerText();
-    expect(textNone).not.toMatch(/^["']/);
+    await expect(coloredUuid).toHaveAttribute('aria-label', /^[0-9a-f-]{36}$/);
 
     // ダブルクォートに切り替え
     await doubleBtn.click();
     await expect(noneBtn).toHaveAttribute('aria-pressed', 'false');
     await expect(doubleBtn).toHaveAttribute('aria-pressed', 'true');
     
-    const textDouble = await uuidCell.innerText();
-    expect(textDouble).toMatch(/^"[0-9a-f-]{36}"$/);
+    await expect(coloredUuid).toHaveAttribute('aria-label', /^"[0-9a-f-]{36}"$/);
     
     // シングルクォートに切り替え
     await singleBtn.click();
     await expect(singleBtn).toHaveAttribute('aria-pressed', 'true');
     await expect(doubleBtn).toHaveAttribute('aria-pressed', 'false');
 
-    const textSingle = await uuidCell.innerText();
-    expect(textSingle).toMatch(/^'[0-9a-f-]{36}'$/);
+    await expect(coloredUuid).toHaveAttribute('aria-label', /^'[0-9a-f-]{36}'$/);
 
     // 「すべてコピー」ボタンが存在することを確認
     await expect(page.getByRole('button', { name: 'すべてコピー' })).toBeVisible();
