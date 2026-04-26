@@ -304,8 +304,7 @@ export function UuidV7GeneratorTool() {
                               ? colors.bg
                               : colors.bgSurface,
                           cursor: 'pointer',
-                          outline: isSelected ? `2px solid ${colors.primary}` : 'none',
-                          outlineOffset: '-2px',
+                          boxShadow: isSelected ? `inset 0 0 0 2px ${colors.primary}` : 'none',
                         }}
                         aria-selected={isSelected}
                       >
