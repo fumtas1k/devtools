@@ -98,6 +98,7 @@ export function JanCodeTool() {
         <div className="space-y-4">
           {/* チェックディジット・完成コード */}
           <div
+            data-testid="jan-code-result"
             className="rounded-lg p-4 space-y-3"
             style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
           >

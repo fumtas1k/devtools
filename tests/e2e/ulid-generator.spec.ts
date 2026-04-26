@@ -19,17 +19,27 @@ test.describe('ULID生成', () => {
     await page.getByLabel('生成数').click({ clickCount: 3 });
     await page.keyboard.type('3');
     await page.getByRole('button', { name: '生成' }).click();
-    // ヘッダー行を含まないデータ行のみをカウントするために getByRole('row') とフィルターを組み合わせるか、テーブル構造を確認
-    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: /[0-9A-Z]{26}/ }) })).toHaveCount(3);
+
+    // ULID セルを含む行 = データ行（ヘッダー行を除外）
+    const dataRows = page
+      .getByRole('row')
+      .filter({ has: page.getByRole('cell', { name: /[0-9A-Z]{26}/ }) });
+    await expect(dataRows).toHaveCount(3);
   });
 
   test('生成されたULIDはすべて26文字', async ({ page }) => {
     await page.getByLabel('生成数').click({ clickCount: 3 });
     await page.keyboard.type('3');
     await page.getByRole('button', { name: '生成' }).click();
-    const ulidCells = page.getByRole('cell', { name: /[0-9A-Z]{26}/ });
-    await expect(ulidCells).toHaveCount(3);
-    for (const cell of await ulidCells.all()) {
+
+    // ULID セルを含む行 = データ行（ヘッダー行を除外）
+    const dataRows = page
+      .getByRole('row')
+      .filter({ has: page.getByRole('cell', { name: /[0-9A-Z]{26}/ }) });
+    await expect(dataRows).toHaveCount(3);
+
+    for (const row of await dataRows.all()) {
+      const cell = row.getByRole('cell', { name: /[0-9A-Z]{26}/ });
       const text = await cell.innerText();
       expect(text.trim()).toHaveLength(26);
     }
@@ -39,9 +49,11 @@ test.describe('ULID生成', () => {
     await page.getByLabel('生成数').click({ clickCount: 3 });
     await page.keyboard.type('1');
     await page.getByRole('button', { name: '生成' }).click();
-    const first = await page.getByRole('cell', { name: /[0-9A-Z]{26}/ }).first().innerText();
+
+    const first = await page.getByRole('cell', { name: /[0-9A-Z]{26}/ }).innerText();
     await page.getByRole('button', { name: '生成' }).click();
-    const second = await page.getByRole('cell', { name: /[0-9A-Z]{26}/ }).first().innerText();
+    const second = await page.getByRole('cell', { name: /[0-9A-Z]{26}/ }).innerText();
+
     // 単調増加するため second >= first
     expect(second >= first).toBe(true);
   });

@@ -152,14 +152,16 @@ interface SectionProps {
   accentColor: string;
   data: Record<string, unknown>;
   renderValue?: (k: string, v: unknown) => React.ReactNode;
+  'data-testid'?: string;
 }
 
-function Section({ title, accentColor, data, renderValue }: SectionProps) {
+function Section({ title, accentColor, data, renderValue, 'data-testid': testId }: SectionProps) {
   const json = JSON.stringify(data, null, 2);
   return (
     <div
       className="rounded-lg p-4"
       style={{ background: colors.bgSubtle, borderLeft: `4px solid ${accentColor}` }}
+      data-testid={testId}
     >
       <div className="mb-2 flex items-center justify-between">
         <h3 style={{ ...bodyEmphasis, color: colors.text }}>{title}</h3>
@@ -344,12 +346,18 @@ export function JwtDecoderTool() {
       {/* デコード結果 */}
       {parsed && (
         <div className="space-y-3">
-          <Section title="Header (JOSE)" accentColor={colors.error} data={parsed.header} />
+          <Section
+            title="Header (JOSE)"
+            accentColor={colors.error}
+            data={parsed.header}
+            data-testid="jwt-header"
+          />
           <Section
             title="Payload (Claims)"
             accentColor="#9333ea"
             data={parsed.payload}
             renderValue={(k, v) => <PayloadValue k={k} v={v} />}
+            data-testid="jwt-payload"
           />
           <div
             className="rounded-lg p-4"
