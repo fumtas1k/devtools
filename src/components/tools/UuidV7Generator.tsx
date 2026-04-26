@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { v7 as uuidv7 } from 'uuid';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, caption, micro, colors, onFocusRing, onBlurRing } from '@/utils/styles';
+import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { useClampedInput } from '@/hooks/useClampedInput';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { parseUuidV7Fields, extractUuidV7Timestamp } from '@/utils/uuid-v7';
 
 interface UuidRow {
@@ -33,7 +34,7 @@ function ColoredUuid({ uuid }: { uuid: string }) {
   // tttttttt-tttt-7rrr-Vrrr-rrrrrrrrrrrr
   const parts = uuid.split('-');
   return (
-    <span className="font-mono" style={{ ...micro, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+    <span className="font-mono" style={{ ...caption, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
       <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[0]}</span>
       <span style={{ color: colors.muted }}>-</span>
       <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[1]}</span>
@@ -66,18 +67,18 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
       className="rounded-lg p-3"
       style={{ background: colors.bgSubtle, border: `1px solid ${colors.border}` }}
     >
-      <p style={{ ...micro, color: colors.muted, marginBottom: '0.5rem' }}>フィールド分解</p>
+      <p style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>フィールド分解</p>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {fieldDefs.map((f) => (
           <div key={f.key} className="flex flex-col gap-0.5">
-            <span style={{ ...micro, color: colors.muted, fontSize: '0.75rem' }}>
+            <span style={{ ...caption, color: colors.muted, fontSize: '0.75rem' }}>
               {f.key}{' '}
               <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>({f.bits})</span>
             </span>
             <code
               className="rounded px-1.5 py-0.5"
               style={{
-                ...micro,
+                ...caption,
                 fontFamily: 'monospace',
                 color: f.color,
                 background: colors.bg,
@@ -160,8 +161,6 @@ export function UuidV7GeneratorTool() {
               background: colors.bg,
               color: colors.text,
             }}
-            onFocus={onFocusRing}
-            onBlurCapture={onBlurRing}
             aria-describedby="uuid-count-hint"
           />
           <button
@@ -178,7 +177,7 @@ export function UuidV7GeneratorTool() {
             生成
           </button>
         </div>
-        <p id="uuid-count-hint" style={{ ...micro, color: colors.muted, marginTop: '0.25rem' }}>
+        <p id="uuid-count-hint" style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
           1〜100
         </p>
       </div>
@@ -198,38 +197,18 @@ export function UuidV7GeneratorTool() {
               <span style={{ ...bodyEmphasis, color: colors.text }}>{rows.length} 件生成</span>
               <div className="flex flex-wrap items-center gap-2">
                 {/* クォートスタイル選択 */}
-                <div
-                  className="flex items-center rounded-lg overflow-hidden shrink-0"
-                  style={{ border: `1px solid ${colors.borderInput}` }}
-                  role="group"
-                  aria-label="クォートスタイル"
-                >
-                  {(
-                    [
-                      ['none', 'なし'],
-                      ['double', '"..."'],
-                      ['single', "'...'"],
-                    ] as [QuoteStyle, string][]
-                  ).map(([value, label]) => (
-                    <button
-                      key={value}
-                      onClick={() => setQuoteStyle(value)}
-                      style={{
-                        ...micro,
-                        padding: '0.25rem 0.625rem',
-                        background: quoteStyle === value ? colors.primary : colors.bg,
-                        color: quoteStyle === value ? colors.textOnPrimary : colors.muted,
-                        border: 'none',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        fontFamily: value !== 'none' ? 'monospace' : 'inherit',
-                        borderRight: value !== 'single' ? `1px solid ${colors.borderInput}` : 'none',
-                      }}
-                      aria-pressed={quoteStyle === value}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <div className="shrink-0">
+                  <ToggleGroup<QuoteStyle>
+                    options={[
+                      { value: 'none', label: 'なし' },
+                      { value: 'double', label: '"..."' },
+                      { value: 'single', label: "'...'" },
+                    ]}
+                    value={quoteStyle}
+                    onChange={setQuoteStyle}
+                    ariaLabel="クォートスタイル"
+                    size="sm"
+                  />
                 </div>
                 <div className="shrink-0">
                   <CopyButton text={allUuids} label="すべてコピー" />
@@ -257,7 +236,7 @@ export function UuidV7GeneratorTool() {
                     <th
                       scope="col"
                       style={{
-                        ...micro,
+                        ...caption,
                         color: colors.muted,
                         textAlign: 'right',
                         padding: '0.5rem 0.75rem',
@@ -271,7 +250,7 @@ export function UuidV7GeneratorTool() {
                     <th
                       scope="col"
                       style={{
-                        ...micro,
+                        ...caption,
                         color: colors.muted,
                         textAlign: 'left',
                         padding: '0.5rem 0.75rem',
@@ -284,7 +263,7 @@ export function UuidV7GeneratorTool() {
                     <th
                       scope="col"
                       style={{
-                        ...micro,
+                        ...caption,
                         color: colors.muted,
                         textAlign: 'left',
                         padding: '0.5rem 0.75rem',
@@ -297,7 +276,7 @@ export function UuidV7GeneratorTool() {
                     <th
                       scope="col"
                       style={{
-                        ...micro,
+                        ...caption,
                         color: colors.muted,
                         textAlign: 'center',
                         padding: '0.5rem 0.75rem',
@@ -332,7 +311,7 @@ export function UuidV7GeneratorTool() {
                       >
                         <td
                           style={{
-                            ...micro,
+                            ...caption,
                             color: colors.muted,
                             textAlign: 'right',
                             padding: '0.5rem 0.75rem',
@@ -347,7 +326,7 @@ export function UuidV7GeneratorTool() {
                         <td
                           className="font-mono"
                           style={{
-                            ...micro,
+                            ...caption,
                             color: colors.muted,
                             padding: '0.5rem 0.75rem',
                             whiteSpace: 'nowrap',
