@@ -45,24 +45,6 @@
 
 ---
 
-## Playwright による目視確認（実行例）
-
-UIコンポーネントやレイアウトを変更した場合、`docs/shared-agent-rules.md` の規定に従いスクリーンショットを撮影して確認する。
-
-### Playwright ツール呼び出し例
-
-```
-# 0. キャッシュクリア（推奨）
-browser_evaluate: caches.keys() → caches.delete() / localStorage.clear() / sessionStorage.clear()
-browser_navigate → URL（キャッシュなし再取得）
-
-# 1. PC・スマホ両サイズで撮影
-browser_resize → width: 1280, height: 800 → browser_take_screenshot
-browser_resize → width: 390, height: 844 → browser_take_screenshot
-```
-
----
-
 ## 学びの記録
 
 ユーザーから修正を受けたら `tasks/lessons.md` に記録する。次のセッション開始時に確認する。

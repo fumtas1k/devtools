@@ -75,7 +75,7 @@ Tailwind のカラークラス（例: `text-blue-500`）は、**コンポーネ�
 
 ---
 
-## 5. UI 変更時の目視確認 (Playwright)
+## 6. UI 変更時の目視確認 (Playwright)
 
 UI コンポーネントやレイアウトを変更した場合、コミット前に Playwright を使用して **PCサイズ (1280x800)** と **スマホサイズ (390x844)** の両方でスクリーンショットを撮影し、以下の項目を重点的に目視確認すること。
 
@@ -86,9 +86,21 @@ UI コンポーネントやレイアウトを変更した場合、コミット�
 - **フォーカスリングが要素を適切に囲んでいるか（見切れていないか）**
 - **タップ可能な要素（ボタン、リンク等）の領域が十分か（44x44px以上）**
 
+### Playwright ツール呼び出し例 (エージェント用)
+
+```
+# 0. キャッシュクリア（推奨）
+browser_evaluate: caches.keys() → caches.delete() / localStorage.clear() / sessionStorage.clear()
+browser_navigate → URL（キャッシュなし再取得）
+
+# 1. PC・スマホ両サイズで撮影
+browser_resize → width: 1280, height: 800 → browser_take_screenshot
+browser_resize → width: 390, height: 844 → browser_take_screenshot
+```
+
 ---
 
-## 6. プロジェクト構造
+## 7. プロジェクト構造
 
 - `src/components/tools/`: ツール本体 (React TSX)
 - `src/components/ui/`: 共通UIコンポーネント (`InputField`, `CopyButton` 等)
