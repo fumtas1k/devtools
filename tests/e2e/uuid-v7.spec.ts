@@ -35,17 +35,21 @@ test.describe('UUID v7 生成', () => {
     await page.getByRole('button', { name: '生成' }).click();
     
     // デフォルトは「なし」
-    // 「すべてコピー」ボタンをクリックしてクリップボードを確認するのは難しいので、
-    // UI上の変化（もしあれば）や、内部状態を推測する。
-    // 今回のツールではテーブル内のコピーボタンの引数が変わる。
+    // コピーボタンの aria-label を使ってボタンを特定し、その挙動を間接的に検証する
+    const firstCopyBtn = page.locator('table tbody tr').first().getByRole('button', { name: 'コピー' });
     
     // ダブルクォートに切り替え
     await page.getByRole('button', { name: '"..."' }).click();
-    // 状態が切り替わったことを確認（ボタンの選択状態など、CSSクラスで判定できる場合もあるが、
-    // ここではクリックが成功し、エラーが出ないことを確認）
+    // コピーボタンをクリック（実際のクリップボード確認は難しいため、ボタンが存在しクリック可能であることを確認）
+    await expect(firstCopyBtn).toBeVisible();
     
     // シングルクォートに切り替え
     await page.getByRole('button', { name: "'...'" }).click();
+    await expect(firstCopyBtn).toBeVisible();
+
+    // 「すべてコピー」ボタンのテキストも検証
+    const copyAllBtn = page.getByRole('button', { name: 'すべてコピー' });
+    await expect(copyAllBtn).toBeVisible();
   });
 
   test('行をクリックするとフィールド分解パネルが表示される', async ({ page }) => {

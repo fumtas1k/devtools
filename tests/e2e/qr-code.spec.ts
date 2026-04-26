@@ -31,6 +31,10 @@ test.describe('QRコード生成', () => {
     await page.getByRole('button', { name: 'H' }).click();
     await expect(page.getByText('復元率: 30%')).toBeVisible();
 
+    // Q に切り替え
+    await page.getByRole('button', { name: 'Q' }).click();
+    await expect(page.getByText('復元率: 25%')).toBeVisible();
+
     // L に切り替え
     await page.getByRole('button', { name: 'L' }).click();
     await expect(page.getByText('復元率: 7%')).toBeVisible();
