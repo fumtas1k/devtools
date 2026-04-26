@@ -336,3 +336,21 @@ const handleModeChange = (next: Mode) => {
 ```
 
 `useCodec` の `useEffect` は `deps` 変更で自動再変換するため、形式切替で明示的なクリアは不要。
+
+---
+
+## [2026-04-26] CopyButton の成功状態でラベル文字を固定する
+
+### 現象
+
+成功時テキストを「コピー」→「コピーしました」に切り替えていたため、ボタン幅が伸びて横並びレイアウト（Gs1Databar の GTIN-14 行など）が崩れた。
+
+### 教訓
+
+**コピーボタンの幅安定化のため、ラベル文字は idle / copied 両状態で固定する。** 成功シグナルはアイコン swap（ClipboardIcon → CheckIcon）と色フリップ（`colors.success` / `colors.successBg`）のみで伝える。
+
+成功テキストを消すと今度はボタンが縮んで別のレイアウト崩れが起きる。GitHub・Stripe 等の確立された慣例でも「ラベルは変えず、アイコン + 色だけ変える」パターンが標準。
+
+### 副次改善
+
+`aria-label` の動的 swap は `aria-live` への能動的通知に至らないため、`role="status" aria-live="polite"` の `sr-only` span に置き換えてスクリーンリーダー利用者にも成功を通知する。
