@@ -26,7 +26,7 @@ test.describe('JANコード生成', () => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByText('完成コード', { exact: true })).toBeVisible();
     // 結果エリア全体に13桁数字が含まれることを確認
-    await expect(page.locator('span').filter({ hasText: /^\d{13}$/ }).first()).toBeVisible();
+    await expect(page.getByText(/^\d{13}$/).first()).toBeVisible();
   });
 
   test('JAN-13: 数字以外の入力でエラーを表示する', async ({ page }) => {
@@ -44,6 +44,6 @@ test.describe('JANコード生成', () => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByText('チェックディジット', { exact: true })).toBeVisible();
     // 完成コードは8桁
-    await expect(page.locator('span').filter({ hasText: /^\d{8}$/ }).first()).toBeVisible();
+    await expect(page.getByText(/^\d{8}$/).first()).toBeVisible();
   });
 });
