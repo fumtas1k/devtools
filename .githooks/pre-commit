@@ -1,4 +1,13 @@
 #!/bin/sh
+# ステージングされている整形対象ファイルを抽出
+staged_format_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|ts|tsx|jsx|css|md|json|astro)$')
+
+if [ -n "$staged_format_files" ]; then
+  echo "🎨 Running Prettier on staged files..."
+  npx prettier --write $staged_format_files
+  git add $staged_format_files
+fi
+
 # ドキュメント更新チェック（警告のみ・コミットはブロックしない）
 #
 # 重要ファイルが変更されているのに対応ドキュメントが未更新の場合に警告を出す。

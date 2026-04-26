@@ -29,6 +29,9 @@ jobs:
 
       - run: npm ci
 
+      - name: フォーマットチェックを実行
+        run: npm run format:check
+
       - name: テストとカバレッジ測定を実行
         run: npm test -- --coverage
 
