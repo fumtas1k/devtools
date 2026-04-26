@@ -18,7 +18,17 @@ git config core.hooksPath .githooks
 
 **実行タイミング:** コミット直前
 
-**機能:** 重要ファイル（SPEC.md、docs/decisions.md、README.md など）が変更されているのに関連ドキュメントが未更新の場合、**警告のみ**を出力します（コミットはブロックしません）。
+**機能:**
+
+#### 1. 自動フォーマット (lint-staged 経由)
+
+ステージ済みのフォーマット対象拡張子（`.js / .ts / .tsx / .jsx / .css / .md / .json / .astro`）を Prettier で整形し、再ステージします。lint-staged が内部で未ステージ変更を一時退避するため、partial-commit（同一ファイル内の staged 変更と unstaged 変更を分けてコミットする運用）を壊しません。
+
+対象拡張子と整形コマンドは `package.json` の `"lint-staged"` 設定で管理しています。
+
+#### 2. ドキュメント更新チェック
+
+重要ファイル（SPEC.md、docs/decisions.md、README.md など）が変更されているのに関連ドキュメントが未更新の場合、**警告のみ**を出力します（コミットはブロックしません）。
 
 対象となる変更：
 
