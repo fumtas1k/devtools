@@ -1,5 +1,5 @@
 ---
-import { tools, categoryLabel, type ToolCategory } from '@/data/tools';
+import { tools, categoryLabel, categories } from '@/data/tools';
 import ToolIcon from '@/components/ui/ToolIcon.astro';
 
 interface Props {
@@ -7,8 +7,6 @@ interface Props {
 }
 
 const { currentSlug } = Astro.props;
-
-const categories: ToolCategory[] = ['generate', 'convert'];
 ---
 
 <aside class="w-56 shrink-0">

@@ -1,5 +1,5 @@
 ---
-import { tools, categoryLabel, type ToolCategory } from '@/data/tools';
+import { tools, categoryLabel, categories } from '@/data/tools';
 import ToolIcon from '@/components/ui/ToolIcon.astro';
 
 interface Props {
@@ -7,8 +7,6 @@ interface Props {
 }
 
 const { currentSlug } = Astro.props;
-
-const categories: ToolCategory[] = ['generate', 'convert'];
 ---
 
 <!-- モバイルドロワー (lg未満のみ表示) -->
@@ -34,11 +32,9 @@ const categories: ToolCategory[] = ['generate', 'convert'];
       <button
         id="mobile-drawer-close"
         type="button"
-        class="flex items-center justify-center rounded-md transition-colors"
+        class="flex items-center justify-center rounded-md transition-colors hover:bg-neutral-100"
         style="width: 44px; height: 44px; color: #374151;"
         aria-label="メニューを閉じる"
-        onmouseenter="this.style.background='#f3f4f6'"
-        onmouseleave="this.style.background='transparent'"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -72,21 +68,22 @@ const categories: ToolCategory[] = ['generate', 'convert'];
             <ul>
               {tools
                 .filter((t) => t.category === cat)
-                .map((tool) => (
-                  <li>
-                    <a
-                      href={`/tools/${tool.slug}`}
-                      aria-current={currentSlug === tool.slug ? 'page' : undefined}
-                      class="flex items-center gap-2 rounded px-3 transition-colors"
-                      style={`min-height: 44px; font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: ${currentSlug === tool.slug ? '#1a56db' : '#374151'}; font-weight: ${currentSlug === tool.slug ? '700' : '400'}; background: ${currentSlug === tool.slug ? '#eff6ff' : 'transparent'};`}
-                      onmouseenter={`if(${currentSlug === tool.slug ? 'false' : 'true'}) this.style.background='#f3f4f6'`}
-                      onmouseleave={`if(${currentSlug === tool.slug ? 'false' : 'true'}) this.style.background='transparent'`}
-                    >
-                      <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
-                      <span>{tool.name}</span>
-                    </a>
-                  </li>
-                ))}
+                .map((tool) => {
+                  const isActive = currentSlug === tool.slug;
+                  return (
+                    <li>
+                      <a
+                        href={`/tools/${tool.slug}`}
+                        aria-current={isActive ? 'page' : undefined}
+                        class={`flex items-center gap-2 rounded px-3 transition-colors ${isActive ? 'font-bold text-primary bg-blue-50' : 'text-neutral-700 hover:bg-neutral-100'}`}
+                        style="min-height: 44px; font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
+                      >
+                        <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
+                        <span>{tool.name}</span>
+                      </a>
+                    </li>
+                  );
+                })}
             </ul>
           </div>
         ))
