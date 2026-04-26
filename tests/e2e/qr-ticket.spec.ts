@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { waitForReactHydration } from './helpers';
 
 test.describe('QRチケット', () => {
+  test.setTimeout(30000);
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/tools/qr-ticket');
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).waitFor();
@@ -30,7 +32,7 @@ test.describe('QRチケット', () => {
 
   test('「鍵ペアを新規生成」で秘密鍵・公開鍵が表示される', async ({ page }) => {
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
-    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible();
     await expect(page.getByText('公開鍵（検証スタッフへ共有）')).toBeVisible();
   });
 
@@ -45,8 +47,8 @@ test.describe('QRチケット', () => {
 
   test('イベントIDが空の状態で一括生成するとエラーメッセージが表示される', async ({ page }) => {
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
-    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
-    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible();
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
     await page.getByRole('button', { name: '一括生成' }).click();
     await expect(page.getByRole('alert')).toContainText('イベントIDを入力してください');
   });
@@ -57,13 +59,13 @@ test.describe('QRチケット', () => {
 
   test('鍵生成→イベント情報入力→一括生成でQRコードグリッドが表示される', async ({ page }) => {
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
-    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible();
 
     await page.getByLabel('イベントID').pressSequentially('event-2099');
-    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
     await page.getByRole('button', { name: '一括生成' }).click();
 
-    await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible();
     await expect(page.getByText('T-00001')).toBeVisible();
     await expect(page.getByRole('button', { name: 'SVG保存' }).first()).toBeVisible();
   });
@@ -75,10 +77,10 @@ test.describe('QRチケット', () => {
   test('秘密鍵欄に公開鍵を貼り付けると適切なエラーを表示する', async ({ page }) => {
     // まず鍵ペアを生成して公開鍵を取得
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
-    await expect(page.getByText('公開鍵（検証スタッフへ共有）')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('公開鍵（検証スタッフへ共有）')).toBeVisible();
 
     // 2つ目のtextarea（readOnly）が公開鍵JWK
-    const pubKeyJwk = await page.locator('textarea').nth(1).inputValue();
+    const pubKeyJwk = await page.getByLabel('公開鍵（検証スタッフへ共有）').inputValue();
 
     await page.getByText('▼ 既存の秘密鍵をインポート').click();
     await page.getByLabel('秘密鍵 JWK').fill(pubKeyJwk);
@@ -94,13 +96,13 @@ test.describe('QRチケット', () => {
   test('生成したQRを画像アップロードで検証すると有効と判定される', async ({ page }) => {
     // 1. 鍵ペア生成
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
-    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible();
 
     // 2. イベント情報入力・QR生成
     await page.getByLabel('イベントID').pressSequentially('roundtrip-test');
-    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
     await page.getByRole('button', { name: '一括生成' }).click();
-    await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible();
 
     // 3. 生成されたQR SVGをPNGに変換
     //    dangerouslySetInnerHTML で注入された SVG は data-testid="qr-code-container" の div 内にある。
@@ -148,27 +150,27 @@ test.describe('QRチケット', () => {
     await page.getByRole('button', { name: '画像アップロード' }).click();
 
     // 6. PNG を fileInput にセット（hidden input は setInputFiles で直接操作可能）
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('画像を選択').setInputFiles({
       name: 'ticket.png',
       mimeType: 'image/png',
       buffer: Buffer.from(pngBase64, 'base64'),
     });
 
     // 7. 検証結果を確認
-    await expect(page.getByText('有効なチケット')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('有効なチケット')).toBeVisible();
   });
 
   test('日本語を含むイベント情報を画像アップロードで検証できる', async ({ page }) => {
     // 1. 鍵ペア生成
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
-    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible();
 
     // 2. 日本語を含むイベント情報入力・QR生成
     await page.getByLabel('イベントID').pressSequentially('春 of プログラミング 2026');
     await page.getByLabel('参加者名 1').pressSequentially('山田 太郎');
-    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
     await page.getByRole('button', { name: '一括生成' }).click();
-    await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible();
 
     // 3. 生成されたQR SVGをPNGに変換
     //    dangerouslySetInnerHTML で注入された SVG は data-testid="qr-code-container" の div 内にある。
@@ -216,15 +218,16 @@ test.describe('QRチケット', () => {
     await page.getByRole('button', { name: '画像アップロード' }).click();
 
     // 6. PNG を fileInput にセット
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('画像を選択').setInputFiles({
       name: 'ticket-ja.png',
       mimeType: 'image/png',
       buffer: Buffer.from(pngBase64, 'base64'),
     });
 
     // 7. 検証結果を確認（日本語が正しく表示されることも確認）
-    await expect(page.getByText('有効なチケット')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('有効なチケット')).toBeVisible();
     await expect(page.getByText('春 of プログラミング 2026')).toBeVisible();
     await expect(page.getByText('山田 太郎')).toBeVisible();
   });
 });
+
