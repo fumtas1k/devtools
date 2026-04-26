@@ -297,14 +297,12 @@ export function UuidV7GeneratorTool() {
                         key={row.id}
                         onClick={() => setSelectedIndex(i)}
                         style={{
-                          borderBottom: i < rows.length - 1 ? `1px solid ${colors.border}` : 'none',
                           background: isSelected
                             ? 'color-mix(in srgb, var(--color-primary) 8%, var(--color-bg))'
                             : i % 2 === 0
                               ? colors.bg
                               : colors.bgSurface,
                           cursor: 'pointer',
-                          boxShadow: isSelected ? `inset 0 0 0 2px ${colors.primary}` : 'none',
                         }}
                         aria-selected={isSelected}
                       >
@@ -315,11 +313,27 @@ export function UuidV7GeneratorTool() {
                             textAlign: 'right',
                             padding: '0.5rem 0.75rem',
                             fontVariantNumeric: 'tabular-nums',
+                            borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
+                            borderBottom: isSelected
+                              ? `2px solid ${colors.primary}`
+                              : i < rows.length - 1
+                                ? `1px solid ${colors.border}`
+                                : 'none',
                           }}
                         >
                           {i + 1}
                         </td>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                        <td
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
+                            borderBottom: isSelected
+                              ? `2px solid ${colors.primary}`
+                              : i < rows.length - 1
+                                ? `1px solid ${colors.border}`
+                                : 'none',
+                          }}
+                        >
                           <ColoredUuid uuid={row.id} />
                         </td>
                         <td
@@ -329,6 +343,12 @@ export function UuidV7GeneratorTool() {
                             color: colors.muted,
                             padding: '0.5rem 0.75rem',
                             whiteSpace: 'nowrap',
+                            borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
+                            borderBottom: isSelected
+                              ? `2px solid ${colors.primary}`
+                              : i < rows.length - 1
+                                ? `1px solid ${colors.border}`
+                                : 'none',
                           }}
                         >
                           {row.timestamp}
@@ -338,6 +358,12 @@ export function UuidV7GeneratorTool() {
                             padding: '0.25rem 0.5rem',
                             textAlign: 'center',
                             whiteSpace: 'nowrap',
+                            borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
+                            borderBottom: isSelected
+                              ? `2px solid ${colors.primary}`
+                              : i < rows.length - 1
+                                ? `1px solid ${colors.border}`
+                                : 'none',
                           }}
                         >
                           <CopyButton text={formatId(row.id)} compact />
