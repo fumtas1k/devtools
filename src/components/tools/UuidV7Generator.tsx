@@ -33,10 +33,13 @@ function generateRows(count: number): UuidRow[] {
 type QuoteStyle = 'none' | 'single' | 'double';
 
 /** UUID 文字列を色分けして表示する */
-function ColoredUuid({ uuid }: { uuid: string }) {
+function ColoredUuid({ uuid, quoteStyle }: { uuid: string; quoteStyle: QuoteStyle }) {
   const parts = uuid.split('-');
+  const quote = quoteStyle === 'double' ? '"' : quoteStyle === 'single' ? "'" : '';
+
   return (
     <span className="font-mono" style={{ ...caption, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+      {quote && <span style={{ color: colors.muted }}>{quote}</span>}
       <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[0]}</span>
       <span style={{ color: colors.muted }}>-</span>
       <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[1]}</span>
@@ -48,6 +51,7 @@ function ColoredUuid({ uuid }: { uuid: string }) {
       <span style={{ color: FIELD_COLORS.randB }}>{parts[3].substring(1)}</span>
       <span style={{ color: colors.muted }}>-</span>
       <span style={{ color: FIELD_COLORS.randB }}>{parts[4]}</span>
+      {quote && <span style={{ color: colors.muted }}>{quote}</span>}
     </span>
   );
 }
@@ -131,7 +135,7 @@ export function UuidV7GeneratorTool() {
       key: 'uuid',
       header: 'UUID',
       cellStyle: { padding: '0.5rem 0.75rem' },
-      render: (row) => <ColoredUuid uuid={row.id} />,
+      render: (row) => <ColoredUuid uuid={row.id} quoteStyle={quoteStyle} />,
     },
     {
       key: 'timestamp',

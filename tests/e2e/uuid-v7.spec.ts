@@ -34,22 +34,39 @@ test.describe('UUID v7 生成', () => {
   test('クォートスタイルを切り替えられる', async ({ page }) => {
     await page.getByRole('button', { name: '生成' }).click();
     
-    // デフォルトは「なし」
-    // コピーボタンの aria-label を使ってボタンを特定し、その挙動を間接的に検証する
-    const firstCopyBtn = page.locator('table tbody tr').first().getByRole('button', { name: 'コピー' });
+    const noneBtn = page.getByRole('button', { name: 'なし' });
+    const doubleBtn = page.getByRole('button', { name: '"..."' });
+    const singleBtn = page.getByRole('button', { name: "'...'" });
+
+    // デフォルトは「なし」が選択されている
+    await expect(noneBtn).toHaveAttribute('aria-pressed', 'true');
+    await expect(doubleBtn).toHaveAttribute('aria-pressed', 'false');
+    await expect(singleBtn).toHaveAttribute('aria-pressed', 'false');
+
+    const uuidCell = page.locator('table tbody tr').first().locator('td').nth(1);
     
+    // なしの状態ではクォートが含まれない
+    const textNone = await uuidCell.innerText();
+    expect(textNone).not.toMatch(/^["']/);
+
     // ダブルクォートに切り替え
-    await page.getByRole('button', { name: '"..."' }).click();
-    // コピーボタンをクリック（実際のクリップボード確認は難しいため、ボタンが存在しクリック可能であることを確認）
-    await expect(firstCopyBtn).toBeVisible();
+    await doubleBtn.click();
+    await expect(noneBtn).toHaveAttribute('aria-pressed', 'false');
+    await expect(doubleBtn).toHaveAttribute('aria-pressed', 'true');
+    
+    const textDouble = await uuidCell.innerText();
+    expect(textDouble).toMatch(/^"[0-9a-f-]{36}"$/);
     
     // シングルクォートに切り替え
-    await page.getByRole('button', { name: "'...'" }).click();
-    await expect(firstCopyBtn).toBeVisible();
+    await singleBtn.click();
+    await expect(singleBtn).toHaveAttribute('aria-pressed', 'true');
+    await expect(doubleBtn).toHaveAttribute('aria-pressed', 'false');
 
-    // 「すべてコピー」ボタンのテキストも検証
-    const copyAllBtn = page.getByRole('button', { name: 'すべてコピー' });
-    await expect(copyAllBtn).toBeVisible();
+    const textSingle = await uuidCell.innerText();
+    expect(textSingle).toMatch(/^'[0-9a-f-]{36}'$/);
+
+    // 「すべてコピー」ボタンが存在することを確認
+    await expect(page.getByRole('button', { name: 'すべてコピー' })).toBeVisible();
   });
 
   test('行をクリックするとフィールド分解パネルが表示される', async ({ page }) => {
