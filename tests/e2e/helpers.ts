@@ -8,8 +8,8 @@ import type { Page } from '@playwright/test';
  */
 export async function waitForReactHydration(page: Page): Promise<void> {
   await page.waitForFunction(() => {
-    const el = document.querySelector('input, textarea, button');
-    if (!el) return false;
-    return Object.keys(el).some(k => k.startsWith('__react'));
+    const els = document.querySelectorAll('input, textarea, button');
+    if (!els.length) return false;
+    return Array.from(els).some(el => Object.keys(el).some(k => k.startsWith('__react')));
   });
 }
