@@ -1,14 +1,18 @@
 #!/bin/sh
+set -e
+
 # ステージングされている整形対象ファイルを抽出
-staged_format_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|ts|tsx|jsx|css|md|json|astro)$')
+staged_format_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|ts|tsx|jsx|css|md|json|astro)$' || true)
 
 if [ -n "$staged_format_files" ]; then
   echo "🎨 Running Prettier on staged files..."
-  npx prettier --write $staged_format_files
-  git add $staged_format_files
+  # ファイル名にスペースが含まれる場合を考慮し、xargs を使用して安全に渡す
+  echo "$staged_format_files" | xargs npx prettier --write
+  echo "$staged_format_files" | xargs git add
 fi
 
 # ドキュメント更新チェック（警告のみ・コミットはブロックしない）
+set +e # ここからは警告のみなので set -e を解除
 #
 # 重要ファイルが変更されているのに対応ドキュメントが未更新の場合に警告を出す。
 # CLAUDE.md の「ドキュメント更新ルール」と対応している。
