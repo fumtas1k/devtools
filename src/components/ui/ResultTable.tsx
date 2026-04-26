@@ -15,7 +15,7 @@ export interface TableColumn<T> {
 interface Props<T> {
   rows: T[];
   columns: TableColumn<T>[];
-  getKey: (row: T) => string;
+  getKey: (row: T) => string | number;
   minWidth?: string;
   selectedIndex?: number | null;
   onRowClick?: (index: number) => void;
@@ -89,12 +89,9 @@ export function ResultTable<T>({
                       style={{
                         ...col.cellStyle,
                         textAlign: col.cellAlign,
-                        borderTop: isSelected ? `2px solid ${colors.primary}` : 'none',
-                        borderBottom: isSelected
-                          ? `2px solid ${colors.primary}`
-                          : !isLast
-                            ? `1px solid ${colors.border}`
-                            : 'none',
+                        borderTop: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
+                        borderBottom: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
+                        boxShadow: !isSelected && !isLast ? `inset 0 -1px 0 ${colors.border}` : 'none',
                       }}
                     >
                       {col.render(row, i)}
