@@ -90,12 +90,12 @@
 }
 
 /* ボタン・リンク類のカーソルを pointer に統一 */
-:where(button, a, [role="button"]) {
+:where(button, a, [role='button']) {
   cursor: pointer;
 }
 
 /* focus-visible を CSS で一括適用（JS の onFocusRing/onBlurRing ハンドラは不要） */
-:where(button, a, [role="button"], input, textarea, select):focus-visible {
+:where(button, a, [role='button'], input, textarea, select):focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;
 }

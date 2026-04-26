@@ -22,13 +22,13 @@ git config core.hooksPath .githooks
 
 対象となる変更：
 
-| ファイル変更 | 確認するドキュメント |
-| --- | --- |
-| `package.json` | SPEC.md (2.3節ライブラリ表)、docs/decisions.md |
-| `.npmrc` | docs/decisions.md |
-| `.github/workflows/` | docs/decisions.md |
-| `src/styles/global.css`、`src/utils/styles.ts` | docs/decisions.md |
-| 新規ツールページ（`src/pages/tools/*.astro`） | README.md、SPEC.md、docs/decisions.md |
+| ファイル変更                                   | 確認するドキュメント                           |
+| ---------------------------------------------- | ---------------------------------------------- |
+| `package.json`                                 | SPEC.md (2.3節ライブラリ表)、docs/decisions.md |
+| `.npmrc`                                       | docs/decisions.md                              |
+| `.github/workflows/`                           | docs/decisions.md                              |
+| `src/styles/global.css`、`src/utils/styles.ts` | docs/decisions.md                              |
+| 新規ツールページ（`src/pages/tools/*.astro`）  | README.md、SPEC.md、docs/decisions.md          |
 
 **例:**
 

@@ -16,14 +16,17 @@ const tool = tools.find((t) => t.slug === 'jwt-decoder')!;
         class="rounded px-1 font-mono"
         style="background: var(--color-bg-subtle); font-size: 0.875rem;">.</code
       > で分割し、 Base64URL デコードして Header・Payload・署名を表示します。
-      <code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem;"
-        >exp</code
+      <code
+        class="rounded px-1 font-mono"
+        style="background: var(--color-bg-subtle); font-size: 0.875rem;">exp</code
       >・
-      <code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem;"
-        >iat</code
+      <code
+        class="rounded px-1 font-mono"
+        style="background: var(--color-bg-subtle); font-size: 0.875rem;">iat</code
       >・
-      <code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem;"
-        >nbf</code
+      <code
+        class="rounded px-1 font-mono"
+        style="background: var(--color-bg-subtle); font-size: 0.875rem;">nbf</code
       > は人間が読める日時に変換します。 署名の検証は行いません。
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>

@@ -32,6 +32,7 @@
 **コミットメッセージは必ず日本語で書く。** `.githooks/commit-msg` 自動チェックが英語のメッセージをブロックします。
 
 ✅ 正しい形式:
+
 ```
 feat: 新しいツールを追加
 fix: XSS 脆弱性を修正
@@ -40,6 +41,7 @@ docs: セッション教訓を記録
 ```
 
 ❌ 誤った形式:
+
 ```
 feat: Add new tool
 Fix XSS vulnerability
@@ -93,7 +95,11 @@ import { colors, caption, bodyEmphasis } from '../../utils/styles';
 // ✅ 正しい（Astro）
 <p style="color: var(--color-muted);">テキスト</p>
 <a class="footer-link">リンク</a>
-<style>.footer-link:hover { color: var(--color-neutral-100); }</style>
+<style>
+  .footer-link:hover {
+    color: var(--color-neutral-100);
+  }
+</style>
 
 // ❌ 誤り（Astro）
 <p class="text-gray-500">テキスト</p>

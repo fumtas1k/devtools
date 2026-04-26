@@ -49,14 +49,25 @@ export function UlidGeneratorTool() {
       headerAlign: 'right',
       cellAlign: 'right',
       width: '3.5rem',
-      cellStyle: { ...caption, color: colors.muted, padding: '0.5rem 0.75rem', fontVariantNumeric: 'tabular-nums' },
+      cellStyle: {
+        ...caption,
+        color: colors.muted,
+        padding: '0.5rem 0.75rem',
+        fontVariantNumeric: 'tabular-nums',
+      },
       render: (_, i) => i + 1,
     },
     {
       key: 'ulid',
       header: 'ULID',
       className: 'font-mono',
-      cellStyle: { ...caption, color: colors.text, padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', letterSpacing: '0.02em' },
+      cellStyle: {
+        ...caption,
+        color: colors.text,
+        padding: '0.5rem 0.75rem',
+        whiteSpace: 'nowrap',
+        letterSpacing: '0.02em',
+      },
       render: (row) => (
         <>
           <span style={{ color: colors.primary }}>{row.id.slice(0, 10)}</span>
@@ -68,7 +79,12 @@ export function UlidGeneratorTool() {
       key: 'timestamp',
       header: 'タイムスタンプ（ISO 8601）',
       className: 'font-mono',
-      cellStyle: { ...caption, color: colors.muted, padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' },
+      cellStyle: {
+        ...caption,
+        color: colors.muted,
+        padding: '0.5rem 0.75rem',
+        whiteSpace: 'nowrap',
+      },
       render: (row) => row.timestamp,
     },
     {

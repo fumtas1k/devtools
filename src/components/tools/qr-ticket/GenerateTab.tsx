@@ -79,7 +79,14 @@ export function GenerateTab({
             <button
               type="button"
               onClick={onToggleImport}
-              style={{ ...caption, color: colors.link, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              style={{
+                ...caption,
+                color: colors.link,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+              }}
             >
               {showImport ? '▲ 秘密鍵インポートを閉じる' : '▼ 既存の秘密鍵をインポート'}
             </button>
@@ -108,8 +115,13 @@ export function GenerateTab({
           {privateKeyJwkStr && (
             <div className="space-y-3">
               <div>
-                <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem' }}>
-                  <span style={{ ...caption, fontWeight: 600, color: colors.text }}>秘密鍵（主催者が保管）</span>
+                <div
+                  className="flex items-center justify-between"
+                  style={{ marginBottom: '0.5rem' }}
+                >
+                  <span style={{ ...caption, fontWeight: 600, color: colors.text }}>
+                    秘密鍵（主催者が保管）
+                  </span>
                   <CopyButton text={privateKeyJwkStr} label="コピー" />
                 </div>
                 <textarea
@@ -131,8 +143,13 @@ export function GenerateTab({
                 />
               </div>
               <div>
-                <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem' }}>
-                  <span style={{ ...caption, fontWeight: 600, color: colors.text }}>公開鍵（検証スタッフへ共有）</span>
+                <div
+                  className="flex items-center justify-between"
+                  style={{ marginBottom: '0.5rem' }}
+                >
+                  <span style={{ ...caption, fontWeight: 600, color: colors.text }}>
+                    公開鍵（検証スタッフへ共有）
+                  </span>
                   <CopyButton text={publicKeyJwkStr} label="コピー" />
                 </div>
                 <textarea
@@ -173,7 +190,12 @@ export function GenerateTab({
           <div>
             <label
               htmlFor="expiry"
-              style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.75rem' }}
+              style={{
+                ...bodyEmphasis,
+                color: colors.text,
+                display: 'block',
+                marginBottom: '0.75rem',
+              }}
             >
               有効期限
             </label>
@@ -327,7 +349,10 @@ export function GenerateTab({
           )}
           <div
             className="grid gap-4 p-4"
-            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', background: colors.bg }}
+            style={{
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              background: colors.bg,
+            }}
           >
             {generatedQrs.map((qr) => (
               <div
@@ -340,7 +365,14 @@ export function GenerateTab({
                   style={{ width: '160px', height: '160px' }}
                   dangerouslySetInnerHTML={{ __html: qr.svg }}
                 />
-                <span style={{ ...caption, color: colors.text, fontFamily: 'monospace', fontWeight: 600 }}>
+                <span
+                  style={{
+                    ...caption,
+                    color: colors.text,
+                    fontFamily: 'monospace',
+                    fontWeight: 600,
+                  }}
+                >
                   {qr.ticket.t}
                 </span>
                 {qr.ticket.n && (

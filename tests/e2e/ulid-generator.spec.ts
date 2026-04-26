@@ -50,9 +50,15 @@ test.describe('ULID生成', () => {
     await page.keyboard.type('1');
     await page.getByRole('button', { name: '生成' }).click();
 
-    const first = await page.getByRole('cell', { name: /[0-9A-Z]{26}/ }).first().innerText();
+    const first = await page
+      .getByRole('cell', { name: /[0-9A-Z]{26}/ })
+      .first()
+      .innerText();
     await page.getByRole('button', { name: '生成' }).click();
-    const second = await page.getByRole('cell', { name: /[0-9A-Z]{26}/ }).first().innerText();
+    const second = await page
+      .getByRole('cell', { name: /[0-9A-Z]{26}/ })
+      .first()
+      .innerText();
 
     // 単調増加するため second >= first
     expect(second >= first).toBe(true);

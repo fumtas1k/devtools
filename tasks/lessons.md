@@ -19,7 +19,7 @@ Playwright でスクリーンショットを撮影したとき、Service Worker 
 ```js
 // 1. browser_evaluate でキャッシュ削除
 const keys = await caches.keys();
-await Promise.all(keys.map(k => caches.delete(k)));
+await Promise.all(keys.map((k) => caches.delete(k)));
 localStorage.clear();
 sessionStorage.clear();
 
@@ -50,6 +50,7 @@ UIコンポーネント・レイアウト変更後の Playwright 確認手順に
 **`dangerouslySetInnerHTML` を使用する場合、外部からの入力（ユーザー入力、APIレスポンス等）は必ずエスケープまたはサニタイズする。**
 
 特に SVG を文字列として組み立てる際は以下の点に注意する：
+
 1. テキスト要素として挿入する値には、`escapeHtml` などの関数でエンティティエスケープを適用する。
 2. SVG の幅や高さを計算する場合、エスケープ後の文字列長（`&amp;` は 5 文字）ではなく、元の文字列長（`&` は 1 文字）を使用する（ブラウザ描画上の幅と一致させるため）。
 
@@ -105,6 +106,7 @@ git checkout -b feat/<topic>
 ユーザーから「テストはどうなった？」と指摘されて初めて追加するケースが複数あった。
 
 今セッションでの例:
+
 - ケースH: ToggleGroup の行間ハイライト排他性（修正コミット後に指摘されて追加）
 - ケースI: コピーボタンの表示/非表示（修正コミット後に指摘されて追加）
 
@@ -117,12 +119,12 @@ git checkout -b feat/<topic>
 
 ### チェック観点
 
-| 変更の種類 | E2E テストの追加が必要か |
-|---|---|
-| UI の表示/非表示の条件変更 | ✅ 必要（`toBeVisible` / `not.toBeVisible`） |
-| `aria-pressed` などの状態管理バグ修正 | ✅ 必要（`toHaveAttribute`） |
-| 入力 → 出力の変換ロジック修正 | ✅ 必要（出力内容を検証） |
-| スタイルのみの変更（色・余白等） | 基本不要（目視確認で十分） |
+| 変更の種類                            | E2E テストの追加が必要か                     |
+| ------------------------------------- | -------------------------------------------- |
+| UI の表示/非表示の条件変更            | ✅ 必要（`toBeVisible` / `not.toBeVisible`） |
+| `aria-pressed` などの状態管理バグ修正 | ✅ 必要（`toHaveAttribute`）                 |
+| 入力 → 出力の変換ロジック修正         | ✅ 必要（出力内容を検証）                    |
+| スタイルのみの変更（色・余白等）      | 基本不要（目視確認で十分）                   |
 
 ### 予防策
 
@@ -273,8 +275,12 @@ const disabled = await page.locator('...').evaluate((el) => el.disabled);
 expect(disabled).toBe(false);
 
 // ✅ 新パターン
-await expect(page.getByLabel('AI コード 2').getByRole('option', { name: '製造日 (11)' })).toBeDisabled();
-await expect(page.getByLabel('AI コード 2').getByRole('option', { name: '賞味/消費期限 (17)' })).toBeEnabled();
+await expect(
+  page.getByLabel('AI コード 2').getByRole('option', { name: '製造日 (11)' })
+).toBeDisabled();
+await expect(
+  page.getByLabel('AI コード 2').getByRole('option', { name: '賞味/消費期限 (17)' })
+).toBeEnabled();
 ```
 
 - `page.evaluate` によるクリックより `getByRole('button', ...).first().click()` の方がシンプルで堅牢。
@@ -315,10 +321,10 @@ Base64 ツールでは「モード切替（エンコード/デコード）」と
 
 **トグルがもたらす「入力の意味の変化」の大きさで、リセット要否を判断する。**
 
-| トグルの種類                                       | リセット | 理由                                               |
-| -------------------------------------------------- | -------- | -------------------------------------------------- |
-| 操作の種類が変わる（エンコード/デコードなど）      | する     | 入力に求められる形式が変わるため流用できないことが多い |
-| 同じ操作のサブバリアント（標準/URL-safe Base64 など） | しない   | 出力比較の用途で入力保持が役立つ                    |
+| トグルの種類                                          | リセット | 理由                                                   |
+| ----------------------------------------------------- | -------- | ------------------------------------------------------ |
+| 操作の種類が変わる（エンコード/デコードなど）         | する     | 入力に求められる形式が変わるため流用できないことが多い |
+| 同じ操作のサブバリアント（標準/URL-safe Base64 など） | しない   | 出力比較の用途で入力保持が役立つ                       |
 
 一貫性は若干損なわれるが、UX 上は妥当な区別。
 

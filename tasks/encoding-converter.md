@@ -3,12 +3,14 @@
 現在のステータス: **完了**
 
 ## フェーズ1: 基盤
+
 - [x] encoding-japanese@2.2.0 / @types/encoding-japanese を固定バージョンで追加
 - [x] src/utils/encoding.ts を作成 (detectEncoding, decodeToText, convertBytes, textToUtf8Bytes)
 - [x] src/utils/download.ts に downloadBytes を追加
 - [x] astro check で型エラーゼロ
 
 ## フェーズ2: UI
+
 - [x] src/components/tools/EncodingConverter.tsx を作成 (判定モード)
 - [x] 変換モードの入力・設定 UI
 - [x] ファイルアップロード UI (QrTicket パターン流用)
@@ -16,11 +18,13 @@
 - [ ] モバイル縦並びレイアウト確認
 
 ## フェーズ3: 統合
+
 - [x] src/pages/tools/encoding-converter.astro を作成
 - [x] src/data/tools.ts にメタデータ追加
 - [x] src/components/ui/ToolIcon.astro にアイコン追加
 
 ## フェーズ4: E2Eテスト
+
 - [x] tests/e2e/encoding-converter.spec.ts を作成
   - [x] ケースA: UTF-8 テキスト → 判定モード → UTF-8 と表示
   - [x] ケースB: SJIS ファイルアップロード → SJIS 判定 + プレビュー
@@ -35,6 +39,7 @@
 - [x] PC (1280×800) スクリーンショット目視 — 問題なし
 
 ## フェーズ5: ドキュメント
+
 - [x] README.md ツール一覧追記
 - [x] SPEC.md 2.3 ライブラリ表
 - [x] SPEC.md 2.4 ディレクトリ
@@ -44,5 +49,6 @@
 - [x] docs/decisions.md に encoding-japanese 採用理由
 
 ## メモ
+
 - encoding-japanese@2.2.0 (2026-04-24 時点の最新)
 - slug: encoding-converter、ツール名: 文字コード判定・変換

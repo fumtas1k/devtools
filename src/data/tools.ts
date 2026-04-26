@@ -77,7 +77,8 @@ export const tools: Tool[] = [
   {
     slug: 'encoding-converter',
     name: '文字コード判定・変換',
-    description: 'ファイルやテキストの文字コードを自動判定し、UTF-8・Shift_JIS・EUC-JP 等へ変換します',
+    description:
+      'ファイルやテキストの文字コードを自動判定し、UTF-8・Shift_JIS・EUC-JP 等へ変換します',
     category: 'convert',
   },
   {

@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 /** ネストされたオブジェクトをドット記法でフラット化する */
 function flattenObject(
   obj: Record<string, unknown>,
-  prefix = '',
+  prefix = ''
 ): Record<string, string | number | boolean | null> {
   const result: Record<string, string | number | boolean | null> = {};
   for (const [key, value] of Object.entries(obj)) {
