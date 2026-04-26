@@ -36,7 +36,7 @@ type QuoteStyle = 'none' | 'single' | 'double';
 function ColoredUuid({ uuid, quoteStyle }: { uuid: string; quoteStyle: QuoteStyle }) {
   const parts = uuid.split('-');
   const quote = quoteStyle === 'double' ? '"' : quoteStyle === 'single' ? "'" : '';
-  const fullText = quoteStyle === 'double' ? `"${uuid}"` : quoteStyle === 'single' ? `'${uuid}'` : uuid;
+  const fullText = `${quote}${uuid}${quote}`;
 
   return (
     <span
