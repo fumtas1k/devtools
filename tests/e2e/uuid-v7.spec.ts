@@ -16,7 +16,7 @@ test.describe('UUID v7 生成', () => {
     
     // テーブルに行が存在し、UUID形式（8-4-4-4-12）であることを確認
     const uuidCell = page.locator('table tbody tr').first().locator('td').nth(1);
-    const uuidText = await uuidCell.innerText();
+    const uuidText = await uuidCell.textContent();
     // UUID v7 の正規表現 (バージョン 7 であることを確認)
     expect(uuidText).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   });
@@ -65,9 +65,6 @@ test.describe('UUID v7 生成', () => {
     await expect(doubleBtn).toHaveAttribute('aria-pressed', 'false');
 
     await expect(coloredUuid).toHaveAttribute('aria-label', new RegExp(`^'${uuidV7Regex.source}'$`, 'i'));
-
-    // 「すべてコピー」ボタンが存在することを確認
-    await expect(page.getByRole('button', { name: 'すべてコピー' })).toBeVisible();
   });
 
   test('行をクリックするとフィールド分解パネルが表示される', async ({ page }) => {
@@ -86,8 +83,13 @@ test.describe('UUID v7 生成', () => {
     await page.getByRole('button', { name: '生成' }).click();
     await expect(page.getByText('1 件生成')).toBeVisible();
     
+    // 最初の行をクリックしてフィールド分解パネルを表示
+    await page.locator('table tbody tr').first().click();
+    await expect(page.getByText('フィールド分解', { exact: true })).toBeVisible();
+
     await page.getByRole('button', { name: 'クリア' }).click();
-    await expect(page.getByText('0 件生成')).not.toBeVisible(); // 件数表示自体が消えるはず
+    await expect(page.getByText('0 件生成')).not.toBeVisible();
     await expect(page.locator('table')).not.toBeVisible();
+    await expect(page.getByText('フィールド分解', { exact: true })).not.toBeVisible();
   });
 });

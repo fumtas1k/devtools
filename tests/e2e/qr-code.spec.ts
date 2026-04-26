@@ -15,7 +15,7 @@ test.describe('QRコード生成', () => {
     // プレビュー領域が表示され、SVGが含まれていることを確認
     const preview = page.getByText('プレビュー');
     await expect(preview).toBeVisible();
-    
+
     const qrContainer = page.getByTestId('qr-code-container');
     await expect(qrContainer).toBeVisible();
     await expect(qrContainer.locator('svg')).toBeVisible();
@@ -23,7 +23,7 @@ test.describe('QRコード生成', () => {
 
   test('誤り訂正レベルを切り替えられる', async ({ page }) => {
     await page.getByLabel('テキスト / URL').fill('Test Text');
-    
+
     // デフォルトは M
     await expect(page.getByText('復元率: 15%')).toBeVisible();
 

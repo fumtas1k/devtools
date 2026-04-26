@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import qrcode from '@/utils/qrcode';
 
+// このテストは @/utils/qrcode の import 副作用（stringToBytes の UTF-8 上書き）に依存している。
+// qrcode-generator を直接 import するテストとの実行順序に注意すること。
 describe('qrcode (patched)', () => {
   it('stringToBytes が TextEncoder (UTF-8) を使用するように上書きされている', () => {
     // 'あ' の UTF-8 バイト配列は [227, 129, 130] (0xE3, 0x81, 0x82)
@@ -24,7 +26,7 @@ describe('qrcode (patched)', () => {
     const qr = qrcode(0, 'M');
     qr.addData('こんにちは');
     expect(() => qr.make()).not.toThrow();
-    
+
     const svg = qr.createSvgTag();
     expect(svg).toContain('<svg');
     expect(svg).toContain('</svg>');

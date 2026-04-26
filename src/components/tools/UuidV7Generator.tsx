@@ -112,18 +112,13 @@ export function UuidV7GeneratorTool() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
 
-  const formatId = (id: string) => {
-    if (quoteStyle === 'double') return `"${id}"`;
-    if (quoteStyle === 'single') return `'${id}'`;
-    return id;
-  };
+  const quote = quoteStyle === 'double' ? '"' : quoteStyle === 'single' ? "'" : '';
+  const formatId = (id: string) => `${quote}${id}${quote}`;
 
   const allUuids = rows
     .map((r, i) => {
       const isLast = i === rows.length - 1;
-      if (quoteStyle === 'double') return `"${r.id}"${isLast ? '' : ','}`;
-      if (quoteStyle === 'single') return `'${r.id}'${isLast ? '' : ','}`;
-      return r.id;
+      return `${quote}${r.id}${quote}${isLast ? '' : ','}`;
     })
     .join('\n');
 
