@@ -85,6 +85,7 @@ devtools/
 ├── astro.config.mjs
 ├── tsconfig.json
 ├── package.json
+├── GEMINI.md               # Gemini CLI 用プロジェクト指示書
 ├── vitest.config.ts
 ├── playwright.config.ts
 ├── .github/
@@ -1085,6 +1086,15 @@ Service Worker 登録（`<body>` 末尾にインラインスクリプト）:
 
 ```js
 if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+```
+
+sw.js');
+}
+
+```
+erviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js');
 }
 ```
