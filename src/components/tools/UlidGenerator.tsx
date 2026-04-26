@@ -89,11 +89,9 @@ export function UlidGeneratorTool() {
               ...caption,
               fontWeight: 600,
               background: colors.primary,
-              color: '#ffffff',
+              color: colors.bg,
               border: 'none',
             }}
-            onFocus={onFocusRing}
-            onBlur={onBlurRing}
           >
             生成
           </button>
@@ -137,7 +135,7 @@ export function UlidGeneratorTool() {
                       ...micro,
                       padding: '0.25rem 0.625rem',
                       background: quoteStyle === value ? colors.primary : colors.bg,
-                      color: quoteStyle === value ? '#ffffff' : colors.muted,
+                      color: quoteStyle === value ? colors.bg : colors.muted,
                       border: 'none',
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
