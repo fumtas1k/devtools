@@ -14,7 +14,7 @@ const bgMap = {
 };
 const colorMap = {
   default: colors.text,
-  primary: '#ffffff',
+  primary: colors.textOnPrimary,
   danger: colors.error,
 };
 const borderMap = {

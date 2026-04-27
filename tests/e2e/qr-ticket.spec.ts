@@ -67,7 +67,7 @@ test.describe('QRチケット', () => {
 
     await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('T-00001')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'SVG保存' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'SVGダウンロード' }).first()).toBeVisible();
   });
 
   // ──────────────────────────────────────────────────────────

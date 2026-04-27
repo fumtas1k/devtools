@@ -3,6 +3,7 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ClearButton } from '@/components/ui/ClearButton';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import { caption, colors } from '@/utils/styles';
 import { jsonToCsv, csvToJson } from '@/utils/json-csv';
 import { downloadText } from '@/utils/download';
@@ -44,19 +45,7 @@ export function JsonCsvTool() {
 
   const downloadButton =
     mode === 'json2csv' ? (
-      <button
-        onClick={handleDownloadCsv}
-        className="rounded-lg px-3 py-1.5 transition-colors"
-        style={{
-          ...caption,
-          lineHeight: 1,
-          color: colors.primary,
-          border: `1px solid ${colors.primary}`,
-          background: colors.bg,
-        }}
-      >
-        CSVダウンロード
-      </button>
+      <DownloadButton onClick={handleDownloadCsv} label="CSVダウンロード" variant="secondary" />
     ) : null;
 
   return (
