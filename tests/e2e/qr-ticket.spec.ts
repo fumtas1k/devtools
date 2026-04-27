@@ -53,6 +53,23 @@ test.describe('QRチケット', () => {
     await expect(page.getByRole('alert')).toContainText('イベントIDを入力してください');
   });
 
+  test('入力項目の合計が300バイトを超えるとエラーが表示される', async ({ page }) => {
+    await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
+    await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
+
+    // 日本語101文字 = 303バイト (> 300)
+    const longName = 'あ'.repeat(101);
+
+    await page.getByLabel('イベントID').fill('event');
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
+    await page.getByLabel('参加者名 1').fill(longName);
+
+    await page.getByRole('button', { name: '一括生成' }).click();
+    await expect(page.getByRole('alert')).toContainText(
+      '上限（300バイト）を超えているチケットがあります'
+    );
+  });
+
   // ──────────────────────────────────────────────────────────
   // QR生成フロー
   // ──────────────────────────────────────────────────────────
