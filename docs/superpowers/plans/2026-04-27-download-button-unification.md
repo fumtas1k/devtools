@@ -15,101 +15,15 @@
 **Files:**
 
 - Create: `src/components/ui/DownloadButton.tsx`
-- Test: `src/utils/__tests__/download-button.test.tsx` (新規作成)
+- Test: `tests/e2e/download-button.spec.ts` (新規作成)
 
-- [ ] **Step 1: コンポーネントの実装**
-
-```tsx
-import { colors, caption } from '@/utils/styles';
-
-interface Props {
-  onClick: () => void;
-  label: string;
-  variant?: 'primary' | 'secondary';
-  disabled?: boolean;
-  className?: string;
-  'aria-label'?: string;
-}
-
-function DownloadIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
-  );
-}
-
-export function DownloadButton({
-  onClick,
-  label,
-  variant = 'primary',
-  disabled = false,
-  className = '',
-  'aria-label': ariaLabel,
-}: Props) {
-  const isPrimary = variant === 'primary';
-
-  const baseStyle: React.CSSProperties = {
-    ...caption,
-    fontWeight: 600,
-    padding: '0.5rem 1rem',
-    borderRadius: '0.5rem',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.375rem',
-    transition: 'all 0.2s',
-    whiteSpace: 'nowrap',
-  };
-
-  const variantStyle: React.CSSProperties = isPrimary
-    ? {
-        background: disabled ? colors.bgSubtle : colors.primary,
-        color: disabled ? colors.muted : '#ffffff',
-        border: 'none',
-      }
-    : {
-        background: 'transparent',
-        color: disabled ? colors.muted : colors.primary,
-        border: `1px solid ${disabled ? colors.border : colors.primary}`,
-      };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel || label}
-      className={`${isPrimary ? 'hover:opacity-90' : 'hover:bg-blue-50'} ${className}`}
-      style={{ ...baseStyle, ...variantStyle }}
-    >
-      <DownloadIcon />
-      {label}
-    </button>
-  );
-}
-```
-
-- [ ] **Step 2: ユニットテストの作成**
-
-`src/components/ui/__tests__/DownloadButton.test.tsx` を作成し、レンダリングとクリックイベントを確認する。
-
-- [ ] **Step 3: テスト実行とコミット**
-
-Run: `npm run test`
-Commit: `feat: add DownloadButton component`
+- [x] **Step 1: コンポーネントの実装**
+  - カラーコードを規約に従い `colors.textOnPrimary` に修正。
+- [x] **Step 2: E2Eテストの作成**
+  - `tests/e2e/download-button.spec.ts` を作成し、実際の画面上での表示とスタイルを確認する。
+- [x] **Step 3: テスト実行とコミット**
+  - Run: `npm run test:e2e`
+  - Commit: `feat: add DownloadButton component and its E2E test`
 
 ---
 
@@ -119,32 +33,11 @@ Commit: `feat: add DownloadButton component`
 
 - Modify: `src/components/ui/DownloadButtonGroup.tsx`
 
-- [ ] **Step 1: 内部実装を `DownloadButton` に置換**
-
-```tsx
-import { DownloadButton } from './DownloadButton';
-
-interface Props {
-  onDownloadSvg: () => void;
-  onDownloadPng?: () => void;
-}
-
-export function DownloadButtonGroup({ onDownloadSvg, onDownloadPng }: Props) {
-  return (
-    <div className="flex gap-2">
-      <DownloadButton onClick={onDownloadSvg} label="SVGダウンロード" variant="secondary" />
-      {onDownloadPng && (
-        <DownloadButton onClick={onDownloadPng} label="PNGダウンロード" variant="primary" />
-      )}
-    </div>
-  );
-}
-```
-
-- [ ] **Step 2: 動作確認とコミット**
-
-既存のテストが通ることを確認。
-Commit: `refactor: use DownloadButton in DownloadButtonGroup`
+- [x] **Step 1: 内部実装を `DownloadButton` に置換**
+  - **追加**: モバイル対応として `flex-wrap` と `justify-center` を適用。
+- [x] **Step 2: 動作確認とコミット**
+  - 既存のテストが通ることを確認。
+  - Commit: `refactor: use DownloadButton in DownloadButtonGroup`
 
 ---
 
@@ -156,13 +49,13 @@ Commit: `refactor: use DownloadButton in DownloadButtonGroup`
 - Modify: `src/components/tools/JsonCsv.tsx`
 - Modify: `src/components/tools/EncodingConverter.tsx`
 
-- [ ] **Step 1: 各ツールのボタンを置換**
+- [x] **Step 1: 各ツールのボタンを置換**
   - QrCode: 「SVG ダウンロード」→ `DownloadButton` (secondary, "SVGダウンロード")
   - JsonCsv: インラインボタン → `DownloadButton` (secondary, "CSVダウンロード")
   - EncodingConverter: インラインボタン → `DownloadButton` (secondary, "ダウンロード")
 
-- [ ] **Step 2: コミット**
-      Commit: `refactor: replace inline download buttons with DownloadButton`
+- [x] **Step 2: コミット**
+  - Commit: `refactor: replace inline download buttons with DownloadButton`
 
 ---
 
@@ -173,12 +66,14 @@ Commit: `refactor: use DownloadButton in DownloadButtonGroup`
 - Modify: `src/components/tools/Gs1Databar.tsx`
 - Modify: `src/components/tools/qr-ticket/GenerateTab.tsx`
 
-- [ ] **Step 1: Gs1Databar の「全件ZIPダウンロード」を置換**
-- [ ] **Step 2: QRチケットのダウンロード系ボタンを置換**
+- [x] **Step 1: Gs1Databar の「全件ZIPダウンロード」を置換**
+  - **追加**: AIフィールドのレスポンシブ対応（`flex-col sm:flex-row`）。
+  - **追加**: 幅指定を Tailwind 標準クラス `sm:w-50` に修正。
+- [x] **Step 2: QRチケットのダウンロード系ボタンを置換**
   - 「一括ZIPダウンロード」 (primary)
   - 「SVG保存」→「SVGダウンロード」 (secondary)
-- [ ] **Step 3: コミット**
-      Commit: `refactor: update GS1 DataBar and QR Ticket download buttons`
+- [x] **Step 3: コミット**
+  - Commit: `refactor: update GS1 DataBar and QR Ticket download buttons`
 
 ---
 
@@ -190,11 +85,11 @@ Commit: `refactor: use DownloadButton in DownloadButtonGroup`
 - Modify: `tests/e2e/qr-ticket.spec.ts` (必要に応じて)
 - Modify: `CLAUDE.md`
 
-- [ ] **Step 1: E2Eテストのラベル修正**
-  - `page.getByRole('button', { name: 'SVG ダウンロード' })` → `page.getByRole('button', { name: 'SVGダウンロード' })`
-- [ ] **Step 2: 全テスト実行**
-      Run: `npm run test && npm run test:e2e`
-- [ ] **Step 3: CLAUDE.md の更新**
-      共通UIコンポーネント表に `DownloadButton` を追加。
-- [ ] **Step 4: コミット**
-      Commit: `test: fix E2E tests and update documentation`
+- [x] **Step 1: E2Eテストのラベル修正**
+  - スペースなしの「SVGダウンロード」に統一されていることを確認済み。
+- [x] **Step 2: 全テスト実行**
+  - Run: `npm run test && npm run test:e2e`
+- [x] **Step 3: CLAUDE.md の更新**
+  - 共通UIコンポーネント表に `DownloadButton` が含まれていることを確認済み。
+- [x] **Step 4: コミット**
+  - Commit: `test: fix E2E tests and update documentation`
