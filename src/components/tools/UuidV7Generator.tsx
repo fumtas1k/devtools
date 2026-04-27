@@ -169,7 +169,7 @@ export function UuidV7GeneratorTool() {
     <div className="space-y-6">
       <CountInput
         id="uuid-count"
-        defaultValue={1}
+        defaultValue={10}
         onGenerate={(count) => {
           const newRows = generateRows(count);
           setRows(newRows);

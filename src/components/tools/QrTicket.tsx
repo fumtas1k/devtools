@@ -20,6 +20,17 @@ import { useQrCamera } from '@/hooks/useQrCamera';
 import { MODE_OPTIONS, GenerateTab, VerifyTab } from './qr-ticket/index';
 import type { TicketRow, GeneratedQr } from './qr-ticket/types';
 
+/**
+ * 有効期限の初期値（1週間後の00:00）を取得する
+ */
+const getDefaultExpiry = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  d.setHours(0, 0, 0, 0);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00`;
+};
+
 export function QrTicketTool() {
   const [mode, setMode] = useState<'generate' | 'verify'>('generate');
 
@@ -34,7 +45,7 @@ export function QrTicketTool() {
 
   // 生成タブ状態
   const [eventId, setEventId] = useState('');
-  const [expiry, setExpiry] = useState('');
+  const [expiry, setExpiry] = useState(getDefaultExpiry());
   const ticketKeyRef = useRef(1);
   const [tickets, setTickets] = useState<TicketRow[]>([
     { _key: 1, id: generateTicketId(1), name: '', category: '' },
