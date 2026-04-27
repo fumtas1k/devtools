@@ -15,11 +15,11 @@
 
 ### デザイン仕様
 
-- **形状**: `rounded-lg` (0.5rem) / `px-4 py-2`
+- **形状**: `rounded-lg` (0.5rem) / `px-4 py-2` (または `0.5rem 1rem`)
 - **フォント**: `fontWeight: 600`, `fontSize: 0.875rem` (caption)
 - **バリアント**:
   - `primary`: 背景 `colors.primary` / 文字 `colors.textOnPrimary` / ホバー `opacity: 90%`
-  - `secondary`: 背景 透明 / 文字 `colors.primary` / 枠線 `colors.primary` / ホバー `bg-blue-50`
+  - `secondary`: 背景 透明 / 文字 `colors.primary` / 枠線 `colors.primary` / ホバー `colors.bgActive`
 - **アイコン**: ダウンロードアイコン（インラインSVG）を常に表示
 - **Disabled状態**: 背景 `colors.bgSubtle` / 文字 `colors.muted` / `cursor: not-allowed`
 
@@ -72,4 +72,5 @@ interface Props {
   - ラベルの変更（「SVG 保存」→「SVGダウンロード」など）に伴い、失敗する既存のE2Eテストを修正する。
   - 代表的なツール（QRコード、QRチケット等）において、新しい `DownloadButton` が正しく表示されているか確認する。
 - **視覚的確認**: Playwright を使用して、PCサイズ (1280x800) とスマホサイズ (390x844) の両方でボタンの配置や余白、はみ出しがないかを確認する。
+  - **色検証**: `PRIMARY_COLOR` (`rgb(26, 86, 219)`) や `DISABLED_BG` (`rgb(243, 244, 246)`) を用いた厳密な色検証を実施。
 - **型チェック**: `astro check` を実行し、Propsの不整合がないか確認する。
