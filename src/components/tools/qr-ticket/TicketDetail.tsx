@@ -44,7 +44,8 @@ export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
               style={{
                 ...caption,
                 color: colors.text,
-                fontFamily: label === 'チケットID' ? 'monospace' : undefined,
+                fontFamily:
+                  label === 'チケットID' || label === 'イベントID' ? 'monospace' : undefined,
               }}
             >
               {value}
