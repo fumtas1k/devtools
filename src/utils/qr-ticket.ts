@@ -205,10 +205,15 @@ export function ticketToQrString(ticket: SignedTicket): string {
 export function generateQrSvg(data: string): string | null {
   if (!data) return null;
   try {
+    // qrcode-generator はデフォルトで ISO-8859-1 を想定するため、
+    // 日本語（UTF-8）を扱うにはバイト列に変換する必要がある。
+    const utf8Data = unescape(encodeURIComponent(data));
     const qr = qrcode(0, 'M');
-    qr.addData(data);
+    qr.addData(utf8Data);
     qr.make();
-    return qr.createSvgTag({ scalable: true });
+    // scalable: true だと width/height が付与されず、画像アップロード時に歪んで描画される原因になるため、
+    // 明示的なサイズを持つSVGを生成する（cellSize: 4, margin: 4 = 29x4+8=124px 前後）。
+    return qr.createSvgTag({ cellSize: 4, margin: 4, scalable: false });
   } catch {
     return null;
   }
