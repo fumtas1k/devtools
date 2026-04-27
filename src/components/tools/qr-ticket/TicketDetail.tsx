@@ -1,6 +1,8 @@
 import { colors, caption } from '@/utils/styles';
 import { formatTimestamp, type TicketPayload } from '@/utils/qr-ticket';
 
+const MONO_LABELS = ['チケットID', 'イベントID'];
+
 export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
   const rows: { label: string; value: string }[] = [
     { label: 'イベントID', value: ticket.e },
@@ -30,7 +32,7 @@ export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
               style={{
                 ...caption,
                 color: colors.text,
-                fontFamily: ['チケットID', 'イベントID'].includes(label) ? 'monospace' : undefined,
+                fontFamily: MONO_LABELS.includes(label) ? 'monospace' : undefined,
               }}
             >
               {value}

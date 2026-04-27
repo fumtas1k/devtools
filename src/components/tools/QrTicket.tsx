@@ -48,7 +48,7 @@ export function QrTicketTool() {
 
   // 生成タブ状態
   const [eventId, setEventId] = useState('');
-  const [expiry, setExpiry] = useState(getDefaultExpiry());
+  const [expiry, setExpiry] = useState('');
   const ticketKeyRef = useRef(1);
   const [tickets, setTickets] = useState<TicketRow[]>([
     { _key: 1, id: generateTicketId(1), name: '', category: '' },
@@ -67,6 +67,11 @@ export function QrTicketTool() {
 
   // アンマウント検知 ref（非同期処理後のステート更新ガード用）
   const mountedRef = useRef(true);
+
+  // マウント後に初期値をセット
+  useEffect(() => {
+    setExpiry(getDefaultExpiry());
+  }, []);
 
   // ─── QR検証（カメラ/アップロード共通） ───────────────────
 
