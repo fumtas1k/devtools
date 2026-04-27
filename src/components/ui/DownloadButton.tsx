@@ -56,7 +56,7 @@ export function DownloadButton({
   const variantStyle: React.CSSProperties = isPrimary
     ? {
         background: disabled ? colors.bgSubtle : colors.primary,
-        color: disabled ? colors.muted : '#ffffff',
+        color: disabled ? colors.muted : colors.textOnPrimary,
         border: 'none',
       }
     : {
