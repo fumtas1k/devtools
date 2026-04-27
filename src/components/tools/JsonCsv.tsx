@@ -45,19 +45,7 @@ export function JsonCsvTool() {
 
   const downloadButton =
     mode === 'json2csv' ? (
-      <button
-        onClick={handleDownloadCsv}
-        className="rounded-lg px-3 py-1.5 transition-colors"
-        style={{
-          ...caption,
-          lineHeight: 1,
-          color: colors.primary,
-          border: `1px solid ${colors.primary}`,
-          background: colors.bg,
-        }}
-      >
-        CSVダウンロード
-      </button>
+      <DownloadButton onClick={handleDownloadCsv} label="CSVダウンロード" variant="secondary" />
     ) : null;
 
   return (
