@@ -268,7 +268,10 @@ export function QrTicketTool() {
   };
 
   const handleDownloadSvg = (qr: GeneratedQr) => {
-    downloadSvg(qr.svg, `ticket-${qr.ticket.t}.svg`);
+    downloadSvg(
+      qr.svg.replace('<svg ', '<svg width="160" height="160" '),
+      `ticket-${qr.ticket.t}.svg`
+    );
   };
 
   const handleDownloadZip = async () => {
@@ -279,7 +282,10 @@ export function QrTicketTool() {
       const zip = new JSZip();
       const folder = zip.folder('tickets')!;
       generatedQrs.forEach(({ ticket, svg }) => {
-        folder.file(`ticket-${ticket.t}.svg`, svg);
+        folder.file(
+          `ticket-${ticket.t}.svg`,
+          svg.replace('<svg ', '<svg width="160" height="160" ')
+        );
       });
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);

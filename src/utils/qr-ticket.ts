@@ -14,7 +14,7 @@ import { base64UrlToBuffer, bufferToBase64Url } from '@/utils/base64url';
 export const SIGNATURE_BYTE_SIZE = 86;
 
 /** QRコードの最大データサイズ（署名・タイムスタンプ等を含む全データの合計バイト数） */
-export const MAX_QR_BYTE_SIZE = 300;
+export const MAX_QR_BYTE_SIZE = 250;
 
 /** QRコードに含まれるパイプ区切りフィールドの数 (eventId|ticketId|timestamp|name|category|signature) */
 export const PAYLOAD_FIELD_COUNT = 6;
