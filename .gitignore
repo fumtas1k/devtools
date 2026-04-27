@@ -8,4 +8,6 @@ playwright-report/
 coverage/
 .claude/scheduled_tasks.lock
 conductor/
-\n# Superpowers extension\n.superpowers/
+
+# Superpowers extension
+.superpowers/
