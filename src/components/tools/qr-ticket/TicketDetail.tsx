@@ -44,8 +44,7 @@ export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
               style={{
                 ...caption,
                 color: colors.text,
-                fontFamily:
-                  label === 'チケットID' || label === 'イベントID' ? 'monospace' : undefined,
+                fontFamily: ['チケットID', 'イベントID'].includes(label) ? 'monospace' : undefined,
               }}
             >
               {value}
