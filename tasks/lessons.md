@@ -360,3 +360,57 @@ const handleModeChange = (next: Mode) => {
 ### 副次改善
 
 `aria-label` の動的 swap は `aria-live` への能動的通知に至らないため、`role="status" aria-live="polite"` の `sr-only` span に置き換えてスクリーンリーダー利用者にも成功を通知する。
+
+---
+
+## [2026-04-27] lint-staged による partial-commit 安全な自動フォーマット
+
+### 現象
+
+従来の `.githooks/pre-commit` での Prettier 直接実行（`prettier --write <file> && git add <file>`）では、同一ファイル内の一部の変更のみをステージングしている場合（partial-commit）、未ステージの変更まで巻き込んでステージング・コミットされてしまう問題があった。
+
+### 教訓
+
+**コミット時の自動フォーマットには `lint-staged` を使用する。**
+
+- `lint-staged` は内部で `git stash` 相当の処理を行い、未ステージの変更を一時的に退避してから整形・再 add を行うため、partial-commit のセマンティクスを壊さない。
+- 拡張子ごとの処理ルールを `package.json` に集約できるため、シェルスクリプト側の複雑なループや抽出ロジックを排除でき、保守性が向上する。
+
+### 構成パターン
+
+```json
+// package.json
+"lint-staged": {
+  "*.{js,ts,tsx,jsx,css,md,json,astro}": "prettier --write"
+}
+```
+
+```sh
+# .githooks/pre-commit
+npx lint-staged
+```
+
+### 予防策
+
+- 新しい静的解析ツールや整形ツールをコミットフックに追加する場合は、直接シェルスクリプトで書かずに `lint-staged` のタスクとして追加することを検討する。
+- フックをスキップしたコミットがプッシュされる可能性に備え、CI（GitHub Actions）での `format:check` 等による最終ガードを必ず併用する。
+
+---
+
+## [2026-04-27] プルリクエスト作成時は明示的にベースブランチを指定する
+
+### 現象
+
+`gh pr create` をオプションなしで実行した際、リポジトリのデフォルト設定に従い `main` ブランチに向けてプルリクエストが作成されてしまった。プロジェクトの運用では `develop` をベースにする必要がある。
+
+### 教訓
+
+**`gh pr create` を実行する際は、必ず `--base develop` を指定する。**
+
+### 予防策
+
+プルリクエスト作成コマンドを以下のように徹底する：
+
+```bash
+gh pr create --base develop --title "..." --body "..."
+```

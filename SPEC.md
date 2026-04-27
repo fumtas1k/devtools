@@ -74,6 +74,7 @@
 | `typescript`               | TypeScript コンパイラ（devDependency）                   | 開発ツール共通       |
 | `@playwright/test`         | E2Eリグレッションテスト（devDependency）                 | 開発ツール共通       |
 | `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                    | 開発ツール共通       |
+| `lint-staged`              | コミット時の自動フォーマット (devDependency)             | 開発ツール共通       |
 | `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16） | 文字コード判定・変換 |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。

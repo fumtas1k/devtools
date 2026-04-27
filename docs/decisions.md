@@ -1372,3 +1372,46 @@ CI（GitHub Actions）の実行コスト削減と、不要な重複ジョブの�
 - ✅ 無駄なリソース消費が抑えられ、最新のプッシュに対する結果がより早く得られるようになった
 - ✅ ドラフト PR から `Ready for review` に切り替えた際にも自動でテストが走るようになった
 - ⚠️ 実行途中でジョブが止まるため、デバッグ中に過去の実行ログが途切れる場合があるが、実用上のメリットが上回る
+
+---
+
+## [043] lint-staged 導入による partial-commit 安全な自動フォーマット
+
+**2026-04-27 | ステータス: 採用**
+
+### 背景
+
+[041] で導入した `.githooks/pre-commit` の Prettier 自動整形には、partial-commit
+（同一ファイル内の staged 変更と unstaged 変更を分けてコミットする運用）を壊す
+未解決の課題があった。`prettier --write <file>` はワーキングツリー側（unstaged
+を含む）を整形し、続く `git add <file>` で unstaged 変更まで一緒にステージして
+しまう。直近 `28a4c60` でファイル名スペース対応は堅牢化したが、partial-commit
+問題は残っていた（PR #88 レビュー）。
+
+### 決断
+
+1. `lint-staged` を devDependency として導入し、partial-commit 時には内部で
+   `git stash` 相当の処理により未ステージ変更を退避してから整形・add するように
+   切り替えた。
+2. 整形コマンドと拡張子セットは `package.json` の `"lint-staged"` 設定に集約し、
+   pre-commit フック側は `npx lint-staged` 1 行のみに簡素化した。
+3. CI の `npm run format:check`（`.github/workflows/test.yml`）はそのまま維持し、
+   フックが何らかの理由でスキップ（`--no-verify`）された場合の最終防衛線とした。
+4. `core.hooksPath=.githooks` の運用は維持（`ignore-scripts=true` ポリシーのため
+   Husky の `prepare` スクリプト方式は採用しない）。
+
+### 却下した選択肢
+
+- **Husky 導入**: `.npmrc` の `ignore-scripts=true` で `prepare` が走らないため、
+  クローン直後の自動セットアップが利かず、利点を活かせない。
+- **自前スクリプト改修で `git stash` を扱う**: 実装と保守コストが高く、
+  lint-staged の枯れた実装と比較して優位性がない。
+- **現状維持**: partial-commit を破壊する運用上の地雷が残るため却下。
+
+### 結果・トレードオフ
+
+- ✅ partial-commit のセマンティクスを破壊しない
+- ✅ ファイル名のクオート処理は lint-staged 側で堅牢に処理される
+- ✅ 設定が `package.json` に集約され、フックスクリプトが簡素化された
+- ⚠️ devDependency が 1 つ増えるが、`min-release-age=7` / `save-exact=true` の
+  サプライチェーン保護下で固定バージョン運用するため許容範囲
