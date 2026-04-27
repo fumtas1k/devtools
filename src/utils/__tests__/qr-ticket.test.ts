@@ -11,6 +11,7 @@ import {
   generateQrSvg,
   generateTicketId,
   type TicketPayload,
+  type SignedTicket,
 } from '@/utils/qr-ticket';
 
 // ────────────────────────────────────────────
@@ -34,7 +35,6 @@ describe('generateTicketId', () => {
 // buildPayload
 // ────────────────────────────────────────────
 describe('buildPayload', () => {
-  // @ts-ignore: timestamp への移行期間のため一時的に無視
   const base: TicketPayload = { e: 'event-01', t: 'T-00001', timestamp: 1735689540 }; // 2024-12-31T23:59:00Z
 
   it('必須フィールドのみでパイプ区切りの文字列を返す', () => {
@@ -70,7 +70,7 @@ describe('buildPayload', () => {
 // ────────────────────────────────────────────
 describe('ticketToQrString', () => {
   it('ペイロードと署名をパイプで結合した文字列を返す', () => {
-    const ticket = {
+    const ticket: SignedTicket = {
       e: 'event-01',
       t: 'T-00001',
       timestamp: 1735689540,
@@ -78,13 +78,13 @@ describe('ticketToQrString', () => {
       n: '山田 太郎',
       p: 'VIP',
     };
-    const result = ticketToQrString(ticket as any);
+    const result = ticketToQrString(ticket);
     expect(result).toBe('event-01|T-00001|1735689540|山田 太郎|VIP|dummysig');
   });
 
   it('任意フィールドなしでも正しい個数のパイプで結合される', () => {
-    const ticket = { e: 'ev', t: 'T-00001', timestamp: 1704067200, s: 'sig' };
-    const result = ticketToQrString(ticket as any);
+    const ticket: SignedTicket = { e: 'ev', t: 'T-00001', timestamp: 1704067200, s: 'sig' };
+    const result = ticketToQrString(ticket);
     expect(result).toBe('ev|T-00001|1704067200|||sig');
   });
 });
@@ -146,7 +146,7 @@ describe('signTicket / verifyTicket', () => {
     e: 'event-2026',
     t: 'T-00001',
     timestamp: futureTimestamp,
-  } as any;
+  };
 
   it('正常系: 署名したチケットを公開鍵で検証できる', async () => {
     const pair = await generateKeyPair();
@@ -188,7 +188,7 @@ describe('signTicket / verifyTicket', () => {
   it('期限切れ検知: 過去の有効期限は expired: true を返す', async () => {
     const pair = await generateKeyPair();
     const pastTimestamp = Math.floor(Date.now() / 1000) - 3600;
-    const expired: TicketPayload = { ...payload, timestamp: pastTimestamp } as any;
+    const expired: TicketPayload = { ...payload, timestamp: pastTimestamp };
     const signed = await signTicket(expired, pair.privateKey);
     const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
 
@@ -228,7 +228,7 @@ describe('signTicket / verifyTicket', () => {
       ...payload,
       n: '山田 太郎',
       p: 'VIP',
-    } as any;
+    };
     const signed = await signTicket(withOptional, pair.privateKey);
     const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
 

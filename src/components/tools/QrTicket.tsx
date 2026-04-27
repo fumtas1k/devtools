@@ -205,7 +205,7 @@ export function QrTicketTool() {
         const payload: TicketPayload = {
           e: eventId.trim(),
           t: row.id.trim(),
-          x: expiry,
+          timestamp: Math.floor(new Date(expiry).getTime() / 1000),
           ...(row.name.trim() ? { n: row.name.trim() } : {}),
           ...(row.category.trim() ? { p: row.category.trim() } : {}),
         };
