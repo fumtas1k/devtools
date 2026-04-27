@@ -26,9 +26,10 @@ import type { TicketRow, GeneratedQr } from './qr-ticket/types';
 const getDefaultExpiry = () => {
   const d = new Date();
   d.setDate(d.getDate() + 7);
-  d.setHours(0, 0, 0, 0);
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00`;
+
+  // sv-SE は確実に "YYYY-MM-DD" 形式を返すのでゼロ埋め不要
+  const localDate = d.toLocaleDateString('sv-SE');
+  return `${localDate}T00:00`;
 };
 
 export function QrTicketTool() {
