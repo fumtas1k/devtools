@@ -53,21 +53,24 @@ test.describe('QRチケット', () => {
     await expect(page.getByRole('alert')).toContainText('イベントIDを入力してください');
   });
 
-  test('名前と料金区分の合計が80文字を超えるとエラーが表示される', async ({ page }) => {
+  test('全入力項目の合計が80文字を超えるとエラーが表示される', async ({ page }) => {
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
     await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
 
-    await page.getByLabel('イベントID').fill('limit-test');
-    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
+    const eventId = 'A'.repeat(20);
+    const ticketId = 'T-001'; // 5文字
+    const name = 'B'.repeat(30);
+    const category = 'C'.repeat(26); // 合計: 20 + 5 + 30 + 26 = 81文字
 
-    // 81文字入力 (40 + 41)
-    await page.getByLabel('参加者名 1').fill('あ'.repeat(40));
-    await page.getByLabel('料金区分 1').fill('い'.repeat(41));
+    await page.getByLabel('イベントID').fill(eventId);
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
+    await page.getByLabel('チケットID 1').fill(ticketId);
+    await page.getByLabel('参加者名 1').fill(name);
+    await page.getByLabel('料金区分 1').fill(category);
 
     await page.getByRole('button', { name: '一括生成' }).click();
     await expect(page.getByRole('alert')).toContainText('合計が80文字を超えています');
   });
-
   // ──────────────────────────────────────────────────────────
   // QR生成フロー
   // ──────────────────────────────────────────────────────────
