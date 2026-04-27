@@ -9,5 +9,5 @@ coverage/
 .claude/scheduled_tasks.lock
 conductor/
 
-# Superpowers extension
+# Superpowers extension (Visual brainstorming artifacts and session info)
 .superpowers/
