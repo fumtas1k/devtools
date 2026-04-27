@@ -11,3 +11,6 @@ conductor/
 
 # Superpowers extension (Visual brainstorming artifacts and session info)
 .superpowers/
+
+# Active Task Context (Temporary session notes)
+tasks/active_context.md

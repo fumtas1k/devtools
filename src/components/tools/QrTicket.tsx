@@ -11,6 +11,8 @@ import {
   generateQrSvg,
   ticketToQrString,
   generateTicketId,
+  estimateTicketByteSize,
+  MAX_QR_BYTE_SIZE,
   type TicketPayload,
   type VerificationResult,
 } from '@/utils/qr-ticket';
@@ -19,6 +21,18 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { useQrCamera } from '@/hooks/useQrCamera';
 import { MODE_OPTIONS, GenerateTab, VerifyTab } from './qr-ticket/index';
 import type { TicketRow, GeneratedQr } from './qr-ticket/types';
+
+/**
+ * 有効期限の初期値（1週間後の00:00）を取得する
+ */
+const getDefaultExpiry = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+
+  // sv-SE は確実に "YYYY-MM-DD" 形式を返すのでゼロ埋め不要
+  const localDate = d.toLocaleDateString('sv-SE');
+  return `${localDate}T00:00`;
+};
 
 export function QrTicketTool() {
   const [mode, setMode] = useState<'generate' | 'verify'>('generate');
@@ -53,6 +67,11 @@ export function QrTicketTool() {
 
   // アンマウント検知 ref（非同期処理後のステート更新ガード用）
   const mountedRef = useRef(true);
+
+  // マウント後に初期値をセット
+  useEffect(() => {
+    setExpiry(getDefaultExpiry());
+  }, []);
 
   // ─── QR検証（カメラ/アップロード共通） ───────────────────
 
@@ -175,6 +194,9 @@ export function QrTicketTool() {
   // ─── QR生成 ───────────────────────────────────────────────
 
   const handleGenerate = async () => {
+    // 状態を即座にリセットしてクリック反応を確保
+    setGenerateError('');
+
     if (!cryptoKeyPair) {
       setGenerateError('先に鍵ペアを生成またはインポートしてください');
       return;
@@ -197,15 +219,33 @@ export function QrTicketTool() {
       return;
     }
 
+    // データ量制限チェック (全データの合計が MAX_QR_BYTE_SIZE バイト以内)
+    const longTicket = tickets.find((t) => {
+      const payload: TicketPayload = {
+        e: eventId.trim(),
+        t: t.id.trim(),
+        timestamp: Math.floor(new Date(expiry).getTime() / 1000),
+        n: t.name.trim() || undefined,
+        p: t.category.trim() || undefined,
+      };
+      return estimateTicketByteSize(payload) > MAX_QR_BYTE_SIZE;
+    });
+
+    if (longTicket) {
+      setGenerateError(
+        `データ量が上限（${MAX_QR_BYTE_SIZE}バイト）を超えているチケットがあります。`
+      );
+      return;
+    }
+
     setGenerating(true);
-    setGenerateError('');
     try {
       const results: GeneratedQr[] = [];
       for (const row of tickets) {
         const payload: TicketPayload = {
           e: eventId.trim(),
           t: row.id.trim(),
-          x: expiry,
+          timestamp: Math.floor(new Date(expiry).getTime() / 1000),
           ...(row.name.trim() ? { n: row.name.trim() } : {}),
           ...(row.category.trim() ? { p: row.category.trim() } : {}),
         };

@@ -8,14 +8,16 @@ test.describe('UUID v7 生成', () => {
     await waitForReactHydration(page);
   });
 
-  test('UUIDを1件生成できる', async ({ page }) => {
+  test('UUIDをデフォルト（10件）生成できる', async ({ page }) => {
     await page.getByRole('button', { name: '生成' }).click();
 
-    // 「1 件生成」というテキストが表示される
-    await expect(page.getByText('1 件生成')).toBeVisible();
+    // 「10 件生成」というテキストが表示される
+    await expect(page.getByText('10 件生成')).toBeVisible();
 
     // テーブルに行が存在し、UUID形式（8-4-4-4-12）であることを確認
-    const uuidCell = page.locator('table tbody tr').first().locator('td').nth(1);
+    const rows = page.locator('table tbody tr');
+    await expect(rows).toHaveCount(10);
+    const uuidCell = rows.first().locator('td').nth(1);
     const uuidText = await uuidCell.textContent();
     // UUID v7 の正規表現 (バージョン 7 であることを確認)
     expect(uuidText).toMatch(
@@ -92,7 +94,7 @@ test.describe('UUID v7 生成', () => {
 
   test('クリアボタンでリストをリセットできる', async ({ page }) => {
     await page.getByRole('button', { name: '生成' }).click();
-    await expect(page.getByText('1 件生成')).toBeVisible();
+    await expect(page.getByText('10 件生成')).toBeVisible();
 
     // 最初の行をクリックしてフィールド分解パネルを表示
     await page.locator('table tbody tr').first().click();

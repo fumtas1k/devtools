@@ -69,6 +69,7 @@
 | フェーズ・タスク完了        | `SPEC.md` (9章チェックリスト)                                                                                   |
 | 設計上の重要な決断          | `docs/decisions.md`                                                                                             |
 | セキュリティ設定変更 (CI等) | `docs/decisions.md` (変更理由と安全性の確認)                                                                    |
+| セッション開始              | `tasks/active_context.md` (セッション目的の明文化。gitignore対象のためローカル作成のみ)                         |
 
 ---
 
@@ -126,3 +127,45 @@ browser_resize → width: 390, height: 844 → browser_take_screenshot
 - `src/utils/`: ロジック・ヘルパー・スタイル定義
 - `docs/decisions.md`: 設計上の意思決定記録
 - `tasks/lessons.md`: セッションで得た教訓・修正パターンの記録
+
+---
+
+## 9. 目的の維持とスコープ管理 (ATC運用)
+
+実装中の脱線やスコープ外の修正を防ぐため、すべての AI エージェントは **Active Task Context (ATC)** を運用すること。
+
+### ATC の運用手順
+
+1.  **セッション開始時**: `tasks/active_context.md` を作成（または既存のものを更新）し、そのセッションの「目的」「ステップ」「スコープ外」を宣言する。※当ファイルは `.gitignore` 対象であり、リポジトリには含めない。
+2.  **作業中**: 節目（タスク完了・分岐判断・スコープ外発見時など）ごとに ATC を参照して現在の立ち位置を確認する。ステップが完了したらチェックボックスを更新する。
+3.  **誘惑の管理**: スコープ外の改善点（リファクタリング、微修正など）を発見した場合は、**直接修正せず**に ATC の `## Pending (Next Tasks)` セクションにメモを残し、現在の目的に集中する。
+4.  **レビュー対応**: 指摘を受けた場合は、ATC に `## 🟢 Review & Feedback` セクションを追加し、対応すべき指摘事項を列挙して管理する。
+5.  **完了時**: プルリクエストが **マージ（またはクローズ）された段階で**、ローカルの `tasks/active_context.md` を削除し、必要に応じて教訓を `tasks/lessons.md` へ転記する。
+
+### tasks/active_context.md のテンプレート
+
+```markdown
+# Active Task Context
+
+## 🎯 Objective
+
+[このセッションで達成すべき最終ゴールを1文で記述]
+
+## 🛠️ Current Steps
+
+- [ ] ステップ1
+- [ ] ステップ2
+
+## 🚫 Out of Scope (Do Not Touch)
+
+- [ ] 既存の〇〇ロジック
+- [ ] デザインの微調整
+
+## 🟢 Review & Feedback
+
+- (レビューで指摘された内容をここに追記)
+
+## 📝 Pending (Next Tasks / Improvements)
+
+- (実装中に見つけた、今のスコープではない改善点をここにメモ)
+```

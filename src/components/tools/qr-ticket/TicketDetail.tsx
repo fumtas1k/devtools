@@ -1,25 +1,13 @@
 import { colors, caption } from '@/utils/styles';
-import type { TicketPayload } from '@/utils/qr-ticket';
+import { formatTimestamp, type TicketPayload } from '@/utils/qr-ticket';
 
-function formatExpiry(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
+const MONO_LABELS = ['チケットID', 'イベントID'];
 
 export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
   const rows: { label: string; value: string }[] = [
     { label: 'イベントID', value: ticket.e },
     { label: 'チケットID', value: ticket.t },
-    { label: '有効期限', value: formatExpiry(ticket.x) },
+    { label: '有効期限', value: formatTimestamp(ticket.timestamp) },
   ];
   if (ticket.n) rows.push({ label: '参加者名', value: ticket.n });
   if (ticket.p) rows.push({ label: '料金区分', value: ticket.p });
@@ -44,7 +32,7 @@ export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
               style={{
                 ...caption,
                 color: colors.text,
-                fontFamily: label === 'チケットID' ? 'monospace' : undefined,
+                fontFamily: MONO_LABELS.includes(label) ? 'monospace' : undefined,
               }}
             >
               {value}

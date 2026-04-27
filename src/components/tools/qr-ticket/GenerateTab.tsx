@@ -3,10 +3,14 @@ import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
-import { generateTicketId } from '@/utils/qr-ticket';
+import { generateTicketId, estimateTicketByteSize, MAX_QR_BYTE_SIZE } from '@/utils/qr-ticket';
 import { ActionButton } from './ActionButton';
 import { MAX_TICKETS, sectionStyle, sectionHeaderStyle, sectionBodyStyle } from './index';
 import type { TicketRow, GeneratedQr } from './types';
+import type { TicketPayload } from '@/utils/qr-ticket';
+
+/** プレビューやバイト数見積もりで使用するデフォルトの有効期限（2025-01-01T00:00:00Z） */
+const PREVIEW_FALLBACK_TIMESTAMP = 1735689600;
 
 interface GenerateTabProps {
   cryptoKeyPair: CryptoKeyPair | null;
@@ -67,6 +71,15 @@ export function GenerateTab({
   onDownloadSvg,
   onDownloadZip,
 }: GenerateTabProps) {
+  /** 共通のペイロードを構築 */
+  const buildCurrentPayload = (row: TicketRow): TicketPayload => ({
+    e: eventId.trim(),
+    t: row.id.trim(),
+    timestamp: expiry ? Math.floor(new Date(expiry).getTime() / 1000) : PREVIEW_FALLBACK_TIMESTAMP,
+    n: row.name.trim() || undefined,
+    p: row.category.trim() || undefined,
+  });
+
   return (
     <div className="space-y-6">
       {/* 鍵ペアセクション */}
@@ -187,6 +200,7 @@ export function GenerateTab({
             onChange={onEventIdChange}
             placeholder="event-2026-04"
             hint="QRコードに埋め込まれます"
+            mono
           />
           <div>
             <label
@@ -221,93 +235,168 @@ export function GenerateTab({
 
       {/* チケットリストセクション */}
       <div style={sectionStyle}>
-        <h3 style={sectionHeaderStyle}>チケットリスト（最大{MAX_TICKETS}件）</h3>
+        <div className="flex items-center justify-between" style={sectionHeaderStyle}>
+          <h3>チケットリスト（最大{MAX_TICKETS}件）</h3>
+          <span style={{ ...caption, color: colors.muted }}>
+            ※全項目の合計で{MAX_QR_BYTE_SIZE}バイト以内を推奨
+          </span>
+        </div>
+
         <div style={sectionBodyStyle}>
           <div className="space-y-2">
-            {/* ヘッダ行 */}
-            <div
-              className="grid gap-2"
-              style={{ gridTemplateColumns: '1fr 1fr 1fr auto', alignItems: 'center' }}
-            >
-              {(['チケットID', '参加者名（任意）', '料金区分（任意）', ''] as const).map((h) => (
-                <span key={h} style={{ ...caption, color: colors.muted, fontWeight: 600 }}>
-                  {h}
-                </span>
-              ))}
-            </div>
-            {tickets.map((row, i) => (
-              <div
-                key={row._key}
-                className="grid gap-2"
-                style={{ gridTemplateColumns: '1fr 1fr 1fr auto', alignItems: 'center' }}
+            {/* ヘッダ行 (PCのみ) */}
+            <div className="hidden md:flex gap-2 items-center mb-1">
+              <span
+                className="flex-1 min-w-0"
+                style={{ ...caption, color: colors.muted, fontWeight: 600 }}
               >
-                <input
-                  value={row.id}
-                  onChange={(e) => onUpdateTicket(i, 'id', e.target.value)}
-                  placeholder={generateTicketId(i + 1)}
-                  style={{
-                    ...caption,
-                    fontFamily: 'monospace',
-                    padding: '0.4rem 0.5rem',
-                    borderRadius: '0.375rem',
-                    border: `1px solid ${colors.borderInput}`,
-                    background: colors.bg,
-                    color: colors.text,
-                    outline: 'none',
-                    width: '100%',
-                  }}
-                  aria-label={`チケットID ${i + 1}`}
-                />
-                <input
-                  value={row.name}
-                  onChange={(e) => onUpdateTicket(i, 'name', e.target.value)}
-                  placeholder="山田 太郎"
-                  style={{
-                    ...caption,
-                    padding: '0.4rem 0.5rem',
-                    borderRadius: '0.375rem',
-                    border: `1px solid ${colors.borderInput}`,
-                    background: colors.bg,
-                    color: colors.text,
-                    outline: 'none',
-                    width: '100%',
-                  }}
-                  aria-label={`参加者名 ${i + 1}`}
-                />
-                <input
-                  value={row.category}
-                  onChange={(e) => onUpdateTicket(i, 'category', e.target.value)}
-                  placeholder="一般・VIP など"
-                  style={{
-                    ...caption,
-                    padding: '0.4rem 0.5rem',
-                    borderRadius: '0.375rem',
-                    border: `1px solid ${colors.borderInput}`,
-                    background: colors.bg,
-                    color: colors.text,
-                    outline: 'none',
-                    width: '100%',
-                  }}
-                  aria-label={`料金区分 ${i + 1}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => onRemoveTicket(i)}
-                  disabled={tickets.length <= 1}
-                  aria-label={`行 ${i + 1} を削除`}
-                  style={{
-                    ...caption,
-                    color: tickets.length <= 1 ? colors.muted : colors.error,
-                    background: 'none',
-                    border: 'none',
-                    cursor: tickets.length <= 1 ? 'not-allowed' : 'pointer',
-                    padding: '0.25rem',
-                  }}
+                チケットID
+              </span>
+              <span
+                className="flex-1 min-w-0"
+                style={{ ...caption, color: colors.muted, fontWeight: 600 }}
+              >
+                参加者名（任意）
+              </span>
+              <span
+                className="flex-1 min-w-0"
+                style={{ ...caption, color: colors.muted, fontWeight: 600 }}
+              >
+                料金区分（任意）
+              </span>
+              <span
+                className="w-15 text-right"
+                style={{ ...caption, color: colors.muted, fontWeight: 600 }}
+              >
+                サイズ
+              </span>
+              <span className="w-8"></span>
+            </div>
+
+            {tickets.map((row, i) => {
+              const payload = buildCurrentPayload(row);
+              const byteSize = estimateTicketByteSize(payload);
+              const isOver = byteSize > MAX_QR_BYTE_SIZE;
+
+              return (
+                <div
+                  key={row._key}
+                  className={`flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-(--color-border) md:border-b-0 ${
+                    i === tickets.length - 1 ? 'border-none' : ''
+                  }`}
                 >
-                  ✕
-                </button>
-              </div>
-            ))}
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span
+                      className="md:hidden"
+                      style={{ ...caption, color: colors.muted, fontWeight: 600, lineHeight: 1 }}
+                    >
+                      チケットID
+                    </span>
+                    <input
+                      value={row.id}
+                      onChange={(e) => onUpdateTicket(i, 'id', e.target.value)}
+                      placeholder={generateTicketId(i + 1)}
+                      style={{
+                        ...caption,
+                        fontFamily: 'monospace',
+                        padding: '0.4rem 0.5rem',
+                        borderRadius: '0.375rem',
+                        border: `1px solid ${colors.borderInput}`,
+                        background: colors.bg,
+                        color: colors.text,
+                        outline: 'none',
+                        width: '100%',
+                      }}
+                      aria-label={`チケットID ${i + 1}`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span
+                      className="md:hidden"
+                      style={{ ...caption, color: colors.muted, fontWeight: 600, lineHeight: 1 }}
+                    >
+                      参加者名（任意）
+                    </span>
+                    <input
+                      value={row.name}
+                      onChange={(e) => onUpdateTicket(i, 'name', e.target.value)}
+                      placeholder="山田 太郎"
+                      style={{
+                        ...caption,
+                        padding: '0.4rem 0.5rem',
+                        borderRadius: '0.375rem',
+                        border: `1px solid ${colors.borderInput}`,
+                        background: colors.bg,
+                        color: colors.text,
+                        outline: 'none',
+                        width: '100%',
+                      }}
+                      aria-label={`参加者名 ${i + 1}`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span
+                      className="md:hidden"
+                      style={{ ...caption, color: colors.muted, fontWeight: 600, lineHeight: 1 }}
+                    >
+                      料金区分（任意）
+                    </span>
+                    <input
+                      value={row.category}
+                      onChange={(e) => onUpdateTicket(i, 'category', e.target.value)}
+                      placeholder="一般・VIP など"
+                      style={{
+                        ...caption,
+                        padding: '0.4rem 0.5rem',
+                        borderRadius: '0.375rem',
+                        border: `1px solid ${colors.borderInput}`,
+                        background: colors.bg,
+                        color: colors.text,
+                        outline: 'none',
+                        width: '100%',
+                      }}
+                      aria-label={`料金区分 ${i + 1}`}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
+                    <span
+                      className="md:hidden"
+                      style={{ ...caption, color: colors.muted, fontWeight: 600 }}
+                    >
+                      合計データ量
+                    </span>
+                    <span
+                      className="w-auto md:w-15"
+                      style={{
+                        ...caption,
+                        textAlign: 'right',
+                        color: isOver ? colors.error : colors.muted,
+                        fontWeight: isOver ? 600 : 400,
+                      }}
+                      title="QRコードに埋め込まれる全データ（署名・時間含む）の合計バイト数"
+                    >
+                      {byteSize} B
+                    </span>
+                    <button
+                      type="button"
+                      className="w-8 h-8 flex items-center justify-center"
+                      onClick={() => onRemoveTicket(i)}
+                      disabled={tickets.length <= 1}
+                      aria-label={`行 ${i + 1} を削除`}
+                      style={{
+                        ...caption,
+                        color: tickets.length <= 1 ? colors.muted : colors.error,
+                        background: 'none',
+                        border: 'none',
+                        cursor: tickets.length <= 1 ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <ActionButton onClick={onAddTicket} disabled={tickets.length >= MAX_TICKETS}>
