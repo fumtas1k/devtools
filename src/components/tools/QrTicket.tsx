@@ -11,6 +11,8 @@ import {
   generateQrSvg,
   ticketToQrString,
   generateTicketId,
+  estimateTicketByteSize,
+  MAX_QR_BYTE_SIZE,
   type TicketPayload,
   type VerificationResult,
 } from '@/utils/qr-ticket';
@@ -175,6 +177,9 @@ export function QrTicketTool() {
   // ─── QR生成 ───────────────────────────────────────────────
 
   const handleGenerate = async () => {
+    // 状態を即座にリセットしてクリック反応を確保
+    setGenerateError('');
+
     if (!cryptoKeyPair) {
       setGenerateError('先に鍵ペアを生成またはインポートしてください');
       return;
@@ -197,15 +202,33 @@ export function QrTicketTool() {
       return;
     }
 
+    // データ量制限チェック (全データの合計が MAX_QR_BYTE_SIZE バイト以内)
+    const longTicket = tickets.find((t) => {
+      const payload: TicketPayload = {
+        e: eventId.trim(),
+        t: t.id.trim(),
+        timestamp: Math.floor(new Date(expiry).getTime() / 1000),
+        n: t.name.trim() || undefined,
+        p: t.category.trim() || undefined,
+      };
+      return estimateTicketByteSize(payload) > MAX_QR_BYTE_SIZE;
+    });
+
+    if (longTicket) {
+      setGenerateError(
+        `データ量が上限（${MAX_QR_BYTE_SIZE}バイト）を超えているチケットがあります。`
+      );
+      return;
+    }
+
     setGenerating(true);
-    setGenerateError('');
     try {
       const results: GeneratedQr[] = [];
       for (const row of tickets) {
         const payload: TicketPayload = {
           e: eventId.trim(),
           t: row.id.trim(),
-          x: expiry,
+          timestamp: Math.floor(new Date(expiry).getTime() / 1000),
           ...(row.name.trim() ? { n: row.name.trim() } : {}),
           ...(row.category.trim() ? { p: row.category.trim() } : {}),
         };
