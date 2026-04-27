@@ -41,8 +41,9 @@ export function DownloadButton({
 
   const baseStyle: React.CSSProperties = {
     ...caption,
-    fontWeight: 600,
-    padding: '0.5rem 1rem',
+    fontWeight: 700,
+    padding: '0.5rem 0.75rem',
+    lineHeight: 1,
     borderRadius: '0.5rem',
     cursor: disabled ? 'not-allowed' : 'pointer',
     display: 'inline-flex',
