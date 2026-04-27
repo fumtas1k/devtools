@@ -9,6 +9,9 @@ import { MAX_TICKETS, sectionStyle, sectionHeaderStyle, sectionBodyStyle } from 
 import type { TicketRow, GeneratedQr } from './types';
 import type { TicketPayload } from '@/utils/qr-ticket';
 
+/** プレビューやバイト数見積もりで使用するデフォルトの有効期限（2025-01-01T00:00:00Z） */
+const PREVIEW_FALLBACK_TIMESTAMP = 1735689600;
+
 interface GenerateTabProps {
   cryptoKeyPair: CryptoKeyPair | null;
   privateKeyJwkStr: string;
@@ -72,7 +75,7 @@ export function GenerateTab({
   const buildCurrentPayload = (row: TicketRow): TicketPayload => ({
     e: eventId.trim(),
     t: row.id.trim(),
-    timestamp: expiry ? Math.floor(new Date(expiry).getTime() / 1000) : 1735689600, // プレビュー用ダミー
+    timestamp: expiry ? Math.floor(new Date(expiry).getTime() / 1000) : PREVIEW_FALLBACK_TIMESTAMP,
     n: row.name.trim() || undefined,
     p: row.category.trim() || undefined,
   });
@@ -261,7 +264,7 @@ export function GenerateTab({
                 料金区分（任意）
               </span>
               <span
-                className="w-15 text-right"
+                className="w-16 text-right"
                 style={{ ...caption, color: colors.muted, fontWeight: 600 }}
               >
                 サイズ
@@ -277,7 +280,13 @@ export function GenerateTab({
               return (
                 <div
                   key={row._key}
-                  className="flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-gray-200 md:border-none"
+                  className="flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0"
+                  style={{
+                    borderBottom: i === tickets.length - 1 ? 'none' : `1px solid ${colors.border}`,
+                    ...(typeof window !== 'undefined' && window.innerWidth >= 768
+                      ? { borderBottom: 'none' }
+                      : {}),
+                  }}
                 >
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <span
@@ -360,7 +369,7 @@ export function GenerateTab({
                       合計データ量
                     </span>
                     <span
-                      className="w-auto md:w-15"
+                      className="w-auto md:w-16"
                       style={{
                         ...caption,
                         textAlign: 'right',

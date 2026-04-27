@@ -16,6 +16,9 @@ export const SIGNATURE_BYTE_SIZE = 86;
 /** QRコードの最大データサイズ（署名・タイムスタンプ等を含む全データの合計バイト数） */
 export const MAX_QR_BYTE_SIZE = 300;
 
+/** QRコードに含まれるパイプ区切りフィールドの数 (eventId|ticketId|timestamp|name|category|signature) */
+export const PAYLOAD_FIELD_COUNT = 6;
+
 // ─── 型定義 ───────────────────────────────────────────────
 
 export interface TicketPayload {
@@ -121,15 +124,20 @@ export async function verifyTicket(
   publicKey: CryptoKey
 ): Promise<VerificationResult> {
   const parts = rawData.split('|');
-  if (parts.length !== 6) {
+  if (parts.length !== PAYLOAD_FIELD_COUNT) {
     return { valid: false, ticket: null, expired: false, error: 'QRデータの形式が不正です' };
   }
 
   const [e, t, tsStr, n, p, s] = parts;
-  const timestamp = parseInt(tsStr, 10);
+  const timestamp = Number(tsStr);
 
-  if (!e || !t || isNaN(timestamp) || !s) {
-    return { valid: false, ticket: null, expired: false, error: '必須フィールドが欠けています' };
+  if (!e || !t || !Number.isFinite(timestamp) || timestamp <= 0 || !s) {
+    return {
+      valid: false,
+      ticket: null,
+      expired: false,
+      error: '必須フィールドの欠落または形式が不正です',
+    };
   }
 
   const payload: TicketPayload = {

@@ -232,13 +232,13 @@ describe('signTicket / verifyTicket', () => {
     expect(result.error).toContain('形式が不正');
   });
 
-  it('必須フィールド欠落: 数値であるべき timestamp が不正な場合にエラーを返す', async () => {
+  it('形式不正: timestamp が数値でない場合にエラーを返す', async () => {
     const pair = await generateKeyPair();
     const incomplete = 'ev|T-00001|not-a-number|||sig';
     const result = await verifyTicket(incomplete, pair.publicKey);
 
     expect(result.valid).toBe(false);
-    expect(result.error).toContain('必須フィールド');
+    expect(result.error).toContain('形式が不正');
   });
 
   it('任意フィールド（n, p）付きチケットの署名・検証が正しく動作する', async () => {
