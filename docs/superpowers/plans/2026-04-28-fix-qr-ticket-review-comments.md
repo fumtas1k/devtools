@@ -19,7 +19,7 @@
 
 - Modify: `src/components/tools/QrTicket.tsx`
 
-- [ ] **Step 1: expiry ステートの初期値を空文字列に変更し、useEffect で初期値をセットする**
+- [x] **Step 1: expiry ステートの初期値を空文字列に変更し、useEffect で初期値をセットする**
 
 ```tsx
 // 生成タブ状態
@@ -32,7 +32,7 @@ useEffect(() => {
 }, []);
 ```
 
-- [ ] **Step 2: 動作確認（プレビューなどで有効期限が表示されること）**
+- [x] **Step 2: 動作確認（プレビューなどで有効期限が表示されること）**
 
 ### Task 2: TicketDetail.tsx のリファクタリング
 
@@ -40,7 +40,7 @@ useEffect(() => {
 
 - Modify: `src/components/tools/qr-ticket/TicketDetail.tsx`
 
-- [ ] **Step 1: 等幅フォントを適用するラベル名の配列をモジュールスコープに定義し、それを使用するように修正する**
+- [x] **Step 1: 等幅フォントを適用するラベル名の配列をモジュールスコープに定義し、それを使用するように修正する**
 
 ```tsx
 const MONO_LABELS = ['チケットID', 'イベントID'];
@@ -62,10 +62,10 @@ export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
 
 ### Task 3: 最終確認と返信
 
-- [ ] **Step 1: 全ての E2E テストを実行してリグレッションがないか確認する**
+- [x] **Step 1: 全ての E2E テストを実行してリグレッションがないか確認する**
 
 Run: `npm run test:e2e`
 
-- [ ] **Step 2: 修正内容をコミットしてプッシュする**
+- [x] **Step 2: 修正内容をコミットしてプッシュする**
 
-- [ ] **Step 3: GitHub のレビューコメントに返信する**
+- [x] **Step 3: GitHub のレビューコメントに返信する**
