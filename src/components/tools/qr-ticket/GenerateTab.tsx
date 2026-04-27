@@ -280,13 +280,9 @@ export function GenerateTab({
               return (
                 <div
                   key={row._key}
-                  className="flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0"
-                  style={{
-                    borderBottom: i === tickets.length - 1 ? 'none' : `1px solid ${colors.border}`,
-                    ...(typeof window !== 'undefined' && window.innerWidth >= 768
-                      ? { borderBottom: 'none' }
-                      : {}),
-                  }}
+                  className={`flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-(--color-border) md:border-b-0 ${
+                    i === tickets.length - 1 ? 'border-none' : ''
+                  }`}
                 >
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <span

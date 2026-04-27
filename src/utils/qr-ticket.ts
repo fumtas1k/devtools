@@ -65,6 +65,12 @@ export function buildPayload(ticket: TicketPayload): string {
   return [e, t, ts, n, p].join('|');
 }
 
+/** 署名を除くペイロード部分のバイト数を計算する */
+function getPayloadByteSize(payload: TicketPayload): number {
+  const payloadStr = buildPayload(payload);
+  return new TextEncoder().encode(payloadStr).length;
+}
+
 // ─── 鍵操作 ──────────────────────────────────────────────
 
 /** ECDSA P-256 鍵ペアを生成する */
@@ -173,7 +179,12 @@ export async function verifyTicket(
 
   const expired = timestamp < Math.floor(Date.now() / 1000);
   if (expired) {
-    return { valid: false, ticket: payload, expired: true, error: `有効期限切れ（${timestamp}）` };
+    return {
+      valid: false,
+      ticket: payload,
+      expired: true,
+      error: `有効期限切れ（${formatTimestamp(timestamp)}）`,
+    };
   }
 
   return { valid: true, ticket: payload, expired: false };
@@ -208,14 +219,21 @@ export function generateTicketId(index: number): string {
   return `T-${String(index).padStart(5, '0')}`;
 }
 
-/** 署名を除くペイロード部分のバイト数を計算する */
-export function getPayloadByteSize(payload: TicketPayload): number {
-  const payloadStr = buildPayload(payload);
-  return new TextEncoder().encode(payloadStr).length;
-}
-
 /** 最終的なQR文字列の概算バイト数を見積もる（署名込み） */
 export function estimateTicketByteSize(payload: TicketPayload): number {
   // payloadStr + | + signature
   return getPayloadByteSize(payload) + 1 + SIGNATURE_BYTE_SIZE;
+}
+
+/** タイムスタンプを人間が読める形式に変換する */
+export function formatTimestamp(timestamp: number): string {
+  if (!timestamp || isNaN(timestamp)) return '';
+  return new Date(timestamp * 1000).toLocaleString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Tokyo',
+  });
 }
