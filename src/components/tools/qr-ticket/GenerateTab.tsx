@@ -3,12 +3,7 @@ import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
-import {
-  generateTicketId,
-  getPayloadByteSize,
-  estimateTicketByteSize,
-  MAX_PAYLOAD_BYTE_SIZE,
-} from '@/utils/qr-ticket';
+import { generateTicketId, estimateTicketByteSize, MAX_QR_BYTE_SIZE } from '@/utils/qr-ticket';
 import { ActionButton } from './ActionButton';
 import { MAX_TICKETS, sectionStyle, sectionHeaderStyle, sectionBodyStyle } from './index';
 import type { TicketRow, GeneratedQr } from './types';
@@ -239,7 +234,7 @@ export function GenerateTab({
         <div className="flex items-center justify-between" style={sectionHeaderStyle}>
           <h3>チケットリスト（最大{MAX_TICKETS}件）</h3>
           <span style={{ ...caption, color: colors.muted }}>
-            ※入力項目の合計で{MAX_PAYLOAD_BYTE_SIZE}バイト以内を推奨
+            ※全項目の合計で{MAX_QR_BYTE_SIZE}バイト以内を推奨
           </span>
         </div>
 
@@ -266,7 +261,7 @@ export function GenerateTab({
                 料金区分（任意）
               </span>
               <span
-                className="w-[60px] text-right"
+                className="w-15 text-right"
                 style={{ ...caption, color: colors.muted, fontWeight: 600 }}
               >
                 サイズ
@@ -276,9 +271,8 @@ export function GenerateTab({
 
             {tickets.map((row, i) => {
               const payload = buildCurrentPayload(row);
-              const payloadSize = getPayloadByteSize(payload);
-              const totalSize = estimateTicketByteSize(payload);
-              const isOver = payloadSize > MAX_PAYLOAD_BYTE_SIZE;
+              const byteSize = estimateTicketByteSize(payload);
+              const isOver = byteSize > MAX_QR_BYTE_SIZE;
 
               return (
                 <div
@@ -363,19 +357,19 @@ export function GenerateTab({
                       className="md:hidden"
                       style={{ ...caption, color: colors.muted, fontWeight: 600 }}
                     >
-                      入力データ量
+                      合計データ量
                     </span>
                     <span
-                      className="w-auto md:w-[60px]"
+                      className="w-auto md:w-15"
                       style={{
                         ...caption,
                         textAlign: 'right',
                         color: isOver ? colors.error : colors.muted,
                         fontWeight: isOver ? 600 : 400,
                       }}
-                      title={`入力項目＋時間: ${payloadSize} B\n(署名込みの合計: ${totalSize} B)`}
+                      title="QRコードに埋め込まれる全データ（署名・時間含む）の合計バイト数"
                     >
-                      {payloadSize} B
+                      {byteSize} B
                     </span>
                     <button
                       type="button"

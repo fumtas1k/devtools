@@ -65,7 +65,9 @@ test.describe('QRチケット', () => {
     await page.getByLabel('参加者名 1').fill(longName);
 
     await page.getByRole('button', { name: '一括生成' }).click();
-    await expect(page.getByRole('alert')).toContainText('上限（300バイト）を超えています');
+    await expect(page.getByRole('alert')).toContainText(
+      '上限（300バイト）を超えているチケットがあります'
+    );
   });
 
   // ──────────────────────────────────────────────────────────

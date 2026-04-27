@@ -13,8 +13,8 @@ import { base64UrlToBuffer, bufferToBase64Url } from '@/utils/base64url';
 /** 署名（P-256 Base64URL）の概算バイト数（64バイトのバイナリをBase64URL化したもの。パディングなしで86文字） */
 export const SIGNATURE_BYTE_SIZE = 86;
 
-/** QRコードのデータ本体（署名を除くペイロード）の最大サイズ（UTF-8バイト数） */
-export const MAX_PAYLOAD_BYTE_SIZE = 300;
+/** QRコードの最大データサイズ（署名・タイムスタンプ等を含む全データの合計バイト数） */
+export const MAX_QR_BYTE_SIZE = 300;
 
 // ─── 型定義 ───────────────────────────────────────────────
 

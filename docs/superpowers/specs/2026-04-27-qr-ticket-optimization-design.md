@@ -40,12 +40,13 @@ eventId|ticketId|timestamp|name|category|signature
 - `src/utils/qr-ticket.ts`:
   - `buildPayload`: `join('|')` ロジックに変更。
   - `estimateTicketByteSize`: 署名込みのバイト数を見積もる共通関数を追加。
-  - 定数 `MAX_TICKET_BYTE_SIZE` (300) を定義。
+  - 定数 `MAX_QR_BYTE_SIZE` (300) を定義。
 - `src/components/tools/QrTicket.tsx`:
   - `handleGenerate` で共通関数を使用した厳密なバリデーション。
+  - エラーメッセージを「上限を超えているチケットがあります」と簡潔化。
 - `src/components/tools/qr-ticket/GenerateTab.tsx`:
-  - バイト数のリアルタイム表示。
-  - スマホでのレイアウト崩れを防ぐレスポンシブ行レイアウト。
+  - 合計バイト数のリアルタイム表示。
+  - `w-15` 等の Tailwind クラスによるスタイル最適化。
 
 ## 4. 検証計画
 

@@ -11,6 +11,7 @@ import {
   generateQrSvg,
   generateTicketId,
   estimateTicketByteSize,
+  MAX_QR_BYTE_SIZE,
   type TicketPayload,
   type SignedTicket,
 } from '@/utils/qr-ticket';

@@ -11,8 +11,8 @@ import {
   generateQrSvg,
   ticketToQrString,
   generateTicketId,
-  getPayloadByteSize,
-  MAX_PAYLOAD_BYTE_SIZE,
+  estimateTicketByteSize,
+  MAX_QR_BYTE_SIZE,
   type TicketPayload,
   type VerificationResult,
 } from '@/utils/qr-ticket';
@@ -202,7 +202,7 @@ export function QrTicketTool() {
       return;
     }
 
-    // データ量制限チェック (署名を除くペイロードが MAX_PAYLOAD_BYTE_SIZE バイト以内)
+    // データ量制限チェック (全データの合計が MAX_QR_BYTE_SIZE バイト以内)
     const longTicket = tickets.find((t) => {
       const payload: TicketPayload = {
         e: eventId.trim(),
@@ -211,12 +211,12 @@ export function QrTicketTool() {
         n: t.name.trim() || undefined,
         p: t.category.trim() || undefined,
       };
-      return getPayloadByteSize(payload) > MAX_PAYLOAD_BYTE_SIZE;
+      return estimateTicketByteSize(payload) > MAX_QR_BYTE_SIZE;
     });
 
     if (longTicket) {
       setGenerateError(
-        `チケット ${longTicket.id} のデータ量が上限（${MAX_PAYLOAD_BYTE_SIZE}バイト）を超えています。`
+        `データ量が上限（${MAX_QR_BYTE_SIZE}バイト）を超えているチケットがあります。`
       );
       return;
     }
