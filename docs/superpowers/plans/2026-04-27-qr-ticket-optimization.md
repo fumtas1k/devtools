@@ -119,7 +119,29 @@ export async function verifyTicket(
 
 ---
 
-### Task 3: E2Eテストによる全体の動作確認
+### Task 3: 読取限界の調査とバリデーションの実装
+
+**Files:**
+
+- Create: `src/utils/__tests__/qr-limit-investigation.test.ts` (調査完了後削除)
+- Modify: `src/components/tools/QrTicket.tsx`
+- Modify: `src/components/tools/qr-ticket/GenerateTab.tsx`
+- Modify: `tests/e2e/qr-ticket.spec.ts`
+
+- [x] **Step 1: 読取限界の調査**
+      160pxサイズにおいて、文字数と読取成功率の相関を調査。合計80文字程度が実用上の限界であることを特定。
+- [x] **Step 2: 生成時のバリデーション実装**
+      `QrTicket.tsx` に合計80文字超えをブロックするロジックを追加。
+- [x] **Step 3: UIへのヒント追加**
+      `GenerateTab.tsx` に推奨文字数の注釈を表示。
+- [x] **Step 4: E2Eテストの追加**
+      `qr-ticket.spec.ts` に文字数制限バリデーションのテストケースを追加。
+- [x] **Step 5: コミット**
+      Run: `git add . && git commit -m "feat: QRチケットの名前・区分に合計80文字のバリデーションを追加"`
+
+---
+
+### Task 4: E2Eテストによる全体の動作確認
 
 **Files:**
 
