@@ -1,6 +1,7 @@
 import { CopyButton } from '@/components/ui/CopyButton';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { generateTicketId } from '@/utils/qr-ticket';
 import { ActionButton } from './ActionButton';
@@ -337,9 +338,12 @@ export function GenerateTab({
           >
             <span>生成結果（{generatedQrs.length}件）</span>
             {generatedQrs.length >= 2 && (
-              <ActionButton onClick={onDownloadZip} disabled={zipping}>
-                {zipping ? '準備中…' : '一括ZIPダウンロード'}
-              </ActionButton>
+              <DownloadButton
+                onClick={onDownloadZip}
+                disabled={zipping}
+                label={zipping ? '準備中…' : '一括ZIPダウンロード'}
+                variant="primary"
+              />
             )}
           </div>
           {zipError && (
@@ -391,7 +395,11 @@ export function GenerateTab({
                     {qr.ticket.p}
                   </span>
                 )}
-                <ActionButton onClick={() => onDownloadSvg(qr)}>SVG保存</ActionButton>
+                <DownloadButton
+                  onClick={() => onDownloadSvg(qr)}
+                  label="SVGダウンロード"
+                  variant="secondary"
+                />
               </div>
             ))}
           </div>

@@ -58,7 +58,7 @@ test.describe('QRコード生成', () => {
 
   test('ダウンロードボタンが存在する', async ({ page }) => {
     await page.getByLabel('テキスト / URL').fill('https://example.com');
-    const downloadButton = page.getByRole('button', { name: 'SVG ダウンロード' });
+    const downloadButton = page.getByRole('button', { name: 'SVGダウンロード' });
     await expect(downloadButton).toBeVisible();
     await expect(downloadButton).toBeEnabled();
   });

@@ -16,6 +16,7 @@ export const colors = {
   bgSurface: 'var(--color-bg-surface)',
   bgSubtle: 'var(--color-bg-subtle)',
   bgPrimary: 'var(--color-background)',
+  bgActive: 'var(--color-bg-active)',
   /** プライマリ色背景上のテキスト（白抜き文字）。ダークモード時も白を維持する意図 */
   textOnPrimary: 'var(--color-text-on-primary)',
   border: 'var(--color-border)',

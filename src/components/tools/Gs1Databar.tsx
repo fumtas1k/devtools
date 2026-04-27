@@ -14,6 +14,7 @@ import {
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { Select } from '@/components/ui/Select';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
@@ -280,8 +281,8 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
             {aiFields.map((field, i) => {
               const def = AI_DEFS.find((d) => d.ai === field.ai)!;
               return (
-                <div key={i} className="flex gap-2 items-start">
-                  <div style={{ width: '200px', flexShrink: 0 }}>
+                <div key={i} className="flex flex-col sm:flex-row gap-2 items-start">
+                  <div className="w-full sm:w-50 shrink-0">
                     <Select<AiCode>
                       value={field.ai}
                       onChange={(v) => handleAiSelect(i, v)}
@@ -293,45 +294,47 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                       }))}
                     />
                   </div>
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={field.value}
-                      onChange={(e) => handleAiChange(i, e.target.value)}
-                      placeholder={def.placeholder}
-                      className="w-full rounded-lg px-3 py-2 font-mono"
+                  <div className="flex-1 w-full flex gap-2 items-start">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={field.value}
+                        onChange={(e) => handleAiChange(i, e.target.value)}
+                        placeholder={def.placeholder}
+                        className="w-full rounded-lg px-3 py-2 font-mono"
+                        style={{
+                          ...caption,
+                          border: `1px solid ${field.error ? colors.error : colors.borderInput}`,
+                          outline: 'none',
+                          background: colors.bg,
+                          color: colors.text,
+                        }}
+                      />
+                      {field.error && (
+                        <p
+                          role="alert"
+                          style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}
+                        >
+                          {field.error}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removeAiField(i)}
+                      className="rounded-lg p-2 transition-colors shrink-0"
                       style={{
                         ...caption,
-                        border: `1px solid ${field.error ? colors.error : colors.borderInput}`,
-                        outline: 'none',
-                        background: colors.bg,
-                        color: colors.text,
+                        color: colors.muted,
+                        marginTop: '2px',
+                        background: 'transparent',
                       }}
-                    />
-                    {field.error && (
-                      <p
-                        role="alert"
-                        style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}
-                      >
-                        {field.error}
-                      </p>
-                    )}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      aria-label="フィールドを削除"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <button
-                    onClick={() => removeAiField(i)}
-                    className="rounded-lg p-2 transition-colors shrink-0"
-                    style={{
-                      ...caption,
-                      color: colors.muted,
-                      marginTop: '2px',
-                      background: 'transparent',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    aria-label="フィールドを削除"
-                  >
-                    ✕
-                  </button>
                 </div>
               );
             })}
@@ -497,14 +500,12 @@ export function Gs1DatabarTool() {
         )}
 
         {canDownloadAll && (
-          <button
+          <DownloadButton
             onClick={downloadAllZip}
             disabled={isZipping}
-            className="rounded px-4 py-2 font-bold text-white transition-colors hover:opacity-90 disabled:opacity-50"
-            style={{ ...caption, fontWeight: 700, background: colors.primary }}
-          >
-            {isZipping ? 'ZIP作成中...' : `全件ZIPダウンロード（${validEntries.length}件）`}
-          </button>
+            label={isZipping ? 'ZIP作成中...' : `全件ZIPダウンロード（${validEntries.length}件）`}
+            variant="primary"
+          />
         )}
       </div>
     </div>

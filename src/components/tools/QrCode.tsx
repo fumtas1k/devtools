@@ -3,6 +3,7 @@ import qrcode from '@/utils/qrcode';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import { downloadSvgElement } from '@/utils/download';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 
@@ -104,20 +105,7 @@ export function QrCodeGenerator() {
             style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
           >
             <span style={{ ...bodyEmphasis, color: colors.text }}>プレビュー</span>
-            <button
-              onClick={handleDownload}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5"
-              style={{
-                ...caption,
-                fontWeight: 600,
-                background: colors.bgSubtle,
-                color: colors.text,
-                border: `1px solid ${colors.borderInput}`,
-                cursor: 'pointer',
-              }}
-            >
-              SVG ダウンロード
-            </button>
+            <DownloadButton onClick={handleDownload} label="SVGダウンロード" variant="secondary" />
           </div>
           <div className="flex justify-center p-8" style={{ background: colors.bg }}>
             <div
