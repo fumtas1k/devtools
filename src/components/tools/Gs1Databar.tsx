@@ -282,7 +282,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
               const def = AI_DEFS.find((d) => d.ai === field.ai)!;
               return (
                 <div key={i} className="flex flex-col sm:flex-row gap-2 items-start">
-                  <div className="w-full sm:w-[200px] shrink-0">
+                  <div className="w-full sm:w-50 shrink-0">
                     <Select<AiCode>
                       value={field.ai}
                       onChange={(v) => handleAiSelect(i, v)}
