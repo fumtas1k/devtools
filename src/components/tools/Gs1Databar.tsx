@@ -14,6 +14,7 @@ import {
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { Select } from '@/components/ui/Select';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
@@ -497,14 +498,12 @@ export function Gs1DatabarTool() {
         )}
 
         {canDownloadAll && (
-          <button
+          <DownloadButton
             onClick={downloadAllZip}
             disabled={isZipping}
-            className="rounded px-4 py-2 font-bold text-white transition-colors hover:opacity-90 disabled:opacity-50"
-            style={{ ...caption, fontWeight: 700, background: colors.primary }}
-          >
-            {isZipping ? 'ZIP作成中...' : `全件ZIPダウンロード（${validEntries.length}件）`}
-          </button>
+            label={isZipping ? 'ZIP作成中...' : `全件ZIPダウンロード（${validEntries.length}件）`}
+            variant="primary"
+          />
         )}
       </div>
     </div>

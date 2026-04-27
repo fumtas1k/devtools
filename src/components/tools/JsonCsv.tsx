@@ -3,6 +3,7 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ClearButton } from '@/components/ui/ClearButton';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import { caption, colors } from '@/utils/styles';
 import { jsonToCsv, csvToJson } from '@/utils/json-csv';
 import { downloadText } from '@/utils/download';

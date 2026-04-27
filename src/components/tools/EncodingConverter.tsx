@@ -5,6 +5,7 @@ import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ClearButton } from '@/components/ui/ClearButton';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import { caption, colors } from '@/utils/styles';
 import { getErrorMessage } from '@/utils/errors';
 import { downloadBytes } from '@/utils/download';
@@ -409,19 +410,12 @@ export function EncodingConverterTool() {
             // クリップボードは Unicode テキストのみ保持できるため UTF-8 変換時のみ表示
             showCopy={targetEnc === 'UTF8'}
             rightSlot={
-              <button
+              <DownloadButton
                 onClick={handleDownload}
-                className="rounded-lg px-3 py-1.5 transition-colors"
-                style={{
-                  ...caption,
-                  border: `1px solid ${colors.border}`,
-                  color: colors.text,
-                  background: colors.bg,
-                }}
+                label="ダウンロード"
+                variant="secondary"
                 aria-label="変換後ファイルをダウンロード"
-              >
-                ダウンロード
-              </button>
+              />
             }
           />
           {outputBytes && (
