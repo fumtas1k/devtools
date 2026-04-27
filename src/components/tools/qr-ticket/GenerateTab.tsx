@@ -3,7 +3,12 @@ import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
-import { generateTicketId, estimateTicketByteSize, MAX_TICKET_BYTE_SIZE } from '@/utils/qr-ticket';
+import {
+  generateTicketId,
+  getPayloadByteSize,
+  estimateTicketByteSize,
+  MAX_PAYLOAD_BYTE_SIZE,
+} from '@/utils/qr-ticket';
 import { ActionButton } from './ActionButton';
 import { MAX_TICKETS, sectionStyle, sectionHeaderStyle, sectionBodyStyle } from './index';
 import type { TicketRow, GeneratedQr } from './types';
@@ -68,17 +73,14 @@ export function GenerateTab({
   onDownloadSvg,
   onDownloadZip,
 }: GenerateTabProps) {
-  /** 1行あたりのデータサイズ（バイト数）を計算（署名・タイムスタンプ込み） */
-  const getByteSize = (row: TicketRow) => {
-    const payload: TicketPayload = {
-      e: eventId.trim(),
-      t: row.id.trim(),
-      timestamp: expiry ? Math.floor(new Date(expiry).getTime() / 1000) : 0,
-      n: row.name.trim() || undefined,
-      p: row.category.trim() || undefined,
-    };
-    return estimateTicketByteSize(payload);
-  };
+  /** 共通のペイロードを構築 */
+  const buildCurrentPayload = (row: TicketRow): TicketPayload => ({
+    e: eventId.trim(),
+    t: row.id.trim(),
+    timestamp: expiry ? Math.floor(new Date(expiry).getTime() / 1000) : 1735689600, // プレビュー用ダミー
+    n: row.name.trim() || undefined,
+    p: row.category.trim() || undefined,
+  });
 
   return (
     <div className="space-y-6">
@@ -237,7 +239,7 @@ export function GenerateTab({
         <div className="flex items-center justify-between" style={sectionHeaderStyle}>
           <h3>チケットリスト（最大{MAX_TICKETS}件）</h3>
           <span style={{ ...caption, color: colors.muted }}>
-            ※全項目の合計で{MAX_TICKET_BYTE_SIZE}バイト以内を推奨
+            ※入力項目の合計で{MAX_PAYLOAD_BYTE_SIZE}バイト以内を推奨
           </span>
         </div>
 
@@ -273,8 +275,10 @@ export function GenerateTab({
             </div>
 
             {tickets.map((row, i) => {
-              const byteSize = getByteSize(row);
-              const isOver = byteSize > MAX_TICKET_BYTE_SIZE;
+              const payload = buildCurrentPayload(row);
+              const payloadSize = getPayloadByteSize(payload);
+              const totalSize = estimateTicketByteSize(payload);
+              const isOver = payloadSize > MAX_PAYLOAD_BYTE_SIZE;
 
               return (
                 <div
@@ -359,7 +363,7 @@ export function GenerateTab({
                       className="md:hidden"
                       style={{ ...caption, color: colors.muted, fontWeight: 600 }}
                     >
-                      合計サイズ
+                      入力データ量
                     </span>
                     <span
                       className="w-auto md:w-[60px]"
@@ -369,9 +373,9 @@ export function GenerateTab({
                         color: isOver ? colors.error : colors.muted,
                         fontWeight: isOver ? 600 : 400,
                       }}
-                      title="QRコードに埋め込まれる全データの合計バイト数"
+                      title={`入力項目＋時間: ${payloadSize} B\n(署名込みの合計: ${totalSize} B)`}
                     >
-                      {byteSize} B
+                      {payloadSize} B
                     </span>
                     <button
                       type="button"
