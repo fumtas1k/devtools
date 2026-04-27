@@ -133,7 +133,7 @@ export async function verifyTicket(
 - [x] **Step 2: 生成時のバリデーション実装**
       `QrTicket.tsx` に全入力項目の合計300バイト超えをブロックするロジックを追加。
 - [x] **Step 3: UIへのヒント追加**
-      `GenerateTab.tsx` に推奨文字数の注釈を表示。
+      `GenerateTab.tsx` に推奨データ量の注釈を表示し、各行にリアルタイムのバイト数計算表示を追加。
 - [x] **Step 4: E2Eテストの追加**
       `qr-ticket.spec.ts` に文字数制限バリデーションのテストケースを追加。
 - [x] **Step 5: コミット**
