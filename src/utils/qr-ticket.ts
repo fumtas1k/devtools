@@ -211,11 +211,10 @@ export function generateQrSvg(data: string): string | null {
     const qr = qrcode(0, 'M');
     qr.addData(utf8Data);
     qr.make();
-    // scalable: true だと width/height が付与されず、画像アップロード時に歪んで描画される原因になるため、
-    // 明示的なサイズを持つSVGを生成する（cellSize: 4, margin: 2）。
-    // 300バイト制限（Version 5: 37x37前後）において、(37*4)+(2*2)=152px となり、
-    // 表示コンテナ（160px）からはみ出さずに最大限の解像度を確保できます。
-    return qr.createSvgTag({ cellSize: 4, margin: 2, scalable: false });
+    // UI上はコンテナ（160px）に合わせて伸縮させたいので scalable: true に戻す。
+    // ただし、画像として読み込んだ際の歪みを防ぐため、SVGタグに width/height を文字列置換で追加する。
+    const svg = qr.createSvgTag({ scalable: true });
+    return svg.replace('<svg ', '<svg width="400" height="400" ');
   } catch {
     return null;
   }
