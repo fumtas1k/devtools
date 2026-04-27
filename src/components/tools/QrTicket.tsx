@@ -22,6 +22,18 @@ import { useQrCamera } from '@/hooks/useQrCamera';
 import { MODE_OPTIONS, GenerateTab, VerifyTab } from './qr-ticket/index';
 import type { TicketRow, GeneratedQr } from './qr-ticket/types';
 
+/**
+ * 有効期限の初期値（1週間後の00:00）を取得する
+ */
+const getDefaultExpiry = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+
+  // sv-SE は確実に "YYYY-MM-DD" 形式を返すのでゼロ埋め不要
+  const localDate = d.toLocaleDateString('sv-SE');
+  return `${localDate}T00:00`;
+};
+
 export function QrTicketTool() {
   const [mode, setMode] = useState<'generate' | 'verify'>('generate');
 
@@ -55,6 +67,11 @@ export function QrTicketTool() {
 
   // アンマウント検知 ref（非同期処理後のステート更新ガード用）
   const mountedRef = useRef(true);
+
+  // マウント後に初期値をセット
+  useEffect(() => {
+    setExpiry(getDefaultExpiry());
+  }, []);
 
   // ─── QR検証（カメラ/アップロード共通） ───────────────────
 

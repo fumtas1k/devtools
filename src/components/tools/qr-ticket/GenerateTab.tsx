@@ -200,6 +200,7 @@ export function GenerateTab({
             onChange={onEventIdChange}
             placeholder="event-2026-04"
             hint="QRコードに埋め込まれます"
+            mono
           />
           <div>
             <label
