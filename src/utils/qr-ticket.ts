@@ -129,7 +129,19 @@ export async function verifyTicket(
   rawData: string,
   publicKey: CryptoKey
 ): Promise<VerificationResult> {
-  const parts = rawData.split('|');
+  // jsQRなどがバイトモードデータを読み取った際、UTF-8バイト列がそのまま文字コード（Latin-1）
+  // としてマッピングされている場合があるため、元のUTF-8文字列に復元を試みる。
+  let decodedData = rawData;
+  if (/^[\x00-\xFF]*$/.test(rawData)) {
+    try {
+      const bytes = Uint8Array.from(rawData, (c) => c.charCodeAt(0));
+      decodedData = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      // UTF-8として不正なバイト列だった場合はデコードせずそのまま扱う
+    }
+  }
+
+  const parts = decodedData.split('|');
   if (parts.length !== PAYLOAD_FIELD_COUNT) {
     return { valid: false, ticket: null, expired: false, error: 'QRデータの形式が不正です' };
   }
@@ -214,7 +226,7 @@ export function generateQrSvg(data: string): string | null {
     // UI上はコンテナ（160px）に合わせて伸縮させたいので scalable: true に戻す。
     // ただし、画像として読み込んだ際の歪みを防ぐため、SVGタグに width/height を文字列置換で追加する。
     const svg = qr.createSvgTag({ scalable: true });
-    return svg.replace('<svg ', '<svg width="400" height="400" ');
+    return svg.replace('<svg ', '<svg width="100%" height="100%" ');
   } catch {
     return null;
   }
