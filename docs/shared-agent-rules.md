@@ -139,7 +139,8 @@ browser_resize → width: 390, height: 844 → browser_take_screenshot
 1.  **セッション開始時**: `tasks/active_context.md` を作成（または既存のものを更新）し、そのセッションの「目的」「ステップ」「スコープ外」を宣言する。※当ファイルは `.gitignore` 対象であり、リポジトリには含めない。
 2.  **作業中**: 節目（タスク完了・分岐判断・スコープ外発見時など）ごとに ATC を参照して現在の立ち位置を確認する。ステップが完了したらチェックボックスを更新する。
 3.  **誘惑の管理**: スコープ外の改善点（リファクタリング、微修正など）を発見した場合は、**直接修正せず**に ATC の `## Pending (Next Tasks)` セクションにメモを残し、現在の目的に集中する。
-4.  **完了時**: プルリクエスト作成やマージが完了した段階で、ローカルの `tasks/active_context.md` を削除し、必要に応じて教訓を `tasks/lessons.md` へ転記する。
+4.  **レビュー対応**: 指摘を受けた場合は、ATC に `## 🟢 Review & Feedback` セクションを追加し、対応すべき指摘事項を列挙して管理する。
+5.  **完了時**: プルリクエストが **マージ（またはクローズ）された段階で**、ローカルの `tasks/active_context.md` を削除し、必要に応じて教訓を `tasks/lessons.md` へ転記する。
 
 ### tasks/active_context.md のテンプレート
 
@@ -158,7 +159,11 @@ browser_resize → width: 390, height: 844 → browser_take_screenshot
 ## 🚫 Out of Scope (Do Not Touch)
 
 - [ ] 既存の〇〇ロジック
-- [ ] デザインの微調整（別途タスク化）
+- [ ] デザインの微調整
+
+## 🟢 Review & Feedback
+
+- (レビューで指摘された内容をここに追記)
 
 ## 📝 Pending (Next Tasks / Improvements)
 
