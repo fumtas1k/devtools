@@ -221,7 +221,10 @@ export function GenerateTab({
 
       {/* チケットリストセクション */}
       <div style={sectionStyle}>
-        <h3 style={sectionHeaderStyle}>チケットリスト（最大{MAX_TICKETS}件）</h3>
+        <div className="flex items-center justify-between" style={sectionHeaderStyle}>
+          <h3>チケットリスト（最大{MAX_TICKETS}件）</h3>
+          <span style={{ ...caption, color: colors.muted }}>※名前＋区分で合計80文字以内を推奨</span>
+        </div>
         <div style={sectionBodyStyle}>
           <div className="space-y-2">
             {/* ヘッダ行 */}

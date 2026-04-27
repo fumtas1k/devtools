@@ -197,6 +197,15 @@ export function QrTicketTool() {
       return;
     }
 
+    // 文字数制限チェック (名前 + 料金区分で合計80文字以内)
+    const longTicket = tickets.find((t) => t.name.length + t.category.length > 80);
+    if (longTicket) {
+      setGenerateError(
+        `チケット ${longTicket.id} の名前と料金区分の合計が80文字を超えています。読取精度を保つため、合計80文字以内に収めてください。`
+      );
+      return;
+    }
+
     setGenerating(true);
     setGenerateError('');
     try {
