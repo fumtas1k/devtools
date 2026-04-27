@@ -264,7 +264,7 @@ export function GenerateTab({
                 料金区分（任意）
               </span>
               <span
-                className="w-16 text-right"
+                className="w-15 text-right"
                 style={{ ...caption, color: colors.muted, fontWeight: 600 }}
               >
                 サイズ
@@ -369,7 +369,7 @@ export function GenerateTab({
                       合計データ量
                     </span>
                     <span
-                      className="w-auto md:w-16"
+                      className="w-auto md:w-15"
                       style={{
                         ...caption,
                         textAlign: 'right',
