@@ -34,33 +34,34 @@ describe('generateTicketId', () => {
 // buildPayload
 // ────────────────────────────────────────────
 describe('buildPayload', () => {
-  const base: TicketPayload = { e: 'event-01', t: 'T-00001', x: '2026-12-31T23:59' };
+  // @ts-ignore: timestamp への移行期間のため一時的に無視
+  const base: TicketPayload = { e: 'event-01', t: 'T-00001', timestamp: 1735689540 }; // 2024-12-31T23:59:00Z
 
-  it('必須フィールドのみでキー昇順ソートされたJSONを返す', () => {
+  it('必須フィールドのみでパイプ区切りの文字列を返す', () => {
     const result = buildPayload(base);
-    const parsed = JSON.parse(result);
-    expect(Object.keys(parsed)).toEqual(['e', 't', 'x']);
-    expect(parsed.e).toBe('event-01');
-    expect(parsed.t).toBe('T-00001');
-    expect(parsed.x).toBe('2026-12-31T23:59');
+    expect(result).toBe('event-01|T-00001|1735689540||');
   });
 
-  it('任意フィールド n, p を含む場合もキー昇順に並ぶ', () => {
+  it('任意フィールド n, p を含む場合も正しくパイプで連結される', () => {
     const payload: TicketPayload = { ...base, n: '山田 太郎', p: 'VIP' };
     const result = buildPayload(payload);
-    const keys = Object.keys(JSON.parse(result));
-    expect(keys).toEqual([...keys].sort());
+    expect(result).toBe('event-01|T-00001|1735689540|山田 太郎|VIP');
+  });
+
+  it('フィールド内の | 文字はスペースに置換される', () => {
+    const payload: TicketPayload = { ...base, n: '山田|太郎', p: 'VIP|A' };
+    const result = buildPayload(payload);
+    expect(result).toBe('event-01|T-00001|1735689540|山田 太郎|VIP A');
   });
 
   it('同一入力で常に同一の出力を返す（決定論性）', () => {
     expect(buildPayload(base)).toBe(buildPayload(base));
   });
 
-  it('任意フィールドが空文字の場合はペイロードに含まれない', () => {
+  it('任意フィールドが空文字の場合は空として連結される', () => {
     const payload: TicketPayload = { ...base, n: '', p: '' };
-    const parsed = JSON.parse(buildPayload(payload));
-    expect('n' in parsed).toBe(false);
-    expect('p' in parsed).toBe(false);
+    const result = buildPayload(payload);
+    expect(result).toBe('event-01|T-00001|1735689540||');
   });
 });
 
@@ -68,28 +69,23 @@ describe('buildPayload', () => {
 // ticketToQrString
 // ────────────────────────────────────────────
 describe('ticketToQrString', () => {
-  it('全フィールドをキー昇順ソートしたJSONを返す', () => {
+  it('ペイロードと署名をパイプで結合した文字列を返す', () => {
     const ticket = {
       e: 'event-01',
       t: 'T-00001',
-      x: '2026-12-31T23:59',
+      timestamp: 1735689540,
       s: 'dummysig',
       n: '山田 太郎',
       p: 'VIP',
     };
-    const result = ticketToQrString(ticket);
-    const keys = Object.keys(JSON.parse(result));
-    expect(keys).toEqual([...keys].sort());
+    const result = ticketToQrString(ticket as any);
+    expect(result).toBe('event-01|T-00001|1735689540|山田 太郎|VIP|dummysig');
   });
 
-  it('任意フィールドなしで正しいJSONを返す', () => {
-    const ticket = { e: 'ev', t: 'T-00001', x: '2026-01-01T00:00', s: 'sig' };
-    const parsed = JSON.parse(ticketToQrString(ticket));
-    expect(parsed.e).toBe('ev');
-    expect(parsed.t).toBe('T-00001');
-    expect(parsed.s).toBe('sig');
-    expect('n' in parsed).toBe(false);
-    expect('p' in parsed).toBe(false);
+  it('任意フィールドなしでも正しい個数のパイプで結合される', () => {
+    const ticket = { e: 'ev', t: 'T-00001', timestamp: 1704067200, s: 'sig' };
+    const result = ticketToQrString(ticket as any);
+    expect(result).toBe('ev|T-00001|1704067200|||sig');
   });
 });
 
@@ -145,11 +141,12 @@ describe('importPrivateKey / importPublicKey', () => {
 // signTicket / verifyTicket（署名・検証 E2E）
 // ────────────────────────────────────────────
 describe('signTicket / verifyTicket', () => {
+  const futureTimestamp = Math.floor(Date.now() / 1000) + 3600;
   const payload: TicketPayload = {
     e: 'event-2026',
     t: 'T-00001',
-    x: '2099-12-31T23:59', // 十分先の日時
-  };
+    timestamp: futureTimestamp,
+  } as any;
 
   it('正常系: 署名したチケットを公開鍵で検証できる', async () => {
     const pair = await generateKeyPair();
@@ -161,13 +158,17 @@ describe('signTicket / verifyTicket', () => {
     expect(result.expired).toBe(false);
     expect(result.ticket?.e).toBe('event-2026');
     expect(result.ticket?.t).toBe('T-00001');
+    expect(result.ticket?.timestamp).toBe(futureTimestamp);
   });
 
   it('改竄検知: イベントIDを書き換えると署名が無効になる', async () => {
     const pair = await generateKeyPair();
     const signed = await signTicket(payload, pair.privateKey);
-    const tampered = { ...signed, e: 'evil-event' };
-    const result = await verifyTicket(JSON.stringify(tampered), pair.publicKey);
+    // パイプ区切り形式を模倣して改竄
+    const parts = ticketToQrString(signed).split('|');
+    parts[0] = 'evil-event';
+    const tampered = parts.join('|');
+    const result = await verifyTicket(tampered, pair.publicKey);
 
     expect(result.valid).toBe(false);
     expect(result.error).toContain('署名が無効');
@@ -176,15 +177,18 @@ describe('signTicket / verifyTicket', () => {
   it('改竄検知: チケットIDを書き換えると署名が無効になる', async () => {
     const pair = await generateKeyPair();
     const signed = await signTicket(payload, pair.privateKey);
-    const tampered = { ...signed, t: 'T-99999' };
-    const result = await verifyTicket(JSON.stringify(tampered), pair.publicKey);
+    const parts = ticketToQrString(signed).split('|');
+    parts[1] = 'T-99999';
+    const tampered = parts.join('|');
+    const result = await verifyTicket(tampered, pair.publicKey);
 
     expect(result.valid).toBe(false);
   });
 
   it('期限切れ検知: 過去の有効期限は expired: true を返す', async () => {
     const pair = await generateKeyPair();
-    const expired: TicketPayload = { ...payload, x: '2000-01-01T00:00' };
+    const pastTimestamp = Math.floor(Date.now() / 1000) - 3600;
+    const expired: TicketPayload = { ...payload, timestamp: pastTimestamp } as any;
     const signed = await signTicket(expired, pair.privateKey);
     const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
 
@@ -201,17 +205,17 @@ describe('signTicket / verifyTicket', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('不正JSON: パース失敗でエラーメッセージを返す', async () => {
+  it('形式不正: パイプ数が足りない場合にエラーメッセージを返す', async () => {
     const pair = await generateKeyPair();
-    const result = await verifyTicket('not-json', pair.publicKey);
+    const result = await verifyTicket('part1|part2|part3', pair.publicKey);
 
     expect(result.valid).toBe(false);
     expect(result.error).toContain('形式が不正');
   });
 
-  it('必須フィールド欠落: e がないとエラーメッセージを返す', async () => {
+  it('必須フィールド欠落: 数値であるべき timestamp が不正な場合にエラーを返す', async () => {
     const pair = await generateKeyPair();
-    const incomplete = JSON.stringify({ t: 'T-00001', x: '2099-01-01T00:00', s: 'sig' });
+    const incomplete = 'ev|T-00001|not-a-number|||sig';
     const result = await verifyTicket(incomplete, pair.publicKey);
 
     expect(result.valid).toBe(false);
@@ -224,7 +228,7 @@ describe('signTicket / verifyTicket', () => {
       ...payload,
       n: '山田 太郎',
       p: 'VIP',
-    };
+    } as any;
     const signed = await signTicket(withOptional, pair.privateKey);
     const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
 

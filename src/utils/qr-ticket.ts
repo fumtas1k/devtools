@@ -13,7 +13,7 @@ import { base64UrlToBuffer, bufferToBase64Url } from '@/utils/base64url';
 export interface TicketPayload {
   e: string; // イベントID (event id)
   t: string; // チケットID (ticket id)
-  x: string; // 有効期限 ISO 8601 (expiry)
+  timestamp: number; // 発行/有効期限 Unixタイムスタンプ（秒）
   n?: string; // 参加者名（任意）
   p?: string; // 料金区分（任意）
 }
@@ -36,18 +36,22 @@ export interface VerificationResult {
 
 // ─── 内部ヘルパー ─────────────────────────────────────────
 
-/** オブジェクトのキーを昇順ソートした JSON 文字列を返す */
-function sortedStringify(obj: Record<string, string>): string {
-  const sorted = Object.fromEntries(Object.entries(obj).sort(([a], [b]) => a.localeCompare(b)));
-  return JSON.stringify(sorted);
+/** パイプ区切りを壊さないように | を半角スペースに置換する */
+function sanitizeField(value: string | undefined): string {
+  if (!value) return '';
+  return value.replace(/\|/g, ' ');
 }
 
-/** 署名対象のペイロード文字列を構築（キー昇順ソートで決定論的出力） */
+/** 署名対象のペイロード文字列を構築（パイプ区切り形式） */
 export function buildPayload(ticket: TicketPayload): string {
-  const obj: Record<string, string> = { e: ticket.e, t: ticket.t, x: ticket.x };
-  if (ticket.n) obj.n = ticket.n;
-  if (ticket.p) obj.p = ticket.p;
-  return sortedStringify(obj);
+  const e = sanitizeField(ticket.e);
+  const t = sanitizeField(ticket.t);
+  const ts = String(ticket.timestamp);
+  const n = sanitizeField(ticket.n);
+  const p = sanitizeField(ticket.p);
+
+  // eventId|ticketId|timestamp|name|category
+  return [e, t, ts, n, p].join('|');
 }
 
 // ─── 鍵操作 ──────────────────────────────────────────────
@@ -108,19 +112,25 @@ export async function verifyTicket(
   rawData: string,
   publicKey: CryptoKey
 ): Promise<VerificationResult> {
-  let parsed: SignedTicket;
-  try {
-    parsed = JSON.parse(rawData) as SignedTicket;
-  } catch {
+  const parts = rawData.split('|');
+  if (parts.length !== 6) {
     return { valid: false, ticket: null, expired: false, error: 'QRデータの形式が不正です' };
   }
 
-  if (!parsed.e || !parsed.t || !parsed.x || !parsed.s) {
+  const [e, t, tsStr, n, p, s] = parts;
+  const timestamp = parseInt(tsStr, 10);
+
+  if (!e || !t || isNaN(timestamp) || !s) {
     return { valid: false, ticket: null, expired: false, error: '必須フィールドが欠けています' };
   }
 
-  const { s, ...payloadFields } = parsed;
-  const payload: TicketPayload = payloadFields;
+  const payload: TicketPayload = {
+    e,
+    t,
+    timestamp,
+    n: n || undefined,
+    p: p || undefined,
+  };
 
   let sigValid = false;
   try {
@@ -145,9 +155,9 @@ export async function verifyTicket(
     return { valid: false, ticket: payload, expired: false, error: '署名が無効です' };
   }
 
-  const expired = new Date(parsed.x) < new Date();
+  const expired = timestamp < Math.floor(Date.now() / 1000);
   if (expired) {
-    return { valid: false, ticket: payload, expired: true, error: `有効期限切れ（${parsed.x}）` };
+    return { valid: false, ticket: payload, expired: true, error: `有効期限切れ（${timestamp}）` };
   }
 
   return { valid: true, ticket: payload, expired: false };
@@ -155,12 +165,10 @@ export async function verifyTicket(
 
 // ─── QR生成 ──────────────────────────────────────────────
 
-/** SignedTicket をコンパクトなJSON文字列に変換（undefined項目を除外、キー昇順ソート） */
+/** SignedTicket をパイプ区切り文字列に変換 */
 export function ticketToQrString(ticket: SignedTicket): string {
-  const obj: Record<string, string> = { e: ticket.e, s: ticket.s, t: ticket.t, x: ticket.x };
-  if (ticket.n) obj.n = ticket.n;
-  if (ticket.p) obj.p = ticket.p;
-  return sortedStringify(obj);
+  const payloadStr = buildPayload(ticket);
+  return `${payloadStr}|${ticket.s}`;
 }
 
 /**
