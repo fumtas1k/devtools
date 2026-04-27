@@ -126,3 +126,40 @@ browser_resize → width: 390, height: 844 → browser_take_screenshot
 - `src/utils/`: ロジック・ヘルパー・スタイル定義
 - `docs/decisions.md`: 設計上の意思決定記録
 - `tasks/lessons.md`: セッションで得た教訓・修正パターンの記録
+
+---
+
+## 9. 目的の維持とスコープ管理 (ATC運用)
+
+実装中の脱線やスコープ外の修正を防ぐため、すべての AI エージェントは **Active Task Context (ATC)** を運用すること。
+
+### ATC の運用手順
+
+1.  **セッション開始時**: `tasks/active_context.md` を作成（または既存のものを更新）し、そのセッションの「目的」「ステップ」「スコープ外」を宣言する。
+2.  **作業中**: 毎ターン、ATC を参照して現在の立ち位置を確認する。ステップが完了したらチェックボックスを更新する。
+3.  **誘惑の管理**: スコープ外の改善点（リファクタリング、微修正など）を発見した場合は、**直接修正せず**に ATC の `## Pending (Next Tasks)` セクションにメモを残し、現在の目的に集中する。
+4.  **完了時**: プルリクエスト作成やマージが完了した段階で、`tasks/active_context.md` を削除し、必要に応じて教訓を `tasks/lessons.md` へ転記する。
+
+### tasks/active_context.md のテンプレート
+
+```markdown
+# Active Task Context
+
+## 🎯 Objective
+
+[このセッションで達成すべき最終ゴールを1文で記述]
+
+## 🛠️ Current Steps
+
+- [ ] ステップ1
+- [ ] ステップ2
+
+## 🚫 Out of Scope (Do Not Touch)
+
+- [ ] 既存の〇〇ロジック
+- [ ] デザインの微調整（別途タスク化）
+
+## 📝 Pending (Next Tasks / Improvements)
+
+- (実装中に見つけた、今のスコープではない改善点をここにメモ)
+```
