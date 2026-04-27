@@ -8,6 +8,14 @@
 import qrcode from '@/utils/qrcode';
 import { base64UrlToBuffer, bufferToBase64Url } from '@/utils/base64url';
 
+// ─── 定数 ───────────────────────────────────────────────
+
+/** 署名（P-256 Base64URL）の概算バイト数（64バイトのバイナリをBase64URL化したもの。パディングなしで86文字） */
+export const SIGNATURE_BYTE_SIZE = 86;
+
+/** QRコードの読取精度を保つための最大データサイズ（UTF-8バイト数） */
+export const MAX_TICKET_BYTE_SIZE = 300;
+
 // ─── 型定義 ───────────────────────────────────────────────
 
 export interface TicketPayload {
@@ -190,4 +198,11 @@ export function generateQrSvg(data: string): string | null {
 /** チケット連番IDを生成する（例: T-00001） */
 export function generateTicketId(index: number): string {
   return `T-${String(index).padStart(5, '0')}`;
+}
+
+/** 最終的なQR文字列のバイト数を見積もる（署名込み） */
+export function estimateTicketByteSize(payload: TicketPayload): number {
+  const payloadStr = buildPayload(payload);
+  // payloadStr + | + signature
+  return new TextEncoder().encode(payloadStr).length + 1 + SIGNATURE_BYTE_SIZE;
 }

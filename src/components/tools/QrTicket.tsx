@@ -197,15 +197,22 @@ export function QrTicketTool() {
       return;
     }
 
-    // バイト数制限チェック (全項目の合計が300バイト以内)
-    const encoder = new TextEncoder();
+    // バイト数制限チェック (全項目の合計が MAX_TICKET_BYTE_SIZE バイト以内)
     const longTicket = tickets.find((t) => {
-      const data = `${eventId.trim()}|${t.id.trim()}|${t.name.trim()}|${t.category.trim()}`;
-      return encoder.encode(data).length > 300;
+      const payload: TicketPayload = {
+        e: eventId.trim(),
+        t: t.id.trim(),
+        timestamp: Math.floor(new Date(expiry).getTime() / 1000),
+        n: t.name.trim() || undefined,
+        p: t.category.trim() || undefined,
+      };
+      return estimateTicketByteSize(payload) > MAX_TICKET_BYTE_SIZE;
     });
 
     if (longTicket) {
-      setGenerateError(`チケット ${longTicket.id} のデータ量が上限（300バイト）を超えています。`);
+      setGenerateError(
+        `チケット ${longTicket.id} のデータ量が上限（${MAX_TICKET_BYTE_SIZE}バイト）を超えています。`
+      );
       return;
     }
 

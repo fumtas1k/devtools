@@ -3,10 +3,11 @@ import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
-import { generateTicketId } from '@/utils/qr-ticket';
+import { generateTicketId, estimateTicketByteSize, MAX_TICKET_BYTE_SIZE } from '@/utils/qr-ticket';
 import { ActionButton } from './ActionButton';
 import { MAX_TICKETS, sectionStyle, sectionHeaderStyle, sectionBodyStyle } from './index';
 import type { TicketRow, GeneratedQr } from './types';
+import type { TicketPayload } from '@/utils/qr-ticket';
 
 interface GenerateTabProps {
   cryptoKeyPair: CryptoKeyPair | null;
@@ -67,15 +68,16 @@ export function GenerateTab({
   onDownloadSvg,
   onDownloadZip,
 }: GenerateTabProps) {
-  const encoder = new TextEncoder();
-
-  /** 1行あたりのデータサイズ（バイト数）を計算 */
+  /** 1行あたりのデータサイズ（バイト数）を計算（署名・タイムスタンプ込み） */
   const getByteSize = (row: TicketRow) => {
-    // 形式: eventId|ticketId|timestamp|name|category|signature
-    const timestampDummy = '1777287600'; // 10 bytes
-    const signatureDummy = 'a'.repeat(86); // P-256 Base64URL 86 bytes
-    const data = `${eventId.trim()}|${row.id.trim()}|${timestampDummy}|${row.name.trim()}|${row.category.trim()}|${signatureDummy}`;
-    return encoder.encode(data).length;
+    const payload: TicketPayload = {
+      e: eventId.trim(),
+      t: row.id.trim(),
+      timestamp: expiry ? Math.floor(new Date(expiry).getTime() / 1000) : 0,
+      n: row.name.trim() || undefined,
+      p: row.category.trim() || undefined,
+    };
+    return estimateTicketByteSize(payload);
   };
 
   return (
@@ -235,7 +237,7 @@ export function GenerateTab({
         <div className="flex items-center justify-between" style={sectionHeaderStyle}>
           <h3>チケットリスト（最大{MAX_TICKETS}件）</h3>
           <span style={{ ...caption, color: colors.muted }}>
-            ※全項目の合計で300バイト以内を推奨
+            ※全項目の合計で{MAX_TICKET_BYTE_SIZE}バイト以内を推奨
           </span>
         </div>
 
@@ -272,7 +274,7 @@ export function GenerateTab({
 
             {tickets.map((row, i) => {
               const byteSize = getByteSize(row);
-              const isOver = byteSize > 300;
+              const isOver = byteSize > MAX_TICKET_BYTE_SIZE;
 
               return (
                 <div

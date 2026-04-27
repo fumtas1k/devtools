@@ -10,6 +10,7 @@ import {
   ticketToQrString,
   generateQrSvg,
   generateTicketId,
+  estimateTicketByteSize,
   type TicketPayload,
   type SignedTicket,
 } from '@/utils/qr-ticket';
@@ -28,6 +29,23 @@ describe('generateTicketId', () => {
 
   it('5桁の連番をそのままフォーマットする', () => {
     expect(generateTicketId(99999)).toBe('T-99999');
+  });
+});
+
+// ────────────────────────────────────────────
+// estimateTicketByteSize
+// ────────────────────────────────────────────
+describe('estimateTicketByteSize', () => {
+  it('署名込みのバイト数を正しく見積もる（日本語なし）', () => {
+    const payload: TicketPayload = { e: 'ev', t: 'T-1', timestamp: 1704067200 };
+    // ev|T-1|1704067200|| (19 bytes) + | (1 byte) + signature (86 bytes) = 106 bytes
+    expect(estimateTicketByteSize(payload)).toBe(106);
+  });
+
+  it('日本語を含む場合も正確なバイト数を計算する', () => {
+    const payload: TicketPayload = { e: 'ev', t: 'T-1', timestamp: 1704067200, n: 'あ' };
+    // ev|T-1|1704067200|あ| (22 bytes) + | + signature = 109 bytes
+    expect(estimateTicketByteSize(payload)).toBe(109);
   });
 });
 
