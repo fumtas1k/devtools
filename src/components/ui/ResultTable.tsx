@@ -32,7 +32,10 @@ export function ResultTable<T>({
   renderHeader,
 }: Props<T>) {
   return (
-    <div className="rounded-lg" style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
+    <div
+      className="rounded-lg"
+      style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}
+    >
       {renderHeader && (
         <div
           className="flex flex-col gap-2 px-4 py-3"
@@ -44,7 +47,9 @@ export function ResultTable<T>({
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', minWidth, borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: colors.bgSurface, borderBottom: `1px solid ${colors.border}` }}>
+            <tr
+              style={{ background: colors.bgSurface, borderBottom: `1px solid ${colors.border}` }}
+            >
               {columns.map((col) => (
                 <th
                   key={col.key}
@@ -91,7 +96,8 @@ export function ResultTable<T>({
                         textAlign: col.cellAlign,
                         borderTop: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
                         borderBottom: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
-                        boxShadow: !isSelected && !isLast ? `inset 0 -1px 0 ${colors.border}` : 'none',
+                        boxShadow:
+                          !isSelected && !isLast ? `inset 0 -1px 0 ${colors.border}` : 'none',
                       }}
                     >
                       {col.render(row, i)}

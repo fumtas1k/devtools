@@ -1,5 +1,14 @@
 #!/bin/sh
+set -e
+
+# 1) lint-staged: ステージ済みファイルを Prettier で整形して再 add する。
+#    内部で git stash 相当の処理を行うため、partial-commit
+#    (同一ファイルの staged/unstaged 分割コミット) を壊さない。
+#    対象拡張子・整形コマンドは package.json の "lint-staged" 設定で管理。
+npx lint-staged
+
 # ドキュメント更新チェック（警告のみ・コミットはブロックしない）
+set +e # ここからは警告のみなので set -e を解除
 #
 # 重要ファイルが変更されているのに対応ドキュメントが未更新の場合に警告を出す。
 # CLAUDE.md の「ドキュメント更新ルール」と対応している。

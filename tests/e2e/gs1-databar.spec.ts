@@ -22,11 +22,15 @@ test.describe('GS1 DataBar 生成', () => {
   test('別フィールドで選択済みの AI は disabled になる', async ({ page }) => {
     // 1 行目は '17'（賞味/消費期限）、2 行目は '10'（ロット番号）
     // 2 行目 Select で '17' の option は disabled のはず
-    const opt17InSelect2 = page.getByLabel('AI コード 2').getByRole('option', { name: '賞味/消費期限 (17)' });
+    const opt17InSelect2 = page
+      .getByLabel('AI コード 2')
+      .getByRole('option', { name: '賞味/消費期限 (17)' });
     await expect(opt17InSelect2).toBeDisabled();
 
     // 2 行目 Select で '10' の option は disabled でない
-    const opt10InSelect2 = page.getByLabel('AI コード 2').getByRole('option', { name: 'ロット番号 (10)' });
+    const opt10InSelect2 = page
+      .getByLabel('AI コード 2')
+      .getByRole('option', { name: 'ロット番号 (10)' });
     await expect(opt10InSelect2).toBeEnabled();
   });
 

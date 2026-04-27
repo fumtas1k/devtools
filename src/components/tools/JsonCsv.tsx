@@ -17,7 +17,7 @@ const SAMPLE: Record<Mode, string> = {
       { id: 2, name: '鈴木花子', address: { city: '大阪', zip: '530-0001' } },
     ],
     null,
-    2,
+    2
   ),
   csv2json: `id,name,address.city,address.zip
 1,山田太郎,東京,100-0001
@@ -29,7 +29,7 @@ export function JsonCsvTool() {
 
   const { input, setInput, output, error, reset } = useCodec(
     (text) => (mode === 'json2csv' ? jsonToCsv(text) : csvToJson(text)),
-    [mode],
+    [mode]
   );
 
   const handleModeChange = (next: Mode) => {
@@ -81,9 +81,7 @@ export function JsonCsvTool() {
             value={input}
             onChange={setInput}
             placeholder={
-              mode === 'json2csv'
-                ? '[{"id": 1, "name": "example"}]'
-                : 'id,name\n1,example'
+              mode === 'json2csv' ? '[{"id": 1, "name": "example"}]' : 'id,name\n1,example'
             }
             multiline
             rows={16}

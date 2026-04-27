@@ -11,15 +11,15 @@ import { base64UrlToBuffer, bufferToBase64Url } from '@/utils/base64url';
 // ─── 型定義 ───────────────────────────────────────────────
 
 export interface TicketPayload {
-  e: string;    // イベントID (event id)
-  t: string;    // チケットID (ticket id)
-  x: string;    // 有効期限 ISO 8601 (expiry)
-  n?: string;   // 参加者名（任意）
-  p?: string;   // 料金区分（任意）
+  e: string; // イベントID (event id)
+  t: string; // チケットID (ticket id)
+  x: string; // 有効期限 ISO 8601 (expiry)
+  n?: string; // 参加者名（任意）
+  p?: string; // 料金区分（任意）
 }
 
 export interface SignedTicket extends TicketPayload {
-  s: string;    // base64url ECDSA署名
+  s: string; // base64url ECDSA署名
 }
 
 export interface ExportedKeyPair {
@@ -54,11 +54,10 @@ export function buildPayload(ticket: TicketPayload): string {
 
 /** ECDSA P-256 鍵ペアを生成する */
 export async function generateKeyPair(): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey(
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    true,
-    ['sign', 'verify'],
-  );
+  return crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
+    'sign',
+    'verify',
+  ]);
 }
 
 /** 鍵ペアを JWK 形式でエクスポートする */
@@ -72,24 +71,16 @@ export async function exportKeyPair(keyPair: CryptoKeyPair): Promise<ExportedKey
 
 /** JWK から秘密鍵をインポートする */
 export async function importPrivateKey(jwk: JsonWebKey): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['sign'],
-  );
+  return crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, [
+    'sign',
+  ]);
 }
 
 /** JWK から公開鍵をインポートする */
 export async function importPublicKey(jwk: JsonWebKey): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['verify'],
-  );
+  return crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, [
+    'verify',
+  ]);
 }
 
 // ─── 署名・検証 ───────────────────────────────────────────
@@ -101,7 +92,7 @@ export async function importPublicKey(jwk: JsonWebKey): Promise<CryptoKey> {
  */
 export async function signTicket(
   payload: TicketPayload,
-  privateKey: CryptoKey,
+  privateKey: CryptoKey
 ): Promise<SignedTicket> {
   const data = new TextEncoder().encode(buildPayload(payload));
   const sigBuf = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, data);
@@ -115,7 +106,7 @@ export async function signTicket(
  */
 export async function verifyTicket(
   rawData: string,
-  publicKey: CryptoKey,
+  publicKey: CryptoKey
 ): Promise<VerificationResult> {
   let parsed: SignedTicket;
   try {
@@ -139,10 +130,15 @@ export async function verifyTicket(
       { name: 'ECDSA', hash: 'SHA-256' },
       publicKey,
       sigBuf,
-      data,
+      data
     );
   } catch {
-    return { valid: false, ticket: null, expired: false, error: '署名の検証中にエラーが発生しました' };
+    return {
+      valid: false,
+      ticket: null,
+      expired: false,
+      error: '署名の検証中にエラーが発生しました',
+    };
   }
 
   if (!sigValid) {
@@ -187,4 +183,3 @@ export function generateQrSvg(data: string): string | null {
 export function generateTicketId(index: number): string {
   return `T-${String(index).padStart(5, '0')}`;
 }
-

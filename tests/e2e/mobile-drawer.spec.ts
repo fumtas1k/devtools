@@ -28,7 +28,7 @@ test.describe('モバイルドロワー', () => {
     await expect(page.getByRole('button', { name: 'メニューを閉じる' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'メニューを開く' })).toHaveAttribute(
       'aria-expanded',
-      'true',
+      'true'
     );
   });
 
@@ -41,7 +41,7 @@ test.describe('モバイルドロワー', () => {
     await expect(page.getByRole('dialog', { name: 'ナビゲーション' })).not.toBeVisible();
     await expect(page.getByRole('button', { name: 'メニューを開く' })).toHaveAttribute(
       'aria-expanded',
-      'false',
+      'false'
     );
   });
 

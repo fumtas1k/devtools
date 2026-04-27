@@ -10,6 +10,6 @@ export async function waitForReactHydration(page: Page): Promise<void> {
   await page.waitForFunction(() => {
     const els = document.querySelectorAll('input, textarea, button');
     if (!els.length) return false;
-    return [...els].some(el => Object.keys(el).some(k => k.startsWith('__react')));
+    return [...els].some((el) => Object.keys(el).some((k) => k.startsWith('__react')));
   });
 }

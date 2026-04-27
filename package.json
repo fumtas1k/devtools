@@ -51,10 +51,14 @@
     "@types/jsbarcode": "^3.11.4",
     "@types/uuid": "10.0.0",
     "@vitest/coverage-v8": "4.1.4",
+    "lint-staged": "16.4.0",
     "prettier": "3.8.2",
     "prettier-plugin-astro": "0.14.1",
     "typescript": "5.9.3",
     "vitest": "4.1.4"
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx,jsx,css,md,json,astro}": "prettier --write"
   },
   "overrides": {
     "vite": "7.3.2"

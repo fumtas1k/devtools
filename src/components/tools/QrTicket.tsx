@@ -79,7 +79,7 @@ export function QrTicketTool() {
       setVerificationResult(result);
       setVerifying(false);
     },
-    [verifyPubKeyStr],
+    [verifyPubKeyStr]
   );
 
   const camera = useQrCamera({ onQrDetected: handleVerify });
@@ -175,12 +175,27 @@ export function QrTicketTool() {
   // ─── QR生成 ───────────────────────────────────────────────
 
   const handleGenerate = async () => {
-    if (!cryptoKeyPair) { setGenerateError('先に鍵ペアを生成またはインポートしてください'); return; }
-    if (!eventId.trim()) { setGenerateError('イベントIDを入力してください'); return; }
-    if (!expiry) { setGenerateError('有効期限を設定してください'); return; }
-    if (tickets.length === 0) { setGenerateError('チケットを1件以上追加してください'); return; }
+    if (!cryptoKeyPair) {
+      setGenerateError('先に鍵ペアを生成またはインポートしてください');
+      return;
+    }
+    if (!eventId.trim()) {
+      setGenerateError('イベントIDを入力してください');
+      return;
+    }
+    if (!expiry) {
+      setGenerateError('有効期限を設定してください');
+      return;
+    }
+    if (tickets.length === 0) {
+      setGenerateError('チケットを1件以上追加してください');
+      return;
+    }
     const emptyId = tickets.find((t) => !t.id.trim());
-    if (emptyId) { setGenerateError('チケットIDが空の行があります'); return; }
+    if (emptyId) {
+      setGenerateError('チケットIDが空の行があります');
+      return;
+    }
 
     setGenerating(true);
     setGenerateError('');

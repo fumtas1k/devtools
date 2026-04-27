@@ -54,7 +54,13 @@ export function Select<T extends string>({ options, value, onChange, ariaLabel, 
           color: colors.muted,
         }}
       >
-        <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M2 4L6 8L10 4"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     </div>
   );

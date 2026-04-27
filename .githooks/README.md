@@ -18,17 +18,27 @@ git config core.hooksPath .githooks
 
 **実行タイミング:** コミット直前
 
-**機能:** 重要ファイル（SPEC.md、docs/decisions.md、README.md など）が変更されているのに関連ドキュメントが未更新の場合、**警告のみ**を出力します（コミットはブロックしません）。
+**機能:**
+
+#### 1. 自動フォーマット (lint-staged 経由)
+
+ステージ済みのフォーマット対象拡張子（`.js / .ts / .tsx / .jsx / .css / .md / .json / .astro`）を Prettier で整形し、再ステージします。lint-staged が内部で未ステージ変更を一時退避するため、partial-commit（同一ファイル内の staged 変更と unstaged 変更を分けてコミットする運用）を壊しません。
+
+対象拡張子と整形コマンドは `package.json` の `"lint-staged"` 設定で管理しています。
+
+#### 2. ドキュメント更新チェック
+
+重要ファイル（SPEC.md、docs/decisions.md、README.md など）が変更されているのに関連ドキュメントが未更新の場合、**警告のみ**を出力します（コミットはブロックしません）。
 
 対象となる変更：
 
-| ファイル変更 | 確認するドキュメント |
-| --- | --- |
-| `package.json` | SPEC.md (2.3節ライブラリ表)、docs/decisions.md |
-| `.npmrc` | docs/decisions.md |
-| `.github/workflows/` | docs/decisions.md |
-| `src/styles/global.css`、`src/utils/styles.ts` | docs/decisions.md |
-| 新規ツールページ（`src/pages/tools/*.astro`） | README.md、SPEC.md、docs/decisions.md |
+| ファイル変更                                   | 確認するドキュメント                           |
+| ---------------------------------------------- | ---------------------------------------------- |
+| `package.json`                                 | SPEC.md (2.3節ライブラリ表)、docs/decisions.md |
+| `.npmrc`                                       | docs/decisions.md                              |
+| `.github/workflows/`                           | docs/decisions.md                              |
+| `src/styles/global.css`、`src/utils/styles.ts` | docs/decisions.md                              |
+| 新規ツールページ（`src/pages/tools/*.astro`）  | README.md、SPEC.md、docs/decisions.md          |
 
 **例:**
 
@@ -42,25 +52,35 @@ git config core.hooksPath .githooks
 
 **実行タイミング:** コミットメッセージ確定直前
 
-**機能:** コミットメッセージが日本語で書かれていることを確認します。英語で書かれたメッセージはブロックされます。
+**機能:** コミットメッセージが以下の規約に従っていることを確認します。
 
-**エラー例:**
+1. **Conventional Commits 形式** であること（`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `style:`, `perf:`, `build:`, `ci:`, `revert:` のいずれかで始まる）
+2. **日本語** で書かれていること
+
+※ `Merge`, `Revert`, `fixup!`, `squash!` で始まるコミットはチェックをスキップします。
+
+**エラー例 (形式不正):**
 
 ```
-✗ エラー: コミットメッセージが日本語で書かれていません。
-必ず日本語でコミットメッセージを書いてください。
+✗ エラー: コミットメッセージが Conventional Commits 形式ではありません。
+規約に従い、以下のいずれかのプレフィックスを使用し、コロンの後にスペースを入れてください。
+  feat, fix, docs, chore, refactor, test, style, perf, build, ci, revert
 
-例（正しい形式）:
+正しい例:
   feat: 新しいツールを追加
-  fix: XSS 脆弱性を修正
-  refactor: base64url 変換を統合
+  fix(json-csv): 改行コードの扱いを修正
+```
 
-コミットメッセージ: This is an English message
+**エラー例 (日本語なし):**
+
+```
+✗ エラー: コミットメッセージに日本語が含まれていません。
+本文は必ず日本語で書いてください。
 ```
 
 **対応方法:**
 
-このエラーが出たら、コミットメッセージを日本語に修正してください：
+このエラーが出たら、コミットメッセージを規約通りに修正してください：
 
 ```bash
 # エディタが開く。メッセージを日本語に修正して保存。

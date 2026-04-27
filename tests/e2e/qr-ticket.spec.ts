@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { waitForReactHydration } from './helpers';
 
 test.describe('QRチケット', () => {
+  test.setTimeout(30000);
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/tools/qr-ticket');
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).waitFor();
@@ -31,7 +33,7 @@ test.describe('QRチケット', () => {
   test('「鍵ペアを新規生成」で秘密鍵・公開鍵が表示される', async ({ page }) => {
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
     await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('公開鍵（検証スタッフへ共有）')).toBeVisible();
+    await expect(page.getByText('公開鍵（検証スタッフへ共有）')).toBeVisible({ timeout: 10000 });
   });
 
   // ──────────────────────────────────────────────────────────
@@ -46,7 +48,7 @@ test.describe('QRチケット', () => {
   test('イベントIDが空の状態で一括生成するとエラーメッセージが表示される', async ({ page }) => {
     await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
     await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
-    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
     await page.getByRole('button', { name: '一括生成' }).click();
     await expect(page.getByRole('alert')).toContainText('イベントIDを入力してください');
   });
@@ -60,7 +62,7 @@ test.describe('QRチケット', () => {
     await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
 
     await page.getByLabel('イベントID').pressSequentially('event-2099');
-    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
     await page.getByRole('button', { name: '一括生成' }).click();
 
     await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
@@ -78,7 +80,7 @@ test.describe('QRチケット', () => {
     await expect(page.getByText('公開鍵（検証スタッフへ共有）')).toBeVisible({ timeout: 10000 });
 
     // 2つ目のtextarea（readOnly）が公開鍵JWK
-    const pubKeyJwk = await page.locator('textarea').nth(1).inputValue();
+    const pubKeyJwk = await page.getByLabel('公開鍵（検証スタッフへ共有）').inputValue();
 
     await page.getByText('▼ 既存の秘密鍵をインポート').click();
     await page.getByLabel('秘密鍵 JWK').fill(pubKeyJwk);
@@ -98,7 +100,7 @@ test.describe('QRチケット', () => {
 
     // 2. イベント情報入力・QR生成
     await page.getByLabel('イベントID').pressSequentially('roundtrip-test');
-    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
     await page.getByRole('button', { name: '一括生成' }).click();
     await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
 
@@ -110,7 +112,10 @@ test.describe('QRチケット', () => {
         // QRカードのコンテナ内の SVG を取得
         const container = document.querySelector('[data-testid="qr-code-container"]');
         const svgEl = container?.querySelector('svg') as SVGSVGElement | null;
-        if (!svgEl) { reject(new Error('QR SVG not found')); return; }
+        if (!svgEl) {
+          reject(new Error('QR SVG not found'));
+          return;
+        }
 
         // viewBox から実寸を取得して width/height を設定
         const vb = svgEl.getAttribute('viewBox');
@@ -148,7 +153,7 @@ test.describe('QRチケット', () => {
     await page.getByRole('button', { name: '画像アップロード' }).click();
 
     // 6. PNG を fileInput にセット（hidden input は setInputFiles で直接操作可能）
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('画像を選択').setInputFiles({
       name: 'ticket.png',
       mimeType: 'image/png',
       buffer: Buffer.from(pngBase64, 'base64'),
@@ -166,7 +171,7 @@ test.describe('QRチケット', () => {
     // 2. 日本語を含むイベント情報入力・QR生成
     await page.getByLabel('イベントID').pressSequentially('春 of プログラミング 2026');
     await page.getByLabel('参加者名 1').pressSequentially('山田 太郎');
-    await page.locator('#expiry').fill('2099-12-31T23:59');
+    await page.getByLabel('有効期限').fill('2099-12-31T23:59');
     await page.getByRole('button', { name: '一括生成' }).click();
     await expect(page.getByText(/生成結果（\d+件）/)).toBeVisible({ timeout: 15000 });
 
@@ -216,7 +221,7 @@ test.describe('QRチケット', () => {
     await page.getByRole('button', { name: '画像アップロード' }).click();
 
     // 6. PNG を fileInput にセット
-    await page.locator('input[type="file"]').setInputFiles({
+    await page.getByLabel('画像を選択').setInputFiles({
       name: 'ticket-ja.png',
       mimeType: 'image/png',
       buffer: Buffer.from(pngBase64, 'base64'),

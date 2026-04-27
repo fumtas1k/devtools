@@ -11,7 +11,12 @@ interface Props {
   currentSlug?: string;
 }
 
-const { title, description = 'ブラウザで完結する無料の開発者ツール集', jsonLd, currentSlug } = Astro.props;
+const {
+  title,
+  description = 'ブラウザで完結する無料の開発者ツール集',
+  jsonLd,
+  currentSlug,
+} = Astro.props;
 const pageTitle = `${title} | DevTools`;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
 ---

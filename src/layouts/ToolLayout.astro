@@ -30,7 +30,12 @@ const jsonLd = {
 };
 ---
 
-<BaseLayout title={tool.name} description={tool.description} jsonLd={jsonLd} currentSlug={tool.slug}>
+<BaseLayout
+  title={tool.name}
+  description={tool.description}
+  jsonLd={jsonLd}
+  currentSlug={tool.slug}
+>
   <PageContainer class="flex gap-6 py-8">
     <!-- サイドバー (デスクトップ) -->
     <div class="hidden lg:block">
@@ -69,7 +74,10 @@ const jsonLd = {
             {tool.description}
           </p>
         </div>
-        <CategoryBadge label={categoryLabel[tool.category]} class="hidden sm:inline-block shrink-0 py-1" />
+        <CategoryBadge
+          label={categoryLabel[tool.category]}
+          class="hidden sm:inline-block shrink-0 py-1"
+        />
       </div>
 
       <!-- ツール本体 -->

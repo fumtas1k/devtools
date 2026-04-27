@@ -33,10 +33,19 @@ function generateRows(count: number): UuidRow[] {
 type QuoteStyle = 'none' | 'single' | 'double';
 
 /** UUID 文字列を色分けして表示する */
-function ColoredUuid({ uuid }: { uuid: string }) {
+function ColoredUuid({ uuid, quoteStyle }: { uuid: string; quoteStyle: QuoteStyle }) {
   const parts = uuid.split('-');
+  const quote = quoteStyle === 'double' ? '"' : quoteStyle === 'single' ? "'" : '';
+  const fullText = `${quote}${uuid}${quote}`;
+
   return (
-    <span className="font-mono" style={{ ...caption, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+    <span
+      className="font-mono"
+      style={{ ...caption, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}
+      aria-label={fullText}
+      title={fullText}
+    >
+      {quote && <span style={{ color: colors.muted }}>{quote}</span>}
       <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[0]}</span>
       <span style={{ color: colors.muted }}>-</span>
       <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[1]}</span>
@@ -48,6 +57,7 @@ function ColoredUuid({ uuid }: { uuid: string }) {
       <span style={{ color: FIELD_COLORS.randB }}>{parts[3].substring(1)}</span>
       <span style={{ color: colors.muted }}>-</span>
       <span style={{ color: FIELD_COLORS.randB }}>{parts[4]}</span>
+      {quote && <span style={{ color: colors.muted }}>{quote}</span>}
     </span>
   );
 }
@@ -74,8 +84,7 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
         {fieldDefs.map((f) => (
           <div key={f.key} className="flex flex-col gap-0.5">
             <span style={{ ...caption, color: colors.muted, fontSize: '0.75rem' }}>
-              {f.key}{' '}
-              <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>({f.bits})</span>
+              {f.key} <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>({f.bits})</span>
             </span>
             <code
               className="rounded px-1.5 py-0.5"
@@ -102,18 +111,13 @@ export function UuidV7GeneratorTool() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
 
-  const formatId = (id: string) => {
-    if (quoteStyle === 'double') return `"${id}"`;
-    if (quoteStyle === 'single') return `'${id}'`;
-    return id;
-  };
+  const quote = quoteStyle === 'double' ? '"' : quoteStyle === 'single' ? "'" : '';
+  const formatId = (id: string) => `${quote}${id}${quote}`;
 
   const allUuids = rows
     .map((r, i) => {
       const isLast = i === rows.length - 1;
-      if (quoteStyle === 'double') return `"${r.id}"${isLast ? '' : ','}`;
-      if (quoteStyle === 'single') return `'${r.id}'${isLast ? '' : ','}`;
-      return r.id;
+      return `${quote}${r.id}${quote}${isLast ? '' : ','}`;
     })
     .join('\n');
 
@@ -124,20 +128,30 @@ export function UuidV7GeneratorTool() {
       headerAlign: 'right',
       cellAlign: 'right',
       width: '3.5rem',
-      cellStyle: { ...caption, color: colors.muted, padding: '0.5rem 0.75rem', fontVariantNumeric: 'tabular-nums' },
+      cellStyle: {
+        ...caption,
+        color: colors.muted,
+        padding: '0.5rem 0.75rem',
+        fontVariantNumeric: 'tabular-nums',
+      },
       render: (_, i) => i + 1,
     },
     {
       key: 'uuid',
       header: 'UUID',
       cellStyle: { padding: '0.5rem 0.75rem' },
-      render: (row) => <ColoredUuid uuid={row.id} />,
+      render: (row) => <ColoredUuid uuid={row.id} quoteStyle={quoteStyle} />,
     },
     {
       key: 'timestamp',
       header: 'タイムスタンプ（ISO 8601）',
       className: 'font-mono',
-      cellStyle: { ...caption, color: colors.muted, padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' },
+      cellStyle: {
+        ...caption,
+        color: colors.muted,
+        padding: '0.5rem 0.75rem',
+        whiteSpace: 'nowrap',
+      },
       render: (row) => row.timestamp,
     },
     {
@@ -192,7 +206,12 @@ export function UuidV7GeneratorTool() {
                   <div className="shrink-0">
                     <CopyButton text={allUuids} label="すべてコピー" />
                   </div>
-                  <ClearButton onClick={() => { setRows([]); setSelectedIndex(null); }} />
+                  <ClearButton
+                    onClick={() => {
+                      setRows([]);
+                      setSelectedIndex(null);
+                    }}
+                  />
                 </div>
               </>
             )}
