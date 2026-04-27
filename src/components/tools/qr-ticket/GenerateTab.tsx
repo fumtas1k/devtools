@@ -271,7 +271,7 @@ export function GenerateTab({
               >
                 サイズ
               </span>
-              <span className="w-[32px]"></span>
+              <span className="w-8"></span>
             </div>
 
             {tickets.map((row, i) => {
@@ -379,7 +379,7 @@ export function GenerateTab({
                     </span>
                     <button
                       type="button"
-                      className="w-[32px] h-[32px] flex items-center justify-center"
+                      className="w-8 h-8 flex items-center justify-center"
                       onClick={() => onRemoveTicket(i)}
                       disabled={tickets.length <= 1}
                       aria-label={`行 ${i + 1} を削除`}
