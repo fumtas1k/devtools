@@ -212,8 +212,10 @@ export function generateQrSvg(data: string): string | null {
     qr.addData(utf8Data);
     qr.make();
     // scalable: true だと width/height が付与されず、画像アップロード時に歪んで描画される原因になるため、
-    // 明示的なサイズを持つSVGを生成する（cellSize: 4, margin: 4 = 29x4+8=124px 前後）。
-    return qr.createSvgTag({ cellSize: 4, margin: 4, scalable: false });
+    // 明示的なサイズを持つSVGを生成する（cellSize: 4, margin: 2）。
+    // 300バイト制限（Version 5: 37x37前後）において、(37*4)+(2*2)=152px となり、
+    // 表示コンテナ（160px）からはみ出さずに最大限の解像度を確保できます。
+    return qr.createSvgTag({ cellSize: 4, margin: 2, scalable: false });
   } catch {
     return null;
   }
