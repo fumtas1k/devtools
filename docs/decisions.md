@@ -1381,31 +1381,19 @@ CI（GitHub Actions）の実行コスト削減と、不要な重複ジョブの�
 
 ### 背景
 
-[041] で導入した `.githooks/pre-commit` の Prettier 自動整形には、partial-commit
-（同一ファイル内の staged 変更と unstaged 変更を分けてコミットする運用）を壊す
-未解決の課題があった。`prettier --write <file>` はワーキングツリー側（unstaged
-を含む）を整形し、続く `git add <file>` で unstaged 変更まで一緒にステージして
-しまう。直近 `28a4c60` でファイル名スペース対応は堅牢化したが、partial-commit
-問題は残っていた（PR #88 レビュー）。
+[041] で導入した `.githooks/pre-commit` の Prettier 自動整形には、partial-commit（同一ファイル内の staged 変更と unstaged 変更を分けてコミットする運用）を壊す未解決の課題があった。`prettier --write <file>` はワーキングツリー側（unstaged を含む）を整形し、続く `git add <file>` で unstaged 変更まで一緒にステージしてしまう。直近 `28a4c60` でファイル名スペース対応は堅牢化したが、partial-commit 問題は残っていた（PR #88 レビュー）。
 
 ### 決断
 
-1. `lint-staged` を devDependency として導入し、partial-commit 時には内部で
-   `git stash` 相当の処理により未ステージ変更を退避してから整形・add するように
-   切り替えた。
-2. 整形コマンドと拡張子セットは `package.json` の `"lint-staged"` 設定に集約し、
-   pre-commit フック側は `npx lint-staged` 1 行のみに簡素化した。
-3. CI の `npm run format:check`（`.github/workflows/test.yml`）はそのまま維持し、
-   フックが何らかの理由でスキップ（`--no-verify`）された場合の最終防衛線とした。
-4. `core.hooksPath=.githooks` の運用は維持（`ignore-scripts=true` ポリシーのため
-   Husky の `prepare` スクリプト方式は採用しない）。
+1. `lint-staged` を devDependency として導入し、partial-commit 時には内部で `git stash` 相当の処理により未ステージ変更を退避してから整形・add するように切り替えた。
+2. 整形コマンドと拡張子セットは `package.json` の `"lint-staged"` 設定に集約し、pre-commit フック側は `npx lint-staged` 1 行のみに簡素化した。
+3. CI の `npm run format:check`（`.github/workflows/test.yml`）はそのまま維持し、フックが何らかの理由でスキップ（`--no-verify`）された場合の最終防衛線とした。
+4. `core.hooksPath=.githooks` の運用は維持（`ignore-scripts=true` ポリシーのため Husky の `prepare` スクリプト方式は採用しない）。
 
 ### 却下した選択肢
 
-- **Husky 導入**: `.npmrc` の `ignore-scripts=true` で `prepare` が走らないため、
-  クローン直後の自動セットアップが利かず、利点を活かせない。
-- **自前スクリプト改修で `git stash` を扱う**: 実装と保守コストが高く、
-  lint-staged の枯れた実装と比較して優位性がない。
+- **Husky 導入**: `.npmrc` の `ignore-scripts=true` で `prepare` が走らないため、クローン直後の自動セットアップが利かず、利点を活かせない。
+- **自前スクリプト改修で `git stash` を扱う**: 実装と保守コストが高く、lint-staged の枯れた実装と比較して優位性がない。
 - **現状維持**: partial-commit を破壊する運用上の地雷が残るため却下。
 
 ### 結果・トレードオフ
@@ -1413,5 +1401,33 @@ CI（GitHub Actions）の実行コスト削減と、不要な重複ジョブの�
 - ✅ partial-commit のセマンティクスを破壊しない
 - ✅ ファイル名のクオート処理は lint-staged 側で堅牢に処理される
 - ✅ 設定が `package.json` に集約され、フックスクリプトが簡素化された
-- ⚠️ devDependency が 1 つ増えるが、`min-release-age=7` / `save-exact=true` の
-  サプライチェーン保護下で固定バージョン運用するため許容範囲
+- ⚠️ devDependency が 1 つ増えるが、`min-release-age=7` / `save-exact=true` のサプライチェーン保護下で固定バージョン運用するため許容範囲
+
+---
+
+## [044] commit-msg フックによる Conventional Commits 形式の強制
+
+**2026-04-27 | ステータス: 採用**
+
+### 背景
+
+プロジェクト規約（`docs/shared-agent-rules.md`）では、コミットメッセージを日本語かつ Conventional Commits 形式で書くことが定められていますが、既存の `.githooks/commit-msg` フックでは形式チェック（prefix の有無等）が行われていませんでした。これにより、規約違反のコミットが混入するリスクがありました。
+
+### 決断
+
+`.githooks/commit-msg` フックを更新し、以下のバリデーションを導入します：
+
+1.  **形式チェック**: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `style`, `perf`, `build`, `ci`, `revert` のいずれかの type で始まり、コロンとスペースが続くことを正規表現で強制します。
+2.  **日本語チェック**: 既存の日本語文字検出ロジックを統合し、本文が日本語であることを保証します。
+3.  **除外設定**: `Merge`, `Revert`, `fixup!`, `squash!` で始まる特殊なコミットはチェックをスキップします。
+4.  **エラーメッセージ改善**: 規約ドキュメント（`docs/shared-agent-rules.md`）への直リンクを含め、修正方法を具体的に提示します。
+
+### 却下した選択肢
+
+- **CI でのチェックのみ**: ローカルでコミットをブロックする方がフィードバックが早く、修正コストが低いため却下。
+
+### 結果・トレードオフ
+
+- ✅ プロジェクト規約の遵守が自動的に保証されるようになりました。
+- ✅ 規約違反時の修正方法が明確になり、エージェント・人間双方の負担が軽減されました。
+- ⚠️ 外部ツール（Renovate 等）による自動コミットが type 違反で失敗する可能性があるため、必要に応じて除外パターンを追加する等のメンテナンスが必要になる可能性があります。

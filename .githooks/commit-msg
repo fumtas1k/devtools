@@ -1,11 +1,12 @@
 #!/bin/sh
-# コミットメッセージの言語チェック
+# コミットメッセージの形式および言語チェック
 #
-# コミットメッセージが英語で書かれていないことを確認する。
-# メッセージが主に日本語で書かれていることを確認する。
+# 1. Conventional Commits 形式であることを確認する
+# 2. 本文が日本語であることを確認する
 
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 commit_msg_file="$1"
@@ -18,33 +19,48 @@ if [ -z "$commit_msg" ]; then
   exit 0
 fi
 
-# 日本語の文字（ひらがな、カタカナ、漢字）を検出する正規表現
-# Unicode 範囲:
-# - ひらがな: U+3040-U+309F
-# - カタカナ: U+30A0-U+30FF
-# - 漢字: U+4E00-U+9FFF
-# - 句読点: U+3001-U+3006
+# 特殊なコミットはチェックをスキップ
+# - fixup! / squash! (git commit --fixup/--squash)
+# - Merge ... (マージコミット)
+# - Revert ... (リバートコミット)
+case "$commit_msg" in
+  fixup!*|squash!*|Merge*|Revert*)
+    exit 0
+    ;;
+esac
 
+# 1. Conventional Commits 形式チェック
+# 形式: <type>(<scope>)?: <subject>
+# 許容する type: feat, fix, docs, chore, refactor, test, style, perf, build, ci, revert
+pattern="^(feat|fix|docs|chore|refactor|test|style|perf|build|ci|revert)(\(.*\))?: .+$"
+
+if ! echo "$commit_msg" | grep -Eq "$pattern"; then
+  printf "${RED}✗ エラー: コミットメッセージが Conventional Commits 形式ではありません。${NC}\n" >&2
+  printf "規約に従い、以下のいずれかのプレフィックスを使用し、コロンの後にスペースを入れてください。\n" >&2
+  printf "  ${BLUE}feat, fix, docs, chore, refactor, test, style, perf, build, ci, revert${NC}\n\n" >&2
+  printf "正しい例:\n" >&2
+  printf "  feat: 新しいツールを追加\n" >&2
+  printf "  fix(json-csv): 改行コードの扱いを修正\n\n" >&2
+  printf "詳細はプロジェクト規約を確認してください:\n" >&2
+  printf "  https://github.com/fumtas1k/devtools/blob/main/docs/shared-agent-rules.md#1-言語出力規約\n\n" >&2
+  printf "現在のメッセージ: ${YELLOW}%s${NC}\n" "$commit_msg" >&2
+  exit 1
+fi
+
+# 2. 日本語チェック
+# 日本語の文字（ひらがな、カタカナ、漢字）を検出する正規表現
 japanese_count=$(echo "$commit_msg" | grep -o '[ぁ-ん]' | wc -l)
 japanese_count=$((japanese_count + $(echo "$commit_msg" | grep -o '[ァ-ン]' | wc -l)))
 japanese_count=$((japanese_count + $(echo "$commit_msg" | grep -o '[一-龯]' | wc -l)))
 japanese_count=$((japanese_count + $(echo "$commit_msg" | grep -o '[、。]' | wc -l)))
 
-# 英字（a-z, A-Z）の数をカウント
-ascii_alpha_count=$(echo "$commit_msg" | grep -o '[a-zA-Z]' | wc -l)
-
-# 数字は除外（バージョン番号など）
-# 記号は除外
-
-# 日本語文字がない、または英字が多すぎる場合はエラー
-if [ "$japanese_count" -lt 2 ] && [ "$ascii_alpha_count" -gt 5 ]; then
-  printf "${RED}✗ エラー: コミットメッセージが日本語で書かれていません。${NC}\n" >&2
-  printf "${RED}必ず日本語でコミットメッセージを書いてください。${NC}\n\n" >&2
-  printf "例（正しい形式）:\n" >&2
-  printf "  feat: 新しいツールを追加\n" >&2
-  printf "  fix: XSS 脆弱性を修正\n" >&2
-  printf "  refactor: base64url 変換を統合\n\n" >&2
-  printf "コミットメッセージ: ${YELLOW}${commit_msg}${NC}\n" >&2
+# 日本語文字がない場合はエラー
+if [ "$japanese_count" -lt 2 ]; then
+  printf "${RED}✗ エラー: コミットメッセージに日本語が含まれていません。${NC}\n" >&2
+  printf "本文は必ず日本語で書いてください。\n\n" >&2
+  printf "正しい例:\n" >&2
+  printf "  feat: 新しいツールを追加\n\n" >&2
+  printf "現在のメッセージ: ${YELLOW}%s${NC}\n" "$commit_msg" >&2
   exit 1
 fi
 
