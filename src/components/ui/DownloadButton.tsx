@@ -41,8 +41,8 @@ export function DownloadButton({
 
   const baseStyle: React.CSSProperties = {
     ...caption,
-    fontWeight: 700,
-    padding: '0.5rem 0.75rem',
+    fontWeight: 600,
+    padding: '0.5rem 1rem',
     lineHeight: 1,
     borderRadius: '0.5rem',
     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -71,8 +71,18 @@ export function DownloadButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel || label}
-      className={`${isPrimary ? 'hover:opacity-90' : 'hover:bg-blue-50'} ${className}`}
+      className={`${isPrimary ? 'hover:opacity-90' : ''} ${className}`}
       style={{ ...baseStyle, ...variantStyle }}
+      onMouseEnter={(e) => {
+        if (!disabled && !isPrimary) {
+          e.currentTarget.style.background = colors.bgActive;
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled && !isPrimary) {
+          e.currentTarget.style.background = 'transparent';
+        }
+      }}
     >
       <DownloadIcon />
       {label}
