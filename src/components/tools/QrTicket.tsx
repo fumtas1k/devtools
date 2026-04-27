@@ -197,14 +197,15 @@ export function QrTicketTool() {
       return;
     }
 
-    // 文字数制限チェック (全テキスト項目の合計が80文字以内)
-    const longTicket = tickets.find(
-      (t) => eventId.length + t.id.length + t.name.length + t.category.length > 80
-    );
+    // バイト数制限チェック (全項目の合計が300バイト以内)
+    const encoder = new TextEncoder();
+    const longTicket = tickets.find((t) => {
+      const data = `${eventId.trim()}|${t.id.trim()}|${t.name.trim()}|${t.category.trim()}`;
+      return encoder.encode(data).length > 300;
+    });
+
     if (longTicket) {
-      setGenerateError(
-        `チケット ${longTicket.id} の入力項目（イベントID等を含む）の合計が80文字を超えています。読取精度を保つため、合計80文字以内に収めてください。`
-      );
+      setGenerateError(`チケット ${longTicket.id} のデータ量が上限（300バイト）を超えています。`);
       return;
     }
 

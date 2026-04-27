@@ -129,9 +129,9 @@ export async function verifyTicket(
 - Modify: `tests/e2e/qr-ticket.spec.ts`
 
 - [x] **Step 1: 読取限界の調査**
-      160pxサイズにおいて、文字数と読取成功率の相関を調査。合計80文字程度が実用上の限界であることを特定。
+      160pxサイズにおいて、文字数と読取成功率の相関を調査。合計300バイト（UTF-8）程度が実用上の限界であることを特定。
 - [x] **Step 2: 生成時のバリデーション実装**
-      `QrTicket.tsx` に合計80文字超えをブロックするロジックを追加。
+      `QrTicket.tsx` に全入力項目の合計300バイト超えをブロックするロジックを追加。
 - [x] **Step 3: UIへのヒント追加**
       `GenerateTab.tsx` に推奨文字数の注釈を表示。
 - [x] **Step 4: E2Eテストの追加**

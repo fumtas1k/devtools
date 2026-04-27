@@ -693,7 +693,7 @@ eventId|ticketId|timestamp|name|category|signature
 | category   | 料金区分   | 任意。パイプ `\|` はスペースに置換 |
 | signature  | 署名       | Base64URLエンコード                |
 
-※ 160pxの表示サイズでの読取精度を確保するため、「参加者名」と「料金区分」の合計文字数を **80文字以内** に制限。
+※ 160pxの表示サイズでの読取精度を確保するため、入力項目の合計を **300バイト以内**（UTF-8）に制限。
 
 ---
 
