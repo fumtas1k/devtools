@@ -7,7 +7,7 @@ interface Props {
 
 export function DownloadButtonGroup({ onDownloadSvg, onDownloadPng }: Props) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap justify-center gap-2 w-full">
       <DownloadButton onClick={onDownloadSvg} label="SVGダウンロード" variant="secondary" />
       {onDownloadPng && (
         <DownloadButton onClick={onDownloadPng} label="PNGダウンロード" variant="primary" />
