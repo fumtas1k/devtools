@@ -164,6 +164,23 @@ npx astro check --filter <file>
 
 実装中の脱線やスコープ外の修正を防ぐため、すべての AI エージェントは **Active Task Context (ATC)** を運用すること。
 
+### ATC を作成しなくてよいケース
+
+ATC の目的は「目的・ステップ・スコープ外」を明文化して脱線を防ぐことである。これと同等の役割を果たすファイルが他のスキル・ツールによって既に作成されている場合は、`tasks/active_context.md` を重複して作る必要はない。
+
+**ATC 不要と判断できる条件**（以下を **すべて** 満たすこと）:
+
+1. 他のスキル・ツールが作成するファイルに「目的（Objective）」「ステップ（Steps）」「スコープ外（Out of Scope）」が **明示的に** 含まれている。
+2. そのファイルがセッション中に参照・更新可能な場所にある。
+
+**該当する代替ファイルの例**:
+
+- `docs/superpowers/plans/*.md`（superpowers の `writing-plans` / `executing-plans` スキル）
+- `docs/superpowers/specs/*.md`（同・設計フェーズ）
+- `conductor/` 配下のタスクファイル（conductor スキル使用時）
+
+逆に、上記の条件を満たさない場合（例: 簡易な Skill 利用や直接実装）は、従来どおり `tasks/active_context.md` を作成すること。
+
 ### ATC の運用手順
 
 1.  **セッション開始時**: `tasks/active_context.md` を作成（または既存のものを更新）し、そのセッションの「目的」「ステップ」「スコープ外」を宣言する。※当ファイルは `.gitignore` 対象であり、リポジトリには含めない。

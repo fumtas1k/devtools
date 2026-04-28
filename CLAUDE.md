@@ -12,7 +12,7 @@
 - **言語**: コミットメッセージ・PR説明文は**必ず日本語**で記述する。
 - **スタイリング**: Tailwind のカラークラスは使用禁止。必ず **`colors.*` (React)** または **`var(--color-*)` (Astro)** を使用する。
 - **検証**: 変更後は必ず **`npm run test`** および **`npm run test:e2e`** で動作確認を行う。
-- **ATC運用**: セッション開始時に必ず `tasks/active_context.md` を作成・更新する（詳細は `docs/shared-agent-rules.md` 参照）。
+- **ATC運用**: セッション開始時に `tasks/active_context.md` を作成・更新する。ただし superpowers の plan ファイル（`docs/superpowers/plans/*.md`）や conductor のタスクファイルなど、目的・ステップ・スコープ外を明示する代替ファイルが存在する場合は ATC を作成不要（詳細は `docs/shared-agent-rules.md` 10章参照）。
 - **教訓の確認**: セッション開始時に `tasks/lessons.md` を確認し、過去の修正パターンを把握する。
 
 ---
