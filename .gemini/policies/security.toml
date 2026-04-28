@@ -11,6 +11,24 @@ denyMessage = "Force push is strictly prohibited."
 
 [[rule]]
 toolName = "run_shell_command"
+commandPrefix = "gh repo delete"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh secret delete"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh secret remove"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
 commandPrefix = "rm -rf /"
 decision = "deny"
 priority = 100
@@ -59,6 +77,12 @@ commandPrefix = "git pull"
 decision = "allow"
 priority = 50
 
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git fetch"
+decision = "allow"
+priority = 50
+
 # --- ASK RULES ---
 
 [[rule]]
@@ -100,6 +124,66 @@ priority = 50
 [[rule]]
 toolName = "run_shell_command"
 commandPrefix = "gh release"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh repo archive"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh repo rename"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh secret set"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh ssh-key delete"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh auth logout"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh issue delete"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh issue close"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh workflow run"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh workflow disable"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = "^gh api .*(-X DELETE|--method DELETE).*"
 decision = "ask_user"
 priority = 50
 
