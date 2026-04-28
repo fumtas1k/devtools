@@ -140,12 +140,36 @@
   color: var(--color-text);
 }
 
-/* リンクの基本スタイル */
-.text-link {
+/* リンクの色のみを制御するクラス（下線なし） */
+.text-link-color {
   color: var(--color-link);
   transition: color 0.2s;
 }
 
+.text-link-color:hover {
+  color: var(--color-primary);
+}
+
+.text-link-color:visited {
+  color: var(--color-link-visited);
+}
+
+/* 汎用テキストリンクのスタイル（下線あり） */
+.text-link {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition:
+    color 0.2s,
+    text-decoration-color 0.2s;
+}
+
 .text-link:hover {
   color: var(--color-primary);
+  text-decoration-thickness: 2px;
+}
+
+.text-link:visited {
+  color: var(--color-link-visited);
 }
