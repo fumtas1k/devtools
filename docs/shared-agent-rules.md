@@ -70,9 +70,7 @@ gh pr create --base develop --title "..." --body-file /tmp/pr_body.md
 
 ---
 
-## 6. スタイル・UI ルール
-
-### 6.1 カラーシステム (Tailwind 使用制限)
+## 6. スタイル・UI ルール（基本）
 
 Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50` 等）は **絶対に使用しない**。色は CSS 変数経由で指定する:
 
@@ -81,58 +79,19 @@ Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50`
 
 ※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は使用可。
 
-### 6.2 ホバー時の色変化
-
-`hover:` クラスは禁止。`onMouseEnter` / `onMouseLeave` でインラインスタイルを差し替える:
-
-```tsx
-<button
-  style={{ background: 'transparent', color: colors.error }}
-  onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
-  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-/>
-```
-
-### 6.3 ボタン高さの揃え
-
-横並びでボタン高さを揃えたい場合は **`lineHeight: 1` を明示**（`caption` / `bodyEmphasis` は lineHeight 1.7 のため意図より大きくなる）。
-
-### 6.4 横並び ↔ 縦並びレスポンシブ
-
-切替レイアウトには **`w-full md:flex-1 min-w-0`** をセットで使用（`min-w-0` を忘れると長いコンテンツがはみ出す）。
-
-### 6.5 ToggleGroup のリセット要否
-
-| トグルの種類                                 | リセット | 理由                       |
-| :------------------------------------------- | :------- | :------------------------- |
-| 操作の種類が変わる（エンコード/デコード等）  | する     | 入力の期待形式が変わる     |
-| 同じ操作のサブバリアント（標準/URL-safe 等） | しない   | 出力比較のために保持が便利 |
+UI コンポーネントを実装・改修する際の詳細パターン（ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否 等）は **`docs/ui-conventions.md` 1章** を参照すること。
 
 ---
 
-## 7. UI 変更時の目視確認・E2E テスト (Playwright)
+## 7. UI 変更時の目視確認 (Playwright)
 
-### 7.1 PC・スマホ両サイズでの目視確認
-
-UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影し以下を確認:
+UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影し、コミット前に以下を目視確認:
 
 - 入力・出力エリアの上端揃え／スマホ幅で縦並びレイアウトに切替
 - ボタンの隠れ・重なりがないか／ラベル行高さの左右揃え
 - フォーカスリングの見切れ／タップ領域 ≥ 44x44px
 
-### 7.2 撮影手順（必須）
-
-```
-1. caches.delete + localStorage.clear + sessionStorage.clear
-2. browser_navigate（キャッシュなし）
-3. browser_resize 1280x800 → screenshot
-4. browser_resize 390x844 → screenshot
-```
-
-### 7.3 ロケーター・アサーション
-
-- `getByRole` / `getByText` / `getByLabel` を使う。`locator('[role="X"]')` のような属性セレクタは禁止。
-- DOM 直接操作（`page.evaluate`）より `expect` のオートリトライを優先。
+撮影手順・ロケーター推奨など Playwright の詳細は **`docs/ui-conventions.md` 2章** を参照すること。
 
 ---
 
@@ -144,7 +103,8 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 - `src/pages/tools/`: Astro ページ (ルーティング)
 - `src/utils/`: ロジック・ヘルパー・スタイル定義
 - `docs/decisions.md`: 設計上の意思決定記録
-- `docs/shared-agent-rules.md`: 本ドキュメント
+- `docs/shared-agent-rules.md`: 本ドキュメント（常時遵守する共通規約）
+- `docs/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
 - `docs/agent-lessons.md`: 教訓バッファ（共通ルール化前の蓄積場所）
 - `tasks/active_context.md`: セッション固有の作業コンテキスト（gitignore 対象）
 
