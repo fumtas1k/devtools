@@ -16,6 +16,7 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
+    "excludedCommands": ["git push*", "gh *"],
     "network": {
       "allowedDomains": [
         "registry.npmjs.org",
