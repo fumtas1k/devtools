@@ -16,6 +16,30 @@
 
 ---
 
+## 推奨プラグイン
+
+このプロジェクトは以下の Claude Code プラグインを前提に運用しています。`.claude/settings.json` の `enabledPlugins` で宣言済み。
+
+| プラグイン                                | 用途                                                              |
+| :---------------------------------------- | :---------------------------------------------------------------- |
+| `superpowers@claude-plugins-official`     | 設計・計画・実装支援スキル群（writing-plans, debugging, TDD 等）  |
+| `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                    |
+| `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
+
+### Claude Code CLI / Desktop
+
+`.claude/settings.json` の `enabledPlugins` を読み取り、初回オープン時に install を自動 prompt します。
+
+### Claude Code Web (claude.ai/code) / IDE 拡張
+
+web / IDE はプロジェクト config から plugin を自動 install しません。各環境で手動実行してください:
+
+```
+/plugin install superpowers@claude-plugins-official
+/plugin install frontend-design@claude-plugins-official
+/plugin install context7@claude-plugins-official
+```
+
 ## Agent Teams (Claude Code 固有機能)
 
 このプロジェクトでは **Claude Code の Agent Teams 機能**（実験的）を有効化しています。
