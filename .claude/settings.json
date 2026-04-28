@@ -85,8 +85,8 @@
       "Bash(pwd)"
     ],
     "ask": [
-      "Edit(./.claude/settings*.json)",
-      "Write(./.claude/settings*.json)",
+      "Edit(./.claude/**)",
+      "Write(./.claude/**)",
       "Edit(./.gemini/**)",
       "Write(./.gemini/**)",
       "Bash(git push*)",
@@ -114,6 +114,7 @@
       "Bash(gh ssh-key delete*)",
       "Bash(gh auth logout*)",
       "Bash(gh api graphql*)",
+      "Bash(gh api * graphql*)",
       "Bash(gh api * -X DELETE*)",
       "Bash(gh api * --method DELETE*)",
       "Bash(npm install -g*)",
