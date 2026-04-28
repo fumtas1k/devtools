@@ -23,7 +23,6 @@
 - `.claude/settings.json` に `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"` と `teammateMode: "tmux"` を設定済み。
 - 複数の Claude エージェントが tmux セッション上で協調して作業できます。
 - **活用する場面**:
-  - 独立した複数タスクを並列に進める場合（`superpowers:dispatching-parallel-agents` スキル参照）
+  - 独立した複数タスクを並列に進める場合
   - レビュー担当・実装担当を分けたい場合
   - 長大な実装を複数エージェントで分担する場合
-- スキルは `.claude/skills/` 配下に配置。セッション開始時に `superpowers:using-superpowers` スキルの指示に従う。
