@@ -1,11 +1,15 @@
 ---
-interface Props {
+export interface Props {
   slug: string;
   size?: number;
   class?: string;
+  /**
+   * インラインスタイル（主に color を CSS 変数で上書きするために使用）
+   */
+  style?: string;
 }
 
-const { slug, size = 24, class: className = '' } = Astro.props;
+const { slug, size = 24, class: className = '', style } = Astro.props;
 
 const attrs = {
   width: size,
@@ -18,6 +22,7 @@ const attrs = {
   'stroke-linejoin': 'round' as const,
   'aria-hidden': true,
   class: className,
+  style,
 };
 ---
 

@@ -31,7 +31,7 @@ const { currentSlug } = Astro.props;
                     class={`flex items-center gap-2 rounded px-3 transition-colors sidebar-link
                   ${
                     currentSlug === tool.slug
-                      ? 'font-bold text-primary sidebar-link--active'
+                      ? 'font-bold sidebar-link--active'
                       : 'sidebar-link--inactive'
                   }`}
                     style="min-height: 44px; font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
@@ -51,6 +51,7 @@ const { currentSlug } = Astro.props;
 <style>
   .sidebar-link--active {
     background: var(--color-bg-active);
+    color: var(--color-primary);
   }
   .sidebar-link--inactive {
     color: var(--color-neutral-700);
