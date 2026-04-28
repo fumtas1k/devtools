@@ -140,7 +140,7 @@
   color: var(--color-text);
 }
 
-/* リンクの基本スタイル */
+/* 汎用テキストリンクのスタイル */
 .text-link {
   color: var(--color-link);
   transition: color 0.2s;
@@ -148,4 +148,8 @@
 
 .text-link:hover {
   color: var(--color-primary);
+}
+
+.text-link:visited {
+  color: var(--color-link-visited);
 }
