@@ -24,6 +24,8 @@
     }
   },
   "security": {
-    "environmentVariableRedaction": true
+    "environmentVariableRedaction": {
+      "enabled": true
+    }
   }
 }
