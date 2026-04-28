@@ -7,3 +7,21 @@
 ## Gemini CLI 固有の注意事項
 
 - **`conductor/` ディレクトリ**: `.gitignore` 対象の内部ツール用ディレクトリ。変更・削除しないよう注意してください。
+
+### AI による生成物の明示（必須）
+
+Claude Code は コミット／PR／Issue／コメントの末尾に AI 生成である旨のフッターを自動付与します。Gemini CLI でも同等の明示を **必ず** 行うこと（透明性確保・レビュー時の判別容易化のため）。
+
+- **コミットメッセージ**: 末尾に以下を 1 行追加する。
+
+  ```
+  Co-Authored-By: Gemini CLI <noreply@google.com>
+  ```
+
+- **PR 本文・Issue 本文・GitHub コメント**: 末尾に以下を追加する。
+
+  ```
+  🤖 Generated with [Gemini CLI](https://github.com/google-gemini/gemini-cli)
+  ```
+
+省略してはならない。ユーザーから明示的に「フッター不要」と指示された場合のみ省略可。
