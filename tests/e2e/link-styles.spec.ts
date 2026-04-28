@@ -74,4 +74,43 @@ test.describe('Link Styles', () => {
     await link.hover();
     await expect(link).toHaveCSS('color', COLOR_PRIMARY);
   });
+
+  test('should have .text-link:visited style definition in the stylesheet', async ({ page }) => {
+    await page.goto('/');
+
+    // 検証用の要素を注入
+    await page.evaluate(() => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/test-link-' + Math.random();
+      link.className = 'text-link';
+      link.id = 'test-link';
+      link.textContent = 'Test Link';
+      document.body.appendChild(link);
+    });
+
+    const link = page.locator('#test-link');
+
+    // 通常時の色確認 (--color-link: #2563eb)
+    await expect(link).toHaveCSS('color', COLOR_LINK);
+
+    // :visited の定義確認
+    // ブラウザ上の全スタイルシートを走査して定義を確認する
+    const hasVisitedRule = await page.evaluate(() => {
+      return Array.from(document.styleSheets).some((sheet) => {
+        try {
+          return Array.from(sheet.cssRules).some(
+            (rule) =>
+              rule instanceof CSSStyleRule &&
+              (rule.selectorText.includes('.text-link:visited') ||
+                rule.selectorText.includes('.text-link:where(:visited)'))
+          );
+        } catch (e) {
+          // クロスドメインのスタイルシート等はアクセス不可な場合があるため無視
+          return false;
+        }
+      });
+    });
+
+    expect(hasVisitedRule).toBe(true);
+  });
 });
