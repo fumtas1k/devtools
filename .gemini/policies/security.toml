@@ -32,7 +32,7 @@ denyMessage = "Force push is strictly prohibited."
 # Restricted API operations (including GraphQL mutations and DELETE)
 [[rule]]
 toolName = "run_shell_command"
-commandRegex = "^gh api .*(graphql|.*(^|\\s)(-X|--method)\\s+DELETE(\\s|$)).*"
+commandRegex = "^gh api (graphql\\b|.*\\b(-X|--method)\\s+DELETE\\b).*"
 decision = "deny"
 priority = 100
 denyMessage = "Direct GraphQL mutations or DELETE via API are prohibited to prevent accidental resource deletion."
@@ -106,10 +106,9 @@ priority = 50
 # Metadata protection: Prevent agent from modifying its own configuration via shell commands
 [[rule]]
 toolName = "run_shell_command"
-commandRegex = ".*(sed\\s+-i|tee|[^\\s]*>\\s*).*(\\.(gemini|claude)/).*"
+commandRegex = ".*(sed\\s+-i|tee|cp|mv|[^\\s]*>\\s*).*(\\.(gemini|claude)/).*"
 decision = "ask_user"
 priority = 50
-denyMessage = "Modification of agent configuration files via shell commands requires user approval."
 
 # Metadata protection: Direct file edits
 [[rule]]
