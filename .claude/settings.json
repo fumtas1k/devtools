@@ -16,7 +16,7 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
-    "excludedCommands": ["git push*", "gh *"],
+    "excludedCommands": ["git push*", "git pull*", "git fetch*", "gh *"],
     "allowUnsandboxedCommands": false,
     "network": {
       "allowedDomains": [
@@ -66,6 +66,7 @@
       "Bash(git branch*)",
       "Bash(git rev-parse*)",
       "Bash(git pull*)",
+      "Bash(git fetch*)",
       "Bash(git remote -v)",
       "Bash(git stash list*)",
       "Bash(git config --get*)",
@@ -85,11 +86,25 @@
       "Bash(gh pr close*)",
       "Bash(gh pr edit*)",
       "Bash(gh release *)",
+      "Bash(gh repo archive*)",
+      "Bash(gh repo rename*)",
+      "Bash(gh secret set*)",
+      "Bash(gh ssh-key delete*)",
+      "Bash(gh auth logout*)",
+      "Bash(gh issue delete*)",
+      "Bash(gh issue close*)",
+      "Bash(gh workflow run*)",
+      "Bash(gh workflow disable*)",
+      "Bash(gh api * -X DELETE*)",
+      "Bash(gh api * --method DELETE*)",
       "Bash(npm install -g*)"
     ],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh secret delete*)",
+      "Bash(gh secret remove*)",
       "Read(./.env*)",
       "Read(./secrets/**)",
       "Read(~/.aws/**)",
