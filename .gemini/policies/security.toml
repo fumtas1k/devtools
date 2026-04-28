@@ -76,7 +76,7 @@ priority = 100
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefixes = ["git pull", "git fetch"]
+commandPrefixes = ["git pull", "git fetch", "gh pr diff"]
 decision = "allow"
 priority = 50
 
