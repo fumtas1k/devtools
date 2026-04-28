@@ -13,7 +13,6 @@
 - **スタイリング**: Tailwind のカラークラスは使用禁止。必ず **`colors.*` (React)** または **`var(--color-*)` (Astro)** を使用する。
 - **検証**: 変更後は必ず **`npm run test`** および **`npm run test:e2e`** で動作確認を行う。
 - **ATC運用**: セッション開始時に `tasks/active_context.md` を作成・更新する。ただし superpowers の plan ファイル（`docs/superpowers/plans/*.md`）や conductor のタスクファイルなど、目的・ステップ・スコープ外を明示する代替ファイルが存在する場合は ATC を作成不要（詳細は `docs/shared-agent-rules.md` 10章参照）。
-- **教訓の確認**: セッション開始時に `tasks/lessons.md` を確認し、過去の修正パターンを把握する。
 
 ---
 
@@ -74,4 +73,4 @@
 
 ## 学びの記録
 
-ユーザーから修正を受けたら `tasks/lessons.md` に記録する。次のセッション開始時に確認する。
+ユーザーから修正を受けたら `docs/agent-lessons.md` に記録する。セッション開始時に毎回読む必要はなく、PR 作成前や蓄積が増えた節目で見直し、共通ルール化すべき内容は `docs/shared-agent-rules.md` へ昇格させて `agent-lessons.md` から削除する（詳細は `docs/shared-agent-rules.md` 11章）。
