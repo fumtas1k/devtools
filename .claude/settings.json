@@ -78,7 +78,6 @@
       "Bash(gh issue status*)",
       "Bash(gh repo view*)",
       "Bash(gh repo list*)",
-      "Bash(gh api *)",
       "Bash(node --version)",
       "Bash(npm --version)",
       "Bash(which *)",
@@ -99,7 +98,8 @@
       "Bash(gh issue delete*)",
       "Bash(gh issue close*)",
       "Bash(gh workflow run*)",
-      "Bash(gh workflow disable*)"
+      "Bash(gh workflow disable*)",
+      "Bash(gh api *)"
     ],
     "deny": [
       "Bash(git push --force*)",

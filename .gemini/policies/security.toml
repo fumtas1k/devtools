@@ -2,6 +2,26 @@
 
 # --- DENY RULES ---
 
+# Destructive or privileged operations
+[[rule]]
+toolName = "run_shell_command"
+commandPrefixes = [
+  "gh repo delete",
+  "gh secret delete",
+  "gh secret remove",
+  "gh secret set",
+  "gh ssh-key delete",
+  "gh auth logout",
+  "npm install -g",
+  "npm publish",
+  "rm -rf /",
+  "rm -rf ~"
+]
+decision = "deny"
+priority = 100
+denyMessage = "Destructive or privileged operations are strictly prohibited."
+
+# Force push protection
 [[rule]]
 toolName = "run_shell_command"
 commandRegex = "^git push .*( --force|-f).*"
@@ -9,77 +29,29 @@ decision = "deny"
 priority = 100
 denyMessage = "Force push is strictly prohibited."
 
+# Restricted API operations (including GraphQL mutations and DELETE)
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "gh repo delete"
+commandRegex = "^gh api .*(graphql|.*(^|\\s)(-X|--method)\\s+DELETE(\\s|$)).*"
 decision = "deny"
 priority = 100
+denyMessage = "Direct GraphQL mutations or DELETE via API are prohibited to prevent accidental resource deletion."
 
+# Execution of remote content via pipe
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "gh secret delete"
+commandRegex = ".*(curl|wget).*\\|\\s*(sh|bash|zsh|python|node).*"
 decision = "deny"
 priority = 100
+denyMessage = "Piping remote content directly to a shell or interpreter is strictly prohibited."
 
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh secret remove"
-decision = "deny"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh secret set"
-decision = "deny"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh ssh-key delete"
-decision = "deny"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh auth logout"
-decision = "deny"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandRegex = "^gh api .*(-X DELETE|--method DELETE).*"
-decision = "deny"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "npm install -g"
-decision = "deny"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "rm -rf /"
-decision = "deny"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "rm -rf ~"
-decision = "deny"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "npm publish"
-decision = "deny"
-priority = 100
-
+# Sensitive file access (Local context)
 [[rule]]
 toolName = "read_file"
-filePathRegex = ".*\\.env.*"
+filePathRegex = "(^|/)\\.env(\\..*)?$"
 decision = "deny"
 priority = 100
+denyMessage = "Access to environment files is restricted."
 
 [[rule]]
 toolName = "read_file"
@@ -87,15 +59,16 @@ filePathRegex = "^secrets/.*"
 decision = "deny"
 priority = 100
 
+# Sensitive file access (Absolute paths to prevent bypass)
 [[rule]]
 toolName = "read_file"
-filePathRegex = "^~/.aws/.*"
+filePathRegex = "^/Users/fumta/\\.aws/.*"
 decision = "deny"
 priority = 100
 
 [[rule]]
 toolName = "read_file"
-filePathRegex = "^~/.ssh/.*"
+filePathRegex = "^/Users/fumta/\\.ssh/.*"
 decision = "deny"
 priority = 100
 
@@ -103,13 +76,7 @@ priority = 100
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "git pull"
-decision = "allow"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "git fetch"
+commandPrefixes = ["git pull", "git fetch"]
 decision = "allow"
 priority = 50
 
@@ -117,102 +84,42 @@ priority = 50
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "git push"
+commandPrefixes = [
+  "git push",
+  "git reset --hard",
+  "gh pr create",
+  "gh pr merge",
+  "gh pr close",
+  "gh pr edit",
+  "gh release",
+  "gh repo archive",
+  "gh repo rename",
+  "gh issue delete",
+  "gh issue close",
+  "gh workflow run",
+  "gh workflow disable",
+  "gh api"
+]
 decision = "ask_user"
 priority = 50
 
+# Metadata protection: Prevent agent from modifying its own configuration via shell commands
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "git reset --hard"
+commandRegex = ".*(sed\\s+-i|tee|[^\\s]*>\\s*).*(\\.(gemini|claude)/).*"
 decision = "ask_user"
 priority = 50
+denyMessage = "Modification of agent configuration files via shell commands requires user approval."
 
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh pr create"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh pr merge"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh pr close"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh pr edit"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh release"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh repo archive"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh repo rename"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh issue delete"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh issue close"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh workflow run"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh workflow disable"
-decision = "ask_user"
-priority = 50
-
+# Metadata protection: Direct file edits
 [[rule]]
 toolName = "replace"
-filePathRegex = "^\\.gemini/settings\\.json$"
+filePathRegex = "^\\.(gemini|claude)/(settings\\.json|policies/.*)$"
 decision = "ask_user"
 priority = 50
 
 [[rule]]
 toolName = "write_file"
-filePathRegex = "^\\.gemini/settings\\.json$"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "replace"
-filePathRegex = "^\\.gemini/policies/.*"
-decision = "ask_user"
-priority = 50
-
-[[rule]]
-toolName = "write_file"
-filePathRegex = "^\\.gemini/policies/.*"
+filePathRegex = "^\\.(gemini|claude)/(settings\\.json|policies/.*)$"
 decision = "ask_user"
 priority = 50
