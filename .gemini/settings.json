@@ -1,0 +1,29 @@
+{
+  "tools": {
+    "sandbox": "sandbox-exec",
+    "toolSandboxing": true,
+    "sandboxNetworkAccess": true
+  },
+  "agents": {
+    "browser": {
+      "allowedDomains": [
+        "registry.npmjs.org",
+        "*.npmjs.org",
+        "github.com",
+        "*.github.com",
+        "api.github.com",
+        "objects.githubusercontent.com",
+        "raw.githubusercontent.com",
+        "codeload.github.com",
+        "api.anthropic.com",
+        "*.anthropic.com",
+        "statsig.anthropic.com",
+        "cdn.playwright.dev",
+        "playwright.azureedge.net"
+      ]
+    }
+  },
+  "security": {
+    "environmentVariableRedaction": true
+  }
+}

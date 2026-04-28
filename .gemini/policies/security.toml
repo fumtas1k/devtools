@@ -1,0 +1,126 @@
+# Gemini CLI Security Policy
+
+# --- DENY RULES ---
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = "^git push .*( --force|-f).*"
+decision = "deny"
+priority = 100
+denyMessage = "Force push is strictly prohibited."
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "rm -rf /"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "rm -rf ~"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "npm publish"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "read_file"
+filePathRegex = ".*\\.env.*"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "read_file"
+filePathRegex = "^secrets/.*"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "read_file"
+filePathRegex = "^~/.aws/.*"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "read_file"
+filePathRegex = "^~/.ssh/.*"
+decision = "deny"
+priority = 100
+
+# --- ASK RULES ---
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git push"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git reset --hard"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh pr create"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh pr merge"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh pr close"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh pr edit"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh release"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "npm install -g"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "replace"
+filePathRegex = "^\\.gemini/settings\\.json$"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "write_file"
+filePathRegex = "^\\.gemini/settings\\.json$"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "replace"
+filePathRegex = "^\\.gemini/policies/.*"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "write_file"
+filePathRegex = "^\\.gemini/policies/.*"
+decision = "ask_user"
+priority = 50
