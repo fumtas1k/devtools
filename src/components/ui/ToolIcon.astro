@@ -1,9 +1,12 @@
 ---
-interface Props {
+export interface Props {
   slug: string;
   size?: number;
   class?: string;
-  style?: string;
+  /**
+   * インラインスタイル（主に color を CSS 変数で上書きするために使用）
+   */
+  style?: React.CSSProperties | string;
 }
 
 const { slug, size = 24, class: className = '', style } = Astro.props;
