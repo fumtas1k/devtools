@@ -15,7 +15,7 @@ Claude Code は コミット／PR／Issue／コメントの末尾に AI 生成�
 - **コミットメッセージ**: 末尾に以下を 1 行追加する。
 
   ```
-  Co-Authored-By: Gemini CLI <noreply@google.com>
+  Co-Authored-By: Gemini CLI
   ```
 
 - **PR 本文・Issue 本文・GitHub コメント**: 末尾に以下を追加する。
