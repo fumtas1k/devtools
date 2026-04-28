@@ -17,7 +17,12 @@
 ## 1. 言語・出力規約
 
 - **コミットメッセージ・PR 説明文・ユーザー向けテキスト**: **必ず日本語**で書くこと。
-- **コミットメッセージ形式**: **Conventional Commits 風**（`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:` 等）必須（`.githooks/commit-msg` で英語はブロック）。例: ✅ `feat: 新しいツールを追加` / ❌ `feat: Add new tool`（英語）
+- **コミットメッセージ形式**: **Conventional Commits 形式** 必須。`.githooks/commit-msg` で形式と日本語が検証されます。使用可能なプレフィックスは以下の 11 種に限定:
+  - `feat:` 新機能 / `fix:` バグ修正 / `docs:` ドキュメント / `chore:` 雑務
+  - `refactor:` リファクタリング / `test:` テスト / `style:` スタイル整形
+  - `perf:` 性能改善 / `build:` ビルド設定 / `ci:` CI 設定 / `revert:` 取り消し
+  - 例: ✅ `feat: 新しいツールを追加` / ❌ `feat: Add new tool`（英語） / ❌ `update: ...`（プレフィックス不正）
+  - `Merge`, `Revert`, `fixup!`, `squash!` で始まるコミットはチェックをスキップ
 - **コード内コメント**: 日本語を基本とする。
 
 ---
