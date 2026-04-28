@@ -1458,6 +1458,7 @@ Issue #115 にて、訪問済みリンクの区別（`:visited`）がついて�
    - コントラスト比 (背景 #ffffff に対して):
      - 未訪問 (#2563eb): 4.65:1 (WCAG AA 合格)
      - 訪問済み (#7c3aed): 5.37:1 (WCAG AA 合格)
+     - ※ コントラスト比は [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/) にて背景 #ffffff に対して算出。
 
 ### 却下した選択肢
 

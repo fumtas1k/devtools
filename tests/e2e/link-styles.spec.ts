@@ -24,6 +24,7 @@ test.describe('Link Styles', () => {
     // Normal state
     await expect(link).toHaveCSS('color', COLOR_LINK);
     await expect(link).toHaveCSS('text-decoration-line', 'underline');
+    await expect(link).toHaveCSS('text-decoration-thickness', '1px');
 
     // Hover state
     await link.hover();
@@ -38,9 +39,11 @@ test.describe('Link Styles', () => {
     await expect(link).toBeVisible();
 
     await expect(link).toHaveCSS('color', COLOR_LINK);
+    await expect(link).toHaveCSS('text-decoration-thickness', '1px');
 
     await link.hover();
     await expect(link).toHaveCSS('color', COLOR_PRIMARY);
+    await expect(link).toHaveCSS('text-decoration-thickness', '2px');
   });
 
   test('tool layout breadcrumb link has correct color', async ({ page }) => {
@@ -50,9 +53,11 @@ test.describe('Link Styles', () => {
     await expect(link).toBeVisible();
 
     await expect(link).toHaveCSS('color', COLOR_LINK);
+    await expect(link).toHaveCSS('text-decoration-thickness', '1px');
 
     await link.hover();
     await expect(link).toHaveCSS('color', COLOR_PRIMARY);
+    await expect(link).toHaveCSS('text-decoration-thickness', '2px');
   });
 
   test('index page tool card title and link have correct hover color', async ({ page }) => {
@@ -80,56 +85,48 @@ test.describe('Link Styles', () => {
     await expect(link).toHaveCSS('color', COLOR_PRIMARY);
   });
 
-  test('should have .text-link:visited style definition in the stylesheet', async ({ page }) => {
+  test('should have correct :visited style definitions for link classes', async ({ page }) => {
     await page.goto('/');
 
-    // :visited の色検証のためにテスト用リンクを注入
-    // 規約 §3.2 では evaluate による注入よりも expect を優先するが、
-    // :visited のスタイルはブラウザのプライバシー保護仕様により getComputedStyle で取得できないため、
-    // CSSOM を直接走査して定義を確認する必要がある。
-    await page.evaluate(() => {
-      const link = document.createElement('a');
-      link.href = 'https://example.com/test-link-' + Math.random();
-      link.className = 'text-link';
-      link.textContent = 'Test Link';
-      document.body.appendChild(link);
-    });
+    // :visited は getComputedStyle が偽値を返すため、CSSStyleRule を直接走査して定義を確認するヘルパー
+    const getVisitedColor = async (className: string) => {
+      return await page.evaluate((cls) => {
+        // セレクタが .<cls>:visited に厳密にマッチする正規表現
+        // (文字境界を考慮し、他のクラス名の一部としてマッチするのを防ぐ)
+        const selectorRegex = new RegExp(
+          `(^|[^\\w-])\\.${cls}:(visited|where\\(:visited\\))($|[^\\w-])`
+        );
 
-    const link = page.getByRole('link', { name: 'Test Link' });
-
-    // 通常時の色確認 (--color-link: #2563eb)
-    await expect(link).toHaveCSS('color', COLOR_LINK);
-
-    // :visited の定義および色の確認
-    // :visited は getComputedStyle が偽値を返すため、CSSStyleRule を直接確認する。
-    const visitedColor = await page.evaluate(() => {
-      // 全スタイルシートを走査
-      for (const sheet of Array.from(document.styleSheets)) {
-        try {
-          // セレクタが .text-link:visited に厳密にマッチするルールを探す
-          const rule = Array.from(sheet.cssRules).find(
-            (r): r is CSSStyleRule =>
-              r instanceof CSSStyleRule &&
-              /(^|[^\w-])\.text-link:(visited|where\(:visited\))(\s|,|$)/.test(r.selectorText)
-          );
-          if (rule) return rule.style.color;
-        } catch (e) {
-          // クロスドメインのスタイルシート等はアクセス不可な場合があるため無視
-          continue;
+        for (const sheet of Array.from(document.styleSheets)) {
+          try {
+            const rule = Array.from(sheet.cssRules).find(
+              (r): r is CSSStyleRule =>
+                r instanceof CSSStyleRule && selectorRegex.test(r.selectorText)
+            );
+            if (rule) return rule.style.color;
+          } catch (e) {
+            continue;
+          }
         }
-      }
-      return null;
-    });
+        return null;
+      }, className);
+    };
 
-    // 定義が存在し、色が正しいことを確認
-    // ブラウザや CSS の定義方法によって 'var(...)' だったり 'rgb(...)' だったりする可能性がある。
-    expect(visitedColor).not.toBeNull();
-    const normalizedColor = visitedColor?.replace(/\s/g, '').toLowerCase();
-    const isExpectedValue =
-      normalizedColor === 'var(--color-link-visited)' ||
-      normalizedColor === COLOR_LINK_VISITED.replace(/\s/g, '').toLowerCase() ||
-      normalizedColor === '#7c3aed';
+    const validateColor = (color: string | null) => {
+      expect(color).not.toBeNull();
+      const normalized = color?.replace(/\s/g, '').toLowerCase();
+      return (
+        normalized === 'var(--color-link-visited)' ||
+        normalized === COLOR_LINK_VISITED.replace(/\s/g, '').toLowerCase() ||
+        normalized === '#7c3aed'
+      );
+    };
 
-    expect(isExpectedValue).toBe(true);
+    // .text-link の :visited 定義確認
+    expect(validateColor(await getVisitedColor('text-link'))).toBe(true);
+
+    // .text-link-color の :visited 定義確認
+    // span 等に当てている場合でも、クラス定義として色が保証されていることを確認
+    expect(validateColor(await getVisitedColor('text-link-color'))).toBe(true);
   });
 });
