@@ -80,13 +80,13 @@ line1="${CYAN}${model}${RESET}"
 line1="${line1} ${DIM}|${RESET} ${BOLD}${project}${RESET}${branch}"
 
 if [ -n "$in_tok" ] && [ -n "$out_tok" ]; then
-  in_k=$(awk "BEGIN{printf \"%.1f\", $in_tok/1000}")
-  out_k=$(awk "BEGIN{printf \"%.1f\", $out_tok/1000}")
+  in_k=$(awk -v t="$in_tok" 'BEGIN{printf "%.1f", t/1000}')
+  out_k=$(awk -v t="$out_tok" 'BEGIN{printf "%.1f", t/1000}')
   line1="${line1} ${DIM}|${RESET} In: ${in_k}K / Out: ${out_k}K"
 fi
 
 if [ -n "$cost" ]; then
-  cost_fmt=$(awk "BEGIN{printf \"\$%.3f\", $cost}")
+  cost_fmt=$(awk -v t="$cost" 'BEGIN{printf "$%.3f", t}')
   line1="${line1} ${DIM}|${RESET} ${YELLOW}${cost_fmt}${RESET}"
 fi
 
