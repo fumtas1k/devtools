@@ -1447,7 +1447,7 @@ Claude Code 側に `.claude/settings.json` でサンドボックスとアクセ�
 1. **`.gemini/settings.json`**: macOS `sandbox-exec` を有効化。ブラウザエージェントがアクセス可能なドメインを制限し、環境変数の機密情報マスキング（Redaction）を有効化。
 2. **`.gemini/policies/security.toml`**: deny / allow / ask_user の 3 段階ルールを定義。Claude Code 側の `permissions` と対称になるよう設計。
    - **deny**: フォースプッシュ・`rm -rf /`・`npm publish`・`gh repo delete` 等の破壊的操作、GraphQL mutations/DELETE via `gh api`、リモートコンテンツのパイプ実行、機密ファイルへの直接アクセス。
-   - **allow**: `git pull` / `git fetch` / `gh pr diff`（安全な読み取り系操作）。
+   - **allow**: `git pull` / `git fetch` / `gh pr diff` を含む、Claude Code 側で許可されている全ての読み取り専用コマンド（`gh pr list`, `node --version` 等）を同期。これにより、ツール間でのエージェントの挙動とユーザーへの確認頻度を一貫させた。
    - **ask_user**: `git push`・`gh pr create` 等の外部影響を伴う操作、設定ファイル（`.gemini/`, `.claude/`）自体の変更。
 3. **パイプ実行禁止の対象インタープリタ拡張**: 当初 `sh|bash|zsh|python|node` のみだったが、defense-in-depth として `perl|ruby|php` を追加。`exec` は組み込みコマンドであり既存のシェルパターン（`sh` 等）で十分捕捉されるため追加しない。
 4. **`~` 経由のパスバイパス対策**: `.aws` / `.ssh` の deny 正規表現が絶対パスのみを拒否していた。Gemini CLI が `~` を展開せずに `read_file` へ渡した場合にバイパスが生じるリスクがあるため、`^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\.aws/.*` のように `~[^/]*` を追加。
