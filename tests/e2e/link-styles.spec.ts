@@ -112,21 +112,17 @@ test.describe('Link Styles', () => {
       }, className);
     };
 
-    const validateColor = (color: string | null) => {
+    const expectVisitedColor = (color: string | null) => {
       expect(color).not.toBeNull();
       const normalized = color?.replace(/\s/g, '').toLowerCase();
-      return (
-        normalized === 'var(--color-link-visited)' ||
-        normalized === COLOR_LINK_VISITED.replace(/\s/g, '').toLowerCase() ||
-        normalized === '#7c3aed'
-      );
+      // 定義された CSS 変数名、計算済みの RGB 値、または HEX 値のいずれかにマッチすることを確認
+      expect(normalized).toMatch(/^(var\(--color-link-visited\)|rgb\(124,58,237\)|#7c3aed)$/);
     };
 
     // .text-link の :visited 定義確認
-    expect(validateColor(await getVisitedColor('text-link'))).toBe(true);
+    await expectVisitedColor(await getVisitedColor('text-link'));
 
     // .text-link-color の :visited 定義確認
-    // span 等に当てている場合でも、クラス定義として色が保証されていることを確認
-    expect(validateColor(await getVisitedColor('text-link-color'))).toBe(true);
+    await expectVisitedColor(await getVisitedColor('text-link-color'));
   });
 });
