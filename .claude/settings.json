@@ -65,6 +65,7 @@
       "Bash(git show*)",
       "Bash(git branch*)",
       "Bash(git rev-parse*)",
+      "Bash(git pull*)",
       "Bash(git remote -v)",
       "Bash(git stash list*)",
       "Bash(git config --get*)",

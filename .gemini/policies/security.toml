@@ -51,6 +51,14 @@ filePathRegex = "^~/.ssh/.*"
 decision = "deny"
 priority = 100
 
+# --- ALLOW RULES ---
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git pull"
+decision = "allow"
+priority = 50
+
 # --- ASK RULES ---
 
 [[rule]]
