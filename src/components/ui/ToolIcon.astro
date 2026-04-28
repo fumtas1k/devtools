@@ -6,7 +6,7 @@ export interface Props {
   /**
    * インラインスタイル（主に color を CSS 変数で上書きするために使用）
    */
-  style?: React.CSSProperties | string;
+  style?: string;
 }
 
 const { slug, size = 24, class: className = '', style } = Astro.props;

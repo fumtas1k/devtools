@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+// global.css の CSS 変数と対応
+const COLOR_LINK = 'rgb(37, 99, 235)'; // --color-link: #2563eb
+const COLOR_PRIMARY = 'rgb(26, 86, 219)'; // --color-primary: #1a56db
+const COLOR_TEXT = 'rgb(17, 24, 39)'; // --color-text: #111827
+
 test.describe('Link Styles', () => {
   test.beforeEach(async ({ page }) => {
     // UI 規約 §3.1 に従い状態をクリア
@@ -15,23 +20,24 @@ test.describe('Link Styles', () => {
     const link = page.getByRole('link', { name: 'Cloudflare のプライバシーポリシー' });
     await expect(link).toBeVisible();
 
-    // Normal state: --color-link is #2563eb (rgb(37, 99, 235))
-    await expect(link).toHaveCSS('color', 'rgb(37, 99, 235)');
+    // Normal state
+    await expect(link).toHaveCSS('color', COLOR_LINK);
 
-    // Hover state: --color-primary is #1a56db (rgb(26, 86, 219))
+    // Hover state
     await link.hover();
-    await expect(link).toHaveCSS('color', 'rgb(26, 86, 219)');
+    await expect(link).toHaveCSS('color', COLOR_PRIMARY);
   });
 
   test('about page tool links have correct color', async ({ page }) => {
     await page.goto('/about');
-    const link = page.locator('#main-content section ul li a').first();
+    // メインコンテンツ内の最初のリンクを取得
+    const link = page.getByRole('main').getByRole('link').first();
     await expect(link).toBeVisible();
 
-    await expect(link).toHaveCSS('color', 'rgb(37, 99, 235)');
+    await expect(link).toHaveCSS('color', COLOR_LINK);
 
     await link.hover();
-    await expect(link).toHaveCSS('color', 'rgb(26, 86, 219)');
+    await expect(link).toHaveCSS('color', COLOR_PRIMARY);
   });
 
   test('tool layout breadcrumb link has correct color', async ({ page }) => {
@@ -40,31 +46,32 @@ test.describe('Link Styles', () => {
     const link = page.getByRole('link', { name: 'ホーム' });
     await expect(link).toBeVisible();
 
-    await expect(link).toHaveCSS('color', 'rgb(37, 99, 235)');
+    await expect(link).toHaveCSS('color', COLOR_LINK);
 
     await link.hover();
-    await expect(link).toHaveCSS('color', 'rgb(26, 86, 219)');
+    await expect(link).toHaveCSS('color', COLOR_PRIMARY);
   });
 
   test('index page tool card title and link have correct hover color', async ({ page }) => {
     await page.goto('/');
 
-    const card = page.locator('.tool-card').first();
-    const title = card.locator('h2');
+    // 最初のツールカードを取得
+    const card = page.getByRole('main').getByRole('link').first();
+    const title = card.getByRole('heading', { level: 2 });
     const link = card.locator('.text-link');
 
     await expect(card).toBeVisible();
 
     // Normal state
-    await expect(title).toHaveCSS('color', 'rgb(17, 24, 39)');
-    await expect(link).toHaveCSS('color', 'rgb(37, 99, 235)');
+    await expect(title).toHaveCSS('color', COLOR_TEXT);
+    await expect(link).toHaveCSS('color', COLOR_LINK);
 
     // Hover state
     await card.hover();
-    await expect(title).toHaveCSS('color', 'rgb(26, 86, 219)');
+    await expect(title).toHaveCSS('color', COLOR_PRIMARY);
 
     // リンク自体をホバー
     await link.hover();
-    await expect(link).toHaveCSS('color', 'rgb(26, 86, 219)');
+    await expect(link).toHaveCSS('color', COLOR_PRIMARY);
   });
 });
