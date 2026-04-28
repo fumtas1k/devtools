@@ -1,29 +1,29 @@
-# GEMINI.md — プロジェクト開発規約 & コマンドリファレンス
+# GEMINI.md — Gemini CLI 用プロジェクト指示書
 
-このファイルは Gemini CLI 用のプロジェクト指示書です。
 **作業を開始する前に、必ず `docs/shared-agent-rules.md` に記載されたプロジェクト共通の開発規約を確認し、遵守してください。**
 
-## 1. プロジェクト概要
+---
 
-ブラウザ完結型の開発者ツール集「DevTools」です。
+## Gemini CLI 固有の注意事項
 
-- **Framework**: Astro 6.1.5 (SSG)
-- **UI**: React 19 (Islands Architecture)
-- **Styling**: Tailwind CSS 4.0.0
-- **Language**: TypeScript
+- **`conductor/` ディレクトリ**: `.gitignore` 対象の内部ツール用ディレクトリ。変更・削除しないよう注意してください。
 
-## 2. コマンドリファレンス (重要)
+### AI による生成物の明示（必須）
 
-開発・ビルド・フォーマット・テスト実行等のコマンドについては、`docs/shared-agent-rules.md` の「2. コマンドリファレンス」を参照し、正しく実行してください。
-特に **`npm run test:e2e`** を使用し、存在しない `npm run e2e` を呼び出さないよう注意してください。
+Claude Code は コミット／PR／Issue／コメントの末尾に AI 生成である旨のフッターを自動付与します。Gemini CLI でも同等の明示を **必ず** 行うこと（透明性確保・レビュー時の判別容易化のため）。
 
-## 3. ユーザーからのヒント・教訓
+- **コミットメッセージ**: 本文の最後に **空行を 1 行入れてから** 以下のトレーラー行を追加する。空行が無いと git / GitHub にトレーラーとして認識されないため必須。
 
-- **エージェント共通規約**: GitHub 操作時の注意点や UI 目視確認の規定など、AI エージェント向けの共通規約については必ず `docs/shared-agent-rules.md` を参照し、遵守してください。
-- **【重要】replace 使用時のインポート保護**:
-  - `replace` ツールを使用する際は、必ず事前に `read_file` でインポート文を含むファイル全体を確認し、置換によってインポートが削除されないよう細心の注意を払うこと。
-  - インポートの追加や 3 箇所以上の変更を伴う場合は、`replace` を繰り返さず `write_file` によるファイル全体の上書きを選択すること。
-- **【重要】変更直後の型チェック**: コード（特にインポートや JSX）を編集した直後のターンで、必ず `npx astro check --filter <file>` を実行し、整合性が保たれているかその場で検証すること。
-- **【重要】ATC運用の徹底**: 実装中の脱線やスコープ外の修正を防ぐため、セッション開始時に必ず `tasks/active_context.md` を作成・更新し、目的とスコープを確認すること（詳細は `docs/shared-agent-rules.md` 参照）。
-- ファイルを読み書きする際、末尾の空白（trailing whitespace）が含まれないよう注意してください。
-- `conductor/` ディレクトリは無視（.gitignore 済み）されていますが、これは内部ツール用です。
+  ```
+  <コミット本文>
+  ↑空行を 1 行入れる↓
+  Co-Authored-By: Gemini CLI
+  ```
+
+- **PR 本文・Issue 本文・GitHub コメント**: 末尾に以下を追加する。
+
+  ```
+  🤖 Generated with [Gemini CLI](https://github.com/google-gemini/gemini-cli)
+  ```
+
+省略してはならない。ユーザーから明示的に「フッター不要」と指示された場合のみ省略可。

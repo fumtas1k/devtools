@@ -2,123 +2,128 @@
 
 このドキュメントは、このリポジトリで作業するすべての AI エージェント（Claude Code, Gemini CLI 等）が遵守すべき共通の規約を定めたものです。
 
+## プロジェクト概要
+
+ブラウザ完結型の開発者ツール集「DevTools」。
+
+- **Framework**: Astro 6.1.5 (SSG)
+- **UI**: React 19 (Islands Architecture)
+- **Styling**: Tailwind CSS 4.0.0
+- **Language**: TypeScript
+- **Package Manager**: **npm**（`pnpm` / `yarn` は使用しない）
+
 ---
 
 ## 1. 言語・出力規約
 
-- **コミットメッセージ**: **必ず日本語**で、かつ **Conventional Commits 風の形式**（`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:` 等）で書くこと（`.githooks/commit-msg` で英語はブロックされます）。
-- **PR説明文・コミットメッセージ・ユーザー向けテキスト**: 明示的に指示がない限り、すべて日本語で書くこと。
+- **コミットメッセージ・PR 説明文・ユーザー向けテキスト**: **必ず日本語**で書くこと。
+- **コミットメッセージ形式**: **Conventional Commits 形式** 必須。`.githooks/commit-msg` で形式と日本語が検証されます。使用可能なプレフィックスは以下の 11 種に限定:
+  - `feat:` 新機能 / `fix:` バグ修正 / `docs:` ドキュメント / `chore:` 雑務
+  - `refactor:` リファクタリング / `test:` テスト / `style:` スタイル整形
+  - `perf:` 性能改善 / `build:` ビルド設定 / `ci:` CI 設定 / `revert:` 取り消し
+  - 例: ✅ `feat: 新しいツールを追加` / ❌ `feat: Add new tool`（英語） / ❌ `update: ...`（プレフィックス不正）
+  - `Merge`, `Revert`, `fixup!`, `squash!` で始まるコミットはチェックをスキップ
 - **コード内コメント**: 日本語を基本とする。
 
-### コミットメッセージの例
+---
 
-✅ `feat: 新しいツールを追加`
-✅ `fix: バグを修正`
-✅ `docs: ドキュメントを更新`
-❌ `新しいツールを追加` (プレフィックスなし)
-❌ `feat: Add new tool` (英語)
+## 2. コマンドリファレンス
+
+| 用途                                 | コマンド                                         |
+| :----------------------------------- | :----------------------------------------------- |
+| 開発サーバー (http://localhost:4321) | `npm run dev`                                    |
+| 本番ビルド / プレビュー              | `npm run build` / `npm run preview`              |
+| 整形 / 整形チェック                  | `npm run format` / `npm run format:check`        |
+| 型チェック（コミット前必須）         | `node_modules/.bin/astro check`                  |
+| ユニットテスト (Vitest)              | `npm run test` / `npm run test:watch`            |
+| E2E テスト (Playwright)              | `npm run test:e2e` ❌ `npm run e2e` は存在しない |
 
 ---
 
-## 2. コマンドリファレンス (重要)
+## 3. 実装後の検証義務
 
-### 🛠️ 基本コマンド
+実装完了後（コミット前）に **`npm run test`** と **`npm run test:e2e`** を必ず実行し、デグレード無しを確認すること。
 
-- `npm ci`: 依存関係のインストール
-- `npm run dev`: 開発サーバー起動 (http://localhost:4321)
-- `npm run build`: 本番ビルド
-- `npm run preview`: ビルド結果のプレビュー
-- `npm run format`: Prettier による一括整形
-- `npm run format:check`: フォーマットが正しいかチェック
-
-### 🧪 テスト・品質チェック
-
-**テストコマンドを間違えないように注意してください。**
-
-- **型チェック**: コミット前に `node_modules/.bin/astro check` を実行し、型エラーがゼロであることを確認すること。
-- **ユニットテスト (Vitest)**: `npm run test`
-- **ユニットテスト (Watchモード)**: `npm run test:watch`
-- **E2Eテスト (Playwright)**: `npm run test:e2e`
-  - ❌ **`npm run e2e` は存在しません。** 必ず `test:e2e` を使用してください。
-  - 特定のファイルのみ実行する場合: `npm run test:e2e tests/e2e/xxx.spec.ts`
-
----
-
-## 3. 実装後の検証義務 (重要)
-
-実装完了後（またはコミット前）に、すべての AI エージェントは以下のテストを必ず実行し、機能が正しく動作すること、および既存機能にデグレードが発生していないことを確認すること。
-
-- **ユニットテスト**: `npm run test`
-- **E2Eテスト**: `npm run test:e2e`
-
-※ プロジェクト全体の品質を維持するため、このステップを省略してはならない。
+**E2E テストは実装と同時に書く**: バグ修正・UI 挙動の変更時はコミット前に該当ケースの E2E を追加する。後回し禁止。
 
 ---
 
 ## 4. ドキュメント更新ルール
 
-実装変更をコミットする前に、以下のファイルへの影響を必ず確認し、必要に応じて更新すること。
-**注意**: コミットメッセージに `feat:` や `fix:` が含まれる場合でも、以下のチェックを省略してはいけません。
+実装変更をコミットする前に、以下のファイルへの影響を確認・更新すること。
 
-| 変更の種類                  | 更新が必要なファイル                                                                                            |
-| :-------------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| ツール追加                  | `README.md` (ツール一覧), `SPEC.md` (2.3節(ライブラリ), 2.4節(構成), 4, 5, 9章), `docs/decisions.md` (選定理由) |
-| ツール削除・slug変更        | 上記すべて                                                                                                      |
-| ライブラリ追加・削除        | `SPEC.md` (2.3節), `docs/decisions.md`                                                                          |
-| ディレクトリ構成変更        | `SPEC.md` (2.4節)                                                                                               |
-| フェーズ・タスク完了        | `SPEC.md` (9章チェックリスト)                                                                                   |
-| 設計上の重要な決断          | `docs/decisions.md`                                                                                             |
-| セキュリティ設定変更 (CI等) | `docs/decisions.md` (変更理由と安全性の確認)                                                                    |
-| セッション開始              | `tasks/active_context.md` (セッション目的の明文化。gitignore対象のためローカル作成のみ)                         |
+| 変更の種類                  | 更新が必要なファイル                                                                      |
+| :-------------------------- | :---------------------------------------------------------------------------------------- |
+| ツール追加                  | `README.md` (ツール一覧), `SPEC.md` (2.3, 2.4, 4, 5, 9章), `docs/decisions.md` (選定理由) |
+| ツール削除・slug変更        | 上記すべて                                                                                |
+| ライブラリ追加・削除        | `SPEC.md` (2.3節), `docs/decisions.md`                                                    |
+| ディレクトリ構成変更        | `SPEC.md` (2.4節)                                                                         |
+| フェーズ・タスク完了        | `SPEC.md` (9章チェックリスト)                                                             |
+| 設計上の重要な決断          | `docs/decisions.md`                                                                       |
+| セキュリティ設定変更 (CI等) | `docs/decisions.md` (変更理由と安全性の確認)                                              |
 
 ---
 
-## 5. AI エージェント特有の操作に関する注意点 (GitHub 操作等)
+## 5. ツール追加・実装フロー
 
-- **エスケープ事故の防止 (重要)**: コメントや PR 説明文など、複数行の文字列やバックティック（`）を含むデータを CLI 経由で扱う際は、シェルによる予期せぬコマンド置換やパースエラーを防ぐため、**文字列を直接引数に渡さず、一時ファイルを経由すること**。
-  - **具体策**: `gh` コマンドを使用して投稿する場合は、一時ファイルを作成した上で `-F` オプション（ファイル読み込み）を使用して投稿すること。
-  - **例外**: MCP や API 経由で直接投稿を行う場合は、シェル展開を経由しないため、一時ファイルの作成は不要である。
-- **操作の整合性**: コマンドが失敗した場合は、必ず投稿状況を確認すること。重複して投稿された場合は放置せず、削除や修正を行って整合性を保つこと。
+新しいツールを追加する場合は以下の手順で実装する:
 
----
+1. `src/components/tools/ToolName.tsx` を作成
+2. `src/pages/tools/tool-slug.astro` を作成（`client:load` で React コンポーネントをマウント）
+3. `src/pages/index.astro` のツール一覧に追加
+4. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
 
-## 6. スタイル・カラーシステム (Tailwind 使用制限)
-
-Tailwind のカラークラス（例: `text-blue-500`）は、**コンポーネントの種類を問わず絶対に使用しないこと**。色はすべて CSS 変数（`var(--color-*)`）経由で指定する。
-
-- **React コンポーネント (.tsx)**: `src/utils/styles.ts` の `colors.*` をインラインスタイルで使用。
-- **Astro コンポーネント (.astro)**: `var(--color-*)` 形式の CSS 変数を `style` 属性に直接記述、または `<style>` ブロックで使用。
-
-※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は Tailwind クラスを使用して構わない。
+新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `docs/ui-conventions.md` を参照。
 
 ---
 
-## 7. UI 変更時の目視確認 (Playwright)
+## 6. AI エージェント操作・Git ワークフロー
 
-UI コンポーネントやレイアウトを変更した場合、コミット前に Playwright を使用して **PCサイズ (1280x800)** と **スマホサイズ (390x844)** の両方でスクリーンショットを撮影し、以下の項目を重点的に目視確認すること。
+### 6.1 GitHub CLI のエスケープ事故防止
 
-- **入力・出力エリアの上端が揃っているか**
-- **スマホ幅で縦並びレイアウトに正しく切り替わっているか**
-- **ボタンが隠れたり重なったりしていないか**
-- **ラベル行の高さが左右で揃っているか**
-- **フォーカスリングが要素を適切に囲んでいるか（見切れていないか）**
-- **タップ可能な要素（ボタン、リンク等）の領域が十分か（44x44px以上）**
+`gh` コマンドで複数行・バックティック（\`）を含む本文を渡すときは、**直接引数に渡さず一時ファイル経由で投稿すること**。具体的には `-F`または`--body-file` オプションを使用する（MCP / API 経由は不要）。失敗時は投稿状況を必ず確認し、重複は削除して整合性を保つ。
 
-### Playwright ツール呼び出し例 (エージェント用)
+### 6.2 ブランチ運用
 
-```
-# 0. キャッシュクリア（推奨）
-browser_evaluate: caches.keys() → caches.delete() / localStorage.clear() / sessionStorage.clear()
-browser_navigate → URL（キャッシュなし再取得）
+- **`develop` には直接コミットしない**: 必ず feature ブランチを切る。誤って始めた場合は `git stash` → ブランチ切替 → `git stash pop`。
+- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b feat/<topic>`（または `fix/`, `docs/`, `refactor/` 等）
 
-# 1. PC・スマホ両サイズで撮影
-browser_resize → width: 1280, height: 800 → browser_take_screenshot
-browser_resize → width: 390, height: 844 → browser_take_screenshot
+### 6.3 PR 作成時のベースブランチ
+
+`gh pr create` は **`--base develop`** を必ず指定する（デフォルトは `main`）:
+
+```bash
+gh pr create --base develop --title "..." --body-file /tmp/pr_body.md
 ```
 
 ---
 
-## 8. プロジェクト構造
+## 7. スタイル・UI ルール（基本）
+
+Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50` 等）は **絶対に使用しない**。色は CSS 変数経由で指定する:
+
+- React (`.tsx`): `src/utils/styles.ts` の `colors.*` をインラインスタイルで使用
+- Astro (`.astro`): `var(--color-*)` を `style` 属性または `<style>` ブロックで使用
+
+※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は使用可。
+
+UI コンポーネントを実装・改修する際の詳細パターン（ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否 等）は **`docs/ui-conventions.md` 2章** を参照すること。
+
+---
+
+## 8. UI 変更時の目視確認 (Playwright)
+
+UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影し、コミット前に以下を目視確認:
+
+- 入力・出力エリアの上端揃え／スマホ幅で縦並びレイアウトに切替
+- ボタンの隠れ・重なりがないか／ラベル行高さの左右揃え
+- フォーカスリングの見切れ／タップ領域 ≥ 44x44px
+
+撮影手順・ロケーター推奨など Playwright の詳細は **`docs/ui-conventions.md` 3章** を参照すること。
+
+---
+
+## 9. プロジェクト構造
 
 - `src/components/tools/`: ツール本体 (React TSX)
 - `src/components/ui/`: 共通UIコンポーネント (`InputField`, `CopyButton` 等)
@@ -126,46 +131,96 @@ browser_resize → width: 390, height: 844 → browser_take_screenshot
 - `src/pages/tools/`: Astro ページ (ルーティング)
 - `src/utils/`: ロジック・ヘルパー・スタイル定義
 - `docs/decisions.md`: 設計上の意思決定記録
-- `tasks/lessons.md`: セッションで得た教訓・修正パターンの記録
+- `docs/shared-agent-rules.md`: 本ドキュメント（常時遵守する共通規約）
+- `docs/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
+- `docs/agent-lessons.md`: 教訓バッファ（共通ルール化前の蓄積場所）
+- `tasks/active_context.md`: セッション固有の作業コンテキスト（gitignore 対象）
 
 ---
 
-## 9. 目的の維持とスコープ管理 (ATC運用)
+## 10. コード規約・編集時の安全規則
 
-実装中の脱線やスコープ外の修正を防ぐため、すべての AI エージェントは **Active Task Context (ATC)** を運用すること。
+### 10.1 React / TypeScript 記法
 
-### ATC の運用手順
+- JSX / TSX では `class` ではなく **`className`** を使う。
+- `<label>` の `for` 属性は **`htmlFor`** を使う。
+- TypeScript の警告は自分で発見・修正する。ユーザーに指摘させない。
 
-1.  **セッション開始時**: `tasks/active_context.md` を作成（または既存のものを更新）し、そのセッションの「目的」「ステップ」「スコープ外」を宣言する。※当ファイルは `.gitignore` 対象であり、リポジトリには含めない。
-2.  **作業中**: 節目（タスク完了・分岐判断・スコープ外発見時など）ごとに ATC を参照して現在の立ち位置を確認する。ステップが完了したらチェックボックスを更新する。
-3.  **誘惑の管理**: スコープ外の改善点（リファクタリング、微修正など）を発見した場合は、**直接修正せず**に ATC の `## Pending (Next Tasks)` セクションにメモを残し、現在の目的に集中する。
-4.  **レビュー対応**: 指摘を受けた場合は、ATC に `## 🟢 Review & Feedback` セクションを追加し、対応すべき指摘事項を列挙して管理する。
-5.  **完了時**: プルリクエストが **マージ（またはクローズ）された段階で**、ローカルの `tasks/active_context.md` を削除し、必要に応じて教訓を `tasks/lessons.md` へ転記する。
+### 10.2 セキュリティ設定変更の禁止
 
-### tasks/active_context.md のテンプレート
+セキュリティ関連の設定（`.npmrc`・`npm audit` 設定・CI 設定・`.githooks/*` 等）は、**ユーザーの明示的な承認なしに変更・無効化してはならない**。
+
+### 10.3 部分置換時のインポート保護・末尾空白
+
+- 部分編集前にファイル全体（特に import）を確認。3 箇所以上の変更や import 追加を伴う場合はファイル全体を書き直す。
+- ファイル末尾の空白（trailing whitespace）を含めない。
+
+### 10.4 変更直後の型チェック
+
+コード（特に import / JSX）を編集した直後に必ず実行する:
+
+```bash
+node_modules/.bin/astro check       # 全体
+npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
+```
+
+### 10.5 SVG / `dangerouslySetInnerHTML` の XSS 対策
+
+外部入力をそのまま挿入すると **反射型 XSS** になる。必ずエスケープ／サニタイズしてから挿入し、可能なら React 要素として組み立てる。
+
+---
+
+## 11. 目的の維持とスコープ管理 (ATC運用)
+
+実装中の脱線・スコープ外修正を防ぐため、すべての AI エージェントは **Active Task Context (ATC)** を運用する。
+
+### 運用手順
+
+1. **セッション開始**: `tasks/active_context.md`（gitignore 対象）を作成し「目的・ステップ・スコープ外」を宣言。
+2. **作業中**: 節目ごとに参照し立ち位置を確認。完了したらチェックボックス更新。
+3. **誘惑の管理**: スコープ外を見つけたら直接修正せず `## Pending` セクションにメモ。
+4. **レビュー対応**: 指摘は `## 🟢 Review & Feedback` セクションで管理。
+5. **完了時**: PR マージ／クローズ後にローカルから削除。教訓は `docs/agent-lessons.md` へ転記。
+
+### ATC 不要と判断できるケース
+
+他のスキル・ツールが「目的・ステップ・スコープ外」を **明示的に** 含むファイルを作成・更新しており、セッション中に参照可能であれば、ATC を重複作成しなくてよい。
+該当例: `docs/superpowers/plans/*.md`, `docs/superpowers/specs/*.md`, `conductor/` 配下のタスクファイル。
+
+### ATC のテンプレート
 
 ```markdown
 # Active Task Context
 
 ## 🎯 Objective
 
-[このセッションで達成すべき最終ゴールを1文で記述]
+[このセッションで達成する最終ゴールを 1 文]
 
 ## 🛠️ Current Steps
 
 - [ ] ステップ1
-- [ ] ステップ2
 
 ## 🚫 Out of Scope (Do Not Touch)
 
-- [ ] 既存の〇〇ロジック
-- [ ] デザインの微調整
+- [ ] 触らない領域
 
 ## 🟢 Review & Feedback
 
-- (レビューで指摘された内容をここに追記)
+- (指摘事項をここに)
 
 ## 📝 Pending (Next Tasks / Improvements)
 
-- (実装中に見つけた、今のスコープではない改善点をここにメモ)
+- (スコープ外の発見をここに)
 ```
+
+---
+
+## 12. 教訓の運用 (`docs/agent-lessons.md`)
+
+`docs/agent-lessons.md` は教訓を一時蓄積する **バッファ**。本ドキュメントが共通ルールの単一の真実源（Single Source of Truth）であり、再発防止に値する内容は本ドキュメントへ昇格させる。
+
+- **記録**: 修正を受けた／気づきがあった場合に日付付きで追記。
+- **読み込み**: セッション開始時の必読ではない（PR 作成前や蓄積が増えた節目で見直す）。
+- **昇格 → 削除**: 開発全体に適用される規約は本ドキュメントへ追記し、`agent-lessons.md` から削除（過去内容は git 履歴で遡れる）。
+- **削除対象**: 共通ルール化済み／コード・Hook・設定で強制済み／一度限りの TIP。
+- **保持対象**: 特定ツール・コンポーネントに紐づく実装メモやリスク。
