@@ -62,13 +62,13 @@ priority = 100
 # Sensitive file access (Absolute paths to prevent bypass)
 [[rule]]
 toolName = "read_file"
-filePathRegex = "^/Users/fumta/\\.aws/.*"
+filePathRegex = "^(/Users/[^/]+|/home/[^/]+)/\\.aws/.*"
 decision = "deny"
 priority = 100
 
 [[rule]]
 toolName = "read_file"
-filePathRegex = "^/Users/fumta/\\.ssh/.*"
+filePathRegex = "^(/Users/[^/]+|/home/[^/]+)/\\.ssh/.*"
 decision = "deny"
 priority = 100
 
