@@ -1434,6 +1434,38 @@ CI（GitHub Actions）の実行コスト削減と、不要な重複ジョブの�
 
 ---
 
+## [046] Gemini CLI サンドボックスとセキュリティポリシーの導入
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+Claude Code 側に `.claude/settings.json` でサンドボックスとアクセス制御が設定済みであったが、Gemini CLI にはエージェント用のセキュリティポリシーが存在しなかった。使用ツールによってエージェントの行動範囲が異なるリスクを解消するため、両ツールで一貫したセキュリティレベルを確保する必要があった。
+
+### 決断
+
+1. **`.gemini/settings.json`**: macOS `sandbox-exec` を有効化。ブラウザエージェントがアクセス可能なドメインを制限し、環境変数の機密情報マスキング（Redaction）を有効化。
+2. **`.gemini/policies/security.toml`**: deny / allow / ask_user の 3 段階ルールを定義。Claude Code 側の `permissions` と対称になるよう設計。
+   - **deny**: フォースプッシュ・`rm -rf /`・`npm publish`・`gh repo delete` 等の破壊的操作、GraphQL mutations/DELETE via `gh api`、リモートコンテンツのパイプ実行、機密ファイルへの直接アクセス。
+   - **allow**: `git pull` / `git fetch` / `gh pr diff`（安全な読み取り系操作）。
+   - **ask_user**: `git push`・`gh pr create` 等の外部影響を伴う操作、設定ファイル（`.gemini/`, `.claude/`）自体の変更。
+3. **パイプ実行禁止の対象インタープリタ拡張**: 当初 `sh|bash|zsh|python|node` のみだったが、defense-in-depth として `perl|ruby|php` を追加。`exec` は組み込みコマンドであり既存のシェルパターン（`sh` 等）で十分捕捉されるため追加しない。
+4. **`~` 経由のパスバイパス対策**: `.aws` / `.ssh` の deny 正規表現が絶対パスのみを拒否していた。Gemini CLI が `~` を展開せずに `read_file` へ渡した場合にバイパスが生じるリスクがあるため、`^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\.aws/.*` のように `~[^/]*` を追加。
+5. **`excludedCommands` から `git pull/fetch` を除外**: サンドボックス外で `git pull/fetch` を実行すると、`post-merge`/`post-checkout` フックがサンドボックス保護の外で動作するリスクがある。`network.allowedDomains` に `github.com` 系は既に登録されており、サンドボックス内の書き込み許可スコープ（`.` 以下）も `.git/` を含むため、サンドボックス内での実行に問題はないと判断し除外。
+
+### 却下した選択肢
+
+- **`exec` を禁止インタープリタリストに追加**: `exec` は現プロセスを置き換える組み込みコマンドであり、既存の `sh|bash|zsh` パターンで十分。独立した追加は過剰一致を招く恐れがあるため却下。
+- **Claude 側 deny ルールへの正規表現構文（`\b` 等）の適用**: Claude Code の `permissions` は glob ベースであり正規表現メタ文字を解釈しない。Gemini 側の `commandRegex` をそのまま移植することは仕様上不可能なため、glob による近似で十分と判断。
+
+### 結果・トレードオフ
+
+- ✅ Claude Code / Gemini CLI で対称的なセキュリティポリシーが確立された。
+- ✅ `git pull/fetch` のサンドボックス内実行移行により、Git フック経由の意図しないコード実行リスクが低減した。
+- ⚠️ Gemini CLI が `~` を展開してから `read_file` を呼ぶ場合、`~[^/]*` の追加は冗長になるが副作用はない。
+
+---
+
 ## [045] リンクスタイル (:visited) の追加と下線設計の刷新
 
 **2026-04-28 | ステータス: 採用**

@@ -40,7 +40,7 @@ denyMessage = "Direct GraphQL mutations or DELETE via API are prohibited to prev
 # Execution of remote content via pipe
 [[rule]]
 toolName = "run_shell_command"
-commandRegex = ".*(curl|wget).*\\|\\s*(sh|bash|zsh|python|node).*"
+commandRegex = ".*(curl|wget).*\\|\\s*(sh|bash|zsh|python|node|perl|ruby|php).*"
 decision = "deny"
 priority = 100
 denyMessage = "Piping remote content directly to a shell or interpreter is strictly prohibited."
@@ -62,13 +62,13 @@ priority = 100
 # Sensitive file access (Absolute paths to prevent bypass)
 [[rule]]
 toolName = "read_file"
-filePathRegex = "^(/Users/[^/]+|/home/[^/]+)/\\.aws/.*"
+filePathRegex = "^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\\.aws/.*"
 decision = "deny"
 priority = 100
 
 [[rule]]
 toolName = "read_file"
-filePathRegex = "^(/Users/[^/]+|/home/[^/]+)/\\.ssh/.*"
+filePathRegex = "^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\\.ssh/.*"
 decision = "deny"
 priority = 100
 
