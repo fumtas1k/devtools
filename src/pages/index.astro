@@ -100,16 +100,16 @@ const jsonLd = {
                   .map((tool) => (
                     <a
                       href={`/tools/${tool.slug}`}
-                      class="tool-card group rounded-lg bg-white p-6 block transition-shadow hover:shadow-md"
-                      style="border: 1px solid var(--color-border);"
+                      class="tool-card group rounded-lg p-6 block transition-shadow hover:shadow-md"
+                      style="background: var(--color-bg); border: 1px solid var(--color-border);"
                     >
                       <div class="mb-4 flex items-start justify-between">
-                        <ToolIcon slug={tool.slug} size={28} class="text-primary" />
+                        <ToolIcon slug={tool.slug} size={28} style="color: var(--color-primary);" />
                         <CategoryBadge label={categoryLabel[tool.category]} class="py-0.5" />
                       </div>
                       <h2
-                        class="mb-2 font-bold group-hover:text-primary transition-colors"
-                        style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em; color: var(--color-text);"
+                        class="tool-card-title mb-2 font-bold transition-colors"
+                        style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
                       >
                         {tool.name}
                       </h2>
@@ -120,7 +120,7 @@ const jsonLd = {
                         {tool.description}
                       </p>
                       <span
-                        class="text-link transition-colors"
+                        class="tool-card-link transition-colors"
                         style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
                       >
                         開く &rsaquo;
@@ -151,6 +151,16 @@ const jsonLd = {
   .tab-btn[aria-selected='false']:hover {
     color: var(--color-primary);
     border-color: var(--color-primary);
+  }
+
+  .tool-card-title {
+    color: var(--color-text);
+  }
+  .tool-card:hover .tool-card-title {
+    color: var(--color-primary);
+  }
+  .tool-card-link {
+    color: var(--color-link);
   }
 </style>
 
