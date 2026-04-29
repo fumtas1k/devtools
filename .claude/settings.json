@@ -146,6 +146,7 @@
       "Bash(npm install -g*)",
       "Bash(npm install --global*)",
       "Bash(npm install --location=global*)",
+      "Bash(npm install --location global*)",
       "Bash(npm i -g*)",
       "Bash(npm i --global*)",
       "Read(./.env*)",

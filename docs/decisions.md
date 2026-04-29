@@ -1634,3 +1634,55 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ `excludedCommands` の追加判断基準（OS リソース要求の有無）が文書化されたことで、将来のコマンド追加時の判断が容易になる。
 - ✅ `gh *` ワイルドカードを `permissions` 登録済みの 6 サブコマンドパターンに絞り込み、未承認の `gh` サブコマンドに対してサンドボックスによる二重防御が機能するようになった。
 - ⚠️ `curl*` / `wget*` の TLS 証明書ストアへの依存は実機未検証。動作が確認できた場合は除外が有効、不要と判明した場合は削除を推奨。
+
+---
+
+## [050] Gemini CLI ソースコード検証で発覚した `security.toml` 重大バグの修正
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+PR #122 の再レビュー指摘に対応するため、Gemini CLI のソースコード（`packages/core/src/policy/toml-loader.ts`・`utils.ts`）を直接精査した。その結果、`.gemini/policies/security.toml` に 3 件の重大バグが発覚した。
+
+### 発覚したバグと根拠
+
+**バグ 1: `commandPrefixes`（複数形）は無効フィールド**
+
+Gemini CLI の Zod スキーマは `commandPrefix`（単数形）を定義しており、`commandPrefixes` は未認識フィールドとして Zod の `.strip()` モードにより無視される。その結果、prefix 条件を持たない `toolName = "run_shell_command"` のみのルールが残り、意図しない全コマンドマッチまたは全コマンドブロックが生じる。官方サンプル（`.gemini/skills/async-pr-review/policy.toml`）でも `commandPrefix = [...]`（単数形・配列）が使用されている。
+
+**バグ 2: `commandRegex` での `^` アンカーが機能しない**
+
+`buildArgsPatterns` 関数（`utils.ts` L52）は `commandRegex` を `"command":"<regex>` に変換してから JSON 文字列全体にマッチさせる。そのため `^npm` は `{"command":"npm...` ではなく先頭 `{` にアンカーされ、永遠にマッチしない。影響を受けたルール: npm グローバルインストール deny / フォースプッシュ deny / gh api graphql deny の 3 件すべて。
+
+**バグ 3: `(.*\\s)?` が `isSafeRegExp` でネスト量詞として拒否される**
+
+`isSafeRegExp` は `/\([^)]*[*+?{].*\)[*+?{]/` でネスト量詞パターンを検出する。`^gh api (.*\\s)?(graphql\\b|...)` の `(.*\s)?` はグループ内に `*`、グループ後に `?` を持つため ReDoS 防御としてルール自体が拒否される（エラーログには出るが UI には出ない）。
+
+### 決断
+
+1. **全 3 ブロックの `commandPrefixes` → `commandPrefix` に修正**: deny / allow / ask_user の全ブロック。
+
+2. **npm グローバルインストール deny を `commandPrefix` 配列に変換**:
+   `commandRegex`（`^` アンカー付き）を廃止し、`commandPrefix` で全形式を網羅。同時にバグ 2 で修正できなかった Claude 側の accepted gap（`--location global` スペース区切り）も Gemini 側で完全カバーし、Claude 側 deny にも `Bash(npm install --location global*)` を追加して両ツールで対称化した。
+
+3. **フォースプッシュ deny: `commandRegex` から `^` を除去**:
+   `^git push .*( --force|-f).*` → `git push .*( --force|-f).*`。`^` を除くことで、内部変換後の argsPattern `"command":"git push .*( --force|-f).*` が JSON 文字列中の `git push` にマッチするようになる。
+
+4. **gh api graphql/DELETE deny を 2 ルールに分割**:
+   - `commandPrefix = ["gh api graphql"]` で GitHub GraphQL API エンドポイントを拒否（バグ 2・3 の両方を回避）。
+   - `commandRegex = "gh api .* (--method DELETE|-X DELETE)"` で REST DELETE を拒否（ネスト量詞なし・`^` なし）。
+   - ただし `gh api <REST-path> graphql`（中間パスに graphql を含む）は今回のパターンではカバーされない点は Claude 側の `gh api * graphql` glob と同じ制約として許容する。
+
+### 却下した選択肢
+
+- **`commandRegex = "npm.*(-g|--global|--location.*global)"`**: `^` なし regex で書けば動作するが、`echo "npm install -g"` のような文字列含有コマンドにも誤マッチしうる。`commandPrefix` による前方一致の方が意図が明確で安全。
+- **`commandRegex = "gh api graphql.*"` でバグ 3 を回避**: ネスト量詞は解消されるが `commandRegex` は `"command":"` 変換後にサブストリングマッチになるため `gh api graphql` で十分。`commandPrefix` の方がより正確な前方一致。
+
+### 結果・トレードオフ
+
+- ✅ 全 prefix ベースルール（deny / allow / ask_user）が正式フィールド `commandPrefix` で動作するようになった。
+- ✅ `^` アンカー付き `commandRegex` を廃止・修正し、npm グローバル / フォースプッシュ / gh api 各 deny ルールが実際に機能するようになった。
+- ✅ `npm install --location global`（スペース区切り）が Claude / Gemini 両側で deny されるようになり、[048] で accepted gap として残っていた非対称が解消された。
+- ⚠️ `gh api <REST-path> graphql`（中間パスに graphql を含む）は今回のパターンではカバーされない（Claude glob `gh api * graphql` との精度差は残存）。
+- ⚠️ `.gemini/policies/` はワークスペースティアに配置されているが、Gemini CLI の issue #18186 によりワークスペースポリシーは現在無効化されている（[046] で言及済みだが未解決）。今回のバグ修正は将来 issue が解消された際に正しく機能するための先行対応である。それまでの代替措置として `~/.gemini/policies/security.toml` へのコピーまたはシンボリックリンクを検討することを推奨する。
