@@ -18,6 +18,8 @@
         "api.anthropic.com",
         "*.anthropic.com",
         "statsig.anthropic.com",
+        "docs.anthropic.com",
+        "code.claude.com",
         "cdn.playwright.dev",
         "playwright.azureedge.net"
       ]
