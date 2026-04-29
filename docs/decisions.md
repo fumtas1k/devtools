@@ -1466,6 +1466,41 @@ Claude Code 側に `.claude/settings.json` でサンドボックスとアクセ�
 
 ---
 
+## [047] `.claude/settings.json` セキュリティレビュー反映
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキュリティ面のレビューを実施。[046] で Gemini 側との対称化が完了した状態を起点に、Claude Code 公式ドキュメント（パーミッション仕様）を精査した結果、以下の課題が浮上した。
+
+### 決断
+
+1. **`gh api graphql*` deny パターンの word-boundary 補強**: 公式仕様上、`Bash(gh api graphql*)` は `gh api graphqlfoo` のような誤コマンドにも当たってしまう（`*` は word boundary を持たない）。`Bash(gh api graphql)` と `Bash(gh api graphql *)` の 2 本に分割し、同様に `Bash(gh api * graphql*)` も 2 本に分割することで誤マッチを排除した。
+
+2. **`npm install` 系 allow の統合**: `Bash(npm install)` / `Bash(npm install --save-dev *)` / `Bash(npm install --save *)` の 3 本を `Bash(npm install *)` 1 本に統合。glob の `*` は空文字列を含むため引数なし呼び出しもカバーする。`deny: Bash(npm install -g*)` が deny → ask → allow の順で先評価されるため、グローバルインストールの拒否は維持される。
+
+3. **`curl` / `wget` 全体を ask へ移動**: 公式が「Bash パターンでの引数制約は脆弱（オプション挿入・空白・引用符でバイパス可能）」と明示警告しており、既存の `Bash(curl * | sh*)` 等のパイプ deny は `curl https://...|sh`（パイプ直前の空白省略）でバイパス可能。curl/wget 全体を ask にすることで一律確認を要求し、WebFetch ベースの運用に誘導する。既存パイプ deny は defense-in-depth として残置。
+
+4. **`sandbox.network.allowedDomains` に `docs.anthropic.com` と `code.claude.com` を追加**: `permissions.allow` に `WebFetch(domain:docs.anthropic.com)` / `WebFetch(domain:code.claude.com)` は宣言済みだったが、sandbox の egress allowedDomains 側に未同期だった。Anthropic 公式ドキュメントは現在 `code.claude.com` が正典 URL。
+
+5. **`settings.local.json` の `Bash(gh api:*)` allow を削除**: グローバル `ask: Bash(gh api *)` をローカルで上書きしており、対称ポリシーの主旨（gh api 系は実行前に確認）に反する。
+
+### 却下した選択肢
+
+- **`curl*` / `wget*` 全体を deny にする**: 将来 curl を読み取り用に使うユースケース（例: API レスポンス確認）を排除しすぎるため、ask に留めた。
+- **PreToolUse hook による引数制約の強化**: glob では `gh api graphql`（空白の数・絶対パス経由）や `curl|sh`（リダイレクト・変数展開）の完全遮断ができない。hook 化で Gemini 側 `commandRegex` と同等の精度を確保できるが、実装・メンテコストとの兼ね合いから別 issue で判断する。
+
+### 結果・トレードオフ
+
+- ✅ `gh api graphql` の deny パターンが意図通りの word-boundary で機能するようになった。
+- ✅ `npm install` 系の allow が 1 本に整理され、deny との連携が明確になった。
+- ✅ `curl` / `wget` が ask 化され、パイプ実行の glob 脆弱性が軽減された。
+- ✅ sandbox の egress ドメインと WebFetch 許可ドメインが一致した。
+- ⚠️ `gh api graphql` のバイパス（空白2個、絶対パス経由 `/usr/bin/gh`）は glob 制約のため残存。完全対策は hook 化が必要。
+
+---
+
 ## [045] リンクスタイル (:visited) の追加と下線設計の刷新
 
 **2026-04-28 | ステータス: 採用**
