@@ -1626,3 +1626,22 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ `npm install` / `npm run` / `npx` 等のサブプロセス起動コマンドは引き続き sandbox 内で動作し、defense-in-depth が維持される。
 - ✅ `excludedCommands` の追加判断基準（OS リソース要求の有無）が文書化されたことで、将来のコマンド追加時の判断が容易になる。
 - ⚠️ `curl*` / `wget*` の TLS 証明書ストアへの依存は実機未検証。動作が確認できた場合は除外が有効、不要と判明した場合は削除を推奨。
+
+### 追記: `gh *` をサブコマンド単位に絞り込み（同日）
+
+原則の適用として、`excludedCommands` の `gh *` を `permissions` に登録されているサブコマンド群に絞り込んだ:
+
+```jsonc
+// Before
+"gh *"
+
+// After
+"gh pr *",
+"gh issue *",
+"gh repo *",
+"gh release *",
+"gh workflow *",
+"gh api *"
+```
+
+`gh auth *` / `gh secret *` / `gh codespace *` / `gh copilot *` / `gh extension *` 等は `permissions` に登録がなく、使用時はユーザー確認プロンプトが出た上でサンドボックス内実行となり TLS エラーで失敗する（追加の防御層として機能）。`gh repo delete*` 等の deny 済みコマンドはサブコマンド単位の除外下でも deny が優先される。
