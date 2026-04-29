@@ -16,7 +16,7 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
-    "excludedCommands": ["git push*", "gh *"],
+    "excludedCommands": ["git push*", "git pull*", "git fetch*", "gh *", "curl*", "wget*"],
     "allowUnsandboxedCommands": false,
     "network": {
       "allowedDomains": [

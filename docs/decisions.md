@@ -1576,3 +1576,53 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ `gh *` の sandbox 外実行が macOS sandbox-exec による **TLS 証明書ストアアクセスの制限** という技術的制約に起因することが実機検証で確定し（`x509: OSStatus -26276`）、permissions による deny / ask が唯一の防御線である旨が確定した。
 - ✅ `ai.google.dev` の意図（ドキュメントサイト、API エンドポイントではない）が明示され、将来のドリフトが防止される。
 - ⚠️ Claude 側 Bash メタ防御は glob 近似であり、`rm -rf .claude/foo/bar` のように深いパスや複雑なコマンドは完全にはカバーできない。Gemini 側 regex との精度差は残存。
+
+---
+
+## [049] `excludedCommands` のスコープ原則確立
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+[046] で `git pull/fetch` を `excludedCommands` から除外し、sandbox 内実行に戻した。その判断の根拠は「`network.allowedDomains` に `github.com` が登録済みであればサンドボックス内で実行可能」というものだったが、この前提は **HTTPS 経由の git remote** にのみ成立する。SSH 経由の remote（`git@github.com:...`）では、接続時に `~/.ssh/known_hosts` の読み取りが必要であり、これが sandbox の `Read(~/.ssh/**)` deny に阻まれるため `git pull` が失敗することが実機で確認された。
+
+また、`curl` / `wget` についても、macOS では HTTPS 通信時にシステム証明書ストア（Security フレームワーク）へのアクセスが必要であり、`gh *` と同様の TLS 証明書検証エラーが発生することが想定される。
+
+これらを受けて、`excludedCommands` の追加判断基準を明文化し、現状の設定を修正する。
+
+### 採用した原則
+
+**`excludedCommands` には、sandbox-exec が制限する OS レベルのリソース（TLS 証明書ストア / SSH known_hosts / keychain / Security フレームワーク）にアクセスする必要があるコマンドのみを登録する。**
+
+サブプロセスや任意スクリプトを実行しうるコマンド（`npm install`, `npm run`, `npx` 等）は、たとえ `permissions.allow` に登録されていても sandbox 内で実行し、 defense-in-depth（`.env`, `~/.ssh`, `~/.aws` への書き込み・読み取り deny）を維持する。
+
+### 決断
+
+`excludedCommands` を以下の構成にする:
+
+```jsonc
+"excludedCommands": [
+  "git push*",  // SSH（既存）
+  "git pull*",  // SSH known_hosts（[046] での除外を取り消し、再追加）
+  "git fetch*", // SSH known_hosts（同上）
+  "gh *",       // TLS 証明書ストア（既存）
+  "curl*",      // TLS 証明書ストア（macOS curl は Security framework 使用）
+  "wget*"       // TLS 証明書ストア（同上）
+]
+```
+
+追加後の検証: `git fetch origin` が正常終了することを確認（SSH 接続成功）。
+
+### 却下した選択肢
+
+- **`permissions.allow` / `ask` の全 Bash コマンドを `excludedCommands` に追加（wholesale 化）**: `npm install` / `npm run` / `npx` 等のサブプロセスを含むコマンドを sandbox 外に出すと、post-install スクリプトや任意の npm scripts が `.env` や `~/.ssh` にアクセス可能になる。防御対象（外部からの悪意あるコード）に対して defense-in-depth が失われるため却下。
+- **`sandbox.Read(~/.ssh/**)` deny の解除**: SSH 秘密鍵（`~/.ssh/id_rsa` 等）への読み取りアクセスを許可することになり、sandbox 内で動作するコマンド（npm スクリプト等）が秘密鍵を読み取れるリスクが生じる。`excludedCommands` での限定的な除外で同等の実用性を達成できるため却下。
+
+### 結果・トレードオフ
+
+- ✅ SSH-based git remote での `git pull` / `git fetch` が動作する（[046] の前提ミスを修正）。
+- ✅ `curl` / `wget` が sandbox 制約（TLS 証明書ストア）に阻まれず使える。
+- ✅ `npm install` / `npm run` / `npx` 等のサブプロセス起動コマンドは引き続き sandbox 内で動作し、defense-in-depth が維持される。
+- ✅ `excludedCommands` の追加判断基準（OS リソース要求の有無）が文書化されたことで、将来のコマンド追加時の判断が容易になる。
+- ⚠️ `curl*` / `wget*` の TLS 証明書ストアへの依存は実機未検証。動作が確認できた場合は除外が有効、不要と判明した場合は削除を推奨。
