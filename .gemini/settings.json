@@ -21,8 +21,6 @@
         "docs.anthropic.com",
         "code.claude.com",
         "ai.google.dev",
-        "*.google.com",
-        "*.googleapis.com",
         "cdn.playwright.dev",
         "playwright.azureedge.net"
       ]

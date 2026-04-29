@@ -1449,7 +1449,7 @@ Claude Code 側に `.claude/settings.json` でサンドボックスとアクセ�
    - **deny**: フォースプッシュ・`rm -rf /`・`npm publish`・`gh repo delete` 等の破壊的操作、GraphQL mutations/DELETE via `gh api`、リモートコンテンツのパイプ実行、機密ファイルへの直接アクセス。
    - **allow**: `git pull` / `git fetch` / `gh pr diff` を含む、Claude Code 側で許可されている全ての読み取り専用コマンド（`gh pr list`, `node --version` 等）を同期。これにより、ツール間でのエージェントの挙動とユーザーへの確認頻度を一貫させた。
    - **ask_user**: `git push`・`gh pr create` 等の外部影響を伴う操作、設定ファイル（`.gemini/`, `.claude/`）自体の変更。および、単体での `curl` / `wget` 実行（Claude 側との同期）。
-3. **ブラウザエージェントの許可ドメイン同期**: `.gemini/settings.json` および `.claude/settings.json` の `allowedDomains` に `docs.anthropic.com` や `code.claude.com` に加え、Google/Gemini 関連のリソース（`ai.google.dev`, `*.google.com`, `*.googleapis.com`）を追加。各ツールのエージェントが、相互に製品ドキュメントや最新の開発者情報を取得できるようにした。
+3. **ブラウザエージェントの許可ドメイン同期**: `.gemini/settings.json` および `.claude/settings.json` の `allowedDomains` に `docs.anthropic.com` や `code.claude.com` に加え、Gemini 関連の主要リソースである `ai.google.dev` を追加。広範な `*.google.com` の許可は Gmail 等の個人データへのアクセスリスクがあるため避け、開発に必要な特定ドメインのみに限定した。
 4. **パイプ実行禁止の対象インタープリタ拡張**: 当初 `sh|bash|zsh|python|node` のみだったが、defense-in-depth として `perl|ruby|php` を追加。`exec` は組み込みコマンドであり既存のシェルパターン（`sh` 等）で十分捕捉されるため追加しない。
 5. **`~` 経由のパスバイパス対策**: `.aws` / `.ssh` の deny 正規表現が絶対パスのみを拒否していた。Gemini CLI が `~` を展開せずに `read_file` へ渡した場合にバイパスが生じるリスクがあるため、`^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\.aws/.*` のように `~[^/]*` を追加。
 6. **`excludedCommands` から `git pull/fetch` を除外**: サンドボックス外で `git pull/fetch` を実行すると、`post-merge`/`post-checkout` フックがサンドボックス保護の外で動作するリスクがある。`network.allowedDomains` に `github.com` 系は既に登録されており、サンドボックス内の書き込み許可スコープ（`.` 以下）も `.git/` を含むため、サンドボックス内での実行に問題はないと判断し除外。
