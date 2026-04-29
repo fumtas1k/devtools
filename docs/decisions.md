@@ -1452,7 +1452,7 @@ Claude Code 側に `.claude/settings.json` でサンドボックスとアクセ�
 3. **ブラウザエージェントの許可ドメイン同期**: `.gemini/settings.json` および `.claude/settings.json` の `allowedDomains` に `docs.anthropic.com` や `code.claude.com` に加え、Gemini 関連の主要リソースである `ai.google.dev` を追加。広範な `*.google.com` の許可は Gmail 等の個人データへのアクセスリスクがあるため避け、開発に必要な特定ドメインのみに限定した。
 4. **パイプ実行禁止の対象インタープリタ拡張**: 当初 `sh|bash|zsh|python|node` のみだったが、defense-in-depth として `perl|ruby|php` を追加。`exec` は組み込みコマンドであり既存のシェルパターン（`sh` 等）で十分捕捉されるため追加しない。
 5. **`~` 経由のパスバイパス対策**: `.aws` / `.ssh` の deny 正規表現が絶対パスのみを拒否していた。Gemini CLI が `~` を展開せずに `read_file` へ渡した場合にバイパスが生じるリスクがあるため、`^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\.aws/.*` のように `~[^/]*` を追加。
-6. **`excludedCommands` から `git pull/fetch` を除外**: サンドボックス外で `git pull/fetch` を実行すると、`post-merge`/`post-checkout` フックがサンドボックス保護の外で動作するリスクがある。`network.allowedDomains` に `github.com` 系は既に登録されており、サンドボックス内の書き込み許可スコープ（`.` 以下）も `.git/` を含むため、サンドボックス内での実行に問題はないと判断し除外。
+6. **`excludedCommands` から `git pull/fetch` を除外**: サンドボックス外で `git pull/fetch` を実行すると、`post-merge`/`post-checkout` フックがサンドボックス保護の外で動作するリスクがある。`network.allowedDomains` に `github.com` 系は既に登録されており、サンドボックス内の書き込み許可スコープ（`.` 以下）も `.git/` を含むため、サンドボックス内での実行に問題はないと判断し除外。（※この判断は HTTPS 経由の git remote を前提としていた。SSH 経由の remote では `~/.ssh/known_hosts` アクセスが sandbox の deny に阻まれ失敗することが後に判明し、[049] にて `git pull/fetch` を `excludedCommands` に再追加した。）
 
 ### 却下した選択肢
 
@@ -1567,7 +1567,7 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - **`npm publish`・`rm -rf` に近い完全 deny**: `rm .claude/*` は ask（確認要求）に留めた。legitimate な運用シナリオ（手動クリーンアップ等）でユーザーが明示的に承認できるよう、deny ではなく ask を選択。
 - **glob `Bash(rm*)` の全件 ask 化**: 過剰一致で開発フローが阻害されるため却下。`.claude/` / `.gemini/` パスを明示した限定的な追加に留める。
 - **Gemini 側 commandRegex をそのまま Claude 側に移植**: Claude Code の `permissions` は glob ベースで正規表現メタ文字を解釈しない（[046] 承知済み）。
-- **`excludedCommands: ["gh *"]` をサブコマンド単位に分割（最小特権化）**: `[046]` の `git pull/fetch` 移行と同様にサンドボックス内実行に戻すことを検討・実機検証したが、`gh` CLI は Go の TLS 実装で macOS の証明書ストア（Security フレームワーク）に依存しており、sandbox-exec がそのアクセスをブロックするため `tls: failed to verify certificate: x509: OSStatus -26276` で全コマンドが失敗した。`git` が独自の証明書バンドルを持つのと対照的に、`gh` はこの制約を回避できない。Claude Code の sandbox-exec プロファイルを直接変更する手段がない限り、`gh *` の全面サンドボックス外実行は技術的必然として維持する。
+- **`gh` コマンドのサンドボックス内実行への移行**: `[046]` の `git pull/fetch` 移行と同様にサンドボックス内実行に戻すことを検討・実機検証したが、`gh` CLI は Go の TLS 実装で macOS の証明書ストア（Security フレームワーク）に依存しており、sandbox-exec がそのアクセスをブロックするため `tls: failed to verify certificate: x509: OSStatus -26276` で全コマンドが失敗した。`git` が独自の証明書バンドルを持つのと対照的に、`gh` はこの制約を回避できない。`gh` は sandbox 外実行が技術的必然（[049] で確定）。なお、`excludedCommands` のワイルドカードパターンを `gh *` から使用済みサブコマンド単位に絞り込む最小特権化は [049] で別途実施している。
 
 ### 結果・トレードオフ
 
@@ -1603,16 +1603,23 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 
 ```jsonc
 "excludedCommands": [
-  "git push*",  // SSH（既存）
-  "git pull*",  // SSH known_hosts（[046] での除外を取り消し、再追加）
-  "git fetch*", // SSH known_hosts（同上）
-  "gh *",       // TLS 証明書ストア（既存）
-  "curl*",      // TLS 証明書ストア（macOS curl は Security framework 使用）
-  "wget*"       // TLS 証明書ストア（同上）
+  "git push*",    // SSH（既存）
+  "git pull*",    // SSH known_hosts（[046] での除外を取り消し、再追加）
+  "git fetch*",   // SSH known_hosts（同上）
+  "gh pr *",      // TLS 証明書ストア。permissions 登録済みサブコマンドのみに絞り込み
+  "gh issue *",   // 同上
+  "gh repo *",    // 同上
+  "gh release *", // 同上
+  "gh workflow *",// 同上
+  "gh api *",     // 同上
+  "curl*",        // TLS 証明書ストア（macOS curl は Security framework 使用）
+  "wget*"         // TLS 証明書ストア（同上）
 ]
 ```
 
-追加後の検証: `git fetch origin` が正常終了することを確認（SSH 接続成功）。
+`gh *` を 6 サブコマンドパターンに絞り込んだ理由: `gh auth *` / `gh codespace *` / `gh copilot *` / `gh extension *` 等は `permissions` に登録がなく sandbox 外実行を認める必要がない。これらのコマンドが使用された場合はユーザー確認プロンプトが出た上でサンドボックス内実行となり TLS エラーで失敗する（二重の防御層）。`gh repo delete*` 等の deny 済みコマンドはサブコマンドパターン指定下でも deny が優先される。
+
+検証: `git fetch origin` が正常終了することを確認（SSH 接続成功）。
 
 ### 却下した選択肢
 
@@ -1625,23 +1632,5 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ `curl` / `wget` が sandbox 制約（TLS 証明書ストア）に阻まれず使える。
 - ✅ `npm install` / `npm run` / `npx` 等のサブプロセス起動コマンドは引き続き sandbox 内で動作し、defense-in-depth が維持される。
 - ✅ `excludedCommands` の追加判断基準（OS リソース要求の有無）が文書化されたことで、将来のコマンド追加時の判断が容易になる。
+- ✅ `gh *` ワイルドカードを `permissions` 登録済みの 6 サブコマンドパターンに絞り込み、未承認の `gh` サブコマンドに対してサンドボックスによる二重防御が機能するようになった。
 - ⚠️ `curl*` / `wget*` の TLS 証明書ストアへの依存は実機未検証。動作が確認できた場合は除外が有効、不要と判明した場合は削除を推奨。
-
-### 追記: `gh *` をサブコマンド単位に絞り込み（同日）
-
-原則の適用として、`excludedCommands` の `gh *` を `permissions` に登録されているサブコマンド群に絞り込んだ:
-
-```jsonc
-// Before
-"gh *"
-
-// After
-"gh pr *",
-"gh issue *",
-"gh repo *",
-"gh release *",
-"gh workflow *",
-"gh api *"
-```
-
-`gh auth *` / `gh secret *` / `gh codespace *` / `gh copilot *` / `gh extension *` 等は `permissions` に登録がなく、使用時はユーザー確認プロンプトが出た上でサンドボックス内実行となり TLS エラーで失敗する（追加の防御層として機能）。`gh repo delete*` 等の deny 済みコマンドはサブコマンド単位の除外下でも deny が優先される。
