@@ -1470,3 +1470,221 @@ Issue #115 にて、訪問済みリンクの区別（`:visited`）がついて�
 - ✅ リンクの状態（通常・ホバー・訪問済み）が一貫したデザインで提供されるようになった。
 - ✅ 各ページから個別のスタイル指定を削除でき、DRY な構成になった。
 - ⚠️ 訪問済みかどうかの判別は色に依存しているが、ブラウザの仕様制限の範囲内で最善の対応としている。
+
+---
+
+## [046] Gemini CLI サンドボックスとセキュリティポリシーの導入
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+Claude Code 側に `.claude/settings.json` でサンドボックスとアクセス制御が設定済みであったが、Gemini CLI にはエージェント用のセキュリティポリシーが存在しなかった。使用ツールによってエージェントの行動範囲が異なるリスクを解消するため、両ツールで一貫したセキュリティレベルを確保する必要があった。
+
+### 決断
+
+1. **`.gemini/settings.json`**: macOS `sandbox-exec` を有効化。ブラウザエージェントがアクセス可能なドメインを制限し、環境変数の機密情報マスキング（Redaction）を有効化。
+2. **`.gemini/policies/security.toml`**: deny / allow / ask_user の 3 段階ルールを定義。Claude Code 側の `permissions` と対称になるよう設計。
+   - **deny**: フォースプッシュ・`rm -rf /`・`npm publish`・`gh repo delete` 等の破壊的操作、GraphQL mutations/DELETE via `gh api`、リモートコンテンツのパイプ実行、機密ファイルへの直接アクセス。
+   - **allow**: `git pull` / `git fetch` / `gh pr diff` を含む、Claude Code 側で許可されている全ての読み取り専用コマンド（`gh pr list`, `node --version` 等）を同期。これにより、ツール間でのエージェントの挙動とユーザーへの確認頻度を一貫させた。
+   - **ask_user**: `git push`・`gh pr create` 等の外部影響を伴う操作、設定ファイル（`.gemini/`, `.claude/`）自体の変更。および、単体での `curl` / `wget` 実行（Claude 側との同期）。
+3. **ブラウザエージェントの許可ドメイン同期**: `.gemini/settings.json` および `.claude/settings.json` の `allowedDomains` に `docs.anthropic.com` や `code.claude.com` に加え、Gemini 関連の主要リソースである `ai.google.dev` を追加。広範な `*.google.com` の許可は Gmail 等の個人データへのアクセスリスクがあるため避け、開発に必要な特定ドメインのみに限定した。
+4. **パイプ実行禁止の対象インタープリタ拡張**: 当初 `sh|bash|zsh|python|node` のみだったが、defense-in-depth として `perl|ruby|php` を追加。`exec` は組み込みコマンドであり既存のシェルパターン（`sh` 等）で十分捕捉されるため追加しない。
+5. **`~` 経由のパスバイパス対策**: `.aws` / `.ssh` の deny 正規表現が絶対パスのみを拒否していた。Gemini CLI が `~` を展開せずに `read_file` へ渡した場合にバイパスが生じるリスクがあるため、`^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\.aws/.*` のように `~[^/]*` を追加。
+6. **`excludedCommands` から `git pull/fetch` を除外**: サンドボックス外で `git pull/fetch` を実行すると、`post-merge`/`post-checkout` フックがサンドボックス保護の外で動作するリスクがある。`network.allowedDomains` に `github.com` 系は既に登録されており、サンドボックス内の書き込み許可スコープ（`.` 以下）も `.git/` を含むため、サンドボックス内での実行に問題はないと判断し除外。（※この判断は HTTPS 経由の git remote を前提としていた。SSH 経由の remote では `~/.ssh/known_hosts` アクセスが sandbox の deny に阻まれ失敗することが後に判明し、[049] にて `git pull/fetch` を `excludedCommands` に再追加した。）
+
+### 却下した選択肢
+
+- **`exec` を禁止インタープリタリストに追加**: `exec` は現プロセスを置き換える組み込みコマンドであり、既存の `sh|bash|zsh` パターンで十分。独立した追加は過剰一致を招く恐れがあるため却下。
+- **Claude 側 deny ルールへの正規表現構文（`\b` 等）の適用**: Claude Code の `permissions` は glob ベースであり正規表現メタ文字を解釈しない。Gemini 側の `commandRegex` をそのまま移植することは仕様上不可能なため、glob による近似で十分と判断。
+
+### 結果・トレードオフ
+
+- ✅ Claude Code / Gemini CLI で対称的なセキュリティポリシーが確立された。
+- ✅ `git pull/fetch` のサンドボックス内実行移行により、Git フック経由の意図しないコード実行リスクが低減した。
+- ⚠️ Gemini CLI が `~` を展開してから `read_file` を呼ぶ場合、`~[^/]*` の追加は冗長になるが副作用はない。
+- ⚠️ `.gemini/settings.json` の `tools.sandbox = "sandbox-exec"` は macOS 専用設定（`sandbox-exec` は Apple のセキュリティ機構）。Linux / Windows / WSL 環境では Gemini CLI 側で当該設定が無視されるかエラー扱いになるため、CI などで Linux ベースの実行が必要な場合は別途 `"sandbox": "none"` または Docker ベースの sandbox 戦略へフォールバックする運用とする。本リポジトリは現状 macOS 開発を前提とするため未対応。
+
+---
+
+## [047] `.claude/settings.json` セキュリティレビュー反映
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキュリティ面のレビューを実施。[046] で Gemini 側との対称化が完了した状態を起点に、Claude Code 公式ドキュメント（パーミッション仕様）を精査した結果、以下の課題が浮上した。
+
+### 決断
+
+1. **`gh api graphql*` deny パターンの word-boundary 補強**: 公式仕様上、`Bash(gh api graphql*)` は `gh api graphqlfoo` のような誤コマンドにも当たってしまう（`*` は word boundary を持たない）。`Bash(gh api graphql)` と `Bash(gh api graphql *)` の 2 本に分割し、同様に `Bash(gh api * graphql*)` も 2 本に分割することで誤マッチを排除した。
+
+2. **`npm install` 系 allow の統合**: `Bash(npm install)` / `Bash(npm install --save-dev *)` / `Bash(npm install --save *)` の 3 本を `Bash(npm install *)` 1 本に統合。glob の `*` は空文字列を含むため引数なし呼び出しもカバーする。`deny: Bash(npm install -g*)` が deny → ask → allow の順で先評価されるため、グローバルインストールの拒否は維持される。
+
+3. **`curl` / `wget` 全体を ask へ移動**: 公式が「Bash パターンでの引数制約は脆弱（オプション挿入・空白・引用符でバイパス可能）」と明示警告しており、既存の `Bash(curl * | sh*)` 等のパイプ deny は `curl https://...|sh`（パイプ直前の空白省略）でバイパス可能。curl/wget 全体を ask にすることで一律確認を要求し、WebFetch ベースの運用に誘導する。既存パイプ deny は defense-in-depth として残置。
+
+4. **`sandbox.network.allowedDomains` に `docs.anthropic.com` と `code.claude.com` を追加**: `permissions.allow` に `WebFetch(domain:docs.anthropic.com)` / `WebFetch(domain:code.claude.com)` は宣言済みだったが、sandbox の egress allowedDomains 側に未同期だった。Anthropic 公式ドキュメントは現在 `code.claude.com` が正典 URL。
+
+5. **`settings.local.json` の `Bash(gh api:*)` allow を削除**: グローバル `ask: Bash(gh api *)` をローカルで上書きしており、対称ポリシーの主旨（gh api 系は実行前に確認）に反する。
+
+### 却下した選択肢
+
+- **`curl*` / `wget*` 全体を deny にする**: 将来 curl を読み取り用に使うユースケース（例: API レスポンス確認）を排除しすぎるため、ask に留めた。
+- **PreToolUse hook による引数制約の強化**: glob では `gh api graphql`（空白の数・絶対パス経由）や `curl|sh`（リダイレクト・変数展開）の完全遮断ができない。hook 化で Gemini 側 `commandRegex` と同等の精度を確保できるが、実装・メンテコストとの兼ね合いから別 issue で判断する。
+
+### 結果・トレードオフ
+
+- ✅ `gh api graphql` の deny パターンが意図通りの word-boundary で機能するようになった。
+- ✅ `npm install` 系の allow が 1 本に整理され、deny との連携が明確になった。
+- ✅ `curl` / `wget` が ask 化され、パイプ実行の glob 脆弱性が軽減された。
+- ✅ sandbox の egress ドメインと WebFetch 許可ドメインが一致した。
+- ⚠️ `gh api graphql` のバイパス（空白2個、絶対パス経由 `/usr/bin/gh`）は glob 制約のため残存。完全対策は hook 化が必要。
+
+---
+
+## [048] PR #122 6 回目レビュー反映（npm グローバルインストール補完・Bash メタ防御追加）
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+[047] で `npm install -g*` を deny 化したが、npm 7+ 公式サポートの `--global` / `--location=global` や短縮形 `npm i -g` / `npm i --global` がいずれも deny を素通りし `Bash(npm install *)` allow に当たってしまうことが 6 回目レビューで指摘された。また、Claude 側は `Edit/Write(./.claude/**)` / `Edit/Write(./.gemini/**)` の ask でエディタ経由の設定改変をガードしているが、Bash 経由（`rm` / `sed -i` / `tee`）は対象外であり、Gemini 側のメタ防御 regex との非対称が残っていた。`statusline-command.sh` はプロンプト毎に実行されるため、この経路は永続 RCE 経路として性質が重い。
+
+### 決断
+
+1. **npm グローバルインストール deny の補完**: Claude 側 `deny` に `Bash(npm install --global*)` / `Bash(npm install --location=global*)` / `Bash(npm i -g*)` / `Bash(npm i --global*)` を追加。Gemini 側は `commandRegex = "^npm (install|i)\\s+.*(-g\\b|--global\\b|--location\\s*=\\s*global\\b)"` の 1 本化で全形式を網羅（既存 `commandPrefixes` の `"npm install -g"` は除去）。
+
+2. **Claude 側 Bash 経由のメタ防御追加**: glob 制約の近似として `permissions.ask` に以下を追加し、設定ファイルの削除・上書きをユーザー確認必須にする。
+   - `Bash(rm .claude/*)` / `Bash(rm -rf .claude*)` / `Bash(rm .gemini/*)` / `Bash(rm -rf .gemini*)`
+   - `Bash(sed -i* .claude/*)` / `Bash(sed -i* .gemini/*)`
+   - `Bash(tee .claude/*)` / `Bash(tee .gemini/*)`
+
+3. **`excludedCommands: ["gh *"]` の責任分界の明文化**: `gh *` はサンドボックス外で実行される（後述の TLS 証明書ストアアクセス制限により技術的必然）ため、サンドボックスの filesystem / network deny は `gh` には適用されない。permissions の deny / ask が唯一の防御線であり、新規 `gh` サブコマンドを使用する際は `permissions` への影響をレビューすることが必須の運用方針とする。
+
+4. **`ai.google.dev` の意図の明示**: `allowedDomains` に追加した `ai.google.dev` は Gemini CLI のドキュメントサイトであり、API エンドポイント（`generativelanguage.googleapis.com`）ではない。Gemini API を呼び出す機能を追加したい場合は別途 API ドメインの許可を検討する必要があり、`ai.google.dev` の追加がその代替にはならない。
+
+### 却下した選択肢
+
+- **`npm publish`・`rm -rf` に近い完全 deny**: `rm .claude/*` は ask（確認要求）に留めた。legitimate な運用シナリオ（手動クリーンアップ等）でユーザーが明示的に承認できるよう、deny ではなく ask を選択。
+- **glob `Bash(rm*)` の全件 ask 化**: 過剰一致で開発フローが阻害されるため却下。`.claude/` / `.gemini/` パスを明示した限定的な追加に留める。
+- **Gemini 側 commandRegex をそのまま Claude 側に移植**: Claude Code の `permissions` は glob ベースで正規表現メタ文字を解釈しない（[046] 承知済み）。
+- **`gh` コマンドのサンドボックス内実行への移行**: `[046]` の `git pull/fetch` 移行と同様にサンドボックス内実行に戻すことを検討・実機検証したが、`gh` CLI は Go の TLS 実装で macOS の証明書ストア（Security フレームワーク）に依存しており、sandbox-exec がそのアクセスをブロックするため `tls: failed to verify certificate: x509: OSStatus -26276` で全コマンドが失敗した。`git` が独自の証明書バンドルを持つのと対照的に、`gh` はこの制約を回避できない。`gh` は sandbox 外実行が技術的必然（[049] で確定）。なお、`excludedCommands` のワイルドカードパターンを `gh *` から使用済みサブコマンド単位に絞り込む最小特権化は [049] で別途実施している。
+
+### 結果・トレードオフ
+
+- ✅ npm グローバルインストールの全表現形式（`-g`, `--global`, `--location=global`, `npm i` 短縮形）が両ツールで deny される。
+- ✅ Bash 経由の `.claude/` / `.gemini/` 改変（rm / sed / tee）がユーザー確認必須になり、Gemini 側メタ防御との非対称が解消された。
+- ✅ `gh *` の sandbox 外実行が macOS sandbox-exec による **TLS 証明書ストアアクセスの制限** という技術的制約に起因することが実機検証で確定し（`x509: OSStatus -26276`）、permissions による deny / ask が唯一の防御線である旨が確定した。
+- ✅ `ai.google.dev` の意図（ドキュメントサイト、API エンドポイントではない）が明示され、将来のドリフトが防止される。
+- ⚠️ Claude 側 Bash メタ防御は glob 近似であり、`rm -rf .claude/foo/bar` のように深いパスや複雑なコマンドは完全にはカバーできない。Gemini 側 regex との精度差は残存。
+
+---
+
+## [049] `excludedCommands` のスコープ原則確立
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+[046] で `git pull/fetch` を `excludedCommands` から除外し、sandbox 内実行に戻した。その判断の根拠は「`network.allowedDomains` に `github.com` が登録済みであればサンドボックス内で実行可能」というものだったが、この前提は **HTTPS 経由の git remote** にのみ成立する。SSH 経由の remote（`git@github.com:...`）では、接続時に `~/.ssh/known_hosts` の読み取りが必要であり、これが sandbox の `Read(~/.ssh/**)` deny に阻まれるため `git pull` が失敗することが実機で確認された。
+
+また、`curl` / `wget` についても、macOS では HTTPS 通信時にシステム証明書ストア（Security フレームワーク）へのアクセスが必要であり、`gh *` と同様の TLS 証明書検証エラーが発生することが想定される。
+
+これらを受けて、`excludedCommands` の追加判断基準を明文化し、現状の設定を修正する。
+
+### 採用した原則
+
+**`excludedCommands` には、sandbox-exec が制限する OS レベルのリソース（TLS 証明書ストア / SSH known_hosts / keychain / Security フレームワーク）にアクセスする必要があるコマンドのみを登録する。**
+
+サブプロセスや任意スクリプトを実行しうるコマンド（`npm install`, `npm run`, `npx` 等）は、たとえ `permissions.allow` に登録されていても sandbox 内で実行し、 defense-in-depth（`.env`, `~/.ssh`, `~/.aws` への書き込み・読み取り deny）を維持する。
+
+### 決断
+
+`excludedCommands` を以下の構成にする:
+
+```jsonc
+"excludedCommands": [
+  "git push*",    // SSH（既存）
+  "git pull*",    // SSH known_hosts（[046] での除外を取り消し、再追加）
+  "git fetch*",   // SSH known_hosts（同上）
+  "gh pr *",      // TLS 証明書ストア。permissions 登録済みサブコマンドのみに絞り込み
+  "gh issue *",   // 同上
+  "gh repo *",    // 同上
+  "gh release *", // 同上
+  "gh workflow *",// 同上
+  "gh api *",     // 同上
+  "curl*",        // TLS 証明書ストア（macOS curl は Security framework 使用）
+  "wget*"         // TLS 証明書ストア（同上）
+]
+```
+
+`gh *` を 6 サブコマンドパターンに絞り込んだ理由: `gh auth *` / `gh codespace *` / `gh copilot *` / `gh extension *` 等は `permissions` に登録がなく sandbox 外実行を認める必要がない。これらのコマンドが使用された場合はユーザー確認プロンプトが出た上でサンドボックス内実行となり TLS エラーで失敗する（二重の防御層）。`gh repo delete*` 等の deny 済みコマンドはサブコマンドパターン指定下でも deny が優先される。
+
+検証: `git fetch origin` が正常終了することを確認（SSH 接続成功）。
+
+### 却下した選択肢
+
+- **`permissions.allow` / `ask` の全 Bash コマンドを `excludedCommands` に追加（wholesale 化）**: `npm install` / `npm run` / `npx` 等のサブプロセスを含むコマンドを sandbox 外に出すと、post-install スクリプトや任意の npm scripts が `.env` や `~/.ssh` にアクセス可能になる。防御対象（外部からの悪意あるコード）に対して defense-in-depth が失われるため却下。
+- **`sandbox.Read(~/.ssh/**)` deny の解除**: SSH 秘密鍵（`~/.ssh/id_rsa` 等）への読み取りアクセスを許可することになり、sandbox 内で動作するコマンド（npm スクリプト等）が秘密鍵を読み取れるリスクが生じる。`excludedCommands` での限定的な除外で同等の実用性を達成できるため却下。
+
+### 結果・トレードオフ
+
+- ✅ SSH-based git remote での `git pull` / `git fetch` が動作する（[046] の前提ミスを修正）。
+- ✅ `curl` / `wget` が sandbox 制約（TLS 証明書ストア）に阻まれず使える。
+- ✅ `npm install` / `npm run` / `npx` 等のサブプロセス起動コマンドは引き続き sandbox 内で動作し、defense-in-depth が維持される。
+- ✅ `excludedCommands` の追加判断基準（OS リソース要求の有無）が文書化されたことで、将来のコマンド追加時の判断が容易になる。
+- ✅ `gh *` ワイルドカードを `permissions` 登録済みの 6 サブコマンドパターンに絞り込み、未承認の `gh` サブコマンドに対してサンドボックスによる二重防御が機能するようになった。
+- ✅ `curl*` の TLS 証明書ストア依存を検証済み: macOS 同梱の `/usr/bin/curl` は **SecureTransport**（Apple Security フレームワーク）を使用するため、`gh` と同じく sandbox-exec 配下で TLS 検証に失敗する。`excludedCommands` への登録は技術的必然。
+- ⚠️ `wget*` は環境依存: macOS は `wget` を同梱せず、Homebrew の `wget` は **OpenSSL**（`/opt/homebrew/opt/openssl@3`）を使用する。OpenSSL 自身の証明書バンドルにアクセスできれば sandbox 内動作も可能だが、同梱 curl との挙動対称性および将来的な証明書バンドル参照経路の変更リスクを考慮し、`excludedCommands` に残置する判断とした。
+
+---
+
+## [050] Gemini CLI ソースコード検証で発覚した `security.toml` 重大バグの修正
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+PR #122 の再レビュー指摘に対応するため、Gemini CLI のソースコード（`packages/core/src/policy/toml-loader.ts`・`utils.ts`）を直接精査した。その結果、`.gemini/policies/security.toml` に 3 件の重大バグが発覚した。
+
+### 発覚したバグと根拠
+
+**バグ 1: `commandPrefixes`（複数形）は無効フィールド**
+
+Gemini CLI の Zod スキーマは `commandPrefix`（単数形）を定義しており、`commandPrefixes` は未認識フィールドとして Zod の `.strip()` モードにより無視される。その結果、prefix 条件を持たない `toolName = "run_shell_command"` のみのルールが残り、意図しない全コマンドマッチまたは全コマンドブロックが生じる。官方サンプル（`.gemini/skills/async-pr-review/policy.toml`）でも `commandPrefix = [...]`（単数形・配列）が使用されている。
+
+**バグ 2: `commandRegex` での `^` アンカーが機能しない**
+
+`buildArgsPatterns` 関数（`utils.ts` L52）は `commandRegex` を `"command":"<regex>` に変換してから JSON 文字列全体にマッチさせる。そのため `^npm` は `{"command":"npm...` ではなく先頭 `{` にアンカーされ、永遠にマッチしない。影響を受けたルール: npm グローバルインストール deny / フォースプッシュ deny / gh api graphql deny の 3 件すべて。
+
+**バグ 3: `(.*\\s)?` が `isSafeRegExp` でネスト量詞として拒否される**
+
+`isSafeRegExp` は `/\([^)]*[*+?{].*\)[*+?{]/` でネスト量詞パターンを検出する。`^gh api (.*\\s)?(graphql\\b|...)` の `(.*\s)?` はグループ内に `*`、グループ後に `?` を持つため ReDoS 防御としてルール自体が拒否される（エラーログには出るが UI には出ない）。
+
+### 決断
+
+1. **全 3 ブロックの `commandPrefixes` → `commandPrefix` に修正**: deny / allow / ask_user の全ブロック。
+
+2. **npm グローバルインストール deny を `commandPrefix` 配列に変換**:
+   `commandRegex`（`^` アンカー付き）を廃止し、`commandPrefix` で全形式を網羅。同時にバグ 2 で修正できなかった Claude 側の accepted gap（`--location global` スペース区切り）も Gemini 側で完全カバーし、Claude 側 deny にも `Bash(npm install --location global*)` を追加して両ツールで対称化した。
+
+3. **フォースプッシュ deny: `commandRegex` から `^` を除去**:
+   `^git push .*( --force|-f).*` → `git push .*( --force|-f).*`。`^` を除くことで、内部変換後の argsPattern `"command":"git push .*( --force|-f).*` が JSON 文字列中の `git push` にマッチするようになる。
+
+4. **gh api graphql/DELETE deny を 2 ルールに分割**:
+   - `commandPrefix = ["gh api graphql"]` で GitHub GraphQL API エンドポイントを拒否（バグ 2・3 の両方を回避）。
+   - `commandRegex = "gh api .* (--method DELETE|-X DELETE)"` で REST DELETE を拒否（ネスト量詞なし・`^` なし）。
+   - ただし `gh api <REST-path> graphql`（中間パスに graphql を含む）は今回のパターンではカバーされない点は Claude 側の `gh api * graphql` glob と同じ制約として許容する。
+
+### 却下した選択肢
+
+- **`commandRegex = "npm.*(-g|--global|--location.*global)"`**: `^` なし regex で書けば動作するが、`echo "npm install -g"` のような文字列含有コマンドにも誤マッチしうる。`commandPrefix` による前方一致の方が意図が明確で安全。
+- **`commandRegex = "gh api graphql.*"` でバグ 3 を回避**: ネスト量詞は解消されるが `commandRegex` は `"command":"` 変換後にサブストリングマッチになるため `gh api graphql` で十分。`commandPrefix` の方がより正確な前方一致。
+
+### 結果・トレードオフ
+
+- ✅ 全 prefix ベースルール（deny / allow / ask_user）が正式フィールド `commandPrefix` で動作するようになった。
+- ✅ `^` アンカー付き `commandRegex` を廃止・修正し、npm グローバル / フォースプッシュ / gh api 各 deny ルールが実際に機能するようになった。
+- ✅ `npm install --location global`（スペース区切り）が Claude / Gemini 両側で deny されるようになり、[048] で accepted gap として残っていた非対称が解消された。
+- ⚠️ `gh api <REST-path> graphql`（中間パスに graphql を含む）は今回のパターンではカバーされない（Claude glob `gh api * graphql` との精度差は残存）。
+- ⚠️ `.gemini/policies/` はワークスペースティアに配置されているが、Gemini CLI の issue #18186 によりワークスペースポリシーは現在無効化されている（[046] で言及済みだが未解決）。今回のバグ修正は将来 issue が解消された際に正しく機能するための先行対応である。それまでの代替措置として `~/.gemini/policies/security.toml` へのコピーまたはシンボリックリンクを検討することを推奨する。

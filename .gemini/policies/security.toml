@@ -1,0 +1,174 @@
+# Gemini CLI Security Policy
+
+# --- DENY RULES ---
+
+# Destructive or privileged operations
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = [
+  "gh repo delete",
+  "gh secret delete",
+  "gh secret remove",
+  "gh secret set",
+  "gh ssh-key delete",
+  "gh auth logout",
+  "npm publish",
+  "rm -rf /",
+  "rm -rf ~"
+]
+decision = "deny"
+priority = 100
+denyMessage = "Destructive or privileged operations are strictly prohibited."
+
+# Global package installation (all forms: -g, --global, --location=global/global, npm i short form)
+# commandPrefix covers all variants including "npm install --location global" (space-separated).
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = [
+  "npm install -g",
+  "npm install --global",
+  "npm install --location=global",
+  "npm install --location global",
+  "npm i -g",
+  "npm i --global"
+]
+decision = "deny"
+priority = 100
+denyMessage = "Global package installation is prohibited."
+
+# Force push protection
+# Note: commandRegex is matched against the internal JSON form "command":"<cmd>".
+# Do NOT use ^ anchor here; it would anchor to { in {"command":"..."}, never matching.
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = "git push .*( --force|-f).*"
+decision = "deny"
+priority = 100
+denyMessage = "Force push is strictly prohibited."
+
+# Restricted API operations: GitHub GraphQL API
+# commandPrefix catches "gh api graphql ..." (the canonical GitHub GraphQL entrypoint).
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["gh api graphql"]
+decision = "deny"
+priority = 100
+denyMessage = "Direct GraphQL mutations are prohibited to prevent accidental resource deletion."
+
+# Restricted API operations: DELETE requests via gh api
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = "gh api .* (--method DELETE|-X DELETE)"
+decision = "deny"
+priority = 100
+denyMessage = "DELETE requests via gh api are prohibited to prevent accidental resource deletion."
+
+# Execution of remote content via pipe
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*(curl|wget).*\\|\\s*(sh|bash|zsh|python|node|perl|ruby|php).*"
+decision = "deny"
+priority = 100
+denyMessage = "Piping remote content directly to a shell or interpreter is strictly prohibited."
+
+# Sensitive file access (Local context)
+[[rule]]
+toolName = "read_file"
+filePathRegex = "(^|/)\\.env(\\..*)?$"
+decision = "deny"
+priority = 100
+denyMessage = "Access to environment files is restricted."
+
+[[rule]]
+toolName = "read_file"
+filePathRegex = "^secrets/.*"
+decision = "deny"
+priority = 100
+
+# Sensitive file access (Absolute paths to prevent bypass)
+[[rule]]
+toolName = "read_file"
+filePathRegex = "^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\\.aws/.*"
+decision = "deny"
+priority = 100
+
+[[rule]]
+toolName = "read_file"
+filePathRegex = "^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\\.ssh/.*"
+decision = "deny"
+priority = 100
+
+# --- ALLOW RULES ---
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = [
+  "git show",
+  "git branch",
+  "git rev-parse",
+  "git pull",
+  "git fetch",
+  "git remote -v",
+  "git stash list",
+  "git config --get",
+  "gh pr list",
+  "gh pr view",
+  "gh pr status",
+  "gh pr diff",
+  "gh issue list",
+  "gh issue view",
+  "gh issue status",
+  "gh repo view",
+  "gh repo list",
+  "node --version",
+  "npm --version",
+  "which",
+  "pwd"
+]
+decision = "allow"
+priority = 50
+
+# --- ASK RULES ---
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = [
+  "git push",
+  "git reset --hard",
+  "gh pr create",
+  "gh pr merge",
+  "gh pr close",
+  "gh pr edit",
+  "gh release",
+  "gh repo archive",
+  "gh repo rename",
+  "gh issue delete",
+  "gh issue close",
+  "gh workflow run",
+  "gh workflow disable",
+  "gh api",
+  "curl",
+  "wget"
+]
+decision = "ask_user"
+priority = 50
+
+# Metadata protection: Prevent agent from modifying its own configuration via shell commands
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*(\\b(sed\\s+-i|tee|cp|mv|rm)\\b|>>?\\s*).*\\.(gemini|claude)/.*"
+decision = "ask_user"
+priority = 50
+
+# Metadata protection: Direct file edits
+[[rule]]
+toolName = "replace"
+filePathRegex = "^\\.(gemini|claude)/(settings\\.json|policies/.*)$"
+decision = "ask_user"
+priority = 50
+
+[[rule]]
+toolName = "write_file"
+filePathRegex = "^\\.(gemini|claude)/(settings\\.json|policies/.*)$"
+decision = "ask_user"
+priority = 50
