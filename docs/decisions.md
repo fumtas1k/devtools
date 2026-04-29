@@ -1434,39 +1434,6 @@ CI（GitHub Actions）の実行コスト削減と、不要な重複ジョブの�
 
 ---
 
-## [046] Gemini CLI サンドボックスとセキュリティポリシーの導入
-
-**2026-04-29 | ステータス: 採用**
-
-### 背景
-
-Claude Code 側に `.claude/settings.json` でサンドボックスとアクセス制御が設定済みであったが、Gemini CLI にはエージェント用のセキュリティポリシーが存在しなかった。使用ツールによってエージェントの行動範囲が異なるリスクを解消するため、両ツールで一貫したセキュリティレベルを確保する必要があった。
-
-### 決断
-
-1. **`.gemini/settings.json`**: macOS `sandbox-exec` を有効化。ブラウザエージェントがアクセス可能なドメインを制限し、環境変数の機密情報マスキング（Redaction）を有効化。
-2. **`.gemini/policies/security.toml`**: deny / allow / ask_user の 3 段階ルールを定義。Claude Code 側の `permissions` と対称になるよう設計。
-   - **deny**: フォースプッシュ・`rm -rf /`・`npm publish`・`gh repo delete` 等の破壊的操作、GraphQL mutations/DELETE via `gh api`、リモートコンテンツのパイプ実行、機密ファイルへの直接アクセス。
-   - **allow**: `git pull` / `git fetch` / `gh pr diff` を含む、Claude Code 側で許可されている全ての読み取り専用コマンド（`gh pr list`, `node --version` 等）を同期。これにより、ツール間でのエージェントの挙動とユーザーへの確認頻度を一貫させた。
-   - **ask_user**: `git push`・`gh pr create` 等の外部影響を伴う操作、設定ファイル（`.gemini/`, `.claude/`）自体の変更。および、単体での `curl` / `wget` 実行（Claude 側との同期）。
-3. **ブラウザエージェントの許可ドメイン同期**: `.gemini/settings.json` および `.claude/settings.json` の `allowedDomains` に `docs.anthropic.com` や `code.claude.com` に加え、Gemini 関連の主要リソースである `ai.google.dev` を追加。広範な `*.google.com` の許可は Gmail 等の個人データへのアクセスリスクがあるため避け、開発に必要な特定ドメインのみに限定した。
-4. **パイプ実行禁止の対象インタープリタ拡張**: 当初 `sh|bash|zsh|python|node` のみだったが、defense-in-depth として `perl|ruby|php` を追加。`exec` は組み込みコマンドであり既存のシェルパターン（`sh` 等）で十分捕捉されるため追加しない。
-5. **`~` 経由のパスバイパス対策**: `.aws` / `.ssh` の deny 正規表現が絶対パスのみを拒否していた。Gemini CLI が `~` を展開せずに `read_file` へ渡した場合にバイパスが生じるリスクがあるため、`^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\.aws/.*` のように `~[^/]*` を追加。
-6. **`excludedCommands` から `git pull/fetch` を除外**: サンドボックス外で `git pull/fetch` を実行すると、`post-merge`/`post-checkout` フックがサンドボックス保護の外で動作するリスクがある。`network.allowedDomains` に `github.com` 系は既に登録されており、サンドボックス内の書き込み許可スコープ（`.` 以下）も `.git/` を含むため、サンドボックス内での実行に問題はないと判断し除外。（※この判断は HTTPS 経由の git remote を前提としていた。SSH 経由の remote では `~/.ssh/known_hosts` アクセスが sandbox の deny に阻まれ失敗することが後に判明し、[049] にて `git pull/fetch` を `excludedCommands` に再追加した。）
-
-### 却下した選択肢
-
-- **`exec` を禁止インタープリタリストに追加**: `exec` は現プロセスを置き換える組み込みコマンドであり、既存の `sh|bash|zsh` パターンで十分。独立した追加は過剰一致を招く恐れがあるため却下。
-- **Claude 側 deny ルールへの正規表現構文（`\b` 等）の適用**: Claude Code の `permissions` は glob ベースであり正規表現メタ文字を解釈しない。Gemini 側の `commandRegex` をそのまま移植することは仕様上不可能なため、glob による近似で十分と判断。
-
-### 結果・トレードオフ
-
-- ✅ Claude Code / Gemini CLI で対称的なセキュリティポリシーが確立された。
-- ✅ `git pull/fetch` のサンドボックス内実行移行により、Git フック経由の意図しないコード実行リスクが低減した。
-- ⚠️ Gemini CLI が `~` を展開してから `read_file` を呼ぶ場合、`~[^/]*` の追加は冗長になるが副作用はない。
-
----
-
 ## [045] リンクスタイル (:visited) の追加と下線設計の刷新
 
 **2026-04-28 | ステータス: 採用**
@@ -1503,6 +1470,40 @@ Issue #115 にて、訪問済みリンクの区別（`:visited`）がついて�
 - ✅ リンクの状態（通常・ホバー・訪問済み）が一貫したデザインで提供されるようになった。
 - ✅ 各ページから個別のスタイル指定を削除でき、DRY な構成になった。
 - ⚠️ 訪問済みかどうかの判別は色に依存しているが、ブラウザの仕様制限の範囲内で最善の対応としている。
+
+---
+
+## [046] Gemini CLI サンドボックスとセキュリティポリシーの導入
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+Claude Code 側に `.claude/settings.json` でサンドボックスとアクセス制御が設定済みであったが、Gemini CLI にはエージェント用のセキュリティポリシーが存在しなかった。使用ツールによってエージェントの行動範囲が異なるリスクを解消するため、両ツールで一貫したセキュリティレベルを確保する必要があった。
+
+### 決断
+
+1. **`.gemini/settings.json`**: macOS `sandbox-exec` を有効化。ブラウザエージェントがアクセス可能なドメインを制限し、環境変数の機密情報マスキング（Redaction）を有効化。
+2. **`.gemini/policies/security.toml`**: deny / allow / ask_user の 3 段階ルールを定義。Claude Code 側の `permissions` と対称になるよう設計。
+   - **deny**: フォースプッシュ・`rm -rf /`・`npm publish`・`gh repo delete` 等の破壊的操作、GraphQL mutations/DELETE via `gh api`、リモートコンテンツのパイプ実行、機密ファイルへの直接アクセス。
+   - **allow**: `git pull` / `git fetch` / `gh pr diff` を含む、Claude Code 側で許可されている全ての読み取り専用コマンド（`gh pr list`, `node --version` 等）を同期。これにより、ツール間でのエージェントの挙動とユーザーへの確認頻度を一貫させた。
+   - **ask_user**: `git push`・`gh pr create` 等の外部影響を伴う操作、設定ファイル（`.gemini/`, `.claude/`）自体の変更。および、単体での `curl` / `wget` 実行（Claude 側との同期）。
+3. **ブラウザエージェントの許可ドメイン同期**: `.gemini/settings.json` および `.claude/settings.json` の `allowedDomains` に `docs.anthropic.com` や `code.claude.com` に加え、Gemini 関連の主要リソースである `ai.google.dev` を追加。広範な `*.google.com` の許可は Gmail 等の個人データへのアクセスリスクがあるため避け、開発に必要な特定ドメインのみに限定した。
+4. **パイプ実行禁止の対象インタープリタ拡張**: 当初 `sh|bash|zsh|python|node` のみだったが、defense-in-depth として `perl|ruby|php` を追加。`exec` は組み込みコマンドであり既存のシェルパターン（`sh` 等）で十分捕捉されるため追加しない。
+5. **`~` 経由のパスバイパス対策**: `.aws` / `.ssh` の deny 正規表現が絶対パスのみを拒否していた。Gemini CLI が `~` を展開せずに `read_file` へ渡した場合にバイパスが生じるリスクがあるため、`^(~[^/]*|/Users/[^/]+|/home/[^/]+)/\.aws/.*` のように `~[^/]*` を追加。
+6. **`excludedCommands` から `git pull/fetch` を除外**: サンドボックス外で `git pull/fetch` を実行すると、`post-merge`/`post-checkout` フックがサンドボックス保護の外で動作するリスクがある。`network.allowedDomains` に `github.com` 系は既に登録されており、サンドボックス内の書き込み許可スコープ（`.` 以下）も `.git/` を含むため、サンドボックス内での実行に問題はないと判断し除外。（※この判断は HTTPS 経由の git remote を前提としていた。SSH 経由の remote では `~/.ssh/known_hosts` アクセスが sandbox の deny に阻まれ失敗することが後に判明し、[049] にて `git pull/fetch` を `excludedCommands` に再追加した。）
+
+### 却下した選択肢
+
+- **`exec` を禁止インタープリタリストに追加**: `exec` は現プロセスを置き換える組み込みコマンドであり、既存の `sh|bash|zsh` パターンで十分。独立した追加は過剰一致を招く恐れがあるため却下。
+- **Claude 側 deny ルールへの正規表現構文（`\b` 等）の適用**: Claude Code の `permissions` は glob ベースであり正規表現メタ文字を解釈しない。Gemini 側の `commandRegex` をそのまま移植することは仕様上不可能なため、glob による近似で十分と判断。
+
+### 結果・トレードオフ
+
+- ✅ Claude Code / Gemini CLI で対称的なセキュリティポリシーが確立された。
+- ✅ `git pull/fetch` のサンドボックス内実行移行により、Git フック経由の意図しないコード実行リスクが低減した。
+- ⚠️ Gemini CLI が `~` を展開してから `read_file` を呼ぶ場合、`~[^/]*` の追加は冗長になるが副作用はない。
+- ⚠️ `.gemini/settings.json` の `tools.sandbox = "sandbox-exec"` は macOS 専用設定（`sandbox-exec` は Apple のセキュリティ機構）。Linux / Windows / WSL 環境では Gemini CLI 側で当該設定が無視されるかエラー扱いになるため、CI などで Linux ベースの実行が必要な場合は別途 `"sandbox": "none"` または Docker ベースの sandbox 戦略へフォールバックする運用とする。本リポジトリは現状 macOS 開発を前提とするため未対応。
 
 ---
 
@@ -1633,7 +1634,8 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ `npm install` / `npm run` / `npx` 等のサブプロセス起動コマンドは引き続き sandbox 内で動作し、defense-in-depth が維持される。
 - ✅ `excludedCommands` の追加判断基準（OS リソース要求の有無）が文書化されたことで、将来のコマンド追加時の判断が容易になる。
 - ✅ `gh *` ワイルドカードを `permissions` 登録済みの 6 サブコマンドパターンに絞り込み、未承認の `gh` サブコマンドに対してサンドボックスによる二重防御が機能するようになった。
-- ⚠️ `curl*` / `wget*` の TLS 証明書ストアへの依存は実機未検証。動作が確認できた場合は除外が有効、不要と判明した場合は削除を推奨。
+- ✅ `curl*` の TLS 証明書ストア依存を検証済み: macOS 同梱の `/usr/bin/curl` は **SecureTransport**（Apple Security フレームワーク）を使用するため、`gh` と同じく sandbox-exec 配下で TLS 検証に失敗する。`excludedCommands` への登録は技術的必然。
+- ⚠️ `wget*` は環境依存: macOS は `wget` を同梱せず、Homebrew の `wget` は **OpenSSL**（`/opt/homebrew/opt/openssl@3`）を使用する。OpenSSL 自身の証明書バンドルにアクセスできれば sandbox 内動作も可能だが、同梱 curl との挙動対称性および将来的な証明書バンドル参照経路の変更リスクを考慮し、`excludedCommands` に残置する判断とした。
 
 ---
 
