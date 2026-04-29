@@ -106,7 +106,15 @@
       "Bash(gh workflow disable*)",
       "Bash(gh api *)",
       "Bash(curl*)",
-      "Bash(wget*)"
+      "Bash(wget*)",
+      "Bash(rm .claude/*)",
+      "Bash(rm -rf .claude*)",
+      "Bash(rm .gemini/*)",
+      "Bash(rm -rf .gemini*)",
+      "Bash(sed -i* .claude/*)",
+      "Bash(sed -i* .gemini/*)",
+      "Bash(tee .claude/*)",
+      "Bash(tee .gemini/*)"
     ],
     "deny": [
       "Bash(git push --force*)",
@@ -124,6 +132,10 @@
       "Bash(gh api * -X DELETE*)",
       "Bash(gh api * --method DELETE*)",
       "Bash(npm install -g*)",
+      "Bash(npm install --global*)",
+      "Bash(npm install --location=global*)",
+      "Bash(npm i -g*)",
+      "Bash(npm i --global*)",
       "Read(./.env*)",
       "Read(./secrets/**)",
       "Read(~/.aws/**)",

@@ -1538,3 +1538,40 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ `curl` / `wget` が ask 化され、パイプ実行の glob 脆弱性が軽減された。
 - ✅ sandbox の egress ドメインと WebFetch 許可ドメインが一致した。
 - ⚠️ `gh api graphql` のバイパス（空白2個、絶対パス経由 `/usr/bin/gh`）は glob 制約のため残存。完全対策は hook 化が必要。
+
+---
+
+## [048] PR #122 6 回目レビュー反映（npm グローバルインストール補完・Bash メタ防御追加）
+
+**2026-04-29 | ステータス: 採用**
+
+### 背景
+
+[047] で `npm install -g*` を deny 化したが、npm 7+ 公式サポートの `--global` / `--location=global` や短縮形 `npm i -g` / `npm i --global` がいずれも deny を素通りし `Bash(npm install *)` allow に当たってしまうことが 6 回目レビューで指摘された。また、Claude 側は `Edit/Write(./.claude/**)` / `Edit/Write(./.gemini/**)` の ask でエディタ経由の設定改変をガードしているが、Bash 経由（`rm` / `sed -i` / `tee`）は対象外であり、Gemini 側のメタ防御 regex との非対称が残っていた。`statusline-command.sh` はプロンプト毎に実行されるため、この経路は永続 RCE 経路として性質が重い。
+
+### 決断
+
+1. **npm グローバルインストール deny の補完**: Claude 側 `deny` に `Bash(npm install --global*)` / `Bash(npm install --location=global*)` / `Bash(npm i -g*)` / `Bash(npm i --global*)` を追加。Gemini 側は `commandRegex = "^npm (install|i)\\s+.*(-g\\b|--global\\b|--location\\s*=\\s*global\\b)"` の 1 本化で全形式を網羅（既存 `commandPrefixes` の `"npm install -g"` は除去）。
+
+2. **Claude 側 Bash 経由のメタ防御追加**: glob 制約の近似として `permissions.ask` に以下を追加し、設定ファイルの削除・上書きをユーザー確認必須にする。
+   - `Bash(rm .claude/*)` / `Bash(rm -rf .claude*)` / `Bash(rm .gemini/*)` / `Bash(rm -rf .gemini*)`
+   - `Bash(sed -i* .claude/*)` / `Bash(sed -i* .gemini/*)`
+   - `Bash(tee .claude/*)` / `Bash(tee .gemini/*)`
+
+3. **`excludedCommands: ["gh *"]` の責任分界の明文化**: `gh *` はサンドボックス外で実行される（credential helper 要件）ため、サンドボックスの filesystem / network deny は `gh` には適用されない。permissions の deny / ask が唯一の防御線であり、新規 `gh` サブコマンドを使用する際は `permissions` への影響をレビューすることが必須の運用方針とする。
+
+4. **`ai.google.dev` の意図の明示**: `allowedDomains` に追加した `ai.google.dev` は Gemini CLI のドキュメントサイトであり、API エンドポイント（`generativelanguage.googleapis.com`）ではない。Gemini API を呼び出す機能を追加したい場合は別途 API ドメインの許可を検討する必要があり、`ai.google.dev` の追加がその代替にはならない。
+
+### 却下した選択肢
+
+- **`npm publish`・`rm -rf` に近い完全 deny**: `rm .claude/*` は ask（確認要求）に留めた。legitimate な運用シナリオ（手動クリーンアップ等）でユーザーが明示的に承認できるよう、deny ではなく ask を選択。
+- **glob `Bash(rm*)` の全件 ask 化**: 過剰一致で開発フローが阻害されるため却下。`.claude/` / `.gemini/` パスを明示した限定的な追加に留める。
+- **Gemini 側 commandRegex をそのまま Claude 側に移植**: Claude Code の `permissions` は glob ベースで正規表現メタ文字を解釈しない（[046] 承知済み）。
+
+### 結果・トレードオフ
+
+- ✅ npm グローバルインストールの全表現形式（`-g`, `--global`, `--location=global`, `npm i` 短縮形）が両ツールで deny される。
+- ✅ Bash 経由の `.claude/` / `.gemini/` 改変（rm / sed / tee）がユーザー確認必須になり、Gemini 側メタ防御との非対称が解消された。
+- ✅ `gh *` の sandbox 外実行という制約と、permissions のみが防御線である旨が文書化された。
+- ✅ `ai.google.dev` の意図（ドキュメントサイト、API エンドポイントではない）が明示され、将来のドリフトが防止される。
+- ⚠️ Claude 側 Bash メタ防御は glob 近似であり、`rm -rf .claude/foo/bar` のように深いパスや複雑なコマンドは完全にはカバーできない。Gemini 側 regex との精度差は残存。
