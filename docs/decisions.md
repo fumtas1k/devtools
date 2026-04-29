@@ -1558,7 +1558,7 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
    - `Bash(sed -i* .claude/*)` / `Bash(sed -i* .gemini/*)`
    - `Bash(tee .claude/*)` / `Bash(tee .gemini/*)`
 
-3. **`excludedCommands: ["gh *"]` の責任分界の明文化**: `gh *` はサンドボックス外で実行される（credential helper 要件）ため、サンドボックスの filesystem / network deny は `gh` には適用されない。permissions の deny / ask が唯一の防御線であり、新規 `gh` サブコマンドを使用する際は `permissions` への影響をレビューすることが必須の運用方針とする。
+3. **`excludedCommands: ["gh *"]` の責任分界の明文化**: `gh *` はサンドボックス外で実行される（後述の TLS 証明書ストアアクセス制限により技術的必然）ため、サンドボックスの filesystem / network deny は `gh` には適用されない。permissions の deny / ask が唯一の防御線であり、新規 `gh` サブコマンドを使用する際は `permissions` への影響をレビューすることが必須の運用方針とする。
 
 4. **`ai.google.dev` の意図の明示**: `allowedDomains` に追加した `ai.google.dev` は Gemini CLI のドキュメントサイトであり、API エンドポイント（`generativelanguage.googleapis.com`）ではない。Gemini API を呼び出す機能を追加したい場合は別途 API ドメインの許可を検討する必要があり、`ai.google.dev` の追加がその代替にはならない。
 
@@ -1567,23 +1567,12 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - **`npm publish`・`rm -rf` に近い完全 deny**: `rm .claude/*` は ask（確認要求）に留めた。legitimate な運用シナリオ（手動クリーンアップ等）でユーザーが明示的に承認できるよう、deny ではなく ask を選択。
 - **glob `Bash(rm*)` の全件 ask 化**: 過剰一致で開発フローが阻害されるため却下。`.claude/` / `.gemini/` パスを明示した限定的な追加に留める。
 - **Gemini 側 commandRegex をそのまま Claude 側に移植**: Claude Code の `permissions` は glob ベースで正規表現メタ文字を解釈しない（[046] 承知済み）。
+- **`excludedCommands: ["gh *"]` をサブコマンド単位に分割（最小特権化）**: `[046]` の `git pull/fetch` 移行と同様にサンドボックス内実行に戻すことを検討・実機検証したが、`gh` CLI は Go の TLS 実装で macOS の証明書ストア（Security フレームワーク）に依存しており、sandbox-exec がそのアクセスをブロックするため `tls: failed to verify certificate: x509: OSStatus -26276` で全コマンドが失敗した。`git` が独自の証明書バンドルを持つのと対照的に、`gh` はこの制約を回避できない。Claude Code の sandbox-exec プロファイルを直接変更する手段がない限り、`gh *` の全面サンドボックス外実行は技術的必然として維持する。
 
 ### 結果・トレードオフ
 
 - ✅ npm グローバルインストールの全表現形式（`-g`, `--global`, `--location=global`, `npm i` 短縮形）が両ツールで deny される。
 - ✅ Bash 経由の `.claude/` / `.gemini/` 改変（rm / sed / tee）がユーザー確認必須になり、Gemini 側メタ防御との非対称が解消された。
-- ✅ `gh *` の sandbox 外実行という制約と、permissions のみが防御線である旨が文書化された。
+- ✅ `gh *` の sandbox 外実行が macOS sandbox-exec による **TLS 証明書ストアアクセスの制限** という技術的制約に起因することが実機検証で確定し（`x509: OSStatus -26276`）、permissions による deny / ask が唯一の防御線である旨が確定した。
 - ✅ `ai.google.dev` の意図（ドキュメントサイト、API エンドポイントではない）が明示され、将来のドリフトが防止される。
 - ⚠️ Claude 側 Bash メタ防御は glob 近似であり、`rm -rf .claude/foo/bar` のように深いパスや複雑なコマンドは完全にはカバーできない。Gemini 側 regex との精度差は残存。
-
-### 追記: `excludedCommands: ["gh *"]` 最小化の検討（2026-04-29）
-
-`[046]` で `git pull/fetch` をサンドボックス内実行に戻した実績を踏まえ、`gh *` についても同様の最小化を検討・実機検証した。`excludedCommands` から `gh *` を除外し、読み取り系コマンド（`gh pr list`, `gh pr view`, `gh api user`, `gh issue list`, `gh repo view`）を試したところ、**すべて TLS 証明書検証エラーで失敗**した:
-
-```
-Post "https://api.github.com/graphql": tls: failed to verify certificate: x509: OSStatus -26276
-```
-
-`OSStatus -26276` は macOS sandbox-exec が Security フレームワーク（システム証明書トラストストア）へのアクセスをブロックしていることを示す。`gh` CLI は Go の TLS 実装で macOS の証明書ストアに依存しており、sandbox 内では HTTPS 通信自体が不可能であることが判明した。`git` は独自の証明書バンドルを使用するため sandbox 内で動作できるが、`gh` はこの制約を回避できない。
-
-**結論**: `excludedCommands: ["gh *"]` の全面維持は技術的必然であり、将来も変更できない（Claude Code の sandbox-exec プロファイルを直接変更する手段がない限り）。`permissions` による deny / ask ルールが唯一の防御線であるという文書化が正確であることが確認された。
