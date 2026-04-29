@@ -901,6 +901,8 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 
 ## 9. 開発フェーズ
 
+> **ツール候補の詳細は §13 を参照。** Phase 2〜3 でのツール追加はそちらのリストから選定する。
+
 ### Phase 1a: パイロット（2ツール）✅ 完了
 
 - [x] プロジェクト初期化（Astro + React + Tailwind CSS 4 + TypeScript）
@@ -1100,3 +1102,10 @@ erviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js');
 }
 ```
+
+---
+
+## 13. ツール候補リスト（将来実装）
+
+詳細は [docs/tool-candidates.md](docs/tool-candidates.md) を参照。
+S/A/B/C の4段階優先度で全17件のツール案を記録している（2026-04-29 Agent Teams ブレインストーミング）。
