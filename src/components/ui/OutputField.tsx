@@ -30,7 +30,10 @@ interface OutputFieldProps {
  * ラベル＋（CopyButton／任意要素）＋ readOnly textarea を一定構造で描画する。
  *
  * - ヘッダ行は `minHeight: 2rem` で CopyButton の有無に関わらず高さが揃うように固定。
- * - `value` が空のとき CopyButton は `visibility: hidden`（DOM サイズを保つため `display: none` ではない）。
+ * - `value` が空のとき右側スロット (CopyButton / rightSlot) は描画しない。
+ *   以前は `visibility: hidden` で DOM とフォーカス可達性を残していたが、
+ *   キーボードユーザーが透明領域にフォーカスしてしまう WCAG 2.4.7 違反を避けるため
+ *   描画を完全にスキップする方針へ変更（高さは minHeight で確保）。
  */
 export function OutputField({
   id,
@@ -44,6 +47,7 @@ export function OutputField({
   showCopy = true,
   rightSlot,
 }: OutputFieldProps) {
+  const hasValue = value !== '';
   return (
     <div className="w-full">
       <div
@@ -53,13 +57,12 @@ export function OutputField({
         <label htmlFor={id} style={{ ...bodyEmphasis, color: colors.text }}>
           {label}
         </label>
-        <div
-          className="flex items-center gap-2"
-          style={{ visibility: value ? 'visible' : 'hidden' }}
-        >
-          {rightSlot}
-          {showCopy && <CopyButton text={value} label={copyLabel} />}
-        </div>
+        {hasValue && (
+          <div className="flex items-center gap-2">
+            {rightSlot}
+            {showCopy && <CopyButton text={value} label={copyLabel} />}
+          </div>
+        )}
       </div>
       <textarea
         id={id}
