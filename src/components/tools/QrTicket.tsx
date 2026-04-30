@@ -17,7 +17,7 @@ import {
 } from '@/utils/qr-ticket';
 import { downloadSvg } from '@/utils/download';
 import { validateFile } from '@/utils/file-validation';
-import { decodeQrFromFile } from '@/utils/qr-reader';
+import { decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { useQrCamera } from '@/hooks/useQrCamera';
 import { MODE_OPTIONS, GenerateTab, VerifyTab } from './qr-ticket/index';
@@ -319,19 +319,25 @@ export function QrTicketTool() {
 
     camera.setCameraError('');
     setVerificationResult(null);
+    // 同じファイルを再選択できるようにリセット
+    e.target.value = '';
 
-    const result = await decodeQrFromFile(file, { maxDim: 1600 });
+    const result = await decodeQrFromFile(file, { maxDim: DEFAULT_QR_MAX_DIM });
     if (!mountedRef.current) return;
-    if (result === null) {
-      setVerificationResult({
-        valid: false,
-        ticket: null,
-        expired: false,
-        error: '画像からQRコードを読み取れませんでした',
-      });
+    if (!result.ok) {
+      if (result.reason === 'load-error') {
+        camera.setCameraError('画像を読み込めませんでした');
+      } else {
+        setVerificationResult({
+          valid: false,
+          ticket: null,
+          expired: false,
+          error: 'QRコードが見つかりませんでした',
+        });
+      }
       return;
     }
-    handleVerify(result);
+    handleVerify(result.data);
   };
 
   const handleRescan = () => {

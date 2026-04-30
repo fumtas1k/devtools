@@ -3,7 +3,7 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { useQrCamera } from '@/hooks/useQrCamera';
-import { detectQrContent, decodeQrFromFile } from '@/utils/qr-reader';
+import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { validateFile } from '@/utils/file-validation';
 
@@ -11,9 +11,6 @@ const SCAN_OPTIONS = [
   { value: 'camera' as const, label: 'カメラ' },
   { value: 'upload' as const, label: '画像アップロード' },
 ];
-
-// 長辺をこの値以下にダウンスケールして jsQR に渡す（高解像度写真のメモリ節約）
-const MAX_IMG_DIM = 1600;
 
 const sectionStyle = {
   borderRadius: '0.75rem',
@@ -133,13 +130,17 @@ export function QrReaderTool() {
     setDecodeError('');
     setDecoded(null);
 
-    const result = await decodeQrFromFile(file, { maxDim: MAX_IMG_DIM });
+    const result = await decodeQrFromFile(file, { maxDim: DEFAULT_QR_MAX_DIM });
     if (!mountedRef.current) return;
-    if (result === null) {
-      setDecodeError('画像からQRコードを読み取れませんでした');
+    if (!result.ok) {
+      if (result.reason === 'load-error') {
+        setDecodeError('画像を読み込めませんでした');
+      } else {
+        setDecodeError('QRコードが見つかりませんでした');
+      }
       return;
     }
-    setDecoded(result);
+    setDecoded(result.data);
     setDecodeError('');
   };
 
