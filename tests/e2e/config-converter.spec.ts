@@ -128,11 +128,6 @@ test.describe('設定ファイル相互変換', () => {
   });
 
   test('変換先のみ変更しても入力テキストが保持される', async ({ page }) => {
-    await page.goto('/');
-    await waitForReactHydration(page);
-    await page.getByRole('link', { name: /config.converter/i }).click();
-    await waitForReactHydration(page);
-
     const fromGroup = page.getByRole('group', { name: '変換元フォーマット' });
     const toGroup = page.getByRole('group', { name: '変換先フォーマット' });
 
@@ -162,11 +157,6 @@ test.describe('設定ファイル相互変換', () => {
   });
 
   test('変換元を変更すると入力テキストがクリアされる（回帰テスト）', async ({ page }) => {
-    await page.goto('/');
-    await waitForReactHydration(page);
-    await page.getByRole('link', { name: /config.converter/i }).click();
-    await waitForReactHydration(page);
-
     const fromGroup = page.getByRole('group', { name: '変換元フォーマット' });
 
     // JSON テキストを入力
