@@ -87,7 +87,6 @@ export function ConfigConverterTool() {
 
   const handleToChange = (next: ConfigFormat) => {
     setTo(next);
-    reset();
     setWarnings([]);
     setValidationResult(null);
   };
