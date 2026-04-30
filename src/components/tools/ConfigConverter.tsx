@@ -81,12 +81,14 @@ export function ConfigConverterTool() {
     setFrom(next);
     reset();
     setWarnings([]);
+    setValidationResult(null);
   };
 
   const handleToChange = (next: ConfigFormat) => {
     setTo(next);
     reset();
     setWarnings([]);
+    setValidationResult(null);
   };
 
   const handleValidate = async () => {

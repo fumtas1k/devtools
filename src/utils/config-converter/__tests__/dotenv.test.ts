@@ -27,6 +27,28 @@ describe('parseDotenv', () => {
     expect(result).toEqual({ KEY: 'value with spaces' });
   });
 
+  it('クォートなし値のインラインコメントを除去する', () => {
+    expect(parseDotenv('KEY=value # comment')).toEqual({ KEY: 'value' });
+  });
+
+  it('ダブルクォート内の # はコメントとして扱わず保持する', () => {
+    expect(parseDotenv('KEY="value # not a comment"')).toEqual({ KEY: 'value # not a comment' });
+  });
+
+  it('シングルクォート内の # はコメントとして扱わず保持する', () => {
+    expect(parseDotenv("KEY='val # kept'")).toEqual({ KEY: 'val # kept' });
+  });
+
+  it('空白を伴わない # は値の一部として保持する（URL フラグメント等）', () => {
+    expect(parseDotenv('URL=https://example.com#fragment')).toEqual({
+      URL: 'https://example.com#fragment',
+    });
+  });
+
+  it('クォート付き値の後の末尾コメントを除去しクォートを剥がす', () => {
+    expect(parseDotenv('KEY="hello" # trailing comment')).toEqual({ KEY: 'hello' });
+  });
+
   it('不正な行で日本語エラーを投げる', () => {
     expect(() => parseDotenv('INVALID LINE WITHOUT EQUALS')).toThrow('有効な.envではありません');
   });

@@ -21,21 +21,22 @@ export function parseDotenv(text: string): Record<string, string> {
       throw new Error('有効な.envではありません: キーが空の行があります: ' + line);
     }
 
-    let value = line.slice(eqIndex + 1);
+    const rawValue = line.slice(eqIndex + 1);
 
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      // クォート内はインラインコメントを含めてそのまま保持
-      value = value.slice(1, -1);
+    // ダブルクォート: "..." の後に末尾コメントがあっても正しく除去
+    const dqMatch = rawValue.match(/^"((?:[^"\\]|\\.)*)"\s*(?:#.*)?$/);
+    // シングルクォート: '...' の後に末尾コメントがあっても正しく除去
+    const sqMatch = rawValue.match(/^'((?:[^'\\]|\\.)*)'\s*(?:#.*)?$/);
+
+    let value: string;
+    if (dqMatch) {
+      value = dqMatch[1];
+    } else if (sqMatch) {
+      value = sqMatch[1];
     } else {
-      // クォートなし値: 空白+# 以降をインラインコメントとして除去
-      const commentIdx = value.search(/\s+#/);
-      if (commentIdx !== -1) {
-        value = value.slice(0, commentIdx);
-      }
-      value = value.trim();
+      // クォートなし: 空白+# 以降をインラインコメントとして除去
+      const commentIdx = rawValue.search(/\s+#/);
+      value = (commentIdx !== -1 ? rawValue.slice(0, commentIdx) : rawValue).trim();
     }
 
     result[key] = value;
