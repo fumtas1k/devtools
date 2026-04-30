@@ -1688,3 +1688,60 @@ Gemini CLI の Zod スキーマは `commandPrefix`（単数形）を定義して
 - ✅ `npm install --location global`（スペース区切り）が Claude / Gemini 両側で deny されるようになり、[048] で accepted gap として残っていた非対称が解消された。
 - ⚠️ `gh api <REST-path> graphql`（中間パスに graphql を含む）は今回のパターンではカバーされない（Claude glob `gh api * graphql` との精度差は残存）。
 - ⚠️ `.gemini/policies/` はワークスペースティアに配置されているが、Gemini CLI の issue #18186 によりワークスペースポリシーは現在無効化されている（[046] で言及済みだが未解決）。今回のバグ修正は将来 issue が解消された際に正しく機能するための先行対応である。それまでの代替措置として `~/.gemini/policies/security.toml` へのコピーまたはシンボリックリンクを検討することを推奨する。
+
+---
+
+## [051] 設定ファイル相互変換に yaml / smol-toml / ajv を採用
+
+**対象ツール**: 設定ファイル相互変換（`config-converter`）
+
+### 背景
+
+YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装するにあたり、各形式のパース/シリアライズライブラリと JSON Schema 検証ライブラリを選定した。
+
+### 決断
+
+#### YAML: `yaml`（eemeli/yaml）を採用
+
+- `js-yaml` は lockfile に transitive で存在するが、コメント保持に必要な `parseDocument` / `Document` API を持たない
+- `yaml` パッケージは `parseDocument()` + `.toString()` でコメントを含む AST round-trip が可能
+- 同形式（YAML→YAML）整形時はコメントを完全保持する要件を満たすのは `yaml` のみ
+- gzip 約 30KB
+
+#### TOML: `smol-toml` を採用
+
+- Astro の transitive dep として lockfile に存在し、ブラウザ完結での TOML 1.0 対応実績あり
+- コメント保持は非対応（仕様上「同形式整形でコメントが失われる」旨を UI で警告）
+- `@ltd/j-toml` はコメント保持可能だが、round-trip の実装複雑性とバンドルサイズのトレードオフを考慮し見送り
+
+#### .env: 自前パーサを採用
+
+- `dotenv` は Node.js の `fs` モジュールに依存しブラウザ完結不可
+- `KEY=VALUE` 形式の自前パーサは数十行で実装可能で、バンドルサイズへの影響なし
+
+#### JSON Schema 検証: `ajv` + `ajv-formats` を dynamic import で採用
+
+- `ajv` は Astro の transitive dep として lockfile に存在し実績あり
+- gzip 約 40KB と大きいため、スキーマ検証パネルを開いた瞬間に `await import()` で遅延ロードし、初期チャンクへの影響をゼロにした
+- draft-04 は `ajv-draft-04` で分岐対応
+
+#### HCL: Phase 2 後送り
+
+- 純 JS の HCL2 パーサが事実上存在しない
+- `@cdktf/hcl2json` は WASM（Go コンパイル）で 4-7MB になりブラウザ初期ロードへの影響が大きい
+- MVP (YAML/JSON/TOML/.env 4 形式) で十分な価値を提供できると判断し、HCL は Phase 2 以降に先送り
+
+### 却下した選択肢
+
+- **`js-yaml`**: コメント保持 API がない。transitive dep として存在するが明示追加しない
+- **`@ltd/j-toml`**: TOML のコメント保持可能だが実装複雑性が高く、smol-toml で十分
+- **`dotenv`**: Node.js 専用、ブラウザ不可
+- **`@cdktf/hcl2json`（WASM）**: 初期ロード 4-7MB、Phase 2 で再評価
+
+### 結果・トレードオフ
+
+- ✅ 初期バンドルへの影響: gzip で yaml+smol-toml で約 40KB 追加（ajv は遅延ロード）
+- ✅ ブラウザ完結: 4 形式すべてネットワーク送信なしで変換可能
+- ✅ YAML コメント保持: 同形式整形で完全保持
+- ⚠️ TOML コメント保持: smol-toml の制約で保持不可（UI で明示）
+- ⚠️ HCL: 未対応（Phase 2 で `@cdktf/hcl2json` または代替手段を検討）

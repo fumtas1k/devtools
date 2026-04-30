@@ -57,25 +57,29 @@
 
 ### 2.3 主要ライブラリ（MVP で使用）
 
-| ライブラリ                 | 用途                                                     | ツール               |
-| -------------------------- | -------------------------------------------------------- | -------------------- |
-| `ulidx`                    | ULID生成                                                 | ULID生成             |
-| `uuid`                     | UUID v7 生成（`v7()` 関数）                              | UUID v7 生成         |
-| 手動デコード（Base64URL）  | JWTデコード・署名検証                                    | JWTデコーダー        |
-| `qrcode-generator`         | QRコード生成                                             | QRコード生成         |
-| `JsBarcode`                | バーコード描画                                           | JANコード生成        |
-| `bwip-js`                  | GS1バーコード描画（SVG）                                 | GS1 DataBar生成      |
-| `jszip`                    | 複数バーコードのZIPパッケージング                        | GS1 DataBar生成      |
-| `fast-xml-parser`          | JSON⇔XML 相互変換                                        | JSON/XML変換         |
-| `papaparse`                | JSON⇔CSV 相互変換・パース                                | JSON/CSV変換         |
-| `jsqr`                     | QRコードデコード（カメラ・画像）                         | QRチケット           |
-| `@fontsource/noto-sans-jp` | フォントセルフホスト                                     | 全ページ共通         |
-| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency）             | 開発ツール共通       |
-| `typescript`               | TypeScript コンパイラ（devDependency）                   | 開発ツール共通       |
-| `@playwright/test`         | E2Eリグレッションテスト（devDependency）                 | 開発ツール共通       |
-| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                    | 開発ツール共通       |
-| `lint-staged`              | コミット時の自動フォーマット (devDependency)             | 開発ツール共通       |
-| `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16） | 文字コード判定・変換 |
+| ライブラリ                 | 用途                                                             | ツール               |
+| -------------------------- | ---------------------------------------------------------------- | -------------------- |
+| `ulidx`                    | ULID生成                                                         | ULID生成             |
+| `uuid`                     | UUID v7 生成（`v7()` 関数）                                      | UUID v7 生成         |
+| 手動デコード（Base64URL）  | JWTデコード・署名検証                                            | JWTデコーダー        |
+| `qrcode-generator`         | QRコード生成                                                     | QRコード生成         |
+| `JsBarcode`                | バーコード描画                                                   | JANコード生成        |
+| `bwip-js`                  | GS1バーコード描画（SVG）                                         | GS1 DataBar生成      |
+| `jszip`                    | 複数バーコードのZIPパッケージング                                | GS1 DataBar生成      |
+| `fast-xml-parser`          | JSON⇔XML 相互変換                                                | JSON/XML変換         |
+| `papaparse`                | JSON⇔CSV 相互変換・パース                                        | JSON/CSV変換         |
+| `jsqr`                     | QRコードデコード（カメラ・画像）                                 | QRチケット           |
+| `@fontsource/noto-sans-jp` | フォントセルフホスト                                             | 全ページ共通         |
+| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency）                     | 開発ツール共通       |
+| `typescript`               | TypeScript コンパイラ（devDependency）                           | 開発ツール共通       |
+| `@playwright/test`         | E2Eリグレッションテスト（devDependency）                         | 開発ツール共通       |
+| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                            | 開発ツール共通       |
+| `lint-staged`              | コミット時の自動フォーマット (devDependency)                     | 開発ツール共通       |
+| `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）         | 文字コード判定・変換 |
+| `yaml`                     | YAML パース/シリアライズ。コメント保持（Document API）           | 設定ファイル相互変換 |
+| `smol-toml`                | TOML パース/シリアライズ（軽量、コメント保持なし）               | 設定ファイル相互変換 |
+| `ajv`                      | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード | 設定ファイル相互変換 |
+| `ajv-formats`              | ajv の format キーワード拡張（date-time 等）                     | 設定ファイル相互変換 |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -151,7 +155,8 @@ devtools/
     │       ├── qr-code.astro
     │       ├── jan-code.astro
     │       ├── gs1-databar.astro
-    │       └── encoding-converter.astro
+    │       ├── encoding-converter.astro
+    │       └── config-converter.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -169,6 +174,7 @@ devtools/
         ├── jan-code.ts         # JANコード チェックディジット計算
         ├── gs1-databar.ts      # GTIN-14計算・GS1 AIビルダー
         ├── encoding.ts         # 文字コード判定・変換ラッパー（encoding-japanese）
+        ├── config-converter/   # 設定ファイル相互変換（json.ts / yaml.ts / toml.ts / dotenv.ts / schema-validator.ts）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
         ├── qr-ticket.ts
         ├── qrcode.ts
@@ -182,6 +188,7 @@ devtools/
             ├── jan-code.test.ts
             ├── json-csv.test.ts
             ├── json-xml.test.ts
+            ├── config-converter/   # json/yaml/toml/dotenv/schema-validator/convert テスト
             ├── jwt.test.ts
             ├── qr-ticket.test.ts
             ├── url-encode.test.ts
@@ -247,14 +254,15 @@ devtools/
 
 ### カテゴリ B: 変換・解析ツール
 
-| #   | ツール名                  | slug                 | 概要                                                                                 |
-| --- | ------------------------- | -------------------- | ------------------------------------------------------------------------------------ |
-| 7   | JWTデコーダー             | `jwt-decoder`        | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応            |
-| 8   | URLエンコード/デコード    | `url-encode`         | テキスト⇔URLエンコード相互変換                                                       |
-| 9   | Base64エンコード/デコード | `base64`             | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                    |
-| 10  | JSON / XML 変換           | `json-xml`           | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式       |
-| 11  | JSON / CSV 変換           | `json-csv`           | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                        |
-| 12  | 文字コード判定・変換      | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換 |
+| #   | ツール名                  | slug                 | 概要                                                                                                                     |
+| --- | ------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 7   | JWTデコーダー             | `jwt-decoder`        | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応                                                |
+| 8   | URLエンコード/デコード    | `url-encode`         | テキスト⇔URLエンコード相互変換                                                                                           |
+| 9   | Base64エンコード/デコード | `base64`             | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                                                        |
+| 10  | JSON / XML 変換           | `json-xml`           | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式                                           |
+| 11  | JSON / CSV 変換           | `json-csv`           | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                                                            |
+| 12  | 文字コード判定・変換      | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                     |
+| 13  | 設定ファイル相互変換      | `config-converter`   | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート） |
 
 ---
 
@@ -939,6 +947,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] UUID v7 生成（`uuid-v7`）
   - [x] Base64 エンコード/デコード（`base64`）
   - [x] 文字コード判定・変換（`encoding-converter`）
+  - [x] 設定ファイル相互変換（`config-converter`）
   - [ ] JSON整形、Diff、パスワード生成、ハッシュ、文字数カウント等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
