@@ -1,5 +1,20 @@
 import Papa from 'papaparse';
 
+/**
+ * CSVフォーミュラインジェクション（CWE-1236）対策。
+ * セル文字列の先頭が `=`, `+`, `-`, `@`, `\t`, `\r` の場合に
+ * シングルクォートを前置し、Excel / Numbers / LibreOffice 等で
+ * 数式として解釈されないようにする。
+ *
+ * 文字列以外（数値・真偽値・null）は変更しない。
+ */
+function escapeCsvFormula(
+  value: string | number | boolean | null
+): string | number | boolean | null {
+  if (typeof value !== 'string' || value.length === 0) return value;
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
 /** ネストされたオブジェクトをドット記法でフラット化する */
 function flattenObject(
   obj: Record<string, unknown>,
@@ -42,7 +57,12 @@ export function jsonToCsv(jsonStr: string): string {
     if (typeof row !== 'object' || row === null || Array.isArray(row)) {
       throw new Error('オブジェクトまたはオブジェクトの配列を入力してください');
     }
-    return flattenObject(row as Record<string, unknown>);
+    const flat = flattenObject(row as Record<string, unknown>);
+    // フォーミュラインジェクション対策（既定 ON）
+    for (const k of Object.keys(flat)) {
+      flat[k] = escapeCsvFormula(flat[k]);
+    }
+    return flat;
   });
 
   return Papa.unparse(flatRows);
