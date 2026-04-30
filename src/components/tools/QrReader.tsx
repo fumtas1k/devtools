@@ -12,6 +12,9 @@ const SCAN_OPTIONS = [
   { value: 'upload' as const, label: '画像アップロード' },
 ];
 
+// 長辺をこの値以下にダウンスケールして jsQR に渡す（高解像度写真のメモリ節約）
+const MAX_IMG_DIM = 1600;
+
 const sectionStyle = {
   borderRadius: '0.75rem',
   border: `1px solid ${colors.border}`,
@@ -100,18 +103,19 @@ export function QrReaderTool() {
   }, []);
 
   const camera = useQrCamera({ onQrDetected: handleQrDetected });
+  const { stopCamera } = camera;
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      camera.stopCamera();
+      stopCamera();
     };
-  }, [camera.stopCamera]);
+  }, [stopCamera]);
 
   useEffect(() => {
-    if (scanMode !== 'camera') camera.stopCamera();
-  }, [scanMode, camera.stopCamera]);
+    if (scanMode !== 'camera') stopCamera();
+  }, [scanMode, stopCamera]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -124,12 +128,19 @@ export function QrReaderTool() {
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
+      const scale = Math.min(1, MAX_IMG_DIM / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        if (mountedRef.current) setDecodeError('画像処理に失敗しました');
+        return;
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      const imageData = ctx.getImageData(0, 0, w, h);
       const found = jsQR(imageData.data, imageData.width, imageData.height);
       if (!found) {
         if (mountedRef.current) setDecodeError('画像からQRコードを読み取れませんでした');
@@ -167,7 +178,10 @@ export function QrReaderTool() {
             options={SCAN_OPTIONS}
             value={scanMode}
             onChange={(v) => {
-              camera.stopCamera();
+              stopCamera();
+              setDecoded(null);
+              setDecodeError('');
+              camera.setCameraError('');
               setScanMode(v);
             }}
             ariaLabel="読取方法"
@@ -175,6 +189,7 @@ export function QrReaderTool() {
 
           {scanMode === 'camera' ? (
             <div className="space-y-3">
+              {/* カメラ未起動・結果なし時に「起動」ボタンを表示。エラー後もボタンを残すことでリトライを可能にしている */}
               {!camera.cameraActive && !decoded && (
                 <button onClick={camera.startCamera} style={startCameraButtonStyle}>
                   カメラを起動
@@ -195,7 +210,7 @@ export function QrReaderTool() {
                 aria-label="カメラプレビュー"
               />
               {camera.cameraActive && (
-                <button onClick={camera.stopCamera} style={stopCameraButtonStyle}>
+                <button onClick={stopCamera} style={stopCameraButtonStyle}>
                   カメラを停止
                 </button>
               )}
@@ -206,15 +221,22 @@ export function QrReaderTool() {
               <p style={{ ...caption, color: colors.muted }}>
                 QRコードが写った画像（PNG・JPG 等）をアップロードしてください
               </p>
-              <label style={uploadLabelStyle(true)}>
+              {/* input を visually-hidden にしてキーボード・スクリーンリーダーからも操作可能にする */}
+              <input
+                id="qr-image-input"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                style={{
+                  position: 'absolute',
+                  width: 1,
+                  height: 1,
+                  opacity: 0,
+                  pointerEvents: 'none',
+                }}
+              />
+              <label htmlFor="qr-image-input" style={uploadLabelStyle(true)}>
                 画像を選択
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handleImageUpload}
-                  aria-label="画像を選択"
-                />
               </label>
             </div>
           )}

@@ -114,7 +114,7 @@ test.describe('QRリーダー', () => {
 
     await expect(page.getByText(text)).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: '再スキャン' }).click();
-    await expect(page.getByText(text)).not.toBeVisible();
+    await expect(page.getByText(text)).toHaveCount(0);
   });
 
   // ────────────────────────────────
