@@ -87,6 +87,12 @@ export const tools: Tool[] = [
     description: 'ECDSA署名付きQRチケットを生成し、公開鍵でオフライン検証します',
     category: 'generate',
   },
+  {
+    slug: 'qr-reader',
+    name: 'QRリーダー',
+    description: 'カメラまたは画像ファイルからQRコードを読み取り、テキストを表示します',
+    category: 'convert',
+  },
 ];
 
 export const categoryLabel: Record<ToolCategory, string> = {
