@@ -140,10 +140,7 @@ test.describe('設定ファイル相互変換', () => {
     await inputTextarea.fill('host: localhost\nport: 8080');
 
     // 出力が JSON になるまで待機
-    await page.waitForFunction(() => {
-      const outputs = document.querySelectorAll('textarea[readonly]');
-      return Array.from(outputs).some((el) => (el as HTMLTextAreaElement).value.includes('{'));
-    });
+    await expect(page.getByLabel('JSON')).toHaveValue(/\{/);
 
     // 変換先を TOML に切り替え
     await toGroup.getByRole('button', { name: 'TOML' }).click();
@@ -152,8 +149,7 @@ test.describe('設定ファイル相互変換', () => {
     await expect(inputTextarea).toHaveValue('host: localhost\nport: 8080');
 
     // 出力が TOML 形式に更新されること
-    const outputTextarea = page.locator('textarea[readonly]').first();
-    await expect(outputTextarea).toContainText('host');
+    await expect(page.getByLabel('TOML')).toHaveValue(/host/);
   });
 
   test('変換元を変更すると入力テキストがクリアされる（回帰テスト）', async ({ page }) => {
@@ -167,6 +163,6 @@ test.describe('設定ファイル相互変換', () => {
     await fromGroup.getByRole('button', { name: 'YAML' }).click();
 
     // 入力がクリアされること
-    await expect(page.locator('textarea').first()).toHaveValue('');
+    await expect(page.getByLabel('YAML (整形)')).toHaveValue('');
   });
 });
