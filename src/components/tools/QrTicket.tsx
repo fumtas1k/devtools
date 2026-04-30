@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import jsQR from 'jsqr';
 import JSZip from 'jszip';
 import {
   generateKeyPair,
@@ -17,6 +16,8 @@ import {
   type VerificationResult,
 } from '@/utils/qr-ticket';
 import { downloadSvg } from '@/utils/download';
+import { validateFile } from '@/utils/file-validation';
+import { decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { useQrCamera } from '@/hooks/useQrCamera';
 import { MODE_OPTIONS, GenerateTab, VerifyTab } from './qr-ticket/index';
@@ -306,38 +307,35 @@ export function QrTicketTool() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // 同じファイルを再選択できるようにリセット
+    e.target.value = '';
+
+    const validation = validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
+    if (!validation.ok) {
+      if (!mountedRef.current) return;
+      camera.setCameraError(validation.message);
+      return;
+    }
+
     camera.setCameraError('');
     setVerificationResult(null);
 
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const found = jsQR(imageData.data, imageData.width, imageData.height);
-      if (!found) {
+    const result = await decodeQrFromFile(file, { maxDim: DEFAULT_QR_MAX_DIM });
+    if (!mountedRef.current) return;
+    if (!result.ok) {
+      if (result.reason === 'load-error') {
+        camera.setCameraError('画像を読み込めませんでした');
+      } else {
         setVerificationResult({
           valid: false,
           ticket: null,
           expired: false,
-          error: '画像からQRコードを読み取れませんでした',
+          error: 'QRコードが見つかりませんでした',
         });
-        return;
       }
-      handleVerify(found.data);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      camera.setCameraError('画像の読み込みに失敗しました');
-    };
-    img.src = url;
-    // 同じファイルを再選択できるようにリセット
-    e.target.value = '';
+      return;
+    }
+    handleVerify(result.data);
   };
 
   const handleRescan = () => {

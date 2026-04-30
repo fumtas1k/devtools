@@ -1,19 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import jsQR from 'jsqr';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { useQrCamera } from '@/hooks/useQrCamera';
-import { detectQrContent } from '@/utils/qr-reader';
+import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { validateFile } from '@/utils/file-validation';
 
 const SCAN_OPTIONS = [
   { value: 'camera' as const, label: 'カメラ' },
   { value: 'upload' as const, label: '画像アップロード' },
 ];
-
-// 長辺をこの値以下にダウンスケールして jsQR に渡す（高解像度写真のメモリ節約）
-const MAX_IMG_DIM = 1600;
 
 const sectionStyle = {
   borderRadius: '0.75rem',
@@ -117,47 +114,34 @@ export function QrReaderTool() {
     if (scanMode !== 'camera') stopCamera();
   }, [scanMode, stopCamera]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // 同名ファイルを再選択できるよう値をクリア（File 自体は file 変数で参照済み）
+    e.target.value = '';
+
+    const validation = validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
+    if (!validation.ok) {
+      if (mountedRef.current) setDecodeError(validation.message);
+      return;
+    }
+
     camera.setCameraError('');
     setDecodeError('');
     setDecoded(null);
 
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, MAX_IMG_DIM / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        if (mountedRef.current) setDecodeError('画像処理に失敗しました');
-        return;
+    const result = await decodeQrFromFile(file, { maxDim: DEFAULT_QR_MAX_DIM });
+    if (!mountedRef.current) return;
+    if (!result.ok) {
+      if (result.reason === 'load-error') {
+        setDecodeError('画像を読み込めませんでした');
+      } else {
+        setDecodeError('QRコードが見つかりませんでした');
       }
-      ctx.drawImage(img, 0, 0, w, h);
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const found = jsQR(imageData.data, imageData.width, imageData.height);
-      if (!found) {
-        if (mountedRef.current) setDecodeError('画像からQRコードを読み取れませんでした');
-        return;
-      }
-      if (mountedRef.current) {
-        setDecoded(found.data);
-        setDecodeError('');
-      }
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      if (mountedRef.current) setDecodeError('画像の読み込みに失敗しました');
-    };
-    img.src = url;
-    // 同名ファイルを再選択できるよう値をクリア（File 自体は file 変数で参照済み）
-    e.target.value = '';
+      return;
+    }
+    setDecoded(result.data);
+    setDecodeError('');
   };
 
   const handleRescan = () => {
@@ -239,6 +223,9 @@ export function QrReaderTool() {
               <label htmlFor="qr-image-input" style={uploadLabelStyle(true)}>
                 画像を選択
               </label>
+              <p style={{ fontSize: '0.75rem', color: colors.muted, marginTop: '0.25rem' }}>
+                対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
+              </p>
             </div>
           )}
 

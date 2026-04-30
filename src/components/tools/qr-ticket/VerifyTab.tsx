@@ -139,6 +139,9 @@ export function VerifyTab({
                   aria-label="画像を選択"
                 />
               </label>
+              <p style={{ fontSize: '0.75rem', color: colors.muted, marginTop: '0.25rem' }}>
+                対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
+              </p>
               {!verifyPubKeyStr.trim() && (
                 <p style={{ ...caption, color: colors.muted }}>公開鍵を入力してください</p>
               )}

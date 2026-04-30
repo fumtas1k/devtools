@@ -200,6 +200,6 @@ test.describe('QRリーダー', () => {
       buffer: blankPng,
     });
 
-    await expect(page.getByRole('alert')).toContainText('画像からQRコードを読み取れませんでした');
+    await expect(page.getByRole('alert')).toContainText('QRコードが見つかりませんでした');
   });
 });
