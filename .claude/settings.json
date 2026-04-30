@@ -27,7 +27,13 @@
       "gh workflow *",
       "gh api *",
       "curl*",
-      "wget*"
+      "wget*",
+      "npm run dev*",
+      "npm run preview*",
+      "npm run test:e2e*",
+      "npx astro dev*",
+      "npx astro preview*",
+      "npx playwright test*"
     ],
     "allowUnsandboxedCommands": false,
     "network": {
