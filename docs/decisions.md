@@ -1803,3 +1803,30 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - ✅ `qr-ticket` の責務（署名検証）が明確になり、両ツールのコードが単純に保たれた。
 - ✅ URL の自動リンク化を行わず、`http:`/`https:` 以外のスキームも `text` として扱うことでフィッシング・XSS リスクを最小化した。
 - ⚠️ Wi-Fi / vCard / mailto 等の QR フォーマット解析は今回スコープ外（将来の拡張候補）。
+
+---
+
+## [054] 月次 issue メトリクス収集ワークフローを追加
+
+**2026-04-30 | ステータス: 採用**
+
+### 背景
+
+devtools リポジトリの issue 活動量（新規作成数・クローズ率等）を定量的に把握し、開発サイクルの健全性を継続モニタリングしたい。手動集計は属人的で継続しづらいため、GitHub Actions で自動化する。
+
+### 決断
+
+`.github/workflows/metrics.yml` を追加し、毎月 1 日 UTC 5:00（JST 14:00）に `github/issue-metrics@v3` で前月分の issue メトリクスを収集し、`peter-evans/create-issue-from-file@v5` でレポート issue を自動作成する。
+
+- `SEARCH_QUERY` は `repo:${{ github.repository }}` でリポジトリ名をハードコードせず、フォーク・リネームにも対応。
+- job-level permissions は `issues: write` のみ（`is:issue` 限定クエリのため `pull-requests: read` は不要）。
+- `workflow_dispatch` を追加しテスト手動実行を可能にしている。
+
+### 却下した選択肢
+
+- **手動集計**: 継続性に欠ける。
+- **外部 SaaS 利用**: ブラウザ完結・データ送信なしの方針と相反する。
+
+### 将来課題
+
+- `peter-evans/create-issue-from-file` のサードパーティ action は現状タグ参照。サプライチェーンリスク低減のため SHA pinning への移行を検討（#174）。
