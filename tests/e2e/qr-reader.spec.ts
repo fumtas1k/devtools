@@ -176,6 +176,7 @@ test.describe('QRリーダー', () => {
       });
     });
 
+    // beforeEach で既に goto 済みだが、addInitScript は次回ロードから反映されるため再ナビゲートする
     await page.goto('/tools/qr-reader');
     await waitForReactHydration(page);
     await page.getByRole('button', { name: 'カメラを起動' }).click();
