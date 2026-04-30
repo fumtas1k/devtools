@@ -52,4 +52,12 @@ test.describe('JSON / CSV 変換', () => {
     await page.getByRole('button', { name: 'CSV → JSON' }).click();
     await expect(page.getByLabel('入力')).toHaveValue('');
   });
+
+  test('JSON → CSV: フォーミュラインジェクションをエスケープする', async ({ page }) => {
+    await page.getByLabel('入力').fill('[{"formula":"=SUM(A1:A10)","plus":"+1+1","at":"@SUM"}]');
+    // 先頭にシングルクォートが付加され、Excel が数式として解釈しない
+    await expect(page.getByLabel('変換結果')).toHaveValue(/'=SUM\(A1:A10\)/);
+    await expect(page.getByLabel('変換結果')).toHaveValue(/'\+1\+1/);
+    await expect(page.getByLabel('変換結果')).toHaveValue(/'@SUM/);
+  });
 });

@@ -48,6 +48,82 @@ describe('jsonToCsv', () => {
       'オブジェクトまたはオブジェクトの配列を入力してください'
     );
   });
+
+  describe('CSVフォーミュラインジェクション対策', () => {
+    it('= で始まる文字列セルはシングルクォートでエスケープされる', () => {
+      const json = '[{"formula":"=SUM(A1:A10)"}]';
+      const result = jsonToCsv(json);
+      // 先頭にシングルクォートが付加され、Excel が数式として解釈しない
+      expect(result).toContain(`'=SUM(A1:A10)`);
+      // エスケープ前の生 `=SUM` が行頭にあるとエクセルで数式実行される
+      expect(result).not.toMatch(/^formula\r?\n=SUM/);
+    });
+
+    it('+ で始まる文字列セルはエスケープされる', () => {
+      const json = '[{"v":"+1+1"}]';
+      const result = jsonToCsv(json);
+      expect(result).toContain(`'+1+1`);
+    });
+
+    it('- で始まる文字列セルはエスケープされる', () => {
+      const json = '[{"v":"-1+2"}]';
+      const result = jsonToCsv(json);
+      expect(result).toContain(`'-1+2`);
+    });
+
+    it('@ で始まる文字列セルはエスケープされる', () => {
+      const json = '[{"v":"@SUM(1,2)"}]';
+      const result = jsonToCsv(json);
+      expect(result).toContain(`'@SUM(1,2)`);
+    });
+
+    it('タブ文字で始まる文字列セルはエスケープされる', () => {
+      const json = '[{"v":"\\tHello"}]';
+      const result = jsonToCsv(json);
+      expect(result).toContain(`'\tHello`);
+    });
+
+    it('CR で始まる文字列セルはエスケープされる', () => {
+      const json = '[{"v":"\\rOK"}]';
+      const result = jsonToCsv(json);
+      expect(result).toContain(`'\rOK`);
+    });
+
+    it('通常の文字列はエスケープされない', () => {
+      const json = '[{"name":"太郎","msg":"hello"}]';
+      const result = jsonToCsv(json);
+      expect(result).toContain('太郎');
+      expect(result).toContain('hello');
+      expect(result).not.toContain(`'太郎`);
+      expect(result).not.toContain(`'hello`);
+    });
+
+    it('数値・真偽値・null は影響を受けない', () => {
+      const json = '[{"n":42,"b":true,"x":null}]';
+      const result = jsonToCsv(json);
+      const lines = result.split(/\r?\n/);
+      expect(lines[0]).toBe('n,b,x');
+      // 値はそのまま、シングルクォートは付かない
+      expect(lines[1]).toBe('42,true,');
+    });
+
+    it('配列値は JSON 文字列化されるため先頭が [ になりエスケープされない', () => {
+      // 配列の中身が = で始まっても、JSON.stringify でラップされた結果は ["=..."] となるため対象外
+      const json = '[{"tags":["=evil","ok"]}]';
+      const result = jsonToCsv(json);
+      // 先頭が [ なのでシングルクォートは前置されない（JSON.stringify 経由）
+      expect(result).not.toMatch(/'\[/);
+      // CSV 出力では JSON 文字列がダブルクォート二重化されてセル化される
+      expect(result).toContain('[""=evil""');
+    });
+
+    it('ネストオブジェクト内の危険値もエスケープされる', () => {
+      const json = '[{"u":{"name":"=cmd|\' /C calc\'!A1"}}]';
+      const result = jsonToCsv(json);
+      expect(result).toContain('u.name');
+      expect(result).toMatch(/'=cmd/);
+    });
+  });
 });
 
 describe('csvToJson', () => {
