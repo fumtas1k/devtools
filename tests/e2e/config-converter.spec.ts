@@ -167,11 +167,6 @@ test.describe('設定ファイル相互変換', () => {
   });
 
   test('JSON Schema 検証パネル: Cmd/Ctrl+Enter でスキーマ検証が実行される', async ({ page }) => {
-    await page.goto('/');
-    await waitForReactHydration(page);
-    await page.getByRole('link', { name: /config.converter/i }).click();
-    await waitForReactHydration(page);
-
     // from=JSON, to=JSON（同一のとき "JSON (整形)" ラベル）にセット
     // デフォルトが from=JSON なので to=JSON になるよう設定
     const toGroup = page.getByRole('group', { name: '変換先フォーマット' });
