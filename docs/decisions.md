@@ -1749,6 +1749,7 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 
 - `dotenv` は Node.js の `fs` モジュールに依存しブラウザ完結不可
 - `KEY=VALUE` 形式の自前パーサは数十行で実装可能で、バンドルサイズへの影響なし
+- ダブルクォート内のエスケープは `\\` と `\"` のみアンエスケープし、`\n` 等のシーケンスは文字列リテラルとして保持する（POSIX dotenv の `expand` 相当の改行展開は MVP では未対応。将来的に `expand` オプションとして追加余地あり）
 
 #### JSON Schema 検証: `ajv` + `ajv-draft-04` + `ajv-formats` を dynamic import で採用
 
