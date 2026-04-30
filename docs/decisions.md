@@ -1750,11 +1750,11 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - `dotenv` は Node.js の `fs` モジュールに依存しブラウザ完結不可
 - `KEY=VALUE` 形式の自前パーサは数十行で実装可能で、バンドルサイズへの影響なし
 
-#### JSON Schema 検証: `ajv` + `ajv-formats` を dynamic import で採用
+#### JSON Schema 検証: `ajv` + `ajv-draft-04` + `ajv-formats` を dynamic import で採用
 
 - `ajv` は Astro の transitive dep として lockfile に存在し実績あり
 - gzip 約 40KB と大きいため、スキーマ検証パネルを開いた瞬間に `await import()` で遅延ロードし、初期チャンクへの影響をゼロにした
-- draft-04 は `ajv-draft-04` で分岐対応
+- draft-04 対応は `ajv-draft-04` を使用。`yaml-language-server` の transitive dep として lockfile に存在していたが、本番ビルドで `--omit=dev` 解決が走ると欠落するリスクがあるため `dependencies` に明示登録した
 
 #### HCL: Phase 2 後送り
 

@@ -83,9 +83,6 @@ test.describe('設定ファイル相互変換', () => {
 
     await page.getByRole('button', { name: '検証する', exact: true }).click();
 
-    // 動的インポートを伴う非同期処理のため少し待つ
-    await page.waitForTimeout(500);
-
     await expect(page.getByText('スキーマ検証成功')).toBeVisible();
   });
 
@@ -108,9 +105,25 @@ test.describe('設定ファイル相互変換', () => {
 
     await page.getByRole('button', { name: '検証する', exact: true }).click();
 
-    // 動的インポートを伴う非同期処理のため少し待つ
-    await page.waitForTimeout(500);
-
     await expect(page.getByText('/age')).toBeVisible();
+  });
+
+  test('JSON Schema検証パネル: to=YAML 出力に対してもスキーマ検証が動作する', async ({ page }) => {
+    // 初期状態: from=JSON, to=YAML（デフォルト）
+    await page.getByLabel('JSON').fill('{"name": "太郎", "age": 30}');
+
+    await expect(page.getByLabel('YAML')).not.toHaveValue('');
+
+    await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
+
+    await page
+      .getByLabel('JSON Schema (貼り付け)')
+      .fill(
+        '{"type": "object", "required": ["name", "age"], "properties": {"name": {"type": "string"}, "age": {"type": "number"}}}'
+      );
+
+    await page.getByRole('button', { name: '検証する', exact: true }).click();
+
+    await expect(page.getByText('スキーマ検証成功')).toBeVisible();
   });
 });

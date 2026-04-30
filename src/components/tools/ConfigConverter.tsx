@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
@@ -17,8 +17,6 @@ const FORMAT_LABELS: Record<ConfigFormat, string> = {
   toml: 'TOML',
   dotenv: '.env',
 };
-
-const formatLabel = (f: ConfigFormat) => FORMAT_LABELS[f];
 
 const EXTENSIONS: Record<ConfigFormat, string> = {
   json: 'json',
@@ -61,22 +59,23 @@ export function ConfigConverterTool() {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
 
+  const warningsRef = useRef<string[]>([]);
   const { input, setInput, output, error, reset } = useCodec(
-    (text) => convert(text, from, to).output,
+    (text) => {
+      const result = convert(text, from, to);
+      warningsRef.current = result.warnings;
+      return result.output;
+    },
     [from, to]
   );
 
   useEffect(() => {
-    if (!input || error) {
+    if (!output && !error) {
       setWarnings([]);
       return;
     }
-    try {
-      setWarnings(convert(input, from, to).warnings);
-    } catch {
-      setWarnings([]);
-    }
-  }, [input, from, to, error]);
+    setWarnings(error ? [] : warningsRef.current);
+  }, [output, error]);
 
   const handleFromChange = (next: ConfigFormat) => {
     setFrom(next);
@@ -99,7 +98,7 @@ export function ConfigConverterTool() {
       try {
         data = JSON.parse(output);
       } catch {
-        data = convert(output, to, 'json');
+        data = JSON.parse(convert(output, to, 'json').output);
       }
       let schema: unknown;
       try {
@@ -120,7 +119,10 @@ export function ConfigConverterTool() {
         errors: [
           {
             path: '/',
-            message: e instanceof Error ? e.message : '検証中にエラーが発生しました',
+            message:
+              e instanceof Error && /[぀-龯　-〿]/.test(e.message)
+                ? e.message
+                : 'JSON Schema の解析に失敗しました',
           },
         ],
       });
@@ -156,7 +158,7 @@ export function ConfigConverterTool() {
         <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="config-converter-input"
-            label={from === to ? `${formatLabel(from)} (整形)` : formatLabel(from)}
+            label={from === to ? `${FORMAT_LABELS[from]} (整形)` : FORMAT_LABELS[from]}
             value={input}
             onChange={setInput}
             multiline
@@ -170,7 +172,7 @@ export function ConfigConverterTool() {
         <div className="w-full md:flex-1 min-w-0">
           <OutputField
             id="config-converter-output"
-            label={formatLabel(to)}
+            label={FORMAT_LABELS[to]}
             value={output}
             rows={16}
             rightSlot={

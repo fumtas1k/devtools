@@ -23,12 +23,19 @@ export function parseDotenv(text: string): Record<string, string> {
 
     let value = line.slice(eqIndex + 1);
 
-    // クォートを取り除く
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
     ) {
+      // クォート内はインラインコメントを含めてそのまま保持
       value = value.slice(1, -1);
+    } else {
+      // クォートなし値: 空白+# 以降をインラインコメントとして除去
+      const commentIdx = value.search(/\s+#/);
+      if (commentIdx !== -1) {
+        value = value.slice(0, commentIdx);
+      }
+      value = value.trim();
     }
 
     result[key] = value;
