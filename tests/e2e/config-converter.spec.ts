@@ -126,4 +126,57 @@ test.describe('設定ファイル相互変換', () => {
 
     await expect(page.getByText('スキーマ検証成功')).toBeVisible();
   });
+
+  test('変換先のみ変更しても入力テキストが保持される', async ({ page }) => {
+    await page.goto('/');
+    await waitForReactHydration(page);
+    await page.getByRole('link', { name: /config.converter/i }).click();
+    await waitForReactHydration(page);
+
+    const fromGroup = page.getByRole('group', { name: '変換元フォーマット' });
+    const toGroup = page.getByRole('group', { name: '変換先フォーマット' });
+
+    // YAML → JSON にセット
+    await fromGroup.getByRole('button', { name: 'YAML' }).click();
+    await toGroup.getByRole('button', { name: 'JSON' }).click();
+
+    // YAML テキストを入力
+    const inputTextarea = page.getByLabel(/^YAML/);
+    await inputTextarea.fill('host: localhost\nport: 8080');
+
+    // 出力が JSON になるまで待機
+    await page.waitForFunction(() => {
+      const outputs = document.querySelectorAll('textarea[readonly]');
+      return Array.from(outputs).some((el) => (el as HTMLTextAreaElement).value.includes('{'));
+    });
+
+    // 変換先を TOML に切り替え
+    await toGroup.getByRole('button', { name: 'TOML' }).click();
+
+    // 入力が保持されていること
+    await expect(inputTextarea).toHaveValue('host: localhost\nport: 8080');
+
+    // 出力が TOML 形式に更新されること
+    const outputTextarea = page.locator('textarea[readonly]').first();
+    await expect(outputTextarea).toContainText('host');
+  });
+
+  test('変換元を変更すると入力テキストがクリアされる（回帰テスト）', async ({ page }) => {
+    await page.goto('/');
+    await waitForReactHydration(page);
+    await page.getByRole('link', { name: /config.converter/i }).click();
+    await waitForReactHydration(page);
+
+    const fromGroup = page.getByRole('group', { name: '変換元フォーマット' });
+
+    // JSON テキストを入力
+    const inputTextarea = page.getByLabel(/^JSON/);
+    await inputTextarea.fill('{"host":"localhost"}');
+
+    // 変換元を YAML に切り替え
+    await fromGroup.getByRole('button', { name: 'YAML' }).click();
+
+    // 入力がクリアされること
+    await expect(page.locator('textarea').first()).toHaveValue('');
+  });
 });
