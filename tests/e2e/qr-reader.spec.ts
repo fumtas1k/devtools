@@ -165,6 +165,27 @@ test.describe('QRリーダー', () => {
   // エラーケース
   // ────────────────────────────────
 
+  test('navigator.mediaDevices が未定義のときカメラ起動で HTTPS 必須メッセージを表示する', async ({
+    page,
+  }) => {
+    // 非HTTPS / localhost 以外の環境では navigator.mediaDevices が undefined になる挙動を再現
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        get: () => undefined,
+      });
+    });
+
+    // beforeEach で既に goto 済みだが、addInitScript は次回ロードから反映されるため再ナビゲートする
+    await page.goto('/tools/qr-reader');
+    await waitForReactHydration(page);
+    await page.getByRole('button', { name: 'カメラを起動' }).click();
+
+    await expect(page.getByRole('alert')).toContainText(
+      'カメラの起動には HTTPS 環境または localhost が必要です'
+    );
+  });
+
   test('QRコードを含まない画像をアップロードするとエラーが表示される', async ({ page }) => {
     // 1x1 の白 PNG (QR なし)
     const blankPng = Buffer.from(

@@ -1,3 +1,8 @@
+// クォート種・バックスラッシュのみアンエスケープ（単発走査で順序問題を回避）
+function unescapeDotenv(s: string, quote: '"' | "'"): string {
+  return s.replace(/\\(.)/g, (_, c) => (c === quote || c === '\\' ? c : '\\' + c));
+}
+
 /** .env文字列 → Record<string, string>。失敗時は Error を投げる */
 export function parseDotenv(text: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -30,9 +35,9 @@ export function parseDotenv(text: string): Record<string, string> {
 
     let value: string;
     if (dqMatch) {
-      value = dqMatch[1];
+      value = unescapeDotenv(dqMatch[1], '"');
     } else if (sqMatch) {
-      value = sqMatch[1];
+      value = unescapeDotenv(sqMatch[1], "'");
     } else {
       // クォートなし: 空白+# 以降をインラインコメントとして除去
       const commentIdx = rawValue.search(/\s+#/);

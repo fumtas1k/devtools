@@ -96,6 +96,15 @@
 gh pr create --base develop --title "..." --body-file /tmp/pr_body.md
 ```
 
+### 6.4 先送り（deferral）時は必ず issue 化する
+
+レビュー指摘や作業中に発見した課題を「別 PR で対応」「後で追記する」と判断する場合、**その場で GitHub issue を作成**し、PR コメントに issue 番号を明記する。
+
+- ❌ 禁止: 「別 PR でメモ追記します（本 PR スコープ外）」だけで終わらせる
+- ✅ 必須: `gh issue create` または MCP の `issue_write` で issue を起票し、`#<番号>` を PR の返信に貼る
+- 1 行のドキュメント追記など本 PR で完結できる軽微な対応は、先送りせず本 PR に含めるのが優先。
+- スコープ判断で本当に分離が必要な場合のみ issue 化する。issue 化しない口頭の「後で」は形骸化するため禁止。
+
 ---
 
 ## 7. スタイル・UI ルール（基本）
