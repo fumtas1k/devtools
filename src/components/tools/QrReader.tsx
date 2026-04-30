@@ -224,7 +224,7 @@ export function QrReaderTool() {
                 画像を選択
               </label>
               <p style={{ fontSize: '0.75rem', color: colors.muted, marginTop: '0.25rem' }}>
-                対応形式: PNG / JPEG / WebP / GIF・最大 15 MB
+                対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
               </p>
             </div>
           )}
