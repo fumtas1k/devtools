@@ -177,10 +177,7 @@ test.describe('設定ファイル相互変換', () => {
     await inputTextarea.fill('{"name":"Alice","age":30}');
 
     // 出力が更新されるまで待機
-    await page.waitForFunction(() => {
-      const outputs = document.querySelectorAll('textarea[readonly]');
-      return Array.from(outputs).some((el) => (el as HTMLTextAreaElement).value.includes('"name"'));
-    });
+    await expect(page.getByLabel('JSON', { exact: true })).toHaveValue(/"name"/);
 
     // スキーマパネルを開く
     await page.getByRole('button', { name: /json schema/i }).click();

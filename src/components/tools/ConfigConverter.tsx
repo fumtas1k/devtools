@@ -241,6 +241,7 @@ export function ConfigConverterTool() {
               resize
               placeholder='{ "$schema": "...", "type": "object", ... }'
               onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) return;
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   if (!output || !schemaText || isValidating) return;
                   e.preventDefault();
@@ -253,6 +254,7 @@ export function ConfigConverterTool() {
                 type="button"
                 onClick={handleValidate}
                 disabled={!output || !schemaText || isValidating}
+                aria-keyshortcuts="Meta+Enter Control+Enter"
                 className="rounded-lg px-4 py-2"
                 style={{
                   ...caption,
@@ -267,7 +269,12 @@ export function ConfigConverterTool() {
               >
                 {isValidating ? '検証中...' : '検証する'}
               </button>
-              <span style={{ ...caption, color: colors.muted }}>Cmd/Ctrl+Enter</span>
+              <kbd
+                style={{ ...caption, color: colors.muted, fontFamily: 'monospace' }}
+                aria-hidden="true"
+              >
+                Cmd/Ctrl+Enter
+              </kbd>
             </div>
             {validationResult && (
               <div
