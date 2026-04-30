@@ -16,8 +16,6 @@ permissions:
 
 jobs:
   test:
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,20 +33,25 @@ jobs:
       - name: テストとカバレッジ測定を実行
         run: npm test -- --coverage
 
-      - name: カバレッジバッジを更新
+      - name: カバレッジ値とカラーを算出
+        id: coverage
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         run: |
           COVERAGE=$(node -e "console.log(Math.round(require('./coverage/coverage-summary.json').total.statements.pct))")
           COLOR=$(COVERAGE=$COVERAGE node -e "const pct = +process.env.COVERAGE; console.log(pct >= 90 ? 'brightgreen' : pct >= 80 ? 'green' : pct >= 70 ? 'yellowgreen' : pct >= 60 ? 'yellow' : 'red')")
-          sed -i "s/coverage-[0-9.]*%25-[a-z]*/coverage-$COVERAGE%25-$COLOR/g" README.md
+          echo "coverage=$COVERAGE" >> "$GITHUB_OUTPUT"
+          echo "color=$COLOR" >> "$GITHUB_OUTPUT"
 
-      - name: 変更をコミットしてプッシュ
+      - name: カバレッジバッジ用 Gist を更新
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          git diff --staged --quiet || (git commit -m "docs: カバレッジバッジを更新 [skip ci]" && git pull --rebase origin ${{ github.ref_name }} && git push)
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: 69f5d57c79b9b687f7c2ef61dcda57e5
+          filename: devtools-coverage.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.coverage }}%
+          color: ${{ steps.coverage.outputs.color }}
 
   e2e:
     runs-on: ubuntu-latest
