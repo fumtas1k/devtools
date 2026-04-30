@@ -105,6 +105,17 @@ gh pr create --base develop --title "..." --body-file /tmp/pr_body.md
 - 1 行のドキュメント追記など本 PR で完結できる軽微な対応は、先送りせず本 PR に含めるのが優先。
 - スコープ判断で本当に分離が必要な場合のみ issue 化する。issue 化しない口頭の「後で」は形骸化するため禁止。
 
+### 6.5 再利用候補スクリプトの提案
+
+3 行以上の bash・過去にも書いた覚えのある手順・覚えにくいフラグを伴う複合コマンドを書こうとしたら、その場で実行する前に `scripts/` への切り出しをユーザーに提案する（同意を得てからスクリプト化する。先回りして勝手に作らない）。
+
+### 6.6 settings.json permissions に整合した振る舞い
+
+`.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
+
+- **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Write(/tmp/claude/**)` は allow、`Write(/tmp/**)` は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。
+- **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
+
 ---
 
 ## 7. スタイル・UI ルール（基本）
