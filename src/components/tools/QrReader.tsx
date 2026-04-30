@@ -236,7 +236,7 @@ export function QrReaderTool() {
 
       {/* 読取結果セクション */}
       {content !== null && (
-        <div style={sectionStyle}>
+        <div style={sectionStyle} role="status" aria-live="polite">
           <h3 style={sectionHeaderStyle}>読取結果</h3>
           <div className="space-y-4" style={sectionBodyStyle}>
             {/* テキスト表示 */}

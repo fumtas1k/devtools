@@ -178,7 +178,7 @@ export function UuidV7GeneratorTool() {
       />
 
       {rows.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3" role="status" aria-live="polite">
           <ResultTable
             rows={rows}
             columns={columns}

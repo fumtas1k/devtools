@@ -345,7 +345,7 @@ export function JwtDecoderTool() {
 
       {/* デコード結果 */}
       {parsed && (
-        <div className="space-y-3">
+        <div className="space-y-3" role="status" aria-live="polite">
           <Section
             title="Header (JOSE)"
             accentColor={colors.error}
