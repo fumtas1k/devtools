@@ -58,7 +58,7 @@ test.describe('QRリーダー', () => {
   // ────────────────────────────────
 
   test('ページが表示されカメラ/アップロードの切替ボタンがある', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'カメラ' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'カメラ', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '画像アップロード' })).toBeVisible();
   });
 
@@ -136,7 +136,7 @@ test.describe('QRリーダー', () => {
 
     await expect(page.getByText(url)).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('link', { name: 'URLを開く' })).toBeVisible();
-    await expect(page.getByText('example.com')).toBeVisible();
+    await expect(page.getByText('example.com', { exact: true })).toBeVisible();
   });
 
   test('「URLを開く」リンクは target=_blank かつ rel=noopener noreferrer で安全に開く', async ({
