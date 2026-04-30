@@ -1,7 +1,7 @@
 # DevTools
 
 [![Test](https://github.com/fumtas1k/devtools/actions/workflows/test.yml/badge.svg)](https://github.com/fumtas1k/devtools/actions/workflows/test.yml)
-![Coverage](https://img.shields.io/badge/coverage-76%25-yellowgreen)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/fumtas1k/69f5d57c79b9b687f7c2ef61dcda57e5/raw/devtools-coverage.json)
 
 ブラウザで完結する無料の開発者ツール集。インストール不要・登録不要・データは外部送信なし。
 
@@ -29,6 +29,8 @@
 | JSON / XML 変換            | JSONとXMLを相互変換。ルートタグは root 固定                                          |
 | JSON / CSV 変換            | JSONとCSVを相互変換。ネストオブジェクトはドット記法でフラット化                      |
 | 文字コード判定・変換       | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換 |
+| 設定ファイル相互変換       | YAML・JSON・TOML・.env を相互変換。コメント保持・JSON Schema 検証対応                |
+| QRリーダー                 | カメラまたは画像ファイルからQRコードを読み取り、テキスト・URLを表示                  |
 
 ## 技術スタック
 

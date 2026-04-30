@@ -1688,3 +1688,118 @@ Gemini CLI の Zod スキーマは `commandPrefix`（単数形）を定義して
 - ✅ `npm install --location global`（スペース区切り）が Claude / Gemini 両側で deny されるようになり、[048] で accepted gap として残っていた非対称が解消された。
 - ⚠️ `gh api <REST-path> graphql`（中間パスに graphql を含む）は今回のパターンではカバーされない（Claude glob `gh api * graphql` との精度差は残存）。
 - ⚠️ `.gemini/policies/` はワークスペースティアに配置されているが、Gemini CLI の issue #18186 によりワークスペースポリシーは現在無効化されている（[046] で言及済みだが未解決）。今回のバグ修正は将来 issue が解消された際に正しく機能するための先行対応である。それまでの代替措置として `~/.gemini/policies/security.toml` へのコピーまたはシンボリックリンクを検討することを推奨する。
+
+---
+
+## [051] Cloudflare Web Analytics の導入を却下
+
+**2026-04-29 | ステータス: 却下**
+
+### 背景
+
+Cloudflare Pages ダッシュボードに「Web 分析」を有効化するボタンがあり、
+ワンクリックで cookieless なアクセス解析が利用できる。トラフィック可視化は運用上有益。
+
+ただし Cloudflare Web Analytics は有効化時に Cloudflare がエッジで
+`static.cloudflareinsights.com/beacon.min.js` を HTML に自動挿入し、
+`cloudflareinsights.com` にページビュー（URL・リファラ・画面サイズ・UA 等）を送信する。
+Cookie 不使用・IP 非保存ではあるが、外部スクリプトのロードと外部送信は発生する。
+
+### 決断
+
+有効化しない。Cloudflare ダッシュボード側で「無効」のまま据え置く。
+
+### 却下した選択肢
+
+- **コンセプトを再定義して有効化**: 「ツール処理データの外部送信ゼロ」と「サイト訪問の集計」を分離する案。SPEC.md §11.1（外部リソース ゼロ）・§11.2（CSP `connect-src 'none'`）・privacy.astro・about.astro・README.md の文言全てを修正する必要があり、本プロジェクトの差別化ポイントである「外部送信ゼロ」のメッセージが弱まる。
+- **手動で beacon `<script>` を挿入**: 自動注入と挙動は同じ（同じ beacon が同じドメインに送信される）。実装の見え方が変わるだけで方針への影響は同一。
+
+### 結果・トレードオフ
+
+- ✅ 「外部送信ゼロ・トラッキングなし」のコミットメントを完全保持
+- ✅ プライバシーポリシー・SPEC・README の整合性を維持
+- ⚠️ サイトのアクセス状況（ページビュー・流入元）を把握する手段が無い（Cloudflare Pages のトラフィック集計は Web Analytics を有効化しないと表示されない）
+
+---
+
+## [052] 設定ファイル相互変換に yaml / smol-toml / ajv を採用
+
+**対象ツール**: 設定ファイル相互変換（`config-converter`）
+
+### 背景
+
+YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装するにあたり、各形式のパース/シリアライズライブラリと JSON Schema 検証ライブラリを選定した。
+
+### 決断
+
+#### YAML: `yaml`（eemeli/yaml）を採用
+
+- `js-yaml` は lockfile に transitive で存在するが、コメント保持に必要な `parseDocument` / `Document` API を持たない
+- `yaml` パッケージは `parseDocument()` + `.toString()` でコメントを含む AST round-trip が可能
+- 同形式（YAML→YAML）整形時はコメントを完全保持する要件を満たすのは `yaml` のみ
+- gzip 約 30KB
+
+#### TOML: `smol-toml` を採用
+
+- Astro の transitive dep として lockfile に存在し、ブラウザ完結での TOML 1.0 対応実績あり
+- コメント保持は非対応（仕様上「同形式整形でコメントが失われる」旨を UI で警告）
+- `@ltd/j-toml` はコメント保持可能だが、round-trip の実装複雑性とバンドルサイズのトレードオフを考慮し見送り
+
+#### .env: 自前パーサを採用
+
+- `dotenv` は Node.js の `fs` モジュールに依存しブラウザ完結不可
+- `KEY=VALUE` 形式の自前パーサは数十行で実装可能で、バンドルサイズへの影響なし
+- ダブルクォート内のエスケープは `\\` と `\"` のみアンエスケープし、`\n` 等のシーケンスは文字列リテラルとして保持する（POSIX dotenv の `expand` 相当の改行展開は MVP では未対応。将来的に `expand` オプションとして追加余地あり）
+
+#### JSON Schema 検証: `ajv` + `ajv-draft-04` + `ajv-formats` を dynamic import で採用
+
+- `ajv` は Astro の transitive dep として lockfile に存在し実績あり
+- gzip 約 40KB と大きいため、スキーマ検証パネルを開いた瞬間に `await import()` で遅延ロードし、初期チャンクへの影響をゼロにした
+- draft-04 対応は `ajv-draft-04` を使用。`yaml-language-server` の transitive dep として lockfile に存在していたが、本番ビルドで `--omit=dev` 解決が走ると欠落するリスクがあるため `dependencies` に明示登録した
+
+#### HCL: Phase 2 後送り
+
+- 純 JS の HCL2 パーサが事実上存在しない
+- `@cdktf/hcl2json` は WASM（Go コンパイル）で 4-7MB になりブラウザ初期ロードへの影響が大きい
+- MVP (YAML/JSON/TOML/.env 4 形式) で十分な価値を提供できると判断し、HCL は Phase 2 以降に先送り
+
+### 却下した選択肢
+
+- **`js-yaml`**: コメント保持 API がない。transitive dep として存在するが明示追加しない
+- **`@ltd/j-toml`**: TOML のコメント保持可能だが実装複雑性が高く、smol-toml で十分
+- **`dotenv`**: Node.js 専用、ブラウザ不可
+- **`@cdktf/hcl2json`（WASM）**: 初期ロード 4-7MB、Phase 2 で再評価
+
+### 結果・トレードオフ
+
+- ✅ 初期バンドルへの影響: gzip で yaml+smol-toml で約 40KB 追加（ajv は遅延ロード）
+- ✅ ブラウザ完結: 4 形式すべてネットワーク送信なしで変換可能
+- ✅ YAML コメント保持: 同形式整形で完全保持
+- ⚠️ TOML コメント保持: smol-toml の制約で保持不可（UI で明示）
+- ⚠️ HCL: 未対応（Phase 2 で `@cdktf/hcl2json` または代替手段を検討）
+
+---
+
+## [053] QRリーダーツールを QRチケットから分離して新設
+
+**2026-04-30 | ステータス: 採用**
+
+### 背景
+
+`qr-ticket` の検証タブは「ECDSA 署名付きチケットの読取・検証」という特化した用途で設計されており、汎用の QR デコード（生のテキスト確認・画像ファイルからの読取）には適していない。開発者が他システムで生成した QR の内容確認や、スクリーンショット内の QR を手軽にデコードしたいというニーズが別途ある。特にスマートフォン標準カメラは QR をリアルタイムで読めるが、**画像ファイル（スクリーンショット等）からの QR 読取は標準搭載されておらず**、専用ツールの価値がある。
+
+### 決断
+
+独立ツール `qr-reader`（`/tools/qr-reader`、カテゴリ: `convert`）を新設する。`jsqr` / `useQrCamera` フックなどの既存インフラを最大限再利用し、カメラとファイルアップロードの両方に対応する汎用 QR デコーダーとして実装する。URL 自動検出（HTTP/HTTPS のみ）とフィッシング警告 UI も含める。
+
+### 却下した選択肢
+
+- **`qr-ticket` に「鍵なし読取モード」を追加**: 公開鍵の有無でフローが分岐し UI が複雑化する。`qr-ticket` の「署名検証が本質」という役割が希薄になる。独立ツールの方がシンプル。
+- **`BarcodeDetector` Web API の採用**: Safari は 2024 時点で未対応。`jsqr` がすでに依存に含まれており追加コストなし（[022] 参照）。
+
+### 結果・トレードオフ
+
+- ✅ 鍵不要の汎用 QR デコードが `/tools/qr-reader` で利用可能になった。
+- ✅ `qr-ticket` の責務（署名検証）が明確になり、両ツールのコードが単純に保たれた。
+- ✅ URL の自動リンク化を行わず、`http:`/`https:` 以外のスキームも `text` として扱うことでフィッシング・XSS リスクを最小化した。
+- ⚠️ Wi-Fi / vCard / mailto 等の QR フォーマット解析は今回スコープ外（将来の拡張候補）。
