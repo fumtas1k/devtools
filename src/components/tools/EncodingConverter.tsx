@@ -47,6 +47,8 @@ const ACCEPTED_EXTENSIONS = [
   '.ts',
 ] as const;
 
+const ACCEPT_ATTR = `${ACCEPTED_EXTENSIONS.join(',')},text/*`;
+
 const SAMPLE_TEXT = 'カラム名,値\nテキスト,あいうえお\n名前,山田 太郎\n住所,東京都渋谷区';
 
 function hexPreview(bytes: Uint8Array, limit = 32): string {
@@ -295,7 +297,7 @@ export function EncodingConverterTool() {
               className="sr-only"
               onChange={handleFileChange}
               aria-label="ファイルを選択"
-              accept=".txt,.csv,.tsv,.json,.xml,.yaml,.yml,.toml,.md,.html,.css,.js,.ts,text/*"
+              accept={ACCEPT_ATTR}
             />
           </label>
           <p style={{ fontSize: '0.75rem', color: colors.muted, marginTop: '0.25rem' }}>
