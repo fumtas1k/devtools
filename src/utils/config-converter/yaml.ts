@@ -20,6 +20,10 @@ export function stringifyYaml(value: unknown): string {
  * parseDocument() で Document を取得し、toString() で再シリアライズ
  */
 export function formatYaml(text: string): string {
-  const doc = parseDocument(text);
-  return doc.toString();
+  try {
+    const doc = parseDocument(text);
+    return doc.toString();
+  } catch (e) {
+    throw new Error('有効なYAMLではありません: ' + (e instanceof Error ? e.message : String(e)));
+  }
 }

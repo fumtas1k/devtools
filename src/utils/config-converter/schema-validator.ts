@@ -13,6 +13,9 @@ export interface ValidationResult {
  * @param schema JSON Schemaオブジェクト
  */
 export function validateWithSchema(data: unknown, schema: unknown): ValidationResult {
+  if (typeof schema !== 'object' || schema === null) {
+    throw new Error('スキーマはオブジェクトである必要があります');
+  }
   const schemaObj = schema as Record<string, unknown>;
   const isDraft04 = typeof schemaObj.$schema === 'string' && schemaObj.$schema.includes('draft-04');
 
@@ -20,7 +23,7 @@ export function validateWithSchema(data: unknown, schema: unknown): ValidationRe
 
   if (isDraft04) {
     const ajv4 = new Ajv4({ allErrors: true, strict: false });
-    addFormats(ajv4 as unknown as Ajv);
+    (addFormats as (ajv: unknown) => void)(ajv4);
     validate = ajv4.compile(schemaObj);
   } else {
     const ajv = new Ajv({ allErrors: true, strict: false });

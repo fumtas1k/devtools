@@ -28,4 +28,10 @@ describe('stringifyToml', () => {
     const result = stringifyToml({ name: 'myapp' });
     expect(result).toContain('name = "myapp"');
   });
+
+  it('非オブジェクト（配列）でエラーを投げる', () => {
+    expect(() => stringifyToml([1, 2, 3])).toThrow(
+      'TOMLのトップレベルはオブジェクトである必要があります'
+    );
+  });
 });

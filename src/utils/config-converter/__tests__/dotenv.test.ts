@@ -60,4 +60,14 @@ describe('stringifyDotenv', () => {
     const result = stringifyDotenv({ FLAG: true });
     expect(result).toContain('FLAG=true\n');
   });
+
+  it('ダブルクォートを含む値をエスケープする', () => {
+    const result = stringifyDotenv({ GREETING: 'say "hello"' });
+    expect(result).toContain('GREETING="say \\"hello\\""');
+  });
+
+  it('空文字列をダブルクォートで囲む', () => {
+    const result = stringifyDotenv({ EMPTY: '' });
+    expect(result).toContain('EMPTY=""');
+  });
 });

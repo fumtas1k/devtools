@@ -12,5 +12,12 @@ export function parseToml(text: string): unknown {
 
 /** JS値 → TOML文字列 */
 export function stringifyToml(value: unknown): string {
-  return stringify(value as Record<string, unknown>);
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error('TOMLのトップレベルはオブジェクトである必要があります');
+  }
+  try {
+    return stringify(value as Record<string, unknown>);
+  } catch (e) {
+    throw new Error('TOMLへの変換に失敗しました: ' + (e instanceof Error ? e.message : String(e)));
+  }
 }

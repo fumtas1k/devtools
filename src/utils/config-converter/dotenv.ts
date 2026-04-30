@@ -37,6 +37,13 @@ export function parseDotenv(text: string): Record<string, string> {
   return result;
 }
 
+function quoteValue(val: string): string {
+  if (!/[\s='"#\\]/.test(val) && val !== '') return val;
+  // prefer double-quote; escape internal double-quotes
+  const escaped = val.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
+}
+
 /** JS値 → .env形式の文字列。ネストしたオブジェクト・配列は不可 */
 export function stringifyDotenv(value: unknown): string {
   if (typeof value !== 'object' || value === null) {
@@ -56,10 +63,7 @@ export function stringifyDotenv(value: unknown): string {
     }
 
     const strVal = String(val);
-
-    // スペースや特殊文字を含む場合はクォートする
-    const needsQuotes = /[\s='"#\\]/.test(strVal);
-    const serialized = needsQuotes ? `"${strVal}"` : strVal;
+    const serialized = quoteValue(strVal);
 
     lines.push(`${key}=${serialized}`);
   }
