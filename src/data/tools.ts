@@ -88,6 +88,12 @@ export const tools: Tool[] = [
     category: 'generate',
   },
   {
+    slug: 'config-converter',
+    name: '設定ファイル相互変換',
+    description: 'YAML・JSON・TOML・.env を相互変換します。コメント保持・JSON Schema 検証対応',
+    category: 'convert',
+  },
+  {
     slug: 'qr-reader',
     name: 'QRリーダー',
     description: 'カメラまたは画像ファイルからQRコードを読み取り、テキストを表示します',
