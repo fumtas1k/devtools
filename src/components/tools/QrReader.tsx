@@ -156,6 +156,7 @@ export function QrReaderTool() {
       if (mountedRef.current) setDecodeError('画像の読み込みに失敗しました');
     };
     img.src = url;
+    // 同名ファイルを再選択できるよう値をクリア（File 自体は file 変数で参照済み）
     e.target.value = '';
   };
 
