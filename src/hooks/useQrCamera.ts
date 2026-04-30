@@ -39,6 +39,12 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
 
   const startCamera = useCallback(async () => {
     setCameraError('');
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setCameraError(
+        'カメラの起動には HTTPS 環境または localhost が必要です。画像アップロードをお使いください。'
+      );
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
