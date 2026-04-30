@@ -1691,7 +1691,38 @@ Gemini CLI の Zod スキーマは `commandPrefix`（単数形）を定義して
 
 ---
 
-## [051] 設定ファイル相互変換に yaml / smol-toml / ajv を採用
+## [051] Cloudflare Web Analytics の導入を却下
+
+**2026-04-29 | ステータス: 却下**
+
+### 背景
+
+Cloudflare Pages ダッシュボードに「Web 分析」を有効化するボタンがあり、
+ワンクリックで cookieless なアクセス解析が利用できる。トラフィック可視化は運用上有益。
+
+ただし Cloudflare Web Analytics は有効化時に Cloudflare がエッジで
+`static.cloudflareinsights.com/beacon.min.js` を HTML に自動挿入し、
+`cloudflareinsights.com` にページビュー（URL・リファラ・画面サイズ・UA 等）を送信する。
+Cookie 不使用・IP 非保存ではあるが、外部スクリプトのロードと外部送信は発生する。
+
+### 決断
+
+有効化しない。Cloudflare ダッシュボード側で「無効」のまま据え置く。
+
+### 却下した選択肢
+
+- **コンセプトを再定義して有効化**: 「ツール処理データの外部送信ゼロ」と「サイト訪問の集計」を分離する案。SPEC.md §11.1（外部リソース ゼロ）・§11.2（CSP `connect-src 'none'`）・privacy.astro・about.astro・README.md の文言全てを修正する必要があり、本プロジェクトの差別化ポイントである「外部送信ゼロ」のメッセージが弱まる。
+- **手動で beacon `<script>` を挿入**: 自動注入と挙動は同じ（同じ beacon が同じドメインに送信される）。実装の見え方が変わるだけで方針への影響は同一。
+
+### 結果・トレードオフ
+
+- ✅ 「外部送信ゼロ・トラッキングなし」のコミットメントを完全保持
+- ✅ プライバシーポリシー・SPEC・README の整合性を維持
+- ⚠️ サイトのアクセス状況（ページビュー・流入元）を把握する手段が無い（Cloudflare Pages のトラフィック集計は Web Analytics を有効化しないと表示されない）
+
+---
+
+## [052] 設定ファイル相互変換に yaml / smol-toml / ajv を採用
 
 **対象ツール**: 設定ファイル相互変換（`config-converter`）
 
