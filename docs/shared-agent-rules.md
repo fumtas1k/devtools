@@ -109,6 +109,13 @@ gh pr create --base develop --title "..." --body-file /tmp/pr_body.md
 
 3 行以上の bash・過去にも書いた覚えのある手順・覚えにくいフラグを伴う複合コマンドを書こうとしたら、その場で実行する前に `scripts/` への切り出しをユーザーに提案する（同意を得てからスクリプト化する。先回りして勝手に作らない）。
 
+### 6.6 settings.json permissions に整合した振る舞い
+
+`.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
+
+- **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Write(/tmp/claude/**)` は allow、`Write(/tmp/**)` は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。
+- **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
+
 ---
 
 ## 7. スタイル・UI ルール（基本）
