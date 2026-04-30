@@ -89,15 +89,18 @@ test.describe('文字コード判定・変換', () => {
     await expect(page.getByTestId('detection-bom')).toContainText('あり');
   });
 
-  test('ケースF: 非テキストバイナリ (JPEG) → 不明または空のプレビュー', async ({ page }) => {
+  test('ケースF: 非テキストバイナリ (JPEG) → バリデーションエラーが表示される', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: 'ファイル' }).click();
     await page.getByLabel('ファイルを選択').setInputFiles({
       name: 'test.jpg',
       mimeType: 'image/jpeg',
       buffer: JPEG_MAGIC,
     });
-    // 不明 (UNKNOWN) か ASCII か、どちらにしても detection-result が表示される
-    await expect(page.getByTestId('detection-result')).toBeVisible();
+    // バリデーションで WRONG_TYPE として弾かれ、エラーメッセージが表示される
+    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.getByTestId('detection-result')).not.toBeVisible();
   });
 
   test('ケースG: クリアボタンで入力がリセットされる', async ({ page }) => {
