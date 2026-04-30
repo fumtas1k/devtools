@@ -75,6 +75,7 @@ export function ConfigConverterTool() {
       return;
     }
     setWarnings(error ? [] : warningsRef.current);
+    setValidationResult(null);
   }, [output, error]);
 
   const handleFromChange = (next: ConfigFormat) => {
