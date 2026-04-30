@@ -111,8 +111,8 @@
       "Bash(pwd)"
     ],
     "ask": [
-      "Edit(./.claude/**)",
-      "Write(./.claude/**)",
+      "Edit(./.claude/{*.json,*.sh,hooks/**,agents/**,skills/**,commands/**,plugins/**})",
+      "Write(./.claude/{*.json,*.sh,hooks/**,agents/**,skills/**,commands/**,plugins/**})",
       "Edit(./.gemini/**)",
       "Write(./.gemini/**)",
       "Bash(git push*)",
