@@ -240,6 +240,13 @@ export function ConfigConverterTool() {
               mono
               resize
               placeholder='{ "$schema": "...", "type": "object", ... }'
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  if (!output || !schemaText || isValidating) return;
+                  e.preventDefault();
+                  handleValidate();
+                }
+              }}
             />
             <div className="flex items-center gap-3">
               <button
@@ -260,6 +267,7 @@ export function ConfigConverterTool() {
               >
                 {isValidating ? '検証中...' : '検証する'}
               </button>
+              <span style={{ ...caption, color: colors.muted }}>Cmd/Ctrl+Enter</span>
             </div>
             {validationResult && (
               <div
