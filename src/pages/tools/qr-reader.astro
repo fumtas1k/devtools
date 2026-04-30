@@ -1,0 +1,36 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { QrReaderTool } from '@/components/tools/QrReader';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'qr-reader')!;
+---
+
+<ToolLayout tool={tool}>
+  <QrReaderTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      カメラまたは画像ファイルからQRコードを読み取り、埋め込まれたテキストやURLを表示します。
+      すべての処理はブラウザ内で完結し、データは外部サーバーへ送信されません。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">使い方</h3>
+    <ol class="list-inside list-decimal space-y-1 tool-info-list">
+      <li>「カメラ」モードでカメラを起動し、QRコードにかざします</li>
+      <li>または「画像アップロード」モードでQRコードの画像ファイルを選択します</li>
+      <li>読み取り結果がテキストで表示されます</li>
+      <li>URLが含まれている場合は警告が表示されます。内容を確認してから開いてください</li>
+    </ol>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">注意事項</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>カメラ読み取りはHTTPS環境またはlocalhostでのみ動作します</li>
+      <li>
+        QRコードに含まれるURLは自動では開きません。フィッシング詐欺対策のため必ず確認してください
+      </li>
+      <li>対応形式：QRコード（QR Code）のみ。バーコード（JAN・EAN等）には対応しません</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>

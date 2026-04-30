@@ -135,6 +135,7 @@ devtools/
     │       ├── DummyText.tsx
     │       ├── UrlEncoder.tsx
     │       ├── QrCode.tsx
+    │       ├── QrReader.tsx
     │       ├── JanCode.tsx
     │       ├── Gs1Databar.tsx
     │       └── EncodingConverter.tsx
@@ -153,6 +154,7 @@ devtools/
     │       ├── dummy-text.astro
     │       ├── url-encode.astro
     │       ├── qr-code.astro
+    │       ├── qr-reader.astro
     │       ├── jan-code.astro
     │       ├── gs1-databar.astro
     │       ├── encoding-converter.astro
@@ -176,6 +178,7 @@ devtools/
         ├── encoding.ts         # 文字コード判定・変換ラッパー（encoding-japanese）
         ├── config-converter/   # 設定ファイル相互変換（json.ts / yaml.ts / toml.ts / dotenv.ts / schema-validator.ts）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
+        ├── qr-reader.ts
         ├── qr-ticket.ts
         ├── qrcode.ts
         ├── uuid-v7.ts
@@ -190,6 +193,7 @@ devtools/
             ├── json-xml.test.ts
             ├── config-converter/   # json/yaml/toml/dotenv/schema-validator/convert テスト
             ├── jwt.test.ts
+            ├── qr-reader.test.ts
             ├── qr-ticket.test.ts
             ├── url-encode.test.ts
             └── uuid-v7.test.ts
@@ -239,7 +243,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全12ツール）
+## 4. ツール一覧（全14ツール）
 
 ### カテゴリ A: 生成ツール
 
@@ -251,6 +255,7 @@ devtools/
 | 4   | QRコード生成       | `qr-code`        | テキスト/URL入力 → QRコード画像生成。PNG/SVGダウンロード                          |
 | 5   | JANコード生成      | `jan-code`       | 12桁入力 → チェックディジット自動計算 → バーコード画像生成                        |
 | 6   | GS1 DataBar 生成   | `gs1-databar`    | GTIN-14入力 → GS1 DataBar Limited合成シンボル生成。CC-A対応（AI: 17/10/11/15/21） |
+| 7   | QRチケット         | `qr-ticket`      | ECDSA署名付きQRチケットを生成し、公開鍵でオフライン検証                           |
 
 ### カテゴリ B: 変換・解析ツール
 
@@ -263,6 +268,7 @@ devtools/
 | 11  | JSON / CSV 変換           | `json-csv`           | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                                                            |
 | 12  | 文字コード判定・変換      | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                     |
 | 13  | 設定ファイル相互変換      | `config-converter`   | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート） |
+| 14  | QRリーダー                | `qr-reader`          | カメラまたは画像ファイルからQRコードを読み取り、テキスト・URLを表示                                                      |
 
 ---
 
@@ -795,6 +801,65 @@ eventId|ticketId|timestamp|name|category|signature
 
 ---
 
+### 5.13 QRリーダー（`qr-reader`）
+
+**入力:**
+
+- 読取方法トグル: [カメラ] / [画像アップロード]
+- カメラ: [カメラを起動] ボタン → ライブプレビュー → QR検出で自動停止
+- 画像アップロード: 「画像を選択」ラベル経由のファイル選択（PNG・JPG 等）
+
+**処理:**
+
+- カメラ: `useQrCamera` フックによる `getUserMedia` + rAF スキャンループ（`jsqr` 使用）
+- 画像: `createObjectURL` → `<img>` → `<canvas>` に描画 → `jsqr` でデコード
+- URL判定: `detectQrContent()` 関数（`src/utils/qr-reader.ts`）で `http:`/`https:` のみ `kind: 'url'`、その他は `kind: 'text'`
+
+**出力:**
+
+- 読取テキスト（`<pre>` 表示、改行・空白を保持）
+- [コピー] ボタン
+- URL の場合: 警告枠（ホスト名強調 + 「URLをよく確認してください」メッセージ）+ [URLを開く] リンク（`target="_blank" rel="noopener noreferrer"`）
+- [再スキャン] ボタン
+
+**セキュリティ方針:**
+
+- `javascript:` / `data:` / `file:` 等の危険スキームは `kind: 'text'` として扱い、リンク化しない
+- HTTP/HTTPS URL でも自動ではリンクを開かない（ユーザーの明示的操作が必要）
+- カメラ: `facingMode: 'environment'`（背面カメラ優先）
+
+**制約:**
+
+- カメラ読取は HTTPS 環境または localhost でのみ動作
+- QRコード（2次元）のみ対応。バーコード（JAN・EAN 等）は非対応
+
+**UI:**
+
+```
+┌─────────────────────────────────────┐
+│  [カメラ]  [画像アップロード]           │
+├─────────────────────────────────────┤
+│  [カメラを起動]                        │
+│  ┌──────────────────────────────┐   │
+│  │  カメラプレビュー（起動後に表示）  │   │
+│  └──────────────────────────────┘   │
+├─────────────────────────────────────┤
+│  読取結果                             │
+│  ┌──────────────────────────────┐   │
+│  │  https://example.com          │   │
+│  └──────────────────────────────┘   │
+│  [コピー]                             │
+│  ┌──────────────────────────────┐   │
+│  │ ⚠ example.com への外部リンク  │   │
+│  │  URLをよく確認してください      │   │
+│  │  [URLを開く]                   │   │
+│  └──────────────────────────────┘   │
+│  [再スキャン]                         │
+└─────────────────────────────────────┘
+```
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -948,6 +1013,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] Base64 エンコード/デコード（`base64`）
   - [x] 文字コード判定・変換（`encoding-converter`）
   - [x] 設定ファイル相互変換（`config-converter`）
+  - [x] QRリーダー（`qr-reader`）
   - [ ] JSON整形、Diff、パスワード生成、ハッシュ、文字数カウント等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
