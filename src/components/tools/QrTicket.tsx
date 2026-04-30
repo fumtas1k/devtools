@@ -319,8 +319,6 @@ export function QrTicketTool() {
 
     camera.setCameraError('');
     setVerificationResult(null);
-    // 同じファイルを再選択できるようにリセット
-    e.target.value = '';
 
     const result = await decodeQrFromFile(file, { maxDim: DEFAULT_QR_MAX_DIM });
     if (!mountedRef.current) return;
