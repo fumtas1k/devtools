@@ -165,4 +165,42 @@ test.describe('設定ファイル相互変換', () => {
     // 入力がクリアされること
     await expect(page.getByLabel('YAML (整形)')).toHaveValue('');
   });
+
+  test('JSON Schema 検証パネル: Cmd/Ctrl+Enter でスキーマ検証が実行される', async ({ page }) => {
+    // from=JSON, to=JSON（同一のとき "JSON (整形)" ラベル）にセット
+    // デフォルトが from=JSON なので to=JSON になるよう設定
+    const toGroup = page.getByRole('group', { name: '変換先フォーマット' });
+    await toGroup.getByRole('button', { name: 'JSON' }).click();
+
+    // JSON を入力して出力を得る
+    const inputTextarea = page.getByLabel('JSON (整形)');
+    await inputTextarea.fill('{"name":"Alice","age":30}');
+
+    // 出力が更新されるまで待機
+    await expect(page.getByLabel('JSON', { exact: true })).toHaveValue(/"name"/);
+
+    // スキーマパネルを開く
+    await page.getByRole('button', { name: /json schema/i }).click();
+
+    // スキーマを入力
+    const schemaTextarea = page.getByLabel(/json schema/i);
+    await schemaTextarea.fill(
+      JSON.stringify({
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          age: { type: 'number' },
+        },
+        required: ['name', 'age'],
+      })
+    );
+
+    // スキーマ textarea にフォーカスした状態で Cmd/Ctrl+Enter
+    await schemaTextarea.focus();
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.keyboard.press(`${modifier}+Enter`);
+
+    // 検証成功メッセージが表示されること
+    await expect(page.getByText('スキーマ検証成功')).toBeVisible();
+  });
 });

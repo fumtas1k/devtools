@@ -18,6 +18,7 @@ interface Props {
   readOnly?: boolean;
   mono?: boolean;
   resize?: boolean;
+  onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement | HTMLInputElement>;
 }
 
 export function InputField({
@@ -36,6 +37,7 @@ export function InputField({
   readOnly = false,
   mono = false,
   resize = false,
+  onKeyDown,
 }: Props) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -85,6 +87,7 @@ export function InputField({
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
           placeholder={placeholder}
           rows={rows}
           readOnly={readOnly}
@@ -99,6 +102,7 @@ export function InputField({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
           placeholder={placeholder}
           readOnly={readOnly}
           maxLength={maxLength}
