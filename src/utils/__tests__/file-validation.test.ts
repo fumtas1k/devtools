@@ -94,6 +94,15 @@ describe('validateFile — text OK by extension', () => {
     });
     expect(result.ok).toBe(true);
   });
+
+  it('拡張子が大文字（.CSV）でも acceptExtensions に一致すれば ok = true', () => {
+    const result = validateFile(makeFile(100, 'DATA.CSV', ''), {
+      maxBytes: MAX_BYTES,
+      kind: 'text',
+      acceptExtensions: ['.csv'],
+    });
+    expect(result.ok).toBe(true);
+  });
 });
 
 describe('validateFile — text WRONG_TYPE', () => {

@@ -16,12 +16,12 @@ export function validateFile(file: File, opts: ValidateOptions): ValidationResul
   }
 
   if (file.size > opts.maxBytes) {
-    const limitMB = Math.ceil(opts.maxBytes / (1024 * 1024));
-    const actualMB = Math.ceil(file.size / (1024 * 1024));
+    const limitMB = (opts.maxBytes / (1024 * 1024)).toFixed(1);
+    const actualMB = (file.size / (1024 * 1024)).toFixed(1);
     return {
       ok: false,
       code: 'TOO_LARGE',
-      message: `${limitMB} MB 以上のファイルは読み込めません（選択: ${actualMB}MB）`,
+      message: `${limitMB} MB を超えるファイルは読み込めません（選択: ${actualMB} MB）`,
     };
   }
 
@@ -42,7 +42,7 @@ export function validateFile(file: File, opts: ValidateOptions): ValidationResul
 
     const isAcceptedExtension =
       opts.acceptExtensions !== undefined &&
-      opts.acceptExtensions.some((ext) => file.name.endsWith(ext));
+      opts.acceptExtensions.some((ext) => file.name.toLowerCase().endsWith(ext.toLowerCase()));
 
     if (!isTextMime && !isAcceptedExtension) {
       return {
