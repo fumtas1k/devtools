@@ -71,7 +71,7 @@ test.describe('設定ファイル相互変換', () => {
     // from=to=json のとき InputField の label は "JSON (整形)"
     await page.getByLabel('JSON (整形)').fill('{"name": "太郎", "age": 30}');
 
-    await expect(page.getByLabel('JSON')).not.toHaveValue('');
+    await expect(page.getByLabel('JSON', { exact: true })).not.toHaveValue('');
 
     await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
 
@@ -81,7 +81,7 @@ test.describe('設定ファイル相互変換', () => {
         '{"type": "object", "required": ["name", "age"], "properties": {"name": {"type": "string"}, "age": {"type": "number"}}}'
       );
 
-    await page.getByRole('button', { name: '検証する' }).click();
+    await page.getByRole('button', { name: '検証する', exact: true }).click();
 
     // 動的インポートを伴う非同期処理のため少し待つ
     await page.waitForTimeout(500);
@@ -98,7 +98,7 @@ test.describe('設定ファイル相互変換', () => {
 
     await page.getByLabel('JSON (整形)').fill('{"name": "太郎", "age": "not-a-number"}');
 
-    await expect(page.getByLabel('JSON')).not.toHaveValue('');
+    await expect(page.getByLabel('JSON', { exact: true })).not.toHaveValue('');
 
     await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
 
@@ -106,11 +106,11 @@ test.describe('設定ファイル相互変換', () => {
       .getByLabel('JSON Schema (貼り付け)')
       .fill('{"type": "object", "properties": {"age": {"type": "number"}}}');
 
-    await page.getByRole('button', { name: '検証する' }).click();
+    await page.getByRole('button', { name: '検証する', exact: true }).click();
 
     // 動的インポートを伴う非同期処理のため少し待つ
     await page.waitForTimeout(500);
 
-    await expect(page.getByText(/age/)).toBeVisible();
+    await expect(page.getByText('/age')).toBeVisible();
   });
 });
