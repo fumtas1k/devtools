@@ -52,6 +52,34 @@ describe('parseDotenv', () => {
   it('不正な行で日本語エラーを投げる', () => {
     expect(() => parseDotenv('INVALID LINE WITHOUT EQUALS')).toThrow('有効な.envではありません');
   });
+
+  it('ダブルクォート内のエスケープされたダブルクォートを解除する', () => {
+    expect(parseDotenv('KEY="say \\"hi\\""')).toEqual({ KEY: 'say "hi"' });
+  });
+
+  it('ダブルクォート内のエスケープされたバックスラッシュを解除する', () => {
+    expect(parseDotenv('KEY="C:\\\\path"')).toEqual({ KEY: 'C:\\path' });
+  });
+
+  it('ダブルクォート内のバックスラッシュ＋エスケープクォート連鎖を正しく解除する', () => {
+    expect(parseDotenv('KEY="a\\\\\\"b"')).toEqual({ KEY: 'a\\"b' });
+  });
+
+  it('シングルクォート内のエスケープされたシングルクォートを解除する', () => {
+    expect(parseDotenv("KEY='it\\'s'")).toEqual({ KEY: "it's" });
+  });
+});
+
+describe('roundtrip', () => {
+  it('parseDotenv(stringifyDotenv(x)) が元のオブジェクトと一致する', () => {
+    const original = {
+      GREETING: 'say "hello"',
+      WIN: 'C:\\path\\to',
+      EMPTY: '',
+      SP: 'a b',
+    };
+    expect(parseDotenv(stringifyDotenv(original))).toEqual(original);
+  });
 });
 
 describe('stringifyDotenv', () => {
