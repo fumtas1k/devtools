@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import jsQR from 'jsqr';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -32,17 +32,21 @@ const sectionBodyStyle = {
   background: colors.bg,
 };
 
-const rescanButtonStyle = {
-  ...caption,
-  fontWeight: 600,
-  display: 'inline-flex' as const,
-  alignItems: 'center' as const,
-  padding: '0.5rem 1rem',
-  borderRadius: '0.5rem',
+const rescanButtonStyle: React.CSSProperties = {
+  fontSize: '0.875rem',
+  fontWeight: 700,
+  lineHeight: 1,
+  letterSpacing: '0.02em',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.375rem',
+  padding: '0.5rem 0.75rem',
+  borderRadius: '0.25rem',
   border: `1px solid ${colors.border}`,
   background: colors.bgSubtle,
   color: colors.text,
-  cursor: 'pointer' as const,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
 };
 
 const startCameraButtonStyle = {
@@ -244,8 +248,13 @@ export function QrReaderTool() {
               </pre>
             </div>
 
-            {/* コピーボタン */}
-            <CopyButton text={content.raw} />
+            {/* コピー & 再スキャンボタン */}
+            <div className="flex flex-wrap items-center gap-2">
+              <CopyButton text={content.raw} />
+              <button onClick={handleRescan} style={rescanButtonStyle}>
+                再スキャン
+              </button>
+            </div>
 
             {/* URLの場合のフィッシング警告 */}
             {content.kind === 'url' && (
@@ -281,11 +290,6 @@ export function QrReaderTool() {
                 </a>
               </div>
             )}
-
-            {/* 再スキャンボタン */}
-            <button onClick={handleRescan} style={rescanButtonStyle}>
-              再スキャン
-            </button>
           </div>
         </div>
       )}
