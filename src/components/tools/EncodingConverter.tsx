@@ -9,6 +9,7 @@ import { DownloadButton } from '@/components/ui/DownloadButton';
 import { caption, colors } from '@/utils/styles';
 import { getErrorMessage } from '@/utils/errors';
 import { downloadBytes } from '@/utils/download';
+import { validateFile } from '@/utils/file-validation';
 import {
   detectEncoding,
   decodeToText,
@@ -29,6 +30,22 @@ import {
 
 type Mode = 'detect' | 'convert';
 type InputMethod = 'text' | 'file';
+
+const ACCEPTED_EXTENSIONS = [
+  '.txt',
+  '.csv',
+  '.tsv',
+  '.json',
+  '.xml',
+  '.yaml',
+  '.yml',
+  '.toml',
+  '.md',
+  '.html',
+  '.css',
+  '.js',
+  '.ts',
+] as const;
 
 const SAMPLE_TEXT = 'カラム名,値\nテキスト,あいうえお\n名前,山田 太郎\n住所,東京都渋谷区';
 
@@ -145,6 +162,17 @@ export function EncodingConverterTool() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+
+    const validation = validateFile(file, {
+      kind: 'text',
+      maxBytes: 10 * 1024 * 1024,
+      acceptExtensions: ACCEPTED_EXTENSIONS,
+    });
+    if (!validation.ok) {
+      setError(validation.message);
+      return;
+    }
+
     file.arrayBuffer().then((buf) => {
       setFileBytes(new Uint8Array(buf));
       setFileName(file.name);
@@ -267,8 +295,12 @@ export function EncodingConverterTool() {
               className="sr-only"
               onChange={handleFileChange}
               aria-label="ファイルを選択"
+              accept=".txt,.csv,.tsv,.json,.xml,.yaml,.yml,.toml,.md,.html,.css,.js,.ts,text/*"
             />
           </label>
+          <p style={{ fontSize: '0.75rem', color: colors.muted, marginTop: '0.25rem' }}>
+            対応形式: テキストファイル（.txt / .csv / .json / .xml / .yaml / .toml 等）・最大 10 MB
+          </p>
           {fileBytes && (
             <div
               className="mt-2 rounded-lg px-3 py-2 font-mono"
