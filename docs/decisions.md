@@ -2047,11 +2047,13 @@ PR #204 で最終的に採用する変更は以下の **1 点のみ** に絞る�
 
 ### 後続タスク
 
-- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で context7 を再検証する。
-- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` 等が ship されたら本決定を更新（手動 install 手順を撤去）。
+- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で context7 を再検証する → issue #205 で追跡。
+- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` / Skill 動的 reload 等が ship されたら本決定を更新（手動 install 手順を撤去）→ issue #206 で追跡。
 
 ### 関連 PR / issue
 
 - PR #204（本決定の実装、段階的真因究明を含む）
-- issue #191（症状の整理）
+- issue #191（症状の整理、本 PR で close）
+- issue #205（後続: Web context7 egress 解消後の再検証）
+- issue #206（後続: plugin auto-install / Skill 動的 reload 制約への対応見直し）
 - PR #187（context7 不在による誤レビュー事例）
