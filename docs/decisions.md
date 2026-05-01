@@ -1865,3 +1865,30 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。
 - ⚠️ Cloudflare Pages 以外のホスティング（Netlify は同形式で動作するが、Vercel は `vercel.json` 形式）に切り替える際は別途設定追加が必要。
 - ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする。
+
+---
+
+## [055] 月次 issue メトリクス収集ワークフローを追加
+
+**2026-04-30 | ステータス: 採用**
+
+### 背景
+
+devtools リポジトリの issue 活動量（新規作成数・クローズ率等）を定量的に把握し、開発サイクルの健全性を継続モニタリングしたい。手動集計は属人的で継続しづらいため、GitHub Actions で自動化する。
+
+### 決断
+
+`.github/workflows/metrics.yml` を追加し、毎月 1 日 UTC 3:00（JST 12:00）に `github/issue-metrics@v3` で前月分の issue メトリクスを収集し、`peter-evans/create-issue-from-file@v6` でレポート issue を自動作成する。
+
+- `SEARCH_QUERY` は `repo:${{ github.repository }}` でリポジトリ名をハードコードせず、フォーク・リネームにも対応。
+- job-level permissions は `issues: write` のみ（`is:issue` 限定クエリのため `pull-requests: read` は不要）。
+- `workflow_dispatch` を追加しテスト手動実行を可能にしている。
+
+### 却下した選択肢
+
+- **手動集計**: 継続性に欠ける。
+- **外部 SaaS 利用**: ブラウザ完結・データ送信なしの方針と相反する。
+
+### 将来課題
+
+- `peter-evans/create-issue-from-file` のサードパーティ action は現状タグ参照。サプライチェーンリスク低減のため SHA pinning への移行を検討（#174）。
