@@ -1980,9 +1980,9 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 
 ---
 
-## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 自動登録 + context7 を `.mcp.json` 別経路化 + Context7 API キー optional 化
+## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 自動登録 + context7 を `.mcp.json` 別経路化（Web 403 は harness 側 egress allowlist 待ち）
 
-**ステータス: 採用（途中 3 度の真因訂正を経て確定）**
+**ステータス: 採用（途中 4 度の真因訂正を経て確定。Web の 403 はリポジトリ側で対処不能と確定）**
 
 ### 背景
 
@@ -1998,29 +1998,31 @@ Claude Code Web (claude.ai/code) で `.claude/settings.json` の `enabledPlugins
 
 ### 真因究明の経緯（PR #204 内の段階的検証）
 
-| ステップ                                               | 推定された真因（当時）                                                                                                                                                            | 検証結果                                                                                                              |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| ①初期仮説（issue #191 本文）                           | Context7 上流 API の認証・レート制限・障害                                                                                                                                        | 採用未検証で保留                                                                                                      |
-| ②Web 1 回目検証                                        | サンドボックスの `allowedDomains` 不足                                                                                                                                            | `*.context7.com` を追加して再検証 → 効果なし                                                                          |
-| ③Web 2 回目検証 + WebSearch                            | Context7 が API キー必須化（`ctx7sk-` プレフィクス）                                                                                                                              | 強すぎる断定であった                                                                                                  |
-| ④CLI セッションで API キー未設定でも疎通することを確認 | **Context7 は無認証でも基本疎通する。直近で無認証ユーザー向けレート制限が厳格化** された結果、Web の共有 IP（Anthropic クラウドコンテナ egress）経由で 403 を引きやすくなっている | 採用（API キーは Web で安定運用するための recommended、CLI は未設定でも通る。`researchMode: true` のみ API キー必須） |
+| ステップ                                                                            | 推定された真因（当時）                                                                                                                                                                                                                | 検証結果                                                                                                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| ①初期仮説（issue #191 本文）                                                        | Context7 上流 API の認証・レート制限・障害                                                                                                                                                                                            | 採用未検証で保留                                                                                                                          |
+| ②Web 1 回目検証                                                                     | サンドボックスの `allowedDomains` 不足                                                                                                                                                                                                | `*.context7.com` を追加して再検証 → 効果なし                                                                                              |
+| ③Web 2 回目検証 + WebSearch                                                         | Context7 が API キー必須化（`ctx7sk-` プレフィクス）                                                                                                                                                                                  | 強すぎる断定であった                                                                                                                      |
+| ④CLI セッションで API キー未設定でも疎通することを確認                              | Context7 無認証レート制限が直近で厳格化、Web の共有 IP で 403 を引きやすい                                                                                                                                                            | 推定であって実証されていなかった                                                                                                          |
+| ⑤Web 側調査で `curl` のレスポンスヘッダ／ボディを直接観測（PR #204 review comment） | **Anthropic クラウドコンテナの egress プロキシで `context7.com` / `mcp.context7.com` が host allowlist に未登録**（レスポンスヘッダ `x-deny-reason: host_not_allowed` / ボディ `Host not in allowlist`）。Context7 まで到達していない | 採用（リポジトリ側の `.claude/settings.json` / `.mcp.json` / API キー設定では解消不可。Anthropic harness 側の egress allowlist 対応待ち） |
 
-`Request failed with status 403` は HTTP リクエストが context7 に到達したうえでアプリ層 403 を返している証拠であり、サンドボックスのアウトバウンド遮断（接続拒否）とは別物。レート制限ベースのため、API キー設定で個別クォータが割り当てられて 403 が解消する構図。
+403 は HTTP プロトコル層では Context7 のアプリ層エラーと区別がつかないが、レスポンスヘッダ `x-deny-reason: host_not_allowed` で **Anthropic 側の egress プロキシが返したもの**と判明。リポジトリ側で書き換え可能な層（local sandbox / MCP server 設定 / API キー）はすべて egress プロキシより内側にあるため、設定変更で解消する余地がない。CLI / Desktop はこの egress プロキシを経由しないため影響なし。
 
 ### 決断
 
-PR #204 で以下を採用する。
+PR #204 で以下を採用する（context7 の Web 403 はリポジトリ側で完全解消できないが、CLI / Desktop での運用と将来の Web 解消後の即応性を確保するために最低限の整備を残す）。
 
 1. **`extraKnownMarketplaces` の宣言**: `.claude/settings.json` に `claude-plugins-official`（GitHub: `anthropics/claude-plugins-official`）を宣言。Web セッションでも `~/.claude/plugins/known_marketplaces.json` への登録は自動化される。
-2. **`.mcp.json` でプロジェクト直起動の context7 を併設**: ルート `.mcp.json` で `@upstash/context7-mcp` を npx 起動する宣言を追加（`env.CONTEXT7_API_KEY = "${CONTEXT7_API_KEY:-}"` で API キーを環境変数経由で受け取る、未設定でも parse は通る）。プラグイン同梱 MCP と二重持ちにし、利用者がローカルで env 注入できる経路を確保する。
-3. **Context7 API キーは利用者の任意設定運用**: API キーは optional だが Web で安定利用するために推奨。各利用者が `~/.claude/settings.json`（user-scoped）の `env` セクションに `CONTEXT7_API_KEY: "ctx7sk-..."` を設定し、`.mcp.json` の `${CONTEXT7_API_KEY:-}` で参照する。secret なので commit しない。
+2. **`.mcp.json` でプロジェクト直起動の context7 を併設**: ルート `.mcp.json` で `@upstash/context7-mcp` を npx 起動する宣言を追加（`env.CONTEXT7_API_KEY = "${CONTEXT7_API_KEY:-}"` で API キーを環境変数経由で受け取る、未設定でも parse は通る）。プラグイン同梱 MCP と二重持ちにし、利用者がローカルで env 注入できる経路を確保する。**Web の 403 解消には寄与しないが、CLI / Desktop での `researchMode` 利用や将来 plugin 側 regression 時の回避経路として価値あり**。
+3. **Context7 API キーは利用者の任意設定運用**: API キーは optional。各利用者が `~/.claude/settings.json`（user-scoped）の `env` セクションに `CONTEXT7_API_KEY: "ctx7sk-..."` を設定し、`.mcp.json` の `${CONTEXT7_API_KEY:-}` で参照する。secret なので commit しない。**ただし Web の 403 は API キー有無に関わらず継続する**（egress 段で遮断されるため）。
 
 ### 検証で判明した事実（CLAUDE.md にも反映）
 
 - `extraKnownMarketplaces` は marketplace 登録まで自動化するが、`enabledPlugins` 単独では Web で plugin install は走らない。
 - 既に trust 済みのリポジトリでは Web の install prompt は発火しない（trust 直後イベントに紐づく）。
 - そのため Web では各プラグインを 1 回だけ `/plugin install <name>@claude-plugins-official` で手動 install する運用とする。
-- Context7 は API キー必須ではない。無認証アクセスでも基本疎通するが、共有 IP（Web のクラウドコンテナ）からはレート制限で 403 を引きやすい。`@upstash/context7-mcp` は env `CONTEXT7_API_KEY` で受け取る（env 方式は process listing に secret が出ず、`.mcp.json` の env 展開で利用者ごとの差し替えが可能）。
+- Context7 は API キー必須ではない（CLI / Desktop は無認証で疎通）。`@upstash/context7-mcp` は env `CONTEXT7_API_KEY` で受け取る（env 方式は process listing に secret が出ず、`.mcp.json` の env 展開で利用者ごとの差し替えが可能）。
+- **Web セッションでは Anthropic クラウドコンテナの egress プロキシが `context7.com` / `mcp.context7.com` を host allowlist 未登録で遮断中**。リポジトリ側で対処不能、Anthropic harness 側の対応待ち。本 PR の Web 検証手順「context7 が 200 を返すか」は harness 側修正が入るまで通らない。
 
 ### 却下した選択肢
 
@@ -2032,10 +2034,14 @@ PR #204 で以下を採用する。
 
 ### トレードオフ
 
-- ✅ Web セッションでも marketplace 登録は自動化、context7 の 403（無認証時のレート制限）を任意の API キー設定で回避できる選択肢を提供、プラグイン経路の単一障害点を回避。
+- ✅ Web セッションでも marketplace 登録は自動化、CLI / Desktop での context7 利用経路を整備（プラグイン版 + npx 版 + 任意 API キー注入）、プラグイン経路の単一障害点を回避。
+- ❌ **Web セッションの context7 403 は本 PR では解消しない**（harness 側 egress allowlist の対応待ち）。CLAUDE.md に明記し、harness 側修正後に再検証する運用とする。
 - ⚠️ Web では 3 プラグインの手動 install 手順が残る。CLAUDE.md「推奨プラグイン」節に明記して運用で吸収。
-- ⚠️ Web で context7 の 403 が頻発する場合、利用者ごとに API キー取得・設定が必要。CLAUDE.md に手順を明記。
 - ⚠️ context7 が二重宣言（`.mcp.json` + プラグイン）になる。利用ツール側は `mcp__context7__*` と `mcp__plugin_context7_context7__*` の両方が見える。実害はないが将来 plugin 側の挙動が安定したら `.mcp.json` 側を撤去する余地あり。
+
+### 後続タスク
+
+- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で再検証（このタイミングで `.mcp.json` 二重宣言の整理も再検討）。
 
 ### 関連 PR / issue
 

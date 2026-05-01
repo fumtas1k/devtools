@@ -48,10 +48,17 @@
 
 context7 は **プラグイン同梱の MCP（`mcp.context7.com` 直結）と、プロジェクト `.mcp.json` の npx 起動の二重宣言**になっています。`.mcp.json` 経路は env 注入で API キーを差し替えられる利点があり、プラグイン側に regression が出ても回避経路として使えます。
 
-**Context7 API キーは optional だが Web セッションでは推奨**（CLI は無認証でも通ることが多いが、Web は共有 IP 経由のため Context7 側のレート制限で 403 を引きやすい）。Web で安定利用したい場合は以下を実施:
+> ⚠️ **Claude Code Web セッション（claude.ai/code）では現状 context7 が 403 を返します**（issue #191 / decisions [059]）。
+>
+> 真因は Anthropic クラウドコンテナの egress プロキシで `context7.com` / `mcp.context7.com` が host allowlist に未登録のため（レスポンスヘッダに `x-deny-reason: host_not_allowed`）。**リポジトリ側の `.claude/settings.json` / `.mcp.json` / API キー設定では解消不可**で、Anthropic harness 側対応待ち。CLI / Desktop セッションは影響を受けません。
 
-1. [context7.com](https://context7.com/) で API キーを発行（`ctx7sk-` プレフィックスの secret key）
-2. **`~/.claude/settings.json`**（user-scoped、commit されない）の `env` セクションに追加:
+**Context7 API キー（`ctx7sk-` プレフィックスの secret key）は optional**:
+
+- CLI / Desktop は無認証でも通る
+- API キーを設定すると `researchMode: true`（深い検索）が利用可能になる
+- Web の 403 は API キーで解消しない（egress 段で遮断されるため）
+
+設定したい場合は `~/.claude/settings.json`（user-scoped、commit されない）の `env` セクションに追加:
 
 ```json
 {
@@ -61,7 +68,7 @@ context7 は **プラグイン同梱の MCP（`mcp.context7.com` 直結）と、
 }
 ```
 
-`.mcp.json` は `${CONTEXT7_API_KEY:-}` で参照しているため、env が空でも parse は通ります（`mcp__context7__*` ツールは無認証で動くケースが多い）。Web で 403 が出るときに API キーを設定する、という運用で十分です。`researchMode: true` を使う場合のみ API キー必須。
+`.mcp.json` は `${CONTEXT7_API_KEY:-}` で参照するため、env が空でも parse は通ります。
 
 ## Agent Teams (Claude Code 固有機能)
 
