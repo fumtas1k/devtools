@@ -18,6 +18,9 @@ interface UseCodecOptions {
  *
  * `deps` には transform が依存する外部状態（モード・フォーマット切替など）を渡す。
  * 利用者は transform 自体をメモ化する必要はない。
+ *
+ * `isPending` は deps が変化してからデバウンス完了（出力反映）までの間 true になる。
+ * この間はダウンロードボタン等を disabled にすることで、内容と拡張子の不整合を防ぐ。
  */
 export function useCodec(
   transform: (input: string) => string,
@@ -28,13 +31,17 @@ export function useCodec(
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
+  const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
     if (!input) {
       setOutput('');
       setError('');
+      setIsPending(false);
       return;
     }
+    // deps 変化直後からデバウンス完了まで pending 状態にする
+    setIsPending(true);
     const timer = setTimeout(() => {
       try {
         setOutput(transform(input));
@@ -42,6 +49,8 @@ export function useCodec(
       } catch (e) {
         setOutput('');
         setError(getErrorMessage(e, fallbackError));
+      } finally {
+        setIsPending(false);
       }
     }, debounceMs);
     return () => clearTimeout(timer);
@@ -53,7 +62,8 @@ export function useCodec(
     setInput('');
     setOutput('');
     setError('');
+    setIsPending(false);
   };
 
-  return { input, setInput, output, setOutput, error, setError, reset };
+  return { input, setInput, output, setOutput, error, setError, isPending, reset };
 }

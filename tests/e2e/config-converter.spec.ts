@@ -152,6 +152,31 @@ test.describe('設定ファイル相互変換', () => {
     await expect(page.getByLabel('TOML')).toHaveValue(/host/);
   });
 
+  test('変換先切り替え直後はダウンロードボタンが disabled になる', async ({ page }) => {
+    // from=JSON, to=YAML（デフォルト）で入力して出力を得る
+    await page.getByLabel('JSON').fill('{"host": "localhost", "port": 8080}');
+
+    // デバウンス完了を待って出力が反映される
+    await expect(page.getByLabel('YAML')).toHaveValue(/host: localhost/);
+
+    // ダウンロードボタンが有効であることを確認
+    const downloadBtn = page.getByRole('button', { name: 'ダウンロード' });
+    await expect(downloadBtn).toBeEnabled();
+
+    // 変換先を TOML に切り替え（デバウンス中は disabled になるはず）
+    await page
+      .getByRole('group', { name: '変換先フォーマット' })
+      .getByRole('button', { name: 'TOML' })
+      .click();
+
+    // 切り替え直後（デバウンス中）はボタンが disabled になること
+    await expect(downloadBtn).toBeDisabled();
+
+    // デバウンス完了後（出力が TOML に更新されたあと）は有効化されること
+    await expect(page.getByLabel('TOML')).toHaveValue(/host/);
+    await expect(downloadBtn).toBeEnabled();
+  });
+
   test('変換元を変更すると入力テキストがクリアされる（回帰テスト）', async ({ page }) => {
     const fromGroup = page.getByRole('group', { name: '変換元フォーマット' });
 
