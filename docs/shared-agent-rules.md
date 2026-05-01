@@ -46,6 +46,28 @@
 
 **E2E テストは実装と同時に書く**: バグ修正・UI 挙動の変更時はコミット前に該当ケースの E2E を追加する。後回し禁止。
 
+#### push 前必須チェックリスト（サブエージェント含む全担当者）
+
+以下をすべて満たしてから `git push` する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
+
+| #   | チェック項目          | コマンド                                                                      |
+| --- | --------------------- | ----------------------------------------------------------------------------- |
+| 1   | develop ベース確認    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致 |
+| 2   | ユニットテスト全 pass | `npm run test`                                                                |
+| 3   | E2E テスト全 pass     | `npm run test:e2e`                                                            |
+| 4   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                   |
+
+**E2E でポート衝突した場合の復旧手順**（スキップは禁止。必ず復旧して再実行すること）:
+
+```bash
+lsof -ti:4321 | xargs kill -9 2>/dev/null || true
+npm run test:e2e
+```
+
+> macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
+
+> ポート 4321 以外を使う場合は `4321` を対象ポートに読み替える。
+
 ---
 
 ## 4. ドキュメント更新ルール
@@ -86,7 +108,30 @@
 ### 6.2 ブランチ運用
 
 - **`develop` には直接コミットしない**: 必ず feature ブランチを切る。誤って始めた場合は `git stash` → ブランチ切替 → `git stash pop`。
-- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b feat/<topic>`（または `fix/`, `docs/`, `refactor/` 等）
+- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b <type>/<slug>`（例: `feat/add-tool`, `fix/issue-123-crash`）。issue がある場合は `<type>/issue-<n>-<slug>` 形式を推奨（詳細は 6.2a 参照）。
+
+### 6.2a ブランチ作成の完成形コマンドと自己検証
+
+サブエージェントを含むすべての実装担当は、以下のコマンドをそのままコピーして実行すること。
+
+```bash
+# ブランチ作成（develop 起点を必ず明示）
+git fetch origin develop
+git switch -c <type>/issue-<n>-<slug> origin/develop
+
+# 自己検証（ベース確認）— 2 行の出力が一致しなければ作業を止めてリベースする
+git rev-parse origin/develop
+git merge-base HEAD origin/develop
+```
+
+**2 行の出力が一致しない場合は作業を停止**し、以下でリベースしてから再確認する:
+
+```bash
+# `merge-base` が `origin/develop` の祖先（典型的には `main` 起点で worktree が切られたケース）で有効
+git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
+```
+
+> **なぜ**: CLI・Web 版を問わず `git checkout -b <branch>` だけでは worktree が `main` を起点にしてしまう既知の問題がある（過去に PR #154, #181 で発生）。ベース確認ステップがない限り発覚しない。
 
 ### 6.3 PR 作成時のベースブランチ
 
@@ -188,6 +233,17 @@ npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 
 外部入力をそのまま挿入すると **反射型 XSS** になる。必ずエスケープ／サニタイズしてから挿入し、可能なら React 要素として組み立てる。
 
+### 10.6 a11y 属性・role 属性の保護
+
+`aria-*` 属性（`aria-live`, `aria-expanded`, `aria-controls`, `aria-label`, `aria-hidden` 等）および
+`role=` 属性は、**明示的に許可されていない限り削除してはならない**。
+
+- ❌ 禁止: refactor・cleanup 中に「不要に見える」として aria 属性を削除する
+- ✅ 必須: `git diff` に `aria-` の削除行（`-` で始まる行）が含まれる場合は親に確認を取る
+- 誤って削除した場合は即 `git restore <file>` してから push する
+
+> **なぜ**: これらの属性は支援技術（スクリーンリーダー等）が依存する意味論的マーカー。見た目上は「余計な属性」に見えても削除すると a11y E2E テストが CI で落ちる（過去に PR #175 追加分が PR #179 の refactor で削除されて発生）。
+
 ---
 
 ## 11. 目的の維持とスコープ管理 (ATC運用)
@@ -222,7 +278,10 @@ npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 
 ## 🚫 Out of Scope (Do Not Touch)
 
-- [ ] 触らない領域
+- [ ] このセッションの Objective に書かれていないファイル一切
+- [ ] aria-\* / role= 属性の削除（明示的な許可なしには禁止）
+- [ ] issue 本文に記載のない機能追加・設計変更
+<!-- 具体例を追記: 例) src/components/ui/OutputField.tsx の a11y 属性 -->
 
 ## 🟢 Review & Feedback
 
