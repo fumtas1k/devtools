@@ -2,7 +2,11 @@
  * ファイルダウンロードユーティリティ
  */
 
-function triggerDownload(blob: Blob, filename: string): void {
+/**
+ * Blob を `<a download>` 経由でダウンロードする共通処理。
+ * テキスト・バイナリ・SVG・PNG・ZIP すべての出口で利用される。
+ */
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -13,12 +17,12 @@ function triggerDownload(blob: Blob, filename: string): void {
 
 /** テキストファイルをダウンロードする */
 export function downloadText(content: string, filename: string, mimeType = 'text/plain'): void {
-  triggerDownload(new Blob([content], { type: `${mimeType};charset=utf-8` }), filename);
+  downloadBlob(new Blob([content], { type: `${mimeType};charset=utf-8` }), filename);
 }
 
 /** バイナリをファイルとしてダウンロードする */
 export function downloadBytes(bytes: Uint8Array, filename: string): void {
-  triggerDownload(
+  downloadBlob(
     new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }),
     filename
   );
@@ -26,7 +30,7 @@ export function downloadBytes(bytes: Uint8Array, filename: string): void {
 
 /** SVG文字列をファイルとしてダウンロードする */
 export function downloadSvg(svgContent: string, filename: string): void {
-  triggerDownload(new Blob([svgContent], { type: 'image/svg+xml' }), filename);
+  downloadBlob(new Blob([svgContent], { type: 'image/svg+xml' }), filename);
 }
 
 /** SVG要素をファイルとしてダウンロードする */
@@ -69,7 +73,7 @@ export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
 
 /** SVG文字列からPNGをダウンロードする（Retina x2倍）。SVGにwidth/height属性が必要 */
 export function downloadPngFromSvgContent(svgContent: string, filename: string): Promise<void> {
-  return svgContentToPngBlob(svgContent).then((blob) => triggerDownload(blob, filename));
+  return svgContentToPngBlob(svgContent).then((blob) => downloadBlob(blob, filename));
 }
 
 /**
