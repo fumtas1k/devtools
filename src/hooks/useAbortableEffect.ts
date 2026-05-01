@@ -4,9 +4,12 @@ import { useEffect } from 'react';
  * AbortController を自動管理する useEffect ラッパー。
  * effect 関数に AbortSignal を渡し、クリーンアップ時に abort() を呼ぶ。
  * effect が同期的なクリーンアップ関数を返した場合は通常の useEffect と同様に呼び出す。
+ *
+ * 非同期処理を実行する場合は `void run()` パターンを使用すること。
+ * async 関数を直接渡しても Promise は無視される（キャンセルは signal.aborted で検知する）。
  */
 export function useAbortableEffect(
-  effect: (signal: AbortSignal) => void | Promise<void> | (() => void | Promise<void>),
+  effect: (signal: AbortSignal) => void | (() => void),
   deps: React.DependencyList
 ): void {
   useEffect(() => {

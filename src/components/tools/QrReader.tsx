@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -101,10 +101,15 @@ export function QrReaderTool() {
   const camera = useQrCamera({ onQrDetected: handleQrDetected });
   const { stopCamera } = camera;
 
-  // アンマウント時にカメラを停止する
+  // 画像アップロード処理の AbortController を保持する ref。
+  // アンマウント時・連打時に前回の処理をキャンセルする。
+  const uploadAbortRef = useRef<AbortController | null>(null);
+
+  // アンマウント時にカメラを停止し、進行中のアップロードをキャンセルする
   useAbortableEffect(() => {
     return () => {
       stopCamera();
+      uploadAbortRef.current?.abort();
     };
   }, [stopCamera]);
 
@@ -129,7 +134,10 @@ export function QrReaderTool() {
     setDecodeError('');
     setDecoded(null);
 
+    // 連打時に前回のアップロードをキャンセルし、新しい controller を設定する
+    uploadAbortRef.current?.abort();
     const controller = new AbortController();
+    uploadAbortRef.current = controller;
     let result;
     try {
       result = await decodeQrFromFile(file, {
@@ -142,7 +150,7 @@ export function QrReaderTool() {
       return;
     }
 
-    if (result.ok === false) {
+    if (!result.ok) {
       if (result.reason === 'load-error') {
         setDecodeError('画像を読み込めませんでした');
       } else {

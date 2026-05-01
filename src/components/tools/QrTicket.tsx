@@ -104,15 +104,20 @@ export function QrTicketTool() {
   const camera = useQrCamera({ onQrDetected: handleVerify });
   const { stopCamera } = camera;
 
+  // 画像アップロード処理の AbortController を保持する ref。
+  // アンマウント時・連打時に前回の処理をキャンセルする。
+  const uploadAbortRef = useRef<AbortController | null>(null);
+
   // モード切替時にカメラを停止する
   useAbortableEffect(() => {
     if (mode !== 'verify') stopCamera();
   }, [mode, stopCamera]);
 
-  // アンマウント時にカメラを停止する
+  // アンマウント時にカメラを停止し、進行中のアップロードをキャンセルする
   useAbortableEffect(() => {
     return () => {
       stopCamera();
+      uploadAbortRef.current?.abort();
     };
   }, [stopCamera]);
 
@@ -318,7 +323,10 @@ export function QrTicketTool() {
     camera.setCameraError('');
     setVerificationResult(null);
 
+    // 連打時に前回のアップロードをキャンセルし、新しい controller を設定する
+    uploadAbortRef.current?.abort();
     const controller = new AbortController();
+    uploadAbortRef.current = controller;
     let result;
     try {
       result = await decodeQrFromFile(file, {
@@ -331,7 +339,7 @@ export function QrTicketTool() {
       return;
     }
 
-    if (result.ok === false) {
+    if (!result.ok) {
       if (result.reason === 'load-error') {
         camera.setCameraError('画像を読み込めませんでした');
       } else {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { detectQrContent, decodeQrFromFile } from '@/utils/qr-reader';
 
 describe('detectQrContent', () => {
@@ -166,6 +166,52 @@ describe('decodeQrFromFile — AbortSignal キャンセル', () => {
       decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal })
     ).rejects.toMatchObject({ name: 'AbortError' });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globalThis.Image = OrigImage as any;
+  });
+
+  it('canvas.getContext が null の場合でも load-error として解決し、abort リスナーが残らない', async () => {
+    const controller = new AbortController();
+    const revokeCount = { count: 0 };
+
+    // canvas.getContext を null 返しにする
+    const origCreateElement = document.createElement.bind(document);
+    const spy = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = origCreateElement(tag);
+      if (tag === 'canvas') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (el as any).getContext = () => null;
+      }
+      return el;
+    });
+
+    const OrigImage = globalThis.Image;
+    class CanvasNullImage {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      width = 100;
+      height = 100;
+      set src(_: string) {
+        Promise.resolve().then(() => this.onload?.());
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globalThis.Image = CanvasNullImage as any;
+
+    URL.createObjectURL = () => 'blob:stub';
+    URL.revokeObjectURL = () => {
+      revokeCount.count += 1;
+    };
+
+    const file = new File(['dummy'], 'test.png', { type: 'image/png' });
+    const result = await decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal });
+
+    // load-error として解決すること
+    expect(result).toEqual({ ok: false, reason: 'load-error' });
+    // onload 内で 1 回だけ revoke されること（abort リスナーによる二重 revoke がないこと）
+    expect(revokeCount.count).toBe(1);
+
+    spy.mockRestore();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     globalThis.Image = OrigImage as any;
   });
