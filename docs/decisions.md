@@ -1806,6 +1806,68 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 
 ---
 
+## [054] CSP / セキュリティヘッダを `public/_headers` で付与
+
+**2026-04-30 | ステータス: 採用**
+
+### 背景
+
+ブラウザ完結型 DevTools として「ユーザーデータが外部送信されない」ことが価値の根幹だが、レスポンスヘッダレベルの多層防御（CSP / nosniff / Referrer-Policy / Permissions-Policy）が一切付与されていなかった（issue #158）。
+
+`dangerouslySetInnerHTML` を使う箇所が現状 3 箇所（`QrCode.tsx:115` / `Gs1Databar.tsx:352` / `qr-ticket/GenerateTab.tsx:459`）あり、入力源は QR/バーコード行列のため XSS は成立しないが、依存更新・機能追加で実害化する経路を残していた。また `qr-reader` / `qr-ticket` でカメラ権限を取得する一方、`connect-src` 制約が無く、万一スクリプト実行が成立した場合の二次被害（情報送信）が大きい状態だった。
+
+### 決断
+
+静的ホスティング（現在の Cloudflare Pages：`devtools-d9w.pages.dev`）向けに `public/_headers` を新設し、以下のヘッダを `/*`（全ルート）に付与する。Astro は `public/` 配下を `dist/` にそのままコピーするため、ビルド設定変更は不要。
+
+```
+/*
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=()
+```
+
+各ディレクティブの根拠:
+
+| ディレクティブ                                          | 値                       | 根拠                                                                                                                                                                                                                   |
+| :------------------------------------------------------ | :----------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default-src`                                           | `'self'`                 | 既定で外部送信・読込を全拒否                                                                                                                                                                                           |
+| `img-src`                                               | `'self' data: blob:`     | QR/JAN/GS1/UUID 等で `<canvas>` の `toDataURL()`（`data:`）と画像変換時の `URL.createObjectURL()`（`blob:`）を使用                                                                                                     |
+| `media-src`                                             | `'self' blob:`           | `qr-reader` / `qr-ticket` のカメラ映像ストリーム（MediaStream → blob:）                                                                                                                                                |
+| `style-src`                                             | `'self' 'unsafe-inline'` | `style={{...}}` 219+ 箇所、Astro `style="..."` 多数。詳細は本決断の "却下した選択肢" 参照                                                                                                                              |
+| `script-src`                                            | `'self' 'unsafe-inline'` | Astro 6.1.5 SSG が hydration runtime と MobileDrawer/index 等の島を **インラインスクリプトとして埋め込む**ため必要（`dist/*.html` を `npm run build` 後に grep で確認済み）。`<script is:inline>` も BaseLayout に存在 |
+| `connect-src`                                           | `'self'`                 | アプリは全データをブラウザ内で処理し、外部 API 呼び出しは存在しない（`grep "fetch(" src/` で確認）                                                                                                                     |
+| `worker-src`                                            | `'self'`                 | `sw.js`（Service Worker）登録の許可                                                                                                                                                                                    |
+| `object-src`                                            | `'none'`                 | `<object>`/`<embed>`/`<applet>` 経由の埋め込みを完全禁止                                                                                                                                                               |
+| `frame-ancestors`                                       | `'none'`                 | クリックジャッキング防止（`<iframe>` 埋め込み拒否）                                                                                                                                                                    |
+| `base-uri`                                              | `'none'`                 | `<base>` タグ改ざんによる相対リソースのリダイレクトを防止                                                                                                                                                              |
+| `form-action`                                           | `'self'`                 | フォーム送信先を自身に限定（現状 form 送信は無いがゼロトラスト）                                                                                                                                                       |
+| `Permissions-Policy` `camera=(self)`                    | —                        | `qr-reader` / `qr-ticket` 用に自身のみ許可                                                                                                                                                                             |
+| `Permissions-Policy` `microphone=()` / `geolocation=()` | —                        | 利用していないため明示的に無効化                                                                                                                                                                                       |
+| `upgrade-insecure-requests`                             | —                        | PR #170 レビューで追記。Cloudflare Pages は HTTPS 既定で実害は小さいが、混在コンテンツ防止の補強としてゼロコストで採用                                                                                                 |
+| `X-Frame-Options: DENY`                                 | —                        | PR #170 レビューで追記。`frame-ancestors 'none'` でモダンブラウザはカバーされるが、業界慣習として旧ブラウザ向けに併記                                                                                                  |
+
+### 却下した選択肢
+
+- **`script-src 'self'` のみ（`'unsafe-inline'` 無し）**: Astro 6.1.5 の SSG 出力には hydration ブートストラップやページ固有の島制御が**インライン `<script>` / `<script type="module">`**として埋め込まれるため、CSP 違反で全ページが破壊される。Astro 標準では nonce/hash 注入機構が無く、ビルド後 HTML を後処理する独自スクリプトが必要となるため、本 PR スコープ外で先送り。
+- **`style-src 'self'`（`'unsafe-inline'` 無し）**: React TSX で `style={{...}}` を 219 箇所、Astro でも `style="..."` を多用しており、すべてを CSS Modules / `<style>` ブロックに移行するのは大規模リファクタになる。本 PR では互換性を優先。
+- **`<meta http-equiv="Content-Security-Policy">` での代替**: `frame-ancestors` / `report-uri` 等は meta 経由では効かないため、レスポンスヘッダ方式を採用。
+- **`netlify.toml` / `vercel.json` 等の併設**: 現在のホスティングは Cloudflare Pages のみ。複数ホスティングを実際に使う段階で追加する（YAGNI）。
+
+### 結果・トレードオフ
+
+- ✅ デフォルト全拒否（`default-src 'self'`）+ 利用ディレクティブの個別許可で多層防御が成立。
+- ✅ `frame-ancestors 'none'` でクリックジャッキング、`X-Content-Type-Options: nosniff` で MIME sniffing、`Referrer-Policy` でリファラ漏えいを抑止。
+- ✅ Permissions-Policy で未使用機能（microphone / geolocation）を明示的に無効化し、将来追加コードでの誤利用を防止。
+- ✅ `connect-src 'self'` により、万一 XSS が成立しても外部送信経路を断つ。
+- ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。
+- ⚠️ Cloudflare Pages 以外のホスティング（Netlify は同形式で動作するが、Vercel は `vercel.json` 形式）に切り替える際は別途設定追加が必要。
+- ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする。
+
+---
+
 ## [055] 月次 issue メトリクス収集ワークフローを追加
 
 **2026-04-30 | ステータス: 採用**
