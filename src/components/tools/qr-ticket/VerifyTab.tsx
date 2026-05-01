@@ -158,8 +158,9 @@ export function VerifyTab({
           <h3 style={sectionHeaderStyle}>検証結果</h3>
           <div
             style={sectionBodyStyle}
-            role={verificationResult && !verificationResult.valid ? 'alert' : 'status'}
+            role="status"
             aria-live={verificationResult && !verificationResult.valid ? 'assertive' : 'polite'}
+            aria-atomic="true"
           >
             {verifying ? (
               <p style={{ ...caption, color: colors.muted }}>検証中…</p>
