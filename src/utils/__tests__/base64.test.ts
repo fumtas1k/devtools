@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { encodeBase64, decodeBase64 } from '@/utils/base64';
+import { encodeBase64, decodeBase64, pemBlockToBytes } from '@/utils/base64';
 
 // ────────────────────────────────────────────
 // encodeBase64
@@ -73,5 +73,49 @@ describe('decodeBase64', () => {
   it('エンコード→デコードのラウンドトリップ（URL-safe）', () => {
     const original = 'テスト文字列 abc123 !@#';
     expect(decodeBase64(encodeBase64(original, true), true)).toBe(original);
+  });
+});
+
+// ────────────────────────────────────────────
+// pemBlockToBytes
+// ────────────────────────────────────────────
+describe('pemBlockToBytes', () => {
+  // btoa('hello') = 'aGVsbG8='
+  const HELLO_BYTES = [104, 101, 108, 108, 111]; // "hello"
+  const HELLO_PEM = `-----BEGIN PUBLIC KEY-----\naGVsbG8=\n-----END PUBLIC KEY-----`;
+
+  it('正常な PEM ブロックをバイト列に変換できる', () => {
+    const result = pemBlockToBytes(HELLO_PEM, 'PUBLIC KEY');
+    expect(Array.from(result)).toEqual(HELLO_BYTES);
+  });
+
+  it('改行なしの PEM（Base64 を連結した形式）も変換できる', () => {
+    const pem = `-----BEGIN PUBLIC KEY-----aGVsbG8=-----END PUBLIC KEY-----`;
+    const result = pemBlockToBytes(pem, 'PUBLIC KEY');
+    expect(Array.from(result)).toEqual(HELLO_BYTES);
+  });
+
+  it('ラベルが一致しない場合はエラーを投げる', () => {
+    expect(() => pemBlockToBytes(HELLO_PEM, 'PRIVATE KEY')).toThrow(
+      'PEM ブロック（PRIVATE KEY）が見つかりません'
+    );
+  });
+
+  it('ヘッダーのみ（フッターなし）はエラーを投げる', () => {
+    const pem = `-----BEGIN PUBLIC KEY-----\naGVsbG8=`;
+    expect(() => pemBlockToBytes(pem, 'PUBLIC KEY')).toThrow(
+      'PEM ブロック（PUBLIC KEY）が見つかりません'
+    );
+  });
+
+  it('不正な Base64 は「PEM の Base64 が不正です」エラーを投げる', () => {
+    const pem = `-----BEGIN PUBLIC KEY-----\n!!!not-base64!!!\n-----END PUBLIC KEY-----`;
+    expect(() => pemBlockToBytes(pem, 'PUBLIC KEY')).toThrow('PEM の Base64 が不正です');
+  });
+
+  it('PRIVATE KEY ラベルでも同様に変換できる', () => {
+    const pem = `-----BEGIN PRIVATE KEY-----\naGVsbG8=\n-----END PRIVATE KEY-----`;
+    const result = pemBlockToBytes(pem, 'PRIVATE KEY');
+    expect(Array.from(result)).toEqual(HELLO_BYTES);
   });
 });
