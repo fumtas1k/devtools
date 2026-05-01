@@ -19,7 +19,7 @@ interface UseCodecOptions {
  * `deps` には transform が依存する外部状態（モード・フォーマット切替など）を渡す。
  * 利用者は transform 自体をメモ化する必要はない。
  *
- * `isPending` は deps が変化してからデバウンス完了（出力反映）までの間 true になる。
+ * `isPending` は input または deps が変化してからデバウンス完了（出力反映）までの間 true になる。
  * この間はダウンロードボタン等を disabled にすることで、内容と拡張子の不整合を防ぐ。
  */
 export function useCodec(
