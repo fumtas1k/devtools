@@ -1926,6 +1926,14 @@ Claude Code の permission matching は **`deny` > `ask` > `allow` の優先順*
 - `git add *` を削除して path-prefix 形のみ allow: 実用性を大きく損なうため却下。ask での警告追加で対応。
 - `git commit --amend *` を allow に追加: 現時点で明示的な要件なし（YAGNI）。
 
+### 安全性確認（追記）
+
+- 実機確認: 別タスクで `git commit -am "msg" --no-verify` 実行時に ask が発火することを確認予定（issue 化推奨、ただし本 PR 必須ではない）。
+
 ### 関連 PR
 
 - PR #189
+
+### 将来課題
+
+- `Bash(git switch *)` は allow に残置（新規ブランチ作成 `-b` だけでなく既存ブランチ切替も含む）。`git checkout <branch>` (ask) との非対称性が将来「allow が広すぎてベース汚染」の原因となり得るため、運用で問題が顕在化したら `git switch -b *` 限定への縮退を別 PR で再検討する。
