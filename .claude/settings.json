@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ]; then npm ci; fi"
+            "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ] && [ ! -d node_modules ]; then npm ci; fi"
           }
         ]
       }
