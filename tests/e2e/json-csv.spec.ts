@@ -63,4 +63,23 @@ test.describe('JSON / CSV 変換', () => {
     await expect(page.getByLabel('変換結果')).toHaveValue(/'\+1\+1/);
     await expect(page.getByLabel('変換結果')).toHaveValue(/'@SUM/);
   });
+
+  test('JSON → CSV: タイピング直後はダウンロードボタンが disabled になり、デバウンス完了後に有効化される', async ({
+    page,
+  }) => {
+    const downloadBtn = page.getByRole('button', { name: 'CSVダウンロード' });
+    const inputField = page.getByLabel('入力');
+
+    // 有効な JSON を入力してボタンを表示させ、デバウンス完了を待つ
+    await inputField.fill('[{"id":1}]');
+    await expect(downloadBtn).toBeVisible({ timeout: 2000 });
+    await expect(downloadBtn).toBeEnabled({ timeout: 2000 });
+
+    // 新しい入力でデバウンス中（isPending = true）→ ボタンが disabled になる
+    await inputField.fill('[{"id":2}]');
+    await expect(downloadBtn).toBeDisabled();
+
+    // デバウンス完了（300ms）後に再び有効化される
+    await expect(downloadBtn).toBeEnabled({ timeout: 3000 });
+  });
 });
