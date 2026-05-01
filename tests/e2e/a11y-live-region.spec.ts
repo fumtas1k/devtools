@@ -47,7 +47,7 @@ test.describe('a11y live region (issue #163)', () => {
     await expect(page.getByRole('heading', { name: 'Header (JOSE)' })).toBeVisible();
 
     const statusRegions = page.getByRole('status');
-    await expect.poll(async () => await statusRegions.count()).toBeGreaterThan(0);
+    await expect(statusRegions.first()).toBeVisible();
   });
 });
 
