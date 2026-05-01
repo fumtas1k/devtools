@@ -1895,45 +1895,40 @@ devtools リポジトリの issue 活動量（新規作成数・クローズ率�
 
 ---
 
-## [056] `.claude/settings.json` permissions allow を git 典型コマンドに拡張（hook bypass 防止・ベース切替制限）
+## [057] 2026-05-01 — E2E 実行責務をサブエージェントから親（司令塔）に移管
 
 **2026-05-01 | ステータス: 採用**
 
 ### 背景
 
-サブエージェント運用において `git checkout -b` / `git commit` / `git rebase --onto` などが ask 行きとなり、非対話のサブエージェントでは事実上 deny になっていた（PR #181 / #182 / #168 デバッグで再現）。PR #189 で典型操作を allow に追加したが、ワイルドカードが過広で危険なパターンを無確認で通してしまう問題が PR レビューで指摘された。
+worktree 並列実行を採用しているため、複数のサブエージェントが同時に `npm run test:e2e` を起動すると port 4321 を奪い合い、`waitForReactHydration` timeout として誤報告される事故が頻発した（PR #181 / #188 で実害発生）。また sandbox 制約で dev server を起動できないケースもあり、サブエージェント側の E2E 実行は信頼性が低い。
 
 ### 決断
 
-- `git commit *` → `git commit -m *` / `git commit -am *` に限定（`--no-verify` / `-n` によるフックバイパスを防止）
-- `git checkout *` → `git switch *` / `git checkout -b *` / `git checkout -B worktree-agent-*` に限定（ベース切替・ファイル復元は ask に残す）
-- `git add *` は allow に残しつつ、`git add -A*` / `git add --all*` / `git add .` を ask に追加（`.env` 等の機密ファイル混入リスク対応）
-
-### 安全性確認
-
-Claude Code の permission matching は **`deny` > `ask` > `allow` の優先順**で評価される（[公式ドキュメント](https://code.claude.com/docs/en/settings) 参照。deny が最初にマッチすれば即ブロック、次に ask、最後に allow の順で評価され、最初にマッチしたルールが適用される）。したがって、`git add -A*`（ask）は `git add *`（allow）より優先され、`git add -A` を実行した際は ask が確実に発火する。同様に `git commit -am "msg" --no-verify`（ask パターン `git commit * --no-verify*` にマッチ）も、`git commit -am *`（allow）より ask が優先されるため、hook bypass が無確認で通る恐れはない。
-
-- `git push --force*` → deny（変更なし）
-- `git reset --hard*` → ask（変更なし）
-- `git push*` → ask（変更なし）
-- `git commit --no-verify*` / `git commit -n *` / `git commit * -n` / `git commit * --no-verify*` → ask（新規追加）
-- `git add -A*` / `git add --all*` / `git add .` → ask（新規追加）
-- `git checkout <branch>`（ベース切替）/ `git checkout -- *`（ファイル復元） → ask に残置
-- `git rebase`（--onto 以外）/ `git merge`（--ff-only 以外）→ ask に残置
-
-#### 実機確認
-
-- `git commit -am "msg" --no-verify` 実行時に ask が発火することを確認予定（issue 化推奨、ただし本 PR 必須ではない）。
+- サブエージェント: **E2E テストコードの追加義務は維持**（11 章原則）。`npm run test:e2e` の **実行は禁止**。検証範囲を unit + 型チェックに限定。
+- 親（司令塔）: push 前後に worktree 内で 1 回だけ E2E を serial 実行。複数 worktree がある場合は同時実行禁止（直列化）。環境由来の失敗が続く場合は CI を最終判断とする。
 
 ### 却下した選択肢
 
-- `git add *` を削除して path-prefix 形のみ allow: 実用性を大きく損なうため却下。ask での警告追加で対応。
-- `git commit --amend *` を allow に追加: 現時点で明示的な要件なし（YAGNI）。
+- **サブエージェント側で port を可変化**: playwright config と Astro dev server の双方を同期する必要があり、複雑性に見合わない。直列化で十分。
+- **E2E テスト自体を unit 化**: `waitForReactHydration` を含む WCAG / アクセシビリティ系の挙動はブラウザでないと検証できない。
 
-### 将来課題
+### 安全性確認
 
-- `Bash(git switch *)` は allow に残置（新規ブランチ作成 `-b` だけでなく既存ブランチ切替も含む）。`git checkout <branch>` (ask) との非対称性が将来「allow が広すぎてベース汚染」の原因となり得るため、運用で問題が顕在化したら `git switch -b *` 限定への縮退を別 PR で再検討する。
+- E2E **実装義務**は維持されるため、テストカバレッジは低下しない（実装コードと同時にテストコードが PR に入る原則は変更なし）。
+- CI が最終ゲートとして機能（`.github/workflows/` の e2e ジョブで全件検証）。
+- 親による代行実行は復旧コマンド（`lsof -ti:4321 | xargs kill -9`）と直列化を含むため、port 衝突起因の誤報告は排除される。
+
+### 将来の見直しトリガー
+
+- CI で port 動的割り当てが導入された場合は 3.1 の「実行禁止」を緩和できる（playwright config と Astro dev server の連携が自動化されることが前提）。
+
+### 経緯追記
+
+- **レビュー取得の取りこぼし事故** (2026-05-01): PR #187 / #188 / #189 で親が `gh api .../issues/<n>/comments` のみ確認し、GitHub の "Submit review" 機能経由の正式レビュー（`gh api .../pulls/<n>/reviews`）を 3 件取りこぼした。再発防止として 3.2 章「親向けレビュー取得手順」を追記。
 
 ### 関連 PR
 
-- PR #189
+- PR #192（本 PR、`docs/shared-agent-rules.md` 3 章改訂）
+- PR #181（fix #149: 元の手順では E2E 待ちで時間切れ）
+- PR #188（refactor #168: worktree 並列で E2E が誤 timeout）
