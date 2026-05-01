@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { jsonToCsv, csvToJson } from '../json-csv';
+import { jsonToCsv, csvToJson, escapeCsvFormula } from '../json-csv';
 
 describe('jsonToCsv', () => {
   it('フラットなオブジェクト配列をCSVに変換する', () => {
@@ -123,6 +123,52 @@ describe('jsonToCsv', () => {
       expect(result).toContain('u.name');
       expect(result).toMatch(/'=cmd/);
     });
+  });
+});
+
+describe('escapeCsvFormula', () => {
+  it('空文字列はそのまま返す', () => {
+    expect(escapeCsvFormula('')).toBe('');
+  });
+
+  it('先頭が = の文字列にシングルクォートを前置する', () => {
+    expect(escapeCsvFormula('=SUM(A1:A10)')).toBe(`'=SUM(A1:A10)`);
+  });
+
+  it('先頭が +, -, @ の文字列にシングルクォートを前置する', () => {
+    expect(escapeCsvFormula('+1+1')).toBe(`'+1+1`);
+    expect(escapeCsvFormula('-1+2')).toBe(`'-1+2`);
+    expect(escapeCsvFormula('@SUM(1,2)')).toBe(`'@SUM(1,2)`);
+  });
+
+  it('タブ・CR で始まる文字列にシングルクォートを前置する', () => {
+    expect(escapeCsvFormula('\tHello')).toBe(`'\tHello`);
+    expect(escapeCsvFormula('\rOK')).toBe(`'\rOK`);
+  });
+
+  it('危険文字が文字列の途中にある場合はエスケープしない', () => {
+    expect(escapeCsvFormula('foo=bar')).toBe('foo=bar');
+    expect(escapeCsvFormula('a+b')).toBe('a+b');
+  });
+
+  it('通常の文字列はそのまま返す', () => {
+    expect(escapeCsvFormula('hello')).toBe('hello');
+    expect(escapeCsvFormula('太郎')).toBe('太郎');
+  });
+
+  it('数値・真偽値・null は素通しする', () => {
+    expect(escapeCsvFormula(42)).toBe(42);
+    expect(escapeCsvFormula(0)).toBe(0);
+    expect(escapeCsvFormula(true)).toBe(true);
+    expect(escapeCsvFormula(false)).toBe(false);
+    expect(escapeCsvFormula(null)).toBe(null);
+  });
+
+  it('undefined や非プリミティブも防御的に素通しする（型保証が崩れた場合の安全策）', () => {
+    expect(escapeCsvFormula(undefined)).toBe(undefined);
+    // 配列やオブジェクトはそのまま返す（呼び出し側がシリアライズ前提）
+    const arr = ['=evil'];
+    expect(escapeCsvFormula(arr)).toBe(arr);
   });
 });
 
