@@ -28,7 +28,7 @@ const SAMPLE: Record<Mode, string> = {
 export function JsonCsvTool() {
   const [mode, setMode] = useState<Mode>('json2csv');
 
-  const { input, setInput, output, error, reset } = useCodec(
+  const { input, setInput, output, error, isPending, reset } = useCodec(
     (text) => (mode === 'json2csv' ? jsonToCsv(text) : csvToJson(text)),
     [mode]
   );
@@ -39,13 +39,19 @@ export function JsonCsvTool() {
   };
 
   const handleDownloadCsv = () => {
+    // ボタン側でも `disabled={!output}` で防御しているが念のため二重防御
     if (!output) return;
     downloadText(output, 'output.csv', 'text/csv');
   };
 
   const downloadButton =
     mode === 'json2csv' ? (
-      <DownloadButton onClick={handleDownloadCsv} label="CSVダウンロード" variant="secondary" />
+      <DownloadButton
+        onClick={handleDownloadCsv}
+        label="CSVダウンロード"
+        variant="secondary"
+        disabled={isPending || !output}
+      />
     ) : null;
 
   return (
