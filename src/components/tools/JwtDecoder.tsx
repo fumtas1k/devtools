@@ -10,6 +10,8 @@ import {
   base64UrlToBytes,
   type ExpStatus,
 } from '@/utils/jwt';
+import { bytesToBase64Url } from '@/utils/base64url';
+import { pemBlockToBytes } from '@/utils/base64';
 
 const SAMPLE_SECRET = 'your-256-bit-secret';
 
@@ -17,23 +19,38 @@ const SAMPLE_SECRET = 'your-256-bit-secret';
 const jsonKeyColor = colors.link;
 const jsonValueColor = '#6e4f0e';
 
-function toBase64Url(str: string): string {
-  const bytes = new TextEncoder().encode(str);
-  let binary = '';
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
+type AlgParams =
+  | { name: 'HMAC'; hash: string }
+  | { name: 'RSASSA-PKCS1-v1_5'; hash: string }
+  | { name: 'ECDSA'; hash: string; namedCurve: string };
+
+/** アルゴリズム → WebCrypto パラメーターのマッピング（テスト用にエクスポート） */
+export const ALG_MAP: Record<string, AlgParams> = {
+  HS256: { name: 'HMAC', hash: 'SHA-256' },
+  HS384: { name: 'HMAC', hash: 'SHA-384' },
+  HS512: { name: 'HMAC', hash: 'SHA-512' },
+  RS256: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+  RS384: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-384' },
+  RS512: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-512' },
+  ES256: { name: 'ECDSA', hash: 'SHA-256', namedCurve: 'P-256' },
+  ES384: { name: 'ECDSA', hash: 'SHA-384', namedCurve: 'P-384' },
+  ES512: { name: 'ECDSA', hash: 'SHA-512', namedCurve: 'P-521' },
+};
 
 async function generateSampleJwt(secret: string): Promise<string> {
-  const headerB64 = toBase64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const headerB64 = bytesToBase64Url(
+    new TextEncoder().encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  );
   const now = Math.floor(Date.now() / 1000);
-  const payloadB64 = toBase64Url(
-    JSON.stringify({
-      sub: '1234567890',
-      name: 'John Doe',
-      iat: now,
-      exp: now + 100 * 365 * 24 * 60 * 60,
-    })
+  const payloadB64 = bytesToBase64Url(
+    new TextEncoder().encode(
+      JSON.stringify({
+        sub: '1234567890',
+        name: 'John Doe',
+        iat: now,
+        exp: now + 100 * 365 * 24 * 60 * 60,
+      })
+    )
   );
   const signingInput = `${headerB64}.${payloadB64}`;
   const key = await crypto.subtle.importKey(
@@ -44,24 +61,13 @@ async function generateSampleJwt(secret: string): Promise<string> {
     ['sign']
   );
   const sigBuffer = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput));
-  let binary = '';
-  for (const b of new Uint8Array(sigBuffer)) binary += String.fromCharCode(b);
-  const sigB64 = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  const sigB64 = bytesToBase64Url(new Uint8Array(sigBuffer));
   return `${signingInput}.${sigB64}`;
 }
 
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
-  const binary = atob(b64);
-  const buf = new ArrayBuffer(binary.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
-  return buf;
-}
+export type SigStatus = 'unchecked' | 'verifying' | 'valid' | 'invalid' | 'unsupported' | 'error';
 
-type SigStatus = 'unchecked' | 'verifying' | 'valid' | 'invalid' | 'unsupported' | 'error';
-
-async function verifySignature(
+export async function verifySignature(
   rawHeader: string,
   rawPayload: string,
   signature: string,
@@ -69,19 +75,18 @@ async function verifySignature(
   secretOrKey: string
 ): Promise<SigStatus> {
   const alg = typeof header.alg === 'string' ? header.alg : '';
-  const encoded = new TextEncoder().encode(`${rawHeader}.${rawPayload}`);
-  const buf = new ArrayBuffer(encoded.length);
-  const signingInput = new Uint8Array(buf);
-  signingInput.set(encoded);
+  const algParams = ALG_MAP[alg];
+  if (!algParams) return 'unsupported';
+
+  const signingInput = new TextEncoder().encode(`${rawHeader}.${rawPayload}`);
   const sigBytes = base64UrlToBytes(signature);
 
   try {
-    if (alg.startsWith('HS')) {
-      const hash = alg === 'HS256' ? 'SHA-256' : alg === 'HS384' ? 'SHA-384' : 'SHA-512';
+    if (algParams.name === 'HMAC') {
       const key = await crypto.subtle.importKey(
         'raw',
         new TextEncoder().encode(secretOrKey),
-        { name: 'HMAC', hash },
+        { name: 'HMAC', hash: algParams.hash },
         false,
         ['verify']
       );
@@ -90,12 +95,13 @@ async function verifySignature(
         : 'invalid';
     }
 
-    if (alg.startsWith('RS')) {
-      const hash = alg === 'RS256' ? 'SHA-256' : alg === 'RS384' ? 'SHA-384' : 'SHA-512';
+    // RS* / ES* は公開鍵 PEM を使用
+    const keyBytes = pemBlockToBytes(secretOrKey, 'PUBLIC KEY');
+    if (algParams.name === 'RSASSA-PKCS1-v1_5') {
       const key = await crypto.subtle.importKey(
         'spki',
-        pemToArrayBuffer(secretOrKey),
-        { name: 'RSASSA-PKCS1-v1_5', hash },
+        keyBytes.buffer,
+        { name: 'RSASSA-PKCS1-v1_5', hash: algParams.hash },
         false,
         ['verify']
       );
@@ -104,26 +110,25 @@ async function verifySignature(
         : 'invalid';
     }
 
-    if (alg.startsWith('ES')) {
-      const { hash, namedCurve } =
-        alg === 'ES256'
-          ? { hash: 'SHA-256', namedCurve: 'P-256' }
-          : alg === 'ES384'
-            ? { hash: 'SHA-384', namedCurve: 'P-384' }
-            : { hash: 'SHA-512', namedCurve: 'P-521' };
+    // ECDSA
+    if (algParams.name === 'ECDSA') {
       const key = await crypto.subtle.importKey(
         'spki',
-        pemToArrayBuffer(secretOrKey),
-        { name: 'ECDSA', namedCurve },
+        keyBytes.buffer,
+        { name: 'ECDSA', namedCurve: algParams.namedCurve },
         false,
         ['verify']
       );
-      return (await crypto.subtle.verify({ name: 'ECDSA', hash }, key, sigBytes, signingInput))
+      return (await crypto.subtle.verify(
+        { name: 'ECDSA', hash: algParams.hash },
+        key,
+        sigBytes,
+        signingInput
+      ))
         ? 'valid'
         : 'invalid';
     }
-
-    return 'unsupported';
+    return 'error';
   } catch {
     return 'error';
   }
