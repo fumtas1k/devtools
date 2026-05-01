@@ -1932,3 +1932,48 @@ worktree 並列実行を採用しているため、複数のサブエージェ�
 - PR #192（本 PR、`docs/shared-agent-rules.md` 3 章改訂）
 - PR #181（fix #149: 元の手順では E2E 待ちで時間切れ）
 - PR #188（refactor #168: worktree 並列で E2E が誤 timeout）
+
+---
+
+## [058] 2026-05-02 — 「先送り表現」の issue 化忘れ検出を script として切り出す
+
+**2026-05-02 | ステータス: 採用**
+
+### 背景
+
+PR レビュー返信や教訓記録に「予定 / 候補 / follow-up / 将来課題」などの先送り表現が含まれているのに、対応する issue 番号 (`#NNN`) が併記されないケースが頻発し、ユーザー指摘を受けて事後起票する事故が複数発生（2026-05-01 の PR #188 → #196、PR #189/#192 → #197/#198）。`docs/shared-agent-rules.md` 6.4 章「先送り時は必ず issue 化する」の規約はあるが、機械的にチェックする手段がなかった。
+
+### 決断
+
+検出ロジックを `scripts/check-followup-refs.sh` として切り出し、memory checklist (`feedback_commander_checklist.md` F 章) と `.claude/hooks/`（#199 で段階導入予定）から **single source of truth として呼び出せる**形にする。
+
+```bash
+bash scripts/check-followup-refs.sh /tmp/claude/issues/reply-*.md
+bash scripts/check-followup-refs.sh docs/agent-lessons.md
+```
+
+exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がない先送り表現を炙り出す。
+
+### 却下した選択肢
+
+- **skill 化** (`skills/pr-review-followup/`): SKILL.md + script + reference をパッケージ化する形だが、現時点では grep スクリプト 1 本に対して構造が大きすぎる。PR レビュー対応フローが定着したら再検討（#199 にて保留記録済み）。
+- **`.claude/hooks/PreToolUse(Bash:gh pr comment*)` でフック化**: 完全自動化だが、フック実装・テスト・配布のコストがある。まず script + memory checklist で運用試行し、効果が見えたらフック化する段階導入を選択（#199）。
+- **memory checklist に正規表現直書き**: 軽量だが single source of truth でなく、サブエージェント完了報告 / hook で重複する。
+
+### 安全性確認
+
+- script は read-only（grep のみ）。誤検出があってもファイル破壊はない。
+- 検出ロジックの誤差（false positive / false negative）は run コストが軽いため許容。実運用で精度の問題が出たら正規表現を更新する。
+
+### 拡張候補（issue 化の判断は実運用後）
+
+- `.claude/hooks/` への移植（#199）: PR レビュー返信投稿前に自動で script を実行し、exit 1 ならブロックする hook を導入する。
+- skill パッケージ化（#199）: PR レビュー対応の完走ワークフローが定着したら、skill としてパッケージ化する案。
+
+### 関連 PR / issue
+
+- PR #199（本決定で採用された script 本体）
+- PR #196（起票忘れ事例: useQrCamera signal 伝播）
+- PR #197（起票忘れ事例: force-with-lease push 運用ルール）
+- PR #198（起票忘れ事例: permissions precedence 実機確認）
+- `docs/shared-agent-rules.md` 6.4 章「先送り時は issue 化必須」
