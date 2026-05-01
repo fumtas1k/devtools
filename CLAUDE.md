@@ -22,23 +22,21 @@
 
 このプロジェクトは以下の Claude Code プラグインを前提に運用しています。`.claude/settings.json` の `enabledPlugins` で宣言済み。
 
-| プラグイン                                | 用途                                                                                 |
-| :---------------------------------------- | :----------------------------------------------------------------------------------- |
-| `superpowers@claude-plugins-official`     | 設計・計画・実装支援スキル群（writing-plans, debugging, TDD 等）                     |
-| `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                                       |
-| `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（プロジェクトでは `.mcp.json` 経由の npx 起動） |
+| プラグイン                                | 用途                                                              |
+| :---------------------------------------- | :---------------------------------------------------------------- |
+| `superpowers@claude-plugins-official`     | 設計・計画・実装支援スキル群（writing-plans, debugging, TDD 等）  |
+| `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                    |
+| `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
 
 ### Claude Code CLI / Desktop
 
-`.claude/settings.json` の `enabledPlugins` を読み取り、初回オープン時に install を自動 prompt します。
+`.claude/settings.json` の `enabledPlugins` を読み取り、初回オープン時に install を自動 prompt します。`extraKnownMarketplaces` で `claude-plugins-official` も明示宣言済み。
 
 ### Claude Code Web (claude.ai/code) / IDE 拡張
 
 公式ドキュメントは「クラウドセッションでも `enabledPlugins` 宣言のプラグインはセッション開始時に install される」と謳っていますが、**実装上は trust dialog イベントに紐づいており、Web / headless / CI ではこのイベントが発火しないため silent に install がスキップされる** Claude Code 本体側の既知制約があります（upstream: [#23737](https://github.com/anthropics/claude-code/issues/23737) / `autoInstallEnabledPlugins` 提案は duplicate でクローズ・未実装、関連 #17832 / #19275）。
 
-回避策として、`.claude/settings.json` の SessionStart hook で `CLAUDE_CODE_REMOTE=true` のときだけ未 install のプラグインを `claude plugin install ... --scope user` で導入する処理を追加しています。Web セッションを起動するだけで自動的に 3 プラグインが install される運用を狙ったものです。
-
-hook が機能しない／何らかの理由で install されなかった場合は、各環境で 1 回だけ手動 install してください:
+PR #204 で SessionStart hook 経由の自動 install を試みましたが、`claude plugin install` が `Plugin "<name>" not found in marketplace` を返して 3 プラグインとも失敗（`marketplace update` 前置でも同症状）。**現状リポジトリ側からの自動化は不可能**と判明したため、各環境で 1 回だけ手動 install する運用に確定:
 
 ```
 /plugin install superpowers@claude-plugins-official
@@ -46,21 +44,21 @@ hook が機能しない／何らかの理由で install されなかった場合
 /plugin install context7@claude-plugins-official
 ```
 
-### context7 の経路（プロジェクトルートの `.mcp.json`）と API キー設定
+upstream 側で `autoInstallEnabledPlugins` 等が ship されたら本ドキュメントの記述を見直す。
 
-context7 は **プラグイン同梱の MCP（`mcp.context7.com` 直結）と、プロジェクト `.mcp.json` の npx 起動の二重宣言**になっています。`.mcp.json` 経路は env 注入で API キーを差し替えられる利点があり、プラグイン側に regression が出ても回避経路として使えます。
+### context7 と Web セッションでの 403
 
-> ⚠️ **Claude Code Web セッション（claude.ai/code）では現状 context7 が 403 を返します**（issue #191 / decisions [059]）。
+> ⚠️ **Claude Code Web セッション（claude.ai/code）では context7 が 403 を返します**（issue #191 / decisions [059]）。
 >
-> 真因は Anthropic クラウドコンテナの egress プロキシで `context7.com` / `mcp.context7.com` が host allowlist に未登録のため（レスポンスヘッダに `x-deny-reason: host_not_allowed`）。**リポジトリ側の `.claude/settings.json` / `.mcp.json` / API キー設定では解消不可**で、Anthropic harness 側対応待ち。CLI / Desktop セッションは影響を受けません。
+> 真因は Anthropic クラウドコンテナの egress プロキシで `context7.com` / `mcp.context7.com` が host allowlist に未登録のため（レスポンスヘッダ `x-deny-reason: host_not_allowed` / ボディ `Host not in allowlist`）。**リポジトリ側の設定では解消不可**で、Anthropic harness 側対応待ち。CLI / Desktop セッションは影響を受けません。
 
-**Context7 API キー（`ctx7sk-` プレフィックスの secret key）は optional**:
+### context7 API キー（optional）
 
-- CLI / Desktop は無認証でも通る
-- API キーを設定すると `researchMode: true`（深い検索）が利用可能になる
+- CLI / Desktop は無認証で疎通する
+- API キーを設定すると `researchMode: true`（深い検索）が利用可能
 - Web の 403 は API キーで解消しない（egress 段で遮断されるため）
 
-設定したい場合は `~/.claude/settings.json`（user-scoped、commit されない）の `env` セクションに追加:
+設定したい場合は `~/.claude/settings.json`（user-scoped、commit されない）の `env` セクションに追加すれば、プラグイン MCP が起動時に env を参照します:
 
 ```json
 {
@@ -69,8 +67,6 @@ context7 は **プラグイン同梱の MCP（`mcp.context7.com` 直結）と、
   }
 }
 ```
-
-`.mcp.json` は `${CONTEXT7_API_KEY:-}` で参照するため、env が空でも parse は通ります。
 
 ## Agent Teams (Claude Code 固有機能)
 
