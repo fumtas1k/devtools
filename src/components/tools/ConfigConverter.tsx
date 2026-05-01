@@ -60,7 +60,7 @@ export function ConfigConverterTool() {
   const [isValidating, setIsValidating] = useState(false);
 
   const warningsRef = useRef<string[]>([]);
-  const { input, setInput, output, error, reset } = useCodec(
+  const { input, setInput, output, error, isPending, reset } = useCodec(
     (text) => {
       const result = convert(text, from, to);
       warningsRef.current = result.warnings;
@@ -183,6 +183,7 @@ export function ConfigConverterTool() {
                   onClick={() => downloadText(output, `config.${EXTENSIONS[to]}`, MIMETYPES[to])}
                   label="ダウンロード"
                   variant="secondary"
+                  disabled={isPending}
                 />
               ) : undefined
             }
