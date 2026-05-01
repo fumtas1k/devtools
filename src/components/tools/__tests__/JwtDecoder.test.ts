@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ALG_MAP, verifySignature } from '../JwtDecoder';
+import { bytesToBase64Url } from '@/utils/base64url';
 
 // ────────────────────────────────────────────
 // ALG_MAP の構造検証
@@ -89,9 +90,7 @@ describe('verifySignature - HS256', () => {
       encoder.encode(`${rawHeader}.${rawPayload}`)
     );
     // base64url エンコード
-    let binary = '';
-    for (const b of new Uint8Array(sigBuffer)) binary += String.fromCharCode(b);
-    const sig = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const sig = bytesToBase64Url(new Uint8Array(sigBuffer));
 
     const result = await verifySignature(
       rawHeader,
@@ -118,9 +117,7 @@ describe('verifySignature - HS256', () => {
       key,
       encoder.encode(`${rawHeader}.${rawPayload}`)
     );
-    let binary = '';
-    for (const b of new Uint8Array(sigBuffer)) binary += String.fromCharCode(b);
-    const sig = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const sig = bytesToBase64Url(new Uint8Array(sigBuffer));
 
     const result = await verifySignature(
       rawHeader,

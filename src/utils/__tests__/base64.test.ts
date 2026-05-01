@@ -113,6 +113,13 @@ describe('pemBlockToBytes', () => {
     expect(() => pemBlockToBytes(pem, 'PUBLIC KEY')).toThrow('PEM の Base64 が不正です');
   });
 
+  it('フッターがヘッダーより前に現れる PEM はエラーを投げる', () => {
+    const pem = `-----END PUBLIC KEY-----\naGVsbG8=\n-----BEGIN PUBLIC KEY-----`;
+    expect(() => pemBlockToBytes(pem, 'PUBLIC KEY')).toThrow(
+      'PEM ブロック（PUBLIC KEY）が見つかりません'
+    );
+  });
+
   it('PRIVATE KEY ラベルでも同様に変換できる', () => {
     const pem = `-----BEGIN PRIVATE KEY-----\naGVsbG8=\n-----END PRIVATE KEY-----`;
     const result = pemBlockToBytes(pem, 'PRIVATE KEY');

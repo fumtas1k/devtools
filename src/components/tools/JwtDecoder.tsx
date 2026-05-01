@@ -19,8 +19,13 @@ const SAMPLE_SECRET = 'your-256-bit-secret';
 const jsonKeyColor = colors.link;
 const jsonValueColor = '#6e4f0e';
 
+type AlgParams =
+  | { name: 'HMAC'; hash: string }
+  | { name: 'RSASSA-PKCS1-v1_5'; hash: string }
+  | { name: 'ECDSA'; hash: string; namedCurve: string };
+
 /** アルゴリズム → WebCrypto パラメーターのマッピング（テスト用にエクスポート） */
-export const ALG_MAP: Record<string, { name: string; hash: string; namedCurve?: string }> = {
+export const ALG_MAP: Record<string, AlgParams> = {
   HS256: { name: 'HMAC', hash: 'SHA-256' },
   HS384: { name: 'HMAC', hash: 'SHA-384' },
   HS512: { name: 'HMAC', hash: 'SHA-512' },
@@ -85,7 +90,7 @@ export async function verifySignature(
         false,
         ['verify']
       );
-      return (await crypto.subtle.verify('HMAC', key, sigBytes, signingInput.buffer))
+      return (await crypto.subtle.verify('HMAC', key, sigBytes, signingInput))
         ? 'valid'
         : 'invalid';
     }
@@ -100,27 +105,30 @@ export async function verifySignature(
         false,
         ['verify']
       );
-      return (await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, sigBytes, signingInput.buffer))
+      return (await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, sigBytes, signingInput))
         ? 'valid'
         : 'invalid';
     }
 
     // ECDSA
-    const key = await crypto.subtle.importKey(
-      'spki',
-      keyBytes.buffer,
-      { name: 'ECDSA', namedCurve: algParams.namedCurve! },
-      false,
-      ['verify']
-    );
-    return (await crypto.subtle.verify(
-      { name: 'ECDSA', hash: algParams.hash },
-      key,
-      sigBytes,
-      signingInput.buffer
-    ))
-      ? 'valid'
-      : 'invalid';
+    if (algParams.name === 'ECDSA') {
+      const key = await crypto.subtle.importKey(
+        'spki',
+        keyBytes.buffer,
+        { name: 'ECDSA', namedCurve: algParams.namedCurve },
+        false,
+        ['verify']
+      );
+      return (await crypto.subtle.verify(
+        { name: 'ECDSA', hash: algParams.hash },
+        key,
+        sigBytes,
+        signingInput
+      ))
+        ? 'valid'
+        : 'invalid';
+    }
+    return 'error';
   } catch {
     return 'error';
   }

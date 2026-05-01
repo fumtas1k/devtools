@@ -13,7 +13,7 @@ export function pemBlockToBytes(pem: string, label: string): Uint8Array<ArrayBuf
   const footer = `-----END ${label}-----`;
   const start = pem.indexOf(header);
   const end = pem.indexOf(footer);
-  if (start === -1 || end === -1) {
+  if (start === -1 || end === -1 || start + header.length > end) {
     throw new Error(`PEM ブロック（${label}）が見つかりません`);
   }
   const b64 = pem.slice(start + header.length, end).replace(/\s/g, '');
