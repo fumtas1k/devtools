@@ -44,9 +44,24 @@
 /plugin install context7@claude-plugins-official
 ```
 
-### context7 の経路（プロジェクトルートの `.mcp.json`）
+### context7 の経路（プロジェクトルートの `.mcp.json`）と API キー設定
 
-context7 は **プラグイン同梱の MCP（`mcp.context7.com` 直結）と、プロジェクト `.mcp.json` の npx 起動の二重宣言**になっています。プラグイン経由は外部到達経路として一般環境で 403 を返したため、`.mcp.json` で `@upstash/context7-mcp` を npx 起動する経路を併設して回避しています。あわせて `sandbox.network.allowedDomains` に `context7.com` / `*.context7.com` を追加済み（issue #191 / decisions [059]）。
+context7 は **プラグイン同梱の MCP（`mcp.context7.com` 直結）と、プロジェクト `.mcp.json` の npx 起動の二重宣言**になっています。`sandbox.network.allowedDomains` に `context7.com` / `*.context7.com` を追加済み（issue #191 / decisions [059]）。
+
+**Context7 は API キー必須**（直近で認証が追加され、無認証は 403 を返します）。各環境で 1 回だけ以下を実施してください:
+
+1. [context7.com](https://context7.com/) で API キーを発行（`ctx7sk-` プレフィックスの secret key）
+2. **`~/.claude/settings.json`**（user-scoped、commit されない）の `env` セクションに追加:
+
+```json
+{
+  "env": {
+    "CONTEXT7_API_KEY": "ctx7sk-xxxxxxxxxxxxxxxx"
+  }
+}
+```
+
+`.mcp.json` は `${CONTEXT7_API_KEY:-}` で参照しているため、env を設定すれば `mcp__context7__*` ツールが疎通します。env が空の場合は parse 失敗しない代わりに 403 が継続するので、各自で設定してください。
 
 ## Agent Teams (Claude Code 固有機能)
 
