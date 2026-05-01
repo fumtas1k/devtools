@@ -1862,6 +1862,6 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - ✅ `frame-ancestors 'none'` でクリックジャッキング、`X-Content-Type-Options: nosniff` で MIME sniffing、`Referrer-Policy` でリファラ漏えいを抑止。
 - ✅ Permissions-Policy で未使用機能（microphone / geolocation）を明示的に無効化し、将来追加コードでの誤利用を防止。
 - ✅ `connect-src 'self'` により、万一 XSS が成立しても外部送信経路を断つ。
-- ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: 本 PR 後に別途起票予定）。
+- ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。
 - ⚠️ Cloudflare Pages 以外のホスティング（Netlify は同形式で動作するが、Vercel は `vercel.json` 形式）に切り替える際は別途設定追加が必要。
 - ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする。
