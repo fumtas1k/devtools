@@ -79,7 +79,7 @@ test.describe('JSON / CSV 変換', () => {
     await inputField.fill('[{"id":2}]');
     await expect(downloadBtn).toBeDisabled();
 
-    // デバウンス完了（300ms）後に再び有効化される
+    // デバウンス完了（useCodec の既定値）後に再び有効化される
     await expect(downloadBtn).toBeEnabled({ timeout: 3000 });
   });
 });

@@ -49,7 +49,7 @@ export function JsonCsvTool() {
         onClick={handleDownloadCsv}
         label="CSVダウンロード"
         variant="secondary"
-        disabled={isPending}
+        disabled={isPending || !output}
       />
     ) : null;
 
