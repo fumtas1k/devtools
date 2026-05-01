@@ -124,6 +124,45 @@ describe('jsonToCsv', () => {
       expect(result).toMatch(/'=cmd/);
     });
   });
+
+  describe('プロトタイプ汚染対策（CWE-1321）', () => {
+    it('__proto__ キーを含む JSON を渡しても Object.prototype は変化しない', () => {
+      // 攻撃ペイロード: __proto__ 経由で polluted を仕込もうとする入力
+      const json = '[{"__proto__":{"polluted":true},"safe":"ok"}]';
+      jsonToCsv(json);
+      // 全オブジェクトに polluted が漏れていないこと（プロトタイプ汚染なし）
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
+
+    it('constructor / prototype キーは CSV 出力に流れない（多重防御）', () => {
+      const json = '[{"constructor":"x","prototype":"y","name":"太郎"}]';
+      const result = jsonToCsv(json);
+      const lines = result.split(/\r?\n/);
+      // ヘッダーは name のみ（constructor / prototype はスキップ）
+      expect(lines[0]).toBe('name');
+      expect(lines[1]).toContain('太郎');
+      // プロトタイプ汚染が起きていないこと
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
+
+    it('ネストされた __proto__ も無視される', () => {
+      const json = '[{"a":{"__proto__":{"polluted":42},"keep":"ok"}}]';
+      const result = jsonToCsv(json);
+      // ネスト内の通常キーは出力される
+      expect(result).toContain('a.keep');
+      expect(result).toContain('ok');
+      // __proto__ は出力されず、Object.prototype も汚染されない
+      expect(result).not.toContain('a.polluted');
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
+
+    it('Object.prototype.toString が攻撃前後で同一であること', () => {
+      const before = Object.prototype.toString;
+      const json = '[{"__proto__":{"toString":"hacked"}}]';
+      jsonToCsv(json);
+      expect(Object.prototype.toString).toBe(before);
+    });
+  });
 });
 
 describe('escapeCsvFormula', () => {
