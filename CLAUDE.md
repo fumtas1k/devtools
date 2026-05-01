@@ -22,11 +22,11 @@
 
 このプロジェクトは以下の Claude Code プラグインを前提に運用しています。`.claude/settings.json` の `enabledPlugins` で宣言済み。
 
-| プラグイン                                | 用途                                                              |
-| :---------------------------------------- | :---------------------------------------------------------------- |
-| `superpowers@claude-plugins-official`     | 設計・計画・実装支援スキル群（writing-plans, debugging, TDD 等）  |
-| `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                    |
-| `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
+| プラグイン                                | 用途                                                                                 |
+| :---------------------------------------- | :----------------------------------------------------------------------------------- |
+| `superpowers@claude-plugins-official`     | 設計・計画・実装支援スキル群（writing-plans, debugging, TDD 等）                     |
+| `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                                       |
+| `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（プロジェクトでは `.mcp.json` 経由の npx 起動） |
 
 ### Claude Code CLI / Desktop
 
@@ -34,13 +34,19 @@
 
 ### Claude Code Web (claude.ai/code) / IDE 拡張
 
-web / IDE はプロジェクト config から plugin を自動 install しません。各環境で手動実行してください:
+`.claude/settings.json` の `extraKnownMarketplaces` で `claude-plugins-official` を宣言済みのため、**marketplace 登録までは自動**で行われます（既存セッションでは `~/.claude/plugins/known_marketplaces.json` に記録）。
+
+ただし `enabledPlugins` だけでは **plugin の install は走らない**（Web では trust 済みセッションだと install prompt も発火しない）。各環境で 1 回だけ手動 install してください:
 
 ```
 /plugin install superpowers@claude-plugins-official
 /plugin install frontend-design@claude-plugins-official
 /plugin install context7@claude-plugins-official
 ```
+
+### context7 の経路（プロジェクトルートの `.mcp.json`）
+
+context7 は **プラグイン同梱の MCP（`mcp.context7.com` 直結）と、プロジェクト `.mcp.json` の npx 起動の二重宣言**になっています。プラグイン経由は外部到達経路として一般環境で 403 を返したため、`.mcp.json` で `@upstash/context7-mcp` を npx 起動する経路を併設して回避しています。あわせて `sandbox.network.allowedDomains` に `context7.com` / `*.context7.com` を追加済み（issue #191 / decisions [059]）。
 
 ## Agent Teams (Claude Code 固有機能)
 

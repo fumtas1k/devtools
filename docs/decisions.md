@@ -1977,3 +1977,54 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 - PR #197（起票忘れ事例: force-with-lease push 運用ルール）
 - PR #198（起票忘れ事例: permissions precedence 実機確認）
 - `docs/shared-agent-rules.md` 6.4 章「先送り時は issue 化必須」
+
+---
+
+## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 自動登録 + context7 を `.mcp.json` で別経路化
+
+**ステータス: 採用**
+
+### 背景
+
+Claude Code Web (claude.ai/code) で `.claude/settings.json` の `enabledPlugins` 配下プラグインに以下の問題が同時発生していた（issue #191）。
+
+| プラグイン                                | 種別     | 症状                                      |
+| ----------------------------------------- | -------- | ----------------------------------------- |
+| `superpowers@claude-plugins-official`     | スキル型 | スキル一覧に出ない（未 install）          |
+| `frontend-design@claude-plugins-official` | スキル型 | 同上                                      |
+| `context7@claude-plugins-official`        | MCP 型   | MCP は登録されるが API 呼び出しが全て 403 |
+
+レビュー時にライブラリ仕様の裏取りや、設計・計画・TDD の支援フローが回らず、誤った提案を投稿して撤回する事案も発生（PR #187）。
+
+### 決断
+
+3 つの変更を **Web セッションを用いた段階的検証** で組み合わせて採用する（PR #204）。
+
+1. **`extraKnownMarketplaces` の宣言**: `.claude/settings.json` に `claude-plugins-official`（GitHub: `anthropics/claude-plugins-official`）を宣言。Web セッションでも `~/.claude/plugins/known_marketplaces.json` への登録は自動化される。
+2. **`.mcp.json` でプロジェクト直起動の context7 を併設**: ルート `.mcp.json` で `@upstash/context7-mcp` を npx 起動する宣言を追加し、プラグイン同梱 MCP（`mcp.context7.com` 直結 / 一般環境で 403）と二重持ちにする。
+3. **`sandbox.network.allowedDomains` に context7 ドメイン追加**: `context7.com` / `*.context7.com` を追加。`mcp.context7.com` も `api.context7.com` もこれでカバーされ、403 の根本原因（サンドボックス遮断）を解消する。
+
+### 検証で判明した事実（CLAUDE.md にも反映）
+
+- `extraKnownMarketplaces` は marketplace 登録まで自動化するが、`enabledPlugins` 単独では Web で plugin install は走らない。
+- 既に trust 済みのリポジトリでは Web の install prompt は発火しない（trust 直後イベントに紐づく）。
+- そのため Web では各プラグインを 1 回だけ `/plugin install <name>@claude-plugins-official` で手動 install する運用とする。
+- context7 の 403 の真因は API キー不要にも関わらず **サンドボックスが context7 ドメインを許可していなかった** こと。当初の「上流 API の認証問題」推定は誤り。
+
+### 却下した選択肢
+
+- **`extraKnownMarketplaces` だけで完結させる**: install prompt が Web で発火しないことが判明したため不可。
+- **context7 をプラグイン経由のみで運用**: 403 解消のためのドメイン許可が CLI / Web で必要なのは同じ。npx 直起動のほうが「プラグイン unrecoverable bug があっても回避できる経路」を残せるため、`.mcp.json` 併設を採用。
+- **`api.context7.com` だけを許可**: npx 版の通信先と plugin 同梱版（`mcp.context7.com`）が異なる可能性があり、両方許可するため `*.context7.com` ワイルドカードに統一。
+
+### トレードオフ
+
+- ✅ Web セッションでも marketplace 登録までは自動化、context7 の 403 を根本解消、プラグイン経路の単一障害点を回避。
+- ⚠️ Web では 3 プラグインの手動 install 手順が残る。CLAUDE.md「推奨プラグイン」節に明記して運用で吸収。
+- ⚠️ context7 が二重宣言（`.mcp.json` + プラグイン）になる。利用ツール側は `mcp__context7__*` と `mcp__plugin_context7_context7__*` の両方が見える。実害はないが将来 plugin 側のバグ解消が確認できたら `.mcp.json` 側を撤去する余地あり。
+
+### 関連 PR / issue
+
+- PR #204（本決定の実装）
+- issue #191（症状の整理）
+- PR #187（context7 不在による誤レビュー事例）

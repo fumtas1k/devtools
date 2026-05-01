@@ -74,7 +74,9 @@
         "playwright.azureedge.net",
         "docs.anthropic.com",
         "code.claude.com",
-        "ai.google.dev"
+        "ai.google.dev",
+        "context7.com",
+        "*.context7.com"
       ]
     }
   },
