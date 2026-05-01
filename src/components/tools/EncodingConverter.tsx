@@ -10,6 +10,7 @@ import { caption, colors } from '@/utils/styles';
 import { getErrorMessage } from '@/utils/errors';
 import { downloadBytes } from '@/utils/download';
 import { validateFile } from '@/utils/file-validation';
+import { sanitizeFilename } from '@/utils/filename';
 import {
   detectEncoding,
   decodeToText,
@@ -209,10 +210,15 @@ export function EncodingConverterTool() {
 
   function handleDownload() {
     if (!outputBytes) return;
-    const match = fileName.match(/\.([^.]+)$/);
+    // OS 由来のファイル名は信頼できないため、許可拡張子のホワイトリストで
+    // サニタイズする。拡張子が不正・欠落した場合は txt にフォールバック。
+    const safeSource = sanitizeFilename(fileName || 'converted.txt', ACCEPTED_EXTENSIONS);
+    const match = safeSource.match(/\.([^.]+)$/);
     const ext = match ? match[1] : 'txt';
-    const baseName = fileName ? fileName.replace(/\.[^.]+$/, '') : 'converted';
-    downloadBytes(outputBytes, `${baseName}_${targetEnc.toLowerCase()}.${ext}`);
+    const baseName = safeSource.replace(/\.[^.]+$/, '');
+    const composed = `${baseName}_${targetEnc.toLowerCase()}.${ext}`;
+    // 念のため再度サニタイズ（baseName 末尾連結の安全保証）
+    downloadBytes(outputBytes, sanitizeFilename(composed, ACCEPTED_EXTENSIONS));
   }
 
   const bomActive = BOM_ENCODINGS.has(targetEnc);

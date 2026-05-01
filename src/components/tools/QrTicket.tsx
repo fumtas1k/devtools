@@ -17,6 +17,7 @@ import {
 } from '@/utils/qr-ticket';
 import { downloadSvg } from '@/utils/download';
 import { validateFile } from '@/utils/file-validation';
+import { sanitizeFilename, isSafeTicketId } from '@/utils/filename';
 import { decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { useQrCamera } from '@/hooks/useQrCamera';
@@ -219,6 +220,15 @@ export function QrTicketTool() {
       setGenerateError('チケットIDが空の行があります');
       return;
     }
+    // チケット ID は ZIP/ダウンロードのファイル名にも使われるため、
+    // 危険文字（path separator、`..`、制御文字、日本語等）を含む場合は拒否する。
+    const unsafeIdRow = tickets.find((t) => !isSafeTicketId(t.id.trim()));
+    if (unsafeIdRow) {
+      setGenerateError(
+        'チケットIDは英数字・ピリオド・アンダースコア・ハイフンのみ、64 文字以内で入力してください'
+      );
+      return;
+    }
 
     // データ量制限チェック (全データの合計が MAX_QR_BYTE_SIZE バイト以内)
     const longTicket = tickets.find((t) => {
@@ -269,10 +279,9 @@ export function QrTicketTool() {
   };
 
   const handleDownloadSvg = (qr: GeneratedQr) => {
-    downloadSvg(
-      qr.svg.replace('<svg ', '<svg width="160" height="160" '),
-      `ticket-${qr.ticket.t}.svg`
-    );
+    // ticket.t は UI 入力（信頼できない）なのでサニタイズしてから filename に組み込む
+    const safeName = sanitizeFilename(`ticket-${qr.ticket.t}.svg`, ['svg']);
+    downloadSvg(qr.svg.replace('<svg ', '<svg width="160" height="160" '), safeName);
   };
 
   const handleDownloadZip = async () => {
@@ -283,10 +292,9 @@ export function QrTicketTool() {
       const zip = new JSZip();
       const folder = zip.folder('tickets')!;
       generatedQrs.forEach(({ ticket, svg }) => {
-        folder.file(
-          `ticket-${ticket.t}.svg`,
-          svg.replace('<svg ', '<svg width="160" height="160" ')
-        );
+        // ZIP エントリ名は Zip Slip 類似の攻撃媒体になり得るため必ずサニタイズする
+        const entryName = sanitizeFilename(`ticket-${ticket.t}.svg`, ['svg']);
+        folder.file(entryName, svg.replace('<svg ', '<svg width="160" height="160" '));
       });
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
