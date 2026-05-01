@@ -84,10 +84,16 @@ export function sanitizeFilename(name: string, allowExt?: readonly string[]): st
   }
 
   // 6. 長さ制限（拡張子を保持して base を切り詰める）
+  //    切り詰めの結果、末尾が `.` や `_` になる可能性があるため再度整形する
+  //    （例: 64 文字目が `_` の入力で切れ目が末尾連続 `_` になるケース）。
+  //    再 trim で空になった場合は fallback に戻す。
   const extWithDot = safeExt ? `.${safeExt}` : '';
   const maxBaseLen = Math.max(1, MAX_LENGTH - extWithDot.length);
   if (safeBase.length > maxBaseLen) {
-    safeBase = safeBase.slice(0, maxBaseLen);
+    safeBase = safeBase.slice(0, maxBaseLen).replace(/[._]+$/, '');
+    if (!safeBase) {
+      safeBase = FALLBACK_BASE;
+    }
   }
 
   return `${safeBase}${extWithDot}`;

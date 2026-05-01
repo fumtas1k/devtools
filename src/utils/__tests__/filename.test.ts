@@ -140,6 +140,24 @@ describe('sanitizeFilename — 長さ制限', () => {
     expect(out.length).toBeLessThanOrEqual(64);
     expect(out.endsWith('.csv')).toBe(true);
   });
+
+  it('切り詰め後の末尾が `_` になるケースは再 trim される', () => {
+    // .txt の場合 maxBaseLen=60。
+    // 入力: 'a' x 55 + 日本語 5 + 'b' + '.txt'
+    //   → base="aaa...aaa_____b" (61 文字、末尾 trim は 'b' で止まる)
+    //   → 切り詰め後 60 文字目は '_' で連続するため再 trim で消える
+    //   → 'a' x 55 + '.txt'
+    const out = sanitizeFilename('a'.repeat(55) + 'あいうえお' + 'b' + '.txt', ['txt']);
+    expect(out).toBe('a'.repeat(55) + '.txt');
+    expect(out.endsWith('_.txt')).toBe(false);
+  });
+
+  it('切り詰め後 base が空になるケースは fallback に戻る', () => {
+    // すべて日本語 → base 全体が `_` x N、初回末尾 trim で空 → fallback "file"
+    // 切り詰めは発生しないが、念のため fallback 挙動を確認
+    const out = sanitizeFilename('あ'.repeat(100) + '.txt', ['txt']);
+    expect(out).toBe('file.txt');
+  });
 });
 
 describe('sanitizeFilename — 隠しファイル化の防止', () => {
