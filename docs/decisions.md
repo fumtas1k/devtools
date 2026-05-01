@@ -1892,3 +1892,38 @@ devtools リポジトリの issue 活動量（新規作成数・クローズ率�
 ### 将来課題
 
 - `peter-evans/create-issue-from-file` のサードパーティ action は現状タグ参照。サプライチェーンリスク低減のため SHA pinning への移行を検討（#174）。
+
+---
+
+## [056] `.claude/settings.json` permissions allow を git 典型コマンドに拡張（hook bypass 防止・ベース切替制限）
+
+**2026-05-01 | ステータス: 採用**
+
+### 背景
+
+サブエージェント運用において `git checkout -b` / `git commit` / `git rebase --onto` などが ask 行きとなり、非対話のサブエージェントでは事実上 deny になっていた（PR #181 / #182 / #168 デバッグで再現）。PR #189 で典型操作を allow に追加したが、ワイルドカードが過広で危険なパターンを無確認で通してしまう問題が PR レビューで指摘された。
+
+### 決断
+
+- `git commit *` → `git commit -m *` / `git commit -am *` に限定（`--no-verify` / `-n` によるフックバイパスを防止）
+- `git checkout *` → `git switch *` / `git checkout -b *` / `git checkout -B worktree-agent-*` に限定（ベース切替・ファイル復元は ask に残す）
+- `git add *` は allow に残しつつ、`git add -A*` / `git add --all*` / `git add .` を ask に追加（`.env` 等の機密ファイル混入リスク対応）
+
+### 安全性確認
+
+- `git push --force*` → deny（変更なし）
+- `git reset --hard*` → ask（変更なし）
+- `git push*` → ask（変更なし）
+- `git commit --no-verify*` / `git commit -n *` / `git commit * -n` / `git commit * --no-verify*` → ask（新規追加）
+- `git add -A*` / `git add --all*` / `git add .` → ask（新規追加）
+- `git checkout <branch>`（ベース切替）/ `git checkout -- *`（ファイル復元） → ask に残置
+- `git rebase`（--onto 以外）/ `git merge`（--ff-only 以外）→ ask に残置
+
+### 却下した選択肢
+
+- `git add *` を削除して path-prefix 形のみ allow: 実用性を大きく損なうため却下。ask での警告追加で対応。
+- `git commit --amend *` を allow に追加: 現時点で明示的な要件なし（YAGNI）。
+
+### 関連 PR
+
+- PR #189
