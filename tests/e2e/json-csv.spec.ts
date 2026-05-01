@@ -54,6 +54,9 @@ test.describe('JSON / CSV 変換', () => {
   });
 
   test('JSON → CSV: フォーミュラインジェクションをエスケープする', async ({ page }) => {
+    // 注: 本ツールは useCodec フックでリアルタイム変換しているため
+    // 「JSON → CSV」「CSV → JSON」はモード切替トグルであり明示的な変換ボタンは存在しない。
+    // 入力欄を埋めるだけで変換結果が反映される（他の JSON→CSV 系 e2e テストと同方針）。
     await page.getByLabel('入力').fill('[{"formula":"=SUM(A1:A10)","plus":"+1+1","at":"@SUM"}]');
     // 先頭にシングルクォートが付加され、Excel が数式として解釈しない
     await expect(page.getByLabel('変換結果')).toHaveValue(/'=SUM\(A1:A10\)/);
