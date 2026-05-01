@@ -7,6 +7,11 @@ import { useEffect } from 'react';
  *
  * 非同期処理を実行する場合は `void run()` パターンを使用すること。
  * async 関数を直接渡しても Promise は無視される（キャンセルは signal.aborted で検知する）。
+ * **注意**: async 関数を直接渡しても TypeScript のエラーにならない（Promise<void> は void に代入可能）が、
+ * cleanup 関数を返したつもりでもスキップされるため、必ず `void run()` パターンを使うこと。
+ *
+ * クリーンアップ順序: `controller.abort()` を先に呼び、その後 effect の戻り値 cleanup を呼ぶ。
+ * cleanup 内で `signal.aborted` を参照して分岐したい場合はこの順序を前提にすること。
  */
 export function useAbortableEffect(
   effect: (signal: AbortSignal) => void | (() => void),

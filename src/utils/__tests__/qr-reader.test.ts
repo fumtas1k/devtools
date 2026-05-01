@@ -134,11 +134,13 @@ describe('decodeQrFromFile — AbortSignal キャンセル', () => {
     URL.revokeObjectURL = () => {};
 
     const file = new File(['dummy'], 'test.png', { type: 'image/png' });
-    const result = await decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal });
-    expect(result).toEqual({ ok: false, reason: 'load-error' });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    globalThis.Image = OrigImage as any;
+    try {
+      const result = await decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal });
+      expect(result).toEqual({ ok: false, reason: 'load-error' });
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      globalThis.Image = OrigImage as any;
+    }
   });
 
   it('signal が abort されると処理中の Promise が AbortError で reject される', async () => {
@@ -162,12 +164,14 @@ describe('decodeQrFromFile — AbortSignal キャンセル', () => {
     URL.revokeObjectURL = () => {};
 
     const file = new File(['dummy'], 'test.png', { type: 'image/png' });
-    await expect(
-      decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal })
-    ).rejects.toMatchObject({ name: 'AbortError' });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    globalThis.Image = OrigImage as any;
+    try {
+      await expect(
+        decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal })
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      globalThis.Image = OrigImage as any;
+    }
   });
 
   it('canvas.getContext が null の場合でも load-error として解決し、abort リスナーが残らない', async () => {
@@ -204,15 +208,17 @@ describe('decodeQrFromFile — AbortSignal キャンセル', () => {
     };
 
     const file = new File(['dummy'], 'test.png', { type: 'image/png' });
-    const result = await decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal });
+    try {
+      const result = await decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal });
 
-    // load-error として解決すること
-    expect(result).toEqual({ ok: false, reason: 'load-error' });
-    // onload 内で 1 回だけ revoke されること（abort リスナーによる二重 revoke がないこと）
-    expect(revokeCount.count).toBe(1);
-
-    spy.mockRestore();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    globalThis.Image = OrigImage as any;
+      // load-error として解決すること
+      expect(result).toEqual({ ok: false, reason: 'load-error' });
+      // onload 内で 1 回だけ revoke されること（abort リスナーによる二重 revoke がないこと）
+      expect(revokeCount.count).toBe(1);
+    } finally {
+      spy.mockRestore();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      globalThis.Image = OrigImage as any;
+    }
   });
 });

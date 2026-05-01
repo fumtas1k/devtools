@@ -77,6 +77,7 @@ export function QrTicketTool() {
 
   const handleVerify = useCallback(
     async (rawData: string, signal?: AbortSignal) => {
+      if (signal?.aborted) return;
       setVerifying(true);
       let pubKey: CryptoKey;
       try {
