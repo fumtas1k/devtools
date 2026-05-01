@@ -1923,6 +1923,10 @@ worktree 並列実行を採用しているため、複数のサブエージェ�
 
 - CI で port 動的割り当てが導入された場合は 3.1 の「実行禁止」を緩和できる（playwright config と Astro dev server の連携が自動化されることが前提）。
 
+### 経緯追記
+
+- **レビュー取得の取りこぼし事故** (2026-05-01): PR #187 / #188 / #189 で親が `gh api .../issues/<n>/comments` のみ確認し、GitHub の "Submit review" 機能経由の正式レビュー（`gh api .../pulls/<n>/reviews`）を 3 件取りこぼした。再発防止として 3.2 章「親向けレビュー取得手順」を追記。
+
 ### 関連 PR
 
 - PR #192（本 PR、`docs/shared-agent-rules.md` 3 章改訂）

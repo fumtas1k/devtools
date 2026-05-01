@@ -99,6 +99,20 @@
 | 4   | E2E 直列実行                                                   | 本節手順 1〜5 を実施                                                                                                   |
 | 5   | PR ベース                                                      | `gh pr create --base develop`                                                                                          |
 
+#### 親向けレビュー取得手順（取りこぼし防止）
+
+PR には **2 系統のコメント**があり、両方確認すること。**Issue comments API だけを見ると、GitHub の "Submit review" 機能で投稿された正式レビューを完全に取りこぼす**（過去に PR #187 / #188 / #189 で発生 — 2026-05-01）。
+
+```bash
+# (1) Issue comments（`gh pr comment` で投稿されるもの）
+gh api "repos/<owner>/<repo>/issues/<n>/comments" --jq '.[].body'
+
+# (2) Pull Request reviews（"Submit review" 機能で投稿されるもの）
+gh api "repos/<owner>/<repo>/pulls/<n>/reviews" --jq '.[].body'
+```
+
+`gh pr view <n> --json reviews` も内部的に (2) を取得するため、`gh api` を使う場合は両方を読むこと。返信は `gh pr comment <n> --body-file` で OK（Issue comment として投稿される）。
+
 > 関連: issue #193（E2E web-first assertions のテスト記述ガイドライン）
 
 > macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
