@@ -1892,3 +1892,48 @@ devtools リポジトリの issue 活動量（新規作成数・クローズ率�
 ### 将来課題
 
 - `peter-evans/create-issue-from-file` のサードパーティ action は現状タグ参照。サプライチェーンリスク低減のため SHA pinning への移行を検討（#174）。
+
+---
+
+## [056] `.claude/settings.json` permissions allow を git 典型コマンドに拡張（hook bypass 防止・ベース切替制限）
+
+**2026-05-01 | ステータス: 採用**
+
+### 背景
+
+サブエージェント運用において `git checkout -b` / `git commit` / `git rebase --onto` などが ask 行きとなり、非対話のサブエージェントでは事実上 deny になっていた（PR #181 / #182 / #168 デバッグで再現）。PR #189 で典型操作を allow に追加したが、ワイルドカードが過広で危険なパターンを無確認で通してしまう問題が PR レビューで指摘された。
+
+### 決断
+
+- `git commit *` → `git commit -m *` / `git commit -am *` に限定（`--no-verify` / `-n` によるフックバイパスを防止）
+- `git checkout *` → `git switch *` / `git checkout -b *` / `git checkout -B worktree-agent-*` に限定（ベース切替・ファイル復元は ask に残す）
+- `git add *` は allow に残しつつ、`git add -A*` / `git add --all*` / `git add .` を ask に追加（`.env` 等の機密ファイル混入リスク対応）
+
+### 安全性確認
+
+Claude Code の permission matching は **`deny` > `ask` > `allow` の優先順**で評価される（[公式ドキュメント](https://code.claude.com/docs/en/settings) 参照。deny が最初にマッチすれば即ブロック、次に ask、最後に allow の順で評価され、最初にマッチしたルールが適用される）。したがって、`git add -A*`（ask）は `git add *`（allow）より優先され、`git add -A` を実行した際は ask が確実に発火する。同様に `git commit -am "msg" --no-verify`（ask パターン `git commit * --no-verify*` にマッチ）も、`git commit -am *`（allow）より ask が優先されるため、hook bypass が無確認で通る恐れはない。
+
+- `git push --force*` → deny（変更なし）
+- `git reset --hard*` → ask（変更なし）
+- `git push*` → ask（変更なし）
+- `git commit --no-verify*` / `git commit -n *` / `git commit * -n` / `git commit * --no-verify*` → ask（新規追加）
+- `git add -A*` / `git add --all*` / `git add .` → ask（新規追加）
+- `git checkout <branch>`（ベース切替）/ `git checkout -- *`（ファイル復元） → ask に残置
+- `git rebase`（--onto 以外）/ `git merge`（--ff-only 以外）→ ask に残置
+
+#### 実機確認
+
+- `git commit -am "msg" --no-verify` 実行時に ask が発火することを確認予定（issue 化推奨、ただし本 PR 必須ではない）。
+
+### 却下した選択肢
+
+- `git add *` を削除して path-prefix 形のみ allow: 実用性を大きく損なうため却下。ask での警告追加で対応。
+- `git commit --amend *` を allow に追加: 現時点で明示的な要件なし（YAGNI）。
+
+### 将来課題
+
+- `Bash(git switch *)` は allow に残置（新規ブランチ作成 `-b` だけでなく既存ブランチ切替も含む）。`git checkout <branch>` (ask) との非対称性が将来「allow が広すぎてベース汚染」の原因となり得るため、運用で問題が顕在化したら `git switch -b *` 限定への縮退を別 PR で再検討する。
+
+### 関連 PR
+
+- PR #189
