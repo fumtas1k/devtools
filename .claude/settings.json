@@ -25,6 +25,10 @@
           {
             "type": "command",
             "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ] && [ ! -d node_modules ]; then npm ci; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ]; then for p in superpowers frontend-design context7; do grep -q \"${p}@claude-plugins-official\" ~/.claude/plugins/installed_plugins.json 2>/dev/null || claude plugin install \"${p}@claude-plugins-official\" --scope user < /dev/null 2>&1 | head -3 || true; done; fi"
           }
         ]
       }

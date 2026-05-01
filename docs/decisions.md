@@ -2015,12 +2015,13 @@ PR #204 で以下を採用する（context7 の Web 403 はリポジトリ側で
 1. **`extraKnownMarketplaces` の宣言**: `.claude/settings.json` に `claude-plugins-official`（GitHub: `anthropics/claude-plugins-official`）を宣言。Web セッションでも `~/.claude/plugins/known_marketplaces.json` への登録は自動化される。
 2. **`.mcp.json` でプロジェクト直起動の context7 を併設**: ルート `.mcp.json` で `@upstash/context7-mcp` を npx 起動する宣言を追加（`env.CONTEXT7_API_KEY = "${CONTEXT7_API_KEY:-}"` で API キーを環境変数経由で受け取る、未設定でも parse は通る）。プラグイン同梱 MCP と二重持ちにし、利用者がローカルで env 注入できる経路を確保する。**Web の 403 解消には寄与しないが、CLI / Desktop での `researchMode` 利用や将来 plugin 側 regression 時の回避経路として価値あり**。
 3. **Context7 API キーは利用者の任意設定運用**: API キーは optional。各利用者が `~/.claude/settings.json`（user-scoped）の `env` セクションに `CONTEXT7_API_KEY: "ctx7sk-..."` を設定し、`.mcp.json` の `${CONTEXT7_API_KEY:-}` で参照する。secret なので commit しない。**ただし Web の 403 は API キー有無に関わらず継続する**（egress 段で遮断されるため）。
+4. **SessionStart hook で cloud session 限定の plugin auto-install**: 公式ドキュメントは「クラウドセッションでも `enabledPlugins` から自動 install される」と謳うが、実装上は trust dialog イベントに紐づいており Web / headless / CI ではこのイベントが発火せず silent skip する Claude Code 本体側の既知制約がある（upstream issue #23737 / `autoInstallEnabledPlugins` 提案 / duplicate でクローズ・未実装、関連 #17832 / #19275）。`.claude/settings.json` の SessionStart hook で `CLAUDE_CODE_REMOTE=true` 検出時に未 install プラグインを `claude plugin install ... --scope user` で導入する処理を追加し、cloud session でも自動 install を狙う（既存の npm ci hook と同列に追加）。
 
 ### 検証で判明した事実（CLAUDE.md にも反映）
 
-- `extraKnownMarketplaces` は marketplace 登録まで自動化するが、`enabledPlugins` 単独では Web で plugin install は走らない。
+- `extraKnownMarketplaces` は marketplace 登録まで自動化するが、`enabledPlugins` 単独では Web で plugin install は走らない（Claude Code 本体側の既知制約、upstream issue #23737 等）。
 - 既に trust 済みのリポジトリでは Web の install prompt は発火しない（trust 直後イベントに紐づく）。
-- そのため Web では各プラグインを 1 回だけ `/plugin install <name>@claude-plugins-official` で手動 install する運用とする。
+- 暫定的に SessionStart hook で `claude plugin install` を呼ぶ workaround を導入。失敗時は手動 `/plugin install <name>@claude-plugins-official` にフォールバック。
 - Context7 は API キー必須ではない（CLI / Desktop は無認証で疎通）。`@upstash/context7-mcp` は env `CONTEXT7_API_KEY` で受け取る（env 方式は process listing に secret が出ず、`.mcp.json` の env 展開で利用者ごとの差し替えが可能）。
 - **Web セッションでは Anthropic クラウドコンテナの egress プロキシが `context7.com` / `mcp.context7.com` を host allowlist 未登録で遮断中**。リポジトリ側で対処不能、Anthropic harness 側の対応待ち。本 PR の Web 検証手順「context7 が 200 を返すか」は harness 側修正が入るまで通らない。
 
@@ -2031,17 +2032,21 @@ PR #204 で以下を採用する（context7 の Web 403 はリポジトリ側で
 - **API キーを `.mcp.json` に直接書く**: secret の commit になり許容できない。
 - **API キーを `.claude/settings.json`（プロジェクトの env）に書く**: 同様に commit されるので不可。`~/.claude/settings.json` の user-scoped 配置に揃える。
 - **`sandbox.network.allowedDomains` に `context7.com` / `*.context7.com` を追加**: 当初「サンドボックス遮断が真因」推定で追加したが、HTTP 403 がアプリ層から返ってきている事実によりサンドボックスは透過していると確認された。「将来の sandbox 仕様変更に備える preventive 措置」として残す案も検討したが、共通規約の YAGNI 原則（"Build only what's asked"）に反するため最終的に**追加せず**確定。
+- **`CLAUDE_CODE_PLUGIN_SEED_DIR` で pre-populated `~/.claude/plugins/` を使う**: Docker image を build できる環境（自前 CI）では有効だが、claude.ai のクラウドコンテナは Anthropic 側 build のため不可。
+- **手動 install のみで割り切る（C 案）**: 確実だが UX が悪く、Web セッション開く度に 3 行打鍵が必要。SessionStart hook（A 案）で自動化を試み、駄目だった場合のフォールバック先として残す。
 
 ### トレードオフ
 
-- ✅ Web セッションでも marketplace 登録は自動化、CLI / Desktop での context7 利用経路を整備（プラグイン版 + npx 版 + 任意 API キー注入）、プラグイン経路の単一障害点を回避。
+- ✅ Web セッションでも marketplace 登録は自動化、SessionStart hook で plugin auto-install を試行、CLI / Desktop での context7 利用経路を整備（プラグイン版 + npx 版 + 任意 API キー注入）、プラグイン経路の単一障害点を回避。
 - ❌ **Web セッションの context7 403 は本 PR では解消しない**（harness 側 egress allowlist の対応待ち）。CLAUDE.md に明記し、harness 側修正後に再検証する運用とする。
-- ⚠️ Web では 3 プラグインの手動 install 手順が残る。CLAUDE.md「推奨プラグイン」節に明記して運用で吸収。
+- ⚠️ SessionStart hook の `claude plugin install` が cloud session で実際に動作するかは未検証。動かない場合は手動 install へフォールバック（CLAUDE.md に手順明記）。
 - ⚠️ context7 が二重宣言（`.mcp.json` + プラグイン）になる。利用ツール側は `mcp__context7__*` と `mcp__plugin_context7_context7__*` の両方が見える。実害はないが将来 plugin 側の挙動が安定したら `.mcp.json` 側を撤去する余地あり。
 
 ### 後続タスク
 
-- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で再検証（このタイミングで `.mcp.json` 二重宣言の整理も再検討）。
+- SessionStart hook の動作検証（Web セッションで 3 プラグインが auto-install されるか）。ダメなら hook を撤去して C 案（手動 install）に確定。
+- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で context7 を再検証（このタイミングで `.mcp.json` 二重宣言の整理も再検討）。
+- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` 等が ship されたら hook を撤去する。
 
 ### 関連 PR / issue
 

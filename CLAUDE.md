@@ -34,9 +34,11 @@
 
 ### Claude Code Web (claude.ai/code) / IDE 拡張
 
-`.claude/settings.json` の `extraKnownMarketplaces` で `claude-plugins-official` を宣言済みのため、**marketplace 登録までは自動**で行われます（既存セッションでは `~/.claude/plugins/known_marketplaces.json` に記録）。
+公式ドキュメントは「クラウドセッションでも `enabledPlugins` 宣言のプラグインはセッション開始時に install される」と謳っていますが、**実装上は trust dialog イベントに紐づいており、Web / headless / CI ではこのイベントが発火しないため silent に install がスキップされる** Claude Code 本体側の既知制約があります（upstream: [#23737](https://github.com/anthropics/claude-code/issues/23737) / `autoInstallEnabledPlugins` 提案は duplicate でクローズ・未実装、関連 #17832 / #19275）。
 
-ただし `enabledPlugins` だけでは **plugin の install は走らない**（Web では trust 済みセッションだと install prompt も発火しない）。各環境で 1 回だけ手動 install してください:
+回避策として、`.claude/settings.json` の SessionStart hook で `CLAUDE_CODE_REMOTE=true` のときだけ未 install のプラグインを `claude plugin install ... --scope user` で導入する処理を追加しています。Web セッションを起動するだけで自動的に 3 プラグインが install される運用を狙ったものです。
+
+hook が機能しない／何らかの理由で install されなかった場合は、各環境で 1 回だけ手動 install してください:
 
 ```
 /plugin install superpowers@claude-plugins-official
