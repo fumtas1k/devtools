@@ -1816,7 +1816,7 @@ devtools リポジトリの issue 活動量（新規作成数・クローズ率�
 
 ### 決断
 
-`.github/workflows/metrics.yml` を追加し、毎月 1 日 UTC 5:00（JST 14:00）に `github/issue-metrics@v3` で前月分の issue メトリクスを収集し、`peter-evans/create-issue-from-file@v5` でレポート issue を自動作成する。
+`.github/workflows/metrics.yml` を追加し、毎月 1 日 UTC 3:00（JST 12:00）に `github/issue-metrics@v3` で前月分の issue メトリクスを収集し、`peter-evans/create-issue-from-file@v6` でレポート issue を自動作成する。
 
 - `SEARCH_QUERY` は `repo:${{ github.repository }}` でリポジトリ名をハードコードせず、フォーク・リネームにも対応。
 - job-level permissions は `issues: write` のみ（`is:issue` 限定クエリのため `pull-requests: read` は不要）。
