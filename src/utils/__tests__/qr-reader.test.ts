@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { detectQrContent } from '@/utils/qr-reader';
+// @vitest-environment jsdom
+import { describe, it, expect, vi } from 'vitest';
+import { detectQrContent, decodeQrFromFile } from '@/utils/qr-reader';
 
 describe('detectQrContent', () => {
   describe('HTTP/HTTPS URL', () => {
@@ -91,5 +92,133 @@ describe('detectQrContent', () => {
       const result = detectQrContent(input);
       expect(result.raw).toBe(input);
     });
+  });
+});
+
+describe('decodeQrFromFile — AbortSignal キャンセル', () => {
+  it('既にキャンセル済みの signal を渡すと AbortError が reject される', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    // jsdom では URL.createObjectURL が未実装なので stub する
+    const origCreateObjectURL = URL.createObjectURL;
+    URL.createObjectURL = () => 'blob:stub';
+    URL.revokeObjectURL = () => {};
+
+    const file = new File(['dummy'], 'test.png', { type: 'image/png' });
+    await expect(
+      decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+
+    URL.createObjectURL = origCreateObjectURL;
+  });
+
+  it('キャンセルされていない signal を渡した場合は通常処理を試みる（load-error で解決）', async () => {
+    const controller = new AbortController();
+
+    // jsdom 環境で Image.onload/onerror を制御するため、
+    // Image のコンストラクタを stub して即 onerror を呼ぶ
+    const OrigImage = globalThis.Image;
+    class FakeImage {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      set src(_: string) {
+        // 次のマイクロタスクで onerror を発火させてロードエラーをシミュレート
+        Promise.resolve().then(() => this.onerror?.());
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globalThis.Image = FakeImage as any;
+
+    URL.createObjectURL = () => 'blob:stub';
+    URL.revokeObjectURL = () => {};
+
+    const file = new File(['dummy'], 'test.png', { type: 'image/png' });
+    try {
+      const result = await decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal });
+      expect(result).toEqual({ ok: false, reason: 'load-error' });
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      globalThis.Image = OrigImage as any;
+    }
+  });
+
+  it('signal が abort されると処理中の Promise が AbortError で reject される', async () => {
+    const controller = new AbortController();
+
+    // Image が src セット後に abort が飛んでくるケースをシミュレート
+    const OrigImage = globalThis.Image;
+    class SlowImage {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      set src(_: string) {
+        // abort を先に呼び、その後 onload を発火させる（onload は abort 後なので無視される）
+        controller.abort();
+        Promise.resolve().then(() => this.onload?.());
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globalThis.Image = SlowImage as any;
+
+    URL.createObjectURL = () => 'blob:stub';
+    URL.revokeObjectURL = () => {};
+
+    const file = new File(['dummy'], 'test.png', { type: 'image/png' });
+    try {
+      await expect(
+        decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal })
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      globalThis.Image = OrigImage as any;
+    }
+  });
+
+  it('canvas.getContext が null の場合でも load-error として解決し、abort リスナーが残らない', async () => {
+    const controller = new AbortController();
+    const revokeCount = { count: 0 };
+
+    // canvas.getContext を null 返しにする
+    const origCreateElement = document.createElement.bind(document);
+    const spy = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = origCreateElement(tag);
+      if (tag === 'canvas') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (el as any).getContext = () => null;
+      }
+      return el;
+    });
+
+    const OrigImage = globalThis.Image;
+    class CanvasNullImage {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      width = 100;
+      height = 100;
+      set src(_: string) {
+        Promise.resolve().then(() => this.onload?.());
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globalThis.Image = CanvasNullImage as any;
+
+    URL.createObjectURL = () => 'blob:stub';
+    URL.revokeObjectURL = () => {
+      revokeCount.count += 1;
+    };
+
+    const file = new File(['dummy'], 'test.png', { type: 'image/png' });
+    try {
+      const result = await decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal });
+
+      // load-error として解決すること
+      expect(result).toEqual({ ok: false, reason: 'load-error' });
+      // onload 内で 1 回だけ revoke されること（abort リスナーによる二重 revoke がないこと）
+      expect(revokeCount.count).toBe(1);
+    } finally {
+      spy.mockRestore();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      globalThis.Image = OrigImage as any;
+    }
   });
 });
