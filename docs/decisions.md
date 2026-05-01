@@ -1945,7 +1945,7 @@ PR レビュー返信や教訓記録に「予定 / 候補 / follow-up / 将来�
 
 ### 決断
 
-検出ロジックを `scripts/check-followup-refs.sh` として切り出し、memory checklist (`feedback_commander_checklist.md` F 章) と将来の `.claude/hooks/` から **single source of truth として呼び出せる**形にする。
+検出ロジックを `scripts/check-followup-refs.sh` として切り出し、memory checklist (`feedback_commander_checklist.md` F 章) と `.claude/hooks/`（#199 で段階導入予定）から **single source of truth として呼び出せる**形にする。
 
 ```bash
 bash scripts/check-followup-refs.sh /tmp/claude/issues/reply-*.md
@@ -1956,19 +1956,19 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 
 ### 却下した選択肢
 
-- **skill 化** (`skills/pr-review-followup/`): SKILL.md + script + reference をパッケージ化する形だが、現時点では grep スクリプト 1 本に対して構造が大きすぎる。PR レビュー対応のフローが定着して再パッケージ価値を感じたタイミングで再検討する（保留）。
-- **`.claude/hooks/PreToolUse(Bash:gh pr comment*)` でフック化**: 完全自動化だが、フック実装・テスト・配布のコストがある。まず script + memory checklist で運用試行し、効果が見えたらフック化する段階導入を選択。
-- **memory checklist に正規表現直書き**: 軽量だが single source of truth でなく、サブエージェント完了報告 / 将来の hook で重複する。
+- **skill 化** (`skills/pr-review-followup/`): SKILL.md + script + reference をパッケージ化する形だが、現時点では grep スクリプト 1 本に対して構造が大きすぎる。PR レビュー対応フローが定着したら再検討（#199 にて保留記録済み）。
+- **`.claude/hooks/PreToolUse(Bash:gh pr comment*)` でフック化**: 完全自動化だが、フック実装・テスト・配布のコストがある。まず script + memory checklist で運用試行し、効果が見えたらフック化する段階導入を選択（#199）。
+- **memory checklist に正規表現直書き**: 軽量だが single source of truth でなく、サブエージェント完了報告 / hook で重複する。
 
 ### 安全性確認
 
 - script は read-only（grep のみ）。誤検出があってもファイル破壊はない。
 - 検出ロジックの誤差（false positive / false negative）は run コストが軽いため許容。実運用で精度の問題が出たら正規表現を更新する。
 
-### 将来課題
+### 拡張候補（issue 化の判断は実運用後）
 
-- `.claude/hooks/` への移植: PR レビュー返信投稿前に自動で script を実行し、exit 1 ならブロックする hook を導入する。
-- skill 化: PR レビュー対応の完走ワークフロー（両 API 確認 → 修正 → script 実行 → 返信 → auto-merge）が定着したら、skill としてパッケージ化する案。
+- `.claude/hooks/` への移植（#199）: PR レビュー返信投稿前に自動で script を実行し、exit 1 ならブロックする hook を導入する。
+- skill パッケージ化（#199）: PR レビュー対応の完走ワークフローが定着したら、skill としてパッケージ化する案。
 
 ### 関連 PR / issue
 
