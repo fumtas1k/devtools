@@ -1977,3 +1977,81 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 - PR #197（起票忘れ事例: force-with-lease push 運用ルール）
 - PR #198（起票忘れ事例: permissions precedence 実機確認）
 - `docs/shared-agent-rules.md` 6.4 章「先送り時は issue 化必須」
+
+---
+
+## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 宣言のみ採用、自動 install と `.mcp.json` は実証で却下し手動 install + harness 待ちに確定
+
+**ステータス: 採用（A 案（hook 自動 install）/ `.mcp.json` 二重宣言は実証で却下、C 案（手動 install + upstream issue 追従）に確定。context7 Web 403 は harness 側 egress allowlist 対応待ち）**
+
+### 背景
+
+Claude Code Web (claude.ai/code) で `.claude/settings.json` の `enabledPlugins` 配下プラグインに以下の問題が同時発生していた（issue #191）。
+
+| プラグイン                                | 種別     | 症状                                      |
+| ----------------------------------------- | -------- | ----------------------------------------- |
+| `superpowers@claude-plugins-official`     | スキル型 | スキル一覧に出ない（未 install）          |
+| `frontend-design@claude-plugins-official` | スキル型 | 同上                                      |
+| `context7@claude-plugins-official`        | MCP 型   | MCP は登録されるが API 呼び出しが全て 403 |
+
+レビュー時にライブラリ仕様の裏取りや、設計・計画・TDD の支援フローが回らず、誤った提案を投稿して撤回する事案も発生（PR #187）。
+
+### 真因究明の経緯（PR #204 内の段階的検証）
+
+| ステップ                                                                            | 推定された真因（当時）                                                                                                                                                                                                                | 検証結果                                                                                                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| ①初期仮説（issue #191 本文）                                                        | Context7 上流 API の認証・レート制限・障害                                                                                                                                                                                            | 採用未検証で保留                                                                                                                          |
+| ②Web 1 回目検証                                                                     | サンドボックスの `allowedDomains` 不足                                                                                                                                                                                                | `*.context7.com` を追加して再検証 → 効果なし                                                                                              |
+| ③Web 2 回目検証 + WebSearch                                                         | Context7 が API キー必須化（`ctx7sk-` プレフィクス）                                                                                                                                                                                  | 強すぎる断定であった                                                                                                                      |
+| ④CLI セッションで API キー未設定でも疎通することを確認                              | Context7 無認証レート制限が直近で厳格化、Web の共有 IP で 403 を引きやすい                                                                                                                                                            | 推定であって実証されていなかった                                                                                                          |
+| ⑤Web 側調査で `curl` のレスポンスヘッダ／ボディを直接観測（PR #204 review comment） | **Anthropic クラウドコンテナの egress プロキシで `context7.com` / `mcp.context7.com` が host allowlist に未登録**（レスポンスヘッダ `x-deny-reason: host_not_allowed` / ボディ `Host not in allowlist`）。Context7 まで到達していない | 採用（リポジトリ側の `.claude/settings.json` / `.mcp.json` / API キー設定では解消不可。Anthropic harness 側の egress allowlist 対応待ち） |
+
+403 は HTTP プロトコル層では Context7 のアプリ層エラーと区別がつかないが、レスポンスヘッダ `x-deny-reason: host_not_allowed` で **Anthropic 側の egress プロキシが返したもの**と判明。リポジトリ側で書き換え可能な層（local sandbox / MCP server 設定 / API キー）はすべて egress プロキシより内側にあるため、設定変更で解消する余地がない。CLI / Desktop はこの egress プロキシを経由しないため影響なし。
+
+### 決断
+
+PR #204 で最終的に採用する変更は以下の **1 点のみ** に絞る（A 案・`.mcp.json` 併設はいずれも実証で却下した）。
+
+1. **`extraKnownMarketplaces` の宣言**: `.claude/settings.json` に `claude-plugins-official`（GitHub: `anthropics/claude-plugins-official`）を宣言。`~/.claude/plugins/known_marketplaces.json` に登録メタデータが書かれることまでは確認済み（Web セッションでも観測）。**ただしカタログ本体のフェッチや plugin install のトリガーまでは行われない**（既知制約、後述）。
+2. **CLAUDE.md / decisions [059] の運用記述更新**: Web は手動 `/plugin install` を 1 回だけ実施する運用に確定。context7 Web 403 は harness 側 egress allowlist 待ち。API キーは optional で、設定する場合は `~/.claude/settings.json`（user-scoped）の `env` セクションに置けばプラグイン MCP が読む。
+
+### 検証で判明した事実（CLAUDE.md にも反映）
+
+- `extraKnownMarketplaces` は `~/.claude/plugins/known_marketplaces.json` への登録まで動くが、**plugin の install トリガーにはならない**（Claude Code 本体側の既知制約、upstream issue #23737 等）。
+- 既に trust 済みのリポジトリでは Web の install prompt は発火しない（trust 直後イベントに紐づく）。
+- SessionStart hook 内の `claude plugin install` は Web セッションで全 3 件 `Plugin "<name>" not found in marketplace` で fail する。`claude plugin marketplace update` を前置しても同症状（marketplace.json には完全一致で 3 プラグインとも存在することは curl で確認済み）。`claude plugin install` の CLI 経路は cloud session の plugin lookup と整合せず、現状リポジトリ側からの auto-install は不可能。
+- Context7 は API キー必須ではない（CLI / Desktop は無認証で疎通）。`@upstash/context7-mcp` は env `CONTEXT7_API_KEY` で受け取り、`~/.claude/settings.json` の env 経由で渡せばプラグイン MCP も読む。
+- **Web セッションでは Anthropic クラウドコンテナの egress プロキシが `context7.com` / `mcp.context7.com` を host allowlist 未登録で遮断中**（curl レスポンスヘッダ `x-deny-reason: host_not_allowed` を観測）。リポジトリ側で対処不能、harness 側対応待ち。CLI / Desktop はこの egress を経由しないため影響なし。
+
+### 却下した選択肢
+
+- **A 案：SessionStart hook で `claude plugin install` を自動実行**: PR #204 で実装・検証したが Web セッションで全 3 件 fail（`Plugin "<name>" not found in marketplace`）。`claude plugin marketplace update` 前置でも同症状。CLI 経路と cloud session 内部の plugin lookup が整合しないと推測。最終的に hook を撤去して C 案に確定。
+- **`.mcp.json` でプロジェクト直起動の context7 を併設**: PR #204 で実装したが、(i) Web 403 は egress 段で発生するため `.mcp.json` 経由でも解消しない（実証済み）、(ii) CLI / Desktop はプラグイン版の MCP（`mcp__plugin_context7_context7__*`）だけで無認証疎通する、(iii) API キーは `~/.claude/settings.json` の env 経由でプラグイン MCP にも propagate する、ため `.mcp.json` を残す根拠が消失。`mcp__context7__*` と `mcp__plugin_context7_context7__*` の二重登録は混乱の元なので KISS / YAGNI で削除確定。
+- **API キーを `.mcp.json` に直接書く**: secret の commit になり許容できない（`.mcp.json` 自体を撤去したため moot）。
+- **API キーを `.claude/settings.json`（プロジェクトの env）に書く**: 同様に commit されるので不可。`~/.claude/settings.json` の user-scoped 配置に揃える。
+- **`sandbox.network.allowedDomains` に `context7.com` / `*.context7.com` を追加**: 当初「サンドボックス遮断が真因」推定で追加したが、HTTP 403 がアプリ層から返ってきている事実によりサンドボックスは透過していると確認された。「将来の sandbox 仕様変更に備える preventive 措置」として残す案も検討したが、共通規約の YAGNI 原則に反するため**追加せず**確定。
+- **`CLAUDE_CODE_PLUGIN_SEED_DIR` で pre-populated `~/.claude/plugins/` を使う**: Docker image を build できる環境（自前 CI）では有効だが、claude.ai のクラウドコンテナは Anthropic 側 build のため不可。
+
+### 採用した選択肢（C 案：手動 install + upstream 追従）
+
+- 各環境で `/plugin install superpowers@claude-plugins-official` 等を 1 回だけ実行する運用に確定。
+- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` 等が ship されたら CLAUDE.md / decisions [059] を更新。
+- context7 Web 403 は harness 側 egress allowlist 対応待ち。
+
+### トレードオフ
+
+- ✅ `extraKnownMarketplaces` で marketplace 宣言は documented な書き方を残し、運用記述（CLAUDE.md / decisions [059]）を実態に合わせて確定。実証で否定された機能を載せず、PR の scope を「事実の文書化」に集約。
+- ❌ **Web セッションでは plugin install と context7 疎通の両方が現状動かない**（前者は upstream 既知制約、後者は harness 側 egress allowlist 未対応）。リポジトリ側で完全には解消できないため、運用で吸収（手動 install + harness 待ち）。
+- ⚠️ Web では 3 プラグインを 1 回だけ手動 install する手間が残る。CLAUDE.md「推奨プラグイン」節に明記。
+- ⚠️ A 案（SessionStart hook）の試行と却下、`.mcp.json` の追加と削除を同 PR 内で繰り返しており、commit 履歴上は迷走の跡が残る。本決定（[059]）に経緯を集約しているので、後追い時は本記録を読めば十分。
+
+### 後続タスク
+
+- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で context7 を再検証する。
+- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` 等が ship されたら本決定を更新（手動 install 手順を撤去）。
+
+### 関連 PR / issue
+
+- PR #204（本決定の実装、段階的真因究明を含む）
+- issue #191（症状の整理）
+- PR #187（context7 不在による誤レビュー事例）
