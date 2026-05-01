@@ -1980,9 +1980,9 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 
 ---
 
-## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 自動登録 + context7 を `.mcp.json` 別経路化 + Context7 API キー対応
+## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 自動登録 + context7 を `.mcp.json` 別経路化 + Context7 API キー optional 化
 
-**ステータス: 採用（途中 2 度の真因訂正を経て確定）**
+**ステータス: 採用（途中 3 度の真因訂正を経て確定）**
 
 ### 背景
 
@@ -1998,43 +1998,43 @@ Claude Code Web (claude.ai/code) で `.claude/settings.json` の `enabledPlugins
 
 ### 真因究明の経緯（PR #204 内の段階的検証）
 
-| ステップ                                                           | 推定された真因（当時）                                                                | 検証結果                                             |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| ①初期仮説（issue #191 本文）                                       | Context7 上流 API の認証・レート制限・障害                                            | 採用未検証で保留                                     |
-| ②Web 1 回目検証（コメント返信）                                    | サンドボックスの `allowedDomains` 不足                                                | `*.context7.com` 追加で再検証 → 効果なし             |
-| ③Web 2 回目検証（`.mcp.json` 経路でも 403 / WebSearch で根拠確認） | **Context7 が API キー必須化（`ctx7sk-` プレフィクス）。403 は Upstash 側の認証拒否** | 採用（npm `@upstash/context7-mcp` の現行仕様で確認） |
+| ステップ                                               | 推定された真因（当時）                                                                                                                                                            | 検証結果                                                                                                              |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| ①初期仮説（issue #191 本文）                           | Context7 上流 API の認証・レート制限・障害                                                                                                                                        | 採用未検証で保留                                                                                                      |
+| ②Web 1 回目検証                                        | サンドボックスの `allowedDomains` 不足                                                                                                                                            | `*.context7.com` を追加して再検証 → 効果なし                                                                          |
+| ③Web 2 回目検証 + WebSearch                            | Context7 が API キー必須化（`ctx7sk-` プレフィクス）                                                                                                                              | 強すぎる断定であった                                                                                                  |
+| ④CLI セッションで API キー未設定でも疎通することを確認 | **Context7 は無認証でも基本疎通する。直近で無認証ユーザー向けレート制限が厳格化** された結果、Web の共有 IP（Anthropic クラウドコンテナ egress）経由で 403 を引きやすくなっている | 採用（API キーは Web で安定運用するための recommended、CLI は未設定でも通る。`researchMode: true` のみ API キー必須） |
 
-`Request failed with status 403` は HTTP リクエストが context7 に到達したうえでアプリ層 403 を返している証拠であり、サンドボックスのアウトバウンド遮断（接続拒否）とは別物だった。
+`Request failed with status 403` は HTTP リクエストが context7 に到達したうえでアプリ層 403 を返している証拠であり、サンドボックスのアウトバウンド遮断（接続拒否）とは別物。レート制限ベースのため、API キー設定で個別クォータが割り当てられて 403 が解消する構図。
 
 ### 決断
 
 PR #204 で以下を採用する。
 
 1. **`extraKnownMarketplaces` の宣言**: `.claude/settings.json` に `claude-plugins-official`（GitHub: `anthropics/claude-plugins-official`）を宣言。Web セッションでも `~/.claude/plugins/known_marketplaces.json` への登録は自動化される。
-2. **`.mcp.json` でプロジェクト直起動の context7 を併設**: ルート `.mcp.json` で `@upstash/context7-mcp` を npx 起動する宣言を追加（`env.CONTEXT7_API_KEY = "${CONTEXT7_API_KEY:-}"` で API キーを環境変数経由で受け取る）。プラグイン同梱 MCP と二重持ちにする。
-3. **`sandbox.network.allowedDomains` に context7 ドメイン追加**: `context7.com` / `*.context7.com` を追加。403 の真因ではないが、サンドボックスが child process に適用される実装変更があった場合の preventive 措置として残す（削除しても害はないが将来の症状ぶれを避ける）。
-4. **Context7 API キーの利用者設定運用**: API キーは secret であり commit しない。各利用者が `~/.claude/settings.json`（user-scoped）の `env` セクションに `CONTEXT7_API_KEY: "ctx7sk-..."` を設定し、`.mcp.json` の `${CONTEXT7_API_KEY:-}` で参照する。
+2. **`.mcp.json` でプロジェクト直起動の context7 を併設**: ルート `.mcp.json` で `@upstash/context7-mcp` を npx 起動する宣言を追加（`env.CONTEXT7_API_KEY = "${CONTEXT7_API_KEY:-}"` で API キーを環境変数経由で受け取る、未設定でも parse は通る）。プラグイン同梱 MCP と二重持ちにし、利用者がローカルで env 注入できる経路を確保する。
+3. **Context7 API キーは利用者の任意設定運用**: API キーは optional だが Web で安定利用するために推奨。各利用者が `~/.claude/settings.json`（user-scoped）の `env` セクションに `CONTEXT7_API_KEY: "ctx7sk-..."` を設定し、`.mcp.json` の `${CONTEXT7_API_KEY:-}` で参照する。secret なので commit しない。
 
 ### 検証で判明した事実（CLAUDE.md にも反映）
 
 - `extraKnownMarketplaces` は marketplace 登録まで自動化するが、`enabledPlugins` 単独では Web で plugin install は走らない。
 - 既に trust 済みのリポジトリでは Web の install prompt は発火しない（trust 直後イベントに紐づく）。
 - そのため Web では各プラグインを 1 回だけ `/plugin install <name>@claude-plugins-official` で手動 install する運用とする。
-- Context7 は直近で API キー必須化された。`@upstash/context7-mcp` は env `CONTEXT7_API_KEY` または CLI 引数 `--api-key` で受け取る。env 方式は process listing に secret が出ず、`.mcp.json` の env 展開（`${VAR:-default}`）で利用者ごとの差し替えが可能なので、本プロジェクトでは env 方式を採用。
+- Context7 は API キー必須ではない。無認証アクセスでも基本疎通するが、共有 IP（Web のクラウドコンテナ）からはレート制限で 403 を引きやすい。`@upstash/context7-mcp` は env `CONTEXT7_API_KEY` で受け取る（env 方式は process listing に secret が出ず、`.mcp.json` の env 展開で利用者ごとの差し替えが可能）。
 
 ### 却下した選択肢
 
 - **`extraKnownMarketplaces` だけで完結させる**: install prompt が Web で発火しないことが判明したため不可。
-- **context7 をプラグイン経由のみで運用**: プラグイン同梱 MCP は marketplace 配信側の更新が即時に反映されるとは限らない。利用者がローカルで pin できる npx 経路を残しておくと、プラグイン側に regression が出ても回避できるため `.mcp.json` 併設を採用。
+- **context7 をプラグイン経由のみで運用**: プラグイン同梱 MCP は marketplace 配信側の更新が即時に反映されるとは限らない。利用者がローカルで env 注入できる npx 経路を残しておくと、プラグイン側に regression が出ても回避できるため `.mcp.json` 併設を採用。
 - **API キーを `.mcp.json` に直接書く**: secret の commit になり許容できない。
 - **API キーを `.claude/settings.json`（プロジェクトの env）に書く**: 同様に commit されるので不可。`~/.claude/settings.json` の user-scoped 配置に揃える。
-- **`api.context7.com` だけを許可**: 通信先が将来追加された場合に sandbox で再度 403/拒否が出るため `*.context7.com` ワイルドカードに統一。
+- **`sandbox.network.allowedDomains` に `context7.com` / `*.context7.com` を追加**: 当初「サンドボックス遮断が真因」推定で追加したが、HTTP 403 がアプリ層から返ってきている事実によりサンドボックスは透過していると確認された。「将来の sandbox 仕様変更に備える preventive 措置」として残す案も検討したが、共通規約の YAGNI 原則（"Build only what's asked"）に反するため最終的に**追加せず**確定。
 
 ### トレードオフ
 
-- ✅ Web セッションでも marketplace 登録は自動化、context7 の 403 の真因（API キー必須化）を運用で吸収、プラグイン経路の単一障害点を回避。
+- ✅ Web セッションでも marketplace 登録は自動化、context7 の 403（無認証時のレート制限）を任意の API キー設定で回避できる選択肢を提供、プラグイン経路の単一障害点を回避。
 - ⚠️ Web では 3 プラグインの手動 install 手順が残る。CLAUDE.md「推奨プラグイン」節に明記して運用で吸収。
-- ⚠️ Context7 API キーは利用者ごとの取得・設定が必要。CLAUDE.md に手順を明記。
+- ⚠️ Web で context7 の 403 が頻発する場合、利用者ごとに API キー取得・設定が必要。CLAUDE.md に手順を明記。
 - ⚠️ context7 が二重宣言（`.mcp.json` + プラグイン）になる。利用ツール側は `mcp__context7__*` と `mcp__plugin_context7_context7__*` の両方が見える。実害はないが将来 plugin 側の挙動が安定したら `.mcp.json` 側を撤去する余地あり。
 
 ### 関連 PR / issue
