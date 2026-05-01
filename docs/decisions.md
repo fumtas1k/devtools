@@ -1919,6 +1919,10 @@ worktree 並列実行を採用しているため、複数のサブエージェ�
 - CI が最終ゲートとして機能（`.github/workflows/` の e2e ジョブで全件検証）。
 - 親による代行実行は復旧コマンド（`lsof -ti:4321 | xargs kill -9`）と直列化を含むため、port 衝突起因の誤報告は排除される。
 
+### 将来の見直しトリガー
+
+- CI で port 動的割り当てが導入された場合は 3.1 の「実行禁止」を緩和できる（playwright config と Astro dev server の連携が自動化されることが前提）。
+
 ### 関連 PR
 
 - PR #192（本 PR、`docs/shared-agent-rules.md` 3 章改訂）

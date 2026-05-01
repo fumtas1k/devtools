@@ -66,6 +66,8 @@
 
 ### 3.2 親（司令塔）による E2E 代行実行
 
+> サブエージェントが dev server を残置している場合は、親側で kill する前に停止依頼すること（`npm run dev` のプロセスを終了するよう完了報告時に明記させる）。
+
 サブエージェントの完了報告を受けて push する前後に、親が以下を実施する。
 
 1. 既存の dev server を kill する:
@@ -75,15 +77,29 @@
 2. worktree 内で E2E を実行する（全体または影響範囲を絞って）:
    ```bash
    npm run test:e2e
-   # または影響範囲を絞る場合
+   # または影響範囲を絞る場合（npm run test:e2e -- <spec> でも同様）
    npx playwright test <spec> --project chromium
    ```
 3. **複数 worktree がある場合は同時実行しない**（ポート競合を避けるため）。1 つの worktree が完了してから次へ。
 4. 失敗パターンの判定:
    - **テスト本来の失敗**（assertion error、要素が見つからない等）→ サブエージェントに修正依頼
-   - **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321` 等）→ 上記 1〜2 を 1 回だけ再実行
+   - **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ 上記 1〜2 を 1 回だけ再実行
    - 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
 5. unit テストは worktree 内で完結するため、サブエージェントの結果をそのまま信頼してよい。
+
+#### push 前必須チェックリスト（親）
+
+サブエージェントの完了報告を受けて push する際は、以下をすべて確認する。
+
+| #   | チェック項目                                                   | コマンド                                                                                                               |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | develop ベース確認                                             | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                          |
+| 2   | サブエージェント完了報告の検証（unit / 型 / E2E スキップ理由） | 完了報告に「E2E 実行は親が代行」の明記があることを確認                                                                 |
+| 3   | スコープ外差分の確認                                           | `git diff origin/develop --name-only` で想定外ファイルがないか確認。aria-\* 削除行（`git diff` の `-` 行）がないか確認 |
+| 4   | E2E 直列実行                                                   | 本節手順 1〜5 を実施                                                                                                   |
+| 5   | PR ベース                                                      | `gh pr create --base develop`                                                                                          |
+
+> 関連: issue #193（E2E web-first assertions のテスト記述ガイドライン）
 
 > macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
 
