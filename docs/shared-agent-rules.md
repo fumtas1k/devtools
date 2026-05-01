@@ -64,6 +64,8 @@ lsof -ti:4321 | xargs kill -9 2>/dev/null || true
 npm run test:e2e
 ```
 
+> macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
+
 > ポート 4321 以外を使う場合は `4321` を対象ポートに読み替える。
 
 ---
@@ -106,7 +108,7 @@ npm run test:e2e
 ### 6.2 ブランチ運用
 
 - **`develop` には直接コミットしない**: 必ず feature ブランチを切る。誤って始めた場合は `git stash` → ブランチ切替 → `git stash pop`。
-- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b feat/<topic>`（または `fix/`, `docs/`, `refactor/` 等）
+- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b <type>/<slug>`（例: `feat/add-tool`, `fix/issue-123-crash`）。issue がある場合は `<type>/issue-<n>-<slug>` 形式を推奨（詳細は 6.2a 参照）。
 
 ### 6.2a ブランチ作成の完成形コマンドと自己検証
 
@@ -125,6 +127,7 @@ git merge-base HEAD origin/develop
 **2 行の出力が一致しない場合は作業を停止**し、以下でリベースしてから再確認する:
 
 ```bash
+# `merge-base` が `origin/develop` の祖先（典型的には `main` 起点で worktree が切られたケース）で有効
 git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 ```
 
@@ -278,7 +281,7 @@ npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 - [ ] このセッションの Objective に書かれていないファイル一切
 - [ ] aria-\* / role= 属性の削除（明示的な許可なしには禁止）
 - [ ] issue 本文に記載のない機能追加・設計変更
-- [ ] （具体例を追記: 例）src/components/ui/OutputField.tsx の a11y 属性
+<!-- 具体例を追記: 例) src/components/ui/OutputField.tsx の a11y 属性 -->
 
 ## 🟢 Review & Feedback
 

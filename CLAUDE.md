@@ -14,8 +14,7 @@
 - **検証**: 変更後は **`npm run test`** および **`npm run test:e2e`** で確認。
 - **PR ベース**: `gh pr create` は **必ず `--base develop`** を明示する。`main` 向けはリリース PR のみ（`gh` のデフォルト・Claude Code system prompt の "Main branch ... main" 表示に流されないこと）。詳細は `docs/shared-agent-rules.md` 6.3 章。
 - **ATC運用**: セッション開始時に `tasks/active_context.md` を作成（superpowers の plan / conductor のタスクファイル等が「目的・ステップ・スコープ外」を明示する場合は不要。詳細は `docs/shared-agent-rules.md` 11章）。
-- **司令塔モード**: 親 Claude Code セッションは実装・テスト実行をサブエージェントに委譲し、自身はフロー制御・ベース確認・完了評価・最終報告に専念する（詳細: `docs/shared-agent-rules.md` 6.2a 章・3 章チェックリスト）。
-- **サブエージェント完了受け取り時**: `git merge-base HEAD origin/develop` でベース確認 → テスト結果を読んで未実行項目がないか確認 → `git diff origin/develop...HEAD | grep "^-.*aria-"` でスコープ外削除がないかを確認してから PR 作成。
+- **司令塔モード**: 親 Claude セッションは委譲・ベース確認・テスト確認・aria 削除検出を経て PR 作成（詳細: `docs/shared-agent-rules.md` 6.2a 章・3 章 push 前チェックリスト・10.6 章）。
 
 ---
 
