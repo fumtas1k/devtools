@@ -156,7 +156,12 @@ export function VerifyTab({
       {(verifying || verificationResult) && (
         <div style={sectionStyle}>
           <h3 style={sectionHeaderStyle}>検証結果</h3>
-          <div style={sectionBodyStyle}>
+          <div
+            style={sectionBodyStyle}
+            role="status"
+            aria-live={verificationResult && !verificationResult.valid ? 'assertive' : 'polite'}
+            aria-atomic="true"
+          >
             {verifying ? (
               <p style={{ ...caption, color: colors.muted }}>検証中…</p>
             ) : verificationResult ? (
@@ -175,11 +180,19 @@ export function VerifyTab({
                       marginBottom: verificationResult.ticket ? '0.75rem' : 0,
                     }}
                   >
-                    {verificationResult.valid
-                      ? '✓ 有効なチケット'
-                      : verificationResult.expired
-                        ? '✕ 有効期限切れ'
-                        : '✕ 無効なチケット'}
+                    {verificationResult.valid ? (
+                      <>
+                        <span aria-hidden="true">✓ </span>有効なチケット
+                      </>
+                    ) : verificationResult.expired ? (
+                      <>
+                        <span aria-hidden="true">✕ </span>有効期限切れ
+                      </>
+                    ) : (
+                      <>
+                        <span aria-hidden="true">✕ </span>無効なチケット
+                      </>
+                    )}
                   </p>
                   {verificationResult.error && !verificationResult.valid && (
                     <p style={{ ...caption, color: colors.errorText }}>

@@ -346,6 +346,8 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
           <div
             className="rounded-lg flex flex-col items-center gap-4 p-5"
             style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
+            role="status"
+            aria-live="polite"
           >
             <div
               aria-label={`GS1 DataBar ${gtinResult?.fullGtin} のバーコード`}

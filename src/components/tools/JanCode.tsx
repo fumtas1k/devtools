@@ -95,7 +95,7 @@ export function JanCodeTool() {
 
       {/* 結果 */}
       {result && (
-        <div className="space-y-4">
+        <div className="space-y-4" role="status" aria-live="polite">
           {/* チェックディジット・完成コード */}
           <div
             data-testid="jan-code-result"

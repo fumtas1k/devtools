@@ -207,6 +207,8 @@ export function ConfigConverterTool() {
         <button
           type="button"
           onClick={() => setSchemaOpen((o) => !o)}
+          aria-expanded={schemaOpen}
+          aria-controls="config-converter-schema-panel"
           className="flex items-center gap-1"
           style={{
             ...caption,
@@ -218,6 +220,7 @@ export function ConfigConverterTool() {
           }}
         >
           <span
+            aria-hidden="true"
             style={{
               display: 'inline-block',
               transform: schemaOpen ? 'rotate(90deg)' : 'none',
@@ -229,7 +232,7 @@ export function ConfigConverterTool() {
           JSON Schema で検証する
         </button>
         {schemaOpen && (
-          <div className="mt-3 space-y-3">
+          <div id="config-converter-schema-panel" className="mt-3 space-y-3">
             <InputField
               id="config-converter-schema"
               label="JSON Schema (貼り付け)"
@@ -279,13 +282,17 @@ export function ConfigConverterTool() {
             {validationResult && (
               <div
                 className="rounded-lg p-3"
+                role={validationResult.valid ? 'status' : 'alert'}
+                aria-live={validationResult.valid ? 'polite' : 'assertive'}
                 style={{
                   background: validationResult.valid ? colors.successBg : colors.errorBg,
                   border: `1px solid ${validationResult.valid ? colors.success : colors.error}`,
                 }}
               >
                 {validationResult.valid ? (
-                  <p style={{ ...caption, color: colors.text }}>✅ スキーマ検証成功</p>
+                  <p style={{ ...caption, color: colors.text }}>
+                    <span aria-hidden="true">✅ </span>スキーマ検証成功
+                  </p>
                 ) : (
                   <ul
                     style={{

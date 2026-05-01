@@ -87,10 +87,12 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
       <button
         onClick={handleClick}
         aria-label={label}
-        className="rounded-md transition-colors"
+        className="rounded-md transition-colors inline-flex items-center justify-center"
         style={{
           fontSize: '0.75rem',
           padding: '0.25rem 0.5rem',
+          minWidth: '32px',
+          minHeight: '32px',
           ...copyStateColors(copied, colors.muted),
           border: 'none',
           cursor: 'pointer',

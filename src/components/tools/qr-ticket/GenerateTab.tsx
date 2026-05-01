@@ -93,6 +93,8 @@ export function GenerateTab({
             <button
               type="button"
               onClick={onToggleImport}
+              aria-expanded={showImport}
+              aria-controls="qr-ticket-import-panel"
               style={{
                 ...caption,
                 color: colors.link,
@@ -102,12 +104,13 @@ export function GenerateTab({
                 padding: 0,
               }}
             >
-              {showImport ? '▲ 秘密鍵インポートを閉じる' : '▼ 既存の秘密鍵をインポート'}
+              <span aria-hidden="true">{showImport ? '▲ ' : '▼ '}</span>
+              {showImport ? '秘密鍵インポートを閉じる' : '既存の秘密鍵をインポート'}
             </button>
           </div>
 
           {showImport && (
-            <div className="space-y-2">
+            <div id="qr-ticket-import-panel" className="space-y-2">
               <InputField
                 id="import-privkey"
                 label="秘密鍵 JWK"
@@ -379,19 +382,22 @@ export function GenerateTab({
                     </span>
                     <button
                       type="button"
-                      className="w-8 h-8 flex items-center justify-center"
+                      className="flex items-center justify-center"
                       onClick={() => onRemoveTicket(i)}
                       disabled={tickets.length <= 1}
                       aria-label={`行 ${i + 1} を削除`}
                       style={{
                         ...caption,
+                        minWidth: '40px',
+                        minHeight: '40px',
+                        padding: '12px',
                         color: tickets.length <= 1 ? colors.muted : colors.error,
                         background: 'none',
                         border: 'none',
                         cursor: tickets.length <= 1 ? 'not-allowed' : 'pointer',
                       }}
                     >
-                      ✕
+                      <span aria-hidden="true">✕</span>
                     </button>
                   </div>
                 </div>
@@ -400,7 +406,7 @@ export function GenerateTab({
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <ActionButton onClick={onAddTicket} disabled={tickets.length >= MAX_TICKETS}>
-              ＋ 行を追加
+              <span aria-hidden="true">＋ </span>行を追加
             </ActionButton>
             <ActionButton
               onClick={onGenerate}
