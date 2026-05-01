@@ -442,12 +442,21 @@ export function Gs1DatabarTool() {
     try {
       // 各 SVG を PNG 変換してから flat なエントリ一覧を作る。
       // gtin はバリデーション済みだが defense-in-depth でサニタイズする。
+      // `gs1-databars/` サブフォルダ配下に格納して従来の ZIP 構造を維持する。
       const fileGroups = await Promise.all(
         validEntries.map(async ([, { svg, gtin }]) => {
           const pngBlob = await svgContentToPngBlob(svg);
           return [
-            { name: sanitizeFilename(`gs1-databar-${gtin}.svg`, ['svg']), content: svg },
-            { name: sanitizeFilename(`gs1-databar-${gtin}.png`, ['png']), content: pngBlob },
+            {
+              name: sanitizeFilename(`gs1-databar-${gtin}.svg`, ['svg']),
+              content: svg,
+              folder: 'gs1-databars',
+            },
+            {
+              name: sanitizeFilename(`gs1-databar-${gtin}.png`, ['png']),
+              content: pngBlob,
+              folder: 'gs1-databars',
+            },
           ];
         })
       );

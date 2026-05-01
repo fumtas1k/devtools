@@ -93,4 +93,68 @@ describe('downloadZip', () => {
     const fileMock = zipState.instances[0].file;
     expect(fileMock.mock.calls[0][1]).toBe(blobContent);
   });
+
+  it('folder 指定時はサブフォルダ配下のエントリパスになる', async () => {
+    await downloadZip(
+      [
+        { name: 'ticket-001.svg', folder: 'tickets', content: '<svg/>' },
+        { name: 'ticket-002.svg', folder: 'tickets', content: '<svg/>' },
+      ],
+      'tickets.zip'
+    );
+    const fileMock = zipState.instances[0].file;
+    expect(fileMock.mock.calls[0][0]).toBe('tickets/ticket-001.svg');
+    expect(fileMock.mock.calls[1][0]).toBe('tickets/ticket-002.svg');
+  });
+
+  it('folder 未指定時は従来通りフラットなエントリ名になる', async () => {
+    await downloadZip(
+      [
+        { name: 'a.svg', content: '<svg/>' },
+        { name: 'b.svg', content: '<svg/>' },
+      ],
+      'archive.zip'
+    );
+    const fileMock = zipState.instances[0].file;
+    expect(fileMock.mock.calls[0][0]).toBe('a.svg');
+    expect(fileMock.mock.calls[1][0]).toBe('b.svg');
+  });
+
+  it('folder もサニタイズされる（path traversal の試みは _ に置換）', async () => {
+    await downloadZip([{ name: 'a.svg', folder: '../etc', content: '<svg/>' }], 'archive.zip');
+    const fileMock = zipState.instances[0].file;
+    const passedPath = fileMock.mock.calls[0][0] as string;
+    // `../etc` → `..` は先頭ドットが除去され、`/` は分離処理対象。
+    // sanitizeFilename は ext 分離後に base の連続ドットを除去するため
+    // 最終的な folder 部分に `..` や `/` が混入しないことを保証する。
+    expect(passedPath).not.toContain('..');
+    // path separator は entryPath の区切り `/` 1 つだけ存在する想定
+    expect(passedPath.split('/').length).toBe(2);
+    // folder 部分・name 部分とも英数字・._- のみ
+    const [folderPart, namePart] = passedPath.split('/');
+    expect(folderPart).toMatch(/^[A-Za-z0-9._-]+$/);
+    expect(namePart).toMatch(/^[A-Za-z0-9._-]+$/);
+  });
+
+  it('folder と name 両方が同時にサニタイズされる', async () => {
+    await downloadZip(
+      [{ name: 'foo bar.svg', folder: 'my folder', content: '<svg/>' }],
+      'archive.zip'
+    );
+    const fileMock = zipState.instances[0].file;
+    // 半角スペースは _ に置換される
+    expect(fileMock.mock.calls[0][0]).toBe('my_folder/foo_bar.svg');
+  });
+
+  it('folder にスラッシュを含めても `_` に置換され単一階層に強制される', async () => {
+    await downloadZip(
+      [{ name: 'a.svg', folder: 'gs1-databars/sub', content: '<svg/>' }],
+      'archive.zip'
+    );
+    const fileMock = zipState.instances[0].file;
+    const passedPath = fileMock.mock.calls[0][0] as string;
+    // sanitizeFilename が `/` を `_` に置換するため、最終 entryPath に
+    // 含まれる `/` は entryFolder と entryName の境界の 1 つだけ
+    expect(passedPath.split('/').length).toBe(2);
+  });
 });

@@ -289,10 +289,12 @@ export function QrTicketTool() {
     setZipping(true);
     setZipError('');
     try {
-      // ZIP エントリ名は Zip Slip 類似の攻撃媒体になり得るため必ずサニタイズする
+      // ZIP エントリ名は Zip Slip 類似の攻撃媒体になり得るため必ずサニタイズする。
+      // `tickets/` サブフォルダ配下に格納して従来の ZIP 構造を維持する。
       const files = generatedQrs.map(({ ticket, svg }) => ({
         name: sanitizeFilename(`ticket-${ticket.t}.svg`, ['svg']),
         content: svg.replace('<svg ', '<svg width="160" height="160" '),
+        folder: 'tickets',
       }));
       await downloadZip(files, 'tickets.zip');
     } catch {
