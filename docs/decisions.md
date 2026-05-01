@@ -1911,6 +1911,8 @@ devtools リポジトリの issue 活動量（新規作成数・クローズ率�
 
 ### 安全性確認
 
+Claude Code の permission matching は **`deny` > `ask` > `allow` の優先順**で評価される（[公式ドキュメント](https://code.claude.com/docs/en/settings) 参照。deny が最初にマッチすれば即ブロック、次に ask、最後に allow の順で評価され、最初にマッチしたルールが適用される）。したがって、`git add -A*`（ask）は `git add *`（allow）より優先され、`git add -A` を実行した際は ask が確実に発火する。同様に `git commit -am "msg" --no-verify`（ask パターン `git commit * --no-verify*` にマッチ）も、`git commit -am *`（allow）より ask が優先されるため、hook bypass が無確認で通る恐れはない。
+
 - `git push --force*` → deny（変更なし）
 - `git reset --hard*` → ask（変更なし）
 - `git push*` → ask（変更なし）
