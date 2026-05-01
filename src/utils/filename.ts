@@ -54,23 +54,28 @@ export function sanitizeFilename(name: string, allowExt?: readonly string[]): st
     ext = '';
   }
 
-  // 2. base / ext の許可文字以外を _ に置換
+  // 2. base の許可文字以外を _ に置換
   let safeBase = replaceUnsafeChars(base);
-  let safeExt = ext ? replaceUnsafeChars(ext) : '';
 
-  // 3. base 先頭の連続ドット除去（隠しファイル化防止 + path traversal 風除去）
-  safeBase = safeBase.replace(/^\.+/, '');
+  // 3. base 先頭の連続ドット除去（隠しファイル化防止 + path traversal 風除去）と
+  //    末尾の連続ドット/アンダースコアの整形（置換結果のゴミを除去）
+  safeBase = safeBase.replace(/^\.+/, '').replace(/[._]+$/, '');
 
-  // 4. 拡張子のホワイトリスト検査（指定時のみ）
+  // 4. 拡張子の決定
+  //    allowExt 指定時: 元の ext を **置換せず** 小文字化してホワイトリスト判定。
+  //    外れたら丸ごと捨てて allowList[0] にフォールバック（`foo.cs v` のように
+  //    危険文字を含む ext が `cs_v` 等に化けた状態でホワイトリスト判定するのを避ける）。
+  //    allowExt 未指定時: ext を sanitize して保持（拡張子なしも許容）。
+  let safeExt = '';
   if (allowList !== null) {
-    const normalizedExt = safeExt.toLowerCase();
-    if (!normalizedExt || !allowList.includes(normalizedExt)) {
-      // 許可外、または拡張子なし → allowList[0] でフォールバック
-      safeExt = allowList[0] ?? FALLBACK_EXT;
+    const rawExtLower = ext.toLowerCase();
+    if (rawExtLower && allowList.includes(rawExtLower)) {
+      safeExt = rawExtLower;
     } else {
-      // 許可リストにある場合は小文字化を強制（拡張子の大文字は混乱の元）
-      safeExt = normalizedExt;
+      safeExt = allowList[0] ?? FALLBACK_EXT;
     }
+  } else {
+    safeExt = ext ? replaceUnsafeChars(ext) : '';
   }
 
   // 5. base が空なら fallback
