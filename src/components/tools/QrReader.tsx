@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { useQrCamera } from '@/hooks/useQrCamera';
+import { useAbortableEffect } from '@/hooks/useAbortableEffect';
 import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { validateFile } from '@/utils/file-validation';
@@ -91,10 +92,8 @@ export function QrReaderTool() {
   const [scanMode, setScanMode] = useState<'camera' | 'upload'>('camera');
   const [decoded, setDecoded] = useState<string | null>(null);
   const [decodeError, setDecodeError] = useState('');
-  const mountedRef = useRef(true);
 
   const handleQrDetected = useCallback((data: string) => {
-    if (!mountedRef.current) return;
     setDecoded(data);
     setDecodeError('');
   }, []);
@@ -102,15 +101,15 @@ export function QrReaderTool() {
   const camera = useQrCamera({ onQrDetected: handleQrDetected });
   const { stopCamera } = camera;
 
-  useEffect(() => {
-    mountedRef.current = true;
+  // アンマウント時にカメラを停止する
+  useAbortableEffect(() => {
     return () => {
-      mountedRef.current = false;
       stopCamera();
     };
   }, [stopCamera]);
 
-  useEffect(() => {
+  // scanMode が camera 以外に切り替わった時にカメラを停止する
+  useAbortableEffect(() => {
     if (scanMode !== 'camera') stopCamera();
   }, [scanMode, stopCamera]);
 
@@ -122,7 +121,7 @@ export function QrReaderTool() {
 
     const validation = validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
     if (!validation.ok) {
-      if (mountedRef.current) setDecodeError(validation.message);
+      setDecodeError(validation.message);
       return;
     }
 
@@ -130,9 +129,20 @@ export function QrReaderTool() {
     setDecodeError('');
     setDecoded(null);
 
-    const result = await decodeQrFromFile(file, { maxDim: DEFAULT_QR_MAX_DIM });
-    if (!mountedRef.current) return;
-    if (!result.ok) {
+    const controller = new AbortController();
+    let result;
+    try {
+      result = await decodeQrFromFile(file, {
+        maxDim: DEFAULT_QR_MAX_DIM,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setDecodeError('画像を読み込めませんでした');
+      return;
+    }
+
+    if (result.ok === false) {
       if (result.reason === 'load-error') {
         setDecodeError('画像を読み込めませんでした');
       } else {

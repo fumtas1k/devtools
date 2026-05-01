@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import jsQR from 'jsqr';
 
 interface UseQrCameraOptions {
@@ -93,13 +93,19 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
     }
   }, [stopCamera]);
 
-  return {
-    cameraActive,
-    cameraError,
-    setCameraError,
-    videoRef,
-    canvasRef,
-    startCamera,
-    stopCamera,
-  };
+  // 毎レンダでオブジェクトが再生成されないよう useMemo で安定化する。
+  // stopCamera は useCallback(..., []) で安定しており、startCamera は useCallback(..., [stopCamera]) で安定している。
+  // cameraActive / cameraError はステート変化時のみ新しいオブジェクトを生成する。
+  return useMemo(
+    () => ({
+      cameraActive,
+      cameraError,
+      setCameraError,
+      videoRef,
+      canvasRef,
+      startCamera,
+      stopCamera,
+    }),
+    [cameraActive, cameraError, setCameraError, videoRef, canvasRef, startCamera, stopCamera]
+  );
 }

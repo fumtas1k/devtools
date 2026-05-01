@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   generateKeyPair,
   exportKeyPair,
@@ -21,6 +21,7 @@ import { sanitizeFilename, isSafeTicketId } from '@/utils/filename';
 import { decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { useQrCamera } from '@/hooks/useQrCamera';
+import { useAbortableEffect } from '@/hooks/useAbortableEffect';
 import { MODE_OPTIONS, GenerateTab, VerifyTab } from './qr-ticket/index';
 import type { TicketRow, GeneratedQr } from './qr-ticket/types';
 
@@ -67,25 +68,22 @@ export function QrTicketTool() {
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [verifying, setVerifying] = useState(false);
 
-  // アンマウント検知 ref（非同期処理後のステート更新ガード用）
-  const mountedRef = useRef(true);
-
   // マウント後に初期値をセット
-  useEffect(() => {
+  useAbortableEffect(() => {
     setExpiry(getDefaultExpiry());
   }, []);
 
   // ─── QR検証（カメラ/アップロード共通） ───────────────────
 
   const handleVerify = useCallback(
-    async (rawData: string) => {
+    async (rawData: string, signal?: AbortSignal) => {
       setVerifying(true);
       let pubKey: CryptoKey;
       try {
         const jwk = JSON.parse(verifyPubKeyStr) as JsonWebKey;
         pubKey = await importPublicKey(jwk);
       } catch {
-        if (!mountedRef.current) return;
+        if (signal?.aborted) return;
         setVerificationResult({
           valid: false,
           ticket: null,
@@ -96,7 +94,7 @@ export function QrTicketTool() {
         return;
       }
       const result = await verifyTicket(rawData, pubKey);
-      if (!mountedRef.current) return;
+      if (signal?.aborted) return;
       setVerificationResult(result);
       setVerifying(false);
     },
@@ -104,20 +102,19 @@ export function QrTicketTool() {
   );
 
   const camera = useQrCamera({ onQrDetected: handleVerify });
+  const { stopCamera } = camera;
 
-  // モード切替時にカメラを停止
-  useEffect(() => {
-    if (mode !== 'verify') camera.stopCamera();
-  }, [mode, camera.stopCamera]);
+  // モード切替時にカメラを停止する
+  useAbortableEffect(() => {
+    if (mode !== 'verify') stopCamera();
+  }, [mode, stopCamera]);
 
-  // アンマウント時にカメラを停止 + mountedRef をリセット
-  useEffect(() => {
-    mountedRef.current = true;
+  // アンマウント時にカメラを停止する
+  useAbortableEffect(() => {
     return () => {
-      mountedRef.current = false;
-      camera.stopCamera();
+      stopCamera();
     };
-  }, [camera.stopCamera]);
+  }, [stopCamera]);
 
   // ─── 鍵操作 ──────────────────────────────────────────────
 
@@ -314,7 +311,6 @@ export function QrTicketTool() {
 
     const validation = validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
     if (!validation.ok) {
-      if (!mountedRef.current) return;
       camera.setCameraError(validation.message);
       return;
     }
@@ -322,9 +318,20 @@ export function QrTicketTool() {
     camera.setCameraError('');
     setVerificationResult(null);
 
-    const result = await decodeQrFromFile(file, { maxDim: DEFAULT_QR_MAX_DIM });
-    if (!mountedRef.current) return;
-    if (!result.ok) {
+    const controller = new AbortController();
+    let result;
+    try {
+      result = await decodeQrFromFile(file, {
+        maxDim: DEFAULT_QR_MAX_DIM,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      camera.setCameraError('画像を読み込めませんでした');
+      return;
+    }
+
+    if (result.ok === false) {
       if (result.reason === 'load-error') {
         camera.setCameraError('画像を読み込めませんでした');
       } else {
@@ -337,7 +344,7 @@ export function QrTicketTool() {
       }
       return;
     }
-    handleVerify(result.data);
+    await handleVerify(result.data, controller.signal);
   };
 
   const handleRescan = () => {
