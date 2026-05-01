@@ -91,3 +91,41 @@ PR #181 で `isolation: "worktree"` 付きで再ディスパッチしたサブ�
   git push origin worktree-agent-<id>:<pr-branch>
   ```
 - 完了報告で「最終コミット SHA」と並べて「コミットが乗っているブランチ名」もサブエージェントに報告させる規約にすると検出が早まる（規約昇格候補）。
+
+---
+
+## [2026-05-01] worktree の node_modules が古いと E2E が hydration timeout で大量失敗する
+
+### 現象
+
+PR #168 で利用していた worktree（ID: `agent-a5a9da066d1149d19`）で `npm run test:e2e` を実行すると、QR 系を中心に多数のテストが `page.waitForFunction: Test timeout of 30000ms exceeded` (waitForReactHydration) で失敗。develop の最新コミット上では同じテストが pass する。コード差分は問題なく見え、`npm run test`（unit）は全 pass、`npm run build` も成功。
+
+### 根本原因
+
+worktree が作られた時点の `package.json` と、その後 develop に merge された PR (#181 で `@testing-library/react` / `jsdom` 追加など) のあいだで deps 構成が変わっていたが、worktree の `node_modules` は古いまま。playwright dev server の起動経路で必要なバイナリ/依存が不一致になり、ブラウザ側の React hydration が完了しない状態に。さらに、過去の sandbox 経由インストールで一部ファイルの権限がねじれており、単純な `npm ci` も EPERM で失敗する状態だった。
+
+### 対処方針
+
+worktree で E2E を回す前に、deps を **必ずクリーンインストール**する:
+
+```bash
+# sandbox で permission denied になるファイルがあるため、エラーを抑制する
+chmod -R u+w node_modules 2>/dev/null
+rm -rf node_modules
+npm ci --cache "$TMPDIR/npm-cache"
+lsof -ti:4321 | xargs kill -9 2>/dev/null || true
+npm run test:e2e
+```
+
+ポイント:
+
+- `chmod -R u+w` で sandbox 由来の read-only ファイルを書き込み可能にしてから削除する。
+- `npm ci --cache "$TMPDIR/npm-cache"` で `~/.npm` の root 所有問題を回避（`sudo chown` できない sandbox 環境で有効）。
+- E2E 実行前に既存の dev server を kill しておく（worktree 並列実行時の port 4321 衝突対策）。
+- 上記でも `waitForReactHydration` timeout が続く場合は **env 由来失敗**と判断し、push して CI を最終ゲートにする（`docs/shared-agent-rules.md` 3 章（push 前必須チェックリスト）の方針）。
+
+### 関連 PR / 観点
+
+- PR #181 / #188 で実害あり
+- 関連 issue: #194（worktree 環境で E2E timeout を早期検出して無駄待ちを削減）
+- 現行の 3 章 push 前チェックリストに位置付ける運用が固まれば、PR #192 で新設予定の 3.2 章末尾にステップ 0「worktree が古い場合は npm ci 入れ直し」として昇格する候補
