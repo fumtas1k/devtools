@@ -5,6 +5,7 @@
 - 共通ルール化すべき内容は `docs/shared-agent-rules.md` に昇格させ、本ファイルから削除する。
 - セッション開始時に必ず読む必要はない（PR 作成前や定期整理時に見直す）。
 - 詳細な運用ルールは `docs/shared-agent-rules.md` 11章を参照。
+- 「（規約昇格候補）」と注記した項目は、次回 `agent-lessons.md` の整理タイミングで `shared-agent-rules.md` への昇格 / issue 化 / 削除のいずれかを判断する。
 
 ---
 
@@ -78,10 +79,14 @@ PR #181 のレビュー対応で、サブエージェントが `@testing-library
 
 PR #181 で `isolation: "worktree"` 付きで再ディスパッチしたサブエージェントに、既存 PR ブランチ `fix/issue-149-debounce-download-disable` を引き継がせる指示を出した。worktree 作成時に `git checkout -b <pr-branch> origin/<pr-branch>` を実行させたが、worktree のデフォルト checkout が内部生成の `worktree-agent-<id>` branch のままになり、コミットがそちらに乗った。親が `git push origin <branch>` を素直に実行すると "Everything up-to-date"（PR ブランチには反映されない）。
 
+### 根本原因
+
+`Agent` ツールの `isolation: "worktree"` で作成される worktree は、内部生成された `worktree-agent-<id>` branch を HEAD として checkout した状態で起動する。サブエージェントが `git checkout -b <pr-branch> origin/<pr-branch>` を実行しても、worktree の HEAD はそのまま `worktree-agent-<id>` を指し続け、後続のコミットが意図したブランチに乗らない。
+
 ### 対処方針
 
 - 親は `git status` で **現在のブランチ名**を確認してから push する。
-- 内部 branch にコミットが乗っていた場合は ref マッピング push で PR ブランチに上げる:
+- 内部 branch にコミットが乗っていた場合は refspec push で PR ブランチに上げる:
   ```bash
   git push origin worktree-agent-<id>:<pr-branch>
   ```
