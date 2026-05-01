@@ -80,6 +80,7 @@ test.describe('JSON / CSV 変換', () => {
     await expect(downloadBtn).toBeDisabled();
 
     // デバウンス完了（useCodec の既定値）後に再び有効化される
+    // timeout: 3000 は useCodec の既定 debounceMs（300ms）に対する余裕
     await expect(downloadBtn).toBeEnabled({ timeout: 3000 });
   });
 });

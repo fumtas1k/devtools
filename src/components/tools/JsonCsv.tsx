@@ -39,6 +39,7 @@ export function JsonCsvTool() {
   };
 
   const handleDownloadCsv = () => {
+    // ボタン側でも `disabled={!output}` で防御しているが念のため二重防御
     if (!output) return;
     downloadText(output, 'output.csv', 'text/csv');
   };
