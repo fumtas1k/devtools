@@ -11,6 +11,7 @@ import { getErrorMessage } from '@/utils/errors';
 import { downloadBytes } from '@/utils/download';
 import { validateFile } from '@/utils/file-validation';
 import { sanitizeFilename } from '@/utils/filename';
+import { formatBytes } from '@/utils/format';
 import {
   detectEncoding,
   decodeToText,
@@ -59,12 +60,6 @@ function hexPreview(bytes: Uint8Array, limit = 32): string {
     parts.push(bytes[i].toString(16).padStart(2, '0').toUpperCase());
   }
   return parts.join(' ') + (bytes.length > limit ? ' ...' : '');
-}
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function EncodingConverterTool() {

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getErrorMessage } from '@/utils/errors';
 import bwipjs from 'bwip-js';
-import JSZip from 'jszip';
 import { CopyButton } from '@/components/ui/CopyButton';
 import {
   calcGtin14CheckDigit,
@@ -22,6 +21,8 @@ import {
   downloadPngFromSvgContent,
   svgContentToPngBlob,
 } from '@/utils/download';
+import { downloadZip } from '@/utils/zip';
+import { sanitizeFilename } from '@/utils/filename';
 
 interface AiFieldState {
   ai: AiCode;
@@ -439,24 +440,18 @@ export function Gs1DatabarTool() {
     if (!canDownloadAll || isZipping) return;
     setIsZipping(true);
     try {
-      const zip = new JSZip();
-      const folder = zip.folder('gs1-databars')!;
-
-      await Promise.all(
+      // 各 SVG を PNG 変換してから flat なエントリ一覧を作る。
+      // gtin はバリデーション済みだが defense-in-depth でサニタイズする。
+      const fileGroups = await Promise.all(
         validEntries.map(async ([, { svg, gtin }]) => {
-          folder.file(`gs1-databar-${gtin}.svg`, svg);
           const pngBlob = await svgContentToPngBlob(svg);
-          folder.file(`gs1-databar-${gtin}.png`, pngBlob);
+          return [
+            { name: sanitizeFilename(`gs1-databar-${gtin}.svg`, ['svg']), content: svg },
+            { name: sanitizeFilename(`gs1-databar-${gtin}.png`, ['png']), content: pngBlob },
+          ];
         })
       );
-
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'gs1-databars.zip';
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadZip(fileGroups.flat(), 'gs1-databars.zip');
     } finally {
       setIsZipping(false);
     }

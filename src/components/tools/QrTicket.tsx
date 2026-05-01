@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import JSZip from 'jszip';
 import {
   generateKeyPair,
   exportKeyPair,
@@ -16,6 +15,7 @@ import {
   type VerificationResult,
 } from '@/utils/qr-ticket';
 import { downloadSvg } from '@/utils/download';
+import { downloadZip } from '@/utils/zip';
 import { validateFile } from '@/utils/file-validation';
 import { sanitizeFilename, isSafeTicketId } from '@/utils/filename';
 import { decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
@@ -289,20 +289,12 @@ export function QrTicketTool() {
     setZipping(true);
     setZipError('');
     try {
-      const zip = new JSZip();
-      const folder = zip.folder('tickets')!;
-      generatedQrs.forEach(({ ticket, svg }) => {
-        // ZIP エントリ名は Zip Slip 類似の攻撃媒体になり得るため必ずサニタイズする
-        const entryName = sanitizeFilename(`ticket-${ticket.t}.svg`, ['svg']);
-        folder.file(entryName, svg.replace('<svg ', '<svg width="160" height="160" '));
-      });
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'tickets.zip';
-      a.click();
-      URL.revokeObjectURL(url);
+      // ZIP エントリ名は Zip Slip 類似の攻撃媒体になり得るため必ずサニタイズする
+      const files = generatedQrs.map(({ ticket, svg }) => ({
+        name: sanitizeFilename(`ticket-${ticket.t}.svg`, ['svg']),
+        content: svg.replace('<svg ', '<svg width="160" height="160" '),
+      }));
+      await downloadZip(files, 'tickets.zip');
     } catch {
       setZipError('ZIPの作成に失敗しました');
     } finally {
