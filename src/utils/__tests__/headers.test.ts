@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 /**
@@ -8,15 +7,11 @@ import path from 'node:path';
  *
  * Cloudflare Pages / Netlify 互換のレスポンスヘッダ定義ファイル。
  * 採用根拠と各ディレクティブの判断は docs/decisions.md [054] を参照。
+ *
+ * Vitest はプロジェクトルートを `process.cwd()` として実行するため、
+ * リポジトリ構造に依存しない `process.cwd()` 起点で解決する。
  */
-const HEADERS_PATH = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  '..',
-  'public',
-  '_headers'
-);
+const HEADERS_PATH = path.resolve(process.cwd(), 'public', '_headers');
 
 const HEADERS_CONTENT = readFileSync(HEADERS_PATH, 'utf-8');
 
@@ -90,12 +85,23 @@ describe('public/_headers', () => {
       expect(csp).toMatch(/style-src[^;]*'self'/);
       expect(csp).toMatch(/style-src[^;]*'unsafe-inline'/);
     });
+
+    it('upgrade-insecure-requests を含む（混在コンテンツ防止）', () => {
+      expect(csp).toContain('upgrade-insecure-requests');
+    });
   });
 
   describe('追加のセキュリティヘッダ', () => {
     it('X-Content-Type-Options: nosniff を含む', () => {
       const header = extractHeader('X-Content-Type-Options');
       expect(header).toBe('X-Content-Type-Options: nosniff');
+    });
+
+    it('X-Frame-Options: DENY を含む（旧ブラウザ補完）', () => {
+      // frame-ancestors 'none' でモダンブラウザはカバーされるが、
+      // 業界慣習として X-Frame-Options も併記する。
+      const header = extractHeader('X-Frame-Options');
+      expect(header).toBe('X-Frame-Options: DENY');
     });
 
     it('Referrer-Policy: strict-origin-when-cross-origin を含む', () => {
