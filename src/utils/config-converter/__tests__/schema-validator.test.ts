@@ -41,4 +41,56 @@ describe('validateWithSchema', () => {
       'スキーマはオブジェクトである必要があります'
     );
   });
+
+  describe('strict モード（不正なスキーマの拒否）', () => {
+    it('未知のキーワードを含むスキーマは valid:false で返す', () => {
+      // `unknownKeyword` は JSON Schema に存在しないキーワード。
+      // strict:true により Ajv はコンパイル時に例外を投げ、
+      // ValidationResult.errors に流れる。
+      const schema = {
+        type: 'object',
+        properties: { name: { type: 'string', unknownKeyword: 'oops' } },
+      };
+      const result = validateWithSchema({ name: '太郎' }, schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toMatch(/スキーマが無効です/);
+    });
+
+    it('解決できない $ref を含むスキーマは valid:false で返す', () => {
+      // 外部 URL の $ref は loadSchema 未提供のため解決できず compile で失敗する。
+      const schema = {
+        type: 'object',
+        properties: {
+          x: { $ref: 'https://example.com/does-not-exist.json' },
+        },
+      };
+      const result = validateWithSchema({ x: 1 }, schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toMatch(/スキーマが無効です/);
+    });
+
+    it('型と矛盾する制約（type:number に minLength）は valid:false で返す', () => {
+      // strict:true により、型と矛盾するキーワードはコンパイル時エラーになる。
+      const schema = {
+        type: 'object',
+        properties: { v: { type: 'number', minLength: 3 } },
+      };
+      const result = validateWithSchema({ v: 1 }, schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].message).toMatch(/スキーマが無効です/);
+    });
+
+    it('draft-04 スキーマでも未知のキーワードを拒否する', () => {
+      const schema = {
+        $schema: 'http://json-schema.org/draft-04/schema#',
+        type: 'object',
+        properties: { x: { type: 'integer', unknownKeyword: 'oops' } },
+      };
+      const result = validateWithSchema({ x: 1 }, schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].message).toMatch(/スキーマが無効です/);
+    });
+  });
 });

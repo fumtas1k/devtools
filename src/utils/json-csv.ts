@@ -27,13 +27,23 @@ export function escapeCsvFormula<T>(value: T): T | string {
   return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
 }
 
-/** ネストされたオブジェクトをドット記法でフラット化する */
+/**
+ * ネストされたオブジェクトをドット記法でフラット化する。
+ *
+ * セキュリティ:
+ * - プロトタイプ汚染（CWE-1321）対策として、戻り値は null-prototype オブジェクト
+ *   （`Object.create(null)`）で構築する。
+ * - 加えて `__proto__` / `constructor` / `prototype` という危険なキーは
+ *   多重防御として明示的にスキップする。これにより、悪意ある JSON 入力が
+ *   Papaparse 経由で他のコードへ伝播してもプロトタイプチェーンへ影響しない。
+ */
 function flattenObject(
   obj: Record<string, unknown>,
   prefix = ''
 ): Record<string, string | number | boolean | null> {
-  const result: Record<string, string | number | boolean | null> = {};
+  const result = Object.create(null) as Record<string, string | number | boolean | null>;
   for (const [key, value] of Object.entries(obj)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
     const fullKey = prefix ? `${prefix}.${key}` : key;
     if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
       Object.assign(result, flattenObject(value as Record<string, unknown>, fullKey));
