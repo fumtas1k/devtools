@@ -42,27 +42,48 @@
 
 ## 3. 実装後の検証義務
 
-実装完了後（コミット前）に **`npm run test`** と **`npm run test:e2e`** を必ず実行し、デグレード無しを確認すること。
-
 **E2E テストは実装と同時に書く**: バグ修正・UI 挙動の変更時はコミット前に該当ケースの E2E を追加する。後回し禁止。
 
-#### push 前必須チェックリスト（サブエージェント含む全担当者）
+### 3.1 サブエージェントの検証範囲
 
-以下をすべて満たしてから `git push` する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
+サブエージェント（worktree 内で動作するエージェント）は以下のルールに従う。
+
+- **E2E テストコードの追加は義務**: バグ修正・UI 挙動変更時は E2E テストコードを必ず追加する（11 章の原則と同じ）。
+- **`npm run test:e2e` の実行は禁止**: worktree 並列環境ではポート 4321 が競合して誤報告が頻発する。また sandbox 制約でサーバー起動ができないケースがある。E2E の実行は親（司令塔）が代行する。
+- **完了報告には「E2E 実行は親が代行する」と明記すること。**
+- 検証範囲は `npm run test`（ユニット）と `node_modules/.bin/astro check`（型）まで。
+
+#### push 前必須チェックリスト（サブエージェント）
+
+以下をすべて満たしてから完了報告する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
 
 | #   | チェック項目          | コマンド                                                                      |
 | --- | --------------------- | ----------------------------------------------------------------------------- |
 | 1   | develop ベース確認    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致 |
 | 2   | ユニットテスト全 pass | `npm run test`                                                                |
-| 3   | E2E テスト全 pass     | `npm run test:e2e`                                                            |
-| 4   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                   |
+| 3   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                   |
+| 4   | E2E テスト            | **実行禁止**（テストコード追加は義務。実行は親が代行）                        |
 
-**E2E でポート衝突した場合の復旧手順**（スキップは禁止。必ず復旧して再実行すること）:
+### 3.2 親（司令塔）による E2E 代行実行
 
-```bash
-lsof -ti:4321 | xargs kill -9 2>/dev/null || true
-npm run test:e2e
-```
+サブエージェントの完了報告を受けて push する前後に、親が以下を実施する。
+
+1. 既存の dev server を kill する:
+   ```bash
+   lsof -ti:4321 | xargs kill -9 2>/dev/null || true
+   ```
+2. worktree 内で E2E を実行する（全体または影響範囲を絞って）:
+   ```bash
+   npm run test:e2e
+   # または影響範囲を絞る場合
+   npx playwright test <spec> --project chromium
+   ```
+3. **複数 worktree がある場合は同時実行しない**（ポート競合を避けるため）。1 つの worktree が完了してから次へ。
+4. 失敗パターンの判定:
+   - **テスト本来の失敗**（assertion error、要素が見つからない等）→ サブエージェントに修正依頼
+   - **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321` 等）→ 上記 1〜2 を 1 回だけ再実行
+   - 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
+5. unit テストは worktree 内で完結するため、サブエージェントの結果をそのまま信頼してよい。
 
 > macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
 
