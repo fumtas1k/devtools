@@ -22,26 +22,20 @@ export function Section({ title, headerSlot, children, role, ...ariaProps }: Pro
     <div
       role={role}
       {...ariaProps}
+      className="rounded-xl border overflow-hidden"
       style={{
-        borderRadius: '0.75rem',
-        border: `1px solid ${colors.border}`,
-        overflow: 'hidden',
+        borderColor: colors.border,
       }}
     >
       {hasHeader && (
         <div
+          className={`px-4 py-3 border-b${headerSlot ? ' flex items-center justify-between flex-wrap gap-2' : ''}`}
           style={{
             ...bodyEmphasis,
             color: colors.text,
-            padding: '0.75rem 1rem',
             margin: 0,
             background: colors.bgSubtle,
-            borderBottom: `1px solid ${colors.border}`,
-            display: headerSlot ? 'flex' : undefined,
-            alignItems: headerSlot ? 'center' : undefined,
-            justifyContent: headerSlot ? 'space-between' : undefined,
-            flexWrap: headerSlot ? ('wrap' as const) : undefined,
-            gap: headerSlot ? '0.5rem' : undefined,
+            borderBottomColor: colors.border,
           }}
         >
           {title != null && (
@@ -53,8 +47,8 @@ export function Section({ title, headerSlot, children, role, ...ariaProps }: Pro
         </div>
       )}
       <div
+        className="p-4"
         style={{
-          padding: '1rem',
           background: colors.bg,
         }}
       >
