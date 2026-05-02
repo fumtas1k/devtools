@@ -1,6 +1,4 @@
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
-import Ajv4 from 'ajv-draft-04';
+import { Validator, type OutputUnit, type Schema, type SchemaDraft } from '@cfworker/json-schema';
 
 export interface ValidationResult {
   valid: boolean;
@@ -8,14 +6,22 @@ export interface ValidationResult {
 }
 
 /**
- * JSON Schema (draft 7 or draft 4) でデータを検証する。
+ * JSON Schema (draft 4 / 7 / 2019-09 / 2020-12) でデータを検証する。
  *
- * セキュリティ:
- * - Ajv は `strict: true` と `validateSchema: true` で初期化する。これにより、
- *   未知のキーワード・無効な型・矛盾した制約・解決できない `$ref` などを
- *   コンパイル時にエラーとして検出する（loadSchema は意図的に未提供。
- *   外部スキーマの自動取得は SSRF 等のリスクを避けるため許可しない）。
- * - コンパイル時に投げられた例外は `valid: false` として `errors` に整形して返す。
+ * 実装方針:
+ * - `@cfworker/json-schema` の `Validator` を使用する。Ajv 系と異なり
+ *   `new Function()` を介さない interpreter 実装で、CSP `unsafe-eval`
+ *   無しでも動作する（本番デプロイ先 Cloudflare Pages の `_headers` で
+ *   `script-src` に `'unsafe-eval'` を許可していないため必須）。
+ * - 外部スキーマの取得は行わない（SSRF 等のリスク回避）。`Validator` は
+ *   `addSchema` で明示登録された参照しか解決しない。
+ * - スキーマ自体の検出可能な不整合（解決不能な `$ref` 等）はコンストラクタで
+ *   throw されるため `valid:false` に変換し、呼び出し側の通常エラー表示経路に乗せる。
+ *
+ * 既知の挙動差（Ajv 8.x からの移行に伴うもの）:
+ * - 未知のキーワード（例: `unknownKeyword`）は JSON Schema 仕様に従い
+ *   無視される。Ajv `strict: true` のような検出は行わない。
+ * - `format` は draft 既定の定義に従って評価される（`addFormats` 不要）。
  *
  * @param data 検証対象データ (JS値)
  * @param schema JSON Schemaオブジェクト
@@ -24,42 +30,56 @@ export function validateWithSchema(data: unknown, schema: unknown): ValidationRe
   if (typeof schema !== 'object' || schema === null) {
     throw new Error('スキーマはオブジェクトである必要があります');
   }
-  const schemaObj = schema as Record<string, unknown>;
-  const isDraft04 = typeof schemaObj.$schema === 'string' && schemaObj.$schema.includes('draft-04');
+  const schemaObj = schema as Schema;
+  const draft = detectDraft((schemaObj as Record<string, unknown>).$schema);
 
-  let validate: ReturnType<Ajv['compile']>;
-
+  let validator: Validator;
   try {
-    if (isDraft04) {
-      const ajv4 = new Ajv4({ allErrors: true, strict: true, validateSchema: true });
-      (addFormats as (ajv: unknown) => void)(ajv4);
-      validate = ajv4.compile(schemaObj);
-    } else {
-      const ajv = new Ajv({ allErrors: true, strict: true, validateSchema: true });
-      addFormats(ajv);
-      validate = ajv.compile(schemaObj);
-    }
+    validator = new Validator(schemaObj, draft, /* shortCircuit */ false);
   } catch (err) {
-    // Ajv は不正なスキーマ（未知のキーワード・解決できない $ref 等）に対し
-    // コンパイル時に例外を投げる。これを ValidationResult.errors に流して
-    // 呼び出し側の通常エラー表示経路に乗せる。
-    const message = err instanceof Error ? err.message : String(err);
-    return {
-      valid: false,
-      errors: [{ path: '/', message: `スキーマが無効です: ${message}` }],
-    };
+    return invalidSchema(err);
   }
 
-  const valid = validate(data) as boolean;
+  let result;
+  try {
+    result = validator.validate(data);
+  } catch (err) {
+    return invalidSchema(err);
+  }
 
-  if (valid) {
+  if (result.valid) {
     return { valid: true, errors: [] };
   }
+  return {
+    valid: false,
+    errors: result.errors.map(toLegacyError),
+  };
+}
 
-  const errors = (validate.errors ?? []).map((err) => ({
-    path: err.instancePath || '/',
-    message: err.message || '',
-  }));
+/**
+ * `$schema` URI から draft を検出する。未指定または認識不能なら draft-07 を既定とする
+ * （旧 Ajv 既定との互換維持）。
+ */
+function detectDraft($schema: unknown): SchemaDraft {
+  if (typeof $schema !== 'string') return '7';
+  if (/draft-04/i.test($schema)) return '4';
+  if (/draft-07/i.test($schema)) return '7';
+  if (/draft\/2019-09/i.test($schema)) return '2019-09';
+  if (/draft\/2020-12/i.test($schema)) return '2020-12';
+  return '7';
+}
 
-  return { valid: false, errors };
+function toLegacyError(unit: OutputUnit): { path: string; message: string } {
+  return {
+    path: unit.instanceLocation || '/',
+    message: unit.error || '',
+  };
+}
+
+function invalidSchema(err: unknown): ValidationResult {
+  const message = err instanceof Error ? err.message : String(err);
+  return {
+    valid: false,
+    errors: [{ path: '/', message: `スキーマが無効です: ${message}` }],
+  };
 }
