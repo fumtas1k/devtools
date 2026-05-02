@@ -82,26 +82,52 @@ describe('useQrCamera — アンマウント後に onQrDetected が呼ばれな�
   it('stopCamera 呼び出し後に rAF から scan が再実行されても onQrDetected は呼ばれない', async () => {
     const onQrDetected = vi.fn();
 
-    // jsQR が QR コードを検出するように設定
     const jsQR = await import('jsqr');
     const mockJsQR = vi.mocked(jsQR.default);
-    mockJsQR.mockReturnValue({ data: 'test-qr-data' } as ReturnType<typeof jsQR.default>);
 
     const { result, unmount } = renderHook(() => useQrCamera({ onQrDetected }));
+
+    // happy-path テストと同様 video/canvas を ref にアタッチする
+    const video = document.createElement('video');
+    Object.defineProperty(video, 'readyState', { value: 4, configurable: true });
+    Object.defineProperty(video, 'videoWidth', { value: 640, configurable: true });
+    Object.defineProperty(video, 'videoHeight', { value: 480, configurable: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (result.current.videoRef as any).current = video;
+
+    const canvas = document.createElement('canvas');
+    const fakeCtx = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })),
+    };
+    vi.spyOn(canvas, 'getContext').mockReturnValue(fakeCtx as unknown as CanvasRenderingContext2D);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (result.current.canvasRef as any).current = canvas;
 
     await act(async () => {
       await result.current.startCamera();
     });
 
-    // アンマウントして signal を abort させる（stopCamera も cleanup で呼ばれる）
+    // 最初の rAF cb（scan）を捕まえる
+    const scanCb = mockRaf.mock.calls[0][0] as FrameRequestCallback;
+
+    // jsQR が「検出する」設定に切り替える（unmount 後に scan が走った場合 onQrDetected が呼ばれそうな状況）
+    mockJsQR.mockReturnValue({ data: 'should-not-fire' } as ReturnType<typeof jsQR.default>);
+
+    // アンマウント → controller signal abort
     unmount();
 
-    // jsQR モックをリセット
+    // in-flight な scan が遅れて発火するシナリオを実際に踏む
+    act(() => {
+      scanCb(0);
+    });
+
+    // signal.aborted で scan 先頭 return → onQrDetected は呼ばれない
+    expect(onQrDetected).not.toHaveBeenCalled();
+
+    // クリーンアップ
     mockJsQR.mockReset();
     mockJsQR.mockReturnValue(null);
-
-    // アンマウント後は onQrDetected が呼ばれていない
-    expect(onQrDetected).not.toHaveBeenCalled();
   });
 });
 
@@ -187,5 +213,40 @@ describe('useQrCamera — stopCamera 後の状態確認', () => {
     });
 
     expect(result.current.cameraActive).toBe(false);
+  });
+});
+
+describe('useQrCamera — startCamera の await race を塞ぐ', () => {
+  it('getUserMedia 解決前に unmount すると、解決後に stream が破棄される', async () => {
+    const onQrDetected = vi.fn();
+
+    // getUserMedia を deferred にする
+    let resolveGetUserMedia!: (s: MediaStream) => void;
+    mockGetUserMedia.mockImplementation(
+      () =>
+        new Promise<MediaStream>((resolve) => {
+          resolveGetUserMedia = resolve;
+        })
+    );
+
+    const { result, unmount } = renderHook(() => useQrCamera({ onQrDetected }));
+
+    // startCamera を await せず開始（pending 状態）
+    let startPromise: Promise<void>;
+    act(() => {
+      startPromise = result.current.startCamera();
+    });
+
+    // unmount → controller abort
+    unmount();
+
+    // getUserMedia を解決させる
+    await act(async () => {
+      resolveGetUserMedia(mockStream);
+      await startPromise!;
+    });
+
+    // tracks が止められていること（リーク防止）
+    expect(mockTrackStop).toHaveBeenCalled();
   });
 });
