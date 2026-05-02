@@ -24,6 +24,8 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321',
+    // dev server が 30s 以内に起動しなければ env 由来失敗として fail-fast（issue #194）
+    timeout: 30_000,
     reuseExistingServer: true,
   },
 });
