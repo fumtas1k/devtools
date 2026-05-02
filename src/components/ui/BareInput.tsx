@@ -33,16 +33,14 @@ export function BareInput({
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={className}
+      className={`rounded-md border w-full${className ? ` ${className}` : ''}`}
       style={{
         ...caption,
         ...(mono ? { fontFamily: 'monospace' } : {}),
         padding: '0.4rem 0.5rem',
-        borderRadius: '0.375rem',
-        border: `1px solid ${error ? colors.error : colors.borderInput}`,
+        borderColor: error ? colors.error : colors.borderInput,
         background: colors.bg,
         color: colors.text,
-        width: '100%',
       }}
       {...rest}
     />
