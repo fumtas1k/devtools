@@ -2092,3 +2092,59 @@ issue #169 項目 3 で `serializeTicket` / `parseQrString` の対称シリア�
 - PR #218（本変更）
 - issue #169（refactor 親 issue、項目 3 として記録）
 - PR #221（#167-B QrTicket hook 分割、merge 後に UX フォローアップ PR で `handleGenerate` 事前 validation を追加）
+
+---
+
+## [061] 2026-05-02 — config-converter のスキーマ検証を `@cfworker/json-schema` へ差し替え + CSP デグレ検知ゲート追加
+
+**2026-05-02 | ステータス: 採用**
+
+### 背景
+
+`src/components/tools/ConfigConverter.tsx` の「JSON Schema で検証する」ボタンが Cloudflare Pages 本番で次のエラーを返し、機能不全になっていた:
+
+```
+/: スキーマが無効です: Evaluating a string as JavaScript violates the following
+Content Security Policy directive because 'unsafe-eval' is not an allowed source
+of script: script-src 'self' 'unsafe-inline'.
+```
+
+直接原因は `src/utils/config-converter/schema-validator.ts` で使用していた Ajv 8.x が、スキーマを `new Function()` で JIT コンパイルする設計のため `script-src 'unsafe-eval'` を要求すること。`public/_headers` の CSP は `unsafe-eval` を許可していないため本番のみで失敗していた。
+
+より深刻な問題は **CI で検知できなかった** こと。`playwright.config.ts` は `npm run dev`（Astro dev server）で起動するが、dev / preview server は `public/_headers` を解釈しない。結果、ユニット (jsdom) も E2E (Astro dev) も CSP 制約無しで実行され、本番限定の eval 依存違反が素通りした。これは [054] 末尾で「将来課題」と明記していた既知の穴で、本決定でその穴を塞ぐ。
+
+### 決断
+
+2 つの修正をセットで実施する。
+
+**A: バリデータライブラリの差し替え (`ajv` → `@cfworker/json-schema`)**
+
+- `package.json` から `ajv` / `ajv-draft-04` / `ajv-formats` を direct dep から外し、`@cfworker/json-schema@^4.1.1` を追加
+- `schema-validator.ts` を `Validator` ベースに全面書き換え。draft-04 / 7 / 2019-09 / 2020-12 は `$schema` 文字列から検出（既定 draft-07）
+- cfworker は interpreter 実装で `eval` / `new Function` を使わず、CSP `'unsafe-eval'` 不要
+
+**B: E2E に本番相当 CSP を注入するリグレッション検知ゲート**
+
+- `src/utils/csp.ts` に `PRODUCTION_CSP` 定数を新設し、`public/_headers` の CSP 値の single source of truth とする
+- `src/utils/__tests__/headers.test.ts` で `_headers` の CSP 値と `PRODUCTION_CSP` が完全一致することをアサート（片方更新の事故を防ぐ）
+- `tests/e2e/helpers.ts` に `applyProductionCsp(page)` を追加。`page.route` で HTML レスポンスに `PRODUCTION_CSP` を注入し、`console` / `pageerror` を購読して CSP 違反メッセージを蓄積、`assertNoViolations()` で test failure に昇格させる
+- `tests/e2e/config-converter.spec.ts` に `applyProductionCsp` 経由の検証成功シナリオを 1 本追加し、同種の事故を CI で検知できるようにする
+
+### 却下した選択肢
+
+- **CSP に `'unsafe-eval'` を追加**: 最小修正だが、ツール 1 つのために全ページの `script-src` allow-list を緩めることになり、CSP 全体の XSS 緩和効果を後退させる。本ツールは現状ユーザー操作で任意 JSON Schema を `eval` 相当に流せる UX なので、`unsafe-eval` 緩和は将来 schema validator 以外の場所での誤利用も含めて被害面積が大きい。不採用。
+- **Ajv standalone (事前コンパイル)**: 静的に既知のスキーマしか扱えない。本ツールはユーザーが任意の JSON Schema を実行時に貼り付ける UX なので適用不可。
+- **`@hyperjump/json-schema`**: spec 準拠は同等に高いが API が非同期＋スキーマ事前 register 必須で `validateWithSchema` のシグネチャ変更が大きく、unpacked size も 423 KB と cfworker (173 KB) の 2.4 倍。今回の用途では cfworker の方が単純で副作用が少ない。
+- **`wrangler pages dev` で E2E を駆動**: `_headers` を本番同等に解釈できるが、起動コスト・依存追加が大きく、CI 全体に波及する。Playwright `page.route` 注入で目的を達成できるため見送り。
+- **`<meta http-equiv="Content-Security-Policy">` を BaseLayout に追加**: [054] で `frame-ancestors` 等が meta 経由では効かないとして全 CSP の meta 化は却下済み。`script-src` 部分だけの meta 追加は二重管理になり、Playwright route 注入の方が source of truth を一元化できる。
+
+### 影響 / 移行
+
+- **挙動差**: cfworker は JSON Schema 仕様に準拠して未知のキーワード（旧 Ajv `strict: true` で検出していたもの）や型と無関係なキーワード（例: `type: number` に対する `minLength`）を **無視** する。Ajv の独自警告に依存していたユーザーには UX 面の小さな後退があるが、spec 準拠を優先する。`schema-validator.test.ts` に当該挙動を明示する回帰防止テストを置いた。失われた検出能力は将来「スキーマ lint」機能として復活させる予定（追跡: [#235](https://github.com/fumtas1k/devtools/issues/235)）。
+- **依存サイズ**: `ajv-formats` は direct dep から削除（cfworker は draft 既定の formats を内蔵）。`ajv` / `ajv-draft-04` は他の devDependencies の推移依存として残るが、本コードからの import は無し。
+- **CSP gate の射程**: 当初は `tests/e2e/config-converter.spec.ts` の検証ボタン経路 1 本のみ適用。他のツールへ広げる作業は [#234](https://github.com/fumtas1k/devtools/issues/234) で別途議論する（一気に全テスト適用すると、現状混入している他の `unsafe-*` 依存が浮上する可能性があり、本 PR スコープを膨らませるため）。
+
+### 関連 PR / issue
+
+- 本 PR (config-converter CSP 修正 + デグレ検知ゲート)
+- 決定 [054]（CSP 初実装。末尾の「dev/preview 非適用 CSP の検証は将来課題」が本件で具体化）
