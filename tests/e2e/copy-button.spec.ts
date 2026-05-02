@@ -18,7 +18,7 @@ test.describe('CopyButton', () => {
 
     const before = await button.boundingBox();
     await button.click();
-    await button.getByRole('status').waitFor();
+    await button.locator('[aria-live="polite"]').waitFor();
     const after = await button.boundingBox();
 
     expect(before?.width).toBe(after?.width);
@@ -31,7 +31,7 @@ test.describe('CopyButton', () => {
     await expect(button).not.toHaveCSS('color', SUCCESS_COLOR);
 
     await button.click();
-    await button.getByRole('status').waitFor();
+    await button.locator('[aria-live="polite"]').waitFor();
 
     await expect(button).toHaveCSS('color', SUCCESS_COLOR);
   });
@@ -40,7 +40,7 @@ test.describe('CopyButton', () => {
     const button = page.getByRole('button', { name: 'コピー' }).first();
     await button.waitFor({ state: 'visible' });
 
-    const liveRegion = button.getByRole('status');
+    const liveRegion = button.locator('[aria-live="polite"]');
     await expect(liveRegion).toHaveCount(0);
 
     await button.click();
@@ -52,7 +52,7 @@ test.describe('CopyButton', () => {
     await button.waitFor({ state: 'visible' });
 
     await button.click();
-    const liveRegion = button.getByRole('status');
+    const liveRegion = button.locator('[aria-live="polite"]');
     await expect(liveRegion).toHaveText('コピーしました');
 
     await expect(liveRegion).toHaveCount(0);

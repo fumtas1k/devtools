@@ -49,7 +49,7 @@ function copyStateColors(copied: boolean, idleColor: string) {
 function CopyAnnounce({ copied }: { copied: boolean }) {
   if (!copied) return null;
   return (
-    <span role="status" aria-live="polite" className="sr-only">
+    <span aria-live="polite" aria-atomic="true" className="sr-only">
       コピーしました
     </span>
   );
