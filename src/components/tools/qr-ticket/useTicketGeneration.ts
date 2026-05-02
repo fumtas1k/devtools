@@ -92,6 +92,36 @@ export function useTicketGeneration({
       setGenerateError('チケットを1件以上追加してください');
       return;
     }
+
+    // | 含有チェック: eventId
+    if (eventId.includes('|')) {
+      setGenerateError(
+        'イベントIDに | を含めることはできません。半角 | を別の記号に置き換えてください'
+      );
+      return;
+    }
+    // | 含有チェック: 各チケットフィールド
+    for (const row of tickets) {
+      if (row.id.includes('|')) {
+        setGenerateError(
+          'チケットIDに | を含めることはできません。半角 | を別の記号に置き換えてください'
+        );
+        return;
+      }
+      if (row.name.includes('|')) {
+        setGenerateError(
+          '参加者名に | を含めることはできません。半角 | を別の記号に置き換えてください'
+        );
+        return;
+      }
+      if (row.category.includes('|')) {
+        setGenerateError(
+          '料金区分に | を含めることはできません。半角 | を別の記号に置き換えてください'
+        );
+        return;
+      }
+    }
+
     const emptyId = tickets.find((t) => !t.id.trim());
     if (emptyId) {
       setGenerateError('チケットIDが空の行があります');

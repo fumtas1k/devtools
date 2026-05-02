@@ -152,6 +152,92 @@ describe('useTicketGeneration — generate', () => {
     expect(result.current.generatedQrs[0].svg).toBe('<svg>dummy</svg>');
   });
 
+  it('eventId に | が含まれる場合は専用エラーメッセージがセットされる', async () => {
+    const { result } = renderHook(() => useTicketGeneration({ cryptoKeyPair: mockCryptoKeyPair }));
+
+    act(() => {
+      result.current.setEventId('event|test');
+      result.current.setExpiry('2099-12-31T23:59');
+    });
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(result.current.generateError).toContain('イベントIDに | を含めることはできません');
+    expect(result.current.generateError).toContain('別の記号に置き換えてください');
+    expect(result.current.generatedQrs).toHaveLength(0);
+  });
+
+  it('チケットIDに | が含まれる場合は専用エラーメッセージがセットされる', async () => {
+    const { result } = renderHook(() => useTicketGeneration({ cryptoKeyPair: mockCryptoKeyPair }));
+
+    act(() => {
+      result.current.setEventId('event-test');
+      result.current.setExpiry('2099-12-31T23:59');
+      result.current.updateTicket(0, 'id', 'T-00001|x');
+    });
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(result.current.generateError).toContain('チケットIDに | を含めることはできません');
+    expect(result.current.generatedQrs).toHaveLength(0);
+  });
+
+  it('参加者名に | が含まれる場合は専用エラーメッセージがセットされる', async () => {
+    const { result } = renderHook(() => useTicketGeneration({ cryptoKeyPair: mockCryptoKeyPair }));
+
+    act(() => {
+      result.current.setEventId('event-test');
+      result.current.setExpiry('2099-12-31T23:59');
+      result.current.updateTicket(0, 'name', '山田|太郎');
+    });
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(result.current.generateError).toContain('参加者名に | を含めることはできません');
+    expect(result.current.generatedQrs).toHaveLength(0);
+  });
+
+  it('料金区分に | が含まれる場合は専用エラーメッセージがセットされる', async () => {
+    const { result } = renderHook(() => useTicketGeneration({ cryptoKeyPair: mockCryptoKeyPair }));
+
+    act(() => {
+      result.current.setEventId('event-test');
+      result.current.setExpiry('2099-12-31T23:59');
+      result.current.updateTicket(0, 'category', '一般|学生');
+    });
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(result.current.generateError).toContain('料金区分に | を含めることはできません');
+    expect(result.current.generatedQrs).toHaveLength(0);
+  });
+
+  it('| を含まない正常な入力では | 専用エラーは発生しない', async () => {
+    const { result } = renderHook(() => useTicketGeneration({ cryptoKeyPair: mockCryptoKeyPair }));
+
+    act(() => {
+      result.current.setEventId('event-test');
+      result.current.setExpiry('2099-12-31T23:59');
+      result.current.updateTicket(0, 'name', '山田 太郎');
+      result.current.updateTicket(0, 'category', '一般');
+    });
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(result.current.generateError).toBe('');
+    expect(result.current.generatedQrs).toHaveLength(1);
+  });
+
   it('generateQrSvg が null を返すとエラーメッセージがセットされる', async () => {
     const { generateQrSvg } = await import('@/utils/qr-ticket');
     vi.mocked(generateQrSvg).mockReturnValueOnce(null);
