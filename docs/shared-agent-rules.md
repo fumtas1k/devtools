@@ -85,6 +85,8 @@ E2E (`npm run test:e2e`) は code change を含む push を行う前に **必ず
 - **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ ステップ 0 の整地を実施してから 1 回だけ再実行
 - 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
 
+> 補足: `playwright.config.ts` の `webServer.timeout` は 30s（PR #213）。env 由来失敗の発見はこのタイムアウトで早期に確定する（旧来のような長時間ハングは起きない）。
+
 #### push 前必須チェックリスト（親）
 
 親セッションが直接 push する際は、以下をすべて確認する。
