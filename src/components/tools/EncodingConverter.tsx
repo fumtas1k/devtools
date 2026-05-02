@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { Select } from '@/components/ui/Select';
 import { InputField } from '@/components/ui/InputField';
@@ -83,10 +83,17 @@ export function EncodingConverterTool() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeBytes: Uint8Array | null =
-    inputMethod === 'file' ? fileBytes : textInput ? textToUtf8Bytes(textInput) : null;
+  // activeBytes をメモ化し、テキスト入力中のキー入力ごとに新しい Uint8Array 参照が
+  // 生成されないようにする。これにより依存配列が安定し、effect の過剰スケジュールを防ぐ。
+  const activeBytes = useMemo<Uint8Array | null>(() => {
+    if (inputMethod === 'file') return fileBytes;
+    if (textInput) return textToUtf8Bytes(textInput);
+    return null;
+  }, [inputMethod, fileBytes, textInput]);
 
   // 判定処理
+  // activeBytes は useMemo で参照が安定化済みのため、依存配列にそのまま含めて
+  // react-hooks/exhaustive-deps の保護を残す。
   useEffect(() => {
     if (!activeBytes) {
       setDetection(null);
