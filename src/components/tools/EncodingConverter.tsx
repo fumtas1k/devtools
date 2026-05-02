@@ -92,9 +92,8 @@ export function EncodingConverterTool() {
   }, [inputMethod, fileBytes, textInput]);
 
   // 判定処理
-  // 依存配列は一次入力 (textInput / fileBytes / inputMethod) ベースで管理する。
-  // activeBytes はメモ化済みのため参照は安定しているが、effect 内では
-  // スナップショット値として activeBytes を直接参照する。
+  // activeBytes は useMemo で参照が安定化済みのため、依存配列にそのまま含めて
+  // react-hooks/exhaustive-deps の保護を残す。
   useEffect(() => {
     if (!activeBytes) {
       setDetection(null);
@@ -108,7 +107,7 @@ export function EncodingConverterTool() {
     }
     const timer = setTimeout(() => runDetect(activeBytes), 300);
     return () => clearTimeout(timer);
-  }, [textInput, fileBytes, inputMethod]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeBytes, inputMethod]);
 
   function runDetect(bytes: Uint8Array) {
     try {
@@ -141,7 +140,7 @@ export function EncodingConverterTool() {
     }
     const timer = setTimeout(() => runConvert(activeBytes), 300);
     return () => clearTimeout(timer);
-  }, [textInput, fileBytes, inputMethod, mode, sourceEnc, targetEnc, withBom, newlineMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeBytes, inputMethod, mode, sourceEnc, targetEnc, withBom, newlineMode]);
 
   function runConvert(bytes: Uint8Array) {
     try {
