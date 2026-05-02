@@ -2132,7 +2132,7 @@ of script: script-src 'self' 'unsafe-inline'.
 
 ### 却下した選択肢
 
-- **CSP に `'unsafe-eval'` を追加**: 最小修正だが [054] の「`'unsafe-inline'` 削減を継続的に検討する」方針と逆行し、ツール 1 つのために全ページのセキュリティ姿勢を後退させる。issue #176 の趣旨にも反するため不採用。
+- **CSP に `'unsafe-eval'` を追加**: 最小修正だが、ツール 1 つのために全ページの `script-src` allow-list を緩めることになり、CSP 全体の XSS 緩和効果を後退させる。本ツールは現状ユーザー操作で任意 JSON Schema を `eval` 相当に流せる UX なので、`unsafe-eval` 緩和は将来 schema validator 以外の場所での誤利用も含めて被害面積が大きい。不採用。
 - **Ajv standalone (事前コンパイル)**: 静的に既知のスキーマしか扱えない。本ツールはユーザーが任意の JSON Schema を実行時に貼り付ける UX なので適用不可。
 - **`@hyperjump/json-schema`**: spec 準拠は同等に高いが API が非同期＋スキーマ事前 register 必須で `validateWithSchema` のシグネチャ変更が大きく、unpacked size も 423 KB と cfworker (173 KB) の 2.4 倍。今回の用途では cfworker の方が単純で副作用が少ない。
 - **`wrangler pages dev` で E2E を駆動**: `_headers` を本番同等に解釈できるが、起動コスト・依存追加が大きく、CI 全体に波及する。Playwright `page.route` 注入で目的を達成できるため見送り。
@@ -2147,5 +2147,4 @@ of script: script-src 'self' 'unsafe-inline'.
 ### 関連 PR / issue
 
 - 本 PR (config-converter CSP 修正 + デグレ検知ゲート)
-- 決定 [054]（CSP 初実装。末尾の「将来課題」が本件で具体化）
-- issue [#176](https://github.com/fumtas1k/devtools/issues/176)（`unsafe-inline` 削減の継続検討）
+- 決定 [054]（CSP 初実装。末尾の「dev/preview 非適用 CSP の検証は将来課題」が本件で具体化）
