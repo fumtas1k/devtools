@@ -161,13 +161,14 @@ PR #217 (refactor #167-A EncodingConverter) で、親が subagent に「`activeB
 
 ### 対処方針
 
+- **親プロンプトの設計判断の整合性が最優先で、subagent は素直に解釈する前提で書く**。指示が矛盾を内包していたら subagent はそのまま矛盾を実装する。subagent の判断力に期待してプロンプトの曖昧さを残さない
 - React の effect / memo を扱う subagent プロンプトでは、**依存配列の方針を片方に寄せる**。「memo 化した派生値を依存に保つ」と「一次入力に展開する」を併記しない
 - どうしても両論併記したい場合は「`eslint-disable` は使わない、それで済まない設計なら知らせる」と明記して subagent に判断材料を渡す
 - レビューで「素直に書けばよい」指摘を受けたら、それは指示の文言が誘導した可能性があると疑う
 
 ### 関連 PR / 観点
 
-- PR #217 review (2026-05-02)、commit `03a89a1` (初期実装) → `fb82961` (修正)
+- PR #217 review (2026-05-02)、commit `03a89a1` (初期実装) → `fb82961` (依存配列を `[activeBytes, ...]` に戻し eslint-disable 撤去) → `76bcbd4` (回帰テスト追加) → `c5cf49b` (button 取得を `getByRole` に置換)
 - React `react-hooks/exhaustive-deps` の慣用と `useMemo` の組み合わせ
 
 ---
