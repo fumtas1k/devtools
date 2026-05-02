@@ -33,12 +33,28 @@ const borderMap: Record<Variant, string> = {
   danger: colors.error,
 };
 
+// disabled 時の variant 別 styling。旧 DownloadButton の見た目を維持するため
+// primary は border 不可視 (bg と同色)、secondary は背景透過 + グレーボーダーに上書きする。
+const disabledBgMap: Record<Variant, string> = {
+  default: colors.bgSubtle,
+  primary: colors.bgSubtle,
+  secondary: 'transparent',
+  danger: colors.bgSubtle,
+};
+const disabledBorderMap: Record<Variant, string> = {
+  default: colors.borderInput,
+  primary: colors.bgSubtle,
+  secondary: colors.border,
+  danger: colors.error,
+};
+
 /**
  * 汎用アクションボタン。
  * - `variant`: 'default' | 'primary' | 'secondary' | 'danger'
  * - `loading`: true のとき `aria-busy="true"` を付与し、disabled 状態にする
  * - ローディング中の子要素はそのまま表示するため、呼び出し元でローディング文言に切り替えること
  *   （例: `{loading ? '生成中…' : '生成'}`）
+ * - `disabled=true`: variant ごとに disabled 時の bg/border を上書き（primary は border 不可視・secondary は背景透過維持）
  * - `aria-*` など ButtonHTMLAttributes のほとんどの属性を渡せる
  */
 export function ActionButton({
@@ -62,8 +78,8 @@ export function ActionButton({
         ...caption,
         // caption の fontWeight: 400 を className `font-semibold` (= 600) と整合させるため明示上書き
         fontWeight: 600,
-        border: `1px solid ${borderMap[variant]}`,
-        background: isDisabled ? colors.bgSubtle : bgMap[variant],
+        border: `1px solid ${isDisabled ? disabledBorderMap[variant] : borderMap[variant]}`,
+        background: isDisabled ? disabledBgMap[variant] : bgMap[variant],
         color: isDisabled ? colors.muted : colorMap[variant],
       }}
       {...rest}

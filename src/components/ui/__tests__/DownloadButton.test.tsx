@@ -76,4 +76,19 @@ describe('DownloadButton', () => {
     expect(svg).not.toBeNull();
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
   });
+
+  it('variant="primary" + disabled は bg-subtle 塗り・border 不可視を維持', () => {
+    render(<DownloadButton onClick={() => {}} label="DL" disabled />);
+    const btn = screen.getByRole('button') as HTMLButtonElement;
+    // jsdom は background shorthand に var(...) を含む値を backgroundColor へ分解しないため shorthand を直接比較
+    expect(btn.style.background).toBe(colors.bgSubtle);
+    expect(btn.style.border).toBe(`1px solid ${colors.bgSubtle}`);
+  });
+
+  it('variant="secondary" + disabled は背景透過・グレーボーダーを維持', () => {
+    render(<DownloadButton onClick={() => {}} label="DL" variant="secondary" disabled />);
+    const btn = screen.getByRole('button') as HTMLButtonElement;
+    expect(btn.style.backgroundColor).toBe('transparent');
+    expect(btn.style.border).toBe(`1px solid ${colors.border}`);
+  });
 });
