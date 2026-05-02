@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { Select } from '@/components/ui/Select';
 import { InputField } from '@/components/ui/InputField';
@@ -83,10 +83,18 @@ export function EncodingConverterTool() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeBytes: Uint8Array | null =
-    inputMethod === 'file' ? fileBytes : textInput ? textToUtf8Bytes(textInput) : null;
+  // activeBytes をメモ化し、テキスト入力中のキー入力ごとに新しい Uint8Array 参照が
+  // 生成されないようにする。これにより依存配列が安定し、effect の過剰スケジュールを防ぐ。
+  const activeBytes = useMemo<Uint8Array | null>(() => {
+    if (inputMethod === 'file') return fileBytes;
+    if (textInput) return textToUtf8Bytes(textInput);
+    return null;
+  }, [inputMethod, fileBytes, textInput]);
 
   // 判定処理
+  // 依存配列は一次入力 (textInput / fileBytes / inputMethod) ベースで管理する。
+  // activeBytes はメモ化済みのため参照は安定しているが、effect 内では
+  // スナップショット値として activeBytes を直接参照する。
   useEffect(() => {
     if (!activeBytes) {
       setDetection(null);
@@ -100,7 +108,7 @@ export function EncodingConverterTool() {
     }
     const timer = setTimeout(() => runDetect(activeBytes), 300);
     return () => clearTimeout(timer);
-  }, [activeBytes, inputMethod]);
+  }, [textInput, fileBytes, inputMethod]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function runDetect(bytes: Uint8Array) {
     try {
@@ -133,7 +141,7 @@ export function EncodingConverterTool() {
     }
     const timer = setTimeout(() => runConvert(activeBytes), 300);
     return () => clearTimeout(timer);
-  }, [activeBytes, inputMethod, mode, sourceEnc, targetEnc, withBom, newlineMode]);
+  }, [textInput, fileBytes, inputMethod, mode, sourceEnc, targetEnc, withBom, newlineMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function runConvert(bytes: Uint8Array) {
     try {
