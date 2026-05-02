@@ -33,19 +33,17 @@ const borderMap: Record<Variant, string> = {
   danger: colors.error,
 };
 
-// disabled 時の variant 別 styling。旧 DownloadButton の見た目を維持するため
-// primary は border 不可視 (bg と同色)、secondary は背景透過 + グレーボーダーに上書きする。
-const disabledBgMap: Record<Variant, string> = {
-  default: colors.bgSubtle,
-  primary: colors.bgSubtle,
+// disabled 時の variant 別上書き。指定がない variant は fallback を使う:
+//   bg fallback     = colors.bgSubtle (一律のグレー塗り)
+//   border fallback = borderMap[variant] (active と同じ枠色)
+// 旧 DownloadButton の見た目を保つため primary は border 不可視 (bg と同色)、
+// secondary は背景透過 + グレーボーダーに上書きする。
+const disabledBgOverrides: Partial<Record<Variant, string>> = {
   secondary: 'transparent',
-  danger: colors.bgSubtle,
 };
-const disabledBorderMap: Record<Variant, string> = {
-  default: colors.borderInput,
+const disabledBorderOverrides: Partial<Record<Variant, string>> = {
   primary: colors.bgSubtle,
   secondary: colors.border,
-  danger: colors.error,
 };
 
 /**
@@ -78,8 +76,8 @@ export function ActionButton({
         ...caption,
         // caption の fontWeight: 400 を className `font-semibold` (= 600) と整合させるため明示上書き
         fontWeight: 600,
-        border: `1px solid ${isDisabled ? disabledBorderMap[variant] : borderMap[variant]}`,
-        background: isDisabled ? disabledBgMap[variant] : bgMap[variant],
+        border: `1px solid ${isDisabled ? (disabledBorderOverrides[variant] ?? borderMap[variant]) : borderMap[variant]}`,
+        background: isDisabled ? (disabledBgOverrides[variant] ?? colors.bgSubtle) : bgMap[variant],
         color: isDisabled ? colors.muted : colorMap[variant],
       }}
       {...rest}
