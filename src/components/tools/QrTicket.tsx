@@ -1,29 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
-import {
-  generateKeyPair,
-  exportKeyPair,
-  importPrivateKey,
-  importPublicKey,
-  signTicket,
-  verifyTicket,
-  generateQrSvg,
-  ticketToQrString,
-  generateTicketId,
-  estimateTicketByteSize,
-  MAX_QR_BYTE_SIZE,
-  type TicketPayload,
-  type VerificationResult,
-} from '@/utils/qr-ticket';
-import { downloadSvg } from '@/utils/download';
-import { downloadZip } from '@/utils/zip';
-import { validateFile } from '@/utils/file-validation';
-import { sanitizeFilename, isSafeTicketId } from '@/utils/filename';
-import { decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
-import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { useQrCamera } from '@/hooks/useQrCamera';
+import { useState } from 'react';
 import { useAbortableEffect } from '@/hooks/useAbortableEffect';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { MODE_OPTIONS, GenerateTab, VerifyTab } from './qr-ticket/index';
-import type { TicketRow, GeneratedQr } from './qr-ticket/types';
+import { useTicketKeyPair } from './qr-ticket/useTicketKeyPair';
+import { useTicketGeneration } from './qr-ticket/useTicketGeneration';
+import { useTicketVerification } from './qr-ticket/useTicketVerification';
 
 /**
  * 有効期限の初期値（1週間後の00:00）を取得する
@@ -40,329 +21,40 @@ const getDefaultExpiry = () => {
 export function QrTicketTool() {
   const [mode, setMode] = useState<'generate' | 'verify'>('generate');
 
-  // 鍵ペア状態
-  const [cryptoKeyPair, setCryptoKeyPair] = useState<CryptoKeyPair | null>(null);
-  const [privateKeyJwkStr, setPrivateKeyJwkStr] = useState('');
-  const [publicKeyJwkStr, setPublicKeyJwkStr] = useState('');
-  const [keyGenerating, setKeyGenerating] = useState(false);
-  const [keyError, setKeyError] = useState('');
-  const [showImport, setShowImport] = useState(false);
-  const [importStr, setImportStr] = useState('');
-
-  // 生成タブ状態
-  const [eventId, setEventId] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const ticketKeyRef = useRef(1);
-  const [tickets, setTickets] = useState<TicketRow[]>([
-    { _key: 1, id: generateTicketId(1), name: '', category: '' },
-  ]);
-  const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState('');
-  const [generatedQrs, setGeneratedQrs] = useState<GeneratedQr[]>([]);
-  const [zipping, setZipping] = useState(false);
-  const [zipError, setZipError] = useState('');
-
-  // 検証タブ状態
+  // 検証タブの公開鍵欄（生成タブで鍵生成時に自動設定）
   const [verifyPubKeyStr, setVerifyPubKeyStr] = useState('');
-  const [scanMode, setScanMode] = useState<'camera' | 'upload'>('camera');
-  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
-  const [verifying, setVerifying] = useState(false);
 
-  // マウント後に初期値をセット
+  // 鍵ペア管理
+  const keyPair = useTicketKeyPair({
+    onPubKeyGenerated: setVerifyPubKeyStr,
+  });
+
+  // チケット生成管理
+  const generation = useTicketGeneration({
+    cryptoKeyPair: keyPair.cryptoKeyPair,
+  });
+
+  // QR検証管理
+  const verification = useTicketVerification({
+    pubKeyStr: verifyPubKeyStr,
+  });
+
+  // マウント後に有効期限の初期値をセット
   useAbortableEffect(() => {
-    setExpiry(getDefaultExpiry());
+    generation.setExpiry(getDefaultExpiry());
   }, []);
-
-  // ─── QR検証（カメラ/アップロード共通） ───────────────────
-
-  const handleVerify = useCallback(
-    async (rawData: string, signal?: AbortSignal) => {
-      if (signal?.aborted) return;
-      setVerifying(true);
-      let pubKey: CryptoKey;
-      try {
-        const jwk = JSON.parse(verifyPubKeyStr) as JsonWebKey;
-        pubKey = await importPublicKey(jwk);
-      } catch {
-        if (signal?.aborted) return;
-        setVerificationResult({
-          valid: false,
-          ticket: null,
-          expired: false,
-          error: '公開鍵の形式が不正です。有効なECDSA P-256 JWKを貼り付けてください。',
-        });
-        setVerifying(false);
-        return;
-      }
-      const result = await verifyTicket(rawData, pubKey);
-      if (signal?.aborted) return;
-      setVerificationResult(result);
-      setVerifying(false);
-    },
-    [verifyPubKeyStr]
-  );
-
-  const camera = useQrCamera({ onQrDetected: handleVerify });
-  const { stopCamera } = camera;
-
-  // 画像アップロード処理の AbortController を保持する ref。
-  // アンマウント時・連打時に前回の処理をキャンセルする。
-  const uploadAbortRef = useRef<AbortController | null>(null);
 
   // モード切替時にカメラを停止する
   useAbortableEffect(() => {
-    if (mode !== 'verify') stopCamera();
-  }, [mode, stopCamera]);
+    if (mode !== 'verify') verification.camera.stopCamera();
+  }, [mode, verification.camera.stopCamera]);
 
   // アンマウント時にカメラを停止し、進行中のアップロードをキャンセルする
   useAbortableEffect(() => {
     return () => {
-      stopCamera();
-      uploadAbortRef.current?.abort();
+      verification.camera.stopCamera();
     };
-  }, [stopCamera]);
-
-  // ─── 鍵操作 ──────────────────────────────────────────────
-
-  const handleGenerateKeys = async () => {
-    setKeyGenerating(true);
-    setKeyError('');
-    try {
-      const pair = await generateKeyPair();
-      const exported = await exportKeyPair(pair);
-      const privStr = JSON.stringify(exported.privateKey, null, 2);
-      const pubStr = JSON.stringify(exported.publicKey, null, 2);
-      setCryptoKeyPair(pair);
-      setPrivateKeyJwkStr(privStr);
-      setPublicKeyJwkStr(pubStr);
-      setVerifyPubKeyStr(pubStr);
-      setGenerateError('');
-    } catch {
-      setKeyError('鍵の生成に失敗しました');
-    } finally {
-      setKeyGenerating(false);
-    }
-  };
-
-  const handleImportKey = async () => {
-    setKeyError('');
-    let jwk: JsonWebKey;
-    try {
-      jwk = JSON.parse(importStr) as JsonWebKey;
-    } catch {
-      setKeyError('JSON形式が不正です');
-      return;
-    }
-    if (!('d' in jwk)) {
-      setKeyError('これは公開鍵です。秘密鍵（"d" フィールドを含むJWK）を入力してください。');
-      return;
-    }
-    try {
-      const privKey = await importPrivateKey(jwk);
-      // ECDSA JWK から公開鍵部分を抽出（d フィールドを除去）
-      const { d: _d, key_ops: _ops, ...pubJwk } = jwk as Record<string, unknown>;
-      const pubKeyJwk = { ...pubJwk, key_ops: ['verify'] } as JsonWebKey;
-      const pubKey = await importPublicKey(pubKeyJwk);
-      const privStr = JSON.stringify(jwk, null, 2);
-      const pubStr = JSON.stringify(pubKeyJwk, null, 2);
-      setCryptoKeyPair({ privateKey: privKey, publicKey: pubKey });
-      setPrivateKeyJwkStr(privStr);
-      setPublicKeyJwkStr(pubStr);
-      setVerifyPubKeyStr(pubStr);
-      setShowImport(false);
-      setImportStr('');
-    } catch {
-      setKeyError('秘密鍵のインポートに失敗しました。有効なECDSA P-256 JWKを入力してください。');
-    }
-  };
-
-  // ─── チケット編集 ─────────────────────────────────────────
-
-  const addTicket = () => {
-    if (tickets.length >= 20) return;
-    ticketKeyRef.current += 1;
-    const newKey = ticketKeyRef.current;
-    setTickets((prev) => [
-      ...prev,
-      { _key: newKey, id: generateTicketId(prev.length + 1), name: '', category: '' },
-    ]);
-  };
-
-  const removeTicket = (index: number) => {
-    setTickets((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const updateTicket = (index: number, field: keyof TicketRow, value: string) => {
-    setTickets((prev) => prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)));
-  };
-
-  // ─── QR生成 ───────────────────────────────────────────────
-
-  const handleGenerate = async () => {
-    // 状態を即座にリセットしてクリック反応を確保
-    setGenerateError('');
-
-    if (!cryptoKeyPair) {
-      setGenerateError('先に鍵ペアを生成またはインポートしてください');
-      return;
-    }
-    if (!eventId.trim()) {
-      setGenerateError('イベントIDを入力してください');
-      return;
-    }
-    if (!expiry) {
-      setGenerateError('有効期限を設定してください');
-      return;
-    }
-    if (tickets.length === 0) {
-      setGenerateError('チケットを1件以上追加してください');
-      return;
-    }
-    const emptyId = tickets.find((t) => !t.id.trim());
-    if (emptyId) {
-      setGenerateError('チケットIDが空の行があります');
-      return;
-    }
-    // チケット ID は ZIP/ダウンロードのファイル名にも使われるため、
-    // 危険文字（path separator、`..`、制御文字、日本語等）を含む場合は拒否する。
-    const unsafeIdRow = tickets.find((t) => !isSafeTicketId(t.id.trim()));
-    if (unsafeIdRow) {
-      setGenerateError(
-        'チケットIDは英数字・ピリオド・アンダースコア・ハイフンのみ、64 文字以内で入力してください'
-      );
-      return;
-    }
-
-    // データ量制限チェック (全データの合計が MAX_QR_BYTE_SIZE バイト以内)
-    const longTicket = tickets.find((t) => {
-      const payload: TicketPayload = {
-        e: eventId.trim(),
-        t: t.id.trim(),
-        timestamp: Math.floor(new Date(expiry).getTime() / 1000),
-        n: t.name.trim() || undefined,
-        p: t.category.trim() || undefined,
-      };
-      return estimateTicketByteSize(payload) > MAX_QR_BYTE_SIZE;
-    });
-
-    if (longTicket) {
-      setGenerateError(
-        `データ量が上限（${MAX_QR_BYTE_SIZE}バイト）を超えているチケットがあります。`
-      );
-      return;
-    }
-
-    setGenerating(true);
-    try {
-      const results: GeneratedQr[] = [];
-      for (const row of tickets) {
-        const payload: TicketPayload = {
-          e: eventId.trim(),
-          t: row.id.trim(),
-          timestamp: Math.floor(new Date(expiry).getTime() / 1000),
-          ...(row.name.trim() ? { n: row.name.trim() } : {}),
-          ...(row.category.trim() ? { p: row.category.trim() } : {}),
-        };
-        const signed = await signTicket(payload, cryptoKeyPair.privateKey);
-        const qrString = ticketToQrString(signed);
-        const svg = generateQrSvg(qrString);
-        if (!svg) {
-          setGenerateError(`チケット ${row.id} のQRコード生成に失敗しました（データが長すぎます）`);
-          setGenerating(false);
-          return;
-        }
-        results.push({ _key: row._key, ticket: signed, svg, qrString });
-      }
-      setGeneratedQrs(results);
-    } catch {
-      setGenerateError('QRコードの生成中にエラーが発生しました');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleDownloadSvg = (qr: GeneratedQr) => {
-    // ticket.t は UI 入力（信頼できない）なのでサニタイズしてから filename に組み込む
-    const safeName = sanitizeFilename(`ticket-${qr.ticket.t}.svg`, ['svg']);
-    downloadSvg(qr.svg.replace('<svg ', '<svg width="160" height="160" '), safeName);
-  };
-
-  const handleDownloadZip = async () => {
-    if (generatedQrs.length === 0 || zipping) return;
-    setZipping(true);
-    setZipError('');
-    try {
-      // ZIP エントリ名は Zip Slip 類似の攻撃媒体になり得るため必ずサニタイズする。
-      // `tickets/` サブフォルダ配下に格納して従来の ZIP 構造を維持する。
-      const files = generatedQrs.map(({ ticket, svg }) => ({
-        name: sanitizeFilename(`ticket-${ticket.t}.svg`, ['svg']),
-        content: svg.replace('<svg ', '<svg width="160" height="160" '),
-        folder: 'tickets',
-      }));
-      await downloadZip(files, 'tickets.zip');
-    } catch {
-      setZipError('ZIPの作成に失敗しました');
-    } finally {
-      setZipping(false);
-    }
-  };
-
-  // ─── 画像アップロードからQR検証 ──────────────────────────
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // 同じファイルを再選択できるようにリセット
-    e.target.value = '';
-
-    const validation = validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
-    if (!validation.ok) {
-      camera.setCameraError(validation.message);
-      return;
-    }
-
-    camera.setCameraError('');
-    setVerificationResult(null);
-
-    // 連打時に前回のアップロードをキャンセルし、新しい controller を設定する
-    uploadAbortRef.current?.abort();
-    const controller = new AbortController();
-    uploadAbortRef.current = controller;
-    let result;
-    try {
-      result = await decodeQrFromFile(file, {
-        maxDim: DEFAULT_QR_MAX_DIM,
-        signal: controller.signal,
-      });
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      camera.setCameraError('画像を読み込めませんでした');
-      return;
-    }
-
-    if (!result.ok) {
-      if (result.reason === 'load-error') {
-        camera.setCameraError('画像を読み込めませんでした');
-      } else {
-        setVerificationResult({
-          valid: false,
-          ticket: null,
-          expired: false,
-          error: 'QRコードが見つかりませんでした',
-        });
-      }
-      return;
-    }
-    await handleVerify(result.data, controller.signal);
-  };
-
-  const handleRescan = () => {
-    setVerificationResult(null);
-    camera.setCameraError('');
-    if (scanMode === 'camera') camera.startCamera();
-  };
-
-  // ─── レンダリング ─────────────────────────────────────────
+  }, [verification.camera.stopCamera]);
 
   return (
     <div className="space-y-6">
@@ -370,45 +62,45 @@ export function QrTicketTool() {
 
       {mode === 'generate' ? (
         <GenerateTab
-          cryptoKeyPair={cryptoKeyPair}
-          privateKeyJwkStr={privateKeyJwkStr}
-          publicKeyJwkStr={publicKeyJwkStr}
-          keyGenerating={keyGenerating}
-          keyError={keyError}
-          showImport={showImport}
-          importStr={importStr}
-          eventId={eventId}
-          expiry={expiry}
-          tickets={tickets}
-          generating={generating}
-          generateError={generateError}
-          generatedQrs={generatedQrs}
-          zipping={zipping}
-          zipError={zipError}
-          onGenerateKeys={handleGenerateKeys}
-          onToggleImport={() => setShowImport((v) => !v)}
-          onImportStrChange={setImportStr}
-          onImportKey={handleImportKey}
-          onEventIdChange={setEventId}
-          onExpiryChange={setExpiry}
-          onAddTicket={addTicket}
-          onRemoveTicket={removeTicket}
-          onUpdateTicket={updateTicket}
-          onGenerate={handleGenerate}
-          onDownloadSvg={handleDownloadSvg}
-          onDownloadZip={handleDownloadZip}
+          cryptoKeyPair={keyPair.cryptoKeyPair}
+          privateKeyJwkStr={keyPair.privateKeyJwkStr}
+          publicKeyJwkStr={keyPair.publicKeyJwkStr}
+          keyGenerating={keyPair.keyGenerating}
+          keyError={keyPair.keyError}
+          showImport={keyPair.showImport}
+          importStr={keyPair.importStr}
+          eventId={generation.eventId}
+          expiry={generation.expiry}
+          tickets={generation.tickets}
+          generating={generation.generating}
+          generateError={generation.generateError}
+          generatedQrs={generation.generatedQrs}
+          zipping={generation.zipping}
+          zipError={generation.zipError}
+          onGenerateKeys={keyPair.generateKeys}
+          onToggleImport={keyPair.toggleImport}
+          onImportStrChange={keyPair.setImportStr}
+          onImportKey={keyPair.importKey}
+          onEventIdChange={generation.setEventId}
+          onExpiryChange={generation.setExpiry}
+          onAddTicket={generation.addTicket}
+          onRemoveTicket={generation.removeTicket}
+          onUpdateTicket={generation.updateTicket}
+          onGenerate={generation.generate}
+          onDownloadSvg={generation.downloadSvgQr}
+          onDownloadZip={generation.downloadZipQrs}
         />
       ) : (
         <VerifyTab
           verifyPubKeyStr={verifyPubKeyStr}
-          scanMode={scanMode}
-          camera={camera}
-          verificationResult={verificationResult}
-          verifying={verifying}
+          scanMode={verification.scanMode}
+          camera={verification.camera}
+          verificationResult={verification.verificationResult}
+          verifying={verification.verifying}
           onVerifyPubKeyStrChange={setVerifyPubKeyStr}
-          onScanModeChange={setScanMode}
-          onImageUpload={handleImageUpload}
-          onRescan={handleRescan}
+          onScanModeChange={verification.setScanMode}
+          onImageUpload={verification.handleImageUpload}
+          onRescan={verification.handleRescan}
         />
       )}
     </div>
