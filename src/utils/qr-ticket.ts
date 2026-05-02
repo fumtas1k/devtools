@@ -83,8 +83,13 @@ export function serializeTicket(payload: TicketPayload): string {
 }
 
 /**
- * QR 文字列をペイロード部と署名部に分解する。
- * フォーマットが不正な場合は null を返す。
+ * QR 文字列を payload と signature に分解する。
+ *
+ * 仕様前提: signature は ECDSA P-256 + base64url エンコーディングなので
+ * 文字集合は `A-Za-z0-9_-` のみで `|` を含まない。したがって
+ * `lastIndexOf('|')` で payload と signature の境界を一意に特定できる。
+ *
+ * @returns 分解できれば `{ payload, signature }`、形式不正なら `null`
  */
 export function parseQrString(raw: string): { payload: string; signature: string } | null {
   const lastPipe = raw.lastIndexOf('|');
@@ -162,12 +167,14 @@ export async function verifyTicket(
   rawData: string,
   publicKey: CryptoKey
 ): Promise<VerificationResult> {
-  const parts = rawData.split('|');
-  if (parts.length !== PAYLOAD_FIELD_COUNT) {
+  // serializeTicket と対称な parseQrString で payload / signature を分離する
+  const parsed = parseQrString(rawData);
+  if (!parsed) {
     return { valid: false, ticket: null, expired: false, error: 'QRデータの形式が不正です' };
   }
 
-  const [e, t, tsStr, n, p, s] = parts;
+  const [e, t, tsStr, n, p] = parsed.payload.split('|');
+  const s = parsed.signature;
   const timestamp = Number(tsStr);
 
   if (!e || !t || !Number.isFinite(timestamp) || timestamp <= 0 || !s) {
