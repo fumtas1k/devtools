@@ -8,6 +8,7 @@ interface UseQrCameraOptions {
 /**
  * QRコードカメラスキャン用フック。
  * カメラの起動/停止と rAF ベースのスキャンループを管理する。
+ * AbortSignal によりアンマウント時の race condition を防ぐ。
  */
 export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
   const [cameraActive, setCameraActive] = useState(false);
@@ -18,13 +19,21 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const scanningRef = useRef(false);
+  // アンマウント race condition を防ぐ AbortController
+  const controllerRef = useRef<AbortController | null>(null);
   // stale closure を防ぐため ref で最新コールバックを保持
   const onQrDetectedRef = useRef(onQrDetected);
   useEffect(() => {
     onQrDetectedRef.current = onQrDetected;
   }, [onQrDetected]);
 
+  useEffect(() => {
+    controllerRef.current = new AbortController();
+    return () => controllerRef.current?.abort();
+  }, []);
+
   const stopCamera = useCallback(() => {
+    controllerRef.current?.abort();
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -73,6 +82,7 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
             const found = jsQR(imageData.data, imageData.width, imageData.height);
             if (found) {
               stopCamera();
+              if (controllerRef.current?.signal.aborted) return;
               onQrDetectedRef.current(found.data);
               return;
             }
