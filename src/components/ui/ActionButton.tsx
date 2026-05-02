@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { colors, caption } from '@/utils/styles';
 
-type Variant = 'default' | 'primary' | 'danger';
+type Variant = 'default' | 'primary' | 'secondary' | 'danger';
 
 interface Props extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -17,22 +17,25 @@ interface Props extends Omit<
 const bgMap: Record<Variant, string> = {
   default: colors.bgSubtle,
   primary: colors.primary,
+  secondary: 'transparent',
   danger: 'transparent',
 };
 const colorMap: Record<Variant, string> = {
   default: colors.text,
   primary: colors.textOnPrimary,
+  secondary: colors.primary,
   danger: colors.error,
 };
 const borderMap: Record<Variant, string> = {
   default: colors.borderInput,
   primary: colors.primary,
+  secondary: colors.primary,
   danger: colors.error,
 };
 
 /**
  * 汎用アクションボタン。
- * - `variant`: 'default' | 'primary' | 'danger'
+ * - `variant`: 'default' | 'primary' | 'secondary' | 'danger'
  * - `loading`: true のとき `aria-busy="true"` を付与し、disabled 状態にする
  * - ローディング中の子要素はそのまま表示するため、呼び出し元でローディング文言に切り替えること
  *   （例: `{loading ? '生成中…' : '生成'}`）

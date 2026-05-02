@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { ActionButton } from '@/components/ui/ActionButton';
+import { colors } from '@/utils/styles';
 
 afterEach(() => {
   cleanup();
@@ -83,5 +84,27 @@ describe('ActionButton', () => {
   it('variant="default" がデフォルト', () => {
     render(<ActionButton onClick={() => {}}>デフォルト</ActionButton>);
     expect(screen.getByRole('button', { name: 'デフォルト' })).toBeTruthy();
+  });
+
+  it('variant="secondary" を指定できる', () => {
+    render(
+      <ActionButton onClick={() => {}} variant="secondary">
+        セカンダリ
+      </ActionButton>
+    );
+    expect(screen.getByRole('button', { name: 'セカンダリ' })).toBeTruthy();
+  });
+
+  it('variant="secondary" は背景透過・primary 色のボーダーと文字色を持つ', () => {
+    render(
+      <ActionButton onClick={() => {}} variant="secondary">
+        セカンダリ
+      </ActionButton>
+    );
+    const btn = screen.getByRole('button') as HTMLButtonElement;
+    expect(btn.style.backgroundColor).toBe('transparent');
+    expect(btn.style.color).toBe(colors.primary);
+    // jsdom は border shorthand を borderColor に分解しないため、shorthand 全体を比較する
+    expect(btn.style.border).toBe(`1px solid ${colors.primary}`);
   });
 });
