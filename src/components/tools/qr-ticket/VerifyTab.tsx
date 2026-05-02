@@ -1,11 +1,12 @@
 import { InputField } from '@/components/ui/InputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { Section } from '@/components/ui/Section';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import type { VerificationResult } from '@/utils/qr-ticket';
-import { ActionButton } from './ActionButton';
 import { TicketDetail } from './TicketDetail';
-import { SCAN_OPTIONS, sectionStyle, sectionHeaderStyle, sectionBodyStyle } from './index';
+import { SCAN_OPTIONS } from './index';
 
 interface CameraProps {
   cameraActive: boolean;
@@ -42,27 +43,23 @@ export function VerifyTab({
   return (
     <div className="space-y-6">
       {/* 公開鍵セクション */}
-      <div style={sectionStyle}>
-        <h3 style={sectionHeaderStyle}>公開鍵</h3>
-        <div style={sectionBodyStyle}>
-          <InputField
-            id="verify-pubkey"
-            label="公開鍵 JWK"
-            value={verifyPubKeyStr}
-            onChange={onVerifyPubKeyStrChange}
-            multiline
-            rows={5}
-            mono
-            placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...",...}'
-            hint="生成タブで鍵を作成すると自動入力されます"
-          />
-        </div>
-      </div>
+      <Section title="公開鍵">
+        <InputField
+          id="verify-pubkey"
+          label="公開鍵 JWK"
+          value={verifyPubKeyStr}
+          onChange={onVerifyPubKeyStrChange}
+          multiline
+          rows={5}
+          mono
+          placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...",...}'
+          hint="生成タブで鍵を作成すると自動入力されます"
+        />
+      </Section>
 
       {/* QR読取セクション */}
-      <div style={sectionStyle}>
-        <h3 style={sectionHeaderStyle}>QR読取</h3>
-        <div className="space-y-3" style={sectionBodyStyle}>
+      <Section title="QR読取">
+        <div className="space-y-3">
           <ToggleGroup
             options={SCAN_OPTIONS}
             value={scanMode}
@@ -150,14 +147,12 @@ export function VerifyTab({
 
           {camera.cameraError && <ErrorMessage message={camera.cameraError} />}
         </div>
-      </div>
+      </Section>
 
       {/* 検証結果セクション */}
       {(verifying || verificationResult) && (
-        <div style={sectionStyle}>
-          <h3 style={sectionHeaderStyle}>検証結果</h3>
+        <Section title="検証結果">
           <div
-            style={sectionBodyStyle}
             role="status"
             aria-live={verificationResult && !verificationResult.valid ? 'assertive' : 'polite'}
             aria-atomic="true"
@@ -205,7 +200,7 @@ export function VerifyTab({
               </div>
             ) : null}
           </div>
-        </div>
+        </Section>
       )}
     </div>
   );
