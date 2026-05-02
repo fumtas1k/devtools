@@ -1,22 +1,27 @@
-import type { ReactNode } from 'react';
+import type { AriaAttributes, ReactNode } from 'react';
 import { bodyEmphasis, colors } from '@/utils/styles';
 
-interface Props {
+interface Props extends AriaAttributes {
   title?: ReactNode;
   headerSlot?: ReactNode;
   children: ReactNode;
+  /** role 属性を外側コンテナに付与する（例: "status"） */
+  role?: string;
 }
 
 /**
  * 共通セクションコンポーネント。
  * `title` を指定すると左寄せのタイトルとして表示し、`headerSlot` で右側に任意の要素を追加できる。
  * `title` と `headerSlot` の両方を省略した場合はヘッダーを描画しない。
+ * `role` や `aria-*` props は外側コンテナ div に透過転送される。
  */
-export function Section({ title, headerSlot, children }: Props) {
+export function Section({ title, headerSlot, children, role, ...ariaProps }: Props) {
   const hasHeader = title != null || headerSlot != null;
 
   return (
     <div
+      role={role}
+      {...ariaProps}
       style={{
         borderRadius: '0.75rem',
         border: `1px solid ${colors.border}`,

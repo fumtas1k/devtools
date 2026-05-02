@@ -234,73 +234,71 @@ export function QrReaderTool() {
 
       {/* 読取結果セクション */}
       {content !== null && (
-        <div role="status" aria-live="polite">
-          <Section title="読取結果">
-            <div className="space-y-4">
-              {/* テキスト表示 */}
-              <div
-                className="rounded-lg p-3"
-                style={{ background: colors.bgSubtle, border: `1px solid ${colors.border}` }}
+        <Section title="読取結果" role="status" aria-live="polite">
+          <div className="space-y-4">
+            {/* テキスト表示 */}
+            <div
+              className="rounded-lg p-3"
+              style={{ background: colors.bgSubtle, border: `1px solid ${colors.border}` }}
+            >
+              <pre
+                style={{
+                  ...caption,
+                  color: colors.text,
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  fontFamily: 'monospace',
+                }}
               >
-                <pre
+                {content.raw}
+              </pre>
+            </div>
+
+            {/* コピー & 再スキャンボタン */}
+            <div className="flex flex-wrap items-center gap-2">
+              <CopyButton text={content.raw} />
+              <button onClick={handleRescan} style={rescanButtonStyle}>
+                再スキャン
+              </button>
+            </div>
+
+            {/* URLの場合のフィッシング警告 */}
+            {content.kind === 'url' && (
+              <div
+                className="rounded-lg p-4 space-y-2"
+                style={{
+                  background: colors.warningBg,
+                  border: `1px solid ${colors.warning}`,
+                }}
+              >
+                <p style={{ ...caption, color: colors.text }}>
+                  <strong style={{ color: colors.text }}>{content.hostname}</strong>{' '}
+                  への外部リンクが含まれています。URLをよく確認してから開いてください。
+                </p>
+                <a
+                  href={content.raw}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     ...caption,
-                    color: colors.text,
-                    margin: 0,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  {content.raw}
-                </pre>
-              </div>
-
-              {/* コピー & 再スキャンボタン */}
-              <div className="flex flex-wrap items-center gap-2">
-                <CopyButton text={content.raw} />
-                <button onClick={handleRescan} style={rescanButtonStyle}>
-                  再スキャン
-                </button>
-              </div>
-
-              {/* URLの場合のフィッシング警告 */}
-              {content.kind === 'url' && (
-                <div
-                  className="rounded-lg p-4 space-y-2"
-                  style={{
-                    background: colors.warningBg,
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.375rem 0.875rem',
+                    borderRadius: '0.375rem',
                     border: `1px solid ${colors.warning}`,
+                    background: colors.bg,
+                    color: colors.text,
+                    textDecoration: 'none',
                   }}
                 >
-                  <p style={{ ...caption, color: colors.text }}>
-                    <strong style={{ color: colors.text }}>{content.hostname}</strong>{' '}
-                    への外部リンクが含まれています。URLをよく確認してから開いてください。
-                  </p>
-                  <a
-                    href={content.raw}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      ...caption,
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '0.375rem 0.875rem',
-                      borderRadius: '0.375rem',
-                      border: `1px solid ${colors.warning}`,
-                      background: colors.bg,
-                      color: colors.text,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    URLを開く
-                  </a>
-                </div>
-              )}
-            </div>
-          </Section>
-        </div>
+                  URLを開く
+                </a>
+              </div>
+            )}
+          </div>
+        </Section>
       )}
     </div>
   );
