@@ -33,7 +33,6 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
   }, []);
 
   const stopCamera = useCallback(() => {
-    controllerRef.current?.abort();
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -67,6 +66,7 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
       scanningRef.current = true;
 
       const scan = () => {
+        if (controllerRef.current?.signal.aborted) return;
         if (!scanningRef.current) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -82,7 +82,6 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
             const found = jsQR(imageData.data, imageData.width, imageData.height);
             if (found) {
               stopCamera();
-              if (controllerRef.current?.signal.aborted) return;
               onQrDetectedRef.current(found.data);
               return;
             }

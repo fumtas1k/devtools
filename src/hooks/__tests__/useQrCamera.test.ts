@@ -105,6 +105,57 @@ describe('useQrCamera — アンマウント後に onQrDetected が呼ばれな�
   });
 });
 
+describe('useQrCamera — QR 検出 happy-path', () => {
+  it('QR を検出したとき onQrDetected が呼ばれ cameraActive が false になる', async () => {
+    const onQrDetected = vi.fn();
+
+    // jsQR が QR コードを検出するように設定
+    const jsQR = await import('jsqr');
+    const mockJsQR = vi.mocked(jsQR.default);
+    mockJsQR.mockReturnValue({ data: 'test-qr-data' } as ReturnType<typeof jsQR.default>);
+
+    const { result } = renderHook(() => useQrCamera({ onQrDetected }));
+
+    // video / canvas 要素を jsdom 上に作成し、ref に直接アタッチ
+    const video = document.createElement('video');
+    Object.defineProperty(video, 'readyState', { value: 4, configurable: true });
+    Object.defineProperty(video, 'videoWidth', { value: 640, configurable: true });
+    Object.defineProperty(video, 'videoHeight', { value: 480, configurable: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (result.current.videoRef as any).current = video;
+
+    const canvas = document.createElement('canvas');
+    const fakeCtx = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })),
+    };
+    vi.spyOn(canvas, 'getContext').mockReturnValue(fakeCtx as unknown as CanvasRenderingContext2D);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (result.current.canvasRef as any).current = canvas;
+
+    await act(async () => {
+      await result.current.startCamera();
+    });
+
+    // rAF コールバック（scan）を手動で実行する
+    act(() => {
+      const scanCb = mockRaf.mock.calls[0][0] as FrameRequestCallback;
+      scanCb(0);
+    });
+
+    // onQrDetected が検出データで呼ばれること
+    expect(onQrDetected).toHaveBeenCalledWith('test-qr-data');
+    expect(onQrDetected).toHaveBeenCalledTimes(1);
+
+    // stopCamera が動いて cameraActive が false になること
+    expect(result.current.cameraActive).toBe(false);
+
+    // クリーンアップ
+    mockJsQR.mockReset();
+    mockJsQR.mockReturnValue(null);
+  });
+});
+
 describe('useQrCamera — stopCamera 後の状態確認', () => {
   it('初期状態では cameraActive が false', () => {
     const onQrDetected = vi.fn();
