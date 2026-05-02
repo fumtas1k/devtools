@@ -57,7 +57,6 @@ export function ActionButton({
       className={`inline-flex items-center px-4 py-2 rounded-lg whitespace-nowrap font-semibold${isDisabled ? ' cursor-not-allowed' : ''}`}
       style={{
         ...caption,
-        fontWeight: 600,
         border: `1px solid ${borderMap[variant]}`,
         background: isDisabled ? colors.bgSubtle : bgMap[variant],
         color: isDisabled ? colors.muted : colorMap[variant],
