@@ -44,7 +44,11 @@ export function Section({ title, headerSlot, children, role, ...ariaProps }: Pro
             gap: headerSlot ? '0.5rem' : undefined,
           }}
         >
-          {title != null && <span>{title}</span>}
+          {title != null && (
+            <span role="heading" aria-level={2}>
+              {title}
+            </span>
+          )}
           {headerSlot}
         </div>
       )}

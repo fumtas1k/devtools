@@ -28,6 +28,15 @@ describe('Section', () => {
     expect(screen.getByText('本文')).toBeTruthy();
   });
 
+  it('title は heading role として描画される（a11y / E2E getByRole 用）', () => {
+    render(
+      <Section title="鍵ペア">
+        <p>本文</p>
+      </Section>
+    );
+    expect(screen.getByRole('heading', { name: '鍵ペア' })).toBeTruthy();
+  });
+
   it('headerSlot を指定すると右側に表示される', () => {
     render(
       <Section title="タイトル" headerSlot={<button type="button">アクション</button>}>
