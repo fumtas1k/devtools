@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { PRODUCTION_CSP } from '../csp';
 
 /**
  * public/_headers の内容を検証する。
@@ -88,6 +89,16 @@ describe('public/_headers', () => {
 
     it('upgrade-insecure-requests を含む（混在コンテンツ防止）', () => {
       expect(csp).toContain('upgrade-insecure-requests');
+    });
+
+    it('src/utils/csp.ts の PRODUCTION_CSP と完全一致する', () => {
+      // E2E テスト (tests/e2e/helpers.ts の applyProductionCsp) はこの定数を
+      // 用いてレスポンスヘッダを注入し本番相当の CSP 環境を再現する。
+      // _headers と PRODUCTION_CSP が乖離すると、E2E が本番と別ポリシーを
+      // 評価することになりリグレッション検知ゲートが空回りする。両者を
+      // 完全一致で固定し、片方更新の事故を Vitest で即時検出する。
+      const headerValue = csp.replace(/^Content-Security-Policy:\s*/i, '');
+      expect(headerValue).toBe(PRODUCTION_CSP);
     });
   });
 
