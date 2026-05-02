@@ -16,8 +16,11 @@ export const SIGNATURE_BYTE_SIZE = 86;
 /** QRコードの最大データサイズ（署名・タイムスタンプ等を含む全データの合計バイト数） */
 export const MAX_QR_BYTE_SIZE = 250;
 
+/** ペイロードのフィールド名リスト（シリアライズ順） */
+const PAYLOAD_FIELDS = ['e', 't', 'timestamp', 'n', 'p'] as const;
+
 /** QRコードに含まれるパイプ区切りフィールドの数 (eventId|ticketId|timestamp|name|category|signature) */
-export const PAYLOAD_FIELD_COUNT = 6;
+export const PAYLOAD_FIELD_COUNT = PAYLOAD_FIELDS.length + 1; // +1 は signature 分
 
 // ─── 型定義 ───────────────────────────────────────────────
 
@@ -47,10 +50,16 @@ export interface VerificationResult {
 
 // ─── 内部ヘルパー ─────────────────────────────────────────
 
-/** パイプ区切りを壊さないように | を半角スペースに置換する */
+/**
+ * フィールド値に | が含まれていないことを検証する。
+ * | が含まれる場合はパイプ区切りフォーマットが壊れるため throw する。
+ */
 function sanitizeField(value: string | undefined): string {
   if (!value) return '';
-  return value.replace(/\|/g, ' ');
+  if (value.includes('|')) {
+    throw new Error(`フィールド値に | を含めることはできません: "${value}"`);
+  }
+  return value;
 }
 
 /** 署名対象のペイロード文字列を構築（パイプ区切り形式） */
@@ -63,6 +72,35 @@ export function buildPayload(ticket: TicketPayload): string {
 
   // eventId|ticketId|timestamp|name|category
   return [e, t, ts, n, p].join('|');
+}
+
+/**
+ * TicketPayload をパイプ区切りのペイロード文字列にシリアライズする。
+ * フィールドに | が含まれる場合は throw する。
+ */
+export function serializeTicket(payload: TicketPayload): string {
+  return buildPayload(payload);
+}
+
+/**
+ * QR 文字列を payload と signature に分解する。
+ *
+ * 仕様前提: signature は ECDSA P-256 + base64url エンコーディングなので
+ * 文字集合は `A-Za-z0-9_-` のみで `|` を含まない。したがって
+ * `lastIndexOf('|')` で payload と signature の境界を一意に特定できる。
+ *
+ * @returns 分解できれば `{ payload, signature }`、形式不正なら `null`
+ */
+export function parseQrString(raw: string): { payload: string; signature: string } | null {
+  const lastPipe = raw.lastIndexOf('|');
+  if (lastPipe === -1) return null;
+  const payload = raw.slice(0, lastPipe);
+  const signature = raw.slice(lastPipe + 1);
+  if (!signature) return null;
+  // ペイロード部のフィールド数チェック（PAYLOAD_FIELD_COUNT - 1 個のパイプ区切り = PAYLOAD_FIELDS.length フィールド）
+  const payloadParts = payload.split('|');
+  if (payloadParts.length !== PAYLOAD_FIELDS.length) return null;
+  return { payload, signature };
 }
 
 /** 署名を除くペイロード部分のバイト数を計算する */
@@ -129,12 +167,14 @@ export async function verifyTicket(
   rawData: string,
   publicKey: CryptoKey
 ): Promise<VerificationResult> {
-  const parts = rawData.split('|');
-  if (parts.length !== PAYLOAD_FIELD_COUNT) {
+  // serializeTicket と対称な parseQrString で payload / signature を分離する
+  const parsed = parseQrString(rawData);
+  if (!parsed) {
     return { valid: false, ticket: null, expired: false, error: 'QRデータの形式が不正です' };
   }
 
-  const [e, t, tsStr, n, p, s] = parts;
+  const [e, t, tsStr, n, p] = parsed.payload.split('|');
+  const s = parsed.signature;
   const timestamp = Number(tsStr);
 
   if (!e || !t || !Number.isFinite(timestamp) || timestamp <= 0 || !s) {

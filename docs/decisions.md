@@ -2057,3 +2057,38 @@ PR #204 で最終的に採用する変更は以下の **1 点のみ** に絞る�
 - issue #205（後続: Web context7 egress 解消後の再検証）
 - issue #206（後続: plugin auto-install / Skill 動的 reload 制約への対応見直し）
 - PR #187（context7 不在による誤レビュー事例）
+
+---
+
+## [060] 2026-05-02 — qr-ticket: `sanitizeField` を silent 置換から throw 方針に変更
+
+**2026-05-02 | ステータス: 採用**
+
+### 背景
+
+`src/utils/qr-ticket.ts` の `sanitizeField` は従来 `|` を半角スペースに silent 置換していた。これは QR ペイロードのデリミタ衝突回避のための応急処置だったが、ユーザーが意図して入力した `|` がデータ復元時に失われる問題があった（署名対象の payload 文字列に対しても置換後の値が使われるため、再現性の観点でも望ましくない）。
+
+issue #169 項目 3 で `serializeTicket` / `parseQrString` の対称シリアライザペアを整理する過程で、silent な値破壊を残したままにしておくと「シリアライザの可逆性」を成立させられない（往復で値が変わる）ことが明確になり、本決定で挙動方針を変更する。
+
+### 決断
+
+`sanitizeField` を「`|` を含む値が来たら throw する validation 関数」に変更する。silent な値破壊を排し、明示エラーとしてハンドリング可能にする。throw メッセージは `フィールド値に | を含めることはできません: "<value>"` として、どのフィールドが問題かを呼び出し側で特定できるようにする。
+
+### 影響 / 移行
+
+- `serializeTicket` / `buildPayload` / `signTicket` / `ticketToQrString` を経由するコードパスで、`|` 含有の入力時に従来は通っていたところが throw する。
+- 上位 UI 層（`QrTicket.tsx`）では現状汎用 try/catch に拾われて「QRコードの生成中にエラーが発生しました」と表示されるため、UX 観点での専用エラーメッセージ化（`handleGenerate` 事前 validation）は **PR #221（#167-B QrTicket 3 hook 分割）merge 後のフォローアップ PR** で別途対応する（衝突回避のため本 PR では触らない）。issue 番号は親 PR 側で起票・記録予定。
+- E2E テスト・ユニットテストへの直接影響なし（既存テストは `|` を含まない正常系。本 PR で「`|` 含有時に throw する」テストへ更新済み）。
+- 公開 API のシグネチャ（戻り値の型・引数）は変更なし。
+
+### 却下した選択肢
+
+- **silent 置換のまま維持**: 可逆性が成立せず、署名対象の payload と入力値が異なるため将来の検証ロジックで混乱を招く。
+- **置換文字を `|` 以外（例: `_`）に変更**: silent な値破壊である本質は変わらず、解決にならない。
+- **エスケープ方式（`\|` などで `|` をリテラル化）**: parser 側のロジックが複雑化し、QR コード化したときのバイト数増にもつながる。短期的には throw 方針の方が KISS。
+
+### 関連 PR / issue
+
+- PR #218（本変更）
+- issue #169（refactor 親 issue、項目 3 として記録）
+- PR #221（#167-B QrTicket hook 分割、merge 後に UX フォローアップ PR で `handleGenerate` 事前 validation を追加）
