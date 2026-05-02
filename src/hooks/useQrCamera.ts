@@ -8,6 +8,7 @@ interface UseQrCameraOptions {
 /**
  * QRコードカメラスキャン用フック。
  * カメラの起動/停止と rAF ベースのスキャンループを管理する。
+ * AbortSignal によりアンマウント時の race condition を防ぐ。
  */
 export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
   const [cameraActive, setCameraActive] = useState(false);
@@ -18,11 +19,15 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const scanningRef = useRef(false);
+  // アンマウント時に in-flight な非同期処理（getUserMedia / scan）を中断する AbortController
+  const controllerRef = useRef<AbortController>(new AbortController());
   // stale closure を防ぐため ref で最新コールバックを保持
   const onQrDetectedRef = useRef(onQrDetected);
   useEffect(() => {
     onQrDetectedRef.current = onQrDetected;
   }, [onQrDetected]);
+
+  useEffect(() => () => controllerRef.current.abort(), []);
 
   const stopCamera = useCallback(() => {
     if (rafRef.current !== null) {
@@ -49,15 +54,30 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
       });
+
+      // getUserMedia 解決後に既に unmount 済みならカメラリソースを解放して戻る
+      if (controllerRef.current.signal.aborted) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+
+        // video.play 解決後に既に unmount 済みなら状態更新を諦めてリソース解放
+        if (controllerRef.current.signal.aborted) {
+          stream.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+          return;
+        }
       }
       setCameraActive(true);
       scanningRef.current = true;
 
       const scan = () => {
+        if (controllerRef.current.signal.aborted) return;
         if (!scanningRef.current) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
