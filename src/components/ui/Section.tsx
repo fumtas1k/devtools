@@ -7,6 +7,12 @@ interface Props extends AriaAttributes {
   children: ReactNode;
   /** role 属性を外側コンテナに付与する（例: "status"） */
   role?: string;
+  /**
+   * `title` を span[role="heading"] で描画するときの aria-level。
+   * 旧実装は <h3> だったため default は 3。
+   * ページ構造上 level を変えたい場合のみ明示指定する。
+   */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 /**
@@ -15,7 +21,14 @@ interface Props extends AriaAttributes {
  * `title` と `headerSlot` の両方を省略した場合はヘッダーを描画しない。
  * `role` や `aria-*` props は外側コンテナ div に透過転送される。
  */
-export function Section({ title, headerSlot, children, role, ...ariaProps }: Props) {
+export function Section({
+  title,
+  headerSlot,
+  children,
+  role,
+  headingLevel = 3,
+  ...ariaProps
+}: Props) {
   const hasHeader = title != null || headerSlot != null;
 
   return (
@@ -39,7 +52,7 @@ export function Section({ title, headerSlot, children, role, ...ariaProps }: Pro
           }}
         >
           {title != null && (
-            <span role="heading" aria-level={2}>
+            <span role="heading" aria-level={headingLevel}>
               {title}
             </span>
           )}

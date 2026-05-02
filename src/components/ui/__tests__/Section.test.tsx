@@ -37,6 +37,24 @@ describe('Section', () => {
     expect(screen.getByRole('heading', { name: '鍵ペア' })).toBeTruthy();
   });
 
+  it('headingLevel を省略すると aria-level が default の 3 になる（旧 h3 との後方互換）', () => {
+    render(
+      <Section title="デフォルト見出し">
+        <p>本文</p>
+      </Section>
+    );
+    expect(screen.getByRole('heading', { name: 'デフォルト見出し', level: 3 })).toBeTruthy();
+  });
+
+  it('headingLevel={2} を指定すると aria-level が 2 になる', () => {
+    render(
+      <Section title="レベル2見出し" headingLevel={2}>
+        <p>本文</p>
+      </Section>
+    );
+    expect(screen.getByRole('heading', { name: 'レベル2見出し', level: 2 })).toBeTruthy();
+  });
+
   it('headerSlot を指定すると右側に表示される', () => {
     render(
       <Section title="タイトル" headerSlot={<button type="button">アクション</button>}>
