@@ -12,6 +12,7 @@ import {
 } from '@/utils/gs1-databar';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
+import { BareInput } from '@/components/ui/BareInput';
 import { Select } from '@/components/ui/Select';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
@@ -297,19 +298,14 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                   </div>
                   <div className="flex-1 w-full flex gap-2 items-start">
                     <div className="flex-1">
-                      <input
+                      <BareInput
                         type="text"
                         value={field.value}
-                        onChange={(e) => handleAiChange(i, e.target.value)}
+                        onChange={(v) => handleAiChange(i, v)}
                         placeholder={def.placeholder}
-                        className="w-full rounded-lg px-3 py-2 font-mono"
-                        style={{
-                          ...caption,
-                          border: `1px solid ${field.error ? colors.error : colors.borderInput}`,
-                          outline: 'none',
-                          background: colors.bg,
-                          color: colors.text,
-                        }}
+                        mono
+                        error={!!field.error}
+                        aria-label={`AI フィールド値 ${i + 1}`}
                       />
                       {field.error && (
                         <p

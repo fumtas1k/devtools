@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { useClampedInput } from '@/hooks/useClampedInput';
 
 interface Props {
@@ -61,19 +62,9 @@ export function CountInput({
           }}
           aria-describedby={`${id}-hint`}
         />
-        <button
-          onClick={handleGenerate}
-          className="rounded-lg px-4 py-2 transition-colors"
-          style={{
-            ...caption,
-            fontWeight: 600,
-            background: colors.primary,
-            color: colors.textOnPrimary,
-            border: 'none',
-          }}
-        >
+        <ActionButton onClick={handleGenerate} variant="primary">
           {buttonLabel}
-        </button>
+        </ActionButton>
       </div>
       <p id={`${id}-hint`} style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
         {min}〜{max}

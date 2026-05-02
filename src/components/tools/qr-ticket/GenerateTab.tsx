@@ -2,10 +2,12 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { DownloadButton } from '@/components/ui/DownloadButton';
+import { Section } from '@/components/ui/Section';
+import { BareInput } from '@/components/ui/BareInput';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { generateTicketId, estimateTicketByteSize, MAX_QR_BYTE_SIZE } from '@/utils/qr-ticket';
-import { ActionButton } from './ActionButton';
-import { MAX_TICKETS, sectionStyle, sectionHeaderStyle, sectionBodyStyle } from './index';
+import { MAX_TICKETS } from './index';
 import type { TicketRow, GeneratedQr } from './types';
 import type { TicketPayload } from '@/utils/qr-ticket';
 
@@ -98,11 +100,15 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
   return (
     <div className="space-y-6">
       {/* 鍵ペアセクション */}
-      <div style={sectionStyle}>
-        <h3 style={sectionHeaderStyle}>鍵ペア</h3>
-        <div className="space-y-3" style={sectionBodyStyle}>
+      <Section title="鍵ペア">
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <ActionButton onClick={onGenerateKeys} disabled={keyGenerating} variant="primary">
+            <ActionButton
+              onClick={onGenerateKeys}
+              disabled={keyGenerating}
+              loading={keyGenerating}
+              variant="primary"
+            >
               {keyGenerating ? '生成中…' : '鍵ペアを新規生成'}
             </ActionButton>
             <button
@@ -205,12 +211,11 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
             </div>
           )}
         </div>
-      </div>
+      </Section>
 
       {/* イベント情報セクション */}
-      <div style={sectionStyle}>
-        <h3 style={sectionHeaderStyle}>イベント情報</h3>
-        <div className="space-y-3" style={sectionBodyStyle}>
+      <Section title="イベント情報">
+        <div className="space-y-3">
           <InputField
             id="event-id"
             label="イベントID"
@@ -232,35 +237,21 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
             >
               有効期限
             </label>
-            <input
-              id="expiry"
-              type="datetime-local"
-              value={expiry}
-              onChange={(e) => onExpiryChange(e.target.value)}
-              style={{
-                ...caption,
-                padding: '0.5rem 0.75rem',
-                borderRadius: '0.5rem',
-                border: `1px solid ${colors.borderInput}`,
-                background: colors.bg,
-                color: colors.text,
-                outline: 'none',
-              }}
-            />
+            <BareInput id="expiry" type="datetime-local" value={expiry} onChange={onExpiryChange} />
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* チケットリストセクション */}
-      <div style={sectionStyle}>
-        <div className="flex items-center justify-between" style={sectionHeaderStyle}>
-          <h3>チケットリスト（最大{MAX_TICKETS}件）</h3>
+      <Section
+        title={`チケットリスト（最大${MAX_TICKETS}件）`}
+        headerSlot={
           <span style={{ ...caption, color: colors.muted }}>
             ※全項目の合計で{MAX_QR_BYTE_SIZE}バイト以内を推奨
           </span>
-        </div>
-
-        <div style={sectionBodyStyle}>
+        }
+      >
+        <div>
           <div className="space-y-2">
             {/* ヘッダ行 (PCのみ) */}
             <div className="hidden md:flex gap-2 items-center mb-1">
@@ -310,21 +301,11 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                     >
                       チケットID
                     </span>
-                    <input
+                    <BareInput
                       value={row.id}
-                      onChange={(e) => onUpdateTicket(i, 'id', e.target.value)}
+                      onChange={(v) => onUpdateTicket(i, 'id', v)}
                       placeholder={generateTicketId(i + 1)}
-                      style={{
-                        ...caption,
-                        fontFamily: 'monospace',
-                        padding: '0.4rem 0.5rem',
-                        borderRadius: '0.375rem',
-                        border: `1px solid ${colors.borderInput}`,
-                        background: colors.bg,
-                        color: colors.text,
-                        outline: 'none',
-                        width: '100%',
-                      }}
+                      mono
                       aria-label={`チケットID ${i + 1}`}
                     />
                   </div>
@@ -335,20 +316,10 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                     >
                       参加者名（任意）
                     </span>
-                    <input
+                    <BareInput
                       value={row.name}
-                      onChange={(e) => onUpdateTicket(i, 'name', e.target.value)}
+                      onChange={(v) => onUpdateTicket(i, 'name', v)}
                       placeholder="山田 太郎"
-                      style={{
-                        ...caption,
-                        padding: '0.4rem 0.5rem',
-                        borderRadius: '0.375rem',
-                        border: `1px solid ${colors.borderInput}`,
-                        background: colors.bg,
-                        color: colors.text,
-                        outline: 'none',
-                        width: '100%',
-                      }}
                       aria-label={`参加者名 ${i + 1}`}
                     />
                   </div>
@@ -359,20 +330,10 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                     >
                       料金区分（任意）
                     </span>
-                    <input
+                    <BareInput
                       value={row.category}
-                      onChange={(e) => onUpdateTicket(i, 'category', e.target.value)}
+                      onChange={(v) => onUpdateTicket(i, 'category', v)}
                       placeholder="一般・VIP など"
-                      style={{
-                        ...caption,
-                        padding: '0.4rem 0.5rem',
-                        borderRadius: '0.375rem',
-                        border: `1px solid ${colors.borderInput}`,
-                        background: colors.bg,
-                        color: colors.text,
-                        outline: 'none',
-                        width: '100%',
-                      }}
                       aria-label={`料金区分 ${i + 1}`}
                     />
                   </div>
@@ -426,6 +387,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
             <ActionButton
               onClick={onGenerate}
               disabled={generating || !cryptoKeyPair}
+              loading={generating}
               variant="primary"
             >
               {generating ? '生成中…' : '一括生成'}
@@ -437,83 +399,82 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
             </div>
           )}
         </div>
-      </div>
+      </Section>
 
       {/* 生成結果セクション */}
       {generatedQrs.length > 0 && (
-        <div style={sectionStyle}>
-          <div
-            className="flex items-center justify-between flex-wrap gap-2"
-            style={sectionHeaderStyle}
-          >
-            <span>生成結果（{generatedQrs.length}件）</span>
-            {generatedQrs.length >= 2 && (
+        <Section
+          title={`生成結果（${generatedQrs.length}件）`}
+          headerSlot={
+            generatedQrs.length >= 2 ? (
               <DownloadButton
                 onClick={onDownloadZip}
                 disabled={zipping}
                 label={zipping ? '準備中…' : '一括ZIPダウンロード'}
                 variant="primary"
               />
+            ) : undefined
+          }
+        >
+          <div>
+            {zipError && (
+              <div style={{ marginBottom: '1rem' }}>
+                <ErrorMessage message={zipError} />
+              </div>
             )}
-          </div>
-          {zipError && (
-            <div style={{ padding: '0.5rem 1rem', borderBottom: `1px solid ${colors.border}` }}>
-              <ErrorMessage message={zipError} />
-            </div>
-          )}
-          <div
-            className="grid gap-4 p-4"
-            style={{
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              background: colors.bg,
-            }}
-          >
-            {generatedQrs.map((qr) => (
-              <div
-                key={qr._key}
-                className="flex flex-col items-center gap-2 rounded-lg p-3"
-                style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
-              >
+            <div
+              className="grid gap-4"
+              style={{
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              }}
+            >
+              {generatedQrs.map((qr) => (
                 <div
-                  data-testid="qr-code-container"
-                  style={{ width: '160px', height: '160px' }}
-                  dangerouslySetInnerHTML={{ __html: qr.svg }}
-                />
-                <span
-                  style={{
-                    ...caption,
-                    color: colors.text,
-                    fontFamily: 'monospace',
-                    fontWeight: 600,
-                  }}
+                  key={qr._key}
+                  className="flex flex-col items-center gap-2 rounded-lg p-3"
+                  style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
                 >
-                  {qr.ticket.t}
-                </span>
-                {qr.ticket.n && (
-                  <span style={{ ...caption, color: colors.muted }}>{qr.ticket.n}</span>
-                )}
-                {qr.ticket.p && (
+                  <div
+                    data-testid="qr-code-container"
+                    style={{ width: '160px', height: '160px' }}
+                    dangerouslySetInnerHTML={{ __html: qr.svg }}
+                  />
                   <span
                     style={{
                       ...caption,
-                      color: colors.primary,
-                      border: `1px solid ${colors.primary}`,
-                      borderRadius: '9999px',
-                      padding: '0.1rem 0.5rem',
+                      color: colors.text,
+                      fontFamily: 'monospace',
+                      fontWeight: 600,
                     }}
                   >
-                    {qr.ticket.p}
+                    {qr.ticket.t}
                   </span>
-                )}
-                <DownloadButton
-                  onClick={() => onDownloadSvg(qr)}
-                  label="SVGダウンロード"
-                  variant="secondary"
-                />
-              </div>
-            ))}
+                  {qr.ticket.n && (
+                    <span style={{ ...caption, color: colors.muted }}>{qr.ticket.n}</span>
+                  )}
+                  {qr.ticket.p && (
+                    <span
+                      style={{
+                        ...caption,
+                        color: colors.primary,
+                        border: `1px solid ${colors.primary}`,
+                        borderRadius: '9999px',
+                        padding: '0.1rem 0.5rem',
+                      }}
+                    >
+                      {qr.ticket.p}
+                    </span>
+                  )}
+                  <DownloadButton
+                    onClick={() => onDownloadSvg(qr)}
+                    label="SVGダウンロード"
+                    variant="secondary"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </Section>
       )}
     </div>
   );

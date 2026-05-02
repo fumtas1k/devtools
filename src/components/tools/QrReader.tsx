@@ -2,36 +2,17 @@ import React, { useState, useCallback, useRef } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { Section } from '@/components/ui/Section';
 import { useQrCamera } from '@/hooks/useQrCamera';
 import { useAbortableEffect } from '@/hooks/useAbortableEffect';
 import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { caption, colors } from '@/utils/styles';
 import { validateFile } from '@/utils/file-validation';
 
 const SCAN_OPTIONS = [
   { value: 'camera' as const, label: 'カメラ' },
   { value: 'upload' as const, label: '画像アップロード' },
 ];
-
-const sectionStyle = {
-  borderRadius: '0.75rem',
-  border: `1px solid ${colors.border}`,
-  overflow: 'hidden' as const,
-};
-
-const sectionHeaderStyle = {
-  ...bodyEmphasis,
-  color: colors.text,
-  padding: '0.75rem 1rem',
-  margin: 0,
-  background: colors.bgSubtle,
-  borderBottom: `1px solid ${colors.border}`,
-};
-
-const sectionBodyStyle = {
-  padding: '1rem',
-  background: colors.bg,
-};
 
 const rescanButtonStyle: React.CSSProperties = {
   fontSize: '0.875rem',
@@ -174,9 +155,8 @@ export function QrReaderTool() {
   return (
     <div className="space-y-6">
       {/* 読取方法セクション */}
-      <div style={sectionStyle}>
-        <h3 style={sectionHeaderStyle}>読取方法</h3>
-        <div className="space-y-3" style={sectionBodyStyle}>
+      <Section title="読取方法">
+        <div className="space-y-3">
           <ToggleGroup
             options={SCAN_OPTIONS}
             value={scanMode}
@@ -250,13 +230,12 @@ export function QrReaderTool() {
           {camera.cameraError && <ErrorMessage message={camera.cameraError} />}
           {decodeError && <ErrorMessage message={decodeError} />}
         </div>
-      </div>
+      </Section>
 
       {/* 読取結果セクション */}
       {content !== null && (
-        <div style={sectionStyle} role="status" aria-live="polite">
-          <h3 style={sectionHeaderStyle}>読取結果</h3>
-          <div className="space-y-4" style={sectionBodyStyle}>
+        <Section title="読取結果" role="status" aria-live="polite">
+          <div className="space-y-4">
             {/* テキスト表示 */}
             <div
               className="rounded-lg p-3"
@@ -319,7 +298,7 @@ export function QrReaderTool() {
               </div>
             )}
           </div>
-        </div>
+        </Section>
       )}
     </div>
   );

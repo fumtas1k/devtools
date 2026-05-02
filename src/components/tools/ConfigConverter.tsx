@@ -4,6 +4,7 @@ import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { ClearButton } from '@/components/ui/ClearButton';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { useCodec } from '@/hooks/useCodec';
 import { convert } from '@/utils/config-converter';
 import type { ConfigFormat } from '@/utils/config-converter';
@@ -254,25 +255,15 @@ export function ConfigConverterTool() {
               }}
             />
             <div className="flex items-center gap-3">
-              <button
-                type="button"
+              <ActionButton
                 onClick={handleValidate}
                 disabled={!output || !schemaText || isValidating}
+                loading={isValidating}
+                variant="primary"
                 aria-keyshortcuts="Meta+Enter Control+Enter"
-                className="rounded-lg px-4 py-2"
-                style={{
-                  ...caption,
-                  fontWeight: 600,
-                  background:
-                    !output || !schemaText || isValidating ? colors.bgSubtle : colors.primary,
-                  color:
-                    !output || !schemaText || isValidating ? colors.muted : colors.textOnPrimary,
-                  border: 'none',
-                  cursor: !output || !schemaText || isValidating ? 'not-allowed' : 'pointer',
-                }}
               >
-                {isValidating ? '検証中...' : '検証する'}
-              </button>
+                {isValidating ? '検証中…' : '検証する'}
+              </ActionButton>
               <kbd
                 style={{ ...caption, color: colors.muted, fontFamily: 'monospace' }}
                 aria-hidden="true"
