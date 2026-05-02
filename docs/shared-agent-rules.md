@@ -49,55 +49,53 @@
 サブエージェント（worktree 内で動作するエージェント）は以下のルールに従う。
 
 - **E2E テストコードの追加は義務**: バグ修正・UI 挙動変更時は E2E テストコードを必ず追加する（11 章の原則と同じ）。
-- **`npm run test:e2e` の実行は禁止**: worktree 並列環境ではポート 4321 が競合して誤報告が頻発する。また sandbox 制約でサーバー起動ができないケースがある。E2E の実行は親（司令塔）が代行する。
-- **完了報告には「E2E 実行は親が代行する」と明記すること。**
-- 検証範囲は `npm run test`（ユニット）と `node_modules/.bin/astro check`（型）まで。
+- **`npm run test:e2e` の実行は必須**: push 前に 3.2 章のチェックリストに従い E2E を実行する。env 不備（古い node_modules / port 4321 占有等）で走らない場合は未完了の旨を完了報告に明記して親に引き継ぐ。
+- 検証範囲は `npm run test`（ユニット）、`node_modules/.bin/astro check`（型）、および `npm run test:e2e`（E2E）。
 
 #### push 前必須チェックリスト（サブエージェント）
 
 以下をすべて満たしてから完了報告する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
 
-| #   | チェック項目          | コマンド                                                                      |
-| --- | --------------------- | ----------------------------------------------------------------------------- |
-| 1   | develop ベース確認    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致 |
-| 2   | ユニットテスト全 pass | `npm run test`                                                                |
-| 3   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                   |
-| 4   | E2E テスト            | **実行禁止**（テストコード追加は義務。実行は親が代行）                        |
+| #   | チェック項目                          | コマンド                                                                                                                                                                                 |
+| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh` を実行（古い node_modules を rm → `npm ci --cache "$TMPDIR/npm-cache"` → port 4321 kill）。詳細は `docs/agent-lessons.md` 2026-05-01 エントリ参照 |
+| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                                                                                            |
+| 2   | ユニットテスト全 pass                 | `npm run test`                                                                                                                                                                           |
+| 3   | 型チェック                            | `node_modules/.bin/astro check`（0 errors）                                                                                                                                              |
+| 4   | E2E テスト                            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ）                                                                                                           |
 
-### 3.2 親（司令塔）による E2E 代行実行
+### 3.2 E2E は push 前に必ず実行（親 / サブエージェント共通）
 
-> サブエージェントが dev server を残置している場合は、親側で kill する前に停止依頼すること（`npm run dev` のプロセスを終了するよう完了報告時に明記させる）。
+E2E (`npm run test:e2e`) は code change を含む push を行う前に **必ず実行する**。push 後は CI が自動で E2E を回すため、**親セッションによる post-PR 代行は不要**（旧運用は廃止）。
 
-サブエージェントの完了報告を受けて push する前後に、親が以下を実施する。
+#### push 前 E2E の実行責任
 
-1. 既存の dev server を kill する:
-   ```bash
-   lsof -ti:4321 | xargs kill -9 2>/dev/null || true
-   ```
-2. worktree 内で E2E を実行する（全体または影響範囲を絞って）:
-   ```bash
-   npm run test:e2e
-   # または影響範囲を絞る場合（npm run test:e2e -- <spec> でも同様）
-   npx playwright test <spec> --project chromium
-   ```
-3. **複数 worktree がある場合は同時実行しない**（ポート競合を避けるため）。1 つの worktree が完了してから次へ。
-4. 失敗パターンの判定:
-   - **テスト本来の失敗**（assertion error、要素が見つからない等）→ サブエージェントに修正依頼
-   - **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ 上記 1〜2 を 1 回だけ再実行
-   - 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
-5. unit テストは worktree 内で完結するため、サブエージェントの結果をそのまま信頼してよい。
+- **subagent worktree で push する場合**: subagent が pre-push チェックの一部として `npm run test:e2e` まで通す。env 不備（古い node_modules / port 4321 占有 / vite serving allow list エラー等）が原因で走らない場合は親に引き継ぐ
+- **親セッションが直接 push する場合**: 親が `npm run test:e2e` を pre-push で走らせる
+- **CI**: post-push の最終ゲート。pre-push で通っていれば green になることを期待
+
+#### worktree 並走時の注意
+
+- 複数 subagent worktree が同時に E2E を回すとポート 4321 が衝突する。1 worktree ずつ実行する
+- agent worktree は新規作成時 node_modules が空または不整合なため、push 前必須チェックリストのステップ 0 (worktree 整地) を必ず先行する
+
+#### 失敗パターンの判定
+
+- **テスト本来の失敗**（assertion error、要素が見つからない等）→ 修正してから再実行
+- **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ ステップ 0 の整地を実施してから 1 回だけ再実行
+- 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
 
 #### push 前必須チェックリスト（親）
 
-サブエージェントの完了報告を受けて push する際は、以下をすべて確認する。
+親セッションが直接 push する際は、以下をすべて確認する。
 
-| #   | チェック項目                                                   | コマンド                                                                                                               |
-| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 1   | develop ベース確認                                             | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                          |
-| 2   | サブエージェント完了報告の検証（unit / 型 / E2E スキップ理由） | 完了報告に「E2E 実行は親が代行」の明記があることを確認                                                                 |
-| 3   | スコープ外差分の確認                                           | `git diff origin/develop --name-only` で想定外ファイルがないか確認。aria-\* 削除行（`git diff` の `-` 行）がないか確認 |
-| 4   | E2E 直列実行                                                   | 本節手順 1〜5 を実施                                                                                                   |
-| 5   | PR ベース                                                      | `gh pr create --base develop`                                                                                          |
+| #   | チェック項目                          | コマンド                                                                                                               |
+| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh` を実行（worktree 内で push する場合のみ）                                       |
+| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                          |
+| 2   | スコープ外差分の確認                  | `git diff origin/develop --name-only` で想定外ファイルがないか確認。aria-\* 削除行（`git diff` の `-` 行）がないか確認 |
+| 3   | E2E 直列実行                          | `npm run test:e2e`（複数 worktree がある場合は同時実行しない）                                                         |
+| 4   | PR ベース                             | `gh pr create --base develop`                                                                                          |
 
 #### 親向けレビュー取得手順（取りこぼし防止）
 
