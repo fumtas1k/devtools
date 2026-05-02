@@ -49,7 +49,7 @@ export function QrTicketTool() {
     if (mode !== 'verify') verification.camera.stopCamera();
   }, [mode, verification.camera.stopCamera]);
 
-  // アンマウント時にカメラを停止し、進行中のアップロードをキャンセルする
+  // アンマウント時にカメラを停止する
   useAbortableEffect(() => {
     return () => {
       verification.camera.stopCamera();
@@ -62,33 +62,37 @@ export function QrTicketTool() {
 
       {mode === 'generate' ? (
         <GenerateTab
-          cryptoKeyPair={keyPair.cryptoKeyPair}
-          privateKeyJwkStr={keyPair.privateKeyJwkStr}
-          publicKeyJwkStr={keyPair.publicKeyJwkStr}
-          keyGenerating={keyPair.keyGenerating}
-          keyError={keyPair.keyError}
-          showImport={keyPair.showImport}
-          importStr={keyPair.importStr}
-          eventId={generation.eventId}
-          expiry={generation.expiry}
-          tickets={generation.tickets}
-          generating={generation.generating}
-          generateError={generation.generateError}
-          generatedQrs={generation.generatedQrs}
-          zipping={generation.zipping}
-          zipError={generation.zipError}
-          onGenerateKeys={keyPair.generateKeys}
-          onToggleImport={keyPair.toggleImport}
-          onImportStrChange={keyPair.setImportStr}
-          onImportKey={keyPair.importKey}
-          onEventIdChange={generation.setEventId}
-          onExpiryChange={generation.setExpiry}
-          onAddTicket={generation.addTicket}
-          onRemoveTicket={generation.removeTicket}
-          onUpdateTicket={generation.updateTicket}
-          onGenerate={generation.generate}
-          onDownloadSvg={generation.downloadSvgQr}
-          onDownloadZip={generation.downloadZipQrs}
+          keyPair={{
+            cryptoKeyPair: keyPair.cryptoKeyPair,
+            privateKeyJwkStr: keyPair.privateKeyJwkStr,
+            publicKeyJwkStr: keyPair.publicKeyJwkStr,
+            keyGenerating: keyPair.keyGenerating,
+            keyError: keyPair.keyError,
+            showImport: keyPair.showImport,
+            importStr: keyPair.importStr,
+            onGenerateKeys: keyPair.generateKeys,
+            onToggleImport: keyPair.toggleImport,
+            onImportStrChange: keyPair.setImportStr,
+            onImportKey: keyPair.importKey,
+          }}
+          generation={{
+            eventId: generation.eventId,
+            expiry: generation.expiry,
+            tickets: generation.tickets,
+            generating: generation.generating,
+            generateError: generation.generateError,
+            generatedQrs: generation.generatedQrs,
+            zipping: generation.zipping,
+            zipError: generation.zipError,
+            onEventIdChange: generation.setEventId,
+            onExpiryChange: generation.setExpiry,
+            onAddTicket: generation.addTicket,
+            onRemoveTicket: generation.removeTicket,
+            onUpdateTicket: generation.updateTicket,
+            onGenerate: generation.generate,
+            onDownloadSvg: generation.downloadSvgQr,
+            onDownloadZip: generation.downloadZipQrs,
+          }}
         />
       ) : (
         <VerifyTab

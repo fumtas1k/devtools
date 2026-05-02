@@ -12,7 +12,8 @@ import type { TicketPayload } from '@/utils/qr-ticket';
 /** プレビューやバイト数見積もりで使用するデフォルトの有効期限（2025-01-01T00:00:00Z） */
 const PREVIEW_FALLBACK_TIMESTAMP = 1735689600;
 
-interface GenerateTabProps {
+/** 鍵ペアセクションに渡す props */
+export interface KeyPairSectionProps {
   cryptoKeyPair: CryptoKeyPair | null;
   privateKeyJwkStr: string;
   publicKeyJwkStr: string;
@@ -20,6 +21,14 @@ interface GenerateTabProps {
   keyError: string;
   showImport: boolean;
   importStr: string;
+  onGenerateKeys: () => void;
+  onToggleImport: () => void;
+  onImportStrChange: (v: string) => void;
+  onImportKey: () => void;
+}
+
+/** チケット生成・編集・ZIPに渡す props */
+export interface GenerationSectionProps {
   eventId: string;
   expiry: string;
   tickets: TicketRow[];
@@ -28,10 +37,6 @@ interface GenerateTabProps {
   generatedQrs: GeneratedQr[];
   zipping: boolean;
   zipError: string;
-  onGenerateKeys: () => void;
-  onToggleImport: () => void;
-  onImportStrChange: (v: string) => void;
-  onImportKey: () => void;
   onEventIdChange: (v: string) => void;
   onExpiryChange: (v: string) => void;
   onAddTicket: () => void;
@@ -42,35 +47,45 @@ interface GenerateTabProps {
   onDownloadZip: () => void;
 }
 
-export function GenerateTab({
-  cryptoKeyPair,
-  privateKeyJwkStr,
-  publicKeyJwkStr,
-  keyGenerating,
-  keyError,
-  showImport,
-  importStr,
-  eventId,
-  expiry,
-  tickets,
-  generating,
-  generateError,
-  generatedQrs,
-  zipping,
-  zipError,
-  onGenerateKeys,
-  onToggleImport,
-  onImportStrChange,
-  onImportKey,
-  onEventIdChange,
-  onExpiryChange,
-  onAddTicket,
-  onRemoveTicket,
-  onUpdateTicket,
-  onGenerate,
-  onDownloadSvg,
-  onDownloadZip,
-}: GenerateTabProps) {
+interface GenerateTabProps {
+  keyPair: KeyPairSectionProps;
+  generation: GenerationSectionProps;
+}
+
+export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
+  const {
+    cryptoKeyPair,
+    privateKeyJwkStr,
+    publicKeyJwkStr,
+    keyGenerating,
+    keyError,
+    showImport,
+    importStr,
+    onGenerateKeys,
+    onToggleImport,
+    onImportStrChange,
+    onImportKey,
+  } = keyPair;
+
+  const {
+    eventId,
+    expiry,
+    tickets,
+    generating,
+    generateError,
+    generatedQrs,
+    zipping,
+    zipError,
+    onEventIdChange,
+    onExpiryChange,
+    onAddTicket,
+    onRemoveTicket,
+    onUpdateTicket,
+    onGenerate,
+    onDownloadSvg,
+    onDownloadZip,
+  } = generation;
+
   /** 共通のペイロードを構築 */
   const buildCurrentPayload = (row: TicketRow): TicketPayload => ({
     e: eventId.trim(),
