@@ -99,5 +99,8 @@ export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string
     a.download = filename;
     a.click();
   };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+  };
   img.src = url;
 }
