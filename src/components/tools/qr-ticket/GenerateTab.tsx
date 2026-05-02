@@ -416,7 +416,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
             ) : undefined
           }
         >
-          <>
+          <div>
             {zipError && (
               <div style={{ marginBottom: '1rem' }}>
                 <ErrorMessage message={zipError} />
@@ -473,7 +473,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                 </div>
               ))}
             </div>
-          </>
+          </div>
         </Section>
       )}
     </div>
