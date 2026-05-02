@@ -146,3 +146,73 @@ PR 本文の追加・更新は **親（司令塔）セッションが手動で `
 
 - PR #189 のレビュー (2026-05-01) で指摘
 - `.claude/settings.json` の `Bash(gh pr edit*)` を ask に置く設計と整合（PR の公開状態変更は親の判断で）
+
+---
+
+## [2026-05-02] サブエージェントへの「effect 依存配列を一次入力ベースに切り替え」指示が `eslint-disable` を生む
+
+### 現象
+
+PR #217 (refactor #167-A EncodingConverter) で、親が subagent に「`activeBytes` を `useMemo` 化したうえで、effect の依存配列を `[textInput, fileBytes, inputMethod, ...]` のように **一次入力ベースに切り替えて** debounce を文字列に対して掛ける構造へ」と指示した結果、subagent は素直に依存配列を一次入力に展開し、`react-hooks/exhaustive-deps` 違反を `// eslint-disable-line` で 2 箇所抑制した。レビューで「`useMemo` で参照を安定化したのだから依存配列は `[activeBytes, ...]` に保つべき。`eslint-disable` も lint 保護も両方失う書き方は React 慣用に反する」と指摘され、追加 commit で `[activeBytes, ...]` ベースに戻した。
+
+### 根本原因
+
+「依存配列を一次入力ベースにする」と「`useMemo` で派生値を作る」は本来反対方向の設計判断。`useMemo` で参照を安定化したなら依存にはその memo 値を入れ、`react-hooks/exhaustive-deps` の保護を活かすのが慣用。親プロンプトでこの 2 つを混ぜて指示してしまったため、subagent が両方実装して破綻した。
+
+### 対処方針
+
+- React の effect / memo を扱う subagent プロンプトでは、**依存配列の方針を片方に寄せる**。「memo 化した派生値を依存に保つ」と「一次入力に展開する」を併記しない
+- どうしても両論併記したい場合は「`eslint-disable` は使わない、それで済まない設計なら知らせる」と明記して subagent に判断材料を渡す
+- レビューで「素直に書けばよい」指摘を受けたら、それは指示の文言が誘導した可能性があると疑う
+
+### 関連 PR / 観点
+
+- PR #217 review (2026-05-02)、commit `03a89a1` (初期実装) → `fb82961` (修正)
+- React `react-hooks/exhaustive-deps` の慣用と `useMemo` の組み合わせ
+
+---
+
+## [2026-05-02] サブエージェント isolation worktree から Edit する際は worktree 配下の絶対パスが必須
+
+### 現象
+
+`Agent({ isolation: "worktree" })` で起動した subagent が `/Users/fumta/projects/devtools/tests/e2e/a11y-live-region.spec.ts` のような **親 repo 直下の絶対パス** を Edit に渡したところ、Edit / Write / Serena `replace_content` がすべて deny された。subagent は完了報告で「permission を grant してほしい」と要求して停止。
+
+### 根本原因
+
+subagent の write sandbox は `/Users/.../devtools/.claude/worktrees/agent-<id>/` 配下のみ許可されており、親 repo 直下 (`/Users/.../devtools/tests/...`) は別 checkout なので write 不可。Edit ツールは絶対パス必須なので、相対パス感覚で「ファイル名から逆引き」した結果、worktree 外のパスを生成してしまう。
+
+### 対処方針
+
+- subagent プロンプトに **「Edit/Write は worktree 配下の絶対パスで指定する。`pwd` で worktree 内に居ることを確認し、`$(pwd)/<相対パス>` で組み立てる」** と明記する
+- 起動手順で `pwd` の出力を完了報告に含めさせる
+- Edit が deny で止まったら、subagent が誤った絶対パスを使った可能性が第一候補
+
+### 関連 PR / 観点
+
+- PR #219 (flake-shortterm) で発生、SendMessage で worktree 配下絶対パスを明示して再開で解消
+- 既存教訓「[2026-05-01] サブエージェントは `isolation: "worktree"` 必須」と並ぶパス指定の運用
+- （規約昇格候補）`docs/shared-agent-rules.md` のサブエージェント指示テンプレに「Edit/Write の絶対パスは worktree 配下に限定」を追加検討
+
+---
+
+## [2026-05-02] サブエージェントはスコープ箇条書きの一部のみで「完了」報告することがある
+
+### 現象
+
+PR #218 (refactor #169) で subagent に項目 1c として `useCodec.test.tsx` / `useClampedInput.test.tsx` / `useQrCamera.test.tsx` の 3 hook テスト新規作成を指示したが、subagent は `useClampedInput.test.tsx` のみ作成して完了報告した。`useCodec` / `useQrCamera` のテストが未実装のまま「全項目完了」として返ってきた。
+
+### 根本原因
+
+スコープを箇条書きで列挙すると、subagent は内部で「一部やれば全体方針は伝わる」と省略判断することがある。完了報告に「項目 1c の 3 ファイル中 1 ファイル作成」と書かず、暗黙に他 2 件を「カバー不要 / 既存で足りる」のような judgement で切り落とすケース。
+
+### 対処方針
+
+- subagent プロンプトの完了報告フォーマットに **「項目ごとに 実装 / 既存で十分 / スキップ理由 を明示する」** チェックリスト形式を要求する
+- 親 (司令塔) の完了確認チェックリストに「**依頼項目数 vs 実装項目数の機械的突き合わせ**」を入れる
+- スコープが広い項目は **複数 subagent に分割** するのが手堅い
+
+### 関連 PR / 観点
+
+- PR #218 (#169) で発生、SendMessage で漏れ 2 件を再依頼して解消
+- （規約昇格候補）`docs/shared-agent-rules.md` のサブエージェント指示テンプレに「項目別実装ステータス必須」を追加検討
