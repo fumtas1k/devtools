@@ -250,3 +250,70 @@ describe('useQrCamera — startCamera の await race を塞ぐ', () => {
     expect(mockTrackStop).toHaveBeenCalled();
   });
 });
+
+// ────────────────────────────────────────────
+// useQrCamera — getUserMedia 失敗時に hook が安全に閉じる
+// ────────────────────────────────────────────
+describe('useQrCamera — getUserMedia reject 時に hook が安全に閉じる', () => {
+  it('NotAllowedError で reject すると cameraError が設定され cameraActive は false のまま', async () => {
+    const onQrDetected = vi.fn();
+    const err = Object.assign(new Error('denied'), { name: 'NotAllowedError' });
+    mockGetUserMedia.mockRejectedValueOnce(err);
+
+    const { result } = renderHook(() => useQrCamera({ onQrDetected }));
+
+    await act(async () => {
+      // catch されるので throw は伝播しない
+      await result.current.startCamera();
+    });
+
+    expect(result.current.cameraActive).toBe(false);
+    expect(result.current.cameraError).toContain('カメラへのアクセスが拒否');
+    // tick ループは開始されていない
+    expect(mockTrackStop).not.toHaveBeenCalled();
+  });
+
+  it('NotFoundError で reject すると専用メッセージの cameraError が設定される', async () => {
+    const onQrDetected = vi.fn();
+    const err = Object.assign(new Error('no camera'), { name: 'NotFoundError' });
+    mockGetUserMedia.mockRejectedValueOnce(err);
+
+    const { result } = renderHook(() => useQrCamera({ onQrDetected }));
+
+    await act(async () => {
+      await result.current.startCamera();
+    });
+
+    expect(result.current.cameraActive).toBe(false);
+    expect(result.current.cameraError).toContain('カメラが見つかりません');
+  });
+
+  it('その他のエラーで reject すると汎用メッセージの cameraError が設定される', async () => {
+    const onQrDetected = vi.fn();
+    const err = Object.assign(new Error('other'), { name: 'OtherError' });
+    mockGetUserMedia.mockRejectedValueOnce(err);
+
+    const { result } = renderHook(() => useQrCamera({ onQrDetected }));
+
+    await act(async () => {
+      await result.current.startCamera();
+    });
+
+    expect(result.current.cameraActive).toBe(false);
+    expect(result.current.cameraError).toContain('カメラの起動に失敗');
+  });
+
+  it('getUserMedia 失敗後に unmount しても例外を throw しない', async () => {
+    const onQrDetected = vi.fn();
+    const err = Object.assign(new Error('denied'), { name: 'NotAllowedError' });
+    mockGetUserMedia.mockRejectedValueOnce(err);
+
+    const { result, unmount } = renderHook(() => useQrCamera({ onQrDetected }));
+
+    await act(async () => {
+      await result.current.startCamera();
+    });
+
+    expect(() => unmount()).not.toThrow();
+  });
+});
