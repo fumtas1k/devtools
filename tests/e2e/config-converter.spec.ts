@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForReactHydration } from './helpers';
+import { applyProductionCsp, waitForReactHydration } from './helpers';
 
 test.describe('設定ファイル相互変換', () => {
   test.beforeEach(async ({ page }) => {
@@ -189,6 +189,41 @@ test.describe('設定ファイル相互変換', () => {
 
     // 入力がクリアされること
     await expect(page.getByLabel('YAML (整形)')).toHaveValue('');
+  });
+
+  test('JSON Schema 検証パネル: 本番相当 CSP 下でも検証が成功し違反が出ない（リグレッション防止）', async ({
+    page,
+  }) => {
+    // 過去に Ajv (`new Function` JIT) を採用していた時期は本ボタンが
+    // 本番 (Cloudflare Pages) で `unsafe-eval` 違反となり機能不全に陥ったが、
+    // dev server は _headers を読まないため CI が素通りしていた。
+    // 本テストは PRODUCTION_CSP を Playwright で注入することで同種の事故を
+    // CI で検知する。詳細は docs/decisions.md [061] / issue #176 参照。
+    const guard = await applyProductionCsp(page);
+    await page.goto('/tools/config-converter');
+    await page.getByLabel('JSON').waitFor();
+    await waitForReactHydration(page);
+
+    // 出力が同 JSON になるよう to=JSON にしてから入力 → 検証
+    await page
+      .getByRole('group', { name: '変換先フォーマット' })
+      .getByRole('button', { name: 'JSON' })
+      .click();
+
+    await page.getByLabel('JSON (整形)').fill('{"name": "太郎", "age": 30}');
+    await expect(page.getByLabel('JSON', { exact: true })).not.toHaveValue('');
+
+    await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
+    await page
+      .getByLabel('JSON Schema (貼り付け)')
+      .fill(
+        '{"type": "object", "required": ["name", "age"], "properties": {"name": {"type": "string"}, "age": {"type": "number"}}}'
+      );
+
+    await page.getByRole('button', { name: '検証する', exact: true }).click();
+
+    await expect(page.getByText('スキーマ検証成功')).toBeVisible();
+    guard.assertNoViolations();
   });
 
   test('JSON Schema 検証パネル: Cmd/Ctrl+Enter でスキーマ検証が実行される', async ({ page }) => {
