@@ -152,6 +152,12 @@ export function VerifyTab({
       {/* 検証結果セクション */}
       {(verifying || verificationResult) && (
         <Section title="検証結果">
+          {/*
+           * aria-live / role="status" をヘッダーごと囲む Section 外側に置かず、
+           * body 内側の div に限定している。
+           * 理由: aria-live が valid/invalid で polite↔assertive を動的に切り替えるため、
+           * Section ヘッダー文言（"検証結果"）まで読み上げ対象に入るのを避けるため。
+           */}
           <div
             role="status"
             aria-live={verificationResult && !verificationResult.valid ? 'assertive' : 'polite'}
