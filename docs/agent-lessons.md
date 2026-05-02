@@ -128,7 +128,7 @@ npm run test:e2e
 
 - PR #181 / #188 で実害あり
 - 関連 issue: #194（worktree 環境で E2E timeout を早期検出して無駄待ちを削減）
-- 現行の 3 章 push 前チェックリストに位置付ける運用が固まれば、PR #192 で新設予定の 3.2 章末尾にステップ 0「worktree が古い場合は npm ci 入れ直し」として昇格する候補
+- 2026-05-02 に **本手順を `docs/shared-agent-rules.md` 3 章 push 前必須チェックリスト ステップ 0 として昇格済み**（issue #212 / `scripts/agent-worktree-setup.sh` で自動化）。
 
 ---
 
