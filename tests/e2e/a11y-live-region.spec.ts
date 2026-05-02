@@ -8,7 +8,7 @@ import { waitForReactHydration } from './helpers';
 
 test.describe('a11y live region (issue #163)', () => {
   test('JANコード: チェック結果が role="status" として読める', async ({ page }) => {
-    await page.goto('/tools/jan-code');
+    await page.goto('/tools/jan-code', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'サンプルを入力' }).waitFor();
     await waitForReactHydration(page);
 
@@ -24,7 +24,7 @@ test.describe('a11y live region (issue #163)', () => {
   });
 
   test('UUID v7: 生成結果が role="status" として読める', async ({ page }) => {
-    await page.goto('/tools/uuid-v7');
+    await page.goto('/tools/uuid-v7', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: '生成' }).waitFor();
     await waitForReactHydration(page);
 
@@ -36,7 +36,7 @@ test.describe('a11y live region (issue #163)', () => {
   });
 
   test('JWTデコーダ: デコード結果が role="status" として読める', async ({ page }) => {
-    await page.goto('/tools/jwt-decoder');
+    await page.goto('/tools/jwt-decoder', { waitUntil: 'domcontentloaded' });
     await page.getByLabel('JWTトークンを貼り付け').waitFor();
     await waitForReactHydration(page);
 
@@ -53,7 +53,7 @@ test.describe('a11y live region (issue #163)', () => {
 
 test.describe('a11y aria-expanded (issue #163)', () => {
   test('ConfigConverter: JSON Schema 折りたたみが aria-expanded を反映する', async ({ page }) => {
-    await page.goto('/tools/config-converter');
+    await page.goto('/tools/config-converter', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'JSON Schema で検証する' }).waitFor();
     await waitForReactHydration(page);
 
@@ -70,7 +70,7 @@ test.describe('a11y aria-expanded (issue #163)', () => {
 
 test.describe('a11y CopyButton compact tap target (issue #163)', () => {
   test('UUID 一覧の compact コピーボタンは 32x32 以上の領域を持つ', async ({ page }) => {
-    await page.goto('/tools/uuid-v7');
+    await page.goto('/tools/uuid-v7', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: '生成' }).waitFor();
     await waitForReactHydration(page);
 
