@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useState } from 'react';
-import { render, act, cleanup, fireEvent } from '@testing-library/react';
+import { render, act, cleanup, fireEvent, screen } from '@testing-library/react';
 
 // `EncodingConverterTool` 内で呼ばれる encoding ユーティリティを spy 化する。
 // 直接 `runDetect` / `runConvert` を spy する代わりに、内部から呼ばれる
@@ -128,13 +128,11 @@ describe('EncodingConverterTool — 変換モードでも debounce で convert �
   it('変換モードに切替後、連続入力中は convertBytes が 1 回のみ呼ばれる', () => {
     const { container } = render(<EncodingConverterTool />);
 
-    // 変換モードに切替（ToggleGroup の「変換」ボタンを押す）
-    const convertToggle = Array.from(container.querySelectorAll('button')).find(
-      (b) => b.textContent === '変換'
-    ) as HTMLButtonElement | undefined;
-    expect(convertToggle).toBeDefined();
+    // 変換モードに切替（ToggleGroup の「変換」ボタンを押す）。
+    // textContent 一致は i18n / ラベル変更で壊れやすいため getByRole を使う。
+    const convertToggle = screen.getByRole('button', { name: '変換' });
     act(() => {
-      convertToggle!.click();
+      convertToggle.click();
     });
 
     const textarea = container.querySelector(
