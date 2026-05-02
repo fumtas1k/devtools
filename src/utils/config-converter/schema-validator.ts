@@ -72,7 +72,9 @@ function detectDraft($schema: unknown): SchemaDraft {
 function toLegacyError(unit: OutputUnit): { path: string; message: string } {
   return {
     path: unit.instanceLocation || '/',
-    message: unit.error || '',
+    // cfworker は通常 error 文字列を返すが、null/undefined のケースに当たった
+    // 場合の UI 表示崩れ（`/path: ` で右辺が空になる）を防ぐ既定値を入れる。
+    message: unit.error || '検証失敗（詳細なし）',
   };
 }
 

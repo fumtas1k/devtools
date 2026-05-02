@@ -98,5 +98,21 @@ describe('validateWithSchema', () => {
       const result = validateWithSchema({ name: '太郎' }, schema);
       expect(result.valid).toBe(true);
     });
+
+    it('未対応 draft URI（draft-06 等）は draft-07 として処理される', () => {
+      // detectDraft の現在の意図表明: 未対応 draft URI は警告無く draft-07
+      // にフォールバックする。draft-06 は draft-07 とキーワードがほぼ同一の
+      // ため運用上の問題は薄いが、将来仕様変更を入れる際の意図確認として固定。
+      const schema = {
+        $schema: 'http://json-schema.org/draft-06/schema#',
+        type: 'object',
+        properties: { x: { type: 'integer' } },
+        required: ['x'],
+      };
+      // draft-07 として解釈されるなら通る
+      expect(validateWithSchema({ x: 1 }, schema).valid).toBe(true);
+      // draft-07 として解釈されているならば required 違反は検出される
+      expect(validateWithSchema({}, schema).valid).toBe(false);
+    });
   });
 });
