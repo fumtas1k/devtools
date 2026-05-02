@@ -184,6 +184,15 @@ git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 
 > **なぜ**: CLI・Web 版を問わず `git checkout -b <branch>` だけでは worktree が `main` を起点にしてしまう既知の問題がある（過去に PR #154, #181 で発生）。ベース確認ステップがない限り発覚しない。
 
+#### rebase 後の force-with-lease push は親セッションが引き取る
+
+サブエージェントが `git rebase --onto` 等で履歴を書き換えた場合、`git push --force-with-lease` は **親セッションで実行する** こと。サブエージェント側は完了報告に「rebase したので親が `--force-with-lease` で push する必要がある旨」を明記する。
+
+理由:
+
+- `git push --force*` は `permissions.deny` または `ask`、サブエージェントから非対話で実行できない
+- 親セッションは push 前に `git diff origin/<branch>...HEAD` で履歴の正当性を確認できる立場にある（commander checklist の C 章「スコープ外差分の確認」と整合）
+
 ### 6.3 PR 作成時のベースブランチ
 
 `gh pr create` は **`--base develop`** を必ず指定する（デフォルトは `main`）:
