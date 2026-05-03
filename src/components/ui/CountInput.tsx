@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { useClampedInput } from '@/hooks/useClampedInput';
 
@@ -30,10 +29,7 @@ export function CountInput({
 
   return (
     <div>
-      <label
-        htmlFor={id}
-        style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}
-      >
+      <label htmlFor={id} className="body-emphasis text-default block mb-1">
         {label}
       </label>
       <div className="flex items-center gap-3">
@@ -51,22 +47,14 @@ export function CountInput({
               handleGenerate();
             }
           }}
-          className="rounded-lg px-3 py-2"
-          style={{
-            ...caption,
-            width: '6rem',
-            border: `1px solid ${colors.borderInput}`,
-            outline: 'none',
-            background: colors.bg,
-            color: colors.text,
-          }}
+          className="caption w-24 rounded-lg border border-input bg-default text-default px-3 py-2"
           aria-describedby={`${id}-hint`}
         />
         <ActionButton onClick={handleGenerate} variant="primary">
           {buttonLabel}
         </ActionButton>
       </div>
-      <p id={`${id}-hint`} style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
+      <p id={`${id}-hint`} className="caption text-muted mt-1">
         {min}〜{max}
       </p>
     </div>
