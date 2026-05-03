@@ -19,13 +19,15 @@
 
 以下をすべて満たしてから完了報告する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
 
-| #   | チェック項目                          | コマンド                                                                                                                                                                                 |
-| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh` を実行（古い node_modules を rm → `npm ci --cache "$TMPDIR/npm-cache"` → port 4321 kill）。詳細は `docs/agent-lessons.md` 2026-05-01 エントリ参照 |
-| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                                                                                            |
-| 2   | ユニットテスト全 pass                 | `npm run test`                                                                                                                                                                           |
-| 3   | 型チェック                            | `node_modules/.bin/astro check`（0 errors）                                                                                                                                              |
-| 4   | E2E テスト                            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ）                                                                                                           |
+| #   | チェック項目                          | コマンド                                                                       |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------ |
+| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh`（詳細は下記参照）                       |
+| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致  |
+| 2   | ユニットテスト全 pass                 | `npm run test`                                                                 |
+| 3   | 型チェック                            | `node_modules/.bin/astro check`（0 errors）                                    |
+| 4   | E2E テスト                            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ） |
+
+> **ステップ 0 の詳細**: 古い node_modules を rm → `npm ci --cache "$TMPDIR/npm-cache"` → port 4321 kill。背景は `docs/agent-lessons.md` 2026-05-01 エントリ参照。
 
 ### 2.2 親セッション版
 

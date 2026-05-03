@@ -90,6 +90,7 @@ post-PR 代行は不要、CI が最終ゲート。
 
 - **`develop` には直接コミットしない**: 必ず feature ブランチを切る。誤って始めた場合は `git stash` → ブランチ切替 → `git stash pop`。
 - **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b <type>/<slug>`（例: `feat/add-tool`, `fix/issue-123-crash`）。issue がある場合は `<type>/issue-<n>-<slug>` 形式を推奨。
+- **必ず `origin/develop` 起点を明示**: `git checkout -b <branch>` だけでは worktree が `main` を起点にしてしまう既知問題があり（過去に PR #154, #181 で発生）、ベース確認ステップがないと発覚しない。完成形コマンドと自己検証手順は `docs/playbooks/pr-creation.md` 1.1 章。
 
 ブランチ作成完成形コマンド・自己検証・rebase 後 push の親引き取り → **`docs/playbooks/pr-creation.md` 1〜2 章**
 

@@ -67,13 +67,14 @@ git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 ## 4. PR 作成コマンド
 
 ```bash
-gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
+gh pr create --base develop --title "..." --body-file "$TMPDIR/pr_body.md"
+# または: gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
 ```
 
 - `--base develop` は **必ず明示**（`gh` のデフォルトは `main`）。
 - 本文は **必ず日本語**。
 - バックティック含有時は `-F` / `--body-file` 経由で投稿（`docs/shared-agent-rules.md` 6.1）。
-- 一時ファイルは `$TMPDIR` か `/tmp/claude/` 配下に置く（settings.json permissions と整合）。
+- 一時ファイルは `$TMPDIR` か `/tmp/claude/` 配下に置く（`Write(/tmp/claude/**)` は allow、`Write(/tmp/**)` は ask）。
 
 ---
 
