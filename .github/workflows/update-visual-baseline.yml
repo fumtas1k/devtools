@@ -1,0 +1,46 @@
+name: Update Visual Regression Baseline
+
+on:
+  # default branch にマージ後は workflow_dispatch (手動 trigger) でのみ実行する。
+  # baseline を意図的に再生成したい時（design system 変更、フォント更新等）に
+  # GitHub Actions UI から手動起動する想定。
+  # 注意: workflow_dispatch は workflow 定義が default branch (develop) に存在することが前提。
+  # 本 PR merge 後に有効化される。
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-baseline:
+    # default branch (develop / main) 上で誤って trigger された場合は no-op。
+    # branch protection 違反を回避し、「baseline 更新は必ず PR ブランチで」を workflow レベルで強制。
+    if: github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Playwright ブラウザをインストール
+        run: npx playwright install --with-deps chromium
+      - name: 本番相当アセットを build
+        run: npm run build
+      - name: Visual regression baseline を再生成
+        run: npx playwright test --project=visual-regression --workers=1 --update-snapshots
+      - name: 変更があれば commit & push
+        run: |
+          if [ -n "$(git status --porcelain tests/e2e/visual-regression.spec.ts-snapshots/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tests/e2e/visual-regression.spec.ts-snapshots/
+            git commit -m "test(vrt): visual regression baseline を CI Linux runner で再生成"
+            git push
+          else
+            echo "baseline 差分なし、commit skip"
+          fi

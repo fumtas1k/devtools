@@ -16,9 +16,17 @@ export default defineConfig({
     timeout: 5000,
   },
   projects: [
+    // #VRT: 通常の E2E テスト用（visual regression spec を除外）
     {
-      name: 'chromium',
+      name: 'e2e',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: ['**/visual-regression.spec.ts'],
+    },
+    // #VRT: visual regression test 専用（spec 限定、mock 注入は spec 内 addInitScript で実施）
+    {
+      name: 'visual-regression',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: ['**/visual-regression.spec.ts'],
     },
   ],
   webServer: (() => {
