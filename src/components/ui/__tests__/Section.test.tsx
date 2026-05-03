@@ -71,9 +71,9 @@ describe('Section', () => {
         <p>コンテンツのみ</p>
       </Section>
     );
-    // ヘッダーに使われる bgSubtle スタイルを持つ div は存在しない
+    // ヘッダーに使われる bg-subtle クラスを持つ div は存在しない
     const headerDivs = Array.from(container.querySelectorAll('div')).filter((el) =>
-      (el as HTMLElement).style.background.includes('var(--color-bg-subtle)')
+      (el as HTMLElement).className.includes('bg-subtle')
     );
     expect(headerDivs).toHaveLength(0);
   });
@@ -85,9 +85,9 @@ describe('Section', () => {
       </Section>
     );
     const allDivs = container.querySelectorAll('div');
-    // headerSlot がないとき display: flex の指定がない
-    const flexDivs = Array.from(allDivs).filter(
-      (el) => (el as HTMLElement).style.display === 'flex'
+    // headerSlot がないとき flex クラスの指定がない
+    const flexDivs = Array.from(allDivs).filter((el) =>
+      (el as HTMLElement).className.split(' ').includes('flex')
     );
     expect(flexDivs).toHaveLength(0);
   });
