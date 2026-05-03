@@ -19,15 +19,17 @@
 
 以下をすべて満たしてから完了報告する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
 
-| #   | チェック項目                          | コマンド                                                                       |
-| --- | ------------------------------------- | ------------------------------------------------------------------------------ |
-| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh`（詳細は下記参照）                       |
-| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致  |
-| 2   | ユニットテスト全 pass                 | `npm run test`                                                                 |
-| 3   | 型チェック                            | `node_modules/.bin/astro check`（0 errors）                                    |
-| 4   | E2E テスト                            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ） |
+| #   | チェック項目          | コマンド                                                                       |
+| --- | --------------------- | ------------------------------------------------------------------------------ |
+| 0   | node_modules 整備     | `npm ci`（fresh worktree なら 5〜10 秒で完了。詳細は下記参照）                 |
+| 1   | develop ベース確認    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致  |
+| 2   | ユニットテスト全 pass | `npm run test`                                                                 |
+| 3   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                    |
+| 4   | E2E テスト            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ） |
 
-> **ステップ 0 の詳細**: 古い node_modules を rm → `npm ci --cache "$TMPDIR/npm-cache"` → port 4321 kill。背景は `docs/agent-lessons.md` 2026-05-01 エントリ参照。
+> **ステップ 0 の補足**: fresh subagent isolation worktree では node_modules が存在しないため、素の `npm ci` のみで十分（過去の `scripts/agent-worktree-setup.sh` は不要と判明し、issue #241 / decisions [062] で廃止）。`.claude/settings.json` の SessionStart hook が `npm ci` を auto-run するので通常は明示実行も不要だが、未実行を疑う場合は手動で再実行する。
+>
+> **既存パッケージの version 操作・削除に注意**: `.idea/` `.vscode/` を同梱する推移依存パッケージ（現プロジェクトでは `iconv-lite` / `stream-replace-string`）の upgrade / uninstall は sandbox の write 制約で EPERM になる可能性あり。新規追加 (`npm install foo`) は影響なし。詳細は issue #241 参照。
 
 ### 2.2 親セッション版
 
@@ -70,4 +72,63 @@ PR 作成手順を含むため `docs/playbooks/pr-creation.md` 3 章を参照。
 | 型チェック                 | `node_modules/.bin/astro check`                  |
 | 型チェック（特定ファイル） | `npx astro check --filter <file>`                |
 | E2E テスト                 | `npm run test:e2e` ❌ `npm run e2e` は存在しない |
-| worktree 整地              | `bash scripts/agent-worktree-setup.sh`           |
+| node_modules 整備          | `npm ci`                                         |
+| port 4321 解放             | `npm run pretest:e2e`                            |
+
+---
+
+## 6. 緊急復旧（普段は不要、トラブル時のみ）
+
+通常は SessionStart hook の auto `npm ci` と push 前必須チェックリストで十分。以下は稀な環境異常時に手順を思い出すためのリファレンス。
+
+### 6.1 port 4321 が占有されている
+
+E2E が `ECONNREFUSED 127.0.0.1:4321` や `webServer was not ready` で失敗する場合、前回の dev server や別 worktree の dev server が残っている可能性。
+
+```bash
+npm run pretest:e2e   # 既存 npm script。中身は lsof -ti:4321 | xargs kill -9
+```
+
+`npm run test:e2e` は pre-hook で自動実行するので、通常は気にしなくて良い。手動で kill だけしたい時に使う。
+
+### 6.2 node_modules が壊れて `npm ci` が EPERM で失敗する
+
+`.idea/` `.vscode/` 同梱パッケージの版差で `rm -rf node_modules` が EPERM 中断する稀ケース。`npm ci` 内部の rm でも同症状になる。
+
+```bash
+# 該当ディレクトリだけ /tmp に退避してから npm ci
+mv node_modules/iconv-lite/.idea "$TMPDIR/abandoned-idea-$$" 2>/dev/null
+mv node_modules/stream-replace-string/.vscode "$TMPDIR/abandoned-vscode-$$" 2>/dev/null
+rm -rf node_modules
+npm ci
+```
+
+`mv` が通って `rm` が EPERM になるのは sandbox の `.idea/.vscode` 保護による（issue #241 の検証で判明）。
+
+### 6.3 `~/.npm` が root-owned で `npm ci` が EACCES
+
+過去に `sudo npm install` した形跡がある環境で発生。
+
+**永続修復（推奨・1 回のみ）**:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" ~/.npm
+```
+
+**ワークアラウンド（その場限り）**:
+
+```bash
+npm ci --cache "$TMPDIR/npm-cache"
+```
+
+### 6.4 sandbox 由来の read-only な node_modules ファイル
+
+過去 PR #168 / #181 / #188 で発生した古い症状。長期間再利用された worktree で sandbox 経由の install が積み重なって権限がねじれる。fresh subagent isolation worktree では発生しないが、参考として残す。
+
+```bash
+chmod -R u+w node_modules 2>/dev/null || true
+rm -rf node_modules
+npm ci
+```
+
+詳細は `docs/agent-lessons.md` 2026-05-01 entry「worktree の node_modules が古いと E2E が hydration timeout で大量失敗する」参照。

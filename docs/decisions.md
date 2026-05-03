@@ -2148,3 +2148,85 @@ of script: script-src 'self' 'unsafe-inline'.
 
 - 本 PR (config-converter CSP 修正 + デグレ検知ゲート)
 - 決定 [054]（CSP 初実装。末尾の「dev/preview 非適用 CSP の検証は将来課題」が本件で具体化）
+
+---
+
+## [062] 2026-05-03 — `agent-worktree-setup.sh` を廃止し SessionStart hook で `npm ci` 自動化に移行
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+`scripts/agent-worktree-setup.sh` は subagent isolation worktree で E2E を回す前に node_modules を「整地」するヘルパーとして 2026-05-02（PR #212）に追加された。docstring が想定する 4 つの問題:
+
+1. sandbox 由来の read-only ファイルを `chmod -R u+w` で書き込み可能化
+2. 古い node_modules を `rm -rf` で削除
+3. `~/.npm` が root-owned 問題を `--cache "$TMPDIR/npm-cache"` で回避
+4. port 4321 を `lsof | xargs kill -9` で解放
+
+PR #240（ルールファイル整理）の派生検証で、上記いずれも **fresh subagent isolation worktree では実態として発生しない** ことが判明した。さらに、スクリプト自身が sandbox 環境では `.idea/` `.vscode/` 同梱の推移依存パッケージで `rm -rf node_modules` が EPERM になり中断する弱点も持つ（実際に検証中、親の作業ディレクトリで誤って実行され node_modules を破壊する事故が発生し復旧が必要だった）。
+
+### 検証結果（sonnet subagent + isolation worktree、2026-05-03）
+
+| 想定された問題             | 実態                                           |
+| -------------------------- | ---------------------------------------------- |
+| (1) sandbox 由来 read-only | fresh worktree に node_modules 不在 → 発生せず |
+| (2) 古い node_modules 削除 | 同上                                           |
+| (3) `~/.npm` root-owned    | 現環境では 501:20 owned で正常 → 回避不要      |
+| (4) port 4321 占有         | fresh worktree に dev server 無し → 発生せず   |
+
+素の `npm ci` で **exit 0 / 5〜10 秒 / 558 packages** インストール完了、`astro check` 0 errors を実測。
+
+### 決断
+
+`scripts/agent-worktree-setup.sh` を削除し、subagent への node_modules 整備手段を素の `npm ci` 一本化する。
+
+加えて、subagent が `npm ci` を忘れて E2E が hydration timeout になる事故を防ぐため、`.claude/settings.json` の SessionStart hook を以下の通り緩和して subagent isolation worktree でも auto-run するようにする:
+
+```diff
+- "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ] && [ ! -d node_modules ]; then npm ci; fi"
++ "command": "if [ ! -d node_modules ] && [ -f package-lock.json ]; then npm ci; fi"
+```
+
+`CLAUDE_CODE_REMOTE` 限定だった条件を「lockfile があり node_modules 不在なら一律実行」に変更することで、cloud session・subagent isolation worktree・初回 clone のいずれでも発火する。
+
+3 層防御で「subagent が npm ci を忘れる」事故を抑止する:
+
+1. **SessionStart hook (自動・主要)**: 緩和した条件で auto-run
+2. **Playbook 規約**: `docs/playbooks/pr-creation.md` 1.1 章のブランチ作成手順に `npm ci` 行を明示追加
+3. **Playbook step 0**: `docs/playbooks/e2e-validation.md` push 前必須チェックリスト ステップ 0 で再確認
+
+### 却下した選択肢
+
+- **スクリプトを修正して動くようにする**（`mv` フォールバック等）: そもそも 4 つの想定問題が fresh worktree で発生しないため、複雑性を足す価値がない。「問題を起こすコードを丁寧に修正する」より「問題を起こさない単純解に置き換える」が KISS。
+- **スクリプトを残し deprecation コメントだけ追加**: 親の作業ディレクトリで誤って実行された際の node_modules 破壊リスクが残る。実際に検証中に発生したため、削除が安全。
+- **SessionStart hook を変更しない**: subagent が `npm ci` を忘れた場合、E2E が hydration timeout で失敗するまで気付けない。手動回復は復旧に時間がかかる（過去の症状が再発する）。
+- **`CLAUDE_CODE_REMOTE` の代わりに subagent 検出（cwd に `.claude/worktrees/agent-` を含むか）を条件にする**: より厳密だが、ローカル CLI 環境で初回 clone した場合などにも npm ci を auto-run したいので、よりシンプルな「lockfile + node_modules 不在」で十分。
+
+### 影響 / 移行
+
+- **削除ファイル**: `scripts/agent-worktree-setup.sh`
+- **更新ファイル**:
+  - `scripts/README.md` — 該当 section 削除
+  - `docs/playbooks/e2e-validation.md` — step 0 を `npm ci` に変更、補足注に npm install シナリオ別 caveats を追加
+  - `docs/playbooks/pr-creation.md` — ブランチ作成完成形に `npm ci` 追加、step 0 を `npm ci` に変更
+  - `docs/agent-lessons.md` — 2026-05-01 entry に「2026-05-03 追記」セクション
+  - `.claude/settings.json` — SessionStart hook 条件緩和（本 PR の別 commit で対応予定）
+- **後方互換**: `bash scripts/agent-worktree-setup.sh` を呼ぶ既存の指示書 / プロンプトテンプレートが残っていたら `npm ci` に置換する必要あり
+
+### npm install シナリオ別の sandbox caveats（補足）
+
+`npm ci` 後に `npm install` 系を走らせる場合の sandbox 影響:
+
+- **新規追加** `npm install foo`: 問題なし（network / 新規 dir 作成 / lockfile 更新は全て allow 範囲）
+- **アップグレード** `npm install foo@new`: foo が `.idea/` `.vscode/` 同梱の場合、古い版の削除フェーズで EPERM の可能性
+- **削除** `npm uninstall foo`: アップグレードと同様
+
+該当しそうな推移依存: `iconv-lite`（`.idea/` 同梱）/ `stream-replace-string`（`.vscode/` 同梱）。直接依存ではないが推移依存先のメジャー更新で巻き込まれる可能性あり。詰まったら親 CLI セッションで実行するか、`mv` で退避してから再 install。
+
+### 関連 PR / issue
+
+- 本 PR (#241 対応、agent-worktree-setup.sh 廃止 + hook 緩和)
+- issue [#241](https://github.com/fumtas1k/devtools/issues/241)（廃止検討）
+- PR [#240](https://github.com/fumtas1k/devtools/pull/240)（ルール整理、本検証の発端）
+- 決定 [057]（E2E 実行責務の親移管。本 [062] で subagent への自動 npm ci によって責務分担が再度更新される）
