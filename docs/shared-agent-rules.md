@@ -40,84 +40,14 @@
 
 ---
 
-## 3. 実装後の検証義務
+## 3. 実装後の検証義務（要点）
 
 **E2E テストは実装と同時に書く**: バグ修正・UI 挙動の変更時はコミット前に該当ケースの E2E を追加する。後回し禁止。
 
-### 3.1 サブエージェントの検証範囲
+**push 前に必須**: `npm run test`（ユニット）／ `node_modules/.bin/astro check`（型）／ `npm run test:e2e`（E2E）。
+post-PR 代行は不要、CI が最終ゲート。
 
-サブエージェント（worktree 内で動作するエージェント）は以下のルールに従う。
-
-- **E2E テストコードの追加は義務**: バグ修正・UI 挙動変更時は E2E テストコードを必ず追加する（11 章の原則と同じ）。
-- **`npm run test:e2e` の実行は必須**: push 前に 3.2 章のチェックリストに従い E2E を実行する。env 不備（古い node_modules / port 4321 占有等）で走らない場合は未完了の旨を完了報告に明記して親に引き継ぐ。
-- 検証範囲は `npm run test`（ユニット）、`node_modules/.bin/astro check`（型）、および `npm run test:e2e`（E2E）。
-
-#### push 前必須チェックリスト（サブエージェント）
-
-以下をすべて満たしてから完了報告する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
-
-| #   | チェック項目                          | コマンド                                                                                                                                                                                 |
-| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh` を実行（古い node_modules を rm → `npm ci --cache "$TMPDIR/npm-cache"` → port 4321 kill）。詳細は `docs/agent-lessons.md` 2026-05-01 エントリ参照 |
-| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                                                                                            |
-| 2   | ユニットテスト全 pass                 | `npm run test`                                                                                                                                                                           |
-| 3   | 型チェック                            | `node_modules/.bin/astro check`（0 errors）                                                                                                                                              |
-| 4   | E2E テスト                            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ）                                                                                                           |
-
-### 3.2 E2E は push 前に必ず実行（親 / サブエージェント共通）
-
-E2E (`npm run test:e2e`) は code change を含む push を行う前に **必ず実行する**。push 後は CI が自動で E2E を回すため、**親セッションによる post-PR 代行は不要**（旧運用は廃止）。
-
-#### push 前 E2E の実行責任
-
-- **subagent worktree で push する場合**: subagent が pre-push チェックの一部として `npm run test:e2e` まで通す。env 不備（古い node_modules / port 4321 占有 / vite serving allow list エラー等）が原因で走らない場合は親に引き継ぐ
-- **親セッションが直接 push する場合**: 親が `npm run test:e2e` を pre-push で走らせる
-- **CI**: post-push の最終ゲート。pre-push で通っていれば green になることを期待
-
-#### worktree 並走時の注意
-
-- 複数 subagent worktree が同時に E2E を回すとポート 4321 が衝突する。1 worktree ずつ実行する
-- agent worktree は新規作成時 node_modules が空または不整合なため、push 前必須チェックリストのステップ 0 (worktree 整地) を必ず先行する
-
-#### 失敗パターンの判定
-
-- **テスト本来の失敗**（assertion error、要素が見つからない等）→ 修正してから再実行
-- **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ ステップ 0 の整地を実施してから 1 回だけ再実行
-- 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
-
-> 補足: `playwright.config.ts` の `webServer.timeout` は 30s（PR #213）。env 由来失敗の発見はこのタイムアウトで早期に確定する（旧来のような長時間ハングは起きない）。
-
-#### push 前必須チェックリスト（親）
-
-親セッションが直接 push する際は、以下をすべて確認する。
-
-| #   | チェック項目                          | コマンド                                                                                                               |
-| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh` を実行（worktree 内で push する場合のみ）                                       |
-| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                          |
-| 2   | スコープ外差分の確認                  | `git diff origin/develop --name-only` で想定外ファイルがないか確認。aria-\* 削除行（`git diff` の `-` 行）がないか確認 |
-| 3   | E2E 直列実行                          | `npm run test:e2e`（複数 worktree がある場合は同時実行しない）                                                         |
-| 4   | PR ベース                             | `gh pr create --base develop`                                                                                          |
-
-#### 親向けレビュー取得手順（取りこぼし防止）
-
-PR には **2 系統のコメント**があり、両方確認すること。**Issue comments API だけを見ると、GitHub の "Submit review" 機能で投稿された正式レビューを完全に取りこぼす**（過去に PR #187 / #188 / #189 で発生 — 2026-05-01）。
-
-```bash
-# (1) Issue comments（`gh pr comment` で投稿されるもの）
-gh api "repos/<owner>/<repo>/issues/<n>/comments" --jq '.[].body'
-
-# (2) Pull Request reviews（"Submit review" 機能で投稿されるもの）
-gh api "repos/<owner>/<repo>/pulls/<n>/reviews" --jq '.[].body'
-```
-
-`gh pr view <n> --json reviews` も内部的に (2) を取得するため、`gh api` を使う場合は両方を読むこと。返信は `gh pr comment <n> --body-file` で OK（Issue comment として投稿される）。
-
-> 関連: issue #193（E2E web-first assertions のテスト記述ガイドライン）
-
-> macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
-
-> ポート 4321 以外を使う場合は `4321` を対象ポートに読み替える。
+詳細手順（サブエージェント / 親別 push 前必須チェックリスト・worktree 整地・失敗パターン判定） → **`docs/playbooks/e2e-validation.md`**
 
 ---
 
@@ -156,50 +86,22 @@ gh api "repos/<owner>/<repo>/pulls/<n>/reviews" --jq '.[].body'
 
 `gh` コマンドで複数行・バックティック（\`）を含む本文を渡すときは、**直接引数に渡さず一時ファイル経由で投稿すること**。具体的には `-F`または`--body-file` オプションを使用する（MCP / API 経由は不要）。失敗時は投稿状況を必ず確認し、重複は削除して整合性を保つ。
 
-### 6.2 ブランチ運用
+### 6.2 ブランチ運用（要点）
 
 - **`develop` には直接コミットしない**: 必ず feature ブランチを切る。誤って始めた場合は `git stash` → ブランチ切替 → `git stash pop`。
-- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b <type>/<slug>`（例: `feat/add-tool`, `fix/issue-123-crash`）。issue がある場合は `<type>/issue-<n>-<slug>` 形式を推奨（詳細は 6.2a 参照）。
+- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b <type>/<slug>`（例: `feat/add-tool`, `fix/issue-123-crash`）。issue がある場合は `<type>/issue-<n>-<slug>` 形式を推奨。
 
-### 6.2a ブランチ作成の完成形コマンドと自己検証
-
-サブエージェントを含むすべての実装担当は、以下のコマンドをそのままコピーして実行すること。
-
-```bash
-# ブランチ作成（develop 起点を必ず明示）
-git fetch origin develop
-git switch -c <type>/issue-<n>-<slug> origin/develop
-
-# 自己検証（ベース確認）— 2 行の出力が一致しなければ作業を止めてリベースする
-git rev-parse origin/develop
-git merge-base HEAD origin/develop
-```
-
-**2 行の出力が一致しない場合は作業を停止**し、以下でリベースしてから再確認する:
-
-```bash
-# `merge-base` が `origin/develop` の祖先（典型的には `main` 起点で worktree が切られたケース）で有効
-git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
-```
-
-> **なぜ**: CLI・Web 版を問わず `git checkout -b <branch>` だけでは worktree が `main` を起点にしてしまう既知の問題がある（過去に PR #154, #181 で発生）。ベース確認ステップがない限り発覚しない。
-
-#### rebase 後の force-with-lease push は親セッションが引き取る
-
-サブエージェントが `git rebase --onto` 等で履歴を書き換えた場合、`git push --force-with-lease` は **親セッションで実行する** こと。サブエージェント側は完了報告に「rebase したので親が `--force-with-lease` で push する必要がある旨」を明記する。
-
-理由:
-
-- `git push --force*` は `permissions.deny` または `ask`、サブエージェントから非対話で実行できない
-- 親セッションは push 前に `git diff origin/<branch>...HEAD` で履歴の正当性を確認できる立場にある（commander checklist の C 章「スコープ外差分の確認」と整合）
+ブランチ作成完成形コマンド・自己検証・rebase 後 push の親引き取り → **`docs/playbooks/pr-creation.md` 1〜2 章**
 
 ### 6.3 PR 作成時のベースブランチ
 
 `gh pr create` は **`--base develop`** を必ず指定する（デフォルトは `main`）:
 
 ```bash
-gh pr create --base develop --title "..." --body-file /tmp/pr_body.md
+gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
 ```
+
+PR 作成・親 push 前チェックリスト・親向けレビュー取得手順 → **`docs/playbooks/pr-creation.md` 3〜5 章**
 
 ### 6.4 先送り（deferral）時は必ず issue 化する
 
@@ -232,23 +134,12 @@ Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50`
 
 ※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は使用可。
 
-UI コンポーネントを実装・改修する際の詳細パターン（ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否 等）は **`docs/ui-conventions.md` 2章** を参照すること。
+UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影して目視確認すること。
+共通コンポーネント・ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否・Playwright 撮影手順・目視確認チェックリスト等の詳細 → **`docs/ui-conventions.md`**
 
 ---
 
-## 8. UI 変更時の目視確認 (Playwright)
-
-UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影し、コミット前に以下を目視確認:
-
-- 入力・出力エリアの上端揃え／スマホ幅で縦並びレイアウトに切替
-- ボタンの隠れ・重なりがないか／ラベル行高さの左右揃え
-- フォーカスリングの見切れ／タップ領域 ≥ 44x44px
-
-撮影手順・ロケーター推奨など Playwright の詳細は **`docs/ui-conventions.md` 3章** を参照すること。
-
----
-
-## 9. プロジェクト構造
+## 8. プロジェクト構造
 
 - `src/components/tools/`: ツール本体 (React TSX)
 - `src/components/ui/`: 共通UIコンポーネント (`InputField`, `CopyButton` 等)
@@ -259,28 +150,30 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 - `docs/shared-agent-rules.md`: 本ドキュメント（常時遵守する共通規約）
 - `docs/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
 - `docs/agent-lessons.md`: 教訓バッファ（共通ルール化前の蓄積場所）
+- `docs/playbooks/`: タスク開始時に読む手順書（PR 作成 / E2E 検証 等）
+- `docs/setup/`: 環境セットアップ手順（プラグイン install / Gemini policy 等）
 - `tasks/active_context.md`: セッション固有の作業コンテキスト（gitignore 対象）
 
 ---
 
-## 10. コード規約・編集時の安全規則
+## 9. コード規約・編集時の安全規則
 
-### 10.1 React / TypeScript 記法
+### 9.1 React / TypeScript 記法
 
 - JSX / TSX では `class` ではなく **`className`** を使う。
 - `<label>` の `for` 属性は **`htmlFor`** を使う。
 - TypeScript の警告は自分で発見・修正する。ユーザーに指摘させない。
 
-### 10.2 セキュリティ設定変更の禁止
+### 9.2 セキュリティ設定変更の禁止
 
 セキュリティ関連の設定（`.npmrc`・`npm audit` 設定・CI 設定・`.githooks/*` 等）は、**ユーザーの明示的な承認なしに変更・無効化してはならない**。
 
-### 10.3 部分置換時のインポート保護・末尾空白
+### 9.3 部分置換時のインポート保護・末尾空白
 
 - 部分編集前にファイル全体（特に import）を確認。3 箇所以上の変更や import 追加を伴う場合はファイル全体を書き直す。
 - ファイル末尾の空白（trailing whitespace）を含めない。
 
-### 10.4 変更直後の型チェック
+### 9.4 変更直後の型チェック
 
 コード（特に import / JSX）を編集した直後に必ず実行する:
 
@@ -289,11 +182,11 @@ node_modules/.bin/astro check       # 全体
 npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 ```
 
-### 10.5 SVG / `dangerouslySetInnerHTML` の XSS 対策
+### 9.5 SVG / `dangerouslySetInnerHTML` の XSS 対策
 
 外部入力をそのまま挿入すると **反射型 XSS** になる。必ずエスケープ／サニタイズしてから挿入し、可能なら React 要素として組み立てる。
 
-### 10.6 a11y 属性・role 属性の保護
+### 9.6 a11y 属性・role 属性の保護
 
 `aria-*` 属性（`aria-live`, `aria-expanded`, `aria-controls`, `aria-label`, `aria-hidden` 等）および
 `role=` 属性は、**明示的に許可されていない限り削除してはならない**。
@@ -306,7 +199,7 @@ npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 
 ---
 
-## 11. 目的の維持とスコープ管理 (ATC運用)
+## 10. 目的の維持とスコープ管理 (ATC運用)
 
 実装中の脱線・スコープ外修正を防ぐため、すべての AI エージェントは **Active Task Context (ATC)** を運用する。
 
@@ -354,7 +247,7 @@ npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 
 ---
 
-## 12. 教訓の運用 (`docs/agent-lessons.md`)
+## 11. 教訓の運用 (`docs/agent-lessons.md`)
 
 `docs/agent-lessons.md` は教訓を一時蓄積する **バッファ**。本ドキュメントが共通ルールの単一の真実源（Single Source of Truth）であり、再発防止に値する内容は本ドキュメントへ昇格させる。
 

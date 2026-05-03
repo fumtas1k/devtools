@@ -4,7 +4,7 @@
 
 - 共通ルール化すべき内容は `docs/shared-agent-rules.md` に昇格させ、本ファイルから削除する。
 - セッション開始時に必ず読む必要はない（PR 作成前や定期整理時に見直す）。
-- 詳細な運用ルールは `docs/shared-agent-rules.md` 11章を参照。
+- 詳細な運用ルールは `docs/shared-agent-rules.md` 11 章（教訓の運用）を参照。
 - 「（規約昇格候補）」と注記した項目は、次回 `agent-lessons.md` の整理タイミングで `shared-agent-rules.md` への昇格 / issue 化 / 削除のいずれかを判断する。
 
 ---
@@ -122,13 +122,13 @@ npm run test:e2e
 - `chmod -R u+w` で sandbox 由来の read-only ファイルを書き込み可能にしてから削除する。
 - `npm ci --cache "$TMPDIR/npm-cache"` で `~/.npm` の root 所有問題を回避（`sudo chown` できない sandbox 環境で有効）。
 - E2E 実行前に既存の dev server を kill しておく（worktree 並列実行時の port 4321 衝突対策）。
-- 上記でも `waitForReactHydration` timeout が続く場合は **env 由来失敗**と判断し、push して CI を最終ゲートにする（`docs/shared-agent-rules.md` 3 章（push 前必須チェックリスト）の方針）。
+- 上記でも `waitForReactHydration` timeout が続く場合は **env 由来失敗**と判断し、push して CI を最終ゲートにする（`docs/playbooks/e2e-validation.md` 4 章「失敗パターンの判定」の方針）。
 
 ### 関連 PR / 観点
 
 - PR #181 / #188 で実害あり
 - 関連 issue: #194（worktree 環境で E2E timeout を早期検出して無駄待ちを削減）
-- 2026-05-02 に **本手順を `docs/shared-agent-rules.md` 3 章 push 前必須チェックリスト ステップ 0 として昇格済み**（issue #212 / `scripts/agent-worktree-setup.sh` で自動化）。
+- 2026-05-02 に **本手順を `docs/playbooks/e2e-validation.md` 2.1 章 push 前必須チェックリスト ステップ 0 として昇格済み**（issue #212 / `scripts/agent-worktree-setup.sh` で自動化）。
 
 ---
 
