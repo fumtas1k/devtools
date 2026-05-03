@@ -2357,7 +2357,42 @@ XSS sink への inline script 注入 (`<script>maliciousCode()</script>`) を考
 
 ### 関連 PR / issue
 
-- 本 PR: 実装時に番号置換
+- 本 PR: [#249](https://github.com/fumtas1k/devtools/pull/249)
 - 解消する issue: [#176](https://github.com/fumtas1k/devtools/issues/176)（A-1 完了）
 - 前提依存: [063]（E2E preview 切替）／[061]（CSP 違反 CI 検知ゲート）／[054]（CSP 初導入）
 - 後続: [#176](https://github.com/fumtas1k/devtools/issues/176) の B 案（`style-src 'unsafe-inline'` 削減）
+
+---
+
+## [065] 2026-05-03 — Playwright `webServer` を `process.env.CI` で分岐
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+[063] で `webServer.command` を `npm run build && npm run preview ...` に切替えた際、`.github/workflows/test.yml` 側でも `npm run build` step を追加したため **CI で build が 2 回走る**構成になっていた（webServer 内 build は incremental cache で軽いとはいえ wasteful、CI ログ可読性も悪化）。加えて `reuseExistingServer: true` + preview の組み合わせで、ローカルで開発者が手動 `npm run preview` を起動したまま `npm run test:e2e` を回すと **古い `dist/` に対して E2E が silent pass** する罠が発生する（dev 時代は HMR で吸収されていた）。
+
+PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で対応することにした。
+
+### 決断
+
+`playwright.config.ts:webServer` を `process.env.CI` で分岐する:
+
+- **CI**: `command: 'npm run preview -- --port 4321'`（事前 step で build 済み）、`timeout: 30_000`（preview 起動は瞬時、env 由来失敗を早期検知）、`reuseExistingServer: true`（fresh runner なので影響なし）
+- **Local**: `command: 'npm run build && npm run preview ...'`（build 忘れの safety net）、`timeout: 120_000`（build 時間込み）、`reuseExistingServer: false`（毎回新規 build/preview で stale dist trap を回避）
+
+ローカルで毎回 build が走るのは incremental cache で 2 回目以降数秒、開発体験への影響は軽微。
+
+### 影響 / 移行
+
+- **CI 実行時間**: build の重複実行がなくなり ~25s 短縮（cold start で計測）
+- **ローカル開発**: `npm run test:e2e` 実行ごとに incremental build が走る。手動 preview を別途起動した状態での E2E は port 衝突で失敗するため、`npm run pretest:e2e` で port 解放してから実行
+- **fail-fast**: CI の env 由来失敗（webServer 起動不可等）が 30s で確定
+- **後続作業**: なし（独立完結）
+
+### 関連 PR / issue
+
+- 本 PR: [#251](https://github.com/fumtas1k/devtools/pull/251)
+- 解消する issue: [#248](https://github.com/fumtas1k/devtools/issues/248)
+- 起源: PR #247 セルフレビュー I-2 / I-3
+- 関連: [063]（preview 切替）

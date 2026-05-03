@@ -21,14 +21,22 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    // #246: security.csp の `<meta>` を含めた本番相当 CSP を E2E で評価するため
-    // dev server ではなく `astro build` 後の `dist/` を `astro preview` で配信する。
-    // build はキャッシュが効くと数秒、cold でも 15〜25s 程度。preview 起動は瞬時。
-    command: 'npm run build && npm run preview -- --port 4321',
-    url: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321',
-    // build 時間を含むため 30s → 120s に延長（cold start でも収まる余裕）
-    timeout: 120_000,
-    reuseExistingServer: true,
-  },
+  webServer: (() => {
+    // #248: CI と local で webServer 設定を分ける
+    // - CI: `.github/workflows/test.yml` が事前に `npm run build` を走らせるため
+    //   webServer は preview だけで十分。timeout は 30s（fail-fast、env 由来失敗の早期検知）。
+    // - Local: build → preview を直列起動して safety net。`reuseExistingServer: false`
+    //   で毎回新規 build/preview し stale dist による silent pass を防ぐ。
+    //   incremental cache が効くため 2 回目以降の build は数秒。
+    // 採用根拠: docs/decisions.md [063] / [065]
+    const isCI = !!process.env.CI;
+    return {
+      command: isCI
+        ? 'npm run preview -- --port 4321'
+        : 'npm run build && npm run preview -- --port 4321',
+      url: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321',
+      timeout: isCI ? 30_000 : 120_000,
+      reuseExistingServer: !isCI,
+    };
+  })(),
 });
