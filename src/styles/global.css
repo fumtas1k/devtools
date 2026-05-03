@@ -337,4 +337,15 @@
     border-bottom-color: var(--color-border);
     color: var(--color-text);
   }
+
+  /* Hover state classes (CSS-only — JS で .style.X を書き換える pattern を撲滅するため #176 B 案で導入) */
+  .hover-bg-subtle:hover {
+    background: var(--color-bg-subtle);
+  }
+  .hover-bg-error:hover {
+    background: var(--color-error-bg);
+  }
+  .hover-bg-primary-bg:hover {
+    background: var(--color-background);
+  }
 }
