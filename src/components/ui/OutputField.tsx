@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 
 interface OutputFieldProps {
   /** textarea の id（label との関連付けに使用） */
@@ -28,12 +27,6 @@ interface OutputFieldProps {
 /**
  * 出力カード共通 UI。
  * ラベル＋（CopyButton／任意要素）＋ readOnly textarea を一定構造で描画する。
- *
- * - ヘッダ行は `minHeight: 2rem` で CopyButton の有無に関わらず高さが揃うように固定。
- * - `value` が空のとき右側スロット (CopyButton / rightSlot) は描画しない。
- *   以前は `visibility: hidden` で DOM とフォーカス可達性を残していたが、
- *   キーボードユーザーが透明領域にフォーカスしてしまう WCAG 2.4.7 違反を避けるため
- *   描画を完全にスキップする方針へ変更（高さは minHeight で確保）。
  */
 export function OutputField({
   id,
@@ -48,13 +41,12 @@ export function OutputField({
   rightSlot,
 }: OutputFieldProps) {
   const hasValue = value !== '';
+  const monoClass = mono ? 'font-mono' : '';
+  const resizeClass = resize ? 'resize-y' : 'resize-none';
   return (
     <div className="w-full">
-      <div
-        className="flex items-center justify-between"
-        style={{ marginBottom: '0.75rem', minHeight: '2rem' }}
-      >
-        <label htmlFor={id} style={{ ...bodyEmphasis, color: colors.text }}>
+      <div className="flex items-center justify-between mb-3 min-h-8">
+        <label htmlFor={id} className="body-emphasis text-default">
           {label}
         </label>
         {hasValue && (
@@ -69,16 +61,7 @@ export function OutputField({
         readOnly
         value={value}
         rows={rows}
-        className="w-full rounded-lg px-3 py-2"
-        style={{
-          ...caption,
-          fontFamily: mono ? 'monospace' : 'inherit',
-          letterSpacing: '0.02em',
-          border: `1px solid ${colors.border}`,
-          background: colors.bgSubtle,
-          color: colors.text,
-          resize: resize ? 'vertical' : 'none',
-        }}
+        className={`caption ${monoClass} ${resizeClass} w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide`.trim()}
         aria-label={ariaLabel ?? label}
       />
     </div>
