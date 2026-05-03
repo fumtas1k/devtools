@@ -2357,7 +2357,7 @@ XSS sink への inline script 注入 (`<script>maliciousCode()</script>`) を考
 
 ### 関連 PR / issue
 
-- 本 PR: 実装時に番号置換
+- 本 PR: [#249](https://github.com/fumtas1k/devtools/pull/249)
 - 解消する issue: [#176](https://github.com/fumtas1k/devtools/issues/176)（A-1 完了）
 - 前提依存: [063]（E2E preview 切替）／[061]（CSP 違反 CI 検知ゲート）／[054]（CSP 初導入）
 - 後続: [#176](https://github.com/fumtas1k/devtools/issues/176) の B 案（`style-src 'unsafe-inline'` 削減）
@@ -2392,7 +2392,7 @@ PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で
 
 ### 関連 PR / issue
 
-- 本 PR: 実装時に番号置換
+- 本 PR: [#251](https://github.com/fumtas1k/devtools/pull/251)
 - 解消する issue: [#248](https://github.com/fumtas1k/devtools/issues/248)
 - 起源: PR #247 セルフレビュー I-2 / I-3
 - 関連: [063]（preview 切替）

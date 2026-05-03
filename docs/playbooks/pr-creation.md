@@ -81,6 +81,25 @@ gh pr create --base develop --title "..." --body-file "$TMPDIR/pr_body.md"
 - バックティック含有時は `-F` / `--body-file` 経由で投稿（`docs/shared-agent-rules.md` 6.1）。
 - 一時ファイルは `$TMPDIR` か `/tmp/claude/` 配下に置く（`Write(/tmp/claude/**)` は allow、`Write(/tmp/**)` は ask）。
 
+### 4.1 `decisions.md` の `本 PR:` 行は PR 作成直後に番号置換する
+
+新規エントリ追加時に `本 PR: 実装時に番号置換` のような placeholder を残しておくと、PR がマージされた後に永続的な記録（`docs/decisions.md`）から本 PR を辿れなくなる。**`gh pr create` で PR 番号が確定した直後に、未 push の修正 commit として置換する** こと。
+
+```bash
+# PR 作成
+PR_URL=$(gh pr create --base develop --title "..." --body-file "$TMPDIR/pr_body.md")
+PR_NUM=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+
+# decisions.md の placeholder を即時置換
+sed -i.bak "s|本 PR: 実装時に番号置換|本 PR: [#${PR_NUM}](${PR_URL})|" docs/decisions.md
+rm docs/decisions.md.bak
+
+git add docs/decisions.md && git commit -m "docs(decisions): [NNN] 関連 PR 番号 (#${PR_NUM}) を置換"
+git push
+```
+
+過去 PR で残置した placeholder（`grep -n "実装時に番号置換" docs/decisions.md` で検出可能）が見つかったら次回触る PR で retrofit する運用とする（採用根拠: [065] PR #251 レビュー M-1）。
+
 ---
 
 ## 5. 親向けレビュー取得手順（取りこぼし防止）
