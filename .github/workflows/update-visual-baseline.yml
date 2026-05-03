@@ -1,16 +1,11 @@
 name: Update Visual Regression Baseline
 
 on:
-  # #VRT: feature/vrt-setup ブランチから self-trigger するための一時 push trigger。
-  # 初回 baseline 生成後、本 push trigger は別 commit で削除し workflow_dispatch のみに戻す。
-  # （GitHub Actions 制約: workflow_dispatch は default branch からしか trigger できないため、
-  # 初回ブートストラップにのみ push trigger を使う。PR #247 で確立した運用）
-  push:
-    branches:
-      - feature/vrt-setup
-    paths:
-      - .github/workflows/update-visual-baseline.yml
-      - tests/e2e/visual-regression.spec.ts
+  # default branch にマージ後は workflow_dispatch (手動 trigger) でのみ実行する。
+  # baseline を意図的に再生成したい時（design system 変更、フォント更新等）に
+  # GitHub Actions UI から手動起動する想定。
+  # 注意: workflow_dispatch は workflow 定義が default branch (develop) に存在することが前提。
+  # 本 PR merge 後に有効化される。
   workflow_dispatch:
 
 permissions:
