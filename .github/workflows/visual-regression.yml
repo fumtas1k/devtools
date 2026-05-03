@@ -17,9 +17,9 @@ jobs:
   visual-regression:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -38,19 +38,29 @@ jobs:
         run: npm run test:vrt -- --workers=1
 
       - name: テストレポートを artifact upload（pass/fail 問わず）
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v5
         with:
           name: visual-regression-report-pr-${{ github.event.pull_request.number }}
           path: playwright-report/
           retention-days: 14
 
-      - name: 結果を PR comment で報告
-        if: always()
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+      - name: 既存の VRT comment を検索（dedup 用）
+        if: ${{ !cancelled() && github.event.pull_request.number }}
+        id: find-vrt-comment
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
           body-includes: '## 🖼️ Visual Regression Test 結果'
+
+      - name: 結果を PR comment で報告
+        if: ${{ !cancelled() && github.event.pull_request.number }}
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find-vrt-comment.outputs.comment-id }}
+          edit-mode: replace
           body: |
             ## 🖼️ Visual Regression Test 結果
 
@@ -61,8 +71,7 @@ jobs:
             > diff が **意図的な visual 変更**の場合: `Update Visual Regression Baseline` workflow を本 PR ブランチで `workflow_dispatch` trigger して baseline を更新。
             > diff が **意図しない regression** の場合: 該当変更を fix。
             > 本 check は **required ではない**ため fail のままでも merge は可能（reviewer 判断）。
-          edit-mode: replace
 
       - name: VRT 失敗を job の最終 conclusion に反映（continue-on-error の補正）
-        if: steps.vrt.outcome == 'failure'
+        if: ${{ !cancelled() && steps.vrt.outcome == 'failure' }}
         run: exit 1
