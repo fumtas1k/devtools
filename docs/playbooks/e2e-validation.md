@@ -19,15 +19,17 @@
 
 以下をすべて満たしてから完了報告する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
 
-| #   | チェック項目                          | コマンド                                                                       |
-| --- | ------------------------------------- | ------------------------------------------------------------------------------ |
-| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh`（詳細は下記参照）                       |
-| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致  |
-| 2   | ユニットテスト全 pass                 | `npm run test`                                                                 |
-| 3   | 型チェック                            | `node_modules/.bin/astro check`（0 errors）                                    |
-| 4   | E2E テスト                            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ） |
+| #   | チェック項目          | コマンド                                                                       |
+| --- | --------------------- | ------------------------------------------------------------------------------ |
+| 0   | node_modules 整備     | `npm ci`（fresh worktree なら 5〜10 秒で完了。詳細は下記参照）                 |
+| 1   | develop ベース確認    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致  |
+| 2   | ユニットテスト全 pass | `npm run test`                                                                 |
+| 3   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                    |
+| 4   | E2E テスト            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ） |
 
-> **ステップ 0 の詳細**: 古い node_modules を rm → `npm ci --cache "$TMPDIR/npm-cache"` → port 4321 kill。背景は `docs/agent-lessons.md` 2026-05-01 エントリ参照。
+> **ステップ 0 の補足**: fresh subagent isolation worktree では node_modules が存在しないため、素の `npm ci` のみで十分（過去の `scripts/agent-worktree-setup.sh` は不要と判明し、issue #241 / decisions [062] で廃止）。`.claude/settings.json` の SessionStart hook が `npm ci` を auto-run するので通常は明示実行も不要だが、未実行を疑う場合は手動で再実行する。
+>
+> **既存パッケージの version 操作・削除に注意**: `.idea/` `.vscode/` を同梱する推移依存パッケージ（現プロジェクトでは `iconv-lite` / `stream-replace-string`）の upgrade / uninstall は sandbox の write 制約で EPERM になる可能性あり。新規追加 (`npm install foo`) は影響なし。詳細は issue #241 参照。
 
 ### 2.2 親セッション版
 
@@ -70,4 +72,4 @@ PR 作成手順を含むため `docs/playbooks/pr-creation.md` 3 章を参照。
 | 型チェック                 | `node_modules/.bin/astro check`                  |
 | 型チェック（特定ファイル） | `npx astro check --filter <file>`                |
 | E2E テスト                 | `npm run test:e2e` ❌ `npm run e2e` は存在しない |
-| worktree 整地              | `bash scripts/agent-worktree-setup.sh`           |
+| node_modules 整備          | `npm ci`                                         |

@@ -35,9 +35,3 @@ bash tests/scripts/check-followup-refs.test.sh
 
 - `docs/shared-agent-rules.md` 6.4 章（先送り時は issue 化必須）
 - `feedback_commander_checklist.md` F 章（メモリ）
-
----
-
-## agent-worktree-setup.sh
-
-- `agent-worktree-setup.sh` — subagent isolation worktree で E2E 前に node_modules を整地するヘルパー。詳細: issue #211 / `docs/agent-lessons.md` 2026-05-01 エントリ

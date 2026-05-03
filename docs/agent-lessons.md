@@ -130,6 +130,24 @@ npm run test:e2e
 - 関連 issue: #194（worktree 環境で E2E timeout を早期検出して無駄待ちを削減）
 - 2026-05-02 に **本手順を `docs/playbooks/e2e-validation.md` 2.1 章 push 前必須チェックリスト ステップ 0 として昇格済み**（issue #212 / `scripts/agent-worktree-setup.sh` で自動化）。
 
+### 2026-05-03 追記: 整地スクリプトは不要だったと判明
+
+PR #240 派生検証で `scripts/agent-worktree-setup.sh` が想定した 4 つの問題（sandbox 由来 read-only / 古い node_modules 削除 / `~/.npm` root-owned / port 4321 占有）はいずれも **fresh subagent isolation worktree では実態として発生しない** ことが判明した。
+
+- node_modules: gitignored で worktree に copy されない → 不在
+- `~/.npm`: 501:20 owned で `--cache "$TMPDIR/..."` 不要
+- port 4321: fresh worktree に dev server 無し
+
+→ **素の `npm ci` のみで 5〜10 秒で完了** することを sonnet subagent + isolation worktree で実測。元の現象（PR #168 の hydration timeout）は worktree が長期再利用されて node_modules が変質した特殊状況だったと考えられる。
+
+対応 PR #(後で埋める) で:
+
+- `scripts/agent-worktree-setup.sh` 削除
+- `docs/playbooks/e2e-validation.md` step 0 を `npm ci` に変更
+- `.claude/settings.json` SessionStart hook を緩和（subagent worktree でも `npm ci` auto-run）
+
+詳細は decisions [062] 参照。
+
 ---
 
 ## [2026-05-01] PR 本文の同期はサブエージェントではなく親セッションで行う
