@@ -148,3 +148,48 @@ npm ci
 ```
 
 詳細は `docs/agent-lessons.md` 2026-05-01 entry「worktree の node_modules が古いと E2E が hydration timeout で大量失敗する」参照。
+
+---
+
+## 7. Visual Regression Test (VRT)
+
+**いつ読むか**: ui コンポーネント / page layout の visual 変更を伴う PR を作成 / レビューする時。
+
+### 7.1 VRT の位置付け
+
+- 実行: 専用 workflow `Visual Regression`（PR trigger）が `npm run test:vrt` を起動
+- 通常 e2e (`npm run test:e2e`) は VRT を実行しない（playwright project 分離による）
+- VRT は **required check に含めない**（意図的 visual 変更が merge を block しない設計）
+- 結果: PR comment と artifact (`playwright-report`) で報告
+- baseline 配置: `tests/e2e/visual-regression.spec.ts-snapshots/*-linux.png` (CI Linux runner で生成)
+
+### 7.2 PR comment に diff が出た時の判断フロー
+
+1. PR comment 内の `Workflow run` リンクから diff 画像を確認
+2. **意図的な visual 変更**（design system update / 新 component 追加 / 意図的 layout 調整）の場合:
+   - GitHub Actions UI で `Update Visual Regression Baseline` workflow を **本 PR のブランチ** で `workflow_dispatch` trigger
+   - bot が baseline を更新して commit back
+   - `git pull` で baseline を receive、push（branch protection は feature branch なので問題なし）
+   - VRT が pass し PR comment が「✅ 全 36 件 pass」に更新される
+3. **意図しない visual 変更**（regression）の場合:
+   - 該当変更を fix
+   - VRT が pass するまで commit & push を repeat
+4. 判断保留で merge したい場合:
+   - VRT は required ではないので fail のままでも merge は可能
+   - ただし develop の baseline と乖離した状態で merge すると後続 PR で diff が大量発生するため、極力避ける
+
+### 7.3 VRT のローカル実行
+
+```bash
+npm run test:vrt
+```
+
+> ⚠️ ローカル mac で実行すると CI Linux baseline と OS 差で fail する。**ローカル baseline (`*-darwin.png`) は通常 commit しない**。development 用に残す場合のみ `--update-snapshots` で生成（ただし git に commit しないこと）。CI 上の Linux baseline (`*-linux.png`) のみが SoT。
+
+### 7.4 VRT 自体の architecture 変更（rare ops）
+
+- spec は `tests/e2e/visual-regression.spec.ts`
+- mock は `addInitScript` で `Math.random` / `crypto.randomUUID` / `Date.now` を固定（spec 上部参照）
+- 新 page を VRT 対象に追加: spec の `PAGES` 配列に path 追記 → baseline 再生成
+- 新 viewport 追加: `VIEWPORTS` 配列に追記 → baseline 再生成
+- 詳細: `docs/decisions.md` [066]

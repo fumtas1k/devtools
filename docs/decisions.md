@@ -2396,3 +2396,52 @@ PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で
 - 解消する issue: [#248](https://github.com/fumtas1k/devtools/issues/248)
 - 起源: PR #247 セルフレビュー I-2 / I-3
 - 関連: [063]（preview 切替）
+
+---
+
+## [066] 2026-05-03 — VRT (Visual Regression Test) を独立 PR + 専用 workflow + 非 required check で導入
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+`#176` B 案 ui migration (`style={{}}` 200+ 箇所の className 化) に向けた visual regression 検出基盤として VRT を導入する。当初は ui migration と同じ PR で導入を試みた（旧 PR #253）が、以下 3 つの構造的問題で破綻し close:
+
+1. **VRT setup を feature work と bundle した結果 infra 設計が後回し**: deterministic mock の注入タイミング、baseline 撮影タイミング、required check 化、すべてが場当たり的になった
+2. **mock を最初から組まなかった**: baseline が non-deterministic な状態で撮影され、後付けで mock を入れても baseline 側が古いまま flake が継続。構造的に fix 不可能
+3. **VRT を required check 想定で作った**: 意図的 visual 変更（例: BareInput の `mono` prop 由来の system mono → JetBrains Mono web font 移行）のたびに merge ブロックが発生する運用 friction
+
+旧 PR #253 のレビュー過程で「修正前の状態でランダムを固定して snapshot を取る必要がある」「修正を意図的にした場合は、こけてても通す必要があるから必須テストに入れてはダメ」とユーザー指摘あり。完全に正当な architectural critique のため close した。
+
+### 決断
+
+VRT を **独立 PR (本 PR)** で先行導入し、以下の 5 つの設計原則を最初から適用する:
+
+1. **Playwright project 分離**: `playwright.config.ts` で `e2e` (通常テスト) と `visual-regression` (VRT 専用) に分離。通常 `npm run test:e2e` は VRT を実行しない
+2. **Deterministic mock 注入**: spec 内 `page.addInitScript()` で `Math.random` (seeded LCG) / `crypto.randomUUID` (incremental counter) / `Date.now` (固定 timestamp) を navigation 前に decorate。production code 無変更
+3. **baseline は CI Linux で生成**: `update-visual-baseline.yml` workflow が CI runner で `--update-snapshots` を実行、bot が同 branch に commit back。ローカル mac の OS 差を排除
+4. **専用 workflow + PR comment + artifact**: `visual-regression.yml` が PR trigger で VRT 実行、結果を PR comment（pass/fail サマリ + artifact link）で報告、`continue-on-error: true` で job 単体は fail しても workflow_run としては記録される
+5. **branch protection の required check に含めない**: GitHub Settings UI で user が手動設定。意図的 visual 変更が merge ブロックしない設計
+
+加えて `update-visual-baseline.yml` には **default branch guard** (`if: github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main'`) を入れ、誤って develop / main 上で trigger されても no-op となり branch protection 違反を回避。
+
+### 却下した選択肢
+
+- **VRT を ui migration と同 PR で導入**: 旧 PR #253 で破綻した
+- **VRT を required check に含める**: 意図的 visual 変更のたびに merge friction が発生し、reviewer の判断機会を奪う。non-required + PR comment + workflow_dispatch baseline 更新の組み合わせがバランス良い
+- **mask で動的領域を screenshot から除外**: 表面的な解決にとどまる。`addInitScript` で source の non-determinism を断つ方が clean
+- **darwin baseline も commit**: ローカル mac DX が改善するが、Linux baseline と乖離した時の混乱が大きい。CI Linux baseline を SoT に固定し、ローカル diff は無視する運用が clean
+
+### 副次効果 / 移行
+
+- 旧 PR #253 で得た 3 件のメモリ (`feedback_vrt_setup_sequencing.md` / `feedback_subagent_verification_trust.md` / `feedback_infra_feature_separation.md`) を保存済み。同じ構造的失敗の再発を抑止
+- 後続 ui migration PR (B 案 PR 1〜PR 6) は本 PR の VRT 監視下で実施。意図的変更は baseline 更新で accept、意図しない regression は fix
+- `tests/e2e/visual-regression.spec.ts` の `addInitScript` mock 範囲は将来追加 page で不足する可能性あり（新 page で別の non-deterministic API を使う場合）。発見次第 mock を拡張する運用
+
+### 関連 PR / issue
+
+- 本 PR: 実装時に番号置換
+- 失敗 PR: [#253](https://github.com/fumtas1k/devtools/pull/253) (closed)
+- 起源: `#176` B 案（`style-src 'unsafe-inline'` 削減）の前提整備
+- 過去: [063] (preview 切替), [064] (CSP A-1), [065] (webServer CI 分岐)
+- 後続: B 案 PR 1（基礎工事 + ui/\* simple 11 ファイル migration）から再着手
