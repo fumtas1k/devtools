@@ -1,0 +1,73 @@
+# Playbook: E2E 検証 / push 前チェックリスト
+
+**いつ読むか**: バグ修正・UI 挙動変更を実装中 / push 前 / E2E が落ちた時。
+
+基本宣言（E2E は実装と同時に書く・push 前に必ず実行）は `docs/shared-agent-rules.md` 3 章を参照。
+
+---
+
+## 1. E2E 実装の原則
+
+- **E2E テストコードの追加は義務**: バグ修正・UI 挙動変更時は E2E テストコードを **必ず実装と同時に書く**。後回し禁止（`docs/shared-agent-rules.md` 3 章）。
+- **`npm run test:e2e` は push 前に必ず実行**: subagent worktree か親セッションで通す。post-PR 代行は不要、CI が最終ゲート。
+
+---
+
+## 2. push 前必須チェックリスト
+
+### 2.1 サブエージェント版
+
+以下をすべて満たしてから完了報告する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
+
+| #   | チェック項目                          | コマンド                                                                       |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------ |
+| 0   | (worktree 環境のみ) node_modules 整地 | `bash scripts/agent-worktree-setup.sh`（詳細は下記参照）                       |
+| 1   | develop ベース確認                    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致  |
+| 2   | ユニットテスト全 pass                 | `npm run test`                                                                 |
+| 3   | 型チェック                            | `node_modules/.bin/astro check`（0 errors）                                    |
+| 4   | E2E テスト                            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ） |
+
+> **ステップ 0 の詳細**: 古い node_modules を rm → `npm ci --cache "$TMPDIR/npm-cache"` → port 4321 kill。背景は `docs/agent-lessons.md` 2026-05-01 エントリ参照。
+
+### 2.2 親セッション版
+
+PR 作成手順を含むため `docs/playbooks/pr-creation.md` 3 章を参照。
+
+---
+
+## 3. push 前 E2E の実行責任 / worktree 並走時の注意
+
+- **subagent worktree で push する場合**: subagent が pre-push チェックの一部として `npm run test:e2e` まで通す。env 不備（古い node_modules / port 4321 占有 / vite serving allow list エラー等）が原因で走らない場合は親に引き継ぐ
+- **親セッションが直接 push する場合**: 親が `npm run test:e2e` を pre-push で走らせる
+- **CI**: post-push の最終ゲート。pre-push で通っていれば green になることを期待
+
+### worktree 並走時の注意
+
+- 複数 subagent worktree が同時に E2E を回すとポート 4321 が衝突する。**1 worktree ずつ実行する**
+- agent worktree は新規作成時 node_modules が空または不整合なため、push 前必須チェックリストのステップ 0 (worktree 整地) を必ず先行する
+
+---
+
+## 4. 失敗パターンの判定
+
+- **テスト本来の失敗**（assertion error、要素が見つからない等）→ 修正してから再実行
+- **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ ステップ 0 の整地を実施してから 1 回だけ再実行
+- 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
+
+> 補足: `playwright.config.ts` の `webServer.timeout` は 30s（PR #213）。env 由来失敗の発見はこのタイムアウトで早期に確定する（旧来のような長時間ハングは起きない）。
+
+> macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
+
+> ポート 4321 以外を使う場合は `4321` を対象ポートに読み替える。
+
+---
+
+## 5. コマンドリファレンス（抜粋）
+
+| 用途                       | コマンド                                         |
+| :------------------------- | :----------------------------------------------- |
+| ユニットテスト             | `npm run test` / `npm run test:watch`            |
+| 型チェック                 | `node_modules/.bin/astro check`                  |
+| 型チェック（特定ファイル） | `npx astro check --filter <file>`                |
+| E2E テスト                 | `npm run test:e2e` ❌ `npm run e2e` は存在しない |
+| worktree 整地              | `bash scripts/agent-worktree-setup.sh`           |

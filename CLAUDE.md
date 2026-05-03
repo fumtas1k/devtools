@@ -11,10 +11,10 @@
 
 - **言語**: コミットメッセージ・PR 説明文は **必ず日本語**。
 - **スタイリング**: Tailwind カラークラスは禁止。**`colors.*` (React)** または **`var(--color-*)` (Astro)** を使用。
-- **検証**: `npm run test`（ユニット）と `astro check`（型）はサブエージェント / 親共通。**`npm run test:e2e` は push 前に必ず実行**（subagent worktree か親で。post-PR 代行は不要、CI が最終ゲート）。worktree では `bash scripts/agent-worktree-setup.sh` で node_modules を先に整地（詳細: `docs/shared-agent-rules.md` 3 章 / 3.2 章）。
-- **PR ベース**: `gh pr create` は **必ず `--base develop`** を明示する。`main` 向けはリリース PR のみ（`gh` のデフォルト・Claude Code system prompt の "Main branch ... main" 表示に流されないこと）。詳細は `docs/shared-agent-rules.md` 6.3 章。
-- **ATC運用**: セッション開始時に `tasks/active_context.md` を作成（superpowers の plan / conductor のタスクファイル等が「目的・ステップ・スコープ外」を明示する場合は不要。詳細は `docs/shared-agent-rules.md` 11章）。
-- **司令塔モード**: 親 Claude セッションは委譲・ベース確認・テスト確認・aria 削除検出を経て PR 作成（詳細: `docs/shared-agent-rules.md` 6.2a 章・3 章 push 前チェックリスト・10.6 章）。
+- **検証**: `npm run test`（ユニット）と `astro check`（型）はサブエージェント / 親共通。**`npm run test:e2e` は push 前に必ず実行**（subagent worktree か親で。post-PR 代行は不要、CI が最終ゲート）。worktree では `bash scripts/agent-worktree-setup.sh` で node_modules を先に整地。詳細手順 → `docs/playbooks/e2e-validation.md`
+- **PR ベース**: `gh pr create` は **必ず `--base develop`** を明示する。`main` 向けはリリース PR のみ（`gh` のデフォルト・Claude Code system prompt の "Main branch ... main" 表示に流されないこと）。詳細手順 → `docs/playbooks/pr-creation.md`
+- **ATC 運用**: セッション開始時に `tasks/active_context.md` を作成（superpowers の plan / conductor のタスクファイル等が「目的・ステップ・スコープ外」を明示する場合は不要。詳細は `docs/shared-agent-rules.md` 10 章）。
+- **司令塔モード**: 親 Claude セッションは委譲・ベース確認・テスト確認・aria 削除検出を経て PR 作成（詳細: `docs/playbooks/pr-creation.md`・`docs/playbooks/e2e-validation.md`・`docs/shared-agent-rules.md` 9.6 章）。
 
 ---
 
@@ -28,45 +28,11 @@
 | `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                    |
 | `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
 
-### Claude Code CLI / Desktop
+CLI / Desktop は `.claude/settings.json` から自動 install を prompt します。**Web (claude.ai/code) は silent skip される既知制約**があり、各環境で 1 回だけ手動 install が必要です。
 
-`.claude/settings.json` の `enabledPlugins` を読み取り、初回オープン時に install を自動 prompt します。`extraKnownMarketplaces` で `claude-plugins-official` も明示宣言済み。
+セットアップ手順・トラブルシュート・context7 API キー設定 → **`docs/setup/plugins.md`**
 
-### Claude Code Web (claude.ai/code) / IDE 拡張
-
-公式ドキュメントは「クラウドセッションでも `enabledPlugins` 宣言のプラグインはセッション開始時に install される」と謳っていますが、**実装上は trust dialog イベントに紐づいており、Web / headless / CI ではこのイベントが発火しないため silent に install がスキップされる** Claude Code 本体側の既知制約があります（upstream: [#23737](https://github.com/anthropics/claude-code/issues/23737) / `autoInstallEnabledPlugins` 提案は duplicate でクローズ・未実装、関連 #17832 / #19275）。
-
-PR #204 で SessionStart hook 経由の自動 install を試みましたが、`claude plugin install` が `Plugin "<name>" not found in marketplace` を返して 3 プラグインとも失敗（`marketplace update` 前置でも同症状）。**現状リポジトリ側からの自動化は不可能**と判明したため、各環境で 1 回だけ手動 install する運用に確定:
-
-```
-/plugin install superpowers@claude-plugins-official
-/plugin install frontend-design@claude-plugins-official
-/plugin install context7@claude-plugins-official
-```
-
-upstream 側で `autoInstallEnabledPlugins` 等が ship されたら本ドキュメントの記述を見直す。
-
-### context7 と Web セッションでの 403
-
-> ⚠️ **Claude Code Web セッション（claude.ai/code）では context7 が 403 を返します**（issue #191 / decisions [059]）。
->
-> 真因は Anthropic クラウドコンテナの egress プロキシで `context7.com` / `mcp.context7.com` が host allowlist に未登録のため（レスポンスヘッダ `x-deny-reason: host_not_allowed` / ボディ `Host not in allowlist`）。**リポジトリ側の設定では解消不可**で、Anthropic harness 側対応待ち。CLI / Desktop セッションは影響を受けません。
-
-### context7 API キー（optional）
-
-- CLI / Desktop は無認証で疎通する
-- API キーを設定すると `researchMode: true`（深い検索）が利用可能
-- Web の 403 は API キーで解消しない（egress 段で遮断されるため）
-
-設定したい場合は `~/.claude/settings.json`（user-scoped、commit されない）の `env` セクションに追加すれば、プラグイン MCP が起動時に env を参照します:
-
-```json
-{
-  "env": {
-    "CONTEXT7_API_KEY": "ctx7sk-xxxxxxxxxxxxxxxx"
-  }
-}
-```
+---
 
 ## Agent Teams (Claude Code 固有機能)
 

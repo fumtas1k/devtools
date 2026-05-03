@@ -30,24 +30,10 @@ Claude Code は コミット／PR／Issue／コメントの末尾に AI 生成�
 
 ---
 
-## セキュリティポリシーのセットアップ（必須）
+## セキュリティポリシーのセットアップ（必須・初回のみ）
 
-`.gemini/policies/security.toml` には、本リポジトリ用のセキュリティルール（破壊的コマンド禁止・機密ファイル保護等）が定義されています。ただし、Gemini CLI の [issue #18186](https://github.com/google-gemini/gemini-cli/issues/18186) により **ワークスペースティア（`.gemini/policies/`）のポリシーは現在ロードされません**。
+`.gemini/policies/security.toml` を `~/.gemini/policies/` に配置する必要があります（Gemini CLI [issue #18186](https://github.com/google-gemini/gemini-cli/issues/18186) によりワークスペースティアのポリシーは現在ロードされないため）。
 
-そのため、以下のいずれかの手順で **ユーザーティア（`~/.gemini/policies/`）** に同ポリシーを配置する必要があります:
+セットアップ手順（symlink 推奨 / 静的コピー代替） → **`docs/setup/gemini-policy.md`**
 
-### 推奨: シンボリックリンク（リポジトリ更新が自動反映）
-
-```bash
-mkdir -p ~/.gemini/policies
-ln -sfn "$(pwd)/.gemini/policies/security.toml" ~/.gemini/policies/security.toml
-```
-
-### 代替: 静的コピー（手動更新）
-
-```bash
-mkdir -p ~/.gemini/policies
-cp .gemini/policies/security.toml ~/.gemini/policies/security.toml
-```
-
-issue #18186 が解消されるまで、本セットアップを行わない場合は `.gemini/policies/security.toml` 内の deny / ask ルールがエージェント実行時に適用されません。詳細は `docs/decisions.md` の [046][050] 参照。
+未セットアップだと deny / ask ルールがエージェント実行時に適用されません。
