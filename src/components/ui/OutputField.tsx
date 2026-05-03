@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 
 interface OutputFieldProps {
   /** textarea の id（label との関連付けに使用） */
@@ -50,11 +49,8 @@ export function OutputField({
   const hasValue = value !== '';
   return (
     <div className="w-full">
-      <div
-        className="flex items-center justify-between"
-        style={{ marginBottom: '0.75rem', minHeight: '2rem' }}
-      >
-        <label htmlFor={id} style={{ ...bodyEmphasis, color: colors.text }}>
+      <div className="flex items-center justify-between mb-3 min-h-8">
+        <label htmlFor={id} className="body-emphasis text-token">
           {label}
         </label>
         {hasValue && (
@@ -69,16 +65,7 @@ export function OutputField({
         readOnly
         value={value}
         rows={rows}
-        className="w-full rounded-lg px-3 py-2"
-        style={{
-          ...caption,
-          fontFamily: mono ? 'monospace' : 'inherit',
-          letterSpacing: '0.02em',
-          border: `1px solid ${colors.border}`,
-          background: colors.bgSubtle,
-          color: colors.text,
-          resize: resize ? 'vertical' : 'none',
-        }}
+        className={`w-full rounded-lg px-3 py-2 caption tracking-[0.02em] border-token bg-subtle text-token ${mono ? 'font-mono' : ''} ${resize ? 'resize-y' : 'resize-none'}`}
         aria-label={ariaLabel ?? label}
       />
     </div>
