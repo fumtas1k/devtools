@@ -32,13 +32,13 @@ jobs:
       - name: 本番相当アセットを build
         run: npm run build
 
-      - name: VRT 実行（fail しても後続 step を続行）
+      - name: VRT 実行
         id: vrt
-        continue-on-error: true
         shell: bash
+        # fail 時は step 自体を ❌ に。後続 step は if: !cancelled() で継続させる
+        # （continue-on-error は使わない — UI 上 ✅ に化けて diff の発生箇所が見えなくなるため）。
+        # pipefail で playwright の exit code を tee 越しでも保持。
         run: |
-          # fail を後続で検知できるよう pipefail。tee で playwright 標準出力を log に保存し、
-          # 後続 step で `✘` 行から失敗 spec 名を抽出して PR comment に載せる。
           set -o pipefail
           npm run test:vrt -- --workers=1 2>&1 | tee vrt-output.log
 
@@ -113,7 +113,3 @@ jobs:
           comment-id: ${{ steps.find-vrt-comment.outputs.comment-id }}
           edit-mode: replace
           body: ${{ steps.build-body.outputs.body }}
-
-      - name: VRT 失敗を job の最終 conclusion に反映（continue-on-error の補正）
-        if: ${{ !cancelled() && steps.vrt.outcome == 'failure' }}
-        run: exit 1
