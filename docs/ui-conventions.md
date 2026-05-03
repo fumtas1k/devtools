@@ -24,19 +24,41 @@
 
 ### 2.1 ホバー時の色変化
 
-`hover:` クラスは禁止（カラークラス使用制限と整合させるため）。`onMouseEnter` / `onMouseLeave` でインラインスタイルを差し替える。
+CSP `style-src 'unsafe-inline'` 撤去（issue #176 B 案）に伴い、JSX の `style={{}}` および `e.currentTarget.style.X = Y` 形式の DOM mutation は使用禁止。ホバー / 状態色は `src/styles/global.css` の `@layer components` に semantic class として定義し、`:hover` / `[aria-pressed="true"]` / 条件 `className` 切替で表現する。
+
+- Tailwind の **色値直書き** utility（`text-blue-500`, `bg-red-200` 等）は引き続き禁止
+- ただし `@theme` 経由で auto-generate される **意味トークン** utility（`text-primary` / `bg-error` / `text-link` 等は `--color-primary` / `--color-error` / `--color-link` を参照）は使用可。色値直書きではなく既存 SoT を経由するため、カラー使用制限の趣旨と整合
+- 同じ理由で `hover:bg-subtle` のような「Tailwind hover utility + 意味クラス」も許容
 
 ```tsx
+// before (PR #176 B 案 移行前の旧パターン、現在は禁止)
 <button
   style={{ background: 'transparent', color: colors.error }}
   onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
 />
+
+// after (PR #176 B 案 移行後の正典パターン)
+<button className="caption text-muted btn-clear" />
+
+// global.css `@layer components` ブロック内（PR 1 で実定義）
+.btn-clear {
+  background: transparent;
+  transition: background-color 0.15s;
+}
+.btn-clear:hover {
+  background: var(--color-bg-subtle);
+}
 ```
 
 ### 2.2 ボタン高さの揃え
 
-横並びでボタン高さを揃えたい場合は **`lineHeight: 1` を明示する**（`caption` / `bodyEmphasis` は lineHeight 1.7 のため意図より大きくなる）。
+横並びでボタン高さを揃えたい場合は **`leading-none` Tailwind utility を併記する**（`.caption` / `.body-emphasis` class は line-height 1.7 のため意図より大きくなる）。
+
+```tsx
+// caption の line-height 1.7 を Tailwind の leading-none で 1 に上書き
+<button className="caption leading-none">クリック</button>
+```
 
 ### 2.3 横並び ↔ 縦並びレスポンシブ
 
