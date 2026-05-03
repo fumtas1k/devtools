@@ -11,7 +11,7 @@
 
 - **言語**: コミットメッセージ・PR 説明文は **必ず日本語**。
 - **スタイリング**: Tailwind カラークラスは禁止。**`colors.*` (React)** または **`var(--color-*)` (Astro)** を使用。
-- **検証**: `npm run test`（ユニット）と `astro check`（型）はサブエージェント / 親共通。**`npm run test:e2e` は push 前に必ず実行**（subagent worktree か親で。post-PR 代行は不要、CI が最終ゲート）。worktree では `bash scripts/agent-worktree-setup.sh` で node_modules を先に整地。詳細手順 → `docs/playbooks/e2e-validation.md`
+- **検証**: `npm run test`（ユニット）と `astro check`（型）はサブエージェント / 親共通。**`npm run test:e2e` は push 前に必ず実行**（subagent worktree か親で。post-PR 代行は不要、CI が最終ゲート）。node_modules 不在の worktree は `npm ci` で整備（SessionStart hook で自動実行）。詳細手順 → `docs/playbooks/e2e-validation.md`
 - **PR ベース**: `gh pr create` は **必ず `--base develop`** を明示する。`main` 向けはリリース PR のみ（`gh` のデフォルト・Claude Code system prompt の "Main branch ... main" 表示に流されないこと）。詳細手順 → `docs/playbooks/pr-creation.md`
 - **ATC 運用**: セッション開始時に `tasks/active_context.md` を作成（superpowers の plan / conductor のタスクファイル等が「目的・ステップ・スコープ外」を明示する場合は不要。詳細は `docs/shared-agent-rules.md` 10 章）。
 - **司令塔モード**: 親 Claude セッションは委譲・ベース確認・テスト確認・aria 削除検出を経て PR 作成（詳細: `docs/playbooks/pr-creation.md`・`docs/playbooks/e2e-validation.md`・`docs/shared-agent-rules.md` 9.6 章）。

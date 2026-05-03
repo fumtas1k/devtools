@@ -128,7 +128,7 @@ npm run test:e2e
 
 - PR #181 / #188 で実害あり
 - 関連 issue: #194（worktree 環境で E2E timeout を早期検出して無駄待ちを削減）
-- 2026-05-02 に **本手順を `docs/playbooks/e2e-validation.md` 2.1 章 push 前必須チェックリスト ステップ 0 として昇格済み**（issue #212 / `scripts/agent-worktree-setup.sh` で自動化）。
+- 2026-05-02 に **本手順を `docs/playbooks/e2e-validation.md` 2.1 章 push 前必須チェックリスト ステップ 0 として昇格済み**（issue #212 / `scripts/agent-worktree-setup.sh` で自動化）。**（後に廃止 → 下記 2026-05-03 追記参照）**
 
 ### 2026-05-03 追記: 整地スクリプトは不要だったと判明
 
@@ -140,7 +140,7 @@ PR #240 派生検証で `scripts/agent-worktree-setup.sh` が想定した 4 つ�
 
 → **素の `npm ci` のみで 5〜10 秒で完了** することを sonnet subagent + isolation worktree で実測。元の現象（PR #168 の hydration timeout）は worktree が長期再利用されて node_modules が変質した特殊状況だったと考えられる。
 
-対応 PR #(後で埋める) で:
+対応 PR #243 で:
 
 - `scripts/agent-worktree-setup.sh` 削除
 - `docs/playbooks/e2e-validation.md` step 0 を `npm ci` に変更
