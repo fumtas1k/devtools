@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { copyToClipboard } from '@/utils/clipboard';
-import { colors } from '@/utils/styles';
 
 function ClipboardIcon() {
   return (
@@ -37,13 +36,6 @@ function CheckIcon() {
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
-}
-
-function copyStateColors(copied: boolean, idleColor: string) {
-  return {
-    background: copied ? colors.successBg : colors.bgSubtle,
-    color: copied ? colors.success : idleColor,
-  };
 }
 
 function CopyAnnounce({ copied }: { copied: boolean }) {
@@ -87,17 +79,7 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
       <button
         onClick={handleClick}
         aria-label={label}
-        className="rounded-md transition-colors inline-flex items-center justify-center"
-        style={{
-          fontSize: '0.75rem',
-          padding: '0.25rem 0.5rem',
-          minWidth: '32px',
-          minHeight: '32px',
-          ...copyStateColors(copied, colors.muted),
-          border: 'none',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap' as const,
-        }}
+        className={`rounded-md transition-colors inline-flex items-center justify-center text-xs px-2 py-1 min-w-[32px] min-h-[32px] border-none whitespace-nowrap ${copied ? 'btn-copy-success bg-success' : 'btn-copy-idle bg-subtle'}`}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
         <CopyAnnounce copied={copied} />
@@ -109,14 +91,7 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
     <button
       onClick={handleClick}
       aria-label={label}
-      className={`inline-flex items-center gap-1.5 rounded px-3 py-2 font-bold transition-colors whitespace-nowrap ${className}`}
-      style={{
-        fontSize: '0.875rem',
-        lineHeight: 1,
-        letterSpacing: '0.02em',
-        ...copyStateColors(copied, colors.text),
-        border: `1px solid ${copied ? colors.success : colors.border}`,
-      }}
+      className={`inline-flex items-center gap-1.5 rounded px-3 py-2 font-bold transition-colors whitespace-nowrap text-[0.875rem] leading-none tracking-[0.02em] border ${copied ? 'btn-copy-success bg-success' : 'btn-copy-idle bg-subtle border-color-token'} ${className}`}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}
       {label}
