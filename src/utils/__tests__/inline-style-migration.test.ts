@@ -17,6 +17,7 @@ const MIGRATED_FILES: readonly string[] = [
   'src/components/ui/ActionButton.tsx',
   'src/components/ui/BareInput.tsx',
   'src/components/ui/ClearButton.tsx',
+  'src/components/ui/CopyButton.tsx',
 ];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
