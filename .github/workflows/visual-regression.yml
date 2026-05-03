@@ -35,7 +35,12 @@ jobs:
       - name: VRT 実行（fail しても後続 step を続行）
         id: vrt
         continue-on-error: true
-        run: npm run test:vrt -- --workers=1
+        shell: bash
+        run: |
+          # fail を後続で検知できるよう pipefail。tee で playwright 標準出力を log に保存し、
+          # 後続 step で `✘` 行から失敗 spec 名を抽出して PR comment に載せる。
+          set -o pipefail
+          npm run test:vrt -- --workers=1 2>&1 | tee vrt-output.log
 
       - name: テストレポートを artifact upload（pass/fail 問わず）
         if: ${{ !cancelled() }}
@@ -54,6 +59,52 @@ jobs:
           comment-author: 'github-actions[bot]'
           body-includes: '## 🖼️ Visual Regression Test 結果'
 
+      - name: PR comment 本文を組み立て（失敗 spec 名込み）
+        if: ${{ !cancelled() && github.event.pull_request.number }}
+        id: build-body
+        shell: bash
+        run: |
+          {
+            echo "body<<MARKDOWN_EOF"
+            echo "## 🖼️ Visual Regression Test 結果"
+            echo ""
+            if [ "${{ steps.vrt.outcome }}" = "success" ]; then
+              echo "- **Status**: ✅ 全 36 件 pass"
+            else
+              echo "- **Status**: ❌ 一部 fail"
+            fi
+            echo "- **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo "- **Artifact (diff 画像 / playwright-report)**: 上記 workflow run の \`Artifacts\` セクションから download"
+
+            if [ "${{ steps.vrt.outcome }}" = "failure" ] && [ -f vrt-output.log ]; then
+              echo ""
+              echo "### 失敗した spec"
+              echo ""
+              # 各 ✘ 行の最後の › 区切り（spec 名）と直前の区切り（viewport 記述）を抽出。
+              # retry 行は除外して unique 化、最大 30 行に丸める。
+              grep -E '^[[:space:]]+✘' vrt-output.log \
+                | grep -v '(retry' \
+                | awk -F'›' '{
+                    n = NF
+                    spec = $n
+                    sub(/^[ \t]+/, "", spec)
+                    sub(/[ \t]*\([0-9.]+m?s\)[ \t]*$/, "", spec)
+                    vp = $(n - 1)
+                    sub(/^[ \t]+/, "", vp)
+                    sub(/[ \t]+$/, "", vp)
+                    print "- [" vp "] " spec
+                  }' \
+                | sort -u \
+                | head -30
+            fi
+
+            echo ""
+            echo "> diff が **意図的な visual 変更**の場合: \`Update Visual Regression Baseline\` workflow を本 PR ブランチで \`workflow_dispatch\` trigger して baseline を更新。"
+            echo "> diff が **意図しない regression** の場合: 該当変更を fix。"
+            echo "> 本 check は **required ではない**ため fail のままでも merge は可能（reviewer 判断）。"
+            echo "MARKDOWN_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: 結果を PR comment で報告
         if: ${{ !cancelled() && github.event.pull_request.number }}
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
@@ -61,16 +112,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           comment-id: ${{ steps.find-vrt-comment.outputs.comment-id }}
           edit-mode: replace
-          body: |
-            ## 🖼️ Visual Regression Test 結果
-
-            - **Status**: ${{ steps.vrt.outcome == 'success' && '✅ 全 36 件 pass' || '❌ 一部 fail（詳細は artifact 参照）' }}
-            - **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            - **Artifact (diff 画像 / playwright-report)**: 上記 workflow run の `Artifacts` セクションから download
-
-            > diff が **意図的な visual 変更**の場合: `Update Visual Regression Baseline` workflow を本 PR ブランチで `workflow_dispatch` trigger して baseline を更新。
-            > diff が **意図しない regression** の場合: 該当変更を fix。
-            > 本 check は **required ではない**ため fail のままでも merge は可能（reviewer 判断）。
+          body: ${{ steps.build-body.outputs.body }}
 
       - name: VRT 失敗を job の最終 conclusion に反映（continue-on-error の補正）
         if: ${{ !cancelled() && steps.vrt.outcome == 'failure' }}
