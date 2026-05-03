@@ -1,16 +1,9 @@
 name: Update Visual Regression Baseline
 
 on:
-  # #176 B 案 PR 1 で feature branch から self-trigger するため一時的に push を有効化。
-  # 初回 CI Linux baseline 生成完了後、本 push trigger は別 commit で削除し
-  # workflow_dispatch のみに戻す（GitHub Actions の制約: workflow_dispatch は default branch
-  # からしか trigger できないため、初回ブートストラップにのみ push trigger を使う）。
-  push:
-    branches:
-      - feature/issue-176-b1-foundation
-    paths:
-      - .github/workflows/update-visual-baseline.yml
-      - tests/e2e/visual-regression.spec.ts
+  # default branch にマージ後は workflow_dispatch (手動 trigger) でのみ実行する。
+  # baseline を意図的に再生成したい時（Astro/Tailwind upgrade、フォント変更等の
+  # 視覚仕様変更後）に Actions UI から手動起動する想定。
   workflow_dispatch:
 
 permissions:
