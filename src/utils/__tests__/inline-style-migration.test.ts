@@ -16,6 +16,7 @@ import path from 'node:path';
 const MIGRATED_FILES: readonly string[] = [
   'src/components/ui/ActionButton.tsx',
   'src/components/ui/BareInput.tsx',
+  'src/components/ui/ClearButton.tsx',
 ];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
