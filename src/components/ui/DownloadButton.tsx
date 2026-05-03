@@ -52,7 +52,7 @@ export function DownloadButton({
       loading={loading}
       aria-label={ariaLabel ?? label}
     >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
+      <span className="inline-flex items-center gap-1.5">
         <DownloadIcon />
         {label}
       </span>

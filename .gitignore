@@ -8,6 +8,7 @@ playwright-report/
 coverage/
 .claude/scheduled_tasks.lock
 conductor/
+.claude/tmp/
 
 # Superpowers extension (Visual brainstorming artifacts and session info)
 .superpowers/

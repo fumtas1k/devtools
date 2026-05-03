@@ -42,9 +42,10 @@ describe('BareInput', () => {
   });
 
   it('mono=true のとき monospace フォントが設定される', () => {
+    // jsdom は @layer components CSS を解釈しないため className で検証（視覚確認は VRT/E2E 委譲）
     render(<BareInput value="" onChange={() => {}} mono aria-label="mono" />);
     const input = screen.getByRole('textbox') as HTMLInputElement;
-    expect(input.style.fontFamily).toBe('monospace');
+    expect(input.className).toContain('font-mono');
   });
 
   it('className prop を渡せる', () => {

@@ -1,4 +1,4 @@
-import { caption, elevation, colors } from '@/utils/styles';
+import { useEffect, useRef } from 'react';
 
 interface Option<T> {
   value: T;
@@ -16,6 +16,15 @@ interface Props<T extends string> {
   layout?: 'grid' | 'wrap';
 }
 
+/**
+ * 排他選択トグル。
+ *
+ * style: global.css `@layer components` の `.toggle-grid`（CSS 変数 --toggle-cols 経由で
+ * 動的列数）/ `.btn-toggle` / `.btn-toggle[aria-pressed="true"]` を参照。
+ *
+ * 動的列数は `setProperty('--toggle-cols', N)` で CSS 変数を注入する。これは CSSOM API 経由の
+ * 設定で、属性直接代入（`gridTemplateColumns` への直接代入）ではないため CSP3 strict 下でも許容される。
+ */
 export function ToggleGroup<T extends string>({
   options,
   value,
@@ -25,33 +34,27 @@ export function ToggleGroup<T extends string>({
   layout = 'grid',
 }: Props<T>) {
   const isWrap = layout === 'wrap';
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isWrap && gridRef.current) {
+      gridRef.current.style.setProperty('--toggle-cols', String(options.length));
+    }
+  }, [isWrap, options.length]);
+
+  const containerClass = isWrap
+    ? 'bg-subtle rounded-lg border border-input p-1 flex flex-wrap gap-1 w-max max-w-full'
+    : 'bg-subtle rounded-lg border border-input p-1 toggle-grid';
+  const buttonSizeClass = size === 'sm' ? 'px-2.5 py-0.5' : 'px-3 py-1.5';
 
   return (
-    <div
-      className={`rounded-lg p-1 ${isWrap ? 'flex flex-wrap gap-1' : 'grid gap-1'}`}
-      role="group"
-      aria-label={ariaLabel}
-      style={{
-        background: colors.bgSubtle,
-        border: `1px solid ${colors.borderInput}`,
-        ...(isWrap
-          ? { width: 'max-content', maxWidth: '100%' }
-          : { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }),
-      }}
-    >
+    <div ref={gridRef} className={containerClass} role="group" aria-label={ariaLabel}>
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
-          className={`rounded-lg whitespace-nowrap transition-colors ${size === 'sm' ? 'px-2.5 py-0.5' : 'px-3 py-1.5'}`}
-          style={{
-            ...caption,
-            fontWeight: 600,
-            background: value === opt.value ? colors.bg : 'transparent',
-            color: value === opt.value ? colors.text : colors.muted,
-            boxShadow: value === opt.value ? elevation.level2 : 'none',
-          }}
+          className={`caption font-semibold btn-toggle rounded-lg whitespace-nowrap ${buttonSizeClass}`}
         >
           {opt.label}
         </button>
