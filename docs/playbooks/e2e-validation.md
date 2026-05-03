@@ -6,6 +6,17 @@
 
 ---
 
+## 0. 実行モードの前提
+
+`npm run test:e2e` は **`astro build` 済みの `dist/` を `astro preview` で配信して実行する**（`playwright.config.ts` の `webServer.command` で連結済み）。理由:
+
+- 本番 (Cloudflare Pages) のビルド成果物に対して E2E を回し、prod-parity を確保するため（`docs/decisions.md` [063]）。後続 [#176](https://github.com/fumtas1k/devtools/issues/176) 採用時には `<meta>` ベース CSP も生成されるため、その評価基盤を先回りで整備する位置付けでもある
+- Astro の `security.csp` 機能は dev mode で動作せず build/preview のみで有効（[公式 docs](https://docs.astro.build/en/reference/configuration-reference/#securitycsp)）
+
+`webServer.timeout` は build 時間を含むため 120s に延長してある（cold start でも収まる余裕）。
+
+---
+
 ## 1. E2E 実装の原則
 
 - **E2E テストコードの追加は義務**: バグ修正・UI 挙動変更時は E2E テストコードを **必ず実装と同時に書く**。後回し禁止（`docs/shared-agent-rules.md` 3 章）。
@@ -53,10 +64,10 @@ PR 作成手順を含むため `docs/playbooks/pr-creation.md` 3 章を参照。
 ## 4. 失敗パターンの判定
 
 - **テスト本来の失敗**（assertion error、要素が見つからない等）→ 修正してから再実行
-- **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ ステップ 0 の整地を実施してから 1 回だけ再実行
+- **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ ステップ 0 の整地と `npm run build` が成功するかの確認を実施してから 1 回だけ再実行
 - 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
 
-> 補足: `playwright.config.ts` の `webServer.timeout` は 30s（PR #213）。env 由来失敗の発見はこのタイムアウトで早期に確定する（旧来のような長時間ハングは起きない）。
+> 補足: `playwright.config.ts` の `webServer.timeout` は 120s（#246 で 30s → 120s に延長。build 時間込み）。env 由来失敗の発見はこのタイムアウトで早期に確定する。
 
 > macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
 
@@ -66,14 +77,14 @@ PR 作成手順を含むため `docs/playbooks/pr-creation.md` 3 章を参照。
 
 ## 5. コマンドリファレンス（抜粋）
 
-| 用途                       | コマンド                                         |
-| :------------------------- | :----------------------------------------------- |
-| ユニットテスト             | `npm run test` / `npm run test:watch`            |
-| 型チェック                 | `node_modules/.bin/astro check`                  |
-| 型チェック（特定ファイル） | `npx astro check --filter <file>`                |
-| E2E テスト                 | `npm run test:e2e` ❌ `npm run e2e` は存在しない |
-| node_modules 整備          | `npm ci`                                         |
-| port 4321 解放             | `npm run pretest:e2e`                            |
+| 用途                       | コマンド                                                                              |
+| :------------------------- | :------------------------------------------------------------------------------------ |
+| ユニットテスト             | `npm run test` / `npm run test:watch`                                                 |
+| 型チェック                 | `node_modules/.bin/astro check`                                                       |
+| 型チェック（特定ファイル） | `npx astro check --filter <file>`                                                     |
+| E2E テスト                 | `npm run test:e2e` ❌ `npm run e2e` は存在しない（内部で build + preview を直列起動） |
+| node_modules 整備          | `npm ci`                                                                              |
+| port 4321 解放             | `npm run pretest:e2e`                                                                 |
 
 ---
 
@@ -83,7 +94,7 @@ PR 作成手順を含むため `docs/playbooks/pr-creation.md` 3 章を参照。
 
 ### 6.1 port 4321 が占有されている
 
-E2E が `ECONNREFUSED 127.0.0.1:4321` や `webServer was not ready` で失敗する場合、前回の dev server や別 worktree の dev server が残っている可能性。
+E2E が `ECONNREFUSED 127.0.0.1:4321` や `webServer was not ready` で失敗する場合、前回の dev server / preview server が残っている可能性。preview と dev は同じ port 4321 を使うため、どちらが残っていても衝突する。
 
 ```bash
 npm run pretest:e2e   # 既存 npm script。中身は lsof -ti:4321 | xargs kill -9

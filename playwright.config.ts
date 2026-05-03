@@ -22,10 +22,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    // #246: security.csp の `<meta>` を含めた本番相当 CSP を E2E で評価するため
+    // dev server ではなく `astro build` 後の `dist/` を `astro preview` で配信する。
+    // build はキャッシュが効くと数秒、cold でも 15〜25s 程度。preview 起動は瞬時。
+    command: 'npm run build && npm run preview -- --port 4321',
     url: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321',
-    // dev server が 30s 以内に起動しなければ env 由来失敗として fail-fast（issue #194）
-    timeout: 30_000,
+    // build 時間を含むため 30s → 120s に延長（cold start でも収まる余裕）
+    timeout: 120_000,
     reuseExistingServer: true,
   },
 });

@@ -1862,9 +1862,9 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - ✅ `frame-ancestors 'none'` でクリックジャッキング、`X-Content-Type-Options: nosniff` で MIME sniffing、`Referrer-Policy` でリファラ漏えいを抑止。
 - ✅ Permissions-Policy で未使用機能（microphone / geolocation）を明示的に無効化し、将来追加コードでの誤利用を防止。
 - ✅ `connect-src 'self'` により、万一 XSS が成立しても外部送信経路を断つ。
-- ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。
+- ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。なお dev / preview server の挙動差で security.csp が未検証だった件は [063] で解消した。
 - ⚠️ Cloudflare Pages 以外のホスティング（Netlify は同形式で動作するが、Vercel は `vercel.json` 形式）に切り替える際は別途設定追加が必要。
-- ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする。
+- ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする → **[063] で E2E を preview ベースに移行して解消**。
 
 ---
 
@@ -2230,3 +2230,56 @@ PR #240（ルールファイル整理）の派生検証で、上記いずれも 
 - issue [#241](https://github.com/fumtas1k/devtools/issues/241)（廃止検討）
 - PR [#240](https://github.com/fumtas1k/devtools/pull/240)（ルール整理、本検証の発端）
 - 決定 [057]（E2E 実行責務の親移管。本 [062] で subagent への自動 npm ci によって責務分担が再度更新される）
+
+---
+
+## [063] 2026-05-03 — E2E を `astro dev` から `astro build && astro preview` ベースに切替
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+[054] で導入した CSP は `public/_headers` 経由でレスポンスヘッダとして配信される。後続の [#176](https://github.com/fumtas1k/devtools/issues/176) 改善（`script-src 'unsafe-inline'` 削減）で採用予定の Astro 6.x `security.csp` 機能は、ビルド時に各ページへ `<meta http-equiv="content-security-policy">` を注入してインラインスクリプト/スタイルをハッシュベースで許可する。
+
+しかし [Astro 公式ドキュメント](https://docs.astro.build/en/reference/configuration-reference/#securitycsp) は明確に、`security.csp` は **dev mode で動作せず build/preview モードのみで有効** と記載している。`playwright.config.ts:webServer.command` は `npm run dev` を起動していたため、このまま [#176] を採用しても E2E は `<meta>` 不在の環境で回り、本番との prod-parity が崩れる（[061] で同種の dev/prod 乖離による事故が発生済み）。
+
+[054] 末尾の「preview サーバーまたは実デプロイ後の検証は将来課題とする」の解消にもあたる。
+
+### 決断
+
+`playwright.config.ts:webServer.command` を `npm run build && npm run preview -- --port 4321` に切り替え、E2E を `dist/` 配信に対して実行する。
+
+- `webServer.timeout` は build 時間を含むため 30s → 120s に延長
+- CI（`.github/workflows/test.yml`）の e2e job にも `npm run build` step を明示追加（ログ可読性 + 早期失敗切り分け）
+- `applyProductionCsp` ヘルパは現状ロジック（route 介入で response header に `PRODUCTION_CSP` を上書き）を維持。本 PR 時点では `<meta>` は未生成（`security.csp` 未採用）のため response header のみで評価されるが、後続 [#176](https://github.com/fumtas1k/devtools/issues/176) で `security.csp` が採用されると build 時に `<meta>` が注入され、route 介入の header と AND 評価される構成になる
+- `docs/shared-agent-rules.md` / `docs/playbooks/e2e-validation.md` / `docs/playbooks/pr-creation.md` / `README.md` / `CLAUDE.md` を preview 前提に整合
+
+### 副次効果（重要）— Vite asset inline 化の構造的修正
+
+preview 切替で **本番にも存在していた CSP 違反**が表面化した: `@fontsource/jetbrains-mono` の小さな subset font (cyrillic-ext 等) が Vite デフォルトの `assetsInlineLimit: 4096` で `data:font/woff2;base64,...` として CSS に inline 化され、`public/_headers` の CSP は `font-src` を明示しないため `default-src 'self'` で block されていた。dev mode では asset を bundling せず元ファイル URL のまま配信するため発現せず、長期間気付かれなかった。
+
+`astro.config.mjs` の `vite.build.assetsInlineLimit: 0` で全 asset の inline 化を無効化し、dev/preview/prod の挙動を一致させた。CSP に `font-src 'self' data:` を追加する選択肢もあったが、(a) 同種の問題（小さな画像 / SVG の data: URI 化）が将来再発する温床を残すこと、(b) CSP の許可面を増やすことより asset 配信を統一する方が構造的に強いこと、から inline 無効化を採用した。
+
+inline 化解除のトレードオフ — HTTP/1.1 環境では小ファイルの個別 GET が増えるが、本番ホスト Cloudflare Pages は HTTP/2/3 デフォルトで multiplex 配信されるため実質的なロード差は無い。さらに `@fontsource/jetbrains-mono` は `unicode-range` で subset を gate しており、日本語/英数中心ユーザーのブラウザは cyrillic-ext 等のサブセットを fetch しないため発火経路自体が稀。`dist/` 全体サイズは inline 化解除前後で 16M 据え置きで、ファイル数のみ +7（cyrillic-ext / greek / vietnamese 等の小サブセットが個別ファイル化された分）。
+
+### 却下した選択肢
+
+- **dev のまま維持し、`<meta>` 注入だけ E2E helper で再現**: `dist/` の build 成果物から `<meta>` を抽出して注入する設計が必要で、build 出力と E2E 注入の二重管理になり brittle。prod-parity の本質（実ビルド成果物への E2E）から外れる。
+- **`wrangler pages dev` で E2E を駆動**: [061] で同様検討済み。起動コスト・依存追加が CI 全体に波及する。preview で十分。
+- **`security.csp` 採用を諦めて [#176] を A-2 (post-build hash 化) に倒す**: A-2 は実装複雑度・将来 Astro builtin との互換性で劣る。preview 切替は本番一致のため独立して価値があり、[#176] 以外にも波及効果がある（同種の eval 依存事故 [061] の早期検知精度向上、副次効果欄の data:font 事故も dev/prod parity 確保で恒久的に防止）。
+- **CSP に `font-src 'self' data:` を追加**: 副次効果欄の通り、structural fix を選好。
+
+### 影響 / 移行
+
+- **E2E 実行時間**: cold start で build に 15〜25s 程度上乗せ。`reuseExistingServer: true` のためローカル連続実行では 2 回目以降スキップ。CI では毎回 build が走る（許容範囲）。実測: 1 worker 145 テスト + build 込みで約 1.3 分
+- **手元実行**: `npm run test:e2e` のコマンドは変わらない。内部的に build が走るため初回は数十秒かかる旨を `e2e-validation.md` 0 章に明記
+- **port 4321**: dev / preview で同じため衝突リスクは変わらず。`npm run pretest:e2e` の port kill ロジックも変更不要
+- **preview と dev の挙動差**: `assetsInlineLimit: 0` で吸収できた。test spec への変更は不要だった
+- **dist サイズ**: inline 化解除で 7 ファイル増（cyrillic-ext font 等）。合計サイズはほぼ不変（16M）。HTTP/2 multiplexing 下で実質的なロード差なし
+- **後続作業の解禁**: [#176] の A-1 PR が安全に着手可能になる
+
+### 関連 PR / issue
+
+- 本 PR: #246 で起票
+- 後続: [#176](https://github.com/fumtas1k/devtools/issues/176)（A-1 採用）
+- 過去: [054]（CSP 初導入）／[061]（CSP 違反 CI 検知ゲート初導入）／[062]（worktree setup 簡素化）
