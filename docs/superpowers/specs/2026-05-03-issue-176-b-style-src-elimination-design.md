@@ -127,26 +127,35 @@ CSP3 仕様で、`style-src` から `'unsafe-inline'` を削除すると:
 
 ### 4. `src/utils/styles.ts` の段階的廃止
 
-PR 1 で意味クラスを CSS に落とし込んだ時点で `src/utils/styles.ts` の役割は重複。ただし PR 1-5 の移行中は React 側の暫定参照として残す。**PR 6 で `src/utils/styles.ts` 削除 + 全 import 元の整理**。
+PR 1 で意味クラスを CSS に落とし込んだ時点で `src/utils/styles.ts` の役割は重複。ただし PR 1〜PR 5 の移行中は React 側の暫定参照として残す。**PR 6 で `src/utils/styles.ts` 削除 + 全 import 元の整理**。
 
 ---
 
-## バッチ計画（6 PR）
+## バッチ計画（7 PR）
 
-| #        | PR スコープ                                                                                      | 移行件数 | 主目的                                                                                                                                                          |
-| -------- | ------------------------------------------------------------------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PR 1** | 基礎工事 + `ui/` 全件                                                                            | ~24      | 意味クラス定義、screenshot baseline、進捗 vitest 導入。後続 PR の foundation                                                                                    |
-| **PR 2** | `qr-ticket/*` (GenerateTab + VerifyTab + TicketDetail)                                           | ~42      | 関連 3 ファイル一括                                                                                                                                             |
-| **PR 3** | 重量級: JwtDecoder + UuidV7Generator                                                             | ~41      | サイズ大の tools                                                                                                                                                |
-| **PR 4** | 中量級: Gs1Databar + EncodingConverter + DummyText                                               | ~53      | サイズ中の tools                                                                                                                                                |
-| **PR 5** | 軽量級: QrReader + ConfigConverter + JanCode + QrCode + UlidGenerator + Base64Codec + 残り tools | ~42      | 残り tools を網羅                                                                                                                                               |
-| **PR 6** | flip + cleanup                                                                                   | 0        | `_headers` から `style-src 'unsafe-inline'` 削除、`stripMetaStyleSrc()` 撤去、`csp.ts`/`headers.test.ts` 同期、`src/utils/styles.ts` 削除、decisions [066] 追加 |
+| #          | PR スコープ                                                                                                                                                                                      | 移行件数 | 主目的                                                                                                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PR 1**   | 基礎工事 + `ui/*` の simple files (11 ファイル: CountInput / CopyButton / ClearButton / BareInput / ActionButton / DownloadButton / ToggleGroup / Section / ErrorMessage / OutputField / Select) | ~25      | 意味クラス定義、screenshot baseline、進捗 vitest 導入。simple ファイルでパターン確立                                                                            |
+| **PR 1.5** | `ui/*` の complex files (ResultTable + InputField) — API redesign 含む                                                                                                                           | ~12      | `cellStyle: CSSProperties` escape hatch の撤廃、列幅は `<colgroup>` HTML 属性化、tools 側 callsite 更新含む                                                     |
+| **PR 2**   | `qr-ticket/*` (GenerateTab + VerifyTab + TicketDetail)                                                                                                                                           | ~42      | 関連 3 ファイル一括                                                                                                                                             |
+| **PR 3**   | 重量級: JwtDecoder + UuidV7Generator                                                                                                                                                             | ~41      | サイズ大の tools                                                                                                                                                |
+| **PR 4**   | 中量級: Gs1Databar + EncodingConverter + DummyText                                                                                                                                               | ~53      | サイズ中の tools                                                                                                                                                |
+| **PR 5**   | 軽量級: QrReader + ConfigConverter + JanCode + QrCode + UlidGenerator + Base64Codec + 残り tools                                                                                                 | ~42      | 残り tools を網羅                                                                                                                                               |
+| **PR 6**   | flip + cleanup                                                                                                                                                                                   | 0        | `_headers` から `style-src 'unsafe-inline'` 削除、`stripMetaStyleSrc()` 撤去、`csp.ts`/`headers.test.ts` 同期、`src/utils/styles.ts` 削除、decisions [066] 追加 |
 
 依存順序の根拠:
 
-- **PR 1 first**: `ui/*` は `tools/*` から import される。先に foundation を固めないと二重移行
+- **PR 1 first**: `ui/*` の simple files で意味クラスのパターン確立。後続 PR の foundation
+- **PR 1.5**: ResultTable / InputField は API redesign を伴うため、simple ui のパターンが確立されてから着手すべき。`ResultTable` の `cellStyle: CSSProperties` prop を撤廃すると tools/ 側 callsite も更新が必要なため独立 PR にして影響範囲を明確化
 - **PR 2-5**: 規模順で review 負荷分散。qr-ticket は同一ドメインで関連性高く独立化
 - **PR 6 last**: 全 216 件移行確定後に CSP flip
+
+PR 1.5 を分離した理由（2026-05-03 spec 改訂時に判明）:
+
+- `ResultTable` は `cellStyle: CSSProperties` を arbitrary な escape hatch として受け取る設計で、これを撤廃しないと tools 側で結局 `style="..."` が出続けて strict 化不能
+- `cellStyle` を削るには (a) `width: string` prop を `<colgroup><col width="X">` HTML 属性化（CSP 対象外）、(b) `textAlign` 等を className enum に変更、(c) tools 側 5+ callsite の更新、と影響範囲が広い
+- `InputField` は runtime computed style (`border: 1px solid ${error ? colors.error : colors.borderInput}`) が散在し、条件 className 切替に変換するために clean な class 設計が必要
+- これらを PR 1 に含めると 80+ 行 diff の巨大 PR になり review 困難
 
 ---
 
