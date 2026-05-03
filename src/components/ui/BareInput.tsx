@@ -1,5 +1,4 @@
 import type { InputHTMLAttributes } from 'react';
-import { caption, colors } from '@/utils/styles';
 
 interface Props extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -33,15 +32,9 @@ export function BareInput({
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`rounded-md border w-full${className ? ` ${className}` : ''}`}
-      style={{
-        ...caption,
-        ...(mono ? { fontFamily: 'monospace' } : {}),
-        padding: '0.4rem 0.5rem',
-        borderColor: error ? colors.error : colors.borderInput,
-        background: colors.bg,
-        color: colors.text,
-      }}
+      className={`rounded-md border w-full caption bg-token text-token px-2 py-[0.4rem] ${
+        mono ? 'font-mono' : ''
+      } ${error ? 'border-color-error' : 'border-color-input'}${className ? ` ${className}` : ''}`}
       {...rest}
     />
   );
