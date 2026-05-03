@@ -1,5 +1,4 @@
 import type { AriaAttributes, ReactNode } from 'react';
-import { bodyEmphasis, colors } from '@/utils/styles';
 
 interface Props extends AriaAttributes {
   title?: ReactNode;
@@ -32,24 +31,10 @@ export function Section({
   const hasHeader = title != null || headerSlot != null;
 
   return (
-    <div
-      role={role}
-      {...ariaProps}
-      className="rounded-xl border overflow-hidden"
-      style={{
-        borderColor: colors.border,
-      }}
-    >
+    <div role={role} {...ariaProps} className="rounded-xl border overflow-hidden section-card">
       {hasHeader && (
         <div
-          className={`px-4 py-3 border-b${headerSlot ? ' flex items-center justify-between flex-wrap gap-2' : ''}`}
-          style={{
-            ...bodyEmphasis,
-            color: colors.text,
-            margin: 0,
-            background: colors.bgSubtle,
-            borderBottomColor: colors.border,
-          }}
+          className={`px-4 py-3 border-b body-emphasis section-card-header${headerSlot ? ' flex items-center justify-between flex-wrap gap-2' : ''}`}
         >
           {title != null && (
             <span role="heading" aria-level={headingLevel}>
@@ -59,14 +44,7 @@ export function Section({
           {headerSlot}
         </div>
       )}
-      <div
-        className="p-4"
-        style={{
-          background: colors.bg,
-        }}
-      >
-        {children}
-      </div>
+      <div className="p-4 bg-token">{children}</div>
     </div>
   );
 }
