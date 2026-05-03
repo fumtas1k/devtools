@@ -173,3 +173,168 @@
 .text-link:visited {
   color: var(--color-link-visited);
 }
+
+/* ============================================================
+ * 意味クラス（#176 B 案 PR 1 で導入）
+ *
+ * 目的: React の `style={{}}` (CSP `style-src 'unsafe-inline'` 必須)を
+ * className に移行するための共有クラス群。`src/utils/styles.ts` の
+ * `colors` / `bodyEmphasis` / `caption` を CSS 化したもの。
+ *
+ * 命名規約: 意味ベース（`.body-emphasis` / `.text-primary` / `.section-card`）
+ * Tailwind utility 風命名（`.text-md-primary`）は禁止 — Tailwind 生成 class と衝突回避
+ *
+ * 詳細: docs/superpowers/specs/2026-05-03-issue-176-b-style-src-elimination-design.md
+ * ============================================================ */
+
+@layer components {
+  /* Typography */
+  .body-emphasis {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+  .caption {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+
+  /* Color: text */
+  .text-token {
+    color: var(--color-text);
+  }
+  .text-muted {
+    color: var(--color-muted);
+  }
+  .text-primary-token {
+    color: var(--color-primary);
+  }
+  .text-on-primary {
+    color: var(--color-text-on-primary);
+  }
+  .text-error {
+    color: var(--color-error);
+  }
+  .text-success {
+    color: var(--color-success);
+  }
+
+  /* Color: background */
+  .bg-token {
+    background: var(--color-bg);
+  }
+  .bg-surface {
+    background: var(--color-bg-surface);
+  }
+  .bg-subtle {
+    background: var(--color-bg-subtle);
+  }
+  .bg-primary-token {
+    background: var(--color-primary);
+  }
+  .bg-error {
+    background: var(--color-error-bg);
+  }
+  .bg-success {
+    background: var(--color-success-bg);
+  }
+  .bg-transparent-token {
+    background: transparent;
+  }
+
+  /* Color: border (border-width 1px + style + color) */
+  .border-token {
+    border: 1px solid var(--color-border);
+  }
+  .border-input {
+    border: 1px solid var(--color-border-input);
+  }
+  .border-error {
+    border: 1px solid var(--color-error);
+  }
+  .border-success {
+    border: 1px solid var(--color-success);
+  }
+  .border-primary-token {
+    border: 1px solid var(--color-primary);
+  }
+  .border-bg-subtle {
+    border: 1px solid var(--color-bg-subtle);
+  }
+
+  /* Border-color only (Tailwind border utility と組み合わせる用) */
+  .border-color-token {
+    border-color: var(--color-border);
+  }
+  .border-color-input {
+    border-color: var(--color-border-input);
+  }
+  .border-color-error {
+    border-color: var(--color-error);
+  }
+
+  /* ActionButton variant classes (BEM-style for variant + state combos) */
+  .btn-action--default {
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-input);
+  }
+  .btn-action--default:disabled {
+    background: var(--color-bg-subtle);
+    border-color: var(--color-border-input);
+    color: var(--color-muted);
+  }
+  .btn-action--primary {
+    background: var(--color-primary);
+    color: var(--color-text-on-primary);
+    border: 1px solid var(--color-primary);
+  }
+  .btn-action--primary:disabled {
+    background: var(--color-bg-subtle);
+    border-color: var(--color-bg-subtle);
+    color: var(--color-muted);
+  }
+  .btn-action--secondary {
+    background: transparent;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+  }
+  .btn-action--secondary:disabled {
+    background: transparent;
+    border-color: var(--color-border);
+    color: var(--color-muted);
+  }
+  .btn-action--danger {
+    background: transparent;
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+  }
+  .btn-action--danger:disabled {
+    background: var(--color-bg-subtle);
+    border-color: var(--color-error);
+    color: var(--color-muted);
+  }
+
+  /* CopyButton state classes */
+  .btn-copy-idle {
+    color: var(--color-muted);
+  }
+  .btn-copy-success {
+    color: var(--color-success);
+    border-color: var(--color-success);
+  }
+
+  /* Section card layout */
+  .section-card {
+    border-color: var(--color-border);
+    background: var(--color-bg);
+  }
+  .section-card-header {
+    background: var(--color-bg-subtle);
+    border-bottom-color: var(--color-border);
+    color: var(--color-text);
+  }
+}
