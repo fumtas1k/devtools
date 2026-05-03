@@ -16,7 +16,7 @@ export const PRODUCTION_CSP =
   "img-src 'self' data: blob:; " +
   "media-src 'self' blob:; " +
   "style-src 'self' 'unsafe-inline'; " +
-  "script-src 'self' 'unsafe-inline'; " +
+  "script-src 'self'; " +
   "connect-src 'self'; " +
   "worker-src 'self'; " +
   "object-src 'none'; " +

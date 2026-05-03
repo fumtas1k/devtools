@@ -76,8 +76,12 @@ describe('public/_headers', () => {
       expect(csp).toContain("connect-src 'self'");
     });
 
-    it('script-src は self を含む', () => {
+    it("script-src は self のみで 'unsafe-inline' を含まない (#176)", () => {
+      // #176 A-1: Astro security.csp の <meta> ハッシュベース許可に移行したため、
+      // _headers 側の script-src からは 'unsafe-inline' を撤廃した。
+      // 万一 'unsafe-inline' が再付与されると、本テストが落ちて CSP 緩和の事故を即時検出する。
       expect(csp).toMatch(/script-src[^;]*'self'/);
+      expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
     });
 
     it("style-src は 'unsafe-inline' を許可（React/Astro のインラインスタイル運用上必要）", () => {
