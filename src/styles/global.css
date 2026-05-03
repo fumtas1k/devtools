@@ -252,6 +252,8 @@
     border: none;
     color: var(--color-muted);
   }
+  /* 注意: compact 時は border:none で描画自体を抑止するため、is-copied の border-color は
+     compact では見えない (旧 develop 実装と同一)。bg/color は is-copied で上書きされ機能維持。 */
   .btn-copy.is-copied {
     border-color: var(--color-success);
     background: var(--color-success-bg);
