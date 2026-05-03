@@ -42,6 +42,8 @@
 
 ## 3. 実装後の検証義務（要点）
 
+> **正本**: `docs/playbooks/e2e-validation.md`（このセクションは要約。手順を変更する場合は playbook 側を先に編集すること）
+
 **E2E テストは実装と同時に書く**: バグ修正・UI 挙動の変更時はコミット前に該当ケースの E2E を追加する。後回し禁止。
 
 **push 前に必須**: `npm run test`（ユニット）／ `node_modules/.bin/astro check`（型）／ `npm run test:e2e`（E2E）。
@@ -87,6 +89,8 @@ post-PR 代行は不要、CI が最終ゲート。
 `gh` コマンドで複数行・バックティック（\`）を含む本文を渡すときは、**直接引数に渡さず一時ファイル経由で投稿すること**。具体的には `-F`または`--body-file` オプションを使用する（MCP / API 経由は不要）。失敗時は投稿状況を必ず確認し、重複は削除して整合性を保つ。
 
 ### 6.2 ブランチ運用（要点）
+
+> **正本**: `docs/playbooks/pr-creation.md` 1〜2 章（このセクションは要約。手順を変更する場合は playbook 側を先に編集すること）
 
 - **`develop` には直接コミットしない**: 必ず feature ブランチを切る。誤って始めた場合は `git stash` → ブランチ切替 → `git stash pop`。
 - **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b <type>/<slug>`（例: `feat/add-tool`, `fix/issue-123-crash`）。issue がある場合は `<type>/issue-<n>-<slug>` 形式を推奨。
