@@ -2440,7 +2440,7 @@ VRT を **独立 PR (本 PR)** で先行導入し、以下の 5 つの設計原�
 
 ### 関連 PR / issue
 
-- 本 PR: 実装時に番号置換
+- 本 PR: [#254](https://github.com/fumtas1k/devtools/pull/254)
 - 失敗 PR: [#253](https://github.com/fumtas1k/devtools/pull/253) (closed)
 - 起源: `#176` B 案（`style-src 'unsafe-inline'` 削減）の前提整備
 - 過去: [063] (preview 切替), [064] (CSP A-1), [065] (webServer CI 分岐)
