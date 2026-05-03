@@ -47,7 +47,7 @@ npm run build
 - [ ] **Step 2: preview を起動して port 4321 を確認**
 
 ```bash
-npx astro preview --port 4321 --host
+npx astro preview --port 4321
 ```
 
 期待: ターミナルに `Listening on http://localhost:4321/` 等が出る。別端末で `curl -sI http://localhost:4321/ | head -5` を叩き、`HTTP/1.1 200 OK` が返ること。Ctrl+C で停止。
@@ -92,7 +92,7 @@ sed -n '24,32p' playwright.config.ts
     // #246: security.csp の `<meta>` を含めた本番相当 CSP を E2E で評価するため
     // dev server ではなく `astro build` 後の `dist/` を `astro preview` で配信する。
     // build はキャッシュが効くと数秒、cold でも 15〜25s 程度。preview 起動は瞬時。
-    command: 'npm run build && npm run preview -- --port 4321 --host',
+    command: 'npm run build && npm run preview -- --port 4321',
     url: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321',
     // build 時間を含むため 30s → 120s に延長（cold start でも収まる余裕）
     timeout: 120_000,
@@ -315,10 +315,8 @@ L56-59 の `webServer was not ready` 判定箇所を以下に差し替え:
 - **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ ステップ 0 の整地と `npm run build` が成功するかの確認を実施してから 1 回だけ再実行
 - 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
 
-> 補足: `playwright.config.ts` の `webServer.timeout` は 120s（PR #XXX、#246 で 30s → 120s に延長。build 時間込み）。env 由来失敗の発見はこのタイムアウトで早期に確定する。
+> 補足: `playwright.config.ts` の `webServer.timeout` は 120s（PR #247、#246 で 30s → 120s に延長。build 時間込み）。env 由来失敗の発見はこのタイムアウトで早期に確定する。
 ```
-
-> 注: `#XXX` は本 PR 番号で実装時に置換。
 
 - [ ] **Step 4: `docs/playbooks/e2e-validation.md` 5 章「コマンドリファレンス」を更新**
 
@@ -397,7 +395,7 @@ L1867 の「将来課題とする。」を以下に差し替え:
 
 ### 決断
 
-`playwright.config.ts:webServer.command` を `npm run build && npm run preview -- --port 4321 --host` に切り替え、E2E を `dist/` 配信に対して実行する。
+`playwright.config.ts:webServer.command` を `npm run build && npm run preview -- --port 4321` に切り替え、E2E を `dist/` 配信に対して実行する。
 
 - `webServer.timeout` は build 時間を含むため 30s → 120s に延長
 - CI（`.github/workflows/test.yml`）の e2e job にも `npm run build` step を明示追加（ログ可読性 + 早期失敗切り分け）
@@ -420,13 +418,11 @@ L1867 の「将来課題とする。」を以下に差し替え:
 
 ### 関連 PR / issue
 
-- 本 PR: #XXX（実装時に PR 番号置換）
+- 本 PR: #247
 - 前提となる issue: #246
 - 後続: #176（A-1 採用）
 - 過去: [054]（CSP 初導入）／[061]（CSP 違反 CI 検知ゲート初導入）
 ```
-
-> 注: `#XXX` は本 PR 番号で実装時に置換。
 
 - [ ] **Step 3: docs-references vitest を再実行**
 

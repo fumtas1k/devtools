@@ -10,7 +10,7 @@
 
 `npm run test:e2e` は **`astro build` 済みの `dist/` を `astro preview` で配信して実行する**（`playwright.config.ts` の `webServer.command` で連結済み）。理由:
 
-- 本番 (Cloudflare Pages) の `<meta>` ベース CSP を含むビルド成果物に対して E2E を回し、prod-parity を確保するため（`docs/decisions.md` [063]）
+- 本番 (Cloudflare Pages) のビルド成果物に対して E2E を回し、prod-parity を確保するため（`docs/decisions.md` [063]）。後続 [#176](https://github.com/fumtas1k/devtools/issues/176) 採用時には `<meta>` ベース CSP も生成されるため、その評価基盤を先回りで整備する位置付けでもある
 - Astro の `security.csp` 機能は dev mode で動作せず build/preview のみで有効（[公式 docs](https://docs.astro.build/en/reference/configuration-reference/#securitycsp)）
 
 `webServer.timeout` は build 時間を含むため 120s に延長してある（cold start でも収まる余裕）。

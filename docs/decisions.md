@@ -2251,7 +2251,7 @@ PR #240（ルールファイル整理）の派生検証で、上記いずれも 
 
 - `webServer.timeout` は build 時間を含むため 30s → 120s に延長
 - CI（`.github/workflows/test.yml`）の e2e job にも `npm run build` step を明示追加（ログ可読性 + 早期失敗切り分け）
-- `applyProductionCsp` ヘルパは現状ロジック（route 介入で response header に `PRODUCTION_CSP` を上書き）を維持。preview 由来の `<meta>` と AND 評価される構成にする
+- `applyProductionCsp` ヘルパは現状ロジック（route 介入で response header に `PRODUCTION_CSP` を上書き）を維持。本 PR 時点では `<meta>` は未生成（`security.csp` 未採用）のため response header のみで評価されるが、後続 [#176](https://github.com/fumtas1k/devtools/issues/176) で `security.csp` が採用されると build 時に `<meta>` が注入され、route 介入の header と AND 評価される構成になる
 - `docs/shared-agent-rules.md` / `docs/playbooks/e2e-validation.md` / `docs/playbooks/pr-creation.md` / `README.md` / `CLAUDE.md` を preview 前提に整合
 
 ### 副次効果（重要）— Vite asset inline 化の構造的修正
@@ -2259,6 +2259,8 @@ PR #240（ルールファイル整理）の派生検証で、上記いずれも 
 preview 切替で **本番にも存在していた CSP 違反**が表面化した: `@fontsource/jetbrains-mono` の小さな subset font (cyrillic-ext 等) が Vite デフォルトの `assetsInlineLimit: 4096` で `data:font/woff2;base64,...` として CSS に inline 化され、`public/_headers` の CSP は `font-src` を明示しないため `default-src 'self'` で block されていた。dev mode では asset を bundling せず元ファイル URL のまま配信するため発現せず、長期間気付かれなかった。
 
 `astro.config.mjs` の `vite.build.assetsInlineLimit: 0` で全 asset の inline 化を無効化し、dev/preview/prod の挙動を一致させた。CSP に `font-src 'self' data:` を追加する選択肢もあったが、(a) 同種の問題（小さな画像 / SVG の data: URI 化）が将来再発する温床を残すこと、(b) CSP の許可面を増やすことより asset 配信を統一する方が構造的に強いこと、から inline 無効化を採用した。
+
+inline 化解除のトレードオフ — HTTP/1.1 環境では小ファイルの個別 GET が増えるが、本番ホスト Cloudflare Pages は HTTP/2/3 デフォルトで multiplex 配信されるため実質的なロード差は無い。さらに `@fontsource/jetbrains-mono` は `unicode-range` で subset を gate しており、日本語/英数中心ユーザーのブラウザは cyrillic-ext 等のサブセットを fetch しないため発火経路自体が稀。`dist/` 全体サイズは inline 化解除前後で 16M 据え置きで、ファイル数のみ +7（cyrillic-ext / greek / vietnamese 等の小サブセットが個別ファイル化された分）。
 
 ### 却下した選択肢
 
