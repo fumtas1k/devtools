@@ -157,6 +157,7 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 - `docs/agent-lessons.md`: 教訓バッファ（共通ルール化前の蓄積場所）
 - `docs/playbooks/`: タスク開始時に読む手順書（PR 作成 / E2E 検証 等）
 - `docs/setup/`: 環境セットアップ手順（プラグイン install / Gemini policy 等）
+- `tests/meta/`: ドキュメント / 設定の整合性を検証する meta テスト（`src/**/__tests__/` colocation と分離）
 - `tasks/active_context.md`: セッション固有の作業コンテキスト（gitignore 対象）
 
 ---

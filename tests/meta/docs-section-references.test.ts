@@ -8,6 +8,8 @@
  *
  * v1 スコープ:
  *   - 検出対象: `<file>.md (の)? <num>(.<num>)? 章` および range `〜<num> 章`
+ *   - 階層深さ: 最大 2 階層（`6.4 章` まで）。3 階層以上（`6.4.1 章` 等）は未対応。
+ *     現 repo では使用していないが、将来 deeper nesting を導入するなら正規表現拡張が必要。
  *   - スコープ外: `<file>.md (1, 2, 3 章)` のような comma-separated、`N 節`、
  *     `decisions [062]` のような番号参照（issue #242 で記録、別 PR で検討）
  *   - source として decisions.md を除外（歴史的記述で意図的に古い章番号を
@@ -29,6 +31,7 @@ function collectMarkdownFiles(root: string, results: string[] = []): string[] {
     '.gemini',
     'dist',
     '.astro',
+    'coverage',
   ]);
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (skipDirs.has(entry.name)) continue;
