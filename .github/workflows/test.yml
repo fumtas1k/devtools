@@ -68,6 +68,9 @@ jobs:
       - name: Playwright ブラウザをインストール
         run: npx playwright install --with-deps chromium
 
+      - name: 本番相当アセットを build（E2E は preview 経由で配信するため必要）
+        run: npm run build
+
       - name: E2E テストを実行
         run: npm run test:e2e
 
