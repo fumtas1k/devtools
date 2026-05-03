@@ -13,7 +13,10 @@ import path from 'node:path';
  * - `ref.current.style.setProperty('--var', value)` — CSSOM API 経由は許容
  *   regex は `\.style\.X = Y` のみ検出、`.style.setProperty(` は検出しない
  */
-const MIGRATED_FILES: readonly string[] = ['src/components/ui/ActionButton.tsx'];
+const MIGRATED_FILES: readonly string[] = [
+  'src/components/ui/ActionButton.tsx',
+  'src/components/ui/BareInput.tsx',
+];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
   describe.each(MIGRATED_FILES)('%s', (file) => {

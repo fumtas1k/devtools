@@ -1,5 +1,4 @@
 import type { InputHTMLAttributes } from 'react';
-import { caption, colors } from '@/utils/styles';
 
 interface Props extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -20,6 +19,9 @@ interface Props extends Omit<
  *
  * - `InputField` はラベル前提のため、ラベル不要のグリッド内 input はこちらを使う
  * - `outline: none` を component base から外し、global CSS の `:focus-visible` に委ねる（a11y 向上）
+ *
+ * style: global.css `@layer components` の `.caption` / `.bg-default` / `.text-default` /
+ * `.border-input` / `.border-error` (Tailwind auto-utility from --color-error in @theme) を参照。
  */
 export function BareInput({
   value,
@@ -29,19 +31,14 @@ export function BareInput({
   className,
   ...rest
 }: Props) {
+  const borderClass = error ? 'border-error' : 'border-input';
+  const monoClass = mono ? 'font-mono' : '';
+  const extraClass = className ?? '';
   return (
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`rounded-md border w-full${className ? ` ${className}` : ''}`}
-      style={{
-        ...caption,
-        ...(mono ? { fontFamily: 'monospace' } : {}),
-        padding: '0.4rem 0.5rem',
-        borderColor: error ? colors.error : colors.borderInput,
-        background: colors.bg,
-        color: colors.text,
-      }}
+      className={`caption rounded-md border ${borderClass} ${monoClass} bg-default text-default w-full px-2 py-1.5 ${extraClass}`.trim()}
       {...rest}
     />
   );
