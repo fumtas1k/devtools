@@ -39,6 +39,8 @@ const PAGES = [
   '/tools/config-converter',
 ] as const;
 
+const STATIC_PAGES = new Set(['/', '/about', '/privacy']);
+
 const VIEWPORTS = [
   { name: 'desktop', width: 1280, height: 800 },
   { name: 'mobile', width: 390, height: 844 },
@@ -76,11 +78,12 @@ for (const viewport of VIEWPORTS) {
         });
 
         await page.goto(url);
-        // ハイドレーション完了を待ってから screenshot
-        // （静的ページは hydration 対象がないため timeout する → catch でスキップ）
-        await waitForReactHydration(page).catch(() => {
-          /* about / privacy 等の静的ページは無視 */
-        });
+        // 静的ページ (about / privacy / index) は React island 不在のため hydration 待ち不要。
+        // それ以外は hydration 完了を待つ — timeout した場合は real bug として test を fail させる
+        // （旧設計の `.catch(() => {})` は hydration バグを silent に baseline 化するリスクがあった）
+        if (!STATIC_PAGES.has(url)) {
+          await waitForReactHydration(page);
+        }
 
         await expect(page).toHaveScreenshot({
           fullPage: true,

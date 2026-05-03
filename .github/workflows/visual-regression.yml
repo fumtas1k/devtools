@@ -17,9 +17,9 @@ jobs:
   visual-regression:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -39,7 +39,7 @@ jobs:
 
       - name: テストレポートを artifact upload（pass/fail 問わず）
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: visual-regression-report-pr-${{ github.event.pull_request.number }}
           path: playwright-report/
