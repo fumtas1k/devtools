@@ -1862,7 +1862,7 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - ✅ `frame-ancestors 'none'` でクリックジャッキング、`X-Content-Type-Options: nosniff` で MIME sniffing、`Referrer-Policy` でリファラ漏えいを抑止。
 - ✅ Permissions-Policy で未使用機能（microphone / geolocation）を明示的に無効化し、将来追加コードでの誤利用を防止。
 - ✅ `connect-src 'self'` により、万一 XSS が成立しても外部送信経路を断つ。
-- ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。なお dev / preview server の挙動差で security.csp が未検証だった件は [063] で解消した。
+- ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。なお dev / preview server の挙動差で security.csp が未検証だった件は [063] で解消、`script-src 'unsafe-inline'` の実質削減 (meta strict layer 採用) は [064] で実施。
 - ⚠️ Cloudflare Pages 以外のホスティング（Netlify は同形式で動作するが、Vercel は `vercel.json` 形式）に切り替える際は別途設定追加が必要。
 - ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする → **[063] で E2E を preview ベースに移行して解消**。
 
@@ -2283,3 +2283,81 @@ inline 化解除のトレードオフ — HTTP/1.1 環境では小ファイル�
 - 本 PR: #246 で起票
 - 後続: [#176](https://github.com/fumtas1k/devtools/issues/176)（A-1 採用）
 - 過去: [054]（CSP 初導入）／[061]（CSP 違反 CI 検知ゲート初導入）／[062]（worktree setup 簡素化）
+
+---
+
+## [064] 2026-05-03 — `script-src 'unsafe-inline'` 削減: Astro `security.csp` で `<meta>` を strict layer 化、ヘッダは permissive defense-in-depth に分離
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+[054] で導入した CSP は `script-src 'self' 'unsafe-inline'` を含み、Astro の hydration runtime / island 制御スクリプト / `is:inline` ServiceWorker 登録が inline `<script>` で出力されるため `'unsafe-inline'` が必須だった。これは `dangerouslySetInnerHTML` 利用箇所（QrCode / Gs1Databar / qr-ticket GenerateTab の 3 箇所）が将来 sink 化した場合に XSS 防御が効かない既知の弱点だった。[#176](https://github.com/fumtas1k/devtools/issues/176) で 3 案 PoC 並走の結果、A-1（Astro `security.csp` 採用）が第一推奨と確定。E2E の preview 切替（[063]）が完了し A-1 を安全に検証できる土台が整ったため本 PR で実施。
+
+### 当初プランと実装中に判明した architectural な制約
+
+当初プランは「`_headers` から `script-src 'unsafe-inline'` を削除し strict 化」だったが、実装中に CSP 仕様の **Multiple Policies AND 評価**による architectural な制約が判明:
+
+- Astro `security.csp` は `<meta http-equiv="content-security-policy">` を build 時に注入し、inline script を SHA-256 hash で auto-allowlist する
+- 一方、`public/_headers` は HTTP response header 経由の CSP として配信される
+- ブラウザは **複数 CSP policy を AND 評価**: inline script が pass するためには、すべての policy で許可されている必要がある
+- `_headers` の `script-src` から `'unsafe-inline'` を削除すると、header policy が hash も `'unsafe-inline'` も持たない `script-src 'self'` になり、**header 単体で全 inline script を block する**
+- 結果として `<meta>` の hash があっても AND 評価で header が落とし、Astro island loader / SW 登録など Astro 自身の inline script も動かなくなる（preview と本番 Cloudflare Pages の両方で）
+
+### 決断
+
+**「`<meta>` を script-src strict layer、`_headers` を permissive defense-in-depth 層」と再定義する。**
+
+実装内訳:
+
+- `astro.config.mjs` に `security: { csp: { algorithm: 'SHA-256' } }` を追加。Astro の build pipeline が処理する inline `<script>` を自動で SHA-256 hash 化し `<meta>` に列挙
+- `BaseLayout.astro` の SW 登録 `<script is:inline>` から `is:inline` を削除し、Astro pipeline で外部 module bundle に変換（auto-hash 対象に）
+- `astro.config.mjs` に `stripMetaStyleSrc()` カスタム integration を追加し、`<meta>` から `style-src` ディレクティブを除去（後述「style-src の例外」参照）
+- `public/_headers` の `script-src 'self' 'unsafe-inline'` は **意図的に維持**。header は permissive のまま、AND 評価で `<meta>` の hash 制約が支配する
+- `src/utils/csp.ts:PRODUCTION_CSP` に「meta が strict layer の設計」コメント追加。`src/utils/__tests__/headers.test.ts` も同方針に揃え、`'unsafe-inline'` 保持を陽性アサート（comment で意図明記）
+- `src/utils/__tests__/meta-csp.test.ts` を新設し、build 後の `dist/*.html` の `<meta>` CSP が `script-src 'self' 'sha256-...'`（`'unsafe-inline'` 不在）を保つことを Vitest で検証。**meta strict layer の崩壊を CI で即時検知**
+
+### セキュリティ効果
+
+XSS sink への inline script 注入 (`<script>maliciousCode()</script>`) を考えた場合:
+
+- header policy: `'unsafe-inline'` で許可（permissive 層なので）
+- meta policy: hash が一致しないため block
+- AND 評価: meta が block → **全体として block**
+
+これにより `dangerouslySetInnerHTML` 経由の sink 化が起きても CSP で実行を防げる。「`'unsafe-inline'` 削除」の本来の security goal は meta 層で達成された。
+
+`_headers` の `'unsafe-inline'` は misleading に見えるが、コメントで AND 評価設計を明記し、`docs/decisions.md` [064] へリンクすることで現場の誤解を防ぐ。
+
+### `style-src` の例外（`stripMetaStyleSrc()` integration）
+
+`security.csp` を有効にすると Astro はデフォルトで `style-src` にも sha256 hash を付与する。しかし CSP Level 2+ 仕様により **`style-src` に hash と `'unsafe-inline'` が共存するとブラウザは `'unsafe-inline'` を無視する**。本 PR では style-src の strict 化は scope 外（B 案で React `style="..."` 200+ 箇所の段階移行と合わせて行う必要がある）ため、`<meta>` から `style-src` を strip して header 側 (`'self' 'unsafe-inline'`) のみで制御する。
+
+`stripMetaStyleSrc()` は `astro:build:done` フックで `dist/*.html` の `<meta>` content から `style-src ...;` を regex で除去するインライン integration として実装（30 行）。B 案 完了時に **integration ごと削除**し、style-src も meta strict 層に組み込む計画。
+
+### 残課題（B 案 — 別 PR）
+
+`style-src 'unsafe-inline'` は依然として残る。React TSX の `style={{...}}` 200+ 箇所が build 後 `style="..."` 属性として出力されるためで、属性ベース inline style は CSP 仕様上 hash/nonce 照合の対象外。CSS Modules / scoped style への段階移行（[#176](https://github.com/fumtas1k/devtools/issues/176) アプローチ B）を別途進める。完了時に `stripMetaStyleSrc()` integration も削除する。
+
+### 却下した選択肢
+
+- **`_headers` の script-src を完全削除**: header 側に `script-src` ディレクティブを置かなければ `default-src 'self'` にフォールバック。`default-src 'self'` も inline を block するため同じ AND 評価問題が発生。`default-src` を緩めるのは defense-in-depth を後退させるため不採用
+- **`_headers` の script-src に build 時 hash を埋め込んで sync**: build ごとに hash が変わるため `_headers` を build artifact として動的生成する必要があり、Cloudflare Pages の `_headers` 静的配信モデルから外れる。Astro builtin の利点を捨て A-2 (post-build hash 化) と実装複雑度が同等以上になる
+- **A-2 (post-build hash 化) に切替**: 自前 integration で全ページの inline script を抽出 → hash 計算 → header に列挙。Astro builtin (`security.csp`) の auto-hash を捨てることになり、将来 Astro が直接 header CSP 出力をサポートした際の移行コストも増える。A-1 が builtin に乗れる選択肢として優位
+- **A-3 (CSP3 strict-dynamic + nonce)**: 静的 SSG では per-request nonce が出せず、固定 nonce は CSP-Evaluator が HIGH severity 判定。1 ページに nonce 無しの inline script が複数あるため transitive trust も活きない。技術的に実装不可
+- **SW 登録 script の手動 hash 列挙 (`scriptDirective.hashes`)**: SW script の中身が変わるたびに hash 再計算が必要。`is:inline` 削除のほうが zero-maintenance で堅牢
+
+### 影響 / 移行
+
+- **CSP の XSS 緩和効果**: meta layer による hash-only 制約により、`dangerouslySetInnerHTML` 利用箇所が将来 sink 化した場合のインライン XSS 注入が CSP で block されるようになる
+- **build 出力**: 全ページに `<meta http-equiv="content-security-policy" content="script-src 'self' 'sha256-...'">` が注入される（`stripMetaStyleSrc()` で style-src は除去済み）。dist サイズわずかに増、誤差レベル
+- **dev mode**: `security.csp` は dev で動作しない（[063] で確認済の Astro 公式仕様）。dev は引き続き `'unsafe-inline'` 許容で動作するため開発体験への影響なし。E2E は preview ベース ([063]) で評価
+- **CSP gate 強度**: `applyProductionCsp` ヘルパが response header (permissive) と `<meta>` (strict) の AND を評価する形で実体化。新たな inline script を Astro pipeline 外から追加すると CI が違反検出して止まる（meta-csp.test.ts と E2E の両層で検知）
+- **後続作業**: B 案（`style-src 'unsafe-inline'` 削減）は独立 PR として継続。完了時に `stripMetaStyleSrc()` integration を削除し style-src も meta strict 化
+
+### 関連 PR / issue
+
+- 本 PR: 実装時に番号置換
+- 解消する issue: [#176](https://github.com/fumtas1k/devtools/issues/176)（A-1 完了）
+- 前提依存: [063]（E2E preview 切替）／[061]（CSP 違反 CI 検知ゲート）／[054]（CSP 初導入）
+- 後続: [#176](https://github.com/fumtas1k/devtools/issues/176) の B 案（`style-src 'unsafe-inline'` 削減）

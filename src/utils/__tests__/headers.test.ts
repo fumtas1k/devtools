@@ -76,8 +76,14 @@ describe('public/_headers', () => {
       expect(csp).toContain("connect-src 'self'");
     });
 
-    it('script-src は self を含む', () => {
+    it("script-src は 'self' と 'unsafe-inline' を保持する (#176 — meta strict layer 採用後の設計)", () => {
+      // #176 A-1: 'unsafe-inline' の "実質的な" 削減は Astro security.csp が生成する
+      // <meta> CSP の script-src 'self' 'sha256-...' (hash-only) で達成している。
+      // ヘッダ側 (本ファイル) は AND 評価成立のため permissive のままにし、
+      // ブラウザの AND 評価で meta の strictness が支配する設計（[064]）。
+      // <meta> 側の strictness は src/utils/__tests__/meta-csp.test.ts で別途検証する。
       expect(csp).toMatch(/script-src[^;]*'self'/);
+      expect(csp).toMatch(/script-src[^;]*'unsafe-inline'/);
     });
 
     it("style-src は 'unsafe-inline' を許可（React/Astro のインラインスタイル運用上必要）", () => {

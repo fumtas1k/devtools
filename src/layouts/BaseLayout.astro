@@ -48,7 +48,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <MobileDrawer currentSlug={currentSlug} />
     <slot />
     <Footer />
-    <script is:inline>
+    <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js');

@@ -10,6 +10,12 @@
  *   この定数が一致することをアサートし、片方更新の事故を防ぐ。
  *
  * 各ディレクティブの採用根拠は `docs/decisions.md` [054] を参照。
+ *
+ * #176 A-1 以降、script-src の 'unsafe-inline' は意図的に維持している。Astro
+ * `security.csp` が生成する `<meta>` CSP が `script-src 'self' 'sha256-...'` で
+ * hash-only の strict layer を提供し、ブラウザの AND 評価で実質的な strictness は
+ * meta が支配する。ヘッダ側 (本定数) は AND 評価成立のための permissive 層で、
+ * defense-in-depth fallback としても機能する。詳細は `docs/decisions.md` [064]。
  */
 export const PRODUCTION_CSP =
   "default-src 'self'; " +
