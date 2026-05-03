@@ -1,5 +1,3 @@
-import { caption, elevation, colors } from '@/utils/styles';
-
 interface Option<T> {
   value: T;
   label: string;
@@ -16,6 +14,12 @@ interface Props<T extends string> {
   layout?: 'grid' | 'wrap';
 }
 
+/** options.length を 1–5 にクランプして toggle-cols-N クラスを返す */
+function getColsClass(count: number): string {
+  const clamped = Math.min(Math.max(count, 1), 5);
+  return `toggle-cols-${clamped}`;
+}
+
 export function ToggleGroup<T extends string>({
   options,
   value,
@@ -28,30 +32,26 @@ export function ToggleGroup<T extends string>({
 
   return (
     <div
-      className={`rounded-lg p-1 ${isWrap ? 'flex flex-wrap gap-1' : 'grid gap-1'}`}
+      className={`rounded-lg p-1 bg-subtle border-input ${
+        isWrap
+          ? 'flex flex-wrap gap-1 w-max max-w-full'
+          : `grid gap-1 ${getColsClass(options.length)}`
+      }`}
       role="group"
       aria-label={ariaLabel}
-      style={{
-        background: colors.bgSubtle,
-        border: `1px solid ${colors.borderInput}`,
-        ...(isWrap
-          ? { width: 'max-content', maxWidth: '100%' }
-          : { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }),
-      }}
     >
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
-          className={`rounded-lg whitespace-nowrap transition-colors ${size === 'sm' ? 'px-2.5 py-0.5' : 'px-3 py-1.5'}`}
-          style={{
-            ...caption,
-            fontWeight: 600,
-            background: value === opt.value ? colors.bg : 'transparent',
-            color: value === opt.value ? colors.text : colors.muted,
-            boxShadow: value === opt.value ? elevation.level2 : 'none',
-          }}
+          className={`rounded-lg whitespace-nowrap transition-colors caption font-semibold ${
+            size === 'sm' ? 'px-2.5 py-0.5' : 'px-3 py-1.5'
+          } ${
+            value === opt.value
+              ? 'bg-token text-token shadow-elevation-2'
+              : 'bg-transparent text-muted'
+          }`}
         >
           {opt.label}
         </button>

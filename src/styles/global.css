@@ -348,4 +348,29 @@
   .hover-bg-primary-bg:hover {
     background: var(--color-background);
   }
+
+  /* ToggleGroup グリッド列数クラス（#176 B 案 PR 1）
+   * options.length の有限値 (1–5) に対応。options が 5 を超える場合は toggle-cols-5 にクランプ。
+   * flex-wrap layout では使用しない。
+   */
+  .toggle-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  .toggle-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .toggle-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .toggle-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .toggle-cols-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  /* elevation shadow クラス（ToggleGroup 選択中ボタン等で使用） */
+  .shadow-elevation-2 {
+    box-shadow: var(--elevation-2);
+  }
 }
