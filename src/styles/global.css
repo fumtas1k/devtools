@@ -173,3 +173,146 @@
 .text-link:visited {
   color: var(--color-link-visited);
 }
+
+/* === issue #176 B 案: inline style 撤去用 semantic class === */
+@layer components {
+  /* === Typography (legacy bodyEmphasis / caption from src/utils/styles.ts) === */
+  .body-emphasis {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+  .caption {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+
+  /* === Color tokens not in @theme (no Tailwind auto-utility) === */
+  .text-default {
+    color: var(--color-text);
+  }
+  .text-muted {
+    color: var(--color-muted);
+  }
+  .text-on-primary {
+    color: var(--color-text-on-primary);
+  }
+  .bg-default {
+    background: var(--color-bg);
+  }
+  .bg-subtle {
+    background: var(--color-bg-subtle);
+  }
+  .border-default {
+    border-color: var(--color-border);
+  }
+  .border-input {
+    border-color: var(--color-border-input);
+  }
+
+  /* === Semantic aliases for awkward Tailwind auto-utility names === */
+  .bg-error-tint {
+    background: var(--color-error-bg);
+  }
+  .bg-success-tint {
+    background: var(--color-success-bg);
+  }
+
+  /* === Elevation alias === */
+  .shadow-elev-2 {
+    box-shadow: var(--elevation-2);
+  }
+
+  /* === Component-scoped classes === */
+  /* ClearButton: hover bg を CSSOM mutation から CSS :hover へ */
+  .btn-clear {
+    background: transparent;
+    transition: background-color 0.15s;
+  }
+  .btn-clear:hover {
+    background: var(--color-bg-subtle);
+  }
+
+  /* CopyButton: copied 状態の bg / color / border 切替
+     注意: ルール順序は base → is-compact → is-copied。両 class 同時適用時に
+     is-copied (= 後勝ち) で color/bg が success に上書きされる必要があるため。 */
+  .btn-copy {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+    transition:
+      background-color 0.2s,
+      color 0.2s,
+      border-color 0.2s;
+  }
+  .btn-copy.is-compact {
+    border: none;
+    color: var(--color-muted);
+  }
+  .btn-copy.is-copied {
+    border-color: var(--color-success);
+    background: var(--color-success-bg);
+    color: var(--color-success);
+  }
+
+  /* ActionButton: variant × disabled マトリクス */
+  .btn-action {
+    border-style: solid;
+    border-width: 1px;
+  }
+  .btn-action--default {
+    border-color: var(--color-border-input);
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+  }
+  .btn-action--primary {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-text-on-primary);
+  }
+  .btn-action--secondary {
+    border-color: var(--color-primary);
+    background: transparent;
+    color: var(--color-primary);
+  }
+  .btn-action--danger {
+    border-color: var(--color-error);
+    background: transparent;
+    color: var(--color-error);
+  }
+  .btn-action:disabled {
+    background: var(--color-bg-subtle);
+    color: var(--color-muted);
+    cursor: not-allowed;
+  }
+  .btn-action--primary:disabled {
+    border-color: var(--color-bg-subtle);
+  }
+  .btn-action--secondary:disabled {
+    border-color: var(--color-border);
+    background: transparent;
+  }
+
+  /* ToggleGroup: button 状態切替 + 動的 grid columns 受け口 */
+  .toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--toggle-cols, 2), minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+  .btn-toggle {
+    background: transparent;
+    color: var(--color-muted);
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      box-shadow 0.15s;
+  }
+  .btn-toggle[aria-pressed='true'] {
+    background: var(--color-bg);
+    color: var(--color-text);
+    box-shadow: var(--elevation-2);
+  }
+}
