@@ -1,0 +1,68 @@
+name: Visual Regression
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# 同一 PR への新しい push が来たら実行中の job をキャンセル
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write # PR comment 投稿用
+
+jobs:
+  visual-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Playwright ブラウザをインストール
+        run: npx playwright install --with-deps chromium
+
+      - name: 本番相当アセットを build
+        run: npm run build
+
+      - name: VRT 実行（fail しても後続 step を続行）
+        id: vrt
+        continue-on-error: true
+        run: npm run test:vrt -- --workers=1
+
+      - name: テストレポートを artifact upload（pass/fail 問わず）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-report-pr-${{ github.event.pull_request.number }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: 結果を PR comment で報告
+        if: always()
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: '## 🖼️ Visual Regression Test 結果'
+          body: |
+            ## 🖼️ Visual Regression Test 結果
+
+            - **Status**: ${{ steps.vrt.outcome == 'success' && '✅ 全 36 件 pass' || '❌ 一部 fail（詳細は artifact 参照）' }}
+            - **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - **Artifact (diff 画像 / playwright-report)**: 上記 workflow run の `Artifacts` セクションから download
+
+            > diff が **意図的な visual 変更**の場合: `Update Visual Regression Baseline` workflow を本 PR ブランチで `workflow_dispatch` trigger して baseline を更新。
+            > diff が **意図しない regression** の場合: 該当変更を fix。
+            > 本 check は **required ではない**ため fail のままでも merge は可能（reviewer 判断）。
+          edit-mode: replace
+
+      - name: VRT 失敗を job の最終 conclusion に反映（continue-on-error の補正）
+        if: steps.vrt.outcome == 'failure'
+        run: exit 1
