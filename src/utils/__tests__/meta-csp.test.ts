@@ -16,7 +16,8 @@ import path from 'node:path';
  * と合わせて行う）。本テストでは style-src の不在も検証する。
  *
  * 本テストは built dist/ を入力とするため、`npm run build` 後でないと走らない。
- * CI の e2e job では既に build step があるためその前後に走らせれば pass する。
+ * CI の test job では `npm run build` step を先に走らせる構成（`.github/workflows/test.yml` / #250 で追加）。
+ * dist 不在時は `it.skip` で safe-fail するが、CI で skip 化が起きた場合は test job の build step 抜けを疑うこと。
  *
  * #250: DIST_PAGES を 2 ページ固定から dist/**\/*.html 全件の glob に拡張。
  * 将来ページ固有の inline script が追加された場合も自動で検出網に含まれる。

@@ -50,6 +50,8 @@ describe('astro.config.mjs の CSP 関連設定（#176 A-1 / [064] 陽性対照 
     // String.prototype.replace(string, string) の semantics で第二引数が string だと
     // $&/$1/$$ などが特殊解釈される。CSP 値に $ が混入した場合の安全網として
     // callback 形式 (() => newAttrs) で渡す実装を維持する。
-    expect(ASTRO_CONFIG_CONTENT).toMatch(/full\.replace\(attrs,\s*\(\)\s*=>\s*newAttrs\)/);
+    // 変数名 (attrs / newAttrs 等) には bind せず、`X.replace(Y, () => Z)` の callback パターンが使われていることだけを assert。
+    // 将来 stripMetaStyleSrc 内で変数 rename されてもテストは追従する。
+    expect(ASTRO_CONFIG_CONTENT).toMatch(/\.replace\([^,]+,\s*\(\)\s*=>\s*\w+\)/);
   });
 });

@@ -30,6 +30,9 @@ jobs:
       - name: フォーマットチェックを実行
         run: npm run format:check
 
+      - name: 本番相当アセットを build（meta-csp.test.ts が dist/ を入力とするため必要 / #250）
+        run: npm run build
+
       - name: テストとカバレッジ測定を実行
         run: npm test -- --coverage
 
