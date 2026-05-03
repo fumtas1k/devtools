@@ -3,7 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { DownloadButton } from '@/components/ui/DownloadButton';
-import { colors } from '@/utils/styles';
 
 afterEach(() => {
   cleanup();
@@ -54,20 +53,16 @@ describe('DownloadButton', () => {
     expect(screen.getByRole('button', { name: 'SVGダウンロード' })).toBeTruthy();
   });
 
-  it('variant="primary" (default) は primary 色背景・primary 文字色 (textOnPrimary)', () => {
+  it('variant="primary" (default) は btn-action--primary クラスを持つ', () => {
     render(<DownloadButton onClick={() => {}} label="DL" />);
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    // jsdom は background shorthand に var(...) を含む値を backgroundColor へ分解しないため
-    // shorthand プロパティを直接比較する (Task 1 の border 同様の jsdom 制約)
-    expect(btn.style.background).toBe(colors.primary);
-    expect(btn.style.color).toBe(colors.textOnPrimary);
+    expect(btn.className).toContain('btn-action--primary');
   });
 
-  it('variant="secondary" は透過背景・primary 文字色', () => {
+  it('variant="secondary" は btn-action--secondary クラスを持つ', () => {
     render(<DownloadButton onClick={() => {}} label="DL" variant="secondary" />);
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    expect(btn.style.backgroundColor).toBe('transparent');
-    expect(btn.style.color).toBe(colors.primary);
+    expect(btn.className).toContain('btn-action--secondary');
   });
 
   it('ダウンロードアイコン (svg, aria-hidden) が描画される', () => {
@@ -77,18 +72,17 @@ describe('DownloadButton', () => {
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('variant="primary" + disabled は bg-subtle 塗り・border 不可視を維持', () => {
+  it('variant="primary" + disabled は cursor-not-allowed と btn-action--primary を持つ', () => {
     render(<DownloadButton onClick={() => {}} label="DL" disabled />);
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    // jsdom は background shorthand に var(...) を含む値を backgroundColor へ分解しないため shorthand を直接比較
-    expect(btn.style.background).toBe(colors.bgSubtle);
-    expect(btn.style.border).toBe(`1px solid ${colors.bgSubtle}`);
+    expect(btn.className).toContain('btn-action--primary');
+    expect(btn.className).toContain('cursor-not-allowed');
   });
 
-  it('variant="secondary" + disabled は背景透過・グレーボーダーを維持', () => {
+  it('variant="secondary" + disabled は cursor-not-allowed と btn-action--secondary を持つ', () => {
     render(<DownloadButton onClick={() => {}} label="DL" variant="secondary" disabled />);
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    expect(btn.style.backgroundColor).toBe('transparent');
-    expect(btn.style.border).toBe(`1px solid ${colors.border}`);
+    expect(btn.className).toContain('btn-action--secondary');
+    expect(btn.className).toContain('cursor-not-allowed');
   });
 });

@@ -41,10 +41,10 @@ describe('BareInput', () => {
     expect(input.disabled).toBe(true);
   });
 
-  it('mono=true のとき monospace フォントが設定される', () => {
+  it('mono=true のとき font-mono クラスが設定される', () => {
     render(<BareInput value="" onChange={() => {}} mono aria-label="mono" />);
     const input = screen.getByRole('textbox') as HTMLInputElement;
-    expect(input.style.fontFamily).toBe('monospace');
+    expect(input.className).toContain('font-mono');
   });
 
   it('className prop を渡せる', () => {

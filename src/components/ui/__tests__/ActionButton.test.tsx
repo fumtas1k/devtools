@@ -3,7 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { ActionButton } from '@/components/ui/ActionButton';
-import { colors } from '@/utils/styles';
 
 afterEach(() => {
   cleanup();
@@ -95,62 +94,56 @@ describe('ActionButton', () => {
     expect(screen.getByRole('button', { name: 'セカンダリ' })).toBeTruthy();
   });
 
-  it('variant="secondary" は背景透過・primary 色のボーダーと文字色を持つ', () => {
+  it('variant="secondary" は btn-action--secondary クラスを持つ', () => {
     render(
       <ActionButton onClick={() => {}} variant="secondary">
         セカンダリ
       </ActionButton>
     );
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    expect(btn.style.backgroundColor).toBe('transparent');
-    expect(btn.style.color).toBe(colors.primary);
-    // jsdom は border shorthand を borderColor に分解しないため、shorthand 全体を比較する
-    expect(btn.style.border).toBe(`1px solid ${colors.primary}`);
+    expect(btn.className).toContain('btn-action--secondary');
   });
 
-  it('variant="primary" + disabled は bg-subtle 塗り・border 不可視', () => {
+  it('variant="primary" + disabled は cursor-not-allowed クラスを持つ', () => {
     render(
       <ActionButton onClick={() => {}} variant="primary" disabled>
         無効プライマリ
       </ActionButton>
     );
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    // jsdom は background shorthand に var(...) を含む値を backgroundColor へ分解しないため shorthand を直接比較
-    expect(btn.style.background).toBe(colors.bgSubtle);
-    // disabled primary は border を bg と同色にして不可視化（旧 DownloadButton primary の border:none 相当）
-    expect(btn.style.border).toBe(`1px solid ${colors.bgSubtle}`);
+    expect(btn.className).toContain('btn-action--primary');
+    expect(btn.className).toContain('cursor-not-allowed');
   });
 
-  it('variant="secondary" + disabled は背景透過・グレーボーダーを維持', () => {
+  it('variant="secondary" + disabled は btn-action--secondary と cursor-not-allowed を持つ', () => {
     render(
       <ActionButton onClick={() => {}} variant="secondary" disabled>
         無効セカンダリ
       </ActionButton>
     );
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    expect(btn.style.backgroundColor).toBe('transparent');
-    expect(btn.style.border).toBe(`1px solid ${colors.border}`);
+    expect(btn.className).toContain('btn-action--secondary');
+    expect(btn.className).toContain('cursor-not-allowed');
   });
 
-  it('variant="default" + disabled は既存 (bg-subtle / border-input) を維持', () => {
+  it('variant="default" + disabled は btn-action--default と cursor-not-allowed を持つ', () => {
     render(
       <ActionButton onClick={() => {}} variant="default" disabled>
         無効デフォルト
       </ActionButton>
     );
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    // jsdom は background shorthand に var(...) を含む値を backgroundColor へ分解しないため shorthand を直接比較
-    expect(btn.style.background).toBe(colors.bgSubtle);
-    expect(btn.style.border).toBe(`1px solid ${colors.borderInput}`);
+    expect(btn.className).toContain('btn-action--default');
+    expect(btn.className).toContain('cursor-not-allowed');
   });
 
-  it('disabled 時は variant 不問で文字色が muted', () => {
+  it('disabled 時は cursor-not-allowed クラスを持つ', () => {
     render(
       <ActionButton onClick={() => {}} variant="primary" disabled>
         無効
       </ActionButton>
     );
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    expect(btn.style.color).toBe(colors.muted);
+    expect(btn.className).toContain('cursor-not-allowed');
   });
 });
