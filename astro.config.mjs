@@ -52,7 +52,11 @@ function stripMetaStyleSrc() {
               .replace(/\s+/g, ' ');
             // 元の attributes 文字列内で content="..." だけを書き換える
             const newAttrs = attrs.replace(/\bcontent\s*=\s*"[^"]*"/i, `content="${stripped}"`);
-            return full.replace(attrs, newAttrs);
+            // #250: String.prototype.replace(string, string) の semantics で
+            // newAttrs 内の $& / $1 / $$ などが特殊置換パターンとして解釈される
+            // のを避けるため callback 形式で渡す。CSP 値に $ が含まれる可能性は
+            // 実質ゼロだが防御的に対処（PR #249 レビュー補足）。
+            return full.replace(attrs, () => newAttrs);
           });
           if (modified !== content) {
             try {

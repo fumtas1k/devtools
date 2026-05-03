@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
+import { glob } from 'node:fs/promises';
 import path from 'node:path';
 
 /**
@@ -16,27 +17,38 @@ import path from 'node:path';
  *
  * 本テストは built dist/ を入力とするため、`npm run build` 後でないと走らない。
  * CI の e2e job では既に build step があるためその前後に走らせれば pass する。
+ *
+ * #250: DIST_PAGES を 2 ページ固定から dist/**\/*.html 全件の glob に拡張。
+ * 将来ページ固有の inline script が追加された場合も自動で検出網に含まれる。
  */
 
-const DIST_PAGES = [
-  path.resolve(process.cwd(), 'dist', 'index.html'),
-  path.resolve(process.cwd(), 'dist', 'tools', 'qr-code', 'index.html'),
-];
-
+const DIST_DIR = path.resolve(process.cwd(), 'dist');
 const META_CSP_REGEX = /<meta[^>]*http-equiv="content-security-policy"[^>]*content="([^"]+)"/i;
 
-describe('dist/*.html の <meta> CSP（Astro security.csp 由来 / #176 A-1）', () => {
-  for (const distPage of DIST_PAGES) {
+// top-level await: vitest は vite-node 経由で ESM として実行されるため利用可能。
+// dist が無い場合 (build 前) は空配列のまま skip フローに進む。
+const distPages: string[] = [];
+if (existsSync(DIST_DIR)) {
+  for await (const f of glob('**/*.html', { cwd: DIST_DIR })) {
+    distPages.push(`${DIST_DIR}/${f}`);
+  }
+  distPages.sort();
+}
+
+describe('dist/*.html の <meta> CSP（Astro security.csp 由来 / #176 A-1 / #250 全ページ拡張）', () => {
+  if (distPages.length === 0) {
+    it.skip("dist/*.html が無い → 'npm run build' 後に再実行", () => {});
+    return;
+  }
+
+  it(`build 出力の HTML 全ページ (${distPages.length} 件) を検査対象とする`, () => {
+    expect(distPages.length).toBeGreaterThan(0);
+  });
+
+  for (const distPage of distPages) {
     const pageRel = path.relative(process.cwd(), distPage);
 
     describe(pageRel, () => {
-      if (!existsSync(distPage)) {
-        it.skip(`${pageRel} が無い → 'npm run build' 後に再実行`, () => {
-          // dist が無い時は skip 表示。CI は build → vitest の順で走るため必ずある。
-        });
-        return;
-      }
-
       const html = readFileSync(distPage, 'utf-8');
       const match = html.match(META_CSP_REGEX);
 
