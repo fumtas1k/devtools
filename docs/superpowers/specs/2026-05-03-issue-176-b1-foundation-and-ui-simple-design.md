@@ -133,7 +133,9 @@ PR 1 で実使用する分のみ。後続 PR で必要に応じて積み増し�
     background: var(--color-bg-subtle);
   }
 
-  /* CopyButton: copied 状態の bg / color / border 切替 */
+  /* CopyButton: copied 状態の bg / color / border 切替
+     注意: ルール順序は base → is-compact → is-copied。両 class 同時適用時に
+     is-copied (= 後勝ち) で color/bg が success に上書きされる必要があるため。 */
   .btn-copy {
     border: 1px solid var(--color-border);
     background: var(--color-bg-subtle);
@@ -143,13 +145,14 @@ PR 1 で実使用する分のみ。後続 PR で必要に応じて積み増し�
       color 0.2s,
       border-color 0.2s;
   }
+  .btn-copy.is-compact {
+    border: none;
+    color: var(--color-muted);
+  }
   .btn-copy.is-copied {
     border-color: var(--color-success);
     background: var(--color-success-bg);
     color: var(--color-success);
-  }
-  .btn-copy.is-compact {
-    border: none;
   }
 
   /* ActionButton: variant × disabled マトリクス */
