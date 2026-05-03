@@ -13,7 +13,7 @@
 - 本番 (Cloudflare Pages) のビルド成果物に対して E2E を回し、prod-parity を確保するため（`docs/decisions.md` [063]）。後続 [#176](https://github.com/fumtas1k/devtools/issues/176) 採用時には `<meta>` ベース CSP も生成されるため、その評価基盤を先回りで整備する位置付けでもある
 - Astro の `security.csp` 機能は dev mode で動作せず build/preview のみで有効（[公式 docs](https://docs.astro.build/en/reference/configuration-reference/#securitycsp)）
 
-`webServer.timeout` は build 時間を含むため 120s に延長してある（cold start でも収まる余裕）。
+`webServer.timeout` は CI で 30s / Local で 120s（[#248] で `process.env.CI` 分岐に変更）。CI では `.github/workflows/test.yml` 側で事前 build 済みのため preview 起動の早期検知に倒し、Local は build 込みのため余裕を持たせている。
 
 ---
 
@@ -67,7 +67,7 @@ PR 作成手順を含むため `docs/playbooks/pr-creation.md` 3 章を参照。
 - **環境由来の失敗**（`waitForReactHydration` timeout、`Error: connect ECONNREFUSED 127.0.0.1:4321`、`Timed out waiting for server to start`、`webServer was not ready` 等）→ ステップ 0 の整地と `npm run build` が成功するかの確認を実施してから 1 回だけ再実行
 - 再実行でも環境由来失敗が続く場合 → **CI を最終判断とする**（push して CI 結果を待つ）
 
-> 補足: `playwright.config.ts` の `webServer.timeout` は 120s（#246 で 30s → 120s に延長。build 時間込み）。env 由来失敗の発見はこのタイムアウトで早期に確定する。
+> 補足: `playwright.config.ts` の `webServer.timeout` は CI で 30s / Local で 120s（[#248] で `process.env.CI` 分岐に変更）。CI では `.github/workflows/test.yml` 側で事前 build 済みのため preview 起動の早期検知に倒し、Local は build 込みのため余裕を持たせている。env 由来失敗の発見は CI のタイムアウトで早期に確定する。
 
 > macOS/Linux 前提。Windows/WSL では別手段（`netstat -ano` + `taskkill` 等）が必要。
 
@@ -77,14 +77,14 @@ PR 作成手順を含むため `docs/playbooks/pr-creation.md` 3 章を参照。
 
 ## 5. コマンドリファレンス（抜粋）
 
-| 用途                       | コマンド                                                                              |
-| :------------------------- | :------------------------------------------------------------------------------------ |
-| ユニットテスト             | `npm run test` / `npm run test:watch`                                                 |
-| 型チェック                 | `node_modules/.bin/astro check`                                                       |
-| 型チェック（特定ファイル） | `npx astro check --filter <file>`                                                     |
-| E2E テスト                 | `npm run test:e2e` ❌ `npm run e2e` は存在しない（内部で build + preview を直列起動） |
-| node_modules 整備          | `npm ci`                                                                              |
-| port 4321 解放             | `npm run pretest:e2e`                                                                 |
+| 用途                       | コマンド                                                                                                                             |
+| :------------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
+| ユニットテスト             | `npm run test` / `npm run test:watch`                                                                                                |
+| 型チェック                 | `node_modules/.bin/astro check`                                                                                                      |
+| 型チェック（特定ファイル） | `npx astro check --filter <file>`                                                                                                    |
+| E2E テスト                 | `npm run test:e2e` ❌ `npm run e2e` は存在しない（local では内部で build + preview を直列起動。CI は事前 build 済みで preview のみ） |
+| node_modules 整備          | `npm ci`                                                                                                                             |
+| port 4321 解放             | `npm run pretest:e2e`                                                                                                                |
 
 ---
 
@@ -101,6 +101,11 @@ npm run pretest:e2e   # 既存 npm script。中身は lsof -ti:4321 | xargs kill
 ```
 
 `npm run test:e2e` は pre-hook で自動実行するので、通常は気にしなくて良い。手動で kill だけしたい時に使う。
+
+> Local では `reuseExistingServer: false`（[#248]）に変更したため、開発者が手動で
+> `npm run preview` を別途起動した状態で `npm run test:e2e` を回すと、Playwright は
+> 既存 server を再利用せず port 4321 を新規 bind しようとして衝突する。手動 preview を
+> 終了してから E2E を回すか、`npm run pretest:e2e` で port を解放する。
 
 ### 6.2 node_modules が壊れて `npm ci` が EPERM で失敗する
 
