@@ -63,7 +63,7 @@ export function InputField({
           <button
             type="button"
             onClick={onSampleClick}
-            className="caption text-link btn-link-plain"
+            className="caption text-link-color btn-link-plain"
           >
             サンプルを入力
           </button>
