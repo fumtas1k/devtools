@@ -88,9 +88,11 @@ post-PR 代行は不要、CI が最終ゲート。
 
 `gh pr create` / `gh pr comment` / `gh issue create` / `gh issue comment` の本文は **常に** `-F` / `--body-file` で投稿する。`--body` への直接埋め込みは禁止（MCP / API 経由は不要）。
 
-**なぜ条件付きでなく常時か**: PR 本文はほぼ常にコードブロック（バックティック）や複数行を含み、HEREDOC で `\`` エスケープすると literal `\` が GitHub に流れる事故が頻発（過去に複数 PR で発生）。条件分岐ルールは判断負荷が高く形骸化するため、無条件 default にすれば事故クラス自体が消える。
+**なぜ条件付きでなく常時か**: PR 本文はほぼ常にコードブロック（バックティック）や複数行を含み、HEREDOC でバックスラッシュ + バックティック（<code>\\&#96;</code>）にエスケープすると literal `\` が GitHub に流れる事故が頻発する。条件分岐ルールは判断負荷が高く形骸化するため、無条件 default にすれば事故クラス自体が消える。
 
-失敗時は投稿状況を必ず確認し、重複は削除して整合性を保つ。
+#### 失敗時のリカバリ
+
+投稿失敗時は `gh pr view` / `gh issue view` で投稿状況を必ず確認し、重複が出ていれば削除して整合性を保つ。
 
 ### 6.2 ブランチ運用（要点）
 
@@ -129,7 +131,7 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 `.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
 
-- **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Write(/tmp/claude/**)` は allow、`Write(/tmp/**)` は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。
+- **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Read` / `Write` / `Edit` ともに `/tmp/claude/**` および `$TMPDIR (/var/folders/*/*/T/**)` が allow、`/tmp/**` 直下は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。**credential / secret 類は tmp に置かない**（同 user 配下の Claude セッション間で相互可読）。
 - **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
 
 ---

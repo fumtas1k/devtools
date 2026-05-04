@@ -242,14 +242,14 @@ PR #218 (refactor #169) で subagent に項目 1c として `useCodec.test.tsx` 
 
 ### 現象
 
-`Write` ツールで `~/.claude/projects/<sanitized-cwd>/memory/<name>.md` に memory ファイルを書けるが、Bash `rm` で削除しようとすると `Operation not permitted`。auto-memory システムが「作る・上書きする」しかできず「消す」が物理的に不能。
+`Write` ツールで `~/.claude/projects/<sanitized-cwd>/memory/<name>.md` に memory ファイルを書けるが、Bash ツール経由の `rm` で削除しようとすると `Operation not permitted`。auto-memory システムが「作る・上書きする」しかできず「消す」が物理的に不能。
 
 ### 根本原因
 
 Claude Code の sandbox bug。issue tracker で確認済み:
 
-- [#46871](https://github.com/anthropics/claude-code/issues/46871) (CLOSED-dup, 2026-04): まさに「memory delete できない」の専用報告
-- [#31121](https://github.com/anthropics/claude-code/issues/31121) (CLOSED-dup, 2026-03): `sandbox.filesystem.allowWrite` は Write/Edit には効くが **Bash tool には適用されない**
+- [#46871](https://github.com/anthropics/claude-code/issues/46871) (closed as duplicate, 2026-04): まさに「memory delete できない」の専用報告
+- [#31121](https://github.com/anthropics/claude-code/issues/31121) (closed as duplicate, 2026-03): `sandbox.filesystem.allowWrite` は Write / Edit ツールには効くが **Bash ツールには適用されない**
 - [#17727](https://github.com/anthropics/claude-code/issues/17727) (**OPEN**, 最新 comment 2026-04-25 / v2.1.120): Linux/bwrap 中心の上位バグだが root cause 共通
 
 macOS sandbox-exec でも同症状を再現確認 (2026-05-04)。
@@ -257,7 +257,7 @@ macOS sandbox-exec でも同症状を再現確認 (2026-05-04)。
 ### 試して効かなかったこと（次回繰り返さない）
 
 - `sandbox.write.allowOnly` 追加（system prompt 内部表現の field 名、user 上書き silent ignore）
-- `sandbox.filesystem.allowWrite` 追加（user-facing 正式 field 名でも Bash には不適用）
+- `sandbox.filesystem.allowWrite` 追加（user-facing 正式 field 名でも Bash ツールには不適用）
 - `~/.claude/projects/*/memory/**` glob と `/Users/<user>/.claude/projects/<sanitized-cwd>/memory` 絶対パス両方
 - session restart 後の再試行（profile 再構築されても挙動同じ）
 
@@ -270,5 +270,5 @@ macOS sandbox-exec でも同症状を再現確認 (2026-05-04)。
 
 ### 関連
 
-- session memory: `feedback_bang_prefix_not_sandbox_bypass.md`
-- （規約昇格候補なし）Claude Code の harness 挙動なので shared-agent-rules.md ではなく本ファイルが正所
+- 関連個人メモ: `~/.claude/projects/*/memory/feedback_bang_prefix_not_sandbox_bypass.md`（本リポジトリには未収録、開発者個人の Claude Code memory）
+- 規約昇格: 不要（Claude Code の harness 挙動のため `shared-agent-rules.md` ではなく本ファイルが正所）
