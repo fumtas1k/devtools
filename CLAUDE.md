@@ -12,7 +12,11 @@
 - **言語**: コミットメッセージ・PR 説明文は **必ず日本語**。
 - **スタイリング**: Tailwind カラークラスは禁止。**`colors.*` (React)** または **`var(--color-*)` (Astro)** を使用。
 - **検証**: `npm run test`（ユニット）と `astro check`（型）はサブエージェント / 親共通。**`npm run test:e2e` は push 前に必ず実行**（subagent worktree か親で。内部で build + preview を直列起動。post-PR 代行は不要、CI が最終ゲート）。node_modules 不在の worktree は `npm ci` で整備（SessionStart hook で自動実行）。詳細手順 → `docs/playbooks/e2e-validation.md`
-- **PR ベース**: `gh pr create` は **必ず `--base develop`** を明示する。`main` 向けはリリース PR のみ（`gh` のデフォルト・Claude Code system prompt の "Main branch ... main" 表示に流されないこと）。詳細手順 → `docs/playbooks/pr-creation.md`
+- **PR 作成**: 4 点必須（詳細: `docs/playbooks/pr-creation.md`）:
+  1. ベース: `gh pr create --base develop` を明示（`gh` のデフォルト / Claude Code system prompt の "Main branch ... main" 表示に流されない）。`main` 向けはリリース PR のみ
+  2. 本文: `--body-file <path>` 経由必須（`/tmp/claude/pr_body.md` 等）。`--body` 直渡しは禁止（バックティック化け事故防止、`docs/shared-agent-rules.md` 6.1）
+  3. pre-create check: `git rev-parse origin/develop` == `git merge-base HEAD origin/develop` / `git diff origin/develop --name-only` で想定外ファイルなし / aria-\* 削除行なし
+  4. 言語: タイトル・本文 必ず日本語
 - **ATC 運用**: セッション開始時に `tasks/active_context.md` を作成（superpowers の plan / conductor のタスクファイル等が「目的・ステップ・スコープ外」を明示する場合は不要。詳細は `docs/shared-agent-rules.md` 10 章）。
 - **司令塔モード**: 親 Claude セッションは委譲・ベース確認・テスト確認・aria 削除検出を経て PR 作成（詳細: `docs/playbooks/pr-creation.md`・`docs/playbooks/e2e-validation.md`・`docs/shared-agent-rules.md` 9.6 章）。
 
