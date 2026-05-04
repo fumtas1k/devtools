@@ -27,6 +27,7 @@ const MIGRATED_FILES: readonly string[] = [
   'src/components/ui/ToggleGroup.tsx',
   // PR 1.5 で追加
   'src/components/ui/ResultTable.tsx',
+  'src/components/ui/InputField.tsx',
 ];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
