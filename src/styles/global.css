@@ -360,4 +360,70 @@
     padding: 0;
     cursor: pointer;
   }
+
+  /* === PR 2: qr-ticket migration helpers === */
+
+  /* 色 token の text utility (Tailwind auto-utility 不在) */
+  .text-error {
+    color: var(--color-error);
+  }
+  .text-error-text {
+    color: var(--color-error-text);
+  }
+  .text-success {
+    color: var(--color-success);
+  }
+  .text-primary {
+    color: var(--color-primary);
+  }
+
+  /* Validation alert box (VerifyTab 検証結果) */
+  .alert-success {
+    background: var(--color-success-bg);
+    border-color: var(--color-success);
+  }
+  .alert-error {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+  }
+
+  /* File picker label (VerifyTab upload mode) */
+  .qr-file-picker-label {
+    background: var(--color-bg-surface);
+    color: var(--color-muted);
+    border-color: var(--color-border-input);
+    cursor: not-allowed;
+  }
+  .qr-file-picker-label[data-enabled='true'] {
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  /* Category badge pill (GenerateTab 生成結果) */
+  .badge-category {
+    display: inline-block;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    border-radius: 9999px;
+    padding: 0.1rem 0.5rem;
+  }
+
+  /* Row remove button (GenerateTab チケット行削除) */
+  .btn-row-remove {
+    background: transparent;
+    border: 0;
+    color: var(--color-error);
+    cursor: pointer;
+  }
+  .btn-row-remove:disabled {
+    color: var(--color-muted);
+    cursor: not-allowed;
+  }
+
+  /* QR result auto-fill grid (GenerateTab 生成結果カード列) */
+  .qr-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
 }
