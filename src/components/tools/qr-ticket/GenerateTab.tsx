@@ -115,7 +115,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
               onClick={onToggleImport}
               aria-expanded={showImport}
               aria-controls="qr-ticket-import-panel"
-              className="caption text-link btn-link-plain"
+              className="caption text-link-color btn-link-plain"
             >
               <span aria-hidden="true">{showImport ? '▲ ' : '▼ '}</span>
               {showImport ? '秘密鍵インポートを閉じる' : '既存の秘密鍵をインポート'}
