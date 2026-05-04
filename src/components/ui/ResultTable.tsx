@@ -86,7 +86,7 @@ export function ResultTable<T>({
                 <th
                   key={col.key}
                   scope="col"
-                  className={`caption text-muted font-semibold whitespace-nowrap ${paddingClass(col.cellPadding)} ${alignClass(col.headerAlign)}`}
+                  className={`caption text-muted font-semibold whitespace-nowrap ${paddingClass()} ${alignClass(col.headerAlign)}`}
                 >
                   {col.header}
                 </th>
