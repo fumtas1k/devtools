@@ -234,7 +234,7 @@ PR 1.5 で `.btn-link-plain` が追加済（InputField サンプルボタン用�
   onClick={onToggleImport}
   aria-expanded={showImport}
   aria-controls="qr-ticket-import-panel"
-  className="caption text-link btn-link-plain"
+  className="caption text-link-color btn-link-plain"
 >
   <span aria-hidden="true">{showImport ? '▲ ' : '▼ '}</span>
   {showImport ? '秘密鍵インポートを閉じる' : '既存の秘密鍵をインポート'}
@@ -252,7 +252,7 @@ PR 1.5 で `.btn-link-plain` が追加済（InputField サンプルボタン用�
 }
 ```
 
-`.text-link` は line 158 既存（`<a>` 用）。`<button>` でも color として再利用可。
+**訂正 (2026-05-04 review fix)**: 当初 `.text-link` を指定していたが、`.text-link` (global.css line 158) は `text-decoration: underline` を含む `<a>` 向け class。本ボタンは元 inline style に下線がないため、色のみを制御する `.text-link-color` (global.css line 144、PR 1 既存) を使用する。
 
 #### 3.2 鍵 textarea 周辺（line 153-211、2 ブロック対称）
 

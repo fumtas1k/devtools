@@ -14,7 +14,7 @@ export interface UseTicketVerificationReturn {
   scanMode: 'camera' | 'upload';
   camera: ReturnType<typeof useQrCamera>;
   setScanMode: (v: 'camera' | 'upload') => void;
-  verify: (rawData: string, signal?: AbortSignal) => Promise<void>;
+  verify: (rawData: string, externalSignal?: AbortSignal) => Promise<void>;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleRescan: () => void;
 }
@@ -55,25 +55,28 @@ export function useTicketVerification({
 
       if (ctrl.signal.aborted) return;
       setVerifying(true);
-      let pubKey: CryptoKey;
       try {
-        const jwk = JSON.parse(pubKeyStr) as JsonWebKey;
-        pubKey = await importPublicKey(jwk);
-      } catch {
+        let pubKey: CryptoKey;
+        try {
+          const jwk = JSON.parse(pubKeyStr) as JsonWebKey;
+          pubKey = await importPublicKey(jwk);
+        } catch {
+          if (ctrl.signal.aborted) return;
+          setVerificationResult({
+            valid: false,
+            ticket: null,
+            expired: false,
+            error: '公開鍵の形式が不正です。有効なECDSA P-256 JWKを貼り付けてください。',
+          });
+          return;
+        }
+        const result = await verifyTicket(rawData, pubKey);
         if (ctrl.signal.aborted) return;
-        setVerificationResult({
-          valid: false,
-          ticket: null,
-          expired: false,
-          error: '公開鍵の形式が不正です。有効なECDSA P-256 JWKを貼り付けてください。',
-        });
-        setVerifying(false);
-        return;
+        setVerificationResult(result);
+      } finally {
+        // abort 中は unmount 後の no-op になるため setState を抑制
+        if (!ctrl.signal.aborted) setVerifying(false);
       }
-      const result = await verifyTicket(rawData, pubKey);
-      if (ctrl.signal.aborted) return;
-      setVerificationResult(result);
-      setVerifying(false);
     },
     [pubKeyStr]
   );
