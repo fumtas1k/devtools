@@ -55,7 +55,7 @@ Expected: PR 1 で追加された `@layer components { ... }` ブロックが 1 
 
 ```css
 /* === PR 1.5: Surface bg (used by table thead row & InputField readOnly) === */
-.bg-surface-row {
+.bg-surface {
   background: var(--color-bg-surface);
 }
 
@@ -106,7 +106,7 @@ Expected: error なし（CSS は astro check の対象外だが、import 連鎖�
 
 ```bash
 git add src/styles/global.css
-git commit -m "style(global): #176 B 案 PR 1.5 用 @layer components 追記 (.result-table-* / .bg-surface-row / .btn-link-plain)"
+git commit -m "style(global): #176 B 案 PR 1.5 用 @layer components 追記 (.result-table-* / .bg-surface / .btn-link-plain)"
 ```
 
 ---
@@ -204,7 +204,7 @@ export function ResultTable<T>({
             ))}
           </colgroup>
           <thead>
-            <tr className="bg-surface-row border-b border-default">
+            <tr className="bg-surface border-b border-default">
               {columns.map((col) => (
                 <th
                   key={col.key}
@@ -593,7 +593,7 @@ export function InputField({
   const inputClass = [
     'caption w-full rounded-lg px-3 py-2 border text-default',
     error ? 'border-error' : 'border-input',
-    readOnly ? 'bg-surface-row' : 'bg-default',
+    readOnly ? 'bg-surface' : 'bg-default',
     mono && 'font-mono',
     multiline && !resize && 'resize-none',
     multiline && resize && 'resize-y',
@@ -666,7 +666,7 @@ export function InputField({
 - `import { bodyEmphasis, caption, colors } from '@/utils/styles';` 削除（`@/utils/styles` 自体は他で使われ続けるので消えない）
 - 全 `style={{...}}` を className 化
 - `baseInputStyle` を `inputClass` (string) に置換、合成は `[...].filter(Boolean).join(' ')`
-- `readOnly` 時の bg は `bg-surface-row`、通常時は `bg-default`（`@layer components` で PR 1 / PR 1.5 に定義済）
+- `readOnly` 時の bg は `bg-surface`、通常時は `bg-default`（`@layer components` で PR 1 / PR 1.5 に定義済）
 
 - [ ] **Step 2: `style={{` ヒット数確認**
 
@@ -685,7 +685,7 @@ Run: `npm run dev` → `http://localhost:4321/json-xml/` または `/encoding-co
 - ラベル: body-emphasis (太字 + line-height 1.7) で描画
 - input/textarea: caption typography + border-input + bg-default
 - error 状態: error 用 input が `border-error` で赤く
-- readOnly 状態: bg-surface-row（薄い surface 色）
+- readOnly 状態: bg-surface（薄い surface 色）
 - サンプルを入力ボタン: text-link 色 + 装飾なし
 - mono = true の tool（QrCode 等）: font-mono が適用される
 
@@ -795,7 +795,7 @@ PR 1 ([#256](https://github.com/fumtas1k/devtools/pull/256)) で simple 11 件�
 - `ResultTable.tsx` API: `cellStyle?: CSSProperties` を **削除**、代わりに `cellPadding?: 'normal' | 'compact'` を追加（破壊変更）
 - `InputField.tsx`: 内部 4 件の `style={{}}` を class 化（API 不変）
 - `UlidGenerator.tsx` / `UuidV7Generator.tsx`: columns 配列の `cellStyle: {...}` を新 API に変換（**render 関数内 inline style は本 PR では touch せず、PR 3 / PR 5 スコープ**）
-- `global.css`: `@layer components` に `.bg-surface-row` / `.result-table-*` / `.btn-link-plain` / `.result-table-col` を追加
+- `global.css`: `@layer components` に `.bg-surface` / `.result-table-*` / `.btn-link-plain` / `.result-table-col` を追加
 - `inline-style-migration.test.ts`: `MIGRATED_FILES` に 2 件追加（計 13 件）
 
 ## 検証

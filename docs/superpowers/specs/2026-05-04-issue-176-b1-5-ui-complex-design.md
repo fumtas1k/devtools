@@ -56,7 +56,7 @@ memory 参照:
 | renderHeader 内 div: `bg-subtle` + `border-bottom`                             | `bg-subtle border-b border-default`（既に PR 1 で追加済み class）                                                                                                                                                               |
 | overflow div: `overflowX: 'auto'`                                              | `overflow-x-auto`                                                                                                                                                                                                               |
 | `<table>`: `width 100%` + `minWidth` (動的) + `borderCollapse`                 | `w-full border-collapse` + `minWidth` のみ CSS 変数注入で対応（後述）                                                                                                                                                           |
-| `<thead><tr>`: `bg-surface` + `border-bottom`                                  | `bg-surface-row border-b border-default`（新規 `.bg-surface-row` を追加 — `var(--color-bg-surface)` 経由）                                                                                                                      |
+| `<thead><tr>`: `bg-surface` + `border-bottom`                                  | `bg-surface border-b border-default`（新規 `.bg-surface` を追加 — `var(--color-bg-surface)` 経由）                                                                                                                              |
 | `<th>`: `caption + muted + textAlign + padding + nowrap + width`               | `.result-table-th` + `data-align` 属性（後述）。width は inline style ではなく `<col>` 要素で指定                                                                                                                               |
 | `<tr>` 行 zebra + selection bg + cursor                                        | `.result-table-row` (zebra は `:nth-child(odd/even)`) + `data-selected` 属性 (selection bg) + `data-clickable="true"` (cursor)                                                                                                  |
 | `<td>` 動的 `border-top/bottom` (selection マーカー) + `boxShadow`（区切り線） | `.result-table-row[data-selected="true"] > td { border-top/bottom: 2px solid var(--color-primary) }` + `.result-table-row:not(:last-child):not([data-selected="true"]) > td { box-shadow: inset 0 -1px 0 var(--color-border) }` |
@@ -206,7 +206,7 @@ const alignClass = (a?: 'left' | 'right' | 'center') =>
 const inputClass = [
   'caption w-full rounded-lg px-3 py-2 border',
   error ? 'border-error' : 'border-input',
-  readOnly ? 'bg-surface-row' : 'bg-default',
+  readOnly ? 'bg-surface' : 'bg-default',
   'text-default',
   mono && 'font-mono',
   multiline && !resize && 'resize-none',
@@ -216,7 +216,7 @@ const inputClass = [
   .join(' ');
 ```
 
-(`bg-surface-row` は §1.1 で新規追加予定の class、`var(--color-bg-surface)` 参照)
+(`bg-surface` は §1.1 で新規追加予定の class、`var(--color-bg-surface)` 参照)
 
 **注意**: `mono` の元の inline style には `letterSpacing: '0.02em'` が含まれているが、これは `caption` typography 定義（`.caption` class）に既に含まれているため `font-mono` のみで足りる。
 
@@ -227,7 +227,7 @@ PR 1 で既に追加済みの class（`.caption` / `.body-emphasis` / `.text-def
 ```css
 @layer components {
   /* === Surface bg (used by table thead row & InputField readOnly) === */
-  .bg-surface-row {
+  .bg-surface {
     background: var(--color-bg-surface);
   }
 
@@ -271,7 +271,7 @@ PR 1 で既に追加済みの class（`.caption` / `.body-emphasis` / `.text-def
 
 **衝突確認**:
 
-- `.bg-surface-row` の対応 token (`--color-bg-surface`) は `:root` 直書きのため Tailwind v4 auto-utility は生成されない → 命名衝突なし
+- `.bg-surface` の対応 token (`--color-bg-surface`) は `:root` 直書きのため Tailwind v4 auto-utility は生成されない → 命名衝突なし
 - `.result-table*` / `.btn-link-plain` は BEM 風命名で唯一性確保
 - `data-selected` / `data-clickable` は WAI-ARIA の `aria-selected` / `aria-current` と意味的重複しないか?
   - `aria-selected` は「クリックで選択可能な行」のときのみ JSX 側で設定される（onRowClick がある時）
@@ -381,14 +381,14 @@ PR は**直列**（前 PR がマージされてから次 PR 着手）。
 
 ## リスクと緩和
 
-| ID  | リスク                                                                                                                                                                                                           | 緩和                                                                                                                                                                                                                         |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1  | `cellStyle` 廃止で消費側 (UlidGenerator / UuidV7Generator) の見た目が微妙にズレる（特に zebra と selection の合成）                                                                                              | VRT で `mock-ulid` / `mock-uuidv7` ページ（PR 0 の mock 注入版）を baseline 比較。`color-mix()` と `:nth-child(odd/even)` の組み合わせは現状 inline style と数学的に同一表現になることを spec 内で確認済（§1.1 の CSS 定義） |
-| R2  | `setProperty('--result-table-min-width', ...)` の CSS 変数注入が一部ブラウザで反映されない                                                                                                                       | PR 1 の ToggleGroup `setProperty('--toggle-cols', ...)` で同手法が動作確認済。Playwright e2e で minWidth が反映されるかを VRT 経由で確認                                                                                     |
-| R3  | `<col>` 要素を生成して列幅を CSS 変数注入する戦略が冗長で可読性を損なう                                                                                                                                          | 本 spec の代替案 Alt-A（width API 廃止）を選ばず、API 互換のため `<col>` + setProperty を採用。冗長さは ResultTable 内に閉じる（consumer は影響なし）。可読性のため useEffect ループに JSDoc コメントで意図を明示            |
-| R4  | `data-selected` / `aria-selected` の二重管理が a11y 破綻を招く                                                                                                                                                   | spec §3「衝突確認」で責務分離（`data-selected` = 視覚、`aria-selected` = a11y、後者は onRowClick 時のみ）を明文化。テストで両属性の独立性を確認                                                                              |
-| R5  | InputField の `readOnly` 状態 bg が `bg-surface-row` 経由になることで、既存 readOnly 表示の見た目が変わる（`var(--color-bg-surface)` 値は同じだが Tailwind 経由 vs CSS 変数経由で specificity 順位が変わりうる） | `@layer components` 内定義のため Tailwind utility と同 layer に置かれる。VRT で全 readOnly InputField page (e.g., GenerateTab の result 表示) を baseline 比較                                                               |
-| R6  | API 変更が PR 1.5 内で UlidGenerator / UuidV7Generator の columns 定義を書き換えるため、両 consumer の差分が PR レビューで肥大化                                                                                 | columns 配列内 `cellStyle: {...}` の機械的変換に閉じる（render 関数は触らない）ため、各 consumer の diff は 4 列 × 4-5 行程度。PR description に「ResultTable 関連: ResultTable.tsx + 2 consumer」と明示                     |
+| ID  | リスク                                                                                                                                                                                                       | 緩和                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | `cellStyle` 廃止で消費側 (UlidGenerator / UuidV7Generator) の見た目が微妙にズレる（特に zebra と selection の合成）                                                                                          | VRT で `mock-ulid` / `mock-uuidv7` ページ（PR 0 の mock 注入版）を baseline 比較。`color-mix()` と `:nth-child(odd/even)` の組み合わせは現状 inline style と数学的に同一表現になることを spec 内で確認済（§1.1 の CSS 定義） |
+| R2  | `setProperty('--result-table-min-width', ...)` の CSS 変数注入が一部ブラウザで反映されない                                                                                                                   | PR 1 の ToggleGroup `setProperty('--toggle-cols', ...)` で同手法が動作確認済。Playwright e2e で minWidth が反映されるかを VRT 経由で確認                                                                                     |
+| R3  | `<col>` 要素を生成して列幅を CSS 変数注入する戦略が冗長で可読性を損なう                                                                                                                                      | 本 spec の代替案 Alt-A（width API 廃止）を選ばず、API 互換のため `<col>` + setProperty を採用。冗長さは ResultTable 内に閉じる（consumer は影響なし）。可読性のため useEffect ループに JSDoc コメントで意図を明示            |
+| R4  | `data-selected` / `aria-selected` の二重管理が a11y 破綻を招く                                                                                                                                               | spec §3「衝突確認」で責務分離（`data-selected` = 視覚、`aria-selected` = a11y、後者は onRowClick 時のみ）を明文化。テストで両属性の独立性を確認                                                                              |
+| R5  | InputField の `readOnly` 状態 bg が `bg-surface` 経由になることで、既存 readOnly 表示の見た目が変わる（`var(--color-bg-surface)` 値は同じだが Tailwind 経由 vs CSS 変数経由で specificity 順位が変わりうる） | `@layer components` 内定義のため Tailwind utility と同 layer に置かれる。VRT で全 readOnly InputField page (e.g., GenerateTab の result 表示) を baseline 比較                                                               |
+| R6  | API 変更が PR 1.5 内で UlidGenerator / UuidV7Generator の columns 定義を書き換えるため、両 consumer の差分が PR レビューで肥大化                                                                             | columns 配列内 `cellStyle: {...}` の機械的変換に閉じる（render 関数は触らない）ため、各 consumer の diff は 4 列 × 4-5 行程度。PR description に「ResultTable 関連: ResultTable.tsx + 2 consumer」と明示                     |
 
 ---
 
@@ -403,7 +403,7 @@ PR は**直列**（前 PR がマージされてから次 PR 着手）。
 ### コミット粒度
 
 ```
-1. global.css に PR 1.5 用 @layer components 追記（.bg-surface-row / .result-table-* / .btn-link-plain）
+1. global.css に PR 1.5 用 @layer components 追記（.bg-surface / .result-table-* / .btn-link-plain）
 2. ResultTable.tsx: 内部 style 撤去（API 維持 = cellStyle 残し、CSSOM 注入のみ先行）
    ↑ ※ 1 コミットに収まらないなら 2-1 (外枠/header/overflow), 2-2 (table/thead/th), 2-3 (tr/td 動的) に分割可
 3. ResultTable.tsx: API 再設計（cellStyle 削除、cellPadding 追加、TableColumn 型更新）

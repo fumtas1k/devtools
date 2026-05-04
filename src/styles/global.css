@@ -319,7 +319,7 @@
   }
 
   /* === PR 1.5: Surface bg (used by table thead row & InputField readOnly) === */
-  .bg-surface-row {
+  .bg-surface {
     background: var(--color-bg-surface);
   }
 
