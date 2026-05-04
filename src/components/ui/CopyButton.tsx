@@ -85,6 +85,7 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
   if (compact) {
     return (
       <button
+        type="button"
         onClick={handleClick}
         aria-label={label}
         className={`btn-copy is-compact ${stateClass} rounded-md inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap`.trim()}
@@ -97,6 +98,7 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       aria-label={label}
       className={`btn-copy ${stateClass} caption font-bold inline-flex items-center gap-1.5 rounded px-3 py-2 leading-none tracking-wide whitespace-nowrap ${className}`.trim()}
