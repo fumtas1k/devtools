@@ -174,7 +174,7 @@ export function QrReaderTool() {
             <div className="space-y-3">
               {/* カメラ未起動・結果なし時に「起動」ボタンを表示。エラー後もボタンを残すことでリトライを可能にしている */}
               {!camera.cameraActive && !decoded && (
-                <button onClick={camera.startCamera} style={startCameraButtonStyle}>
+                <button type="button" onClick={camera.startCamera} style={startCameraButtonStyle}>
                   カメラを起動
                 </button>
               )}
@@ -193,7 +193,7 @@ export function QrReaderTool() {
                 aria-label="カメラプレビュー"
               />
               {camera.cameraActive && (
-                <button onClick={stopCamera} style={stopCameraButtonStyle}>
+                <button type="button" onClick={stopCamera} style={stopCameraButtonStyle}>
                   カメラを停止
                 </button>
               )}
@@ -258,7 +258,7 @@ export function QrReaderTool() {
             {/* コピー & 再スキャンボタン */}
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton text={content.raw} />
-              <button onClick={handleRescan} style={rescanButtonStyle}>
+              <button type="button" onClick={handleRescan} style={rescanButtonStyle}>
                 再スキャン
               </button>
             </div>

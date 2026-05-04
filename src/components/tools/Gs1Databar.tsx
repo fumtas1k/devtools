@@ -204,6 +204,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         </span>
         {canRemove && (
           <button
+            type="button"
             onClick={onRemove}
             className="rounded px-2 py-1 transition-colors"
             style={{ ...caption, color: colors.error, background: 'transparent' }}
@@ -271,6 +272,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
             </span>
             {canAddField && (
               <button
+                type="button"
                 onClick={addAiField}
                 style={{ ...caption, color: colors.link }}
                 className="hover:underline"
@@ -317,6 +319,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                       )}
                     </div>
                     <button
+                      type="button"
                       onClick={() => removeAiField(i)}
                       className="rounded-lg p-2 transition-colors shrink-0"
                       style={{
@@ -480,6 +483,7 @@ export function Gs1DatabarTool() {
       <div className="flex flex-wrap items-center gap-3 pt-2">
         {cards.length < MAX_CARDS && (
           <button
+            type="button"
             onClick={addCard}
             className="rounded px-4 py-2 transition-colors"
             style={{
