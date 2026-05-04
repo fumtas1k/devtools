@@ -235,3 +235,80 @@ PR #218 (refactor #169) で subagent に項目 1c として `useCodec.test.tsx` 
 
 - PR #218 (#169) で発生、SendMessage で漏れ 2 件を再依頼して解消
 - （規約昇格候補）`docs/shared-agent-rules.md` のサブエージェント指示テンプレに「項目別実装ステータス必須」を追加検討
+
+---
+
+## [2026-05-04] Claude memory dir は Bash `rm` で削除できない（Claude Code 既知 bug、回避不能）
+
+### 現象
+
+`Write` ツールで `~/.claude/projects/<sanitized-cwd>/memory/<name>.md` に memory ファイルを書けるが、Bash ツール経由の `rm` で削除しようとすると `Operation not permitted`。auto-memory システムが「作る・上書きする」しかできず「消す」が物理的に不能。
+
+### 根本原因
+
+Claude Code の sandbox bug。issue tracker で確認済み:
+
+- [#46871](https://github.com/anthropics/claude-code/issues/46871) (closed as duplicate, 2026-04): まさに「memory delete できない」の専用報告
+- [#31121](https://github.com/anthropics/claude-code/issues/31121) (closed as duplicate, 2026-03): `sandbox.filesystem.allowWrite` は Write / Edit ツールには効くが **Bash ツールには適用されない**
+- [#17727](https://github.com/anthropics/claude-code/issues/17727) (**OPEN**, 最新 comment 2026-04-25 / v2.1.120): Linux/bwrap 中心の上位バグだが root cause 共通
+
+macOS sandbox-exec でも同症状を再現確認 (2026-05-04)。
+
+### 試して効かなかったこと（次回繰り返さない）
+
+- `sandbox.write.allowOnly` 追加（system prompt 内部表現の field 名、user 上書き silent ignore）
+- `sandbox.filesystem.allowWrite` 追加（user-facing 正式 field 名でも Bash ツールには不適用）
+- `~/.claude/projects/*/memory/**` glob と `/Users/<user>/.claude/projects/<sanitized-cwd>/memory` 絶対パス両方
+- session restart 後の再試行（profile 再構築されても挙動同じ）
+
+### 対処方針
+
+- memory 削除が必要になったら **ユーザに 別ターミナル or `Ctrl+Z` で Claude Code を suspend** して親シェルから `rm` を実行してもらう
+- `!` プレフィックス（in-Claude bash mode）は同じ sandbox 層を通るので **workaround にならない**（過去に何度か誤提案）
+- そもそも頻繁な memory 削除を前提にしない設計が筋。記録する前に「本当に共通ルール化に値するか」「既存 memory の更新で済まないか」を吟味する
+- 本件 bug fix を待つ場合は #17727 watch（ただし 2026-04 時点で複数バージョン跨いで未修正、近期解消は期待しない）
+
+### 関連
+
+- 関連個人メモ: `~/.claude/projects/*/memory/feedback_bang_prefix_not_sandbox_bypass.md`（本リポジトリには未収録、開発者個人の Claude Code memory）
+- 規約昇格: 不要（Claude Code の harness 挙動のため `shared-agent-rules.md` ではなく本ファイルが正所）
+
+---
+
+## [2026-05-04] macOS sandbox profile が user `permissions.allow` を mirror している可能性（未確認仮説）
+
+### 観察
+
+PR #267 の S1 修正（`/tmp/claude-*/**` → `/tmp/claude-[0-9a-f]*/**`）後、`/tmp/claude-501/probe.txt` Read を probe した際、**副次的に `mkdir /tmp/claude-zzz` が OS sandbox 層で `Operation not permitted` で block される**ことを観測。`zzz` は hex 範囲外で、user 設定の `[0-9a-f]*` パターンと一致する挙動。
+
+### 仮説
+
+Claude Code が起動時に user の `permissions.allow` のパス系パターン（`Read` / `Write` / `Edit`）を macOS の sandbox profile (sandbox-exec) に mirror して、shell レベルでも同等の write 制限を強制している可能性。
+
+これが正しければ:
+
+- user 設定 (permissions.allow) ＝ tool layer の gate
+- sandbox profile = OS layer の gate
+- 両者が同一パターンから派生し、defense-in-depth として機能している
+
+### 検証状態
+
+**未確認**。本仮説の確定には以下の比較実験が必要:
+
+1. `permissions.allow` を `/tmp/claude-*/**` (broad) に戻して session restart
+2. `mkdir /tmp/claude-zzz` を再試行
+3. block されれば仮説は **棄却**（sandbox は user 設定と独立）/ 通れば仮説 **支持**
+
+PR #267 内では実施しない（settings 巻き戻しが必要 + 検証のための tmp dir 作成は実害低いが副作用あり）。
+
+### 対処方針
+
+- 当面は仮説のまま記録。次回 sandbox 挙動の不可解な現象に遭遇したらこの仮説を最初に当てる
+- 仮説支持の場合、**user 設定の path pattern が tool gate と OS gate の両方に効く**前提で運用すれば、settings.json 設計時の安全性が透過的になる（特に `claude-*` のような session id glob）
+- 仮説棄却の場合、Claude Code 内部で別途 hex-like enforcement が baked in されているはずで、その出所を探す価値あり
+
+### 関連
+
+- PR #267 (#267 review コメントで reviewer から提示された観察)
+- 上記前エントリ「Claude memory dir は Bash `rm` で削除できない（Claude Code 既知 bug）」と関連 — sandbox.filesystem.allowWrite が Bash に効かない bug と「sandbox profile mirror」仮説は **両立する**（mirror があっても Bash には適用されない実装、というシナリオ）
+- 規約昇格: 不要（仮説段階、harness 挙動のため本ファイルが正所）
