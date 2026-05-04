@@ -328,6 +328,9 @@
     /* setProperty('--result-table-min-width', ...) で注入。未注入時は 0 (= no min-width 制約) */
     min-width: var(--result-table-min-width, 0);
   }
+  .result-table-col {
+    width: var(--col-width, auto);
+  }
   .result-table-row:nth-child(odd) {
     background: var(--color-bg);
   }
