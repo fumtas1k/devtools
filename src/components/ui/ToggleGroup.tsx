@@ -52,6 +52,7 @@ export function ToggleGroup<T extends string>({
       {options.map((opt) => (
         <button
           key={opt.value}
+          type="button"
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
           className={`caption font-semibold btn-toggle rounded-lg whitespace-nowrap ${buttonSizeClass}`}
