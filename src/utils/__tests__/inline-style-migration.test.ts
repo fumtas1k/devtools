@@ -28,6 +28,10 @@ const MIGRATED_FILES: readonly string[] = [
   // PR 1.5 で追加
   'src/components/ui/ResultTable.tsx',
   'src/components/ui/InputField.tsx',
+  // PR 2 で追加 (qr-ticket)
+  'src/components/tools/qr-ticket/GenerateTab.tsx',
+  'src/components/tools/qr-ticket/VerifyTab.tsx',
+  'src/components/tools/qr-ticket/TicketDetail.tsx',
 ];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
