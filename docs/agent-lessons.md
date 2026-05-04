@@ -272,3 +272,43 @@ macOS sandbox-exec でも同症状を再現確認 (2026-05-04)。
 
 - 関連個人メモ: `~/.claude/projects/*/memory/feedback_bang_prefix_not_sandbox_bypass.md`（本リポジトリには未収録、開発者個人の Claude Code memory）
 - 規約昇格: 不要（Claude Code の harness 挙動のため `shared-agent-rules.md` ではなく本ファイルが正所）
+
+---
+
+## [2026-05-04] macOS sandbox profile が user `permissions.allow` を mirror している可能性（未確認仮説）
+
+### 観察
+
+PR #267 の S1 修正（`/tmp/claude-*/**` → `/tmp/claude-[0-9a-f]*/**`）後、`/tmp/claude-501/probe.txt` Read を probe した際、**副次的に `mkdir /tmp/claude-zzz` が OS sandbox 層で `Operation not permitted` で block される**ことを観測。`zzz` は hex 範囲外で、user 設定の `[0-9a-f]*` パターンと一致する挙動。
+
+### 仮説
+
+Claude Code が起動時に user の `permissions.allow` のパス系パターン（`Read` / `Write` / `Edit`）を macOS の sandbox profile (sandbox-exec) に mirror して、shell レベルでも同等の write 制限を強制している可能性。
+
+これが正しければ:
+
+- user 設定 (permissions.allow) ＝ tool layer の gate
+- sandbox profile = OS layer の gate
+- 両者が同一パターンから派生し、defense-in-depth として機能している
+
+### 検証状態
+
+**未確認**。本仮説の確定には以下の比較実験が必要:
+
+1. `permissions.allow` を `/tmp/claude-*/**` (broad) に戻して session restart
+2. `mkdir /tmp/claude-zzz` を再試行
+3. block されれば仮説は **棄却**（sandbox は user 設定と独立）/ 通れば仮説 **支持**
+
+PR #267 内では実施しない（settings 巻き戻しが必要 + 検証のための tmp dir 作成は実害低いが副作用あり）。
+
+### 対処方針
+
+- 当面は仮説のまま記録。次回 sandbox 挙動の不可解な現象に遭遇したらこの仮説を最初に当てる
+- 仮説支持の場合、**user 設定の path pattern が tool gate と OS gate の両方に効く**前提で運用すれば、settings.json 設計時の安全性が透過的になる（特に `claude-*` のような session id glob）
+- 仮説棄却の場合、Claude Code 内部で別途 hex-like enforcement が baked in されているはずで、その出所を探す価値あり
+
+### 関連
+
+- PR #267 (#267 review コメントで reviewer から提示された観察)
+- 上記前エントリ「Claude memory dir は Bash `rm` で削除できない（Claude Code 既知 bug）」と関連 — sandbox.filesystem.allowWrite が Bash に効かない bug と「sandbox profile mirror」仮説は **両立する**（mirror があっても Bash には適用されない実装、というシナリオ）
+- 規約昇格: 不要（仮説段階、harness 挙動のため本ファイルが正所）
