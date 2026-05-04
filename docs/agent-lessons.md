@@ -235,3 +235,40 @@ PR #218 (refactor #169) で subagent に項目 1c として `useCodec.test.tsx` 
 
 - PR #218 (#169) で発生、SendMessage で漏れ 2 件を再依頼して解消
 - （規約昇格候補）`docs/shared-agent-rules.md` のサブエージェント指示テンプレに「項目別実装ステータス必須」を追加検討
+
+---
+
+## [2026-05-04] Claude memory dir は Bash `rm` で削除できない（Claude Code 既知 bug、回避不能）
+
+### 現象
+
+`Write` ツールで `~/.claude/projects/<sanitized-cwd>/memory/<name>.md` に memory ファイルを書けるが、Bash `rm` で削除しようとすると `Operation not permitted`。auto-memory システムが「作る・上書きする」しかできず「消す」が物理的に不能。
+
+### 根本原因
+
+Claude Code の sandbox bug。issue tracker で確認済み:
+
+- [#46871](https://github.com/anthropics/claude-code/issues/46871) (CLOSED-dup, 2026-04): まさに「memory delete できない」の専用報告
+- [#31121](https://github.com/anthropics/claude-code/issues/31121) (CLOSED-dup, 2026-03): `sandbox.filesystem.allowWrite` は Write/Edit には効くが **Bash tool には適用されない**
+- [#17727](https://github.com/anthropics/claude-code/issues/17727) (**OPEN**, 最新 comment 2026-04-25 / v2.1.120): Linux/bwrap 中心の上位バグだが root cause 共通
+
+macOS sandbox-exec でも同症状を再現確認 (2026-05-04)。
+
+### 試して効かなかったこと（次回繰り返さない）
+
+- `sandbox.write.allowOnly` 追加（system prompt 内部表現の field 名、user 上書き silent ignore）
+- `sandbox.filesystem.allowWrite` 追加（user-facing 正式 field 名でも Bash には不適用）
+- `~/.claude/projects/*/memory/**` glob と `/Users/<user>/.claude/projects/<sanitized-cwd>/memory` 絶対パス両方
+- session restart 後の再試行（profile 再構築されても挙動同じ）
+
+### 対処方針
+
+- memory 削除が必要になったら **ユーザに 別ターミナル or `Ctrl+Z` で Claude Code を suspend** して親シェルから `rm` を実行してもらう
+- `!` プレフィックス（in-Claude bash mode）は同じ sandbox 層を通るので **workaround にならない**（過去に何度か誤提案）
+- そもそも頻繁な memory 削除を前提にしない設計が筋。記録する前に「本当に共通ルール化に値するか」「既存 memory の更新で済まないか」を吟味する
+- 本件 bug fix を待つ場合は #17727 watch（ただし 2026-04 時点で複数バージョン跨いで未修正、近期解消は期待しない）
+
+### 関連
+
+- session memory: `feedback_bang_prefix_not_sandbox_bypass.md`
+- （規約昇格候補なし）Claude Code の harness 挙動なので shared-agent-rules.md ではなく本ファイルが正所
