@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { importPublicKey, verifyTicket, type VerificationResult } from '@/utils/qr-ticket';
 import { validateFile } from '@/utils/file-validation';
 import { decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
@@ -14,7 +14,7 @@ export interface UseTicketVerificationReturn {
   scanMode: 'camera' | 'upload';
   camera: ReturnType<typeof useQrCamera>;
   setScanMode: (v: 'camera' | 'upload') => void;
-  verify: (rawData: string, signal?: AbortSignal) => Promise<void>;
+  verify: (rawData: string, externalSignal?: AbortSignal) => Promise<void>;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleRescan: () => void;
 }
@@ -31,30 +31,52 @@ export function useTicketVerification({
   const [scanMode, setScanMode] = useState<'camera' | 'upload'>('camera');
 
   const uploadAbortRef = useRef<AbortController | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      controllerRef.current?.abort();
+    };
+  }, []);
 
   const verify = useCallback(
-    async (rawData: string, signal?: AbortSignal) => {
-      if (signal?.aborted) return;
-      setVerifying(true);
-      let pubKey: CryptoKey;
-      try {
-        const jwk = JSON.parse(pubKeyStr) as JsonWebKey;
-        pubKey = await importPublicKey(jwk);
-      } catch {
-        if (signal?.aborted) return;
-        setVerificationResult({
-          valid: false,
-          ticket: null,
-          expired: false,
-          error: '公開鍵の形式が不正です。有効なECDSA P-256 JWKを貼り付けてください。',
-        });
-        setVerifying(false);
-        return;
+    async (rawData: string, externalSignal?: AbortSignal) => {
+      controllerRef.current?.abort();
+      const ctrl = new AbortController();
+      controllerRef.current = ctrl;
+
+      if (externalSignal) {
+        if (externalSignal.aborted) {
+          ctrl.abort();
+        } else {
+          externalSignal.addEventListener('abort', () => ctrl.abort(), { once: true });
+        }
       }
-      const result = await verifyTicket(rawData, pubKey);
-      if (signal?.aborted) return;
-      setVerificationResult(result);
-      setVerifying(false);
+
+      if (ctrl.signal.aborted) return;
+      setVerifying(true);
+      try {
+        let pubKey: CryptoKey;
+        try {
+          const jwk = JSON.parse(pubKeyStr) as JsonWebKey;
+          pubKey = await importPublicKey(jwk);
+        } catch {
+          if (ctrl.signal.aborted) return;
+          setVerificationResult({
+            valid: false,
+            ticket: null,
+            expired: false,
+            error: '公開鍵の形式が不正です。有効なECDSA P-256 JWKを貼り付けてください。',
+          });
+          return;
+        }
+        const result = await verifyTicket(rawData, pubKey);
+        if (ctrl.signal.aborted) return;
+        setVerificationResult(result);
+      } finally {
+        // abort 中は unmount 後の no-op になるため setState を抑制
+        if (!ctrl.signal.aborted) setVerifying(false);
+      }
     },
     [pubKeyStr]
   );

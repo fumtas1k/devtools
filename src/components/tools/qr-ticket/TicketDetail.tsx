@@ -1,4 +1,3 @@
-import { colors, caption } from '@/utils/styles';
 import { formatTimestamp, type TicketPayload } from '@/utils/qr-ticket';
 
 const MONO_LABELS = ['チケットID', 'イベントID'];
@@ -13,27 +12,13 @@ export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
   if (ticket.p) rows.push({ label: '料金区分', value: ticket.p });
 
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <table className="w-full border-collapse">
       <tbody>
         {rows.map(({ label, value }) => (
           <tr key={label}>
+            <td className="caption text-muted pr-4 pb-1 whitespace-nowrap">{label}</td>
             <td
-              style={{
-                ...caption,
-                color: colors.muted,
-                paddingRight: '1rem',
-                paddingBottom: '0.25rem',
-                whiteSpace: 'nowrap' as const,
-              }}
-            >
-              {label}
-            </td>
-            <td
-              style={{
-                ...caption,
-                color: colors.text,
-                fontFamily: MONO_LABELS.includes(label) ? 'monospace' : undefined,
-              }}
+              className={`caption text-default ${MONO_LABELS.includes(label) ? 'font-mono' : ''}`}
             >
               {value}
             </td>

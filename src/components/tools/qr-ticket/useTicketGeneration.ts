@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import {
   signTicket,
   generateQrSvg,
@@ -55,7 +55,7 @@ export function useTicketGeneration({
   const [zipping, setZipping] = useState(false);
   const [zipError, setZipError] = useState('');
 
-  const addTicket = () => {
+  const addTicket = useCallback(() => {
     if (tickets.length >= MAX_TICKETS) return;
     ticketKeyRef.current += 1;
     const newKey = ticketKeyRef.current;
@@ -63,17 +63,17 @@ export function useTicketGeneration({
       ...prev,
       { _key: newKey, id: generateTicketId(prev.length + 1), name: '', category: '' },
     ]);
-  };
+  }, [tickets.length]);
 
-  const removeTicket = (index: number) => {
+  const removeTicket = useCallback((index: number) => {
     setTickets((prev) => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
-  const updateTicket = (index: number, field: keyof TicketRow, value: string) => {
+  const updateTicket = useCallback((index: number, field: keyof TicketRow, value: string) => {
     setTickets((prev) => prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)));
-  };
+  }, []);
 
-  const generate = async () => {
+  const generate = useCallback(async () => {
     setGenerateError('');
 
     if (!cryptoKeyPair) {
@@ -180,14 +180,14 @@ export function useTicketGeneration({
     } finally {
       setGenerating(false);
     }
-  };
+  }, [cryptoKeyPair, eventId, expiry, tickets]);
 
-  const downloadSvgQr = (qr: GeneratedQr) => {
+  const downloadSvgQr = useCallback((qr: GeneratedQr) => {
     const safeName = sanitizeFilename(`ticket-${qr.ticket.t}.svg`, ['svg']);
     downloadSvg(qr.svg.replace('<svg ', '<svg width="160" height="160" '), safeName);
-  };
+  }, []);
 
-  const downloadZipQrs = async () => {
+  const downloadZipQrs = useCallback(async () => {
     if (generatedQrs.length === 0 || zipping) return;
     setZipping(true);
     setZipError('');
@@ -203,24 +203,44 @@ export function useTicketGeneration({
     } finally {
       setZipping(false);
     }
-  };
+  }, [generatedQrs, zipping]);
 
-  return {
-    eventId,
-    expiry,
-    tickets,
-    generating,
-    generateError,
-    generatedQrs,
-    zipping,
-    zipError,
-    setEventId,
-    setExpiry,
-    addTicket,
-    removeTicket,
-    updateTicket,
-    generate,
-    downloadSvgQr,
-    downloadZipQrs,
-  };
+  return useMemo(
+    () => ({
+      eventId,
+      expiry,
+      tickets,
+      generating,
+      generateError,
+      generatedQrs,
+      zipping,
+      zipError,
+      setEventId,
+      setExpiry,
+      addTicket,
+      removeTicket,
+      updateTicket,
+      generate,
+      downloadSvgQr,
+      downloadZipQrs,
+    }),
+    [
+      eventId,
+      expiry,
+      tickets,
+      generating,
+      generateError,
+      generatedQrs,
+      zipping,
+      zipError,
+      setEventId,
+      setExpiry,
+      addTicket,
+      removeTicket,
+      updateTicket,
+      generate,
+      downloadSvgQr,
+      downloadZipQrs,
+    ]
+  );
 }

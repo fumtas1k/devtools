@@ -3,7 +3,6 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Section } from '@/components/ui/Section';
 import { ActionButton } from '@/components/ui/ActionButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import type { VerificationResult } from '@/utils/qr-ticket';
 import { TicketDetail } from './TicketDetail';
 import { SCAN_OPTIONS } from './index';
@@ -82,9 +81,7 @@ export function VerifyTab({
                 </ActionButton>
               )}
               {!verifyPubKeyStr.trim() && (
-                <p style={{ ...caption, color: colors.muted }}>
-                  公開鍵を入力してからカメラを起動してください
-                </p>
+                <p className="caption text-muted">公開鍵を入力してからカメラを起動してください</p>
               )}
               {/* video/canvas は常時レンダリングして videoRef を確保する。
                   cameraActive=true になる前にsrcObjectをセットするため。 */}
@@ -92,13 +89,8 @@ export function VerifyTab({
                 ref={camera.videoRef}
                 playsInline
                 muted
-                style={{
-                  width: '100%',
-                  maxWidth: '400px',
-                  borderRadius: '0.5rem',
-                  display: camera.cameraActive ? 'block' : 'none',
-                  background: '#000',
-                }}
+                className="w-full max-w-[400px] rounded-lg bg-black block"
+                hidden={!camera.cameraActive}
                 aria-label="カメラプレビュー"
               />
               {camera.cameraActive && (
@@ -106,41 +98,32 @@ export function VerifyTab({
                   カメラを停止
                 </ActionButton>
               )}
-              <canvas ref={camera.canvasRef} style={{ display: 'none' }} aria-hidden="true" />
+              <canvas ref={camera.canvasRef} hidden aria-hidden="true" />
             </div>
           ) : (
             <div className="space-y-2">
-              <p style={{ ...caption, color: colors.muted }}>
+              <p className="caption text-muted">
                 QRコードが写った画像（PNG・JPG等）をアップロードしてください
               </p>
               <label
-                style={{
-                  ...caption,
-                  fontWeight: 600,
-                  display: 'inline-block',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  border: `1px solid ${colors.borderInput}`,
-                  background: verifyPubKeyStr.trim() ? colors.bgSubtle : colors.bgSurface,
-                  color: verifyPubKeyStr.trim() ? colors.text : colors.muted,
-                  cursor: verifyPubKeyStr.trim() ? 'pointer' : 'not-allowed',
-                }}
+                data-enabled={Boolean(verifyPubKeyStr.trim())}
+                className="caption font-semibold inline-block px-4 py-2 rounded-lg border qr-file-picker-label"
               >
                 画像を選択
                 <input
                   type="file"
                   accept="image/*"
-                  style={{ display: 'none' }}
+                  className="sr-only"
                   onChange={onImageUpload}
                   disabled={!verifyPubKeyStr.trim()}
                   aria-label="画像を選択"
                 />
               </label>
-              <p style={{ fontSize: '0.75rem', color: colors.muted, marginTop: '0.25rem' }}>
+              <p className="text-xs text-muted mt-1">
                 対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
               </p>
               {!verifyPubKeyStr.trim() && (
-                <p style={{ ...caption, color: colors.muted }}>公開鍵を入力してください</p>
+                <p className="caption text-muted">公開鍵を入力してください</p>
               )}
             </div>
           )}
@@ -164,22 +147,14 @@ export function VerifyTab({
             aria-atomic="true"
           >
             {verifying ? (
-              <p style={{ ...caption, color: colors.muted }}>検証中…</p>
+              <p className="caption text-muted">検証中…</p>
             ) : verificationResult ? (
               <div className="space-y-3">
                 <div
-                  className="rounded-lg p-4"
-                  style={{
-                    background: verificationResult.valid ? colors.successBg : colors.errorBg,
-                    border: `1px solid ${verificationResult.valid ? colors.success : colors.error}`,
-                  }}
+                  className={`rounded-lg p-4 border ${verificationResult.valid ? 'alert-success' : 'alert-error'}`}
                 >
                   <p
-                    style={{
-                      ...bodyEmphasis,
-                      color: verificationResult.valid ? colors.success : colors.error,
-                      marginBottom: verificationResult.ticket ? '0.75rem' : 0,
-                    }}
+                    className={`body-emphasis ${verificationResult.valid ? 'text-success' : 'text-error'} ${verificationResult.ticket ? 'mb-3' : ''}`}
                   >
                     {verificationResult.valid ? (
                       <>
@@ -196,9 +171,7 @@ export function VerifyTab({
                     )}
                   </p>
                   {verificationResult.error && !verificationResult.valid && (
-                    <p style={{ ...caption, color: colors.errorText }}>
-                      {verificationResult.error}
-                    </p>
+                    <p className="caption text-error-text">{verificationResult.error}</p>
                   )}
                   {verificationResult.ticket && <TicketDetail ticket={verificationResult.ticket} />}
                 </div>

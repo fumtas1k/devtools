@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   generateKeyPair,
   exportKeyPair,
@@ -47,7 +47,12 @@ export function useTicketKeyPair(options?: {
   const [showImport, setShowImport] = useState(false);
   const [importStr, setImportStr] = useState('');
 
-  const generateKeys = async () => {
+  // options object identity は呼出側 (QrTicket.tsx の `{ onPubKeyGenerated: setVerifyPubKeyStr }`) で
+  // 毎レンダ新規だが、内部 callback (`setVerifyPubKeyStr` 等の React setState) は安定。
+  // ここで extract して useCallback deps を安定化させ、末尾 useMemo の memoization が機能するようにする。
+  const onPubKeyGenerated = options?.onPubKeyGenerated;
+
+  const generateKeys = useCallback(async () => {
     setKeyGenerating(true);
     setKeyError('');
     try {
@@ -58,15 +63,15 @@ export function useTicketKeyPair(options?: {
       setCryptoKeyPair(pair);
       setPrivateKeyJwkStr(privStr);
       setPublicKeyJwkStr(pubStr);
-      options?.onPubKeyGenerated?.(pubStr);
+      onPubKeyGenerated?.(pubStr);
     } catch {
       setKeyError('鍵の生成に失敗しました');
     } finally {
       setKeyGenerating(false);
     }
-  };
+  }, [onPubKeyGenerated]);
 
-  const importKey = async () => {
+  const importKey = useCallback(async () => {
     setKeyError('');
     let jwk: JsonWebKey;
     try {
@@ -90,27 +95,42 @@ export function useTicketKeyPair(options?: {
       setCryptoKeyPair({ privateKey: privKey, publicKey: pubKey });
       setPrivateKeyJwkStr(privStr);
       setPublicKeyJwkStr(pubStr);
-      options?.onPubKeyGenerated?.(pubStr);
+      onPubKeyGenerated?.(pubStr);
       setShowImport(false);
       setImportStr('');
     } catch {
       setKeyError('秘密鍵のインポートに失敗しました。有効なECDSA P-256 JWKを入力してください。');
     }
-  };
+  }, [importStr, onPubKeyGenerated]);
 
-  const toggleImport = () => setShowImport((v) => !v);
+  const toggleImport = useCallback(() => setShowImport((v) => !v), []);
 
-  return {
-    cryptoKeyPair,
-    privateKeyJwkStr,
-    publicKeyJwkStr,
-    keyGenerating,
-    keyError,
-    showImport,
-    importStr,
-    generateKeys,
-    importKey,
-    toggleImport,
-    setImportStr,
-  };
+  return useMemo(
+    () => ({
+      cryptoKeyPair,
+      privateKeyJwkStr,
+      publicKeyJwkStr,
+      keyGenerating,
+      keyError,
+      showImport,
+      importStr,
+      generateKeys,
+      importKey,
+      toggleImport,
+      setImportStr,
+    }),
+    [
+      cryptoKeyPair,
+      privateKeyJwkStr,
+      publicKeyJwkStr,
+      keyGenerating,
+      keyError,
+      showImport,
+      importStr,
+      generateKeys,
+      importKey,
+      toggleImport,
+      setImportStr,
+    ]
+  );
 }
