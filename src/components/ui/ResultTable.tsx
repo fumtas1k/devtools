@@ -1,4 +1,4 @@
-import type { ReactNode, CSSProperties } from 'react';
+import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 
 export interface TableColumn<T> {
@@ -11,10 +11,6 @@ export interface TableColumn<T> {
   className?: string;
   /** セルパディング。default: 'normal' (0.5rem 0.75rem)、compact (0.25rem 0.5rem) */
   cellPadding?: 'normal' | 'compact';
-  /**
-   * @deprecated PR 1.5 で `cellPadding` + `className` に置換。本 PR 内の過渡 API。次の commit で削除。
-   */
-  cellStyle?: CSSProperties;
   render: (row: T, index: number) => ReactNode;
 }
 
@@ -108,7 +104,6 @@ export function ResultTable<T>({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      style={col.cellStyle}
                       className={`caption text-default ${paddingClass(col.cellPadding)} ${alignClass(col.cellAlign)} ${col.className ?? ''}`}
                     >
                       {col.render(row, i)}
