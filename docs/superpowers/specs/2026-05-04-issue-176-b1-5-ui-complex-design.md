@@ -81,7 +81,7 @@ useEffect(() => {
 
 **根拠**: `setProperty('--var', value)` は CSSOM API 経由で属性経由の inline style mutation と区別される（PR 1 の ToggleGroup と同じ手法、migration test も `setProperty` を許容パターンとしてスルー）。
 
-**動的 `width` の `<th>` 列幅**: `col.width` を `<colgroup><col style="width: ...">` に逃がす案と、`data-col-width` + CSS attr() を使う案があるが、attr() は数値型サポートが新しめのブラウザに限られ、`<col style="width">` は HTML 標準属性扱いではなく CSS の inline style となるため CSP 上は同等の問題。**結論**: `<col>` 要素を生成し、各 `<col>` の `width` を `setProperty('--col-width-N', value)` で個別 CSS 変数として注入し、`colgroup col:nth-child(N) { width: var(--col-width-N) }` で参照する。N が動的（columns.length 可変）なため、render 時に `useEffect` で全列をループして注入。冗長だが CSP 準拠かつ JSX inline style 0。
+**動的 `width` の `<th>` 列幅**: `col.width` を `<colgroup><col style="width: ...">` に逃がす案と、`data-col-width` + CSS attr() を使う案があるが、attr() は数値型サポートが新しめのブラウザに限られ、`<col style="width">` は HTML 標準属性扱いではなく CSS の inline style となるため CSP 上は同等の問題。**結論**: `<col>` 要素を生成し、各 `<col>` 要素自身に `setProperty('--col-width', value)` で element-scoped CSS 変数を注入、`.result-table-col { width: var(--col-width, auto) }` で参照する（実装では各 `<col>` に ref を割り当て、`useEffect` で `columns.forEach((col, i) => colgroupRef.current[i].style.setProperty(...))` ループ）。CSP 準拠かつ JSX inline style 0。
 
 **代替案 (Alt-A)**: `<col>` を捨てて、各 `<th>`/`<td>` に `data-col-key={col.key}` を付与し、columns 側で width を className 化する CSS-in-CSS 戦略。consumer が任意 width を渡す自由度が下がる。**今回は採用しない**（既存 API の `width?: string` を維持するため）。
 
