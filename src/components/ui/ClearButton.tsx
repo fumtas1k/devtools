@@ -12,6 +12,7 @@ interface Props {
 export function ClearButton({ onClick, className = '' }: Props) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`caption text-muted btn-clear rounded-lg px-3 py-1.5 whitespace-nowrap border-0 ${className}`.trim()}
     >
