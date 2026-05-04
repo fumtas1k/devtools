@@ -198,6 +198,40 @@ describe('useTicketVerification — handleImageUpload', () => {
   });
 });
 
+describe('useTicketVerification — unmount 後 abort（陽性対照）', () => {
+  it('unmount 後に verify が完走しても setState が走らない', async () => {
+    const { verifyTicket } = await import('@/utils/qr-ticket');
+
+    // verify の完了を制御するための Promise
+    let resolveVerify!: (v: VerificationResult) => void;
+    const pendingVerify = new Promise<VerificationResult>((resolve) => {
+      resolveVerify = resolve;
+    });
+    vi.mocked(verifyTicket).mockReturnValueOnce(pendingVerify);
+
+    const { result, unmount } = renderHook(() =>
+      useTicketVerification({ pubKeyStr: validPubKeyStr })
+    );
+
+    // verify を開始する Promise を保持しておく
+    const verifyPromise = act(async () => {
+      await result.current.verify('qr-data');
+    });
+
+    // unmount で controllerRef.abort() が走る
+    unmount();
+
+    // unmount 後に verifyTicket の Promise を解決
+    resolveVerify(validResult);
+
+    // verify の act が完了するまで待つ
+    await verifyPromise;
+
+    // abort 済みなので state 更新されず null のまま
+    expect(result.current.verificationResult).toBeNull();
+  });
+});
+
 describe('useTicketVerification — handleRescan', () => {
   it('handleRescan で verificationResult がリセットされる', async () => {
     const { result } = renderHook(() => useTicketVerification({ pubKeyStr: validPubKeyStr }));

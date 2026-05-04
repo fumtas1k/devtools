@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { importPublicKey, verifyTicket, type VerificationResult } from '@/utils/qr-ticket';
 import { validateFile } from '@/utils/file-validation';
 import { decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
@@ -31,17 +31,36 @@ export function useTicketVerification({
   const [scanMode, setScanMode] = useState<'camera' | 'upload'>('camera');
 
   const uploadAbortRef = useRef<AbortController | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      controllerRef.current?.abort();
+    };
+  }, []);
 
   const verify = useCallback(
-    async (rawData: string, signal?: AbortSignal) => {
-      if (signal?.aborted) return;
+    async (rawData: string, externalSignal?: AbortSignal) => {
+      controllerRef.current?.abort();
+      const ctrl = new AbortController();
+      controllerRef.current = ctrl;
+
+      if (externalSignal) {
+        if (externalSignal.aborted) {
+          ctrl.abort();
+        } else {
+          externalSignal.addEventListener('abort', () => ctrl.abort(), { once: true });
+        }
+      }
+
+      if (ctrl.signal.aborted) return;
       setVerifying(true);
       let pubKey: CryptoKey;
       try {
         const jwk = JSON.parse(pubKeyStr) as JsonWebKey;
         pubKey = await importPublicKey(jwk);
       } catch {
-        if (signal?.aborted) return;
+        if (ctrl.signal.aborted) return;
         setVerificationResult({
           valid: false,
           ticket: null,
@@ -52,7 +71,7 @@ export function useTicketVerification({
         return;
       }
       const result = await verifyTicket(rawData, pubKey);
-      if (signal?.aborted) return;
+      if (ctrl.signal.aborted) return;
       setVerificationResult(result);
       setVerifying(false);
     },

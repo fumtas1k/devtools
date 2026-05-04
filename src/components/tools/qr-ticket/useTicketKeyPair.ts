@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   generateKeyPair,
   exportKeyPair,
@@ -100,17 +100,32 @@ export function useTicketKeyPair(options?: {
 
   const toggleImport = () => setShowImport((v) => !v);
 
-  return {
-    cryptoKeyPair,
-    privateKeyJwkStr,
-    publicKeyJwkStr,
-    keyGenerating,
-    keyError,
-    showImport,
-    importStr,
-    generateKeys,
-    importKey,
-    toggleImport,
-    setImportStr,
-  };
+  return useMemo(
+    () => ({
+      cryptoKeyPair,
+      privateKeyJwkStr,
+      publicKeyJwkStr,
+      keyGenerating,
+      keyError,
+      showImport,
+      importStr,
+      generateKeys,
+      importKey,
+      toggleImport,
+      setImportStr,
+    }),
+    [
+      cryptoKeyPair,
+      privateKeyJwkStr,
+      publicKeyJwkStr,
+      keyGenerating,
+      keyError,
+      showImport,
+      importStr,
+      generateKeys,
+      importKey,
+      toggleImport,
+      setImportStr,
+    ]
+  );
 }
