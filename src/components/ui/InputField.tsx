@@ -1,5 +1,4 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 
 interface Props {
@@ -43,39 +42,28 @@ export function InputField({
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined;
 
-  const baseInputStyle = {
-    ...caption,
-    width: '100%',
-    border: `1px solid ${error ? colors.error : colors.borderInput}`,
-    borderRadius: '0.5rem',
-    padding: '0.5rem 0.75rem',
-    background: readOnly ? colors.bgSurface : colors.bg,
-    color: colors.text,
-    ...(mono ? { fontFamily: 'monospace', letterSpacing: '0.02em' } : {}),
-    ...(multiline && !resize ? { resize: 'none' as const } : {}),
-  };
+  const inputClass = [
+    'caption w-full rounded-lg px-3 py-2 border text-default',
+    error ? 'border-error' : 'border-input',
+    readOnly ? 'bg-surface' : 'bg-default',
+    mono && 'font-mono',
+    multiline && !resize && 'resize-none',
+    multiline && resize && 'resize-y',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div>
-      <div
-        className="flex items-center justify-between"
-        style={{ marginBottom: '0.75rem', minHeight: '2rem' }}
-      >
-        <label htmlFor={id} style={{ ...bodyEmphasis, color: colors.text }}>
+      <div className="flex items-center justify-between mb-3 min-h-8">
+        <label htmlFor={id} className="body-emphasis text-default">
           {label}
         </label>
         {onSampleClick && (
           <button
             type="button"
             onClick={onSampleClick}
-            style={{
-              ...caption,
-              color: colors.link,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
+            className="caption text-link btn-link-plain"
           >
             サンプルを入力
           </button>
@@ -94,7 +82,7 @@ export function InputField({
           maxLength={maxLength}
           aria-describedby={describedBy}
           aria-invalid={!!error}
-          style={baseInputStyle}
+          className={inputClass}
         />
       ) : (
         <input
@@ -109,14 +97,14 @@ export function InputField({
           inputMode={inputMode}
           aria-describedby={describedBy}
           aria-invalid={!!error}
-          style={baseInputStyle}
+          className={inputClass}
         />
       )}
 
       {error ? (
         <ErrorMessage id={errorId} message={error} />
       ) : hint ? (
-        <p id={hintId} style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>
+        <p id={hintId} className="caption text-muted mt-1">
           {hint}
         </p>
       ) : null}
