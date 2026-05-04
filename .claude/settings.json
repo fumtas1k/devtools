@@ -86,6 +86,11 @@
     "allow": [
       "Read(./**)",
       "Read(~/.claude/**)",
+      "Read(/var/folders/*/*/T/**)",
+      "Read(/tmp/claude/**)",
+      "Read(/tmp/claude-*/**)",
+      "Read(/private/tmp/claude/**)",
+      "Read(/private/tmp/claude-*/**)",
       "Edit(./**)",
       "Write(./**)",
       "Write(/tmp/claude/**)",
