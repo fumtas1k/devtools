@@ -128,30 +128,18 @@ export function UuidV7GeneratorTool() {
       headerAlign: 'right',
       cellAlign: 'right',
       width: '3.5rem',
-      cellStyle: {
-        ...caption,
-        color: colors.muted,
-        padding: '0.5rem 0.75rem',
-        fontVariantNumeric: 'tabular-nums',
-      },
+      className: 'text-muted tabular-nums',
       render: (_, i) => i + 1,
     },
     {
       key: 'uuid',
       header: 'UUID',
-      cellStyle: { padding: '0.5rem 0.75rem' },
       render: (row) => <ColoredUuid uuid={row.id} quoteStyle={quoteStyle} />,
     },
     {
       key: 'timestamp',
       header: 'タイムスタンプ（ISO 8601）',
-      className: 'font-mono',
-      cellStyle: {
-        ...caption,
-        color: colors.muted,
-        padding: '0.5rem 0.75rem',
-        whiteSpace: 'nowrap',
-      },
+      className: 'font-mono text-muted whitespace-nowrap',
       render: (row) => row.timestamp,
     },
     {
@@ -160,7 +148,8 @@ export function UuidV7GeneratorTool() {
       headerAlign: 'center',
       cellAlign: 'center',
       width: '6rem',
-      cellStyle: { padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' },
+      cellPadding: 'compact',
+      className: 'whitespace-nowrap',
       render: (row) => <CopyButton text={formatId(row.id)} compact />,
     },
   ];

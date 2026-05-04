@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ulid } from 'ulidx';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { bodyEmphasis, colors } from '@/utils/styles';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CountInput } from '@/components/ui/CountInput';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -49,25 +49,13 @@ export function UlidGeneratorTool() {
       headerAlign: 'right',
       cellAlign: 'right',
       width: '3.5rem',
-      cellStyle: {
-        ...caption,
-        color: colors.muted,
-        padding: '0.5rem 0.75rem',
-        fontVariantNumeric: 'tabular-nums',
-      },
+      className: 'text-muted tabular-nums',
       render: (_, i) => i + 1,
     },
     {
       key: 'ulid',
       header: 'ULID',
-      className: 'font-mono',
-      cellStyle: {
-        ...caption,
-        color: colors.text,
-        padding: '0.5rem 0.75rem',
-        whiteSpace: 'nowrap',
-        letterSpacing: '0.02em',
-      },
+      className: 'font-mono whitespace-nowrap',
       render: (row) => (
         <>
           <span style={{ color: colors.primary }}>{row.id.slice(0, 10)}</span>
@@ -78,13 +66,7 @@ export function UlidGeneratorTool() {
     {
       key: 'timestamp',
       header: 'タイムスタンプ（ISO 8601）',
-      className: 'font-mono',
-      cellStyle: {
-        ...caption,
-        color: colors.muted,
-        padding: '0.5rem 0.75rem',
-        whiteSpace: 'nowrap',
-      },
+      className: 'font-mono text-muted whitespace-nowrap',
       render: (row) => row.timestamp,
     },
     {
@@ -93,7 +75,8 @@ export function UlidGeneratorTool() {
       headerAlign: 'center',
       cellAlign: 'center',
       width: '6rem',
-      cellStyle: { padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' },
+      cellPadding: 'compact',
+      className: 'whitespace-nowrap',
       render: (row) => <CopyButton text={formatId(row.id)} compact />,
     },
   ];

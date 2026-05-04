@@ -1,14 +1,21 @@
-import type { ReactNode, CSSProperties } from 'react';
-import { caption, colors } from '@/utils/styles';
+import type { ReactNode } from 'react';
 
 export interface TableColumn<T> {
   key: string;
   header: string;
   headerAlign?: 'left' | 'right' | 'center';
   cellAlign?: 'left' | 'right' | 'center';
+  /**
+   * CSS length token (例: '3.5rem')。**hard-coded リテラルのみ許容**。
+   * setProperty('--col-width', value) は CSSOM 階層で declaration value として encapsulate される
+   * ため CSS injection は不可能だが、user input を bridge する場合は事前 sanitize 必須。
+   * discipline で将来 regression を予防（origin discipline、issue #266 由来）。
+   */
   width?: string;
+  /** td に追加される className (typography / 色 / nowrap 等の修飾用) */
   className?: string;
-  cellStyle?: CSSProperties;
+  /** セルパディング。default: 'normal' (0.5rem 0.75rem)、compact (0.25rem 0.5rem) */
+  cellPadding?: 'normal' | 'compact';
   render: (row: T, index: number) => ReactNode;
 }
 
@@ -16,11 +23,20 @@ interface Props<T> {
   rows: T[];
   columns: TableColumn<T>[];
   getKey: (row: T) => string | number;
+  /**
+   * CSS length token (hard-coded literals only)。`TableColumn.width` と同じ origin discipline。
+   * user input を bridge する場合は sanitize 必須。
+   */
   minWidth?: string;
   selectedIndex?: number | null;
   onRowClick?: (index: number) => void;
   renderHeader?: () => ReactNode;
 }
+
+const alignClass = (a?: 'left' | 'right' | 'center') =>
+  a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left';
+
+const paddingClass = (p?: 'normal' | 'compact') => (p === 'compact' ? 'px-2 py-1' : 'px-3 py-2');
 
 export function ResultTable<T>({
   rows,
@@ -32,37 +48,47 @@ export function ResultTable<T>({
   renderHeader,
 }: Props<T>) {
   return (
-    <div
-      className="rounded-lg"
-      style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}
-    >
+    <div className="rounded-lg border border-default overflow-hidden">
       {renderHeader && (
-        <div
-          className="flex flex-col gap-2 px-4 py-3"
-          style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
-        >
+        <div className="flex flex-col gap-2 px-4 py-3 bg-subtle border-b border-default">
           {renderHeader()}
         </div>
       )}
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', minWidth, borderCollapse: 'collapse' }}>
+      <div className="overflow-x-auto">
+        <table
+          ref={(el) => {
+            if (!el) return;
+            if (minWidth) {
+              el.style.setProperty('--result-table-min-width', minWidth);
+            } else {
+              el.style.removeProperty('--result-table-min-width');
+            }
+          }}
+          className="w-full border-collapse result-table"
+        >
+          <colgroup>
+            {columns.map((col) => (
+              <col
+                key={col.key}
+                ref={(el) => {
+                  if (!el) return;
+                  if (col.width) {
+                    el.style.setProperty('--col-width', col.width);
+                  } else {
+                    el.style.removeProperty('--col-width');
+                  }
+                }}
+                className={col.width ? 'result-table-col' : undefined}
+              />
+            ))}
+          </colgroup>
           <thead>
-            <tr
-              style={{ background: colors.bgSurface, borderBottom: `1px solid ${colors.border}` }}
-            >
+            <tr className="bg-surface border-b border-default">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   scope="col"
-                  style={{
-                    ...caption,
-                    color: colors.muted,
-                    textAlign: col.headerAlign ?? 'left',
-                    padding: '0.5rem 0.75rem',
-                    whiteSpace: 'nowrap',
-                    fontWeight: 600,
-                    width: col.width,
-                  }}
+                  className={`caption text-muted font-semibold whitespace-nowrap ${paddingClass()} ${alignClass(col.headerAlign)}`}
                 >
                   {col.header}
                 </th>
@@ -72,33 +98,19 @@ export function ResultTable<T>({
           <tbody>
             {rows.map((row, i) => {
               const isSelected = selectedIndex === i;
-              const isLast = i === rows.length - 1;
               return (
                 <tr
                   key={getKey(row)}
                   onClick={onRowClick ? () => onRowClick(i) : undefined}
-                  style={{
-                    background: isSelected
-                      ? 'color-mix(in srgb, var(--color-primary) 8%, var(--color-bg))'
-                      : i % 2 === 0
-                        ? colors.bg
-                        : colors.bgSurface,
-                    cursor: onRowClick ? 'pointer' : undefined,
-                  }}
+                  className="result-table-row"
+                  data-selected={isSelected ? 'true' : 'false'}
+                  data-clickable={onRowClick ? 'true' : 'false'}
                   aria-selected={onRowClick ? isSelected : undefined}
                 >
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={col.className}
-                      style={{
-                        ...col.cellStyle,
-                        textAlign: col.cellAlign,
-                        borderTop: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
-                        borderBottom: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
-                        boxShadow:
-                          !isSelected && !isLast ? `inset 0 -1px 0 ${colors.border}` : 'none',
-                      }}
+                      className={`caption text-default ${paddingClass(col.cellPadding)} ${alignClass(col.cellAlign)} ${col.className ?? ''}`}
                     >
                       {col.render(row, i)}
                     </td>

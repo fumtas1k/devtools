@@ -72,9 +72,30 @@ for (const viewport of VIEWPORTS) {
             window.crypto.randomUUID = fixedUuid;
           }
 
-          // Fixed Date.now: 2026-01-01T00:00:00Z で固定
+          // Fixed Date: 2026-01-01T00:00:00Z で固定
+          // Date.now() に加え `new Date()` (引数なし) も FIXED_NOW を返すよう constructor も mock
+          // （qr-ticket の getDefaultExpiry が `new Date()` で today+7 を計算するため）
           const FIXED_NOW = 1767225600000;
-          Date.now = () => FIXED_NOW;
+          const OriginalDate = Date;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const PatchedDate: any = function (this: unknown, ...args: unknown[]) {
+            // `Date(...)` のような関数呼び出しは spec 上 string を返す。引数の有無を問わず
+            // 元 Date と同じ挙動を維持する。
+            if (!(this instanceof PatchedDate)) {
+              return OriginalDate(...(args as []));
+            }
+            // `new Date()` (引数なし) のみ FIXED_NOW で固定。それ以外は元の挙動を保持。
+            const dateArgs = args.length === 0 ? [FIXED_NOW] : args;
+            return new (OriginalDate as unknown as new (...a: unknown[]) => Date)(
+              ...(dateArgs as [])
+            );
+          };
+          PatchedDate.prototype = OriginalDate.prototype;
+          PatchedDate.now = () => FIXED_NOW;
+          PatchedDate.parse = OriginalDate.parse.bind(OriginalDate);
+          PatchedDate.UTC = OriginalDate.UTC.bind(OriginalDate);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (globalThis as any).Date = PatchedDate;
         });
 
         await page.goto(url);

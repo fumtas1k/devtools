@@ -317,4 +317,47 @@
     color: var(--color-text);
     box-shadow: var(--elevation-2);
   }
+
+  /* === PR 1.5: Surface bg (used by table thead row & InputField readOnly) === */
+  .bg-surface {
+    background: var(--color-bg-surface);
+  }
+
+  /* === PR 1.5: ResultTable component-scoped === */
+  .result-table {
+    /* setProperty('--result-table-min-width', ...) で注入。未注入時は 0 (= no min-width 制約) */
+    min-width: var(--result-table-min-width, 0);
+  }
+  .result-table-col {
+    width: var(--col-width, auto);
+  }
+  .result-table-row:nth-child(odd) {
+    background: var(--color-bg);
+  }
+  .result-table-row:nth-child(even) {
+    background: var(--color-bg-surface);
+  }
+  .result-table-row[data-selected='true'] {
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg));
+  }
+  .result-table-row[data-clickable='true'] {
+    cursor: pointer;
+  }
+  /* selection マーカー (border-top/bottom 2px primary) */
+  .result-table-row[data-selected='true'] > td {
+    border-top: 2px solid var(--color-primary);
+    border-bottom: 2px solid var(--color-primary);
+  }
+  /* 区切り線 (最終行と選択中の行を除く) */
+  .result-table-row:not(:last-child):not([data-selected='true']) > td {
+    box-shadow: inset 0 -1px 0 var(--color-border);
+  }
+
+  /* === PR 1.5: InputField サンプルボタン === */
+  .btn-link-plain {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
 }
