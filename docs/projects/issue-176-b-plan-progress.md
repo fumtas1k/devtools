@@ -27,8 +27,11 @@
 | PR 4                  | Gs1Databar + EncodingConverter + DummyText                                                                                                                                     | ✅ merged  | [#277 (merged 495f60e)](https://github.com/fumtas1k/devtools/pull/277) |
 | **infra (PR 5 前段)** | `withProductionCsp` ラッパ helper 追加 (#276 close)                                                                                                                            | ✅ merged  | [#278 (merged 73de179)](https://github.com/fumtas1k/devtools/pull/278) |
 | PR 5a                 | ConfigConverter + QrReader + JanCode (大物 3 つ、CSSOM hover 含む) — 31 inline style + 2 CSSOM                                                                                 | ✅ merged  | [#283 (merged 46abcb5)](https://github.com/fumtas1k/devtools/pull/283) |
-| PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` を `withProductionCsp` 化 (#262 close) | 🔄 PR open | [#286](https://github.com/fumtas1k/devtools/pull/286)                  |
-| PR 6                  | flip + cleanup（CSP strict 化）                                                                                                                                                | 未着手     | -                                                                      |
+| PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` を `withProductionCsp` 化 (#262 close) | ✅ merged  | [#286 (merged d38b956)](https://github.com/fumtas1k/devtools/pull/286) |
+| PR 6                  | scope 縮小: `styles.ts` 削除 + migration tracker glob 化 (Astro inline 65 件残存判明 → #289 へ委譲)                                                                            | ✅ merged  | [#290 (merged 4505bcf)](https://github.com/fumtas1k/devtools/pull/290) |
+| **PR 7a**             | layout/\* 4 + layouts/\* 2 + ui/\*.astro 2 (Astro inline 23 件撤去 + 新規 7 class) — `#289` 由来                                                                               | 🔄 PR open | (PR 番号は PR 作成後に追記)                                            |
+| PR 7b                 | pages/\*.astro 7 ファイル (Astro inline 残 42 件) — `#289` 由来                                                                                                                | 未着手     | -                                                                      |
+| PR 8                  | 最終 flip + cleanup (`_headers` から `style-src 'unsafe-inline'` 削除 + `stripMetaStyleSrc` 撤去 + `decisions.md [067]` + Astro 検出網追加)                                    | 未着手     | -                                                                      |
 
 **重要 — PR 0 の意義**: VRT を ui migration と bundle した PR #253 が architectural 問題で close になったため、VRT を独立 PR で proper sequencing（mock 注入 → CI Linux baseline → required check 外す）で先行導入する。詳細は Claude memory `feedback_vrt_setup_sequencing.md` / `feedback_infra_feature_separation.md` 参照（PC ローカル）。
 
@@ -76,6 +79,22 @@
 - **目的**: PR 3 で導入された `applyProductionCsp` E2E gate の `browser.newContext` boilerplate (9 行) を `withProductionCsp(browser, path, fn)` 1 行に集約。PR 5b で `tests/e2e/ulid-generator.spec.ts` を CSP gate 化する際の boilerplate 増殖を回避
 - **scope**: helpers.ts に `withProductionCsp` 追加 + `uuid-v7.spec.ts` (5 件) / `config-converter.spec.ts` (1 件) の通常テスト書換。陽性対照メタテスト 2 件は `guard.violations.length` polling のため inline 維持
 - **review feedback follow-up**: [#279](https://github.com/fumtas1k/devtools/issues/279) (waitForReactHydration label-aware) / [#280](https://github.com/fumtas1k/devtools/issues/280) (options 拡張) / [#281](https://github.com/fumtas1k/devtools/issues/281) (ラッパ自体の meta-test) を起票。**#281 は PR 5b 着手前に再確認**
+
+### PR 6 (#290)
+
+- **scope 縮小の経緯**: 当初 spec は「`_headers` から `style-src 'unsafe-inline'` 削除 + `stripMetaStyleSrc` 撤去 + `decisions.md [067]`」だったが、`npm run test:e2e` 実行段階で **Astro `<element style="...">` 属性 65 件 / 15 ファイル** が未移行で残存していたことが判明 (PR 1〜5b は React `style={{}}` のみが対象)。本 PR は scope を `styles.ts` 削除 + migration tracker glob 化のみに縮小し、Astro inline migration を `#289` に委譲
+- **post-mortem**: 元 spec [`docs/superpowers/specs/2026-05-07-issue-176-b6-csp-flip-and-cleanup-design.md`](../superpowers/specs/2026-05-07-issue-176-b6-csp-flip-and-cleanup-design.md) の post-mortem section 参照
+- **次の PR**: PR 7a (本 PR、layout/ui Astro 23 件) → PR 7b (pages/ Astro 42 件) → PR 8 (最終 flip + cleanup、`8ae383a` の revert コードを再利用)
+
+### PR 7a (#TBD) — `#289` 由来
+
+- **scope**: `src/components/layout/*.astro` 4 + `src/layouts/*.astro` 2 + `src/components/ui/{CategoryBadge,ToolInfoSection}.astro` 2 = **8 ファイル / 23 inline 撤去**
+- **新規 class**: 7 件 (`.caption-wide` / `.text-icon` / `.text-tertiary` / `.bg-badge` / `.footer-bar` / `.text-footer-meta` / `.drawer-backdrop`) を `src/styles/global.css` に追加
+- **再利用**: `.caption` / `.text-default` / `.text-muted` / `.text-primary` / `.bg-default` / `.bg-surface` / `.border-default` (PR 1〜5b 既存資産で 14 件カバー)
+- **Tailwind arbitrary**: `tracking-[0.02em]` x 5 / `text-[1.625rem] leading-[1.5]` x 1 / `z-[60]` x 1 / `text-sm leading-none` x 1 — 単発 typography は class 化見送り (YAGNI、PR 5b と同 judgement)
+- **scope 外**: `src/pages/*.astro` 7 ファイル / 42 件 (PR 7b)、`style-src 'unsafe-inline'` 削除 (PR 8)、`inline-style-migration.test.ts` の Astro 検出網追加 (PR 7b 完了後 = 全 65 件移行後)
+- **subagent 非委譲**: 親 Opus 直接実装 + 親直接 E2E (PR 6 / 292 と同パターン、memory `feedback_subagent_verification_trust.md`)
+- **既存 Astro `<style>` scoped block との関係**: Footer / MobileDrawer / Sidebar に既存 `.footer-link` / `.drawer-close-btn` 等の scoped block あり (CSP auto-hash で通過する別経路)。本 PR では touch せず維持。新規 7 class は global.css `@layer components` に集約 (brainstorming Q3 で確定、PR 1〜5b パターン継承)
 
 ## PR 5 分割設計メモ (調査日: 2026-05-07)
 
