@@ -145,6 +145,12 @@ function PayloadValue({ k, v }: { k: string; v: unknown }) {
 
 type SectionVariant = 'header' | 'payload' | 'signature';
 
+const SECTION_CLASSES: Record<SectionVariant, string> = {
+  header: 'section-jwt-header',
+  payload: 'section-jwt-payload',
+  signature: 'section-jwt-signature',
+};
+
 interface SectionProps {
   title: string;
   variant: SectionVariant;
@@ -156,7 +162,7 @@ interface SectionProps {
 function Section({ title, variant, data, renderValue, 'data-testid': testId }: SectionProps) {
   const json = JSON.stringify(data, null, 2);
   return (
-    <div className={`rounded-lg p-4 bg-subtle section-jwt-${variant}`} data-testid={testId}>
+    <div className={`rounded-lg p-4 bg-subtle ${SECTION_CLASSES[variant]}`} data-testid={testId}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="body-emphasis text-default">{title}</h3>
         <CopyButton text={json} label="コピー" />

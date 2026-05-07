@@ -485,12 +485,12 @@
     color: #0891b2;
   }
 
-  /* UuidV7Generator: field key label typography (caption の font-size override) */
+  /* UuidV7Generator: field key label typography
+     `.caption` (font-size 0.875rem) と組み合わせて使い、font-size のみ override する。
+     consumer 側は `caption text-muted uuid-field-key` で適用。
+     `.caption` の後に定義することで source 順位で勝つ (specificity 同等のため)。 */
   .uuid-field-key {
     font-size: 0.75rem;
-    font-weight: 400;
-    line-height: 1.7;
-    letter-spacing: 0.02em;
   }
   .uuid-field-bits {
     font-size: 0.7rem;

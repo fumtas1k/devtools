@@ -74,7 +74,7 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {fieldDefs.map((f) => (
           <div key={f.key} className="flex flex-col gap-0.5">
-            <span className="text-muted uuid-field-key">
+            <span className="caption text-muted uuid-field-key">
               {f.key} <span className="uuid-field-bits">({f.bits})</span>
             </span>
             <code
