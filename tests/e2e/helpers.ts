@@ -1,4 +1,4 @@
-import type { ConsoleMessage, Page, Route } from '@playwright/test';
+import type { Browser, ConsoleMessage, Page, Route } from '@playwright/test';
 import { PRODUCTION_CSP } from '../../src/utils/csp';
 
 /**
@@ -140,4 +140,53 @@ export async function applyProductionCsp(page: Page): Promise<CspGuard> {
       page.off('pageerror', pageErrorHandler);
     },
   };
+}
+
+/**
+ * `applyProductionCsp` + `browser.newContext` + `goto` + `waitForReactHydration`
+ * + 終端 `guard.assertNoViolations()` + `context.close` を一括で集約するラッパ。
+ *
+ * 通常の「本番 CSP 下で機能が動作する」系テストは本ラッパで包めば 1 行で済む:
+ *
+ * ```ts
+ * test('UUIDを生成できる', async ({ browser }) => {
+ *   await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
+ *     await page.getByRole('button', { name: '生成' }).click();
+ *     await expect(page.getByText('10 件生成')).toBeVisible();
+ *   });
+ * });
+ * ```
+ *
+ * **陽性対照メタテスト (ゲート自体の動作確認) には使わないこと**:
+ * メタテストは `guard.violations.length` を fn 内で polling する必要があり、
+ * ラッパが終端で `assertNoViolations()` を呼ぶ設計と整合しない (違反を期待
+ * するテストなのに「違反 0」を assert してしまう)。これらは inline pattern を
+ * 維持する (`tests/e2e/uuid-v7.spec.ts` / `tests/e2e/config-converter.spec.ts`
+ * に各 1 件存在)。
+ *
+ * **`fn` への引数**: 通常テストでは `page` のみ使う。`guard` は fn 内で違反
+ * 件数を観測したい高度な用途のために第 2 引数として露出するが、終端の
+ * `assertNoViolations()` 呼び出しはラッパが行うため、利用側で再度呼ぶ必要は
+ * ない。
+ *
+ * **fn throw 時の挙動**: `fn` が例外を投げると `assertNoViolations` は呼ばれず、
+ * `finally` で `context.close()` のみ実行される。元の例外が伝播しテストが
+ * 失敗する (inline pattern と等価)。
+ */
+export async function withProductionCsp(
+  browser: Browser,
+  path: string,
+  fn: (page: Page, guard: CspGuard) => Promise<void>
+): Promise<void> {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const guard = await applyProductionCsp(page);
+    await page.goto(path);
+    await waitForReactHydration(page);
+    await fn(page, guard);
+    guard.assertNoViolations();
+  } finally {
+    await context.close();
+  }
 }
