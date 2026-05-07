@@ -29,7 +29,7 @@
 | PR 5a                 | ConfigConverter + QrReader + JanCode (大物 3 つ、CSSOM hover 含む) — 31 inline style + 2 CSSOM                                                                                 | ✅ merged  | [#283 (merged 46abcb5)](https://github.com/fumtas1k/devtools/pull/283) |
 | PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` を `withProductionCsp` 化 (#262 close) | ✅ merged  | [#286 (merged d38b956)](https://github.com/fumtas1k/devtools/pull/286) |
 | PR 6                  | scope 縮小: `styles.ts` 削除 + migration tracker glob 化 (Astro inline 65 件残存判明 → #289 へ委譲)                                                                            | ✅ merged  | [#290 (merged 4505bcf)](https://github.com/fumtas1k/devtools/pull/290) |
-| **PR 7a**             | layout/\* 4 + layouts/\* 2 + ui/\*.astro 2 (Astro inline 23 件撤去 + 新規 7 class) — `#289` 由来                                                                               | 🔄 PR open | (PR 番号は PR 作成後に追記)                                            |
+| **PR 7a**             | layout/\* 4 + layouts/\* 2 + ui/\*.astro 2 (Astro inline 23 件撤去 + 新規 7 class) — `#289` 由来                                                                               | 🔄 PR open | [#294](https://github.com/fumtas1k/devtools/pull/294)                  |
 | PR 7b                 | pages/\*.astro 7 ファイル (Astro inline 残 42 件) — `#289` 由来                                                                                                                | 未着手     | -                                                                      |
 | PR 8                  | 最終 flip + cleanup (`_headers` から `style-src 'unsafe-inline'` 削除 + `stripMetaStyleSrc` 撤去 + `decisions.md [067]` + Astro 検出網追加)                                    | 未着手     | -                                                                      |
 
@@ -86,7 +86,7 @@
 - **post-mortem**: 元 spec [`docs/superpowers/specs/2026-05-07-issue-176-b6-csp-flip-and-cleanup-design.md`](../superpowers/specs/2026-05-07-issue-176-b6-csp-flip-and-cleanup-design.md) の post-mortem section 参照
 - **次の PR**: PR 7a (本 PR、layout/ui Astro 23 件) → PR 7b (pages/ Astro 42 件) → PR 8 (最終 flip + cleanup、`8ae383a` の revert コードを再利用)
 
-### PR 7a (#TBD) — `#289` 由来
+### PR 7a (#294) — `#289` 由来
 
 - **scope**: `src/components/layout/*.astro` 4 + `src/layouts/*.astro` 2 + `src/components/ui/{CategoryBadge,ToolInfoSection}.astro` 2 = **8 ファイル / 23 inline 撤去**
 - **新規 class**: 7 件 (`.caption-wide` / `.text-icon` / `.text-tertiary` / `.bg-badge` / `.footer-bar` / `.text-footer-meta` / `.drawer-backdrop`) を `src/styles/global.css` に追加
