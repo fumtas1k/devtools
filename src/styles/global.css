@@ -190,6 +190,10 @@
     line-height: 1.7;
     letter-spacing: 0.02em;
   }
+  /* `font-weight: 400` を明示的に指定。bold 親要素の文脈で使う場合に
+     継承を断ち切る (Sidebar/MobileDrawer の link が bold 親に置かれた際の
+     意図せぬ太字化を防ぐ)。bold が必要な場合は consumer 側で
+     Tailwind `font-bold` を併用 (cascade layer 順で utilities が勝つ)。 */
   .caption {
     font-size: 0.875rem;
     font-weight: 400;
