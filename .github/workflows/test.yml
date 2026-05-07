@@ -58,6 +58,13 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    # #291: Playwright 公式 image でブラウザバイナリ + OS deps を preinstalled 化し、
+    # `npx playwright install --with-deps chromium` の 7 分超を撤廃。
+    # tag は package.json の `@playwright/test` バージョンと一致させる
+    # (Playwright アップデート時は `mcr.microsoft.com/playwright:vX.Y.Z-noble` も bump)。
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+      options: --user 1001
     steps:
       - uses: actions/checkout@v6
 
@@ -68,14 +75,14 @@ jobs:
 
       - run: npm ci
 
-      - name: Playwright ブラウザをインストール
-        run: npx playwright install --with-deps chromium
+      # Playwright ブラウザは container image に preinstalled 済 (#291)。
+      # PLAYWRIGHT_BROWSERS_PATH=/ms-playwright が image で設定済みのため install step 不要。
 
       - name: 本番相当アセットを build（E2E は preview 経由で配信するため必要）
         run: npm run build
 
       - name: E2E テストを実行
-        run: npm run test:e2e
+        run: HOME=/root npm run test:e2e
 
       - name: テストレポートをアップロード（失敗時）
         uses: actions/upload-artifact@v7
