@@ -61,7 +61,7 @@ export function JsonXmlTool() {
       />
 
       {/* 入力・出力（横並び） */}
-      <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
+      <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="json-xml-input"

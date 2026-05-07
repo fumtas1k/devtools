@@ -2,7 +2,6 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { caption, colors } from '@/utils/styles';
 import { encodeBase64, decodeBase64 } from '@/utils/base64';
 import { useCodec } from '@/hooks/useCodec';
 import { useState } from 'react';
@@ -53,7 +52,7 @@ export function Base64CodecTool() {
 
       {/* 形式切替 */}
       <div className="flex items-center gap-3">
-        <span style={{ ...caption, color: colors.muted }}>形式:</span>
+        <span className="caption text-muted">形式:</span>
         <ToggleGroup
           options={[
             { value: 'standard', label: '標準' },
@@ -66,7 +65,7 @@ export function Base64CodecTool() {
       </div>
 
       {/* 入力・出力（横並び） */}
-      <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
+      <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="base64-input"
