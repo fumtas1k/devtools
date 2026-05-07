@@ -1,60 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { glob } from 'node:fs/promises';
 import path from 'node:path';
 
 /**
- * #176 B 案 progressive migration tracker.
- * 移行済みファイルから `style={{` および CSSOM 直接 mutation
- * (`element.style.X = ...` 形式) が消えていることを assert する。
+ * #176 B 案 完了後の `style={{` / CSSOM 直接 mutation 撲滅の永続的回帰防止網。
  *
- * 各 PR で MIGRATED_FILES に追記、PR 6 で `await glob('src/**\/*.tsx')` に置換して全件カバー化。
+ * PR 1〜5b で漸進的に MIGRATED_FILES array を拡張してきたが、PR 6 で B 案完了に
+ * 伴い array 管理を撤廃し、`src/components/**\/*.tsx` 全件を glob で自動カバー化。
+ * これにより新規追加された .tsx も自動で検出網に含まれ、array 更新忘れによる
+ * 偽陰性を撲滅する。
  *
  * 例外 (許容):
  * - `ref.current.style.setProperty('--var', value)` — CSSOM API 経由は許容
  *   regex は `\.style\.X = Y` のみ検出、`.style.setProperty(` は検出しない
+ *
+ * 参照: docs/decisions.md (B 案完了時に [067] エントリ追加予定。flip + 完了記録は #289 Astro inline migration 完了後の最終 PR で実施)
  */
-const MIGRATED_FILES: readonly string[] = [
-  'src/components/ui/ActionButton.tsx',
-  'src/components/ui/BareInput.tsx',
-  'src/components/ui/ClearButton.tsx',
-  'src/components/ui/CopyButton.tsx',
-  'src/components/ui/CountInput.tsx',
-  'src/components/ui/DownloadButton.tsx',
-  'src/components/ui/ErrorMessage.tsx',
-  'src/components/ui/OutputField.tsx',
-  'src/components/ui/Section.tsx',
-  'src/components/ui/Select.tsx',
-  'src/components/ui/ToggleGroup.tsx',
-  // PR 1.5 で追加
-  'src/components/ui/ResultTable.tsx',
-  'src/components/ui/InputField.tsx',
-  // PR 2 で追加 (qr-ticket)
-  'src/components/tools/qr-ticket/GenerateTab.tsx',
-  'src/components/tools/qr-ticket/VerifyTab.tsx',
-  'src/components/tools/qr-ticket/TicketDetail.tsx',
-  // PR 3 で追加
-  'src/components/tools/JwtDecoder.tsx',
-  'src/components/tools/UuidV7Generator.tsx',
-  // PR 4 で追加
-  'src/components/tools/Gs1Databar.tsx',
-  'src/components/tools/EncodingConverter.tsx',
-  'src/components/tools/DummyText.tsx',
-  // PR 5a で追加
-  'src/components/tools/ConfigConverter.tsx',
-  'src/components/tools/QrReader.tsx',
-  'src/components/tools/JanCode.tsx',
-  // PR 5b で追加 (5 migration + 2 zero-style)
-  'src/components/tools/Base64Codec.tsx',
-  'src/components/tools/JsonCsv.tsx',
-  'src/components/tools/JsonXml.tsx',
-  'src/components/tools/QrCode.tsx',
-  'src/components/tools/UlidGenerator.tsx',
-  'src/components/tools/QrTicket.tsx',
-  'src/components/tools/UrlEncoder.tsx',
-];
 
-describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
-  describe.each(MIGRATED_FILES)('%s', (file) => {
+// top-level await: vitest は vite-node 経由で ESM として実行されるため利用可能。
+const TARGET_FILES: string[] = [];
+for await (const f of glob('src/components/**/*.tsx', { cwd: process.cwd() })) {
+  TARGET_FILES.push(f);
+}
+TARGET_FILES.sort();
+
+describe.skipIf(TARGET_FILES.length === 0)('#176 B 案 inline style 完全撲滅 (回帰防止)', () => {
+  it(`src/components/**/*.tsx を ${TARGET_FILES.length} 件カバー`, () => {
+    expect(TARGET_FILES.length).toBeGreaterThan(0);
+  });
+
+  describe.each(TARGET_FILES)('%s', (file) => {
     const content = readFileSync(path.resolve(process.cwd(), file), 'utf-8');
 
     it('JSX inline style object (style={{) が残っていない', () => {
