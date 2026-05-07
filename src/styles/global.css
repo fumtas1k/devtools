@@ -496,4 +496,12 @@
     font-size: 0.7rem;
     opacity: 0.7;
   }
+
+  /* === PR 4: Gs1Databar <details>/<summary> marker hide === */
+  .summary-no-marker {
+    list-style: none;
+  }
+  .summary-no-marker::-webkit-details-marker {
+    display: none;
+  }
 }
