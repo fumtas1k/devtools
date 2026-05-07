@@ -82,7 +82,7 @@ jobs:
         run: npm run build
 
       - name: E2E テストを実行
-        run: HOME=/root npm run test:e2e
+        run: npm run test:e2e
 
       - name: テストレポートをアップロード（失敗時）
         uses: actions/upload-artifact@v7

@@ -39,7 +39,7 @@ jobs:
       - name: 本番相当アセットを build
         run: npm run build
       - name: Visual regression baseline を再生成
-        run: HOME=/root npx playwright test --project=visual-regression --workers=1 --update-snapshots
+        run: npx playwright test --project=visual-regression --workers=1 --update-snapshots
       - name: 変更があれば commit & push
         run: |
           if [ -n "$(git status --porcelain tests/e2e/visual-regression.spec.ts-snapshots/)" ]; then
