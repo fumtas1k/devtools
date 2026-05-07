@@ -45,37 +45,22 @@ const jsonLd = {
     <!-- メインコンテンツ -->
     <main class="min-w-0 flex-1" id="main-content">
       <!-- パンくずリスト -->
-      <nav
-        aria-label="パンくずリスト"
-        class="mb-6 flex items-center gap-1.5"
-        style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
-      >
+      <nav aria-label="パンくずリスト" class="mb-6 flex items-center gap-1.5 caption text-muted">
         <a href="/" class="text-link">ホーム</a>
         <span aria-hidden="true">›</span>
         <span>{categoryLabel[tool.category]}</span>
         <span aria-hidden="true">›</span>
-        <span style="color: var(--color-text);">{tool.name}</span>
+        <span class="text-default">{tool.name}</span>
       </nav>
 
       <!-- ツールヘッダー -->
       <div class="mb-8 flex items-center gap-4">
-        <ToolIcon
-          slug={tool.slug}
-          size={32}
-          class="shrink-0"
-          style="color: var(--color-primary);"
-        />
+        <ToolIcon slug={tool.slug} size={32} class="shrink-0 text-primary" />
         <div class="min-w-0 flex-1">
-          <h1
-            class="font-bold"
-            style="font-size: 1.625rem; line-height: 1.5; letter-spacing: 0.02em; color: var(--color-text);"
-          >
+          <h1 class="font-bold text-[1.625rem] leading-[1.5] tracking-[0.02em] text-default">
             {tool.name}
           </h1>
-          <p
-            class="mt-1"
-            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
-          >
+          <p class="mt-1 caption text-muted">
             {tool.description}
           </p>
         </div>

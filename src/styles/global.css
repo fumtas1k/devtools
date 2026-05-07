@@ -190,6 +190,10 @@
     line-height: 1.7;
     letter-spacing: 0.02em;
   }
+  /* `font-weight: 400` を明示的に指定。bold 親要素の文脈で使う場合に
+     継承を断ち切る (Sidebar/MobileDrawer の link が bold 親に置かれた際の
+     意図せぬ太字化を防ぐ)。bold が必要な場合は consumer 側で
+     Tailwind `font-bold` を併用 (cascade layer 順で utilities が勝つ)。 */
   .caption {
     font-size: 0.875rem;
     font-weight: 400;
@@ -556,5 +560,43 @@
      PR 3 .jwt-json-value と同じ pattern)。 */
   .qr-video-preview {
     background: #000;
+  }
+
+  /* === PR 7a (#289): Astro layout/ui inline migration helpers === */
+
+  /* Caption variant: nav カテゴリラベル等 (letter-spacing wider than .caption) */
+  .caption-wide {
+    font-size: 0.875rem;
+    line-height: 1.7;
+    letter-spacing: 0.08em;
+  }
+
+  /* Icon button color (44x44 SVG ボタンの neutral-700) */
+  .text-icon {
+    color: var(--color-neutral-700);
+  }
+
+  /* CategoryBadge: tertiary color text/bg (PR 2 .text-primary 系列に追従) */
+  .text-tertiary {
+    color: var(--color-tertiary);
+  }
+  .bg-badge {
+    background: var(--color-badge-bg);
+  }
+
+  /* Footer container & meta text (Footer 専用、neutral 系 primitive 色を意味クラス化) */
+  .footer-bar {
+    background: var(--color-neutral-900);
+    color: var(--color-neutral-300);
+  }
+  .text-footer-meta {
+    color: var(--color-neutral-500);
+  }
+
+  /* MobileDrawer backdrop (modal 背景の半透明 overlay)
+     注意: rgba(17,24,39,0.5) は --color-neutral-900 の 50% alpha と同等。
+     CSS variable 化は B 案完了後の semantic alias 整理 PR で検討 (今 YAGNI)。 */
+  .drawer-backdrop {
+    background: rgba(17, 24, 39, 0.5);
   }
 }
