@@ -17,16 +17,16 @@
 
 ## 進捗状況
 
-| #        | スコープ                                                                                                                                         | 状態      | PR                                                                     |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ---------------------------------------------------------------------- |
-| **PR 0** | VRT 導入のみ（mock 注入版 spec、別 workflow、required check 外す、CI Linux baseline）                                                            | ✅ merged | [#254 (merged 26f566b)](https://github.com/fumtas1k/devtools/pull/254) |
-| **PR 1** | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化 | ✅ merged | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256) |
-| PR 1.5   | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                     | ✅ merged | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261) |
-| PR 2     | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                     | ✅ merged | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272) |
-| PR 3     | JwtDecoder + UuidV7Generator                                                                                                                     | 未着手    | -                                                                      |
-| PR 4     | Gs1Databar + EncodingConverter + DummyText                                                                                                       | 未着手    | -                                                                      |
-| PR 5     | QrReader + ConfigConverter + JanCode + QrCode + 残り tools                                                                                       | 未着手    | -                                                                      |
-| PR 6     | flip + cleanup（CSP strict 化）                                                                                                                  | 未着手    | -                                                                      |
+| #        | スコープ                                                                                                                                         | 状態       | PR                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ---------------------------------------------------------------------- |
+| **PR 0** | VRT 導入のみ（mock 注入版 spec、別 workflow、required check 外す、CI Linux baseline）                                                            | ✅ merged  | [#254 (merged 26f566b)](https://github.com/fumtas1k/devtools/pull/254) |
+| **PR 1** | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化 | ✅ merged  | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256) |
+| PR 1.5   | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                     | ✅ merged  | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261) |
+| PR 2     | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                     | ✅ merged  | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272) |
+| PR 3     | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                   | 🔄 PR open | [#275](https://github.com/fumtas1k/devtools/pull/275)                  |
+| PR 4     | Gs1Databar + EncodingConverter + DummyText                                                                                                       | 未着手     | -                                                                      |
+| PR 5     | QrReader + ConfigConverter + JanCode + QrCode + 残り tools                                                                                       | 未着手     | -                                                                      |
+| PR 6     | flip + cleanup（CSP strict 化）                                                                                                                  | 未着手     | -                                                                      |
 
 **重要 — PR 0 の意義**: VRT を ui migration と bundle した PR #253 が architectural 問題で close になったため、VRT を独立 PR で proper sequencing（mock 注入 → CI Linux baseline → required check 外す）で先行導入する。詳細は Claude memory `feedback_vrt_setup_sequencing.md` / `feedback_infra_feature_separation.md` 参照（PC ローカル）。
 
@@ -37,25 +37,31 @@
 - **prerequisite (close 済)**: [#258](https://github.com/fumtas1k/devtools/issues/258) ClearButton / CopyButton に `type="button"` 追加 — PR [#268](https://github.com/fumtas1k/devtools/pull/268) で対応 (✅ merged) / 同種パターン follow-up [#269](https://github.com/fumtas1k/devtools/issues/269) を PR [#270](https://github.com/fumtas1k/devtools/pull/270) で対応 (✅ merged)
 - **PR 内同梱 (close 済)**: [#225](https://github.com/fumtas1k/devtools/issues/225) refactor(QrTicket): GenerateTab props の useMemo 安定化 + verify signal の camera 経路への伝播 — PR `#272` 内で対応
 
-## PR 1 / PR 1.5 / PR 2 follow-up issue 処理タイミング表
+### PR 3 (#275)
 
-各 issue の処理推奨タイミング (2026-05-04 時点):
+- **PR 内同梱 (partial、close は PR 5 で)**: [#262](https://github.com/fumtas1k/devtools/issues/262) test(e2e): generator ページの applyProductionCsp E2E gate を追加（PR 6 前段必須） — PR `#275` で **uuid-v7 部分** に gate を挿入 (`tests/e2e/uuid-v7.spec.ts` の全 test を `browser.newContext()` pattern + `applyProductionCsp(page)` で gate、陽性対照 1 件追加)。**ulid-generator 部分は PR 5 で対応して #262 close 予定**
+- **PR review 由来 follow-up**: [#276](https://github.com/fumtas1k/devtools/issues/276) test(e2e): applyProductionCsp の `browser.newContext` boilerplate を `withProductionCsp` ラッパで集約 — **PR 5 前段の独立 infra PR** で対応推奨（`feedback_infra_feature_separation.md` 準拠）。PR 5 着手前に整備すると PR 5 が薄くなる
 
-| issue                                                   | 内容                                                                      | 処理タイミング                                  | 備考                                                                  |
-| ------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------- |
-| [#257](https://github.com/fumtas1k/devtools/issues/257) | ToggleGroup `--toggle-cols` removeProperty cleanup                        | 独立 (低優先)                                   | ResultTable の ref callback パターンを参照可。実害なし                |
-| [#258](https://github.com/fumtas1k/devtools/issues/258) | ClearButton/CopyButton `type="button"`                                    | ✅ closed                                       | PR `#268` で対応                                                      |
-| [#259](https://github.com/fumtas1k/devtools/issues/259) | ActionButton danger+disabled border                                       | 独立 (デザイン判断後)                           | A 案 vs B 案、blocking なし                                           |
-| [#260](https://github.com/fumtas1k/devtools/issues/260) | className 構築方式 clsx 統一                                              | PR 2-5 で都度 `filter(Boolean)` 採用 or 一括 PR | PR 1.5 で先行採用済                                                   |
-| [#262](https://github.com/fumtas1k/devtools/issues/262) | applyProductionCsp generator gate                                         | **PR 6 前段必須**                               | 下記 PR 6 チェックリスト参照                                          |
-| [#263](https://github.com/fumtas1k/devtools/issues/263) | aria-selected ARIA spec 違反                                              | **#264 と同 PR**                                | 同 `<tr>` 編集、統合修正候補                                          |
-| [#264](https://github.com/fumtas1k/devtools/issues/264) | クリック行キーボード操作 (WCAG)                                           | **#263 と同 PR**                                | 同上                                                                  |
-| [#265](https://github.com/fumtas1k/devtools/issues/265) | useEffect deps anti-pattern                                               | ✅ closed                                       | PR 1.5 (#261) で対応済                                                |
-| [#266](https://github.com/fumtas1k/devtools/issues/266) | width JSDoc origin discipline                                             | ✅ closed                                       | PR 1.5 (#261) で対応済                                                |
-| [#269](https://github.com/fumtas1k/devtools/issues/269) | ToggleGroup / QrReader / Gs1Databar `type="button"` (PR 1 由来漏れ)       | ✅ closed                                       | PR `#270` で対応                                                      |
-| [#271](https://github.com/fumtas1k/devtools/issues/271) | ESLint `react/button-has-type` 導入 + index.astro 残り 2 件               | 独立 (低優先)                                   | PR 6 以降または専用 PR で                                             |
-| [#273](https://github.com/fumtas1k/devtools/issues/273) | `useTicketVerification.verify` の external signal を `AbortSignal.any` 化 | PR 6 cleanup スコープ候補                       | 現 callsite 実害なし                                                  |
-| [#119](https://github.com/fumtas1k/devtools/issues/119) | .text-link-color 命名規則統一                                             | 独立 (低優先)                                   | PR 1.5 で消費パターン定着、改名は all-files rename になる時期まで保留 |
+## PR 1 / PR 1.5 / PR 2 / PR 3 follow-up issue 処理タイミング表
+
+各 issue の処理推奨タイミング (2026-05-07 時点):
+
+| issue                                                   | 内容                                                                                       | 処理タイミング                                  | 備考                                                                                                                       |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [#257](https://github.com/fumtas1k/devtools/issues/257) | ToggleGroup `--toggle-cols` removeProperty cleanup                                         | 独立 (低優先)                                   | ResultTable の ref callback パターンを参照可。実害なし                                                                     |
+| [#258](https://github.com/fumtas1k/devtools/issues/258) | ClearButton/CopyButton `type="button"`                                                     | ✅ closed                                       | PR `#268` で対応                                                                                                           |
+| [#259](https://github.com/fumtas1k/devtools/issues/259) | ActionButton danger+disabled border                                                        | 独立 (デザイン判断後)                           | A 案 vs B 案、blocking なし                                                                                                |
+| [#260](https://github.com/fumtas1k/devtools/issues/260) | className 構築方式 clsx 統一                                                               | PR 2-5 で都度 `filter(Boolean)` 採用 or 一括 PR | PR 1.5 で先行採用済                                                                                                        |
+| [#262](https://github.com/fumtas1k/devtools/issues/262) | applyProductionCsp generator gate                                                          | **PR 5 で close**                               | PR 3 (#275) で uuid-v7 部分対応済 (open のまま)、ulid-generator 部分は PR 5 で対応して close。下記 PR 6 チェックリスト参照 |
+| [#263](https://github.com/fumtas1k/devtools/issues/263) | aria-selected ARIA spec 違反                                                               | **#264 と同 PR**                                | 同 `<tr>` 編集、統合修正候補                                                                                               |
+| [#264](https://github.com/fumtas1k/devtools/issues/264) | クリック行キーボード操作 (WCAG)                                                            | **#263 と同 PR**                                | 同上                                                                                                                       |
+| [#265](https://github.com/fumtas1k/devtools/issues/265) | useEffect deps anti-pattern                                                                | ✅ closed                                       | PR 1.5 (#261) で対応済                                                                                                     |
+| [#266](https://github.com/fumtas1k/devtools/issues/266) | width JSDoc origin discipline                                                              | ✅ closed                                       | PR 1.5 (#261) で対応済                                                                                                     |
+| [#269](https://github.com/fumtas1k/devtools/issues/269) | ToggleGroup / QrReader / Gs1Databar `type="button"` (PR 1 由来漏れ)                        | ✅ closed                                       | PR `#270` で対応                                                                                                           |
+| [#271](https://github.com/fumtas1k/devtools/issues/271) | ESLint `react/button-has-type` 導入 + index.astro 残り 2 件                                | 独立 (低優先)                                   | PR 6 以降または専用 PR で                                                                                                  |
+| [#273](https://github.com/fumtas1k/devtools/issues/273) | `useTicketVerification.verify` の external signal を `AbortSignal.any` 化                  | PR 6 cleanup スコープ候補                       | 現 callsite 実害なし                                                                                                       |
+| [#276](https://github.com/fumtas1k/devtools/issues/276) | applyProductionCsp の `browser.newContext` boilerplate を `withProductionCsp` ラッパで集約 | **PR 5 前段 (infra PR)**                        | `feedback_infra_feature_separation.md` 準拠。PR 5 で 10+ 件規模になる前に整備すると PR 5 が薄くなる                        |
+| [#119](https://github.com/fumtas1k/devtools/issues/119) | .text-link-color 命名規則統一                                                              | 独立 (低優先)                                   | PR 1.5 で消費パターン定着、改名は all-files rename になる時期まで保留                                                      |
 
 ## B 案接近系 issue（独立判断）
 
@@ -83,10 +89,11 @@ PR 6 で以下を **すべて含む** こと。漏れを防ぐため本セクシ
 - [ ] PR description に「`#176` B 案完了」を明記、関連 PR (#249/#254/#256/#261/#272/PR 3-5) を全 link
 - [ ] `grep -c "style={{" src/` = **0** を最終確認
 - [ ] 全 E2E + 全 unit + astro check pass
-- [ ] PR 1 (#256) / PR 1.5 (#261) / PR 2 (#272) の follow-up 系 issue のうち PR 6 で同時対応するものがあれば close、後続するものは PR 6 description で言及。
+- [ ] PR 1 (#256) / PR 1.5 (#261) / PR 2 (#272) / PR 3 (#275) の follow-up 系 issue のうち PR 6 で同時対応するものがあれば close、後続するものは PR 6 description で言及。
   - PR 1 由来: #257-#260
-  - PR 1.5 由来: [#262](https://github.com/fumtas1k/devtools/issues/262) (CSP gate / **PR 6 前段必須**) / [#263](https://github.com/fumtas1k/devtools/issues/263) (aria-selected ARIA spec) / [#264](https://github.com/fumtas1k/devtools/issues/264) (キーボード操作 WCAG 2.1.1) / [#265](https://github.com/fumtas1k/devtools/issues/265) (useEffect deps anti-pattern, ✅ closed) / [#266](https://github.com/fumtas1k/devtools/issues/266) (width JSDoc origin discipline, ✅ closed)
+  - PR 1.5 由来: [#262](https://github.com/fumtas1k/devtools/issues/262) (CSP gate / **PR 5 で close**、PR 3 で uuid-v7 partial 対応済) / [#263](https://github.com/fumtas1k/devtools/issues/263) (aria-selected ARIA spec) / [#264](https://github.com/fumtas1k/devtools/issues/264) (キーボード操作 WCAG 2.1.1) / [#265](https://github.com/fumtas1k/devtools/issues/265) (useEffect deps anti-pattern, ✅ closed) / [#266](https://github.com/fumtas1k/devtools/issues/266) (width JSDoc origin discipline, ✅ closed)
   - PR 2 由来: [#273](https://github.com/fumtas1k/devtools/issues/273) (`AbortSignal.any` 化、`useTicketVerification.verify` external signal link 改善)
+  - PR 3 由来: [#276](https://github.com/fumtas1k/devtools/issues/276) (`withProductionCsp` ラッパ helper、**PR 5 前段 infra PR で対応推奨**)
 - [ ] **`.text-primary` 命名衝突リスクの再評価** — `src/styles/global.css` の `.text-primary` (PR 2 で追加) は `--color-primary` を `@theme` に登録すると Tailwind auto-utility と衝突する可能性。PR 6 で `@theme` 切替するなら `text-brand` 等への rename 候補。`@theme` 切替自体を見送るなら現状維持で OK。決定事項を `docs/decisions.md` [067] に明記すること。
 - [ ] **Tailwind `border` utility と `@layer components` の `border-color` 優先度確認** — PR 2 で導入した `.alert-success` / `.alert-error` は `<div className="rounded-lg p-4 border alert-success">` のように Tailwind `border` (border-color: currentColor 系) と併用。layer 順序によっては期待色にならないリスクが PR 2 review で指摘済（実害は VRT pass で未顕在）。CSP strict 化後の VRT 再撮影で diff が出たら fix。
 

@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import {
   parseJwt,
@@ -14,10 +13,6 @@ import { bytesToBase64Url } from '@/utils/base64url';
 import { pemBlockToBytes } from '@/utils/base64';
 
 const SAMPLE_SECRET = 'your-256-bit-secret';
-
-// JWT syntax highlight colors (not UI colors — kept local)
-const jsonKeyColor = colors.link;
-const jsonValueColor = '#6e4f0e';
 
 type AlgParams =
   | { name: 'HMAC'; hash: string }
@@ -140,48 +135,40 @@ function PayloadValue({ k, v }: { k: string; v: unknown }) {
   const isTs = TIMESTAMP_KEYS.includes(k) && typeof v === 'number';
   return (
     <span>
-      <span style={{ color: jsonKeyColor }}>"{k}"</span>
-      <span style={{ color: colors.text }}>: </span>
-      <span style={{ color: jsonValueColor }}>{JSON.stringify(v)}</span>
-      {isTs && (
-        <span className="ml-2" style={{ fontSize: '0.75rem', color: colors.muted }}>
-          → {formatTimestamp(v as number)}
-        </span>
-      )}
+      <span className="jwt-json-key">"{k}"</span>
+      <span className="text-default">: </span>
+      <span className="jwt-json-value">{JSON.stringify(v)}</span>
+      {isTs && <span className="ml-2 text-xs text-muted">→ {formatTimestamp(v as number)}</span>}
     </span>
   );
 }
 
+type SectionVariant = 'header' | 'payload' | 'signature';
+
+const SECTION_CLASSES: Record<SectionVariant, string> = {
+  header: 'section-jwt-header',
+  payload: 'section-jwt-payload',
+  signature: 'section-jwt-signature',
+};
+
 interface SectionProps {
   title: string;
-  accentColor: string;
+  variant: SectionVariant;
   data: Record<string, unknown>;
   renderValue?: (k: string, v: unknown) => React.ReactNode;
   'data-testid'?: string;
 }
 
-function Section({ title, accentColor, data, renderValue, 'data-testid': testId }: SectionProps) {
+function Section({ title, variant, data, renderValue, 'data-testid': testId }: SectionProps) {
   const json = JSON.stringify(data, null, 2);
   return (
-    <div
-      className="rounded-lg p-4"
-      style={{ background: colors.bgSubtle, borderLeft: `4px solid ${accentColor}` }}
-      data-testid={testId}
-    >
+    <div className={`rounded-lg p-4 bg-subtle ${SECTION_CLASSES[variant]}`} data-testid={testId}>
       <div className="mb-2 flex items-center justify-between">
-        <h3 style={{ ...bodyEmphasis, color: colors.text }}>{title}</h3>
+        <h3 className="body-emphasis text-default">{title}</h3>
         <CopyButton text={json} label="コピー" />
       </div>
-      <pre
-        className="overflow-x-auto font-mono"
-        style={{
-          fontSize: '0.75rem',
-          lineHeight: 1.33,
-          letterSpacing: '-0.12px',
-          color: colors.text,
-        }}
-      >
-        <span style={{ color: colors.muted }}>{'{'}</span>
+      <pre className="overflow-x-auto font-mono text-default jwt-pre">
+        <span className="text-muted">{'{'}</span>
         {'\n'}
         {Object.entries(data).map(([k, v]) => (
           <span key={k} className="block pl-4">
@@ -189,14 +176,14 @@ function Section({ title, accentColor, data, renderValue, 'data-testid': testId 
               renderValue(k, v)
             ) : (
               <>
-                <span style={{ color: jsonKeyColor }}>"{k}"</span>
-                <span style={{ color: colors.text }}>: </span>
-                <span style={{ color: jsonValueColor }}>{JSON.stringify(v)}</span>
+                <span className="jwt-json-key">"{k}"</span>
+                <span className="text-default">: </span>
+                <span className="jwt-json-value">{JSON.stringify(v)}</span>
               </>
             )}
           </span>
         ))}
-        <span style={{ color: colors.muted }}>{'}'}</span>
+        <span className="text-muted">{'}'}</span>
       </pre>
     </div>
   );
@@ -240,27 +227,21 @@ export function JwtDecoderTool() {
     ).then(setSigStatus);
   }, [parsed, secretKey]);
 
-  const expBadge: Record<ExpStatus, { label: string; style: React.CSSProperties }> = {
-    valid: { label: '有効', style: { background: colors.successBg, color: colors.success } },
-    expired: { label: '期限切れ', style: { background: colors.errorBg, color: colors.errorText } },
-    'no-exp': { label: 'exp なし', style: { background: colors.warningBg, color: colors.warning } },
+  const expBadge: Record<ExpStatus, { label: string; badgeClass: string }> = {
+    valid: { label: '有効', badgeClass: 'bg-success-tint text-success' },
+    expired: { label: '期限切れ', badgeClass: 'bg-error-tint text-error-text' },
+    'no-exp': { label: 'exp なし', badgeClass: 'bg-warning-tint text-warning' },
   };
 
-  const sigBadge: Record<SigStatus, { label: string; style: React.CSSProperties } | null> = {
+  const sigBadge: Record<SigStatus, { label: string; badgeClass: string } | null> = {
     unchecked: null,
-    verifying: { label: '検証中…', style: { background: colors.bgSubtle, color: colors.muted } },
-    valid: { label: '署名: 有効', style: { background: colors.successBg, color: colors.success } },
-    invalid: {
-      label: '署名: 無効',
-      style: { background: colors.errorBg, color: colors.errorText },
-    },
-    unsupported: {
-      label: '署名: 未対応アルゴリズム',
-      style: { background: colors.bgSubtle, color: colors.muted },
-    },
+    verifying: { label: '検証中…', badgeClass: 'bg-subtle text-muted' },
+    valid: { label: '署名: 有効', badgeClass: 'bg-success-tint text-success' },
+    invalid: { label: '署名: 無効', badgeClass: 'bg-error-tint text-error-text' },
+    unsupported: { label: '署名: 未対応アルゴリズム', badgeClass: 'bg-subtle text-muted' },
     error: {
       label: '署名: 検証エラー（キー形式を確認）',
-      style: { background: colors.errorBg, color: colors.errorText },
+      badgeClass: 'bg-error-tint text-error-text',
     },
   };
 
@@ -290,11 +271,7 @@ export function JwtDecoderTool() {
           label={
             <>
               {keyLabel}
-              <span
-                style={{ ...caption, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}
-              >
-                （任意）
-              </span>
+              <span className="caption text-muted ml-2">（任意）</span>
             </>
           }
           value={secretKey}
@@ -309,15 +286,12 @@ export function JwtDecoderTool() {
 
       {/* 有効期限チェックトグル */}
       {parsed && (
-        <label
-          className="flex items-center gap-2 cursor-pointer"
-          style={{ ...caption, color: colors.text }}
-        >
+        <label className="flex items-center gap-2 cursor-pointer caption text-default">
           <input
             type="checkbox"
             checked={verifyExp}
             onChange={(e) => setVerifyExp(e.target.checked)}
-            style={{ accentColor: colors.link, width: '1rem', height: '1rem' }}
+            className="w-4 h-4 accent-link"
           />
           有効期限（exp）チェックを行う
         </label>
@@ -328,8 +302,7 @@ export function JwtDecoderTool() {
         <div className="flex flex-wrap items-center gap-2">
           {verifyExp && (
             <span
-              className="rounded-full px-3 py-0.5"
-              style={{ ...caption, fontWeight: 500, ...expBadge[parsed.expStatus].style }}
+              className={`rounded-full px-3 py-0.5 caption font-medium ${expBadge[parsed.expStatus].badgeClass}`}
             >
               {expBadge[parsed.expStatus].label}
               {parsed.expStatus === 'valid' && parsed.remainingMs !== undefined && (
@@ -339,8 +312,7 @@ export function JwtDecoderTool() {
           )}
           {sigBadge[sigStatus] && (
             <span
-              className="rounded-full px-3 py-0.5"
-              style={{ ...caption, fontWeight: 500, ...sigBadge[sigStatus]!.style }}
+              className={`rounded-full px-3 py-0.5 caption font-medium ${sigBadge[sigStatus]!.badgeClass}`}
             >
               {sigBadge[sigStatus]!.label}
             </span>
@@ -353,29 +325,24 @@ export function JwtDecoderTool() {
         <div className="space-y-3" role="status" aria-live="polite">
           <Section
             title="Header (JOSE)"
-            accentColor={colors.error}
+            variant="header"
             data={parsed.header}
             data-testid="jwt-header"
           />
           <Section
             title="Payload (Claims)"
-            accentColor="#9333ea"
+            variant="payload"
             data={parsed.payload}
             renderValue={(k, v) => <PayloadValue k={k} v={v} />}
             data-testid="jwt-payload"
           />
-          <div
-            className="rounded-lg p-4"
-            style={{ background: colors.bgSubtle, borderLeft: `4px solid ${colors.primary}` }}
-          >
+          <div className="rounded-lg p-4 bg-subtle section-jwt-signature">
             <div className="mb-2 flex items-center justify-between">
-              <h3 style={{ ...bodyEmphasis, color: colors.text }}>Signature</h3>
+              <h3 className="body-emphasis text-default">Signature</h3>
               <CopyButton text={parsed.signature} label="コピー" />
             </div>
-            <p className="break-all font-mono" style={{ ...caption, color: colors.text }}>
-              {parsed.signature}
-            </p>
-            <p className="mt-2" style={{ ...caption, color: colors.muted }}>
+            <p className="break-all font-mono caption text-default">{parsed.signature}</p>
+            <p className="mt-2 caption text-muted">
               {secretKey.trim()
                 ? '上記のキーで署名を検証しています'
                 : 'キーを入力すると署名を検証します'}

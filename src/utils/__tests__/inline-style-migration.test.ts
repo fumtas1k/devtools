@@ -32,6 +32,9 @@ const MIGRATED_FILES: readonly string[] = [
   'src/components/tools/qr-ticket/GenerateTab.tsx',
   'src/components/tools/qr-ticket/VerifyTab.tsx',
   'src/components/tools/qr-ticket/TicketDetail.tsx',
+  // PR 3 で追加
+  'src/components/tools/JwtDecoder.tsx',
+  'src/components/tools/UuidV7Generator.tsx',
 ];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
