@@ -40,7 +40,7 @@
 ### PR 3 (#275)
 
 - **PR 内同梱 (partial、close は PR 5 で)**: [#262](https://github.com/fumtas1k/devtools/issues/262) test(e2e): generator ページの applyProductionCsp E2E gate を追加（PR 6 前段必須） — PR `#275` で **uuid-v7 部分** に gate を挿入 (`tests/e2e/uuid-v7.spec.ts` の全 test を `browser.newContext()` pattern + `applyProductionCsp(page)` で gate、陽性対照 1 件追加)。**ulid-generator 部分は PR 5 で対応して #262 close 予定**
-- **PR review 由来 follow-up**: [#276](https://github.com/fumtas1k/devtools/issues/276) test(e2e): applyProductionCsp の `browser.newContext` boilerplate を `withProductionCsp` ラッパで集約 — **PR 5 前段の独立 infra PR** で対応推奨（`feedback_infra_feature_separation.md` 準拠）。PR 5 着手前に整備すると PR 5 が薄くなる
+- **PR review 由来 follow-up**: [#276](https://github.com/fumtas1k/devtools/issues/276) test(e2e): applyProductionCsp の `browser.newContext` boilerplate を `withProductionCsp` ラッパで集約 — ✅ **closed (PR [#278](https://github.com/fumtas1k/devtools/pull/278) で対応)**。PR 5 前段の独立 infra PR として `feedback_infra_feature_separation.md` 準拠で先行投入し、PR 5 で `tests/e2e/ulid-generator.spec.ts` を新設する際に boilerplate 増殖を回避できる状態にした
 
 ### PR 4 (#277)
 
@@ -66,7 +66,7 @@
 | [#269](https://github.com/fumtas1k/devtools/issues/269) | ToggleGroup / QrReader / Gs1Databar `type="button"` (PR 1 由来漏れ)                        | ✅ closed                                       | PR `#270` で対応                                                                                                           |
 | [#271](https://github.com/fumtas1k/devtools/issues/271) | ESLint `react/button-has-type` 導入 + index.astro 残り 2 件                                | 独立 (低優先)                                   | PR 6 以降または専用 PR で                                                                                                  |
 | [#273](https://github.com/fumtas1k/devtools/issues/273) | `useTicketVerification.verify` の external signal を `AbortSignal.any` 化                  | PR 6 cleanup スコープ候補                       | 現 callsite 実害なし                                                                                                       |
-| [#276](https://github.com/fumtas1k/devtools/issues/276) | applyProductionCsp の `browser.newContext` boilerplate を `withProductionCsp` ラッパで集約 | **PR 5 前段 (infra PR)**                        | `feedback_infra_feature_separation.md` 準拠。PR 5 で 10+ 件規模になる前に整備すると PR 5 が薄くなる                        |
+| [#276](https://github.com/fumtas1k/devtools/issues/276) | applyProductionCsp の `browser.newContext` boilerplate を `withProductionCsp` ラッパで集約 | ✅ closed                                       | PR [#278](https://github.com/fumtas1k/devtools/pull/278) で対応 (2026-05-07)。陽性対照メタテスト 2 件は inline 維持        |
 | [#119](https://github.com/fumtas1k/devtools/issues/119) | .text-link-color 命名規則統一                                                              | 独立 (低優先)                                   | PR 1.5 で消費パターン定着、改名は all-files rename になる時期まで保留                                                      |
 
 ## B 案接近系 issue（独立判断）
@@ -99,7 +99,7 @@ PR 6 で以下を **すべて含む** こと。漏れを防ぐため本セクシ
   - PR 1 由来: #257-#260
   - PR 1.5 由来: [#262](https://github.com/fumtas1k/devtools/issues/262) (CSP gate / **PR 5 で close**、PR 3 で uuid-v7 partial 対応済) / [#263](https://github.com/fumtas1k/devtools/issues/263) (aria-selected ARIA spec) / [#264](https://github.com/fumtas1k/devtools/issues/264) (キーボード操作 WCAG 2.1.1) / [#265](https://github.com/fumtas1k/devtools/issues/265) (useEffect deps anti-pattern, ✅ closed) / [#266](https://github.com/fumtas1k/devtools/issues/266) (width JSDoc origin discipline, ✅ closed)
   - PR 2 由来: [#273](https://github.com/fumtas1k/devtools/issues/273) (`AbortSignal.any` 化、`useTicketVerification.verify` external signal link 改善)
-  - PR 3 由来: [#276](https://github.com/fumtas1k/devtools/issues/276) (`withProductionCsp` ラッパ helper、**PR 5 前段 infra PR で対応推奨**)
+  - PR 3 由来: [#276](https://github.com/fumtas1k/devtools/issues/276) (`withProductionCsp` ラッパ helper、✅ closed PR [#278](https://github.com/fumtas1k/devtools/pull/278))
 - [ ] **`.text-primary` 命名衝突リスクの再評価** — `src/styles/global.css` の `.text-primary` (PR 2 で追加) は `--color-primary` を `@theme` に登録すると Tailwind auto-utility と衝突する可能性。PR 6 で `@theme` 切替するなら `text-brand` 等への rename 候補。`@theme` 切替自体を見送るなら現状維持で OK。決定事項を `docs/decisions.md` [067] に明記すること。
 - [ ] **Tailwind `border` utility と `@layer components` の `border-color` 優先度確認** — PR 2 で導入した `.alert-success` / `.alert-error` は `<div className="rounded-lg p-4 border alert-success">` のように Tailwind `border` (border-color: currentColor 系) と併用。layer 順序によっては期待色にならないリスクが PR 2 review で指摘済（実害は VRT pass で未顕在）。CSP strict 化後の VRT 再撮影で diff が出たら fix。
 
