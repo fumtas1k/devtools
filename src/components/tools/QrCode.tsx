@@ -102,7 +102,7 @@ export function QrCodeGenerator() {
             <div
               ref={containerRef}
               data-testid="qr-code-container"
-              className="w-50 h-50"
+              className="w-[200px] h-[200px]"
               dangerouslySetInnerHTML={{ __html: svgHtml }}
             />
           </div>

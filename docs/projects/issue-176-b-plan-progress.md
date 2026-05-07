@@ -160,7 +160,7 @@ PR 6 で以下を **すべて含む** こと。漏れを防ぐため本セクシ
 - [ ] `public/_headers` の CSP から `style-src 'unsafe-inline'` を削除
 - [ ] `astro.config.mjs` から `stripMetaStyleSrc()` integration 削除（A-1 で導入した暫定 strip）
 - [ ] `src/utils/styles.ts` 削除（PR 1〜5 で全 import 元が CSS class 参照に置換完了している前提）
-- [ ] `src/utils/__tests__/inline-style-migration.test.ts` の `MIGRATED_FILES` array を `await glob('src/components/**/*.tsx')` 等で全件カバー化
+- [ ] `src/utils/__tests__/inline-style-migration.test.ts` の `MIGRATED_FILES` array を `await glob('src/components/**/*.tsx')` 等で全件カバー化 — glob 化後は `MIGRATED_FILES` array 自体は不要となるため **削除する** (PR 1〜5b で漸進的に array 追加してきたものを glob 一本に置換、二重管理を避ける)
 - [ ] `src/utils/__tests__/headers.test.ts` を strict 化（`'unsafe-inline'` 不在を陽性 assert）
 - [ ] `src/utils/__tests__/meta-csp.test.ts` の `style-src 不在 assert` を `style-src strict 形式 assert` に変更
 - [ ] `src/utils/__tests__/astro-config-csp.test.ts` から `stripMetaStyleSrc` 呼び出し assert 削除
