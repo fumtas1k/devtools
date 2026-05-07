@@ -17,16 +17,18 @@
 
 ## 進捗状況
 
-| #        | スコープ                                                                                                                                         | 状態       | PR                                                                     |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ---------------------------------------------------------------------- |
-| **PR 0** | VRT 導入のみ（mock 注入版 spec、別 workflow、required check 外す、CI Linux baseline）                                                            | ✅ merged  | [#254 (merged 26f566b)](https://github.com/fumtas1k/devtools/pull/254) |
-| **PR 1** | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化 | ✅ merged  | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256) |
-| PR 1.5   | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                     | ✅ merged  | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261) |
-| PR 2     | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                     | ✅ merged  | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272) |
-| PR 3     | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                   | ✅ merged  | [#275 (merged 1150883)](https://github.com/fumtas1k/devtools/pull/275) |
-| PR 4     | Gs1Databar + EncodingConverter + DummyText                                                                                                       | 🔄 PR open | [#277](https://github.com/fumtas1k/devtools/pull/277)                  |
-| PR 5     | QrReader + ConfigConverter + JanCode + QrCode + 残り tools                                                                                       | 未着手     | -                                                                      |
-| PR 6     | flip + cleanup（CSP strict 化）                                                                                                                  | 未着手     | -                                                                      |
+| #                     | スコープ                                                                                                                                                  | 状態      | PR                                                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------- |
+| **PR 0**              | VRT 導入のみ（mock 注入版 spec、別 workflow、required check 外す、CI Linux baseline）                                                                     | ✅ merged | [#254 (merged 26f566b)](https://github.com/fumtas1k/devtools/pull/254) |
+| **PR 1**              | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化          | ✅ merged | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256) |
+| PR 1.5                | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                              | ✅ merged | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261) |
+| PR 2                  | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                              | ✅ merged | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272) |
+| PR 3                  | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                            | ✅ merged | [#275 (merged 1150883)](https://github.com/fumtas1k/devtools/pull/275) |
+| PR 4                  | Gs1Databar + EncodingConverter + DummyText                                                                                                                | ✅ merged | [#277 (merged 495f60e)](https://github.com/fumtas1k/devtools/pull/277) |
+| **infra (PR 5 前段)** | `withProductionCsp` ラッパ helper 追加 (#276 close)                                                                                                       | ✅ merged | [#278 (merged 73de179)](https://github.com/fumtas1k/devtools/pull/278) |
+| PR 5a                 | ConfigConverter + QrReader + JanCode (大物 3 つ、CSSOM hover 含む) — 31 inline style + 2 CSSOM                                                            | 未着手    | -                                                                      |
+| PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` 新設 (#262 close) | 未着手    | -                                                                      |
+| PR 6                  | flip + cleanup（CSP strict 化）                                                                                                                           | 未着手    | -                                                                      |
 
 **重要 — PR 0 の意義**: VRT を ui migration と bundle した PR #253 が architectural 問題で close になったため、VRT を独立 PR で proper sequencing（mock 注入 → CI Linux baseline → required check 外す）で先行導入する。詳細は Claude memory `feedback_vrt_setup_sequencing.md` / `feedback_infra_feature_separation.md` 参照（PC ローカル）。
 
@@ -47,6 +49,53 @@
 - **特殊事項**: Gs1Databar 内で `e.currentTarget.style.X = Y` 形式の CSSOM hover state mutation 9 件を Tailwind `hover:` modifier に refactor。inline style と同等の hover 挙動を CSS で表現
 - **race 回避運用**: PR 3 の commit 結合 race 反省を踏まえ、subagent は commit せず親 Opus が Phase 1.5 で順次 commit する方式を初採用（3 commit が綺麗に分離、prettier 巻き込みも親が制御）
 - **新規 class**: `.summary-no-marker` の 1 件のみ（Gs1Databar `<details>/<summary>` 専用、PR 1〜3 既存 class で 95% 以上カバー）
+
+### infra PR (#278) — PR 5 前段
+
+- **目的**: PR 3 で導入された `applyProductionCsp` E2E gate の `browser.newContext` boilerplate (9 行) を `withProductionCsp(browser, path, fn)` 1 行に集約。PR 5b で `tests/e2e/ulid-generator.spec.ts` 新設時の boilerplate 増殖を回避
+- **scope**: helpers.ts に `withProductionCsp` 追加 + `uuid-v7.spec.ts` (5 件) / `config-converter.spec.ts` (1 件) の通常テスト書換。陽性対照メタテスト 2 件は `guard.violations.length` polling のため inline 維持
+- **review feedback follow-up**: [#279](https://github.com/fumtas1k/devtools/issues/279) (waitForReactHydration label-aware) / [#280](https://github.com/fumtas1k/devtools/issues/280) (options 拡張) / [#281](https://github.com/fumtas1k/devtools/issues/281) (ラッパ自体の meta-test) を起票。**#281 は PR 5b 着手前に再確認**
+
+## PR 5 分割設計メモ (調査日: 2026-05-07)
+
+PR 5 を **PR 5a / PR 5b** に分割する根拠と各 PR のスコープ。新セッションで spec 起草に直行できるよう本セクションに集約。
+
+### 未 migrate 9 ツールの inline style 件数 (調査結果)
+
+| ツール          | inline style | CSSOM | LOC | styles.ts import            | PR 5a/b 振り分け                              |
+| --------------- | ------------ | ----- | --- | --------------------------- | --------------------------------------------- |
+| ConfigConverter | 11           | 0     | 322 | colors+caption              | **5a** (大物)                                 |
+| QrReader        | 11           | 0     | 305 | colors+caption              | **5a** (大物、camera API 別途)                |
+| JanCode         | 9            | **2** | 205 | colors+caption+bodyEmphasis | **5a** (CSSOM hover、Gs1Databar pattern 流用) |
+| QrCode          | 7            | 0     | 122 | colors+caption+bodyEmphasis | 5b                                            |
+| Base64Codec     | 2            | 0     | 104 | colors+caption              | 5b                                            |
+| UlidGenerator   | 2            | 0     | 128 | colors+bodyEmphasis         | **5b** (#262 close: ulid-generator E2E 新設)  |
+| JsonCsv         | 1            | 0     | 108 | colors+caption              | 5b                                            |
+| JsonXml         | 1            | 0     | 98  | **none**                    | 5b (要追加調査: import 不在の理由)            |
+| QrTicket (root) | **0**        | 0     | 112 | none                        | 5b (zero-style 登録のみ、migration 不要)      |
+| UrlEncoder      | **0**        | 0     | 92  | none                        | 5b (zero-style 登録のみ、migration 不要)      |
+
+**合計**: 44 inline style + 2 CSSOM (PR 4 = 53 + 9 と同等規模、過大ではない)
+
+### 分割ロジック
+
+- **5a 採用基準**: inline style ≥ 7 OR CSSOM hover あり = 大物中物。3 ツール並列 sonnet で PR 4 と同パターン。
+- **5b 採用基準**: 残り 7 ツール (うち 2 ツールは zero-style) + ulid-generator E2E 新設 + #262 close。infra/feature 分離の観点で **migration と新規 E2E spec の bundle を許容** (E2E は 1 spec のみで PR #278 のような分離コストに見合わないため)。
+
+### PR 5a 着手時の memo
+
+- **CSSOM hover refactor pattern**: PR 4 Gs1Databar の `hover:` modifier 化を JanCode 2 件に流用。spec で具体例を再掲する
+- **QrReader camera API**: `getUserMedia()` 等の使用有無 → PR 6 で `media-src` directive 追加要否の判断材料 (今 PR 5a スコープ外、ただし spec で flag のみ)
+- **新規 class 追加判断**: PR 1〜4 で 95%+ カバー済の前提。新規追加は最小限 (PR 4 の `.summary-no-marker` 風)
+
+### PR 5b 着手時の memo
+
+- **zero-style 登録**: `QrTicket.tsx` (root) / `UrlEncoder.tsx` を `MIGRATED_FILES` に追加するだけで pass する。「migration 不要」の論理を spec で明示
+- **JsonXml.tsx の styles.ts import 不在**: 1 件の inline style がどこから値を取っているか要追加調査 (locally hardcoded の可能性)。spec 起草時に grep
+- **`tests/e2e/ulid-generator.spec.ts` 新設**: PR #278 で導入した `withProductionCsp` 利用前提 (1 行 / test)。陽性対照メタテストは `applyProductionCsp` 直接利用の inline pattern (uuid-v7 と同じ)
+- **#262 close**: ulid-generator + uuid-v7 (PR 3 で対応済) で「generator 全体に E2E gate」が成立 → close
+- **#234 への波及**: 19 spec 横展開のチェックリストで該当する ulid-generator + uuid-v7 を消込 (本 PR 5b で対応する範囲)
+- **#281 再確認**: `withProductionCsp` 自体の meta-test。PR 5b 着手前に再確認、必要なら本 PR で同梱 or 別 follow-up PR に分離
 
 ## PR 1 / PR 1.5 / PR 2 / PR 3 / PR 4 / PR #278 (infra) follow-up issue 処理タイミング表
 
