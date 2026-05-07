@@ -35,6 +35,10 @@ const MIGRATED_FILES: readonly string[] = [
   // PR 3 で追加
   'src/components/tools/JwtDecoder.tsx',
   'src/components/tools/UuidV7Generator.tsx',
+  // PR 4 で追加
+  'src/components/tools/Gs1Databar.tsx',
+  'src/components/tools/EncodingConverter.tsx',
+  'src/components/tools/DummyText.tsx',
 ];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
