@@ -27,8 +27,8 @@
 CSP `style-src 'unsafe-inline'` 撤去（issue #176 B 案）に伴い、JSX の `style={{}}` および `e.currentTarget.style.X = Y` 形式の DOM mutation は使用禁止。ホバー / 状態色は `src/styles/global.css` の `@layer components` に semantic class として定義し、`:hover` / `[aria-pressed="true"]` / 条件 `className` 切替で表現する。
 
 - Tailwind の **色値直書き** utility（`text-blue-500`, `bg-red-200` 等）は引き続き禁止
-- ただし `@theme` 経由で auto-generate される **意味トークン** utility（`text-primary` / `bg-error` / `text-link` 等は `--color-primary` / `--color-error` / `--color-link` を参照）は使用可。色値直書きではなく既存 SoT を経由するため、カラー使用制限の趣旨と整合
-- 同じ理由で `hover:bg-subtle` のような「Tailwind hover utility + 意味クラス」も許容
+- ただし `@theme` 経由で auto-generate される **意味トークン** utility（`text-primary` / `bg-error` 等は `--color-primary` / `--color-error` を参照）は使用可。色値直書きではなく既存 SoT を経由するため、カラー使用制限の趣旨と整合
+- ⚠️ **重要 — Tailwind v4 の variant 制約**: `@layer components` 内で **手書き定義** した class（`.bg-subtle` / `.bg-error-tint` / `.text-primary` 等、`global.css` の `@layer components` ブロックに記述したもの）は **`hover:` / `focus:` 等の variant に対応しない**（CSS rule が build 出力に含まれず silent regression する）。`@theme` の token から auto-generate される utility のみ variant 対応する。**`hover:bg-subtle` のような書き方は使えない**。代わりに専用の hover 用 class を `@layer components` 内に定義する pattern (下記 `.btn-clear` 例のように `:hover` 擬似クラスごと書く) を用いること
 
 ```tsx
 // before (PR #176 B 案 移行前の旧パターン、現在は禁止)

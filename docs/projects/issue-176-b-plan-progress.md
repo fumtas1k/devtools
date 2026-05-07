@@ -23,8 +23,8 @@
 | **PR 1** | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化 | ✅ merged  | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256) |
 | PR 1.5   | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                     | ✅ merged  | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261) |
 | PR 2     | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                     | ✅ merged  | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272) |
-| PR 3     | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                   | 🔄 PR open | [#275](https://github.com/fumtas1k/devtools/pull/275)                  |
-| PR 4     | Gs1Databar + EncodingConverter + DummyText                                                                                                       | 未着手     | -                                                                      |
+| PR 3     | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                   | ✅ merged  | [#275 (merged 1150883)](https://github.com/fumtas1k/devtools/pull/275) |
+| PR 4     | Gs1Databar + EncodingConverter + DummyText                                                                                                       | 🔄 PR open | [#277](https://github.com/fumtas1k/devtools/pull/277)                  |
 | PR 5     | QrReader + ConfigConverter + JanCode + QrCode + 残り tools                                                                                       | 未着手     | -                                                                      |
 | PR 6     | flip + cleanup（CSP strict 化）                                                                                                                  | 未着手     | -                                                                      |
 
@@ -42,7 +42,13 @@
 - **PR 内同梱 (partial、close は PR 5 で)**: [#262](https://github.com/fumtas1k/devtools/issues/262) test(e2e): generator ページの applyProductionCsp E2E gate を追加（PR 6 前段必須） — PR `#275` で **uuid-v7 部分** に gate を挿入 (`tests/e2e/uuid-v7.spec.ts` の全 test を `browser.newContext()` pattern + `applyProductionCsp(page)` で gate、陽性対照 1 件追加)。**ulid-generator 部分は PR 5 で対応して #262 close 予定**
 - **PR review 由来 follow-up**: [#276](https://github.com/fumtas1k/devtools/issues/276) test(e2e): applyProductionCsp の `browser.newContext` boilerplate を `withProductionCsp` ラッパで集約 — **PR 5 前段の独立 infra PR** で対応推奨（`feedback_infra_feature_separation.md` 準拠）。PR 5 着手前に整備すると PR 5 が薄くなる
 
-## PR 1 / PR 1.5 / PR 2 / PR 3 follow-up issue 処理タイミング表
+### PR 4 (#277)
+
+- **特殊事項**: Gs1Databar 内で `e.currentTarget.style.X = Y` 形式の CSSOM hover state mutation 9 件を Tailwind `hover:` modifier に refactor。inline style と同等の hover 挙動を CSS で表現
+- **race 回避運用**: PR 3 の commit 結合 race 反省を踏まえ、subagent は commit せず親 Opus が Phase 1.5 で順次 commit する方式を初採用（3 commit が綺麗に分離、prettier 巻き込みも親が制御）
+- **新規 class**: `.summary-no-marker` の 1 件のみ（Gs1Databar `<details>/<summary>` 専用、PR 1〜3 既存 class で 95% 以上カバー）
+
+## PR 1 / PR 1.5 / PR 2 / PR 3 / PR 4 follow-up issue 処理タイミング表
 
 各 issue の処理推奨タイミング (2026-05-07 時点):
 
@@ -89,7 +95,7 @@ PR 6 で以下を **すべて含む** こと。漏れを防ぐため本セクシ
 - [ ] PR description に「`#176` B 案完了」を明記、関連 PR (#249/#254/#256/#261/#272/PR 3-5) を全 link
 - [ ] `grep -c "style={{" src/` = **0** を最終確認
 - [ ] 全 E2E + 全 unit + astro check pass
-- [ ] PR 1 (#256) / PR 1.5 (#261) / PR 2 (#272) / PR 3 (#275) の follow-up 系 issue のうち PR 6 で同時対応するものがあれば close、後続するものは PR 6 description で言及。
+- [ ] PR 1 (#256) / PR 1.5 (#261) / PR 2 (#272) / PR 3 (#275) / PR 4 (#277) の follow-up 系 issue のうち PR 6 で同時対応するものがあれば close、後続するものは PR 6 description で言及。
   - PR 1 由来: #257-#260
   - PR 1.5 由来: [#262](https://github.com/fumtas1k/devtools/issues/262) (CSP gate / **PR 5 で close**、PR 3 で uuid-v7 partial 対応済) / [#263](https://github.com/fumtas1k/devtools/issues/263) (aria-selected ARIA spec) / [#264](https://github.com/fumtas1k/devtools/issues/264) (キーボード操作 WCAG 2.1.1) / [#265](https://github.com/fumtas1k/devtools/issues/265) (useEffect deps anti-pattern, ✅ closed) / [#266](https://github.com/fumtas1k/devtools/issues/266) (width JSDoc origin discipline, ✅ closed)
   - PR 2 由来: [#273](https://github.com/fumtas1k/devtools/issues/273) (`AbortSignal.any` 化、`useTicketVerification.verify` external signal link 改善)

@@ -10,7 +10,6 @@ import {
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { BareInput } from '@/components/ui/BareInput';
 import { Select } from '@/components/ui/Select';
@@ -182,34 +181,20 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   );
 
   return (
-    <div
-      className="rounded-lg"
-      style={{ border: `1px solid ${colors.borderInput}`, background: colors.bg }}
-    >
+    <div className="rounded-lg border border-input bg-default">
       {/* カードヘッダー */}
-      <div
-        className="flex items-center justify-between px-4 py-3 rounded-t-lg"
-        style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
-      >
-        <span style={{ ...caption, fontWeight: 700, color: colors.text }}>
+      <div className="flex items-center justify-between px-4 py-3 rounded-t-lg bg-subtle border-b border-default">
+        <span className="caption font-bold text-default">
           バーコード {index + 1}
           {gtinResult && (
-            <span
-              className="font-mono ml-2"
-              style={{ ...caption, color: colors.muted, fontWeight: 400 }}
-            >
-              — {gtinResult.fullGtin}
-            </span>
+            <span className="font-mono ml-2 caption text-muted">— {gtinResult.fullGtin}</span>
           )}
         </span>
         {canRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="rounded px-2 py-1 transition-colors"
-            style={{ ...caption, color: colors.error, background: 'transparent' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="rounded px-2 py-1 caption btn-remove-card"
             aria-label={`バーコード ${index + 1} を削除`}
           >
             削除
@@ -236,22 +221,14 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
         {/* GTIN計算結果 */}
         {gtinResult && (
-          <div
-            className="rounded-lg p-3 flex flex-wrap items-center gap-x-6 gap-y-2"
-            style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
-          >
+          <div className="rounded-lg p-3 flex flex-wrap items-center gap-x-6 gap-y-2 border border-default bg-surface">
             <div className="flex items-center gap-2">
-              <span style={{ ...caption, color: colors.muted }}>チェックディジット</span>
-              <span style={{ ...bodyEmphasis, color: colors.primary }}>
-                {gtinResult.checkDigit}
-              </span>
+              <span className="caption text-muted">チェックディジット</span>
+              <span className="body-emphasis text-primary">{gtinResult.checkDigit}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span style={{ ...caption, color: colors.muted }}>GTIN-14</span>
-              <span
-                className="font-mono"
-                style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}
-              >
+              <span className="caption text-muted">GTIN-14</span>
+              <span className="font-mono body-emphasis text-default tracking-widest">
                 {gtinResult.fullGtin}
               </span>
               <span className="hidden sm:inline-flex">
@@ -267,15 +244,12 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {/* AIフィールド */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <span style={{ ...caption, color: colors.text, fontWeight: 600 }}>
-              合成シンボル（任意）
-            </span>
+            <span className="caption text-default font-semibold">合成シンボル（任意）</span>
             {canAddField && (
               <button
                 type="button"
                 onClick={addAiField}
-                style={{ ...caption, color: colors.link }}
-                className="hover:underline"
+                className="caption text-link-color hover:underline"
               >
                 + フィールド追加
               </button>
@@ -310,10 +284,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                         aria-label={`AI フィールド値 ${i + 1}`}
                       />
                       {field.error && (
-                        <p
-                          role="alert"
-                          style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}
-                        >
+                        <p role="alert" className="caption text-error mt-1">
                           {field.error}
                         </p>
                       )}
@@ -321,15 +292,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                     <button
                       type="button"
                       onClick={() => removeAiField(i)}
-                      className="rounded-lg p-2 transition-colors shrink-0"
-                      style={{
-                        ...caption,
-                        color: colors.muted,
-                        marginTop: '2px',
-                        background: 'transparent',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5"
                       aria-label="フィールドを削除"
                     >
                       ✕
@@ -344,8 +307,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {/* バーコードプレビュー */}
         {svgContent && (
           <div
-            className="rounded-lg flex flex-col items-center gap-4 p-5"
-            style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
+            className="rounded-lg flex flex-col items-center gap-4 p-5 border border-default bg-surface"
             role="status"
             aria-live="polite"
           >
@@ -363,27 +325,13 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
         {/* GS1文字列プレビュー */}
         {gtinResult && (
-          <details className="rounded-lg" style={{ border: `1px solid ${colors.border}` }}>
-            <summary
-              className="cursor-pointer px-4 py-3 rounded-lg transition-colors"
-              style={{
-                ...caption,
-                fontWeight: 700,
-                color: colors.text,
-                listStyle: 'none',
-                background: 'transparent',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
+          <details className="rounded-lg border border-default">
+            <summary className="cursor-pointer px-4 py-3 rounded-lg caption font-bold text-default bg-transparent hover-bg-subtle summary-no-marker">
               GS1文字列を見る
             </summary>
             <div className="px-4 pb-4 pt-2">
               <div className="flex items-center gap-2">
-                <code
-                  className="flex-1 rounded px-3 py-2 font-mono break-all"
-                  style={{ ...caption, background: colors.bgSubtle, color: colors.text }}
-                >
+                <code className="flex-1 rounded px-3 py-2 font-mono break-all caption bg-subtle text-default">
                   {gs1String}
                 </code>
                 <CopyButton text={gs1String} label="コピー" />
@@ -485,24 +433,13 @@ export function Gs1DatabarTool() {
           <button
             type="button"
             onClick={addCard}
-            className="rounded px-4 py-2 transition-colors"
-            style={{
-              ...caption,
-              fontWeight: 700,
-              border: `1px solid ${colors.primary}`,
-              color: colors.primary,
-              background: 'transparent',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgPrimary)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="rounded px-4 py-2 caption font-bold border border-primary bg-transparent text-primary hover-bg-active"
           >
             + バーコードを追加
           </button>
         )}
         {cards.length >= MAX_CARDS && (
-          <span style={{ ...caption, color: colors.muted }}>
-            最大 {MAX_CARDS} 件まで追加できます
-          </span>
+          <span className="caption text-muted">最大 {MAX_CARDS} 件まで追加できます</span>
         )}
 
         {canDownloadAll && (

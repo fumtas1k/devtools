@@ -9,6 +9,81 @@
 
 ---
 
+## [2026-05-07] Tailwind v4 で `@layer components` 内手書き class は `hover:` / `focus:` 等の variant に対応しない（規約昇格候補）
+
+### 現象
+
+PR #277 (#176 B 案 PR 4) で `Gs1Databar.tsx` の hover state を `hover:bg-error-tint` / `hover:bg-subtle` の Tailwind hover utility で表現したが、build 出力 (`dist/_astro/BaseLayout.*.css`) に該当 CSS rule (`.hover\:bg-error-tint:hover { ... }` / `.hover\:bg-subtle:hover { ... }`) が **0 件** しか生成されず、UI 上 hover フィードバックが完全に消失する silent regression が発生した。
+
+`hover:bg-blue-50` などの Tailwind primitive カラー utility (= `@theme` の `--color-blue-50` から auto-generate された utility) は variant 対応するが、`.bg-subtle` / `.bg-error-tint` / `.text-primary` 等の `global.css` の `@layer components` 内で **手書き定義** した class は variant 非対応 (Tailwind v4 の仕様)。
+
+### 根本原因
+
+Tailwind v4 の variant 生成ルール:
+
+- `@theme` トークンから auto-generate される utility → variant 対応 ✓ (`hover:bg-blue-50`, `hover:text-primary` 等が生成される)
+- `@layer components` 内で手書き定義した class → variant **対応外** ✗ (`hover:bg-subtle` は CSS rule が生成されない)
+
+DOM には `class="...hover:bg-subtle..."` の文字列が乗るが、対応する `.hover\:bg-subtle:hover { ... }` の CSS rule が出力されないため hover 時に何も起きない。
+
+### 対処
+
+専用の hover 用 class を `@layer components` 内に `:hover` 擬似クラスごと定義する。`.btn-clear` (PR 1) / `.btn-copy.is-copied` (PR 1) と同じ pattern:
+
+```css
+@layer components {
+  .btn-remove-card {
+    color: var(--color-error);
+    background: transparent;
+    transition: background-color 0.15s;
+  }
+  .btn-remove-card:hover {
+    background: var(--color-error-bg);
+  }
+
+  .hover-bg-subtle {
+    transition: background-color 0.15s;
+  }
+  .hover-bg-subtle:hover {
+    background: var(--color-bg-subtle);
+  }
+}
+```
+
+JSX 側は `className="caption btn-remove-card"` のように適用 (variant prefix を使わない)。
+
+### 検証手順 (今後の PR で)
+
+`@layer components` 内手書き class に `hover:` / `focus:` / `aria-pressed:` 等の variant を新規追加した場合、必ず build 出力で CSS rule が生成されているか確認する:
+
+```bash
+npm run build
+CSS=$(find dist -name "BaseLayout*.css" | head -1)
+grep -oE '\.hover\\\\:bg-[a-z0-9-]+:hover\{[^}]*\}' "$CSS"
+# 期待: 該当 class の :hover rule が出力されていること
+```
+
+VRT は pixel diff のみのため hover state までは検出できない。E2E で `hover()` → `getComputedStyle().backgroundColor` の差分 assert を加えると更に堅牢 (#234 の applyProductionCsp 全ツール展開と同種の能動検出 gate)。
+
+### 関連修正
+
+- `docs/ui-conventions.md` の line 30-31 (旧記述「同じ理由で `hover:bg-subtle` のような『Tailwind hover utility + 意味クラス』も許容」) を本 lesson の発見に基づき修正済 (variant 非対応の警告に書き換え)
+- PR #277 の commit `58ebf04` で対応 class 追加 (`.btn-remove-card` / `.hover-bg-subtle` / `.hover-bg-active`)
+
+### 副次発見: markdown content scan による unused utility 混入
+
+PR #277 の re-review で reviewer が「build CSS に `hover:bg-blue-50:hover` が unused で残っている」観察を報告。原因調査の結果、Tailwind v4 vite plugin の auto content scan は `docs/` 配下の markdown も対象としており、spec / plan / agent-lessons / decisions の md ファイル中で説明用に書いた `hover:bg-blue-50` 等の utility 名リテラル文字列を拾って unused utility が build CSS に混入していた。
+
+対処は `src/styles/global.css` 冒頭に `@source not "../../docs";` ディレクティブを追加して docs/ を scan 範囲外にする (PR #277 で実施済)。docs/ は実装コードを含まないため scan する意味がなく、副作用なし。
+
+なお `src/` 配下の `.css` / `.tsx` 等のコメント内に utility 名リテラルを書くと scan されるため、説明する場合は `hover-prefix + bg + blue-50` のように分割して記述する必要がある (PR #277 commit `58ebf04` の global.css コメントが実例)。
+
+### 規約昇格候補
+
+`shared-agent-rules.md` 7 章 (Tailwind カラー使用制限) または UI スタイリング章への追加候補。本教訓は反復的に発生する種類のもの (B 案 PR 5 / PR 6 でも同 pattern を踏む可能性あり) なので、次回 agent-lessons.md 整理タイミングで昇格判断推奨。
+
+---
+
 ## [2026-04-28] QRチケット 160px 表示と等倍デコードによる読み取り失敗リスク
 
 ### 現象

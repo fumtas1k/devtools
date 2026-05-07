@@ -6,7 +6,6 @@ import { OutputField } from '@/components/ui/OutputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
-import { caption, colors } from '@/utils/styles';
 import { getErrorMessage } from '@/utils/errors';
 import { downloadBytes } from '@/utils/download';
 import { validateFile } from '@/utils/file-validation';
@@ -240,7 +239,7 @@ export function EncodingConverterTool() {
 
       {/* 入力方式 */}
       <div className="flex items-center gap-3">
-        <span style={{ ...caption, color: colors.muted }}>入力:</span>
+        <span className="caption text-muted">入力:</span>
         <ToggleGroup
           options={[
             { value: 'text', label: 'テキスト' },
@@ -271,18 +270,8 @@ export function EncodingConverterTool() {
       {/* ファイル入力 */}
       {inputMethod === 'file' && (
         <div>
-          <div style={{ ...caption, color: colors.text, fontWeight: 700, marginBottom: '0.75rem' }}>
-            ファイルを選択
-          </div>
-          <label
-            className="flex items-center gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors"
-            style={{
-              border: `1px dashed ${colors.border}`,
-              background: colors.bgSubtle,
-              color: colors.muted,
-              ...caption,
-            }}
-          >
+          <div className="caption text-default font-bold mb-3">ファイルを選択</div>
+          <label className="flex items-center gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors caption border border-dashed border-default bg-subtle text-muted">
             <svg
               width="20"
               height="20"
@@ -308,21 +297,12 @@ export function EncodingConverterTool() {
               accept={ACCEPT_ATTR}
             />
           </label>
-          <p style={{ fontSize: '0.75rem', color: colors.muted, marginTop: '0.25rem' }}>
+          <p className="text-xs text-muted mt-1">
             対応形式: テキストファイル（.txt / .csv / .json / .xml / .yaml / .toml 等）・最大 10 MB
           </p>
           {fileBytes && (
-            <div
-              className="mt-2 rounded-lg px-3 py-2 font-mono"
-              style={{
-                ...caption,
-                color: colors.muted,
-                background: colors.bgSubtle,
-                border: `1px solid ${colors.border}`,
-                wordBreak: 'break-all',
-              }}
-            >
-              <span style={{ color: colors.text }}>{formatBytes(fileBytes.length)}</span>
+            <div className="mt-2 rounded-lg px-3 py-2 font-mono caption text-muted bg-subtle border border-default break-all">
+              <span className="text-default">{formatBytes(fileBytes.length)}</span>
               {'　'}
               {hexPreview(fileBytes)}
             </div>
@@ -337,36 +317,22 @@ export function EncodingConverterTool() {
       {detection && (
         <div
           data-testid="detection-result"
-          className="rounded-lg px-4 py-3 space-y-1"
-          style={{ border: `1px solid ${colors.border}`, background: colors.bgSubtle }}
+          className="rounded-lg px-4 py-3 space-y-1 border border-default bg-subtle"
         >
           <div className="flex flex-wrap gap-x-6 gap-y-1">
-            <span data-testid="detection-encoding" style={{ ...caption, color: colors.muted }}>
+            <span data-testid="detection-encoding" className="caption text-muted">
               文字コード:{' '}
-              <strong style={{ color: colors.text }}>{ENCODING_LABELS[detection.encoding]}</strong>
+              <strong className="text-default">{ENCODING_LABELS[detection.encoding]}</strong>
             </span>
-            <span data-testid="detection-bom" style={{ ...caption, color: colors.muted }}>
-              BOM:{' '}
-              <strong style={{ color: colors.text }}>{detection.hasBom ? 'あり' : 'なし'}</strong>
+            <span data-testid="detection-bom" className="caption text-muted">
+              BOM: <strong className="text-default">{detection.hasBom ? 'あり' : 'なし'}</strong>
             </span>
-            <span style={{ ...caption, color: colors.muted }}>
-              サイズ:{' '}
-              <strong style={{ color: colors.text }}>{formatBytes(detection.byteLength)}</strong>
+            <span className="caption text-muted">
+              サイズ: <strong className="text-default">{formatBytes(detection.byteLength)}</strong>
             </span>
           </div>
           {decodedPreview && (
-            <div
-              className="mt-2 font-mono rounded px-2 py-1.5 overflow-auto"
-              style={{
-                ...caption,
-                color: colors.text,
-                background: colors.bg,
-                border: `1px solid ${colors.border}`,
-                maxHeight: '6rem',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all',
-              }}
-            >
+            <div className="mt-2 font-mono rounded px-2 py-1.5 overflow-auto caption text-default bg-default border border-default max-h-24 whitespace-pre-wrap break-all">
               {decodedPreview}
             </div>
           )}
@@ -377,10 +343,7 @@ export function EncodingConverterTool() {
       {mode === 'convert' && (
         <div className="space-y-3">
           <div>
-            <label
-              htmlFor="enc-source"
-              style={{ ...caption, color: colors.muted, marginBottom: '0.5rem', display: 'block' }}
-            >
+            <label htmlFor="enc-source" className="caption text-muted mb-2 block">
               元の文字コード:
             </label>
             <Select
@@ -392,10 +355,7 @@ export function EncodingConverterTool() {
           </div>
 
           <div>
-            <label
-              htmlFor="enc-target"
-              style={{ ...caption, color: colors.muted, marginBottom: '0.5rem', display: 'block' }}
-            >
+            <label htmlFor="enc-target" className="caption text-muted mb-2 block">
               変換後の文字コード:
             </label>
             <Select
@@ -407,14 +367,12 @@ export function EncodingConverterTool() {
           </div>
 
           {UTF16_ENCODINGS.has(targetEnc) ? (
-            <div style={{ ...caption, color: colors.muted }}>
+            <div className="caption text-muted">
               改行コード: UTF-16 では改行コード正規化は適用されません
             </div>
           ) : (
             <div>
-              <div style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>
-                改行コード:
-              </div>
+              <div className="caption text-muted mb-2">改行コード:</div>
               <ToggleGroup
                 options={NEWLINE_OPTIONS}
                 value={newlineMode}
@@ -425,10 +383,7 @@ export function EncodingConverterTool() {
           )}
 
           {bomActive && (
-            <label
-              className="flex items-center gap-2 cursor-pointer"
-              style={{ ...caption, color: colors.text }}
-            >
+            <label className="flex items-center gap-2 cursor-pointer caption text-default">
               <input
                 type="checkbox"
                 checked={withBom}
@@ -461,10 +416,7 @@ export function EncodingConverterTool() {
             }
           />
           {outputBytes && (
-            <div
-              data-testid="output-hex-preview"
-              style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}
-            >
+            <div data-testid="output-hex-preview" className="caption text-muted mt-1">
               {formatBytes(outputBytes.length)}　先頭: {hexPreview(outputBytes, 16)}
             </div>
           )}
