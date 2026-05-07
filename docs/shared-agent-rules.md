@@ -112,6 +112,8 @@ post-PR 代行は不要、CI が最終ゲート。
 gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
 ```
 
+**`main` 向けはリリース PR のみ**。通常の機能追加・バグ修正・refactor・docs は全て develop ベース。リリース時は別途 `develop → main` の release PR を切る運用 (release-only branch policy)。
+
 PR 作成・親 push 前チェックリスト・親向けレビュー取得手順 → **`docs/playbooks/pr-creation.md` 3〜5 章**
 
 ### 6.4 先送り（deferral）時は必ず issue 化する
@@ -134,6 +136,12 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 - **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Read` / `Write` / `Edit` ともに `/tmp/claude/**` および `$TMPDIR (/var/folders/*/*/T/**)` が allow、`/tmp/**` 直下は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。**credential / secret 類は tmp に置かない**（同 user 配下の Claude セッション間で相互可読）。
 - **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
 
+### 6.7 サブエージェント運用の補足
+
+- **完了報告は項目別ステータス必須**: 親プロンプトのスコープ箇条書きを subagent が一部のみで「完了」と返すケースがあるため、完了報告フォーマットに「項目ごとに 実装 / 既存で十分 / スキップ理由 を明示する」チェックリスト形式を要求する。親側でも依頼項目数 vs 実装項目数の機械的突き合わせを行う（過去事例: PR #218 で 3 件依頼中 1 件のみ実装で完了報告された）。
+- **`package.json` 変更時は `package-lock.json` 同期確認**: subagent が deps を追加・更新した場合、`git diff origin/develop --name-only` に `package.json` が含まれる場合は必ず `package-lock.json` も含まれているか確認する。漏れていれば親で `npm install --package-lock-only --cache "$TMPDIR/npm-cache" --no-audit --no-fund` を実行し別コミットで lock 同期を push する（過去事例: PR #181 で lock 不整合のまま push される寸前で発覚）。
+- **PR 本文の更新は親で実行**: `gh pr edit --body-file` は `permissions.ask` のため subagent から非対話 deny される。subagent は完了報告に「PR 本文更新が必要」と明記し、親 (司令塔) が `gh pr edit` で引き取る（過去事例: PR #189 で subagent から呼べず指摘事項対応が止まった）。
+
 ---
 
 ## 7. スタイル・UI ルール（基本）
@@ -147,6 +155,25 @@ Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50`
 
 UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影して目視確認すること。
 共通コンポーネント・ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否・Playwright 撮影手順・目視確認チェックリスト等の詳細 → **`docs/ui-conventions.md`**
+
+### 7.1 Tailwind v4 `@layer components` の variant 非対応
+
+`global.css` の `@layer components` 内で **手書き定義** した class (`bg-subtle` / `text-primary` / `alert-success` 等) は Tailwind v4 の variant prefix (`hover:` / `focus:` / `aria-pressed:` 等) に **対応しない**。`hover:bg-subtle` のように書いても CSS rule (`.hover\:bg-subtle:hover { ... }`) が生成されず silent regression する。
+
+- ✅ `@theme` トークンから auto-generate される utility (`hover:bg-blue-50`, `hover:text-primary` 等) は variant 対応
+- ❌ `@layer components` 内手書き class への variant prefix は CSS rule 不生成
+
+専用の hover/focus 用 class を `@layer components` 内に `:hover` / `:focus` 擬似クラスごと定義する (`.btn-clear` / `.hover-bg-subtle` / `.btn-remove-card` 等が実例)。JSX 側は `className="caption btn-remove-card"` のように適用 (variant prefix を使わない)。
+
+検証: `@layer components` 内手書き class に variant を新規追加した場合、`npm run build` 後に `dist/_astro/BaseLayout.*.css` で CSS rule が生成されているか必ず確認する。
+
+過去事例: PR #277 (#176 B 案 PR 4) で `hover:bg-error-tint` / `hover:bg-subtle` の Tailwind hover utility 表記により hover フィードバックが完全消失する silent regression。専用 hover class (`.btn-remove-card` / `.hover-bg-subtle` / `.hover-bg-active`) で対応。
+
+**副次発見: コンテンツスキャンで unused utility 混入リスク**
+
+Tailwind v4 vite plugin の auto content scan は `docs/` 配下の markdown も対象とし、spec / plan / agent-lessons / decisions の md ファイル中で説明用に書いた `hover:bg-blue-50` 等の utility 名リテラル文字列を拾って unused utility が build CSS に混入することがある (PR #277 で reviewer 観察)。`src/styles/global.css` 冒頭の `@source not "../../docs"` ディレクティブで対処済 (実装は守られる)。
+
+ただし `src/` 配下の `.css` / `.tsx` 等のコメント内に utility 名リテラルを書くと scan されるため、説明する場合は `hover-prefix + bg + blue-50` のように **分割して記述** する (PR #277 commit `58ebf04` の global.css コメントが実例)。新規に `@layer components` を増やす際は、コメント中の utility 名表記もこの分割記法を採用する。
 
 ---
 
