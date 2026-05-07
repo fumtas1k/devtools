@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { v7 as uuidv7 } from 'uuid';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CountInput } from '@/components/ui/CountInput';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -14,13 +13,13 @@ interface UuidRow {
   timestamp: string;
 }
 
-/** フィールド分解パネル用の色定義 */
-const FIELD_COLORS = {
-  unixTsMs: colors.primary,
-  ver: '#7C3AED',
-  randA: '#059669',
-  varNibble: '#D97706',
-  randB: '#0891B2',
+/** フィールド分解パネル用の class 定義 */
+const FIELD_CLASSES = {
+  unixTsMs: 'uuid-field-ts',
+  ver: 'uuid-field-ver',
+  randA: 'uuid-field-rand-a',
+  varNibble: 'uuid-field-var',
+  randB: 'uuid-field-rand-b',
 } as const;
 
 function generateRows(count: number): UuidRow[] {
@@ -39,25 +38,20 @@ function ColoredUuid({ uuid, quoteStyle }: { uuid: string; quoteStyle: QuoteStyl
   const fullText = `${quote}${uuid}${quote}`;
 
   return (
-    <span
-      className="font-mono"
-      style={{ ...caption, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}
-      aria-label={fullText}
-      title={fullText}
-    >
-      {quote && <span style={{ color: colors.muted }}>{quote}</span>}
-      <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[0]}</span>
-      <span style={{ color: colors.muted }}>-</span>
-      <span style={{ color: FIELD_COLORS.unixTsMs }}>{parts[1]}</span>
-      <span style={{ color: colors.muted }}>-</span>
-      <span style={{ color: FIELD_COLORS.ver }}>{parts[2][0]}</span>
-      <span style={{ color: FIELD_COLORS.randA }}>{parts[2].substring(1)}</span>
-      <span style={{ color: colors.muted }}>-</span>
-      <span style={{ color: FIELD_COLORS.varNibble }}>{parts[3][0]}</span>
-      <span style={{ color: FIELD_COLORS.randB }}>{parts[3].substring(1)}</span>
-      <span style={{ color: colors.muted }}>-</span>
-      <span style={{ color: FIELD_COLORS.randB }}>{parts[4]}</span>
-      {quote && <span style={{ color: colors.muted }}>{quote}</span>}
+    <span className="font-mono caption whitespace-nowrap" aria-label={fullText} title={fullText}>
+      {quote && <span className="text-muted">{quote}</span>}
+      <span className={FIELD_CLASSES.unixTsMs}>{parts[0]}</span>
+      <span className="text-muted">-</span>
+      <span className={FIELD_CLASSES.unixTsMs}>{parts[1]}</span>
+      <span className="text-muted">-</span>
+      <span className={FIELD_CLASSES.ver}>{parts[2][0]}</span>
+      <span className={FIELD_CLASSES.randA}>{parts[2].substring(1)}</span>
+      <span className="text-muted">-</span>
+      <span className={FIELD_CLASSES.varNibble}>{parts[3][0]}</span>
+      <span className={FIELD_CLASSES.randB}>{parts[3].substring(1)}</span>
+      <span className="text-muted">-</span>
+      <span className={FIELD_CLASSES.randB}>{parts[4]}</span>
+      {quote && <span className="text-muted">{quote}</span>}
     </span>
   );
 }
@@ -67,35 +61,24 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
   const fields = parseUuidV7Fields(uuid);
 
   const fieldDefs = [
-    { key: 'unix_ts_ms', bits: '48bit', value: fields.unixTsMs, color: FIELD_COLORS.unixTsMs },
-    { key: 'ver', bits: '4bit', value: fields.ver, color: FIELD_COLORS.ver },
-    { key: 'rand_a', bits: '12bit', value: fields.randA, color: FIELD_COLORS.randA },
-    { key: 'var', bits: '2bit', value: fields.varNibble, color: FIELD_COLORS.varNibble },
-    { key: 'rand_b', bits: '62bit', value: fields.randB, color: FIELD_COLORS.randB },
+    { key: 'unix_ts_ms', bits: '48bit', value: fields.unixTsMs, className: FIELD_CLASSES.unixTsMs },
+    { key: 'ver', bits: '4bit', value: fields.ver, className: FIELD_CLASSES.ver },
+    { key: 'rand_a', bits: '12bit', value: fields.randA, className: FIELD_CLASSES.randA },
+    { key: 'var', bits: '2bit', value: fields.varNibble, className: FIELD_CLASSES.varNibble },
+    { key: 'rand_b', bits: '62bit', value: fields.randB, className: FIELD_CLASSES.randB },
   ] as const;
 
   return (
-    <div
-      className="rounded-lg p-3"
-      style={{ background: colors.bgSubtle, border: `1px solid ${colors.border}` }}
-    >
-      <p style={{ ...caption, color: colors.muted, marginBottom: '0.5rem' }}>フィールド分解</p>
+    <div className="rounded-lg p-3 bg-subtle border border-default">
+      <p className="caption text-muted mb-2">フィールド分解</p>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {fieldDefs.map((f) => (
           <div key={f.key} className="flex flex-col gap-0.5">
-            <span style={{ ...caption, color: colors.muted, fontSize: '0.75rem' }}>
-              {f.key} <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>({f.bits})</span>
+            <span className="text-muted uuid-field-key">
+              {f.key} <span className="uuid-field-bits">({f.bits})</span>
             </span>
             <code
-              className="rounded px-1.5 py-0.5"
-              style={{
-                ...caption,
-                fontFamily: 'monospace',
-                color: f.color,
-                background: colors.bg,
-                border: `1px solid ${colors.border}`,
-                whiteSpace: 'nowrap',
-              }}
+              className={`font-mono whitespace-nowrap rounded px-1.5 py-0.5 bg-default border border-default caption ${f.className}`}
             >
               {f.value}
             </code>
@@ -177,7 +160,7 @@ export function UuidV7GeneratorTool() {
             onRowClick={setSelectedIndex}
             renderHeader={() => (
               <>
-                <span style={{ ...bodyEmphasis, color: colors.text }}>{rows.length} 件生成</span>
+                <span className="body-emphasis text-default">{rows.length} 件生成</span>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="shrink-0">
                     <ToggleGroup<QuoteStyle>
