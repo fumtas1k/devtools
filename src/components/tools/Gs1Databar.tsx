@@ -194,7 +194,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
           <button
             type="button"
             onClick={onRemove}
-            className="rounded px-2 py-1 transition-colors caption text-error bg-transparent hover:bg-error-tint"
+            className="rounded px-2 py-1 caption btn-remove-card"
             aria-label={`バーコード ${index + 1} を削除`}
           >
             削除
@@ -228,7 +228,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
             </div>
             <div className="flex items-center gap-2">
               <span className="caption text-muted">GTIN-14</span>
-              <span className="font-mono body-emphasis text-default tracking-[0.1em]">
+              <span className="font-mono body-emphasis text-default tracking-widest">
                 {gtinResult.fullGtin}
               </span>
               <span className="hidden sm:inline-flex">
@@ -292,7 +292,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                     <button
                       type="button"
                       onClick={() => removeAiField(i)}
-                      className="rounded-lg p-2 transition-colors shrink-0 caption text-muted bg-transparent hover:bg-subtle mt-[2px]"
+                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5"
                       aria-label="フィールドを削除"
                     >
                       ✕
@@ -326,7 +326,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {/* GS1文字列プレビュー */}
         {gtinResult && (
           <details className="rounded-lg border border-default">
-            <summary className="cursor-pointer px-4 py-3 rounded-lg transition-colors caption font-bold text-default bg-transparent hover:bg-subtle summary-no-marker">
+            <summary className="cursor-pointer px-4 py-3 rounded-lg caption font-bold text-default bg-transparent hover-bg-subtle summary-no-marker">
               GS1文字列を見る
             </summary>
             <div className="px-4 pb-4 pt-2">
@@ -433,7 +433,7 @@ export function Gs1DatabarTool() {
           <button
             type="button"
             onClick={addCard}
-            className="rounded px-4 py-2 transition-colors caption font-bold border border-primary bg-transparent text-primary hover:bg-blue-50"
+            className="rounded px-4 py-2 caption font-bold border border-primary bg-transparent text-primary hover-bg-active"
           >
             + バーコードを追加
           </button>

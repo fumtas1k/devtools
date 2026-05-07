@@ -504,4 +504,37 @@
   .summary-no-marker::-webkit-details-marker {
     display: none;
   }
+
+  /* === PR 4 review fix: hover state classes ===
+     Tailwind v4 で `@layer components` 内で手書き定義した class は
+     variant (`hover:`, `focus:` 等) に **対応しない** ため、
+     `hover:bg-{custom}` は CSS rule が生成されず silent regression する。
+     `.btn-clear` (PR 1) と同じパターンで専用 hover class を定義する。 */
+
+  /* Gs1Databar: BarcodeCard 削除ボタン (caption + text-error + hover で error-bg) */
+  .btn-remove-card {
+    color: var(--color-error);
+    background: transparent;
+    transition: background-color 0.15s;
+  }
+  .btn-remove-card:hover {
+    background: var(--color-error-bg);
+  }
+
+  /* Gs1Databar: AI フィールド ✕ ボタン / GS1 文字列 <summary> 共通 (hover で bg-subtle) */
+  .hover-bg-subtle {
+    transition: background-color 0.15s;
+  }
+  .hover-bg-subtle:hover {
+    background: var(--color-bg-subtle);
+  }
+
+  /* Gs1Databar: カード追加ボタン (hover で --color-bg-active = blue-50 semantic alias)
+     project rule "Tailwind カラークラス禁止" 遵守のため hover:bg-blue-50 を本 class に置換。 */
+  .hover-bg-active {
+    transition: background-color 0.15s;
+  }
+  .hover-bg-active:hover {
+    background: var(--color-bg-active);
+  }
 }
