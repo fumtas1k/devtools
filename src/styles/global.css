@@ -548,4 +548,13 @@
   .hover-bg-active:hover {
     background: var(--color-bg-active);
   }
+
+  /* === PR 5a: QrReader video preview background ===
+     QRリーダーの <video> 要素は getUserMedia 開始前 (display:none で隠蔽中) の
+     コントラスト確保 + 起動失敗時のフォールバック (黒画面) として黒背景を維持する。
+     一意の用途のため component-scoped class とする (色 token 化はしない、
+     PR 3 .jwt-json-value と同じ pattern)。 */
+  .qr-video-preview {
+    background: #000;
+  }
 }

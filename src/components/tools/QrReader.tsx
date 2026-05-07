@@ -6,68 +6,12 @@ import { Section } from '@/components/ui/Section';
 import { useQrCamera } from '@/hooks/useQrCamera';
 import { useAbortableEffect } from '@/hooks/useAbortableEffect';
 import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
-import { caption, colors } from '@/utils/styles';
 import { validateFile } from '@/utils/file-validation';
 
 const SCAN_OPTIONS = [
   { value: 'camera' as const, label: 'カメラ' },
   { value: 'upload' as const, label: '画像アップロード' },
 ];
-
-const rescanButtonStyle: React.CSSProperties = {
-  fontSize: '0.875rem',
-  fontWeight: 700,
-  lineHeight: 1,
-  letterSpacing: '0.02em',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.375rem',
-  padding: '0.5rem 0.75rem',
-  borderRadius: '0.25rem',
-  border: `1px solid ${colors.border}`,
-  background: colors.bgSubtle,
-  color: colors.text,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
-
-const startCameraButtonStyle = {
-  ...caption,
-  fontWeight: 600,
-  display: 'inline-flex' as const,
-  alignItems: 'center' as const,
-  padding: '0.5rem 1.25rem',
-  borderRadius: '0.5rem',
-  border: 'none',
-  background: colors.primary,
-  color: colors.textOnPrimary,
-  cursor: 'pointer' as const,
-};
-
-const stopCameraButtonStyle = {
-  ...caption,
-  fontWeight: 600,
-  display: 'inline-flex' as const,
-  alignItems: 'center' as const,
-  padding: '0.5rem 1.25rem',
-  borderRadius: '0.5rem',
-  border: `1px solid ${colors.error}`,
-  background: colors.errorBg,
-  color: colors.error,
-  cursor: 'pointer' as const,
-};
-
-const uploadLabelStyle = (enabled: boolean): React.CSSProperties => ({
-  ...caption,
-  fontWeight: 600,
-  display: 'inline-block',
-  padding: '0.5rem 1rem',
-  borderRadius: '0.5rem',
-  border: `1px solid ${colors.borderInput}`,
-  background: enabled ? colors.bgSubtle : colors.bgSurface,
-  color: enabled ? colors.text : colors.muted,
-  cursor: enabled ? 'pointer' : 'not-allowed',
-});
 
 export function QrReaderTool() {
   const [scanMode, setScanMode] = useState<'camera' | 'upload'>('camera');
@@ -174,7 +118,11 @@ export function QrReaderTool() {
             <div className="space-y-3">
               {/* カメラ未起動・結果なし時に「起動」ボタンを表示。エラー後もボタンを残すことでリトライを可能にしている */}
               {!camera.cameraActive && !decoded && (
-                <button type="button" onClick={camera.startCamera} style={startCameraButtonStyle}>
+                <button
+                  type="button"
+                  onClick={camera.startCamera}
+                  className="caption font-semibold inline-flex items-center px-5 py-2 rounded-lg bg-primary text-on-primary border-0 cursor-pointer"
+                >
                   カメラを起動
                 </button>
               )}
@@ -183,25 +131,23 @@ export function QrReaderTool() {
                 ref={camera.videoRef}
                 playsInline
                 muted
-                style={{
-                  width: '100%',
-                  maxWidth: '400px',
-                  borderRadius: '0.5rem',
-                  display: camera.cameraActive ? 'block' : 'none',
-                  background: '#000',
-                }}
+                className={`w-full max-w-[400px] rounded-lg qr-video-preview ${camera.cameraActive ? '' : 'hidden'}`}
                 aria-label="カメラプレビュー"
               />
               {camera.cameraActive && (
-                <button type="button" onClick={stopCamera} style={stopCameraButtonStyle}>
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="caption font-semibold inline-flex items-center px-5 py-2 rounded-lg border border-error bg-error-tint text-error cursor-pointer"
+                >
                   カメラを停止
                 </button>
               )}
-              <canvas ref={camera.canvasRef} style={{ display: 'none' }} aria-hidden="true" />
+              <canvas ref={camera.canvasRef} className="hidden" aria-hidden="true" />
             </div>
           ) : (
             <div className="space-y-2">
-              <p style={{ ...caption, color: colors.muted }}>
+              <p className="caption text-muted">
                 QRコードが写った画像（PNG・JPG 等）をアップロードしてください
               </p>
               {/* input を visually-hidden にしてキーボード・スクリーンリーダーからも操作可能にする */}
@@ -210,18 +156,15 @@ export function QrReaderTool() {
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
-                style={{
-                  position: 'absolute',
-                  width: 1,
-                  height: 1,
-                  opacity: 0,
-                  pointerEvents: 'none',
-                }}
+                className="sr-only"
               />
-              <label htmlFor="qr-image-input" style={uploadLabelStyle(true)}>
+              <label
+                htmlFor="qr-image-input"
+                className="caption font-semibold inline-block px-4 py-2 rounded-lg border border-input bg-subtle text-default cursor-pointer"
+              >
                 画像を選択
               </label>
-              <p style={{ fontSize: '0.75rem', color: colors.muted, marginTop: '0.25rem' }}>
+              <p className="text-xs text-muted mt-1">
                 対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
               </p>
             </div>
@@ -237,20 +180,8 @@ export function QrReaderTool() {
         <Section title="読取結果" role="status" aria-live="polite">
           <div className="space-y-4">
             {/* テキスト表示 */}
-            <div
-              className="rounded-lg p-3"
-              style={{ background: colors.bgSubtle, border: `1px solid ${colors.border}` }}
-            >
-              <pre
-                style={{
-                  ...caption,
-                  color: colors.text,
-                  margin: 0,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-all',
-                  fontFamily: 'monospace',
-                }}
-              >
+            <div className="rounded-lg p-3 border border-default bg-subtle">
+              <pre className="caption text-default m-0 whitespace-pre-wrap break-all font-mono">
                 {content.raw}
               </pre>
             </div>
@@ -258,40 +189,27 @@ export function QrReaderTool() {
             {/* コピー & 再スキャンボタン */}
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton text={content.raw} />
-              <button type="button" onClick={handleRescan} style={rescanButtonStyle}>
+              <button
+                type="button"
+                onClick={handleRescan}
+                className="caption font-bold leading-none inline-flex items-center gap-1.5 px-3 py-2 rounded border border-default bg-subtle text-default cursor-pointer whitespace-nowrap"
+              >
                 再スキャン
               </button>
             </div>
 
             {/* URLの場合のフィッシング警告 */}
             {content.kind === 'url' && (
-              <div
-                className="rounded-lg p-4 space-y-2"
-                style={{
-                  background: colors.warningBg,
-                  border: `1px solid ${colors.warning}`,
-                }}
-              >
-                <p style={{ ...caption, color: colors.text }}>
-                  <strong style={{ color: colors.text }}>{content.hostname}</strong>{' '}
+              <div className="rounded-lg p-4 space-y-2 border border-warning bg-warning-tint">
+                <p className="caption text-default">
+                  <strong className="text-default">{content.hostname}</strong>{' '}
                   への外部リンクが含まれています。URLをよく確認してから開いてください。
                 </p>
                 <a
                   href={content.raw}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    ...caption,
-                    fontWeight: 600,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '0.375rem 0.875rem',
-                    borderRadius: '0.375rem',
-                    border: `1px solid ${colors.warning}`,
-                    background: colors.bg,
-                    color: colors.text,
-                    textDecoration: 'none',
-                  }}
+                  className="caption font-semibold inline-flex items-center px-3.5 py-1.5 rounded-md border border-warning bg-default text-default no-underline"
                 >
                   URLを開く
                 </a>

@@ -10,7 +10,6 @@ import { convert } from '@/utils/config-converter';
 import type { ConfigFormat } from '@/utils/config-converter';
 import type { ValidationResult } from '@/utils/config-converter/schema-validator';
 import { downloadText } from '@/utils/download';
-import { caption, colors } from '@/utils/styles';
 
 const FORMAT_LABELS: Record<ConfigFormat, string> = {
   json: 'JSON',
@@ -138,7 +137,7 @@ export function ConfigConverterTool() {
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <span style={{ ...caption, color: colors.muted, minWidth: '2.5rem' }}>変換元</span>
+          <span className="caption text-muted min-w-10">変換元</span>
           <ToggleGroup
             options={FORMAT_OPTIONS}
             value={from}
@@ -147,7 +146,7 @@ export function ConfigConverterTool() {
           />
         </div>
         <div className="flex items-center gap-3">
-          <span style={{ ...caption, color: colors.muted, minWidth: '2.5rem' }}>変換先</span>
+          <span className="caption text-muted min-w-10">変換先</span>
           <ToggleGroup
             options={FORMAT_OPTIONS}
             value={to}
@@ -157,7 +156,7 @@ export function ConfigConverterTool() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
+      <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="config-converter-input"
@@ -193,11 +192,8 @@ export function ConfigConverterTool() {
       </div>
 
       {warnings.length > 0 && (
-        <div
-          className="rounded-lg p-3"
-          style={{ background: colors.warningBg, border: `1px solid ${colors.warning}` }}
-        >
-          <ul style={{ ...caption, color: colors.text, margin: 0, paddingLeft: '1.25rem' }}>
+        <div className="rounded-lg p-3 border border-warning bg-warning-tint">
+          <ul className="caption text-default m-0 pl-5">
             {warnings.map((w, i) => (
               <li key={i}>{w}</li>
             ))}
@@ -211,23 +207,11 @@ export function ConfigConverterTool() {
           onClick={() => setSchemaOpen((o) => !o)}
           aria-expanded={schemaOpen}
           aria-controls="config-converter-schema-panel"
-          className="flex items-center gap-1"
-          style={{
-            ...caption,
-            color: colors.link,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-          }}
+          className="flex items-center gap-1 caption text-link-color btn-link-plain"
         >
           <span
             aria-hidden="true"
-            style={{
-              display: 'inline-block',
-              transform: schemaOpen ? 'rotate(90deg)' : 'none',
-              transition: 'transform 0.2s',
-            }}
+            className={`inline-block transition-transform duration-200 ${schemaOpen ? 'rotate-90' : ''}`}
           >
             ▶
           </span>
@@ -264,36 +248,22 @@ export function ConfigConverterTool() {
               >
                 {isValidating ? '検証中…' : '検証する'}
               </ActionButton>
-              <kbd
-                style={{ ...caption, color: colors.muted, fontFamily: 'monospace' }}
-                aria-hidden="true"
-              >
+              <kbd className="caption text-muted font-mono" aria-hidden="true">
                 Cmd/Ctrl+Enter
               </kbd>
             </div>
             {validationResult && (
               <div
-                className="rounded-lg p-3"
+                className={`rounded-lg p-3 border ${validationResult.valid ? 'alert-success' : 'alert-error'}`}
                 role={validationResult.valid ? 'status' : 'alert'}
                 aria-live={validationResult.valid ? 'polite' : 'assertive'}
-                style={{
-                  background: validationResult.valid ? colors.successBg : colors.errorBg,
-                  border: `1px solid ${validationResult.valid ? colors.success : colors.error}`,
-                }}
               >
                 {validationResult.valid ? (
-                  <p style={{ ...caption, color: colors.text }}>
+                  <p className="caption text-default">
                     <span aria-hidden="true">✅ </span>スキーマ検証成功
                   </p>
                 ) : (
-                  <ul
-                    style={{
-                      ...caption,
-                      color: colors.errorText,
-                      margin: 0,
-                      paddingLeft: '1.25rem',
-                    }}
-                  >
+                  <ul className="caption text-error-text m-0 pl-5">
                     {validationResult.errors.map((e, i) => (
                       <li key={i}>
                         <strong>{e.path}</strong>: {e.message}
