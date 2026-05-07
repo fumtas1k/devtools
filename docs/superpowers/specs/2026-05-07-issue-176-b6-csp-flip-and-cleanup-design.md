@@ -1,5 +1,17 @@
 # #176 B 案 PR 6: `style-src 'unsafe-inline'` 撤廃 + cleanup 設計書
 
+> **⚠️ 実装中の設計前提誤り発覚 (2026-05-07 PR 6 実施時)**
+>
+> 本 spec は「PR 1〜5b で全 inline style 移行完了」を前提としていたが、PR 6 の `npm run test:e2e` 実行時に **Astro `<element style="...">` 属性 65 件 / 15 ファイル** が未移行で残存していたことが判明した (CSP `style-src 'self'` で 12 spec が CSP 違反 fail)。元の B 案 PR 1〜5b は React `style={{...}}` のみが対象で、Astro 側 inline style 属性は scope 外だった (本 spec §7.5 の glob 化議論でも「Astro `<style>` block は scoped CSS で hash 対象」と注釈していたが、`<element style="...">` 属性は scoped CSS とは別物で、CSP3 仕様で hash 対象外)。
+>
+> 対応として本 PR 6 は **scope を `styles.ts` 削除 + migration tracker glob 化のみに縮小** し、CSP flip / `stripMetaStyleSrc` 撤去 / `decisions.md [067]` は後続 PR (Astro inline migration → 最終 flip) に委譲する。
+>
+> - PR 6 で実施: `src/utils/styles.ts` 削除 + `inline-style-migration.test.ts` glob 化 (本 spec §7.4 / §7.5)
+> - PR 6 で見送り: 本 spec §7.1 / §7.2 / §7.3 / §7.6 / §7.7 / §7.8 / §7.9 (CSP flip + test strict 化 + decisions [067])
+> - 後続 PR: 別 issue で Astro inline 65 件 migration → その後最終 flip PR で本 spec §7.1〜§7.9 を実施
+>
+> 本 spec は historical record として残すが、§7.1〜§7.9 の §7.4 / §7.5 以外は **未実施**。PR 6 実施時の commit 履歴も `git log feature/issue-176-b6-csp-flip-and-cleanup` で確認可能 (Phase A flip commit `8ae383a` は revert 済)。
+
 **作成日**: 2026-05-07
 **Issue**: [#176](https://github.com/fumtas1k/devtools/issues/176) アプローチ B / PR 6 (B 案最終 PR)
 **前提**: A-1 ([#249](https://github.com/fumtas1k/devtools/pull/249)) + VRT 基盤 ([#254](https://github.com/fumtas1k/devtools/pull/254)) + PR 1 ([#256](https://github.com/fumtas1k/devtools/pull/256)) + PR 1.5 ([#261](https://github.com/fumtas1k/devtools/pull/261)) + PR 2 ([#272](https://github.com/fumtas1k/devtools/pull/272)) + PR 3 ([#275](https://github.com/fumtas1k/devtools/pull/275)) + PR 4 ([#277](https://github.com/fumtas1k/devtools/pull/277)) + 前段 infra ([#278](https://github.com/fumtas1k/devtools/pull/278)) + PR 5a ([#283](https://github.com/fumtas1k/devtools/pull/283)) + PR 5b ([#286](https://github.com/fumtas1k/devtools/pull/286)) 完了済み
