@@ -426,4 +426,74 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
+
+  /* === PR 3: JwtDecoder + UuidV7Generator migration helpers === */
+
+  /* JwtDecoder: Section accent borders */
+  .section-jwt-header {
+    border-left: 4px solid var(--color-error);
+  }
+  .section-jwt-payload {
+    border-left: 4px solid #9333ea;
+  }
+  .section-jwt-signature {
+    border-left: 4px solid var(--color-primary);
+  }
+
+  /* JwtDecoder: JSON syntax colors (not UI tokens, kept local) */
+  .jwt-json-key {
+    color: var(--color-link);
+  }
+  .jwt-json-value {
+    color: #6e4f0e;
+  }
+
+  /* JwtDecoder: <pre> (decoded JSON) typography */
+  .jwt-pre {
+    font-size: 0.75rem;
+    line-height: 1.33;
+    letter-spacing: -0.12px;
+  }
+
+  /* Checkbox accent (link color) */
+  .accent-link {
+    accent-color: var(--color-link);
+  }
+
+  /* Warning semantic palette (expBadge no-exp 用) */
+  .text-warning {
+    color: var(--color-warning);
+  }
+  .bg-warning-tint {
+    background: var(--color-warning-bg);
+  }
+
+  /* UuidV7Generator: 5 field colors (UUID hex parts) */
+  .uuid-field-ts {
+    color: var(--color-primary);
+  }
+  .uuid-field-ver {
+    color: #7c3aed;
+  }
+  .uuid-field-rand-a {
+    color: #059669;
+  }
+  .uuid-field-var {
+    color: #d97706;
+  }
+  .uuid-field-rand-b {
+    color: #0891b2;
+  }
+
+  /* UuidV7Generator: field key label typography (caption の font-size override) */
+  .uuid-field-key {
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+  .uuid-field-bits {
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
 }
