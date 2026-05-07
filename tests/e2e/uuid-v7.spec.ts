@@ -1,16 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { applyProductionCsp, waitForReactHydration } from './helpers';
+import { applyProductionCsp, withProductionCsp } from './helpers';
 
 test.describe('UUID v7 生成（production CSP 適用）', () => {
   test('UUIDをデフォルト（10件）生成できる（CSP 違反なし）', async ({ browser }) => {
-    const context = await browser.newContext();
-    try {
-      const page = await context.newPage();
-      const guard = await applyProductionCsp(page);
-      await page.goto('/tools/uuid-v7');
-      await page.getByLabel('生成数').waitFor();
-      await waitForReactHydration(page);
-
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       await page.getByRole('button', { name: '生成' }).click();
 
       // 「10 件生成」というテキストが表示される
@@ -25,22 +18,11 @@ test.describe('UUID v7 生成（production CSP 適用）', () => {
       expect(uuidText).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
       );
-
-      guard.assertNoViolations();
-    } finally {
-      await context.close();
-    }
+    });
   });
 
   test('UUIDを複数件一括生成できる（CSP 違反なし）', async ({ browser }) => {
-    const context = await browser.newContext();
-    try {
-      const page = await context.newPage();
-      const guard = await applyProductionCsp(page);
-      await page.goto('/tools/uuid-v7');
-      await page.getByLabel('生成数').waitFor();
-      await waitForReactHydration(page);
-
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       const countInput = page.getByLabel('生成数');
       await countInput.fill('5');
       await page.getByRole('button', { name: '生成' }).click();
@@ -48,22 +30,11 @@ test.describe('UUID v7 生成（production CSP 適用）', () => {
       await expect(page.getByText('5 件生成')).toBeVisible();
       const rows = page.locator('table tbody tr');
       await expect(rows).toHaveCount(5);
-
-      guard.assertNoViolations();
-    } finally {
-      await context.close();
-    }
+    });
   });
 
   test('クォートスタイルを切り替えられる（CSP 違反なし）', async ({ browser }) => {
-    const context = await browser.newContext();
-    try {
-      const page = await context.newPage();
-      const guard = await applyProductionCsp(page);
-      await page.goto('/tools/uuid-v7');
-      await page.getByLabel('生成数').waitFor();
-      await waitForReactHydration(page);
-
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       await page.getByRole('button', { name: '生成' }).click();
 
       const noneBtn = page.getByRole('button', { name: 'なし' });
@@ -106,24 +77,13 @@ test.describe('UUID v7 生成（production CSP 適用）', () => {
         'aria-label',
         new RegExp(`^'${uuidV7Regex.source}'$`, 'i')
       );
-
-      guard.assertNoViolations();
-    } finally {
-      await context.close();
-    }
+    });
   });
 
   test('行をクリックするとフィールド分解パネルが表示される（CSP 違反なし）', async ({
     browser,
   }) => {
-    const context = await browser.newContext();
-    try {
-      const page = await context.newPage();
-      const guard = await applyProductionCsp(page);
-      await page.goto('/tools/uuid-v7');
-      await page.getByLabel('生成数').waitFor();
-      await waitForReactHydration(page);
-
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       await page.getByRole('button', { name: '生成' }).click();
 
       // 最初の行をクリック
@@ -133,22 +93,11 @@ test.describe('UUID v7 生成（production CSP 適用）', () => {
       await expect(page.getByText('フィールド分解', { exact: true })).toBeVisible();
       await expect(page.getByText('unix_ts_ms', { exact: true })).toBeVisible();
       await expect(page.getByText('ver', { exact: true })).toBeVisible();
-
-      guard.assertNoViolations();
-    } finally {
-      await context.close();
-    }
+    });
   });
 
   test('クリアボタンでリストをリセットできる（CSP 違反なし）', async ({ browser }) => {
-    const context = await browser.newContext();
-    try {
-      const page = await context.newPage();
-      const guard = await applyProductionCsp(page);
-      await page.goto('/tools/uuid-v7');
-      await page.getByLabel('生成数').waitFor();
-      await waitForReactHydration(page);
-
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       await page.getByRole('button', { name: '生成' }).click();
       await expect(page.getByText('10 件生成')).toBeVisible();
 
@@ -160,11 +109,7 @@ test.describe('UUID v7 生成（production CSP 適用）', () => {
       await expect(page.getByText('0 件生成')).not.toBeVisible();
       await expect(page.locator('table')).not.toBeVisible();
       await expect(page.getByText('フィールド分解', { exact: true })).not.toBeVisible();
-
-      guard.assertNoViolations();
-    } finally {
-      await context.close();
-    }
+    });
   });
 
   // 陽性対照 — ゲート自体の動作確認

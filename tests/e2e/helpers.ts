@@ -1,4 +1,4 @@
-import type { ConsoleMessage, Page, Route } from '@playwright/test';
+import type { Browser, ConsoleMessage, Page, Route } from '@playwright/test';
 import { PRODUCTION_CSP } from '../../src/utils/csp';
 
 /**
@@ -28,16 +28,27 @@ export async function waitForReactHydration(
 }
 
 /**
- * dev server (`npm run dev`) は public/_headers を解釈しないため、Cloudflare
- * Pages 本番と同じ CSP 文字列 (PRODUCTION_CSP) を Playwright `page.route` で
- * HTML 文書のレスポンスヘッダに注入し、本番相当の CSP 制約下で E2E を回す。
+ * **low-level primitive — 通常テストは {@link withProductionCsp} を使うこと。**
  *
- * 副次効果として、ページ内で発生した CSP 違反を console error / pageerror
- * 経由で収集し、テスト終端で `assertNoViolations()` を呼ぶことで
- * 「機能的には動いているように見えるが CSP で本番が壊れる」種のデグレを
- * CI で確実に検知する（採用根拠は `docs/decisions.md` [061] を参照）。
+ * 本関数は `page` に対して以下を直接設定する:
+ * - dev server (`npm run dev`) は public/_headers を解釈しないため、Cloudflare
+ *   Pages 本番と同じ CSP 文字列 (PRODUCTION_CSP) を Playwright `page.route` で
+ *   HTML 文書のレスポンスヘッダに注入する
+ * - 副次効果として、ページ内で発生した CSP 違反を console error / pageerror
+ *   経由で収集し、`assertNoViolations()` で集計検査できるようにする
+ *   （採用根拠は `docs/decisions.md` [061] を参照）
  *
- * **重要 — 使い方**:
+ * **使い分けの方針**:
+ *
+ * - **通常の「本番 CSP 下で機能が動作する」系テスト**:
+ *   {@link withProductionCsp} で包む (1 行で記述、context の cleanup と
+ *   `assertNoViolations` 自動呼び出しが含まれる)
+ * - **陽性対照メタテスト** (ゲート自体の動作確認):
+ *   本関数を直接呼ぶ inline pattern を使う。`withProductionCsp` は終端で
+ *   `assertNoViolations()` を呼ぶ設計のため、`guard.violations.length` を
+ *   fn 内で polling して「違反 0 件以上」を期待する用途には整合しない。
+ *
+ * **inline pattern (陽性対照メタテスト専用)**:
  *
  * default の `page` / `context` test fixture では `page.route` 介入が成立せず
  * ゲートが空回りする事象を確認した（本リポジトリの Astro dev server 経路で
@@ -45,14 +56,15 @@ export async function waitForReactHydration(
  * 新規のコンテキストを作ってその上の page に対して呼ぶこと。
  *
  * ```ts
- * test('...', async ({ browser }) => {
+ * // 陽性対照メタテストの canonical pattern
+ * test('applyProductionCsp は実際に CSP 違反を捕捉する', async ({ browser }) => {
  *   const context = await browser.newContext();
  *   try {
  *     const page = await context.newPage();
  *     const guard = await applyProductionCsp(page);
  *     await page.goto('/path');
- *     // ... 操作 ...
- *     guard.assertNoViolations();
+ *     // 意図的に違反を発生させる ...
+ *     await expect.poll(() => guard.violations.length).toBeGreaterThan(0);
  *   } finally {
  *     await context.close();
  *   }
@@ -62,10 +74,10 @@ export async function waitForReactHydration(
  * route は HTML ドキュメントのみ書き換え、JS/CSS/画像は素通しする
  * （無関係なリソースを proxy するとレイテンシが増えてテストが不安定になるため）。
  *
- * **ゲート自体の動作確認**: 同種のメタテストとして
- * `tests/e2e/config-converter.spec.ts` の
+ * **ゲート自体の動作確認**: 陽性対照メタテストの実例として
+ * `tests/e2e/uuid-v7.spec.ts` / `tests/e2e/config-converter.spec.ts` 各々の
  * 「applyProductionCsp は実際に CSP 違反を捕捉する」が陽性対照を提供する。
- * helper を修正したときは必ずこのメタテストが通ることを確認する。
+ * helper を修正したときは必ずこれらのメタテストが通ることを確認する。
  *
  * **検出メッセージの依存性**: 違反検出は Chromium のメッセージ表現
  * （`Refused to ... because it violates the following Content Security Policy
@@ -140,4 +152,53 @@ export async function applyProductionCsp(page: Page): Promise<CspGuard> {
       page.off('pageerror', pageErrorHandler);
     },
   };
+}
+
+/**
+ * `applyProductionCsp` + `browser.newContext` + `goto` + `waitForReactHydration`
+ * + 終端 `guard.assertNoViolations()` + `context.close` を一括で集約するラッパ。
+ *
+ * 通常の「本番 CSP 下で機能が動作する」系テストは本ラッパで包めば 1 行で済む:
+ *
+ * ```ts
+ * test('UUIDを生成できる', async ({ browser }) => {
+ *   await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
+ *     await page.getByRole('button', { name: '生成' }).click();
+ *     await expect(page.getByText('10 件生成')).toBeVisible();
+ *   });
+ * });
+ * ```
+ *
+ * **陽性対照メタテスト (ゲート自体の動作確認) には使わないこと**:
+ * メタテストは `guard.violations.length` を fn 内で polling する必要があり、
+ * ラッパが終端で `assertNoViolations()` を呼ぶ設計と整合しない (違反を期待
+ * するテストなのに「違反 0」を assert してしまう)。これらは inline pattern を
+ * 維持する (`tests/e2e/uuid-v7.spec.ts` / `tests/e2e/config-converter.spec.ts`
+ * に各 1 件存在)。
+ *
+ * **`fn` への引数**: 通常テストでは `page` のみ使う。`guard` は fn 内で違反
+ * 件数を観測したい高度な用途のために第 2 引数として露出するが、終端の
+ * `assertNoViolations()` 呼び出しはラッパが行うため、利用側で再度呼ぶ必要は
+ * ない。
+ *
+ * **fn throw 時の挙動**: `fn` が例外を投げると `assertNoViolations` は呼ばれず、
+ * `finally` で `context.close()` のみ実行される。元の例外が伝播しテストが
+ * 失敗する (inline pattern と等価)。
+ */
+export async function withProductionCsp(
+  browser: Browser,
+  path: string,
+  fn: (page: Page, guard: CspGuard) => Promise<void>
+): Promise<void> {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const guard = await applyProductionCsp(page);
+    await page.goto(path);
+    await waitForReactHydration(page);
+    await fn(page, guard);
+    guard.assertNoViolations();
+  } finally {
+    await context.close();
+  }
 }
