@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import qrcode from '@/utils/qrcode';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { DownloadButton } from '@/components/ui/DownloadButton';
@@ -75,9 +74,7 @@ export function QrCodeGenerator() {
 
       {/* 誤り訂正レベル */}
       <div>
-        <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.25rem' }}>
-          誤り訂正レベル
-        </p>
+        <p className="body-emphasis text-default mb-1">誤り訂正レベル</p>
         <div className="flex items-center gap-2 flex-wrap">
           <ToggleGroup
             options={ERROR_LEVELS.map(({ value, label }) => ({ value, label }))}
@@ -85,7 +82,7 @@ export function QrCodeGenerator() {
             onChange={setErrorLevel}
             ariaLabel="誤り訂正レベル"
           />
-          <span style={{ ...caption, color: colors.muted }}>
+          <span className="caption text-muted">
             復元率: {ERROR_LEVELS.find((e) => e.value === errorLevel)?.desc}
           </span>
         </div>
@@ -96,22 +93,16 @@ export function QrCodeGenerator() {
 
       {/* QRコード表示 */}
       {svgHtml && (
-        <div
-          className="rounded-lg"
-          style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}
-        >
-          <div
-            className="flex items-center justify-between gap-2 px-4 py-3"
-            style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
-          >
-            <span style={{ ...bodyEmphasis, color: colors.text }}>プレビュー</span>
+        <div className="rounded-lg border border-default overflow-hidden">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 bg-subtle border-b border-default">
+            <span className="body-emphasis text-default">プレビュー</span>
             <DownloadButton onClick={handleDownload} label="SVGダウンロード" variant="secondary" />
           </div>
-          <div className="flex justify-center p-8" style={{ background: colors.bg }}>
+          <div className="flex justify-center p-8 bg-default">
             <div
               ref={containerRef}
               data-testid="qr-code-container"
-              style={{ width: '200px', height: '200px' }}
+              className="w-50 h-50"
               dangerouslySetInnerHTML={{ __html: svgHtml }}
             />
           </div>

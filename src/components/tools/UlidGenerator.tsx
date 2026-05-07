@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ulid } from 'ulidx';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { bodyEmphasis, colors } from '@/utils/styles';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CountInput } from '@/components/ui/CountInput';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -58,7 +57,7 @@ export function UlidGeneratorTool() {
       className: 'font-mono whitespace-nowrap',
       render: (row) => (
         <>
-          <span style={{ color: colors.primary }}>{row.id.slice(0, 10)}</span>
+          <span className="text-primary">{row.id.slice(0, 10)}</span>
           <span>{row.id.slice(10)}</span>
         </>
       ),
@@ -98,7 +97,7 @@ export function UlidGeneratorTool() {
             minWidth="36rem"
             renderHeader={() => (
               <>
-                <span style={{ ...bodyEmphasis, color: colors.text }}>{rows.length} 件生成</span>
+                <span className="body-emphasis text-default">{rows.length} 件生成</span>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="shrink-0">
                     <ToggleGroup<QuoteStyle>
