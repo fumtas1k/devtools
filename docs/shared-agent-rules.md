@@ -140,8 +140,8 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50` 等）は **絶対に使用しない**。色は CSS 変数経由で指定する:
 
-- React (`.tsx`): `src/utils/styles.ts` の `colors.*` をインラインスタイルで使用
-- Astro (`.astro`): `var(--color-*)` を `style` 属性または `<style>` ブロックで使用
+- React (`.tsx`): `src/styles/global.css` の `@layer components` で定義された意味クラス（`text-primary` / `bg-subtle` / `alert-success` 等）を `className` で使用。新規 component で既存意味クラスに無い色組み合わせが必要な場合は、まず `@layer components` に意味クラスを追加してから使う（`#176` B 案で `style={{ color: colors.primary }}` 形式は全廃済、`@/utils/styles` import も無効）
+- Astro (`.astro`): 現状 `var(--color-*)` を `style` 属性で書く箇所が残存（[#289](https://github.com/fumtas1k/devtools/issues/289) で CSS class 化を進行中）。新規追加は React と同じ `@layer components` 意味クラスを推奨
 
 ※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は使用可。
 

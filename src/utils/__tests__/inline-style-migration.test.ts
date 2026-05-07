@@ -15,7 +15,7 @@ import path from 'node:path';
  * - `ref.current.style.setProperty('--var', value)` — CSSOM API 経由は許容
  *   regex は `\.style\.X = Y` のみ検出、`.style.setProperty(` は検出しない
  *
- * 参照: docs/decisions.md [067] (B 案完了の記録)
+ * 参照: docs/decisions.md (B 案完了時に [067] エントリ追加予定。flip + 完了記録は #289 Astro inline migration 完了後の最終 PR で実施)
  */
 
 // top-level await: vitest は vite-node 経由で ESM として実行されるため利用可能。
