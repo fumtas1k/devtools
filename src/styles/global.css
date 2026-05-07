@@ -3,6 +3,13 @@
 @import '@fontsource/noto-sans-jp/700.css';
 @import '@fontsource/jetbrains-mono/400.css';
 
+/* docs/ 配下の md は Tailwind の auto content scan 対象外にする。
+   spec / plan / decisions / agent-lessons 等で `hover:bg-blue-50` 等の
+   Tailwind utility 名をリテラル文字列として説明する箇所が多いため、
+   scan されると build CSS に unused utility が混入する。
+   docs/ は実装コードを含まないので scan する意味がない。 */
+@source not "../../docs";
+
 /* ダークモード未サポート: dark: クラスはメディアクエリではなく .dark クラス指定時のみ適用 */
 @variant dark (&:where(.dark, .dark *));
 
@@ -530,7 +537,11 @@
   }
 
   /* Gs1Databar: カード追加ボタン (hover で --color-bg-active = blue-50 semantic alias)
-     project rule "Tailwind カラークラス禁止" 遵守のため hover:bg-blue-50 を本 class に置換。 */
+     project rule "Tailwind カラークラス禁止" 遵守のため Tailwind primitive
+     カラー hover utility (hover-prefix + bg + blue-50) を本 class に置換。
+     注意: コメント中に Tailwind utility 名のリテラル文字列を書くと
+     v4 の content scanner に拾われて unused utility が build CSS に
+     混入するため、この種の説明は分割して記述する。 */
   .hover-bg-active {
     transition: background-color 0.15s;
   }

@@ -70,6 +70,14 @@ VRT は pixel diff のみのため hover state までは検出できない。E2E
 - `docs/ui-conventions.md` の line 30-31 (旧記述「同じ理由で `hover:bg-subtle` のような『Tailwind hover utility + 意味クラス』も許容」) を本 lesson の発見に基づき修正済 (variant 非対応の警告に書き換え)
 - PR #277 の commit `58ebf04` で対応 class 追加 (`.btn-remove-card` / `.hover-bg-subtle` / `.hover-bg-active`)
 
+### 副次発見: markdown content scan による unused utility 混入
+
+PR #277 の re-review で reviewer が「build CSS に `hover:bg-blue-50:hover` が unused で残っている」観察を報告。原因調査の結果、Tailwind v4 vite plugin の auto content scan は `docs/` 配下の markdown も対象としており、spec / plan / agent-lessons / decisions の md ファイル中で説明用に書いた `hover:bg-blue-50` 等の utility 名リテラル文字列を拾って unused utility が build CSS に混入していた。
+
+対処は `src/styles/global.css` 冒頭に `@source not "../../docs";` ディレクティブを追加して docs/ を scan 範囲外にする (PR #277 で実施済)。docs/ は実装コードを含まないため scan する意味がなく、副作用なし。
+
+なお `src/` 配下の `.css` / `.tsx` 等のコメント内に utility 名リテラルを書くと scan されるため、説明する場合は `hover-prefix + bg + blue-50` のように分割して記述する必要がある (PR #277 commit `58ebf04` の global.css コメントが実例)。
+
 ### 規約昇格候補
 
 `shared-agent-rules.md` 7 章 (Tailwind カラー使用制限) または UI スタイリング章への追加候補。本教訓は反復的に発生する種類のもの (B 案 PR 5 / PR 6 でも同 pattern を踏む可能性あり) なので、次回 agent-lessons.md 整理タイミングで昇格判断推奨。
