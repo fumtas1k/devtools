@@ -17,18 +17,18 @@
 
 ## 進捗状況
 
-| #                     | スコープ                                                                                                                                                  | 状態      | PR                                                                     |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------- |
-| **PR 0**              | VRT 導入のみ（mock 注入版 spec、別 workflow、required check 外す、CI Linux baseline）                                                                     | ✅ merged | [#254 (merged 26f566b)](https://github.com/fumtas1k/devtools/pull/254) |
-| **PR 1**              | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化          | ✅ merged | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256) |
-| PR 1.5                | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                              | ✅ merged | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261) |
-| PR 2                  | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                              | ✅ merged | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272) |
-| PR 3                  | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                            | ✅ merged | [#275 (merged 1150883)](https://github.com/fumtas1k/devtools/pull/275) |
-| PR 4                  | Gs1Databar + EncodingConverter + DummyText                                                                                                                | ✅ merged | [#277 (merged 495f60e)](https://github.com/fumtas1k/devtools/pull/277) |
-| **infra (PR 5 前段)** | `withProductionCsp` ラッパ helper 追加 (#276 close)                                                                                                       | ✅ merged | [#278 (merged 73de179)](https://github.com/fumtas1k/devtools/pull/278) |
-| PR 5a                 | ConfigConverter + QrReader + JanCode (大物 3 つ、CSSOM hover 含む) — 31 inline style + 2 CSSOM                                                            | 未着手    | -                                                                      |
-| PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` 新設 (#262 close) | 未着手    | -                                                                      |
-| PR 6                  | flip + cleanup（CSP strict 化）                                                                                                                           | 未着手    | -                                                                      |
+| #                     | スコープ                                                                                                                                                  | 状態       | PR                                                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------------------- |
+| **PR 0**              | VRT 導入のみ（mock 注入版 spec、別 workflow、required check 外す、CI Linux baseline）                                                                     | ✅ merged  | [#254 (merged 26f566b)](https://github.com/fumtas1k/devtools/pull/254) |
+| **PR 1**              | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化          | ✅ merged  | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256) |
+| PR 1.5                | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                              | ✅ merged  | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261) |
+| PR 2                  | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                              | ✅ merged  | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272) |
+| PR 3                  | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                            | ✅ merged  | [#275 (merged 1150883)](https://github.com/fumtas1k/devtools/pull/275) |
+| PR 4                  | Gs1Databar + EncodingConverter + DummyText                                                                                                                | ✅ merged  | [#277 (merged 495f60e)](https://github.com/fumtas1k/devtools/pull/277) |
+| **infra (PR 5 前段)** | `withProductionCsp` ラッパ helper 追加 (#276 close)                                                                                                       | ✅ merged  | [#278 (merged 73de179)](https://github.com/fumtas1k/devtools/pull/278) |
+| PR 5a                 | ConfigConverter + QrReader + JanCode (大物 3 つ、CSSOM hover 含む) — 31 inline style + 2 CSSOM                                                            | 🔄 PR open | [#283](https://github.com/fumtas1k/devtools/pull/283)                  |
+| PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` 新設 (#262 close) | 未着手     | -                                                                      |
+| PR 6                  | flip + cleanup（CSP strict 化）                                                                                                                           | 未着手     | -                                                                      |
 
 **重要 — PR 0 の意義**: VRT を ui migration と bundle した PR #253 が architectural 問題で close になったため、VRT を独立 PR で proper sequencing（mock 注入 → CI Linux baseline → required check 外す）で先行導入する。詳細は Claude memory `feedback_vrt_setup_sequencing.md` / `feedback_infra_feature_separation.md` 参照（PC ローカル）。
 
@@ -49,6 +49,14 @@
 - **特殊事項**: Gs1Databar 内で `e.currentTarget.style.X = Y` 形式の CSSOM hover state mutation 9 件を Tailwind `hover:` modifier に refactor。inline style と同等の hover 挙動を CSS で表現
 - **race 回避運用**: PR 3 の commit 結合 race 反省を踏まえ、subagent は commit せず親 Opus が Phase 1.5 で順次 commit する方式を初採用（3 commit が綺麗に分離、prettier 巻き込みも親が制御）
 - **新規 class**: `.summary-no-marker` の 1 件のみ（Gs1Databar `<details>/<summary>` 専用、PR 1〜3 既存 class で 95% 以上カバー）
+
+### PR 5a (#283)
+
+- **新規 class**: `.qr-video-preview` の 1 件のみ（QrReader `<video>` 黒背景専用）
+- **再利用**: PR 4 で導入された `.hover-bg-subtle` を JanCode `<summary>` で再利用（新規不要）。`.summary-no-marker` も再利用
+- **削除**: QrReader の module-level スタイル定数 4 個（`rescanButtonStyle` / `startCameraButtonStyle` / `stopCameraButtonStyle` / `uploadLabelStyle`）を全削除し className 化。`uploadLabelStyle(false)` 分岐は YAGNI で削除
+- **race 回避運用**: PR 4 で確立した「subagent 非 commit + 親で順次 commit」を 2 回目運用、安定運用確認
+- **CSSOM hover refactor**: JanCode `<summary>` の `onMouseEnter`/`onMouseLeave` 2 件を `.hover-bg-subtle` で CSS 化（memory `feedback_tailwind_v4_layer_variant.md` 準拠）
 
 ### infra PR (#278) — PR 5 前段
 
