@@ -39,6 +39,10 @@ const MIGRATED_FILES: readonly string[] = [
   'src/components/tools/Gs1Databar.tsx',
   'src/components/tools/EncodingConverter.tsx',
   'src/components/tools/DummyText.tsx',
+  // PR 5a で追加
+  'src/components/tools/ConfigConverter.tsx',
+  'src/components/tools/QrReader.tsx',
+  'src/components/tools/JanCode.tsx',
 ];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {
