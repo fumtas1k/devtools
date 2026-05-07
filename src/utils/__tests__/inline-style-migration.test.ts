@@ -43,6 +43,14 @@ const MIGRATED_FILES: readonly string[] = [
   'src/components/tools/ConfigConverter.tsx',
   'src/components/tools/QrReader.tsx',
   'src/components/tools/JanCode.tsx',
+  // PR 5b で追加 (5 migration + 2 zero-style)
+  'src/components/tools/Base64Codec.tsx',
+  'src/components/tools/JsonCsv.tsx',
+  'src/components/tools/JsonXml.tsx',
+  'src/components/tools/QrCode.tsx',
+  'src/components/tools/UlidGenerator.tsx',
+  'src/components/tools/QrTicket.tsx',
+  'src/components/tools/UrlEncoder.tsx',
 ];
 
 describe.skipIf(MIGRATED_FILES.length === 0)('#176 B 案 progressive migration tracker', () => {

@@ -4,7 +4,6 @@ import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
-import { caption, colors } from '@/utils/styles';
 import { jsonToCsv, csvToJson } from '@/utils/json-csv';
 import { downloadText } from '@/utils/download';
 import { useCodec } from '@/hooks/useCodec';
@@ -68,7 +67,7 @@ export function JsonCsvTool() {
       />
 
       {/* 入力・出力（PC横並び・モバイル縦並び） */}
-      <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
+      <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="json-csv-input"
