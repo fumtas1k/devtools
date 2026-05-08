@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 type Variant = 'default' | 'primary' | 'secondary' | 'danger';
+type Size = 'default' | 'compact';
 
 interface Props extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -11,11 +12,23 @@ interface Props extends Omit<
   children: ReactNode;
   variant?: Variant;
   loading?: boolean;
+  /**
+   * 高さプリセット。
+   * - 'default'（既定）: `font-semibold px-4 py-2`、`caption` の line-height 1.7 を継承
+   * - 'compact': `font-bold px-3 py-2 leading-none`、CopyButton (default) と同じ高さ
+   */
+  size?: Size;
 }
+
+const SIZE_CLASS: Record<Size, string> = {
+  default: 'font-semibold px-4 py-2',
+  compact: 'font-bold px-3 py-2 leading-none',
+};
 
 /**
  * 汎用アクションボタン。
  * - `variant`: 'default' | 'primary' | 'secondary' | 'danger'
+ * - `size`: 'default' | 'compact'（'compact' は CopyButton と同じ高さに揃える）
  * - `loading`: true のとき `aria-busy="true"` を付与し、disabled 状態にする
  * - ローディング中の子要素はそのまま表示するため、呼び出し元でローディング文言に切り替えること
  *   （例: `{loading ? '生成中…' : '生成'}`）
@@ -31,6 +44,7 @@ export function ActionButton({
   children,
   variant = 'default',
   loading = false,
+  size = 'default',
   ...rest
 }: Props) {
   const isDisabled = disabled || loading;
@@ -41,7 +55,7 @@ export function ActionButton({
       onClick={onClick}
       disabled={isDisabled}
       aria-busy={loading ? 'true' : undefined}
-      className={`caption font-semibold inline-flex items-center px-4 py-2 rounded-lg whitespace-nowrap btn-action btn-action--${variant}`}
+      className={`caption inline-flex items-center rounded-lg whitespace-nowrap btn-action btn-action--${variant} ${SIZE_CLASS[size]}`}
       {...rest}
     >
       {children}
