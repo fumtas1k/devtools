@@ -1,29 +1,6 @@
 import type { Browser, ConsoleMessage, Page, Route } from '@playwright/test';
 import { PRODUCTION_CSP } from '../../src/utils/csp';
 
-// PR 9 想定: PRODUCTION_CSP に "style-src 'self' 'unsafe-inline'" が含まれている
-// 状態でなければ STRICT_STYLE_SRC_CSP は drift していることになる。
-if (!PRODUCTION_CSP.includes("style-src 'self' 'unsafe-inline'")) {
-  throw new Error(
-    'STRICT_STYLE_SRC_CSP derivation broken: PRODUCTION_CSP changed shape. PR 10 で本 helper を削除するか、replace target を更新してください。'
-  );
-}
-
-/**
- * `PRODUCTION_CSP` から `style-src` の `'unsafe-inline'` のみ除いた形。
- * 文字列 replace で派生させているため `PRODUCTION_CSP` 側の他 directive 変更に
- * 自動追従する。PR 10 で `PRODUCTION_CSP` 自体を strict 化したら本定数は冗長になり、
- * `applyStrictStyleSrcCsp` ごと削除する (本 helper は PR 9 verification 専用)。
- *
- * NOTE: PR 10 で `PRODUCTION_CSP` の `style-src 'self' 'unsafe-inline'` 部分が
- * `style-src 'self'` に変わると本 replace は no-op となり同値が返るため、PR 10 の
- * 移行時は本 helper の使用箇所を削除して掃除する。
- */
-const STRICT_STYLE_SRC_CSP = PRODUCTION_CSP.replace(
-  "style-src 'self' 'unsafe-inline'",
-  "style-src 'self'"
-);
-
 /**
  * Astro の client:load island は SSR でも DOM に要素が現れるが、
  * React のイベントハンドラはハイドレーション後に初めて有効になる。
@@ -179,20 +156,6 @@ async function applyCspOverride(page: Page, csp: string): Promise<CspGuard> {
 
 export async function applyProductionCsp(page: Page): Promise<CspGuard> {
   return applyCspOverride(page, PRODUCTION_CSP);
-}
-
-/**
- * **PR 9 (#304) verification 専用 helper、PR 10 で削除候補。**
- *
- * `style-src 'self'` (PR 10 で flip 予定の strict 形) を強制注入し、
- * Constructable Stylesheets / setProperty 経路の挙動を実機検証する。
- *
- * `STRICT_STYLE_SRC_CSP` は `PRODUCTION_CSP` から `style-src` の
- * `'unsafe-inline'` のみ除いた形。PR 10 で `PRODUCTION_CSP` 自体を
- * strict 化したら本 helper は冗長になり、削除する。
- */
-export async function applyStrictStyleSrcCsp(page: Page): Promise<CspGuard> {
-  return applyCspOverride(page, STRICT_STYLE_SRC_CSP);
 }
 
 /**
