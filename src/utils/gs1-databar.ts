@@ -226,7 +226,7 @@ export function injectCompositeText(svg: string, text: string): string {
   const textEl =
     `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" ` +
     `text-anchor="middle" font-family="'Courier New',Courier,monospace" ` +
-    `font-size="${fontSize}" fill="#000000" style="fill:var(--color-text)">${escapedText}</text>`;
+    `font-size="${fontSize}" fill="currentColor">${escapedText}</text>`;
 
   const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
 
