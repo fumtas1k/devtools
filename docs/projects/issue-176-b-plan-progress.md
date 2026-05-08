@@ -17,23 +17,23 @@
 
 ## 進捗状況
 
-| #                     | スコープ                                                                                                                                                                       | 状態      | PR                                                                     |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ---------------------------------------------------------------------- |
-| **PR 0**              | VRT 導入のみ（mock 注入版 spec、別 workflow、required check 外す、CI Linux baseline）                                                                                          | ✅ merged | [#254 (merged 26f566b)](https://github.com/fumtas1k/devtools/pull/254) |
-| **PR 1**              | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化                               | ✅ merged | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256) |
-| PR 1.5                | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                                                   | ✅ merged | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261) |
-| PR 2                  | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                                                   | ✅ merged | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272) |
-| PR 3                  | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                                                 | ✅ merged | [#275 (merged 1150883)](https://github.com/fumtas1k/devtools/pull/275) |
-| PR 4                  | Gs1Databar + EncodingConverter + DummyText                                                                                                                                     | ✅ merged | [#277 (merged 495f60e)](https://github.com/fumtas1k/devtools/pull/277) |
-| **infra (PR 5 前段)** | `withProductionCsp` ラッパ helper 追加 (#276 close)                                                                                                                            | ✅ merged | [#278 (merged 73de179)](https://github.com/fumtas1k/devtools/pull/278) |
-| PR 5a                 | ConfigConverter + QrReader + JanCode (大物 3 つ、CSSOM hover 含む) — 31 inline style + 2 CSSOM                                                                                 | ✅ merged | [#283 (merged 46abcb5)](https://github.com/fumtas1k/devtools/pull/283) |
-| PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` を `withProductionCsp` 化 (#262 close) | ✅ merged | [#286 (merged d38b956)](https://github.com/fumtas1k/devtools/pull/286) |
-| PR 6                  | scope 縮小: `styles.ts` 削除 + migration tracker glob 化 (Astro inline 65 件残存判明 → #289 へ委譲)                                                                            | ✅ merged | [#290 (merged 4505bcf)](https://github.com/fumtas1k/devtools/pull/290) |
-| PR 7a                 | layout/\* 4 + layouts/\* 2 + ui/\*.astro 2 (Astro inline 23 件撤去 + 新規 7 class) — `#289` 由来                                                                               | ✅ merged | [#294 (merged 3d943bd)](https://github.com/fumtas1k/devtools/pull/294) |
-| PR 7b                 | pages/\*.astro 7 ファイル (Astro inline 残 42 件 + 新規 3 class) — `#289` 由来                                                                                                 | ✅ merged | [#299 (merged 87d705a)](https://github.com/fumtas1k/devtools/pull/299) |
-| PR 8                  | scope 縮小: Gs1Databar SVG `currentColor` 化 + Astro 検出網 (`.astro` glob) + `decisions.md [067]` (setProperty CSP3 制約発覚 + 延期記録) — strict 化は PR 10 に延期           | ✅ merged | [#303 (merged e2efd24)](https://github.com/fumtas1k/devtools/pull/303) |
-| PR 9                  | ResultTable + ToggleGroup `setProperty` を Constructable Stylesheets 化 (issue 由来 ResultTable のみ → ToggleGroup 12 ツール影響を spec 起草時に発見し scope 拡張)             | ✅ merged | [#307 (merged 52d6ef3)](https://github.com/fumtas1k/devtools/pull/307) |
-| **PR 10 (新規)**      | B 案最終 flip: `_headers` + `<meta>` 両側から `style-src 'unsafe-inline'` 削除 + `stripMetaStyleSrc` 撤去 + test 群 strict 化 (PR 8 から rebase で削除した 3 commit を再投入)  | 未着手    | issue [#305](https://github.com/fumtas1k/devtools/issues/305)          |
+| #                     | スコープ                                                                                                                                                                                             | 状態      | PR                                                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------- |
+| **PR 0**              | VRT 導入のみ（mock 注入版 spec、別 workflow、required check 外す、CI Linux baseline）                                                                                                                | ✅ merged | [#254 (merged 26f566b)](https://github.com/fumtas1k/devtools/pull/254)                                          |
+| **PR 1**              | 基礎工事 + ui/\* simple (11 ファイル) — `@layer components` foundation + migration tracker + ClearButton CSSOM 撤去 + ToggleGroup setProperty 化                                                     | ✅ merged | [#256 (merged eb5e537)](https://github.com/fumtas1k/devtools/pull/256)                                          |
+| PR 1.5                | ui/\* complex (ResultTable + InputField) — API redesign 含む                                                                                                                                         | ✅ merged | [#261 (merged 8e58bd5)](https://github.com/fumtas1k/devtools/pull/261)                                          |
+| PR 2                  | qr-ticket/\* — inline style 撤去 + #225 (useMemo/abort) 同梱                                                                                                                                         | ✅ merged | [#272 (merged 37adb60)](https://github.com/fumtas1k/devtools/pull/272)                                          |
+| PR 3                  | JwtDecoder + UuidV7Generator + #262 partial (uuid-v7 CSP gate)                                                                                                                                       | ✅ merged | [#275 (merged 1150883)](https://github.com/fumtas1k/devtools/pull/275)                                          |
+| PR 4                  | Gs1Databar + EncodingConverter + DummyText                                                                                                                                                           | ✅ merged | [#277 (merged 495f60e)](https://github.com/fumtas1k/devtools/pull/277)                                          |
+| **infra (PR 5 前段)** | `withProductionCsp` ラッパ helper 追加 (#276 close)                                                                                                                                                  | ✅ merged | [#278 (merged 73de179)](https://github.com/fumtas1k/devtools/pull/278)                                          |
+| PR 5a                 | ConfigConverter + QrReader + JanCode (大物 3 つ、CSSOM hover 含む) — 31 inline style + 2 CSSOM                                                                                                       | ✅ merged | [#283 (merged 46abcb5)](https://github.com/fumtas1k/devtools/pull/283)                                          |
+| PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` を `withProductionCsp` 化 (#262 close)                       | ✅ merged | [#286 (merged d38b956)](https://github.com/fumtas1k/devtools/pull/286)                                          |
+| PR 6                  | scope 縮小: `styles.ts` 削除 + migration tracker glob 化 (Astro inline 65 件残存判明 → #289 へ委譲)                                                                                                  | ✅ merged | [#290 (merged 4505bcf)](https://github.com/fumtas1k/devtools/pull/290)                                          |
+| PR 7a                 | layout/\* 4 + layouts/\* 2 + ui/\*.astro 2 (Astro inline 23 件撤去 + 新規 7 class) — `#289` 由来                                                                                                     | ✅ merged | [#294 (merged 3d943bd)](https://github.com/fumtas1k/devtools/pull/294)                                          |
+| PR 7b                 | pages/\*.astro 7 ファイル (Astro inline 残 42 件 + 新規 3 class) — `#289` 由来                                                                                                                       | ✅ merged | [#299 (merged 87d705a)](https://github.com/fumtas1k/devtools/pull/299)                                          |
+| PR 8                  | scope 縮小: Gs1Databar SVG `currentColor` 化 + Astro 検出網 (`.astro` glob) + `decisions.md [067]` (setProperty CSP3 制約発覚 + 延期記録) — strict 化は PR 10 に延期                                 | ✅ merged | [#303 (merged e2efd24)](https://github.com/fumtas1k/devtools/pull/303)                                          |
+| PR 9                  | ResultTable + ToggleGroup `setProperty` を Constructable Stylesheets 化 (issue 由来 ResultTable のみ → ToggleGroup 12 ツール影響を spec 起草時に発見し scope 拡張)                                   | ✅ merged | [#307 (merged 52d6ef3)](https://github.com/fumtas1k/devtools/pull/307)                                          |
+| **PR 10**             | B 案最終 flip: `_headers` + `<meta>` 両側から `style-src 'unsafe-inline'` 削除 + `stripMetaStyleSrc` 撤去 + test 群 strict 化 + Astro island hash 取り込み (`sha256-vv9I...`) + `[068]` B 案完了記録 | ✅ merged | issue [#305](https://github.com/fumtas1k/devtools/issues/305) (本 PR、merge hash は merge 後の chore PR で反映) |
 
 **重要 — PR 0 の意義**: VRT を ui migration と bundle した PR #253 が architectural 問題で close になったため、VRT を独立 PR で proper sequencing（mock 注入 → CI Linux baseline → required check 外す）で先行導入する。詳細は Claude memory `feedback_vrt_setup_sequencing.md` / `feedback_infra_feature_separation.md` 参照（PC ローカル）。
 
@@ -270,3 +270,27 @@ PR 6 で以下を **すべて含む** こと。漏れを防ぐため本セクシ
 - `feedback_e2e_before_pr.md` / `feedback_commander_checklist.md` / `feedback_heredoc_no_escape.md` / `feedback_followup_routing.md` / `feedback_review_integrity.md` / `feedback_hold_push_during_review.md` / `feedback_prod_parity_csp.md` / `feedback_pr_size.md` / `feedback_infra_feature_separation.md`
 
 これらは Claude collaboration の preference であり project SoT ではないため repo には移さない。
+
+## B 案完了 (2026-05-09)
+
+`#176` B 案 (PR 0〜10 + follow-up) 完走。詳細は `docs/decisions.md [068]` 参照。
+
+### 達成サマリ
+
+- **両層 (header / `<meta>`) で `style-src 'unsafe-inline'` 完全除去**: `_headers` / `<meta>` ともに `'self'` + 必要 hash のみの strict policy
+- **React `style={{}}`**: 200+ 箇所を全廃 (PR 1〜5b)
+- **Astro `style="..."`**: 65 件を全廃 (PR 6 / 7a / 7b)
+- **CSSOM mutation (`setProperty` / `style.X =`)**: 全廃 (PR 9 で Constructable Stylesheets に refactor)
+- **Astro island runtime style hash 取り込み** (handcoded fingerprint α): `sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow=` を `_headers` に hardcode + 整合性メタテスト
+
+### 削除した暫定 infra
+
+- `stripMetaStyleSrc()` integration (`astro.config.mjs`、[064] 由来)
+- `MIGRATED_FILES` array (`inline-style-migration.test.ts`、PR 6 で glob 化済)
+- `applyStrictStyleSrcCsp` helper (`tests/e2e/helpers.ts`、本 PR で不要化、削除は別 cleanup PR 候補)
+
+### follow-up issue / 後続候補
+
+- `applyStrictStyleSrcCsp` helper の削除 (cleanup PR 候補)
+- Astro island hash 自動抽出検討 (β 選択肢、`[068]` 参照、handcoded fingerprint が長期保守コスト懸念になった場合の future enhancement)
+- PR 10 merge hash 反映 chore PR (merge 後)
