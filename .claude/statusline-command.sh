@@ -57,11 +57,11 @@ make_bar() {
   printf "%b%s%b" "$color" "$bar" "$RESET"
 }
 
-# Color threshold: <=50=green, <=80=orange, >80=red
+# Color threshold: <=70=green, <=90=orange, >90=red
 bar_color() {
   local pct=$1
-  if   [ "$pct" -gt 80 ]; then echo "$RED"
-  elif [ "$pct" -gt 50 ]; then echo "$ORANGE"
+  if   [ "$pct" -gt 90 ]; then echo "$RED"
+  elif [ "$pct" -gt 70 ]; then echo "$ORANGE"
   else echo "$GREEN"; fi
 }
 
