@@ -21,7 +21,7 @@ git switch -c <type>/issue-<n>-<slug> origin/develop
 git rev-parse origin/develop
 git merge-base HEAD origin/develop
 
-# node_modules 整備（全ての新規作成 worktree で必須。subagent isolation / 親手動 worktree add 共通）
+# node_modules 整備（新規作成 worktree の場合は必須 / 親 repo root で直接切替えた場合は既存 node_modules があれば skip 可）
 npm ci
 ```
 
