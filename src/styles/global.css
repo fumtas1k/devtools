@@ -599,4 +599,40 @@
   .drawer-backdrop {
     background: rgba(17, 24, 39, 0.5);
   }
+
+  /* === PR 7b (#289): Astro pages inline migration helpers === */
+
+  /* Section heading: about/privacy h2 + index card title (10 occurrences)
+     注: color は class に含めない (10 件中 1 件 = index L112 card title が色無し
+     なため、consumer 側で text-default を選択的に併用)。 */
+  .section-heading {
+    font-size: 1.125rem;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+  }
+
+  /* Body prose text: about/privacy 本文段落 (8 occurrences、全件 neutral-700)
+     注: typography + color baked-in。.footer-bar precedent (PR 7a で
+     bg+color combined) に追従。8 件全て neutral-700 で一致するため安全。
+     dark mode 対応時に semantic alias 化する想定 (本 PR scope 外)。 */
+  .text-body {
+    font-size: 1rem;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    color: var(--color-neutral-700);
+  }
+
+  /* Horizontal scroll snap container: index hero carousel (1 occurrence、5 prop)
+     注: 単発だが property 数が多く、Tailwind arbitrary 6連
+     (`overflow-x-scroll snap-x snap-mandatory scroll-smooth
+     [scrollbar-width:none] [-webkit-overflow-scrolling:touch]`) より
+     class 化が読みやすい。PR 7a `.qr-video-preview` と同 judgement
+     (単発でも property 数多なら class 化)。 */
+  .scroll-snap-x {
+    overflow-x: scroll;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
 }
