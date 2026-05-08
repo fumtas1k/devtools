@@ -11,9 +11,12 @@ import path from 'node:path';
  * これにより新規追加された .tsx も自動で検出網に含まれ、array 更新忘れによる
  * 偽陰性を撲滅する。
  *
- * 例外 (許容):
- * - `ref.current.style.setProperty('--var', value)` — CSSOM API 経由は許容
- *   regex は `\.style\.X = Y` のみ検出、`.style.setProperty(` は検出しない
+ * PR 9 (#304) で `el.style.setProperty('--var', ...)` も CSP3 style-src の
+ * 制御対象であることが判明 (`docs/decisions.md [067]`)。本 test は元々
+ * `\.style\.X = Y` のみを検出し setProperty を意図的に除外していたが、
+ * PR 9 で codebase から setProperty が完全消滅 (Constructable Stylesheets 経由
+ * の `useDynamicStyleSheet` hook で代替) したため除外を撤去し、新規再導入を
+ * 陽性検出する guard に反転する。
  *
  * 参照: docs/decisions.md [067]
  */
@@ -43,10 +46,11 @@ describe.skipIf(TARGET_FILES.length === 0)('#176 B 案 inline style 完全撲滅
       expect(content).not.toMatch(/style=\{\{/);
     });
 
-    it('DOM style 属性代入 (element.style.X = ...) が残っていない', () => {
-      const matches = content.match(/\.style\.[a-zA-Z]+\s*=(?!=)/g);
-      const violations = (matches ?? []).filter((m) => !m.includes('setProperty'));
-      expect(violations).toEqual([]);
+    it('DOM style 属性代入 (element.style.X = ... / element.style.setProperty(...)) が残っていない', () => {
+      const assignMatches = content.match(/\.style\.[a-zA-Z]+\s*=(?!=)/g);
+      const setPropertyMatches = content.match(/\.style\.setProperty\s*\(/g);
+      expect(assignMatches ?? []).toEqual([]);
+      expect(setPropertyMatches ?? []).toEqual([]);
     });
   });
 });
@@ -81,15 +85,14 @@ describe('migration detector の陽性対照', () => {
   it('意図的に style.X = を含む文字列が違反として検出される', () => {
     const malicious = `el.style.background = 'red';`;
     const matches = malicious.match(/\.style\.[a-zA-Z]+\s*=(?!=)/g);
-    const violations = (matches ?? []).filter((m) => !m.includes('setProperty'));
-    expect(violations.length).toBeGreaterThan(0);
+    expect(matches?.length ?? 0).toBeGreaterThan(0);
   });
 
-  it('setProperty は許容パターンとしてスルーされる', () => {
-    const allowed = `ref.current.style.setProperty('--var', '1');`;
-    const matches = allowed.match(/\.style\.[a-zA-Z]+\s*=(?!=)/g);
-    const violations = (matches ?? []).filter((m) => !m.includes('setProperty'));
-    expect(violations).toEqual([]);
+  it('意図的に setProperty(...) を含む文字列が違反として検出される', () => {
+    // PR 9 で setProperty も陽性検出に変更 (`docs/decisions.md [067]`)
+    const malicious = `ref.current.style.setProperty('--var', '1');`;
+    const matches = malicious.match(/\.style\.setProperty\s*\(/g);
+    expect(matches?.length ?? 0).toBeGreaterThan(0);
   });
 
   it('意図的に Astro style="..." (ダブルクォート) を含む文字列が違反として検出される', () => {

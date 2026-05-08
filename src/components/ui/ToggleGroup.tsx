@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
 
 interface Option<T> {
   value: T;
@@ -22,8 +22,11 @@ interface Props<T extends string> {
  * style: global.css `@layer components` の `.toggle-grid`（CSS 変数 --toggle-cols 経由で
  * 動的列数）/ `.btn-toggle` / `.btn-toggle[aria-pressed="true"]` を参照。
  *
- * 動的列数は `setProperty('--toggle-cols', N)` で CSS 変数を注入する。これは CSSOM API 経由の
- * 設定で、属性直接代入（`gridTemplateColumns` への直接代入）ではないため CSP3 strict 下でも許容される。
+ * 動的列数は `useDynamicStyleSheet` 経由で per-instance scoped rule
+ * (`.dyn-XXX { --toggle-cols: N; }`) として注入する。`setProperty` 経由 inline
+ * style は CSP3 `style-src` 制約に抵触するため不採用 (`docs/decisions.md [067]`)。
+ * `layout='wrap'` 時は dynamic rule 不要 (`.toggle-grid` 自体が unused) のため
+ * sheet 生成を skip する。
  */
 export function ToggleGroup<T extends string>({
   options,
@@ -34,21 +37,17 @@ export function ToggleGroup<T extends string>({
   layout = 'grid',
 }: Props<T>) {
   const isWrap = layout === 'wrap';
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isWrap && gridRef.current) {
-      gridRef.current.style.setProperty('--toggle-cols', String(options.length));
-    }
-  }, [isWrap, options.length]);
+  const dynClassName = useDynamicStyleSheet((className) =>
+    isWrap ? '' : `.${className} { --toggle-cols: ${options.length}; }`
+  );
 
   const containerClass = isWrap
     ? 'bg-subtle rounded-lg border border-input p-1 flex flex-wrap gap-1 w-max max-w-full'
-    : 'bg-subtle rounded-lg border border-input p-1 toggle-grid';
+    : `bg-subtle rounded-lg border border-input p-1 toggle-grid ${dynClassName}`;
   const buttonSizeClass = size === 'sm' ? 'px-2.5 py-0.5' : 'px-3 py-1.5';
 
   return (
-    <div ref={gridRef} className={containerClass} role="group" aria-label={ariaLabel}>
+    <div className={containerClass} role="group" aria-label={ariaLabel}>
       {options.map((opt) => (
         <button
           key={opt.value}
