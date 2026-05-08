@@ -89,7 +89,8 @@ jobs:
               echo ""
               # 各 ✘ 行の最後の › 区切り（spec 名）と直前の区切り（viewport 記述）を抽出。
               # retry 行は除外して unique 化、最大 30 行に丸める。
-              grep -E '^[[:space:]]+✘' vrt-output.log \
+              # `|| true` で grep no-match (exit 1) でも heredoc 全体が中断しないようにする。
+              (grep -E '^[[:space:]]+✘' vrt-output.log || true) \
                 | grep -v '(retry' \
                 | awk -F'›' '{
                     n = NF
