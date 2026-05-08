@@ -2537,6 +2537,53 @@ PR 9 の Phase 2 (13 ツール spec を strict CSP local run) で **Astro 島ラ
 - 案: `astro.config.mjs` の `security.csp` integration を活用 + `stripMetaStyleSrc` 撤去で `<meta>` 側に hash が付与されるため、headers 側にも同 hash を反映するメカニズムを設計 (Astro 公式 build hook で hash を抽出して `_headers` を生成 / または handcoded hash を Astro 側 fingerprint 安定運用)
 - PR 9 完了判定は「React 経由 setProperty 0 件 + Phase 0 spec PASS + 全既存 e2e (`withProductionCsp` 通常 run) PASS」に縮小、Phase 2 strict CSP 検証は PR 10 に統合
 
+### Follow-up decisions (PR 10 着手前、2026-05-08)
+
+PR 9 merge 後の review で 2 件の follow-up issue が起票され、PR 10 着手前に方針を確定した。
+
+#### #309 ResultTable FOUC → option A (現状容認)
+
+**現象**: `useDynamicStyleSheet` は `useEffect` 内で `adoptedStyleSheets` に attach するため、SSR HTML → hydration 1 frame だけ dynamic style 未適用 (`min-width` / `width` が auto)。
+
+**評価した解**:
+
+| 案  | 仕組み                                   | 採否                                       |
+| --- | ---------------------------------------- | ------------------------------------------ |
+| A   | 現状容認 + JSDoc 明記                    | ✅ **採用**                                |
+| B   | `global.css` に「型代表値」fallback 復元 | 不採用 (callsite 固有値で代表値原理的不在) |
+| C   | SSR `style="..."` 属性経路 (Astro hash)  | 不採用 (CSP3 strict 化と非互換)            |
+
+**A 採用根拠**:
+
+- callsite 2 箇所 (`UuidV7Generator` minWidth=42rem / `UlidGenerator` minWidth=36rem) すべて hard-coded literal、props 動的変化なし → FOUC は「初回画面の 1 frame」限定
+- `ToggleGroup` `var(--toggle-cols, 2)` の dimensionless 整数 fallback とは異なり、`ResultTable` の `min-width` / `width` は callsite 固有値で 1 つの代表値が原理的に存在しない (option B が常に乖離)
+- PR 10 VRT は `toHaveScreenshot` が networkidle + hydration 後撮影 → FOUC frame は捕捉しない
+
+**対応**: `useDynamicStyleSheet.ts` JSDoc に FOUC expected behavior 明記 (本 PR で実装)、issue `#309` を close。
+
+#### #308 useDynamicStyleSheet sheet 再利用最適化 → (ii) 実装見送り
+
+**現状**: rules 変更ごとに `new CSSStyleSheet()` 生成、cleanup で `adoptedStyleSheets` を filter 走査して取り外す。
+
+**API 設計意図との乖離**: Constructable Stylesheets API は本来 sheet を retain して `replaceSync(newRules)` で in-place 更新できる設計。`useRef<CSSStyleSheet>` で sheet 保持 → 初回のみ attach、以降 `replaceSync` のみで更新の最適化が可能。
+
+**評価**:
+
+| 案                             | 採否                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------- |
+| (i) 今 PR で `useRef` 化実装   | 不採用 (rules 変化頻度ゼロで実害なし、YAGNI)                                      |
+| (ii) decision メモのみ実装見送 | ✅ **採用**                                                                       |
+| (iii) close as won't-fix       | 不採用 (将来 dynamic rules 利用時に再起票より open 維持の方が context 保全に優位) |
+
+**(ii) 採用根拠**:
+
+- 現 callsite (`ResultTable` / `ToggleGroup`) は rules 変化頻度ほぼゼロ (props で columns / minWidth が変わるユースケースなし) → 最適化 ROI 低い
+- API 非整合は事実だが、将来 dynamic な rules 利用が出た時に再評価で十分
+
+**再評価条件**: `useDynamicStyleSheet` callsite で props に応じて rules が頻繁に変化するユースケースが追加された時 / `adoptedStyleSheets` 配列が観測可能なほど肥大化した時。
+
+**対応**: 本 entry に decision 記録、issue `#308` は **open のまま** (future enhancement として残置)、本 PR では実装変更なし。
+
 ### 関連 PR / issue
 
 - 本 entry を記録: PR 8 (scope 縮小、merge `e2efd24`)、PR 9 outcome 追補

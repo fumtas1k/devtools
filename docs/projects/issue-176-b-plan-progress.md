@@ -128,6 +128,7 @@
 - **subagent 委譲方針**: Task 1〜7 は subagent (sonnet) 委譲、Task 8〜10 は親 Opus 直接 (overhead vs. ROI 判断、PR 7a / 7b / 8 と同パターンに揃える)
 - **Phase 2 で発覚した PR 10 申し送り事項**: 13 ツール spec を strict CSP local run したところ、Astro 島ランタイムが injection する固定 inline `<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>` (sha256-vv9I...) が headers 側 strict CSP で block される現象を確認。PR 9 の React refactor 自体は無問題 (`useDynamicStyleSheet` 経路は violation 起こさず) で、PR 10 で `_headers` strict 化と同時に Astro island style hash を取り込む経路設計が必要 (詳細は `docs/decisions.md [067]` PR 9 outcome section 参照)
 - **後続**: PR 10 ([#305]) で `_headers` / `<meta>` strict 化 + `stripMetaStyleSrc` 撤去 + Astro island style hash 取り込み + test 群 strict 化 (PR 8 rebase で削除した 3 commit 再投入)
+- **PR 9 follow-up (本 PR、`#312` の後続)**: `#309` (FOUC option A) close / `#308` (sheet 再利用 (ii) 実装見送り) open 維持、`docs/decisions.md [067] Follow-up decisions` で記録 + `useDynamicStyleSheet.ts` JSDoc 補強
 
 ### PR 10 (issue [#305](https://github.com/fumtas1k/devtools/issues/305)、新規) — B 案最終 flip
 
@@ -135,7 +136,7 @@
   - `_headers` から `style-src 'unsafe-inline'` 削除 + `src/utils/csp.ts` 同期
   - `astro.config.mjs` から `stripMetaStyleSrc()` integration 撤去 + 関連 import 削除
   - `headers.test.ts` / `meta-csp.test.ts` / `astro-config-csp.test.ts` 群を strict 化 (`'unsafe-inline'` 不在を陽性 assert)
-- **前提**: PR 9 完了 (ResultTable refactor merge)
+- **前提**: PR 9 完了 (ResultTable refactor merge) + PR 9 follow-up decision メモ化済 (`#309` close / `#308` 方針確定、`docs/decisions.md [067] Follow-up decisions`)
 - **検証**: 親直接 E2E (`npm run test:e2e`) で violation ゼロ + VRT diff ゼロ
 - **`decisions.md` 追記**: `[068]` で B 案最終完了を記録 (PR 1〜10 シリーズ図、削除した暫定 infra、検出網運用ノート、設計判断 KEEP)
 
