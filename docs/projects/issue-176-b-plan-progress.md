@@ -29,8 +29,8 @@
 | PR 5a                 | ConfigConverter + QrReader + JanCode (大物 3 つ、CSSOM hover 含む) — 31 inline style + 2 CSSOM                                                                                 | ✅ merged  | [#283 (merged 46abcb5)](https://github.com/fumtas1k/devtools/pull/283) |
 | PR 5b                 | Base64Codec + JsonCsv + JsonXml + QrCode + UlidGenerator + zero-style 登録 (QrTicket / UrlEncoder) + `tests/e2e/ulid-generator.spec.ts` を `withProductionCsp` 化 (#262 close) | ✅ merged  | [#286 (merged d38b956)](https://github.com/fumtas1k/devtools/pull/286) |
 | PR 6                  | scope 縮小: `styles.ts` 削除 + migration tracker glob 化 (Astro inline 65 件残存判明 → #289 へ委譲)                                                                            | ✅ merged  | [#290 (merged 4505bcf)](https://github.com/fumtas1k/devtools/pull/290) |
-| **PR 7a**             | layout/\* 4 + layouts/\* 2 + ui/\*.astro 2 (Astro inline 23 件撤去 + 新規 7 class) — `#289` 由来                                                                               | 🔄 PR open | [#294](https://github.com/fumtas1k/devtools/pull/294)                  |
-| PR 7b                 | pages/\*.astro 7 ファイル (Astro inline 残 42 件) — `#289` 由来                                                                                                                | 未着手     | -                                                                      |
+| PR 7a                 | layout/\* 4 + layouts/\* 2 + ui/\*.astro 2 (Astro inline 23 件撤去 + 新規 7 class) — `#289` 由来                                                                               | ✅ merged  | [#294 (merged 3d943bd)](https://github.com/fumtas1k/devtools/pull/294) |
+| **PR 7b**             | pages/\*.astro 7 ファイル (Astro inline 残 42 件 + 新規 3 class) — `#289` 由来                                                                                                 | 🔄 PR open | (PR 番号は PR 作成後に追記)                                            |
 | PR 8                  | 最終 flip + cleanup (`_headers` から `style-src 'unsafe-inline'` 削除 + `stripMetaStyleSrc` 撤去 + `decisions.md [067]` + Astro 検出網追加)                                    | 未着手     | -                                                                      |
 
 **重要 — PR 0 の意義**: VRT を ui migration と bundle した PR #253 が architectural 問題で close になったため、VRT を独立 PR で proper sequencing（mock 注入 → CI Linux baseline → required check 外す）で先行導入する。詳細は Claude memory `feedback_vrt_setup_sequencing.md` / `feedback_infra_feature_separation.md` 参照（PC ローカル）。
@@ -95,6 +95,17 @@
 - **scope 外**: `src/pages/*.astro` 7 ファイル / 42 件 (PR 7b)、`style-src 'unsafe-inline'` 削除 (PR 8)、`inline-style-migration.test.ts` の Astro 検出網追加 (PR 7b 完了後 = 全 65 件移行後)
 - **subagent 非委譲**: 親 Opus 直接実装 + 親直接 E2E (PR 6 / 292 と同パターン、memory `feedback_subagent_verification_trust.md`)
 - **既存 Astro `<style>` scoped block との関係**: Footer / MobileDrawer / Sidebar に既存 `.footer-link` / `.drawer-close-btn` 等の scoped block あり (CSP auto-hash で通過する別経路)。本 PR では touch せず維持。新規 7 class は global.css `@layer components` に集約 (brainstorming Q3 で確定、PR 1〜5b パターン継承)
+
+### PR 7b (#TBD) — `#289` 由来
+
+- **scope**: `src/pages/*.astro` 7 ファイル (`index.astro` 13 + `privacy.astro` 12 + `about.astro` 10 + `tools/jwt-decoder.astro` 4 + `tools/url-encode.astro` 1 + `tools/json-xml.astro` 1 + `tools/json-csv.astro` 1) = **42 inline 撤去**
+- **新規 class**: 3 件 (`.section-heading` / `.text-body` / `.scroll-snap-x`) を `src/styles/global.css` に追加
+- **再利用**: `.bg-subtle` (PR 1) / `.caption` / `.text-muted` / `.text-default` / `.text-primary` / `.bg-default` / `.border-default` (PR 1〜5b) — code chip 7 件を bg-subtle で完全カバー、caption + muted で 3 件、border-default で 2 件
+- **Tailwind arbitrary**: H1 単発 (`text-[2rem]` x1, `text-[1.75rem]` x2)、hero subtitle (`text-[var(--color-neutral-600)]`)、hero card bg (`bg-[var(--color-background)] border-[var(--color-blue-100)]`)、small label (`tracking-[0.02em]` x4)、list a L82 (`leading-[1.7]`) — 単発 typography は class 化見送り (YAGNI、PR 7a §126 と同 judgement)
+- **scope 外**: `style-src 'unsafe-inline'` 削除 (PR 8)、`inline-style-migration.test.ts` の Astro 検出網追加 (PR 8、user 指示で本 PR 内追加せず flip と同時 commit が意味的整合)、`decisions.md [067]` (PR 8)
+- **subagent 非委譲**: 親 Opus 直接実装 + 親直接 E2E (PR 7a / PR 6 / 292 と同パターン、memory `feedback_subagent_verification_trust.md`)
+- **issue #289 完了**: PR 7a (23 件) + PR 7b (42 件) = 65 件 / 15 ファイル全廃完了。次は PR 8 で `style-src 'unsafe-inline'` 削減を最終 flip
+- **同梱で起票した follow-up issue**: [#297](https://github.com/fumtas1k/devtools/issues/297) (worktree 作成時の npm ci 必須ルールが docs framing 上の構造的欠陥で skip 多発、本 PR 着手時に発覚 — 修正は別 PR / docs only)
 
 ## PR 5 分割設計メモ (調査日: 2026-05-07)
 
