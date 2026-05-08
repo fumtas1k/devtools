@@ -576,6 +576,11 @@
     color: var(--color-neutral-700);
   }
 
+  /* Gs1Databar SVG container: dangerouslySetInnerHTML 経由 SVG の currentColor 継承 (#176 PR 8) */
+  .gs1-svg-container {
+    color: var(--color-text);
+  }
+
   /* CategoryBadge: tertiary color text/bg (PR 2 .text-primary 系列に追従) */
   .text-tertiary {
     color: var(--color-tertiary);

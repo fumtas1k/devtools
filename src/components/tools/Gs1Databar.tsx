@@ -312,6 +312,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
             aria-live="polite"
           >
             <div
+              className="gs1-svg-container"
               aria-label={`GS1 DataBar ${gtinResult?.fullGtin} のバーコード`}
               dangerouslySetInnerHTML={{ __html: svgContent }}
             />

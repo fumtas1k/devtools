@@ -223,10 +223,17 @@ export function injectCompositeText(svg: string, text: string): string {
   const openTag = result.slice(0, openEnd);
   const inner = result.slice(openEnd, closeStart);
 
+  // SVG `<text>` の塗り色は `fill="currentColor"` で親要素の `color` から継承する。
+  // 親要素 (Gs1Databar.tsx の `dangerouslySetInnerHTML` ラッパ `<div>`) は
+  // `.gs1-svg-container` クラス経由で `color: var(--color-text)` を設定する前提。
+  // 親 className を変更する際は `global.css` の `.gs1-svg-container` ルールを
+  // 維持するか同等の color 設定を用意しないと SVG text のデフォルト色 (UA 依存、
+  // 通常 black) にフォールバックする。CSP `style-src` strict 化を見据えた
+  // inline style 撲滅 (#176 B 案 / [067]) の一環で採用。
   const textEl =
     `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" ` +
     `text-anchor="middle" font-family="'Courier New',Courier,monospace" ` +
-    `font-size="${fontSize}" fill="#000000" style="fill:var(--color-text)">${escapedText}</text>`;
+    `font-size="${fontSize}" fill="currentColor">${escapedText}</text>`;
 
   const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
 
