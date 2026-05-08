@@ -1,25 +1,28 @@
 import type { Browser, ConsoleMessage, Page, Route } from '@playwright/test';
 import { PRODUCTION_CSP } from '../../src/utils/csp';
 
+// PR 9 想定: PRODUCTION_CSP に "style-src 'self' 'unsafe-inline'" が含まれている
+// 状態でなければ STRICT_STYLE_SRC_CSP は drift していることになる。
+if (!PRODUCTION_CSP.includes("style-src 'self' 'unsafe-inline'")) {
+  throw new Error(
+    'STRICT_STYLE_SRC_CSP derivation broken: PRODUCTION_CSP changed shape. PR 10 で本 helper を削除するか、replace target を更新してください。'
+  );
+}
+
 /**
- * PR 9 (#304) verification 専用定数、PR 10 で削除候補。
- *
  * `PRODUCTION_CSP` から `style-src` の `'unsafe-inline'` のみ除いた形。
- * PR 10 で `PRODUCTION_CSP` 自体を strict 化したら本定数は冗長になり、削除する。
+ * 文字列 replace で派生させているため `PRODUCTION_CSP` 側の他 directive 変更に
+ * 自動追従する。PR 10 で `PRODUCTION_CSP` 自体を strict 化したら本定数は冗長になり、
+ * `applyStrictStyleSrcCsp` ごと削除する (本 helper は PR 9 verification 専用)。
+ *
+ * NOTE: PR 10 で `PRODUCTION_CSP` の `style-src 'self' 'unsafe-inline'` 部分が
+ * `style-src 'self'` に変わると本 replace は no-op となり同値が返るため、PR 10 の
+ * 移行時は本 helper の使用箇所を削除して掃除する。
  */
-const STRICT_STYLE_SRC_CSP =
-  "default-src 'self'; " +
-  "img-src 'self' data: blob:; " +
-  "media-src 'self' blob:; " +
-  "style-src 'self'; " + // 'unsafe-inline' を削除した PR 10 想定形 (test 専用 / 暫定値)
-  "script-src 'self' 'unsafe-inline'; " +
-  "connect-src 'self'; " +
-  "worker-src 'self'; " +
-  "object-src 'none'; " +
-  "frame-ancestors 'none'; " +
-  "base-uri 'none'; " +
-  "form-action 'self'; " +
-  'upgrade-insecure-requests';
+const STRICT_STYLE_SRC_CSP = PRODUCTION_CSP.replace(
+  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self'"
+);
 
 /**
  * Astro の client:load island は SSR でも DOM に要素が現れるが、

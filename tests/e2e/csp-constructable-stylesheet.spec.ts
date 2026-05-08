@@ -42,7 +42,12 @@ test.describe('CSP style-src strict 下の Constructable Stylesheets 検証', ()
     try {
       const page = await context.newPage();
       const guard = await applyStrictStyleSrcCsp(page);
-      await page.goto('/');
+      const response = await page.goto('/');
+      // 前提検証: route 注入が効いており strict CSP がヘッダに乗っていること
+      expect(response?.headers()['content-security-policy']).toContain("style-src 'self'");
+      expect(response?.headers()['content-security-policy']).not.toContain(
+        "style-src 'self' 'unsafe-inline'"
+      );
       await page.evaluate(() => {
         const style = document.createElement('style');
         style.textContent = '.csp-positive-probe { color: red; }';
@@ -59,7 +64,12 @@ test.describe('CSP style-src strict 下の Constructable Stylesheets 検証', ()
     try {
       const page = await context.newPage();
       const guard = await applyStrictStyleSrcCsp(page);
-      await page.goto('/');
+      const response = await page.goto('/');
+      // 前提検証: route 注入が効いており strict CSP がヘッダに乗っていること
+      expect(response?.headers()['content-security-policy']).toContain("style-src 'self'");
+      expect(response?.headers()['content-security-policy']).not.toContain(
+        "style-src 'self' 'unsafe-inline'"
+      );
 
       const bg = await page.evaluate(() => {
         const sheet = new CSSStyleSheet();
@@ -87,7 +97,12 @@ test.describe('CSP style-src strict 下の Constructable Stylesheets 検証', ()
     try {
       const page = await context.newPage();
       const guard = await applyStrictStyleSrcCsp(page);
-      await page.goto('/');
+      const response = await page.goto('/');
+      // 前提検証: route 注入が効いており strict CSP がヘッダに乗っていること
+      expect(response?.headers()['content-security-policy']).toContain("style-src 'self'");
+      expect(response?.headers()['content-security-policy']).not.toContain(
+        "style-src 'self' 'unsafe-inline'"
+      );
 
       const result = await page.evaluate(() => {
         const sheet = new CSSStyleSheet();
