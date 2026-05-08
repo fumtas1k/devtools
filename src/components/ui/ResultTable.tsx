@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
+import { assertCssLength } from '@/utils/css-length';
 
 export interface TableColumn<T> {
   key: string;
@@ -7,9 +9,10 @@ export interface TableColumn<T> {
   cellAlign?: 'left' | 'right' | 'center';
   /**
    * CSS length token (例: '3.5rem')。**hard-coded リテラルのみ許容**。
-   * setProperty('--col-width', value) は CSSOM 階層で declaration value として encapsulate される
-   * ため CSS injection は不可能だが、user input を bridge する場合は事前 sanitize 必須。
-   * discipline で将来 regression を予防（origin discipline、issue #266 由来）。
+   * Constructable Stylesheets 経由で per-instance scoped rule に展開されるため、
+   * `assertCssLength` で `{number}{unit?}` 形式以外を reject する (CSS injection 防御)。
+   * user input を bridge する場合は事前 sanitize 必須。
+   * 詳細は `docs/decisions.md [067]` / PR 9 spec § 4.2 / 4.3 参照。
    */
   width?: string;
   /** td に追加される className (typography / 色 / nowrap 等の修飾用) */
@@ -25,7 +28,7 @@ interface Props<T> {
   getKey: (row: T) => string | number;
   /**
    * CSS length token (hard-coded literals only)。`TableColumn.width` と同じ origin discipline。
-   * user input を bridge する場合は sanitize 必須。
+   * `assertCssLength` で形式 validate。
    */
   minWidth?: string;
   selectedIndex?: number | null;
@@ -38,6 +41,21 @@ const alignClass = (a?: 'left' | 'right' | 'center') =>
 
 const paddingClass = (p?: 'normal' | 'compact') => (p === 'compact' ? 'px-2 py-1' : 'px-3 py-2');
 
+function buildResultTableRules<T>(
+  className: string,
+  columns: TableColumn<T>[],
+  minWidth?: string
+): string {
+  const rules: string[] = [];
+  if (minWidth) rules.push(`.${className} { min-width: ${minWidth}; }`);
+  columns.forEach((col, i) => {
+    if (col.width) {
+      rules.push(`.${className} > colgroup > col:nth-child(${i + 1}) { width: ${col.width}; }`);
+    }
+  });
+  return rules.join('\n');
+}
+
 export function ResultTable<T>({
   rows,
   columns,
@@ -47,6 +65,15 @@ export function ResultTable<T>({
   onRowClick,
   renderHeader,
 }: Props<T>) {
+  if (minWidth !== undefined) assertCssLength(minWidth, 'minWidth');
+  for (const c of columns) {
+    if (c.width !== undefined) assertCssLength(c.width, `column[${c.key}].width`);
+  }
+
+  const dynClassName = useDynamicStyleSheet((className) =>
+    buildResultTableRules(className, columns, minWidth)
+  );
+
   return (
     <div className="rounded-lg border border-default overflow-hidden">
       {renderHeader && (
@@ -55,31 +82,10 @@ export function ResultTable<T>({
         </div>
       )}
       <div className="overflow-x-auto">
-        <table
-          ref={(el) => {
-            if (!el) return;
-            if (minWidth) {
-              el.style.setProperty('--result-table-min-width', minWidth);
-            } else {
-              el.style.removeProperty('--result-table-min-width');
-            }
-          }}
-          className="w-full border-collapse result-table"
-        >
+        <table className={`w-full border-collapse result-table ${dynClassName}`}>
           <colgroup>
             {columns.map((col) => (
-              <col
-                key={col.key}
-                ref={(el) => {
-                  if (!el) return;
-                  if (col.width) {
-                    el.style.setProperty('--col-width', col.width);
-                  } else {
-                    el.style.removeProperty('--col-width');
-                  }
-                }}
-                className={col.width ? 'result-table-col' : undefined}
-              />
+              <col key={col.key} />
             ))}
           </colgroup>
           <thead>

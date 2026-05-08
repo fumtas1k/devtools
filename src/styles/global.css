@@ -334,14 +334,9 @@
     background: var(--color-bg-surface);
   }
 
-  /* === PR 1.5: ResultTable component-scoped === */
-  .result-table {
-    /* setProperty('--result-table-min-width', ...) で注入。未注入時は 0 (= no min-width 制約) */
-    min-width: var(--result-table-min-width, 0);
-  }
-  .result-table-col {
-    width: var(--col-width, auto);
-  }
+  /* === PR 9 ([#304]): ResultTable は Constructable Stylesheets 経路に移行、
+     `.result-table { min-width: var(...) }` / `.result-table-col { width: var(...) }`
+     は撤去。`docs/decisions.md [067]` 参照 === */
   .result-table-row:nth-child(odd) {
     background: var(--color-bg);
   }
