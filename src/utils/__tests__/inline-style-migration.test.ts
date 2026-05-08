@@ -15,7 +15,7 @@ import path from 'node:path';
  * - `ref.current.style.setProperty('--var', value)` — CSSOM API 経由は許容
  *   regex は `\.style\.X = Y` のみ検出、`.style.setProperty(` は検出しない
  *
- * 参照: docs/decisions.md (B 案完了時に [067] エントリ追加予定。flip + 完了記録は #289 Astro inline migration 完了後の最終 PR で実施)
+ * 参照: docs/decisions.md [067]
  */
 
 // top-level await: vitest は vite-node 経由で ESM として実行されるため利用可能。
@@ -24,6 +24,12 @@ for await (const f of glob('src/components/**/*.tsx', { cwd: process.cwd() })) {
   TARGET_FILES.push(f);
 }
 TARGET_FILES.sort();
+
+const ASTRO_TARGET_FILES: string[] = [];
+for await (const f of glob('src/{components,layouts,pages}/**/*.astro', { cwd: process.cwd() })) {
+  ASTRO_TARGET_FILES.push(f);
+}
+ASTRO_TARGET_FILES.sort();
 
 describe.skipIf(TARGET_FILES.length === 0)('#176 B 案 inline style 完全撲滅 (回帰防止)', () => {
   it(`src/components/**/*.tsx を ${TARGET_FILES.length} 件カバー`, () => {
@@ -45,6 +51,25 @@ describe.skipIf(TARGET_FILES.length === 0)('#176 B 案 inline style 完全撲滅
   });
 });
 
+describe.skipIf(ASTRO_TARGET_FILES.length === 0)(
+  '#176 B 案 Astro inline style 完全撲滅 (回帰防止 / [067])',
+  () => {
+    it(`src/{components,layouts,pages}/**/*.astro を ${ASTRO_TARGET_FILES.length} 件カバー`, () => {
+      expect(ASTRO_TARGET_FILES.length).toBeGreaterThan(0);
+    });
+
+    describe.each(ASTRO_TARGET_FILES)('%s', (file) => {
+      const content = readFileSync(path.resolve(process.cwd(), file), 'utf-8');
+
+      it('HTML inline style 属性 (style="...") が残っていない', () => {
+        // 前置スペース必須: `<style>` block (Astro scoped、auto-hash 経路) は対象外。
+        // `style="..."` 属性形式のみ検出。
+        expect(content).not.toMatch(/\sstyle\s*=\s*"[^"]*"/);
+      });
+    });
+  }
+);
+
 describe('migration detector の陽性対照', () => {
   it('意図的に style={{ を含む文字列が違反として検出される', () => {
     const malicious = `<div style={{color: 'red'}} />`;
@@ -63,5 +88,10 @@ describe('migration detector の陽性対照', () => {
     const matches = allowed.match(/\.style\.[a-zA-Z]+\s*=(?!=)/g);
     const violations = (matches ?? []).filter((m) => !m.includes('setProperty'));
     expect(violations).toEqual([]);
+  });
+
+  it('意図的に Astro style="..." を含む文字列が違反として検出される', () => {
+    const malicious = `<div style="color: red" />`;
+    expect(malicious).toMatch(/\sstyle\s*=\s*"[^"]*"/);
   });
 });
