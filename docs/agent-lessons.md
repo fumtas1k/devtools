@@ -176,3 +176,57 @@ PR #267 内では実施しない（settings 巻き戻しが必要 + 検証のた
 - PR #267 (#267 review コメントで reviewer から提示された観察)
 - 上記前エントリ「Claude memory dir は Bash `rm` で削除できない（Claude Code 既知 bug）」と関連 — sandbox.filesystem.allowWrite が Bash に効かない bug と「sandbox profile mirror」仮説は **両立する**（mirror があっても Bash には適用されない実装、というシナリオ）
 - 規約昇格: 不要（仮説段階、harness 挙動のため本ファイルが正所）
+
+---
+
+## [2026-05-08] VRT baseline 更新前に DOM / computed style diff を確認する手順
+
+### 現象 / きっかけ
+
+PR #299 (#289 PR 7b、Astro inline `style="..."` 撤去) で VRT が `/` のみ desktop / mobile 両方 fail。page height が 1px 短縮 (1632 → 1631、diff ratio 0.02% / 23925 px)。inline → CSS class refactor で fractional pixel rendering が tool card 14 枚で累積し合計 1px 差に到達。
+
+### 根本原因
+
+inline `style="..."` と CSS class (例: `bg-[var(...)]` / `.section-heading`) は CSS としては完全等価だが、cascade resolution / fractional pixel rendering で 0.003〜0.005px 単位の微小な差分が出る場合がある。視覚的には等価でも pixel 比較 VRT は失敗する。
+
+### 対処方針 (新規ルール)
+
+VRT が **任意の visual diff で fail** した場合、**baseline 更新する前に必ず以下 2 段階の検証を行う**:
+
+#### 1. DOM 構造 diff
+
+`gh run download <run-id> --name visual-regression-report-pr-<n>` で playwright report を取得し、`expected` と `actual` の HTML スナップショット (Astro が生成する HTML) を比較。次の点に regression がないことを確認:
+
+- `aria-*` / `role=` 属性削除なし (`shared-agent-rules.md` 9.6 章 a11y 保護にも該当)
+- DOM 階層・要素数の差分なし
+- `<img>` `alt` / `<a>` `href` 等の semantic 属性が同一
+
+#### 2. Computed style diff (Playwright MCP)
+
+local preview server で問題ページを開き、**疑わしい element の computed style** を `getComputedStyle()` で取得。`fontSize` / `lineHeight` / `borderBottomWidth` / `backgroundColor` 等の semantic property が baseline と一致することを確認:
+
+```js
+// Playwright MCP 経由の例
+const cs = getComputedStyle(document.querySelector('section'));
+return {
+  borderBottomWidth: cs.borderBottomWidth, // "1px"
+  borderBottomColor: cs.borderBottomColor, // "rgb(219, 234, 254)"
+  backgroundColor: cs.backgroundColor, // "rgb(239, 246, 255)"
+};
+```
+
+両方が baseline と一致 (= rendering nondeterminism のみ) → baseline 更新が妥当。
+どちらかが不一致 (= 真の semantic regression) → baseline 更新前に root cause を fix。
+
+### なぜこの手順が必要か
+
+baseline 更新は「意図した変更」を承認する操作であり、**真の regression を silent に baseline に焼き込んでしまうリスク** がある。本 PR #299 のような pure CSS class refactor では baseline 更新が正解だが、PR 8 (CSP `style-src 'unsafe-inline'` 削除) 等で発生し得る real regression と区別する **判別 gate** を agent ワークフローに組み込む必要がある。
+
+「rendering nondeterminism は baseline 更新で吸収」が pattern 化すると、judgment が機械的になり regression 見逃しが起きる。
+
+### 関連 PR / 観点
+
+- PR #299 (本ルール起票のきっかけ): 1px 累積差で baseline 更新成功、commit `d5c5841` (`Update Visual Regression Baseline` workflow による自動 commit)
+- PR 7a spec § VRT (Visual Regression Test): 「意図的差分があれば `update-visual-baseline.yml` workflow で baseline 更新」 (本ルールはこの判断基準を **明示化**)
+- 関連個人 memory (PC ローカル、本 repo 未収録): `feedback_vrt_ci_only.md` (VRT は CI Linux のみで検証)
+- （規約昇格候補）`docs/shared-agent-rules.md` の VRT 関連 sub-section として昇格検討。本 PR review (`#299` 軽微指摘 #3) で reviewer から「次 PR では VRT 差分が出た場合 baseline 更新前に必ず DOM diff / computed style diff を確認する手順を agent-lessons に明記する価値あり」と提案を受けて記録
