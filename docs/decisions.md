@@ -2445,3 +2445,78 @@ VRT を **独立 PR (本 PR)** で先行導入し、以下の 5 つの設計原�
 - 起源: `#176` B 案（`style-src 'unsafe-inline'` 削減）の前提整備
 - 過去: [063] (preview 切替), [064] (CSP A-1), [065] (webServer CI 分岐)
 - 後続: B 案 PR 1（基礎工事 + ui/\* simple 11 ファイル migration）から再着手
+
+## [067] 2026-05-08 — `ResultTable` の `setProperty` 経路が CSP `style-src` strict 化と非互換 → B 案最終 flip を別 PR に延期
+
+### 背景
+
+`#176` B 案計画では PR 8 で `_headers` / `<meta>` 両側から `style-src 'unsafe-inline'` を削除し、最終 flip を完了する予定だった ([064] のフォローアップ)。PR 1〜7b で React `style={{` (200+ 箇所) と Astro `style="..."` (65 箇所) を全廃 + PR 8 commit 1 で SVG inline style も `currentColor` 化と、表面的な inline style 経路は完全に撲滅したと認識していた。
+
+### 発覚
+
+PR 8 で実際に `style-src 'self'` strict 化を試みた E2E (`npm run test:e2e`) で 11 件の violation が検知された:
+
+```
+Applying inline style violates the following Content Security Policy directive 'style-src 'self''.
+Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required.
+```
+
+失敗 spec はすべて **生成→ResultTable 表示** 経路 (`ulid-generator.spec.ts` 5 件 / `uuid-v7.spec.ts` 6 件 / `config-converter.spec.ts` JSON Schema 検証 1 件)。原因は `src/components/ui/ResultTable.tsx:62-78` の以下 2 箇所:
+
+```ts
+el.style.setProperty('--result-table-min-width', minWidth);
+el.style.setProperty('--col-width', col.width);
+```
+
+これらは PR 1.5 (#261) で `style={{}}` 撲滅と引き換えに導入した CSSOM API 経由の動的 width 設定であり、`inline-style-migration.test.ts` の検出 regex も `\.style\.setProperty(` を意図的に除外していた。当時の前提は「CSSOM API は CSP 観点で `style="..."` HTML 属性とは別経路」だったが、これは誤りだった。
+
+### 根本原因
+
+CSP3 仕様 (`https://www.w3.org/TR/CSP3/#directive-style-src`) では `style-src` の制御対象に以下が含まれる:
+
+- `<style>` 要素
+- `style` 属性 (HTML attribute)
+- **JavaScript による style modification** (`CSSStyleDeclaration.cssText`, `setProperty`, `style` プロパティ書換え)
+
+`el.style.setProperty('--col-width', '120px')` は DOM 上で `<el style="--col-width: 120px">` を生成し、これは CSP の `style-src` に対して inline style として評価される。`'unsafe-inline'` / hash / nonce のいずれも無いと block される。
+
+### 評価した解 (3 案)
+
+| 案                                | 仕組み                                                                                                                                                            | 実現性                    | 工数                                                                         |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------- |
+| (a) Constructable Stylesheets     | `new CSSStyleSheet()` + `document.adoptedStyleSheets` で programmatic stylesheet を attach。CSP3 で programmatic stylesheet は `style-src` 対象外と仕様上扱われる | 高 (要 Chromium 動作確認) | ResultTable 1 hook の API 切替、UX 維持                                      |
+| (b) CSS class swap                | 連続値 width を有限 bucket (例: `.col-width-XX`) に discretize、pre-defined static CSS で実現                                                                     | 確実 (CSP 仕様非依存)     | ResultTable + 利用 hook の refactor、UX 影響 (微細な列幅調整不可)            |
+| (c) `'unsafe-hashes'` + hash 列挙 | 各 setProperty が生成する style attribute 値の hash を CSP に列挙                                                                                                 | **不可**                  | 連続値で hash 空間無限                                                       |
+| (d) per-request nonce             | 各リクエストに nonce を発行し setProperty 直後に matching nonce を style attribute へ付与                                                                         | 不可                      | Astro 静的 build / Cloudflare Pages では request 単位の nonce を発行できない |
+
+### 決定
+
+- **(a) Constructable Stylesheets を最有力候補として PR 9 で技術検証 + refactor**。Chromium で `setProperty` 経由 violation が `adoptedStyleSheets` 経路で解消することを実機確認後に確定。
+- 不適なら (b) CSS class swap に fallback (確実だが UX 影響を許容)。
+- B 案最終 flip (`_headers` + `<meta>` 両側 strict 化 + `stripMetaStyleSrc` 撤去 + test 群 strict 化) は **PR 10 (新規)** に延期。
+
+### 本 PR (PR 8 scope 縮小) で達成
+
+- Gs1Databar SVG `<text>` の inline style を `fill="currentColor"` + 親 `.gs1-svg-container` の `color: var(--color-text)` 化 (将来の strict 化に向けた事前 refactor)
+- `inline-style-migration.test.ts` に `.astro` glob を並列追加 (Astro 側回帰防止網の整備)
+- 本 entry 記録
+
+`_headers` / `<meta>` / `astro.config.mjs` / test 群の strict 化 commit は **本 PR から rebase で削除**。原実装 7 commit のうち 4 commit (Gs1Databar / Astro 検出網 / decisions [067] / SoT 同期) のみ残す。
+
+### 残課題
+
+- **PR 9 (新規)**: ResultTable `setProperty` の Constructable Stylesheets 化 (or CSS class swap)。`#234` 19 spec 横展開と並行検討の余地あり。
+- **PR 10 (新規)**: B 案最終 flip。PR 8 から削除した 3 commit (CSP flip / `stripMetaStyleSrc` 撤去 / test 群 strict 化) を再投入。
+
+### Lessons learned
+
+- **CSSOM API ≠ CSP `style-src` 対象外**: 「`setProperty` は CSP 観点で別経路」という PR 1.5 設計時の前提は誤り。CSP3 spec を熟読しなかったツケ。
+- **migration test の検出 regex は実 violation を保証しない**: `inline-style-migration.test.ts` で `setProperty` を意図的に除外していたが、CSP の実評価とは独立して評価される (regex は文字列マッチ、CSP は DOM 状態)。陽性対照テストの境界条件として E2E `applyProductionCsp` gate を 1.5 段階で導入していれば早期検知できた。
+- **「前提崩壊」は overstating**: 当初「B 案不可能」と過剰評価したが、refactor で達成可能。ブロッカー検出時は解決策の現実性を冷静に列挙する習慣が必要。
+
+### 関連 PR / issue
+
+- 本 entry を記録: PR 8 (scope 縮小、本 PR で merge)
+- 後続: PR 9 (ResultTable refactor、follow-up issue で起票)、PR 10 (B 案最終 flip)
+- 過去: [064] (CSP A-1 / script-src strict 化)
+- 起源: `#176` B 案 PR 1.5 (#261) で導入された `setProperty` パターン
