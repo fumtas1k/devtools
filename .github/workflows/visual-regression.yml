@@ -89,8 +89,10 @@ jobs:
               echo ""
               # 各 ✘ 行の最後の › 区切り（spec 名）と直前の区切り（viewport 記述）を抽出。
               # retry 行は除外して unique 化、最大 30 行に丸める。
-              # `|| true` で grep no-match (exit 1) でも heredoc 全体が中断しないようにする。
-              (grep -E '^[[:space:]]+✘' vrt-output.log || true) \
+              # pipeline 全体を `( ... ) || true` で包む: 最初の grep だけでなく後段の `grep -v`
+              # も入力 0 行のとき exit 1 を返すため (grep 仕様)、subshell 全体で救わないと
+              # `set -e -o pipefail` で heredoc が中断する。
+              ( grep -E '^[[:space:]]+✘' vrt-output.log \
                 | grep -v '(retry' \
                 | awk -F'›' '{
                     n = NF
@@ -103,7 +105,7 @@ jobs:
                     print "- [" vp "] " spec
                   }' \
                 | sort -u \
-                | head -30
+                | head -30 ) || true
             fi
 
             echo ""
