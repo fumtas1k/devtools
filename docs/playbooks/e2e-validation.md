@@ -30,15 +30,15 @@
 
 以下をすべて満たしてから完了報告する。**1 つでも未完了の場合は push せず、未完了の項目を完了報告に明記して親に判断を仰ぐ**。
 
-| #   | チェック項目          | コマンド                                                                       |
-| --- | --------------------- | ------------------------------------------------------------------------------ |
-| 0   | node_modules 整備     | `npm ci`（fresh worktree なら 5〜10 秒で完了。詳細は下記参照）                 |
-| 1   | develop ベース確認    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致  |
-| 2   | ユニットテスト全 pass | `npm run test`                                                                 |
-| 3   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                    |
-| 4   | E2E テスト            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ） |
+| #   | チェック項目          | コマンド                                                                                   |
+| --- | --------------------- | ------------------------------------------------------------------------------------------ |
+| 0   | node_modules 整備     | `npm ci`（新規作成 worktree では必須。fresh worktree なら 5〜10 秒で完了。詳細は下記参照） |
+| 1   | develop ベース確認    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致              |
+| 2   | ユニットテスト全 pass | `npm run test`                                                                             |
+| 3   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                                |
+| 4   | E2E テスト            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ）             |
 
-> **ステップ 0 の補足**: fresh subagent isolation worktree では node_modules が存在しないため、素の `npm ci` のみで十分（過去の `scripts/agent-worktree-setup.sh` は不要と判明し、issue #241 / decisions [062] で廃止）。`.claude/settings.json` の SessionStart hook が `npm ci` を auto-run するので通常は明示実行も不要だが、未実行を疑う場合は手動で再実行する。
+> **ステップ 0 の補足**: fresh subagent isolation worktree では node_modules が存在しないため、素の `npm ci` のみで十分（過去の `scripts/agent-worktree-setup.sh` は不要と判明し、issue #241 / decisions [062] で廃止）。`.claude/settings.json` の SessionStart hook は session 開始時のみ fire するため、mid-session で `git worktree add` した worktree には適用されない。新規作成 worktree では作成直後に手動で `npm ci` を実行する必須ステップとして扱うこと。
 >
 > **既存パッケージの version 操作・削除に注意**: `.idea/` `.vscode/` を同梱する推移依存パッケージ（現プロジェクトでは `iconv-lite` / `stream-replace-string`）の upgrade / uninstall は sandbox の write 制約で EPERM になる可能性あり。新規追加 (`npm install foo`) は影響なし。詳細は issue #241 参照。
 
