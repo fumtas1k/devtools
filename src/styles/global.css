@@ -599,4 +599,47 @@
   .drawer-backdrop {
     background: rgba(17, 24, 39, 0.5);
   }
+
+  /* === PR 7b (#289): Astro pages inline migration helpers === */
+
+  /* Section heading: about/privacy h2 + index card title (10 occurrences)
+     注: color は class に含めない (10 件中 1 件 = index L112 card title が色無し
+     なため、consumer 側で text-default を選択的に併用)。
+     **使い方**: 通常は `.section-heading .text-default` を併用 (= 9/10 ケース)。
+     親要素から色継承で十分なケースのみ単独適用 (例: index.astro の card title が
+     親 .tool-card-title から var(--color-text) を継承)。新規 consumer は
+     原則 `.text-default` 併用が安全 (silent regression 予防)。 */
+  .section-heading {
+    font-size: 1.125rem;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+  }
+
+  /* Body prose text: about/privacy 本文段落 (8 occurrences、全件 neutral-700)
+     注: typography + color baked-in。.footer-bar precedent (PR 7a で
+     bg+color combined) に追従。8 件全て neutral-700 で一致するため安全。
+     TODO(dark-mode): dark mode 対応時に 8 箇所すべての neutral-700 を
+     semantic alias (`--color-text-secondary` 等) へ書き換え必要。
+     PR 7a の `.footer-bar` も同根 (neutral-900/300 baked-in)、
+     dark mode 対応 issue 起票時にまとめて semantic alias 化検討。 */
+  .text-body {
+    font-size: 1rem;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    color: var(--color-neutral-700);
+  }
+
+  /* Horizontal scroll snap container: index hero carousel (1 occurrence、5 prop)
+     注: 単発だが property 数が多く、Tailwind arbitrary 6連
+     (`overflow-x-scroll snap-x snap-mandatory scroll-smooth
+     [scrollbar-width:none] [-webkit-overflow-scrolling:touch]`) より
+     class 化が読みやすい。PR 7a `.qr-video-preview` と同 judgement
+     (単発でも property 数多なら class 化)。 */
+  .scroll-snap-x {
+    overflow-x: scroll;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
 }
