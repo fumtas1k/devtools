@@ -26,7 +26,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { applyStrictStyleSrcCsp } from './helpers';
+import { applyProductionCsp } from './helpers';
 
 test.describe('CSP style-src strict 下の Constructable Stylesheets 検証', () => {
   test('陽性対照: インライン <style> 要素は CSP 違反を起こす', async ({ browser }) => {
@@ -41,7 +41,7 @@ test.describe('CSP style-src strict 下の Constructable Stylesheets 検証', ()
     const context = await browser.newContext();
     try {
       const page = await context.newPage();
-      const guard = await applyStrictStyleSrcCsp(page);
+      const guard = await applyProductionCsp(page);
       const response = await page.goto('/');
       // 前提検証: route 注入が効いており strict CSP がヘッダに乗っていること
       expect(response?.headers()['content-security-policy']).toContain("style-src 'self'");
@@ -63,7 +63,7 @@ test.describe('CSP style-src strict 下の Constructable Stylesheets 検証', ()
     const context = await browser.newContext();
     try {
       const page = await context.newPage();
-      const guard = await applyStrictStyleSrcCsp(page);
+      const guard = await applyProductionCsp(page);
       const response = await page.goto('/');
       // 前提検証: route 注入が効いており strict CSP がヘッダに乗っていること
       expect(response?.headers()['content-security-policy']).toContain("style-src 'self'");
@@ -96,7 +96,7 @@ test.describe('CSP style-src strict 下の Constructable Stylesheets 検証', ()
     const context = await browser.newContext();
     try {
       const page = await context.newPage();
-      const guard = await applyStrictStyleSrcCsp(page);
+      const guard = await applyProductionCsp(page);
       const response = await page.goto('/');
       // 前提検証: route 注入が効いており strict CSP がヘッダに乗っていること
       expect(response?.headers()['content-security-policy']).toContain("style-src 'self'");

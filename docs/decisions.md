@@ -2590,3 +2590,103 @@ PR 9 merge 後の review で 2 件の follow-up issue が起票され、PR 10 �
 - 後続: PR 10 (B 案最終 flip + Astro island runtime style hash 取り込み)
 - 過去: [064] (CSP A-1 / script-src strict 化)
 - 起源: `#176` B 案 PR 1.5 (#261) で導入された `setProperty` パターン
+
+## [068] 2026-05-09 — `#176` B 案完了 (両層 `style-src` strict 化 + Astro island hash 取り込み)
+
+### 背景
+
+`#176` B 案 = `style-src 'unsafe-inline'` 削減 (A-1 [#249] 完了後の続編、`docs/decisions.md` [064] 参照)。
+
+`<meta>` strict + `_headers` permissive の AND 評価設計 ([064]) では、header 側に `'unsafe-inline'` を残しているため `<meta>` 自動 hash が壊れた状況 (Astro `security.csp` integration の bug / 設定ミス / build hook 失敗 / Astro 仕様変更) で fallback policy が permissive になる潜在リスクがあった。両層を strict (`'self'` + 必要 hash のみ) に揃えることで XSS 緩和の defense-in-depth を完成させる goal。
+
+PR 0〜10 series で段階的に React / Astro inline style と CSSOM mutation を全廃し、最終 PR 10 で両層 flip + Astro island runtime hash 取り込みを実施。
+
+### B 案 PR 0〜10 series 依存図
+
+```
+PR 0   (#254)  VRT 導入 (mock 注入版、CI Linux baseline、required check 外し)
+PR 1   (#256)  基礎工事 + ui/* simple 11 ファイル (ClearButton CSSOM 撤去含む)
+PR 1.5 (#261)  ui/* complex (ResultTable + InputField, API redesign)
+PR 2   (#272)  qr-ticket/* + #225 同梱
+PR 3   (#275)  JwtDecoder + UuidV7Generator + #262 partial
+PR 4   (#277)  Gs1Databar + EncodingConverter + DummyText
+PR 5a  (#283)  ConfigConverter + QrReader + JanCode (CSSOM hover 含む)
+PR 5b  (#286)  残 7 ツール + zero-style 登録 + ulid-generator E2E gate / #262 close
+PR 6   (#290)  styles.ts 削除 + migration tracker glob 化
+PR 7a  (#294)  layout/ui Astro inline 23 件
+PR 7b  (#299)  pages Astro inline 42 件
+PR 8   (#303)  scope 縮小 (setProperty CSP3 制約発覚で延期、[067])
+PR 9   (#307)  ResultTable + ToggleGroup setProperty を Constructable Stylesheets 化
+PR 9 follow-up (#313)  #309 / #308 decision メモ化
+PR 10  (本 PR) 両層 strict 化 + Astro island hash 取り込み
+```
+
+### 本 PR (PR 10) で達成
+
+- `public/_headers` / `src/utils/csp.ts`: `style-src 'unsafe-inline'` を削除し `style-src 'self' 'sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow='` に flip
+- `astro.config.mjs`: `stripMetaStyleSrc()` 暫定 integration ([064] 由来) を完全撤去
+- `<meta>` 側 CSP は Astro `security.csp` で hash 付き strict 形式に自動切替
+- test 群 strict 化 (`headers.test.ts` / `meta-csp.test.ts` / `astro-config-csp.test.ts`)
+- Astro island hash 検出網追加 (dist HTML literal + `_headers` hash 整合性 + 陽性対照メタテスト)
+
+### Astro island hash 取り込みの設計選定
+
+PR 9 Phase 2 で発覚した、Astro 島ランタイムが React island を含むページに injection する固定 inline style `<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>` の sha256 hash `sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow=` を `_headers` の `style-src` に取り込む必要があった。
+
+**評価した解**:
+
+| 案  | 仕組み                                  | 採否                                    |
+| --- | --------------------------------------- | --------------------------------------- |
+| α   | handcoded fingerprint + 検出網          | ✅ **採用**                             |
+| β   | `astro:build:done` hook で自動抽出      | 不採用 (overkill: hash は 1 個固定)     |
+| γ   | `_headers` permissive 維持、meta strict | 不採用 (B 案 goal「両層 strict」と矛盾) |
+
+**α 採用根拠**:
+
+- 取り込む hash は 1 個 (Astro が当該文字列を変更しない限り stable)
+- β の 80-150 行 hook 実装は 1 hash の自動抽出に対して overweight
+- γ は `<meta>` が壊れた状況で `_headers` permissive のみが効くため XSS 緩和の最終防衛ラインが緩い → goal「両層 strict」と部分矛盾
+- α の運用コスト「Astro 更新で hash 変わると CI fail」は検出網で能動検知できるため silent regression にならない
+
+### 削除した暫定 infra
+
+- `stripMetaStyleSrc()` integration ([064] / `astro.config.mjs`):
+  CSP3 仕様で hash と `'unsafe-inline'` 共存時にブラウザが `'unsafe-inline'` を無視する制約により、`<meta>` から `style-src` を除く暫定。本 PR で両層 strict 化により不要化、撤去。
+- `MIGRATED_FILES` array (`inline-style-migration.test.ts`):
+  PR 6 で glob 化済 (`src/components/**/*.{tsx,astro}` 等)、本 PR では touch せず。
+- `applyStrictStyleSrcCsp` helper (`tests/e2e/helpers.ts`):
+  PR 9 で `applyProductionCsp` から派生として追加。本 PR で `applyProductionCsp` 自体が strict になるため不要化。**削除は別 cleanup PR** に切り出す候補 (memory `feedback_infra_feature_separation.md` 準拠)。
+
+### 設計判断 KEEP 記録
+
+PR 6 必須チェックリスト末尾の未消化項目を本 entry で「現状維持」と確定:
+
+- **`.text-primary` 命名衝突リスク**: PR 2 で導入した `.text-primary` (`--color-primary` 由来) は Tailwind `text-primary` auto-utility と衝突する可能性があるが、現状 `@theme` に `--color-primary` を登録していないため衝突は発生していない。**現状維持**: 将来 `@theme` 切替する場合は `text-brand` 等への rename を検討。
+- **Tailwind `border` utility と `@layer components` の `border-color` 優先度**: PR 2 で導入した `.alert-success` / `.alert-error` は `<div className="rounded-lg p-4 border alert-success">` のように Tailwind `border` と併用。layer 順序によっては期待色にならないリスクが PR 2 review で指摘済だが、CSP strict 化後の VRT 再撮影でも diff が出ていないため実害は未顕在。**現状維持**: 将来 Tailwind v4 layer 仕様変更で問題が顕在化したら再評価。
+
+### 検出網運用ノート
+
+B 案完了後も継続運用する検出網:
+
+- `inline-style-migration.test.ts` (glob、PR 6 で導入): `src/components/**/*.{tsx,astro}` 等で `style={{` / `style="..."` の string match が出現した場合に fail。新規ファイル追加時の自動検出網。
+- `applyProductionCsp(page)` E2E gate (`tests/e2e/helpers.ts`、PR 3 / PR 5b で確立): 本番相当 CSP を dev server に注入して E2E 走行、CSP violation 発生で fail。19 spec のうち重要経路で適用。
+- `csp-constructable-stylesheet.spec.ts` (PR 9 で導入、永続): Phase 0 minimal repro spec。Chromium で `useDynamicStyleSheet` 経路の strict CSP 互換を陽性 / 陰性対照で検証。Chromium 動作変更 / CSP 仕様改訂への早期検知用。
+- 本 PR (PR 10) の Astro island hash 検出網 (`meta-csp.test.ts` / `headers.test.ts` 拡張):
+  - dist HTML 内に Astro inline style literal が含まれること (React island ありページに `distPages.some()` で検出)
+  - `_headers` の `style-src` に対応 hash が含まれること
+  - dist HTML inline style content から計算した sha256 が `_headers` の hash と一致すること (陽性対照メタテスト)
+
+### 関連 PR / issue
+
+- 本 entry を記録: PR 10 (本 PR、`#305` 対応)
+- B 案 series 全 PR: PR 0 (#254) / PR 1 (#256) / PR 1.5 (#261) / PR 2 (#272) / PR 3 (#275) / PR 4 (#277) / PR 5a (#283) / PR 5b (#286) / PR 6 (#290) / PR 7a (#294) / PR 7b (#299) / PR 8 (#303) / PR 9 (#307) / PR 9 follow-up (#313) / PR 10 (本 PR)
+- 過去: [054] (CSP 採用根拠) / [064] (CSP A-1 / script-src strict 化) / [067] (PR 8 setProperty CSP3 制約 + PR 9 outcome + Follow-up decisions)
+- close: `#176` (本 entry で完了確認) / `#305` (PR 10 issue)
+
+### Lessons learned
+
+- **CSP3 仕様の事前確認**: PR 1.5 で `setProperty('--var', value)` パターンを導入した時、「CSSOM API は CSP 観点で `style="..."` HTML 属性とは別経路」という前提で設計したが、これは誤りだった (`[067]` で発覚)。CSP3 仕様 (`https://www.w3.org/TR/CSP3/#directive-style-src`) では `setProperty` 経由の DOM mutation も `style-src` 対象と明記されている。**教訓**: 新規 CSP 関連パターン導入時は仕様を熟読し、E2E `applyProductionCsp` gate を 1.5 段階で導入していれば早期検知できた。
+- **Astro island runtime の暗黙 inline style**: PR 9 Phase 2 で発覚。Astro 自身が injection する inline style は `<meta>` 側 hash には自動取り込みされるが `_headers` 側には自動反映されない。**教訓**: build 出力の HTML 全体を grep して全 inline style 経路を網羅するチェックを strict 化前に実施。
+- **ガード/バリデータには陽性対照を必須とする**: PR 5b の `withProductionCsp` meta-test (#281) や本 PR の Astro hash 検出網メタテストのように、検出網自体が silent pass しないことを陽性対照で能動確認する運用が定着。memory `feedback_positive_control_for_gates.md`。
+- **段階的 PR の本数管理**: B 案は当初 PR 1〜6 想定だったが、実際は PR 0〜10 + follow-up で計 15 PR (含む scope 縮小 PR / 計画外発覚での分割)。「PR の自然分割は infra / foundation / 個別 migration / docs」の方針 (memory `feedback_pr_size.md`) に従ったため、各 PR は review 単位で適切な大きさを維持できた。
+- **subagent 委譲方針の使い分け**: PR 4 / 5a / 5b で「subagent 非 commit + 親で順次 commit」運用を確立、PR 7a / 7b / 8 / 9 / 10 では「親 Opus 直接実装」へ移行 (CSP flip / 高 stakes 検証は subagent verification trust の観点で親直接が安全)。memory `feedback_subagent_verification_trust.md` / `feedback_subagent_model.md`。

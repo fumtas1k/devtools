@@ -16,12 +16,17 @@
  * hash-only の strict layer を提供し、ブラウザの AND 評価で実質的な strictness は
  * meta が支配する。ヘッダ側 (本定数) は AND 評価成立のための permissive 層で、
  * defense-in-depth fallback としても機能する。詳細は `docs/decisions.md` [064]。
+ *
+ * #176 B 案完了 ([068]) で style-src は両層 strict 化。Astro island runtime の
+ * inline style (`<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>`)
+ * の sha256 hash を handcoded fingerprint で取り込む。検出網は `meta-csp.test.ts` /
+ * `headers.test.ts`、Astro 文字列変更時は CI fail で能動検知される。
  */
 export const PRODUCTION_CSP =
   "default-src 'self'; " +
   "img-src 'self' data: blob:; " +
   "media-src 'self' blob:; " +
-  "style-src 'self' 'unsafe-inline'; " +
+  "style-src 'self' 'sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow='; " +
   "script-src 'self' 'unsafe-inline'; " +
   "connect-src 'self'; " +
   "worker-src 'self'; " +
