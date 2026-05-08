@@ -13,7 +13,6 @@ import {
   generateQrSvg,
   generateTicketId,
   estimateTicketByteSize,
-  MAX_QR_BYTE_SIZE,
   PAYLOAD_FIELD_COUNT,
   type TicketPayload,
   type SignedTicket,
