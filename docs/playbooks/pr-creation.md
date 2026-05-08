@@ -59,13 +59,13 @@ git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 
 親セッションが直接 push する際は、以下をすべて確認する。
 
-| #   | チェック項目         | コマンド                                                                                                               |
-| --- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 0   | node_modules 整備    | `npm ci`（新規作成 worktree では必須。SessionStart hook は session 開始時のみ fire し mid-session 作成 worktree には適用されない）                              |
-| 1   | develop ベース確認   | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                          |
-| 2   | スコープ外差分の確認 | `git diff origin/develop --name-only` で想定外ファイルがないか確認。aria-\* 削除行（`git diff` の `-` 行）がないか確認 |
-| 3   | E2E 直列実行         | `npm run test:e2e`（preview 経由・複数 worktree がある場合は同時実行しない、詳細は `e2e-validation.md` 3 章）          |
-| 4   | PR ベース            | `gh pr create --base develop`                                                                                          |
+| #   | チェック項目         | コマンド                                                                                                                           |
+| --- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 0   | node_modules 整備    | `npm ci`（新規作成 worktree では必須。SessionStart hook は session 開始時のみ fire し mid-session 作成 worktree には適用されない） |
+| 1   | develop ベース確認   | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                                      |
+| 2   | スコープ外差分の確認 | `git diff origin/develop --name-only` で想定外ファイルがないか確認。aria-\* 削除行（`git diff` の `-` 行）がないか確認             |
+| 3   | E2E 直列実行         | `npm run test:e2e`（preview 経由・複数 worktree がある場合は同時実行しない、詳細は `e2e-validation.md` 3 章）                      |
+| 4   | PR ベース            | `gh pr create --base develop`                                                                                                      |
 
 ---
 
