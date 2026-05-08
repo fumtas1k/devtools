@@ -25,18 +25,12 @@ const jsonLd = {
 >
   <!-- ヒーロー -->
   <section
-    class="text-center px-4 py-8"
-    style="background: var(--color-background); border-bottom: 1px solid var(--color-blue-100);"
+    class="text-center px-4 py-8 bg-[var(--color-background)] border-b border-[var(--color-blue-100)]"
   >
-    <h1
-      class="mb-2 font-bold"
-      style="font-size: 2rem; line-height: 1.4; letter-spacing: 0.01em; color: var(--color-text);"
-    >
+    <h1 class="mb-2 font-bold text-[2rem] leading-[1.4] tracking-[0.01em] text-default">
       DevTools
     </h1>
-    <p
-      style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-neutral-600);"
-    >
+    <p class="text-base leading-[1.7] tracking-[0.02em] text-[var(--color-neutral-600)]">
       ブラウザで完結する無料の開発者ツール集
     </p>
   </section>
@@ -49,8 +43,7 @@ const jsonLd = {
         id="tab-bar"
         role="tablist"
         aria-label="カテゴリ絞り込み"
-        class="mb-6 flex gap-1 border-b"
-        style="border-color: var(--color-border);"
+        class="mb-6 flex gap-1 border-b border-default"
       >
         <button
           role="tab"
@@ -58,8 +51,7 @@ const jsonLd = {
           aria-selected="true"
           aria-controls="panel-0"
           data-index="0"
-          class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
-          style="font-size: 0.875rem; letter-spacing: 0.02em;"
+          class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
         >
           すべて
         </button>
@@ -71,8 +63,7 @@ const jsonLd = {
               aria-selected="false"
               aria-controls={`panel-${i + 1}`}
               data-index={i + 1}
-              class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
-              style="font-size: 0.875rem; letter-spacing: 0.02em;"
+              class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
             >
               {categoryLabel[cat]}
             </button>
@@ -81,18 +72,14 @@ const jsonLd = {
       </div>
 
       <!-- スワイプパネル -->
-      <div
-        id="panels"
-        class="flex"
-        style="overflow-x: scroll; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; -webkit-overflow-scrolling: touch;"
-      >
+      <div id="panels" class="flex scroll-snap-x">
         {
           allCategories.map((cat, i) => (
             <div
               role="tabpanel"
               id={`panel-${i}`}
               aria-labelledby={`tab-${i}`}
-              style="flex: 0 0 100%; scroll-snap-align: start; min-width: 0;"
+              class="basis-full shrink-0 grow-0 snap-start min-w-0"
             >
               <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {tools
@@ -100,31 +87,17 @@ const jsonLd = {
                   .map((tool) => (
                     <a
                       href={`/tools/${tool.slug}`}
-                      class="tool-card rounded-lg p-6 block transition-shadow hover:shadow-md"
-                      style="background: var(--color-bg); border: 1px solid var(--color-border);"
+                      class="tool-card rounded-lg p-6 block transition-shadow hover:shadow-md bg-default border border-default"
                     >
                       <div class="mb-4 flex items-start justify-between">
-                        <ToolIcon slug={tool.slug} size={28} style="color: var(--color-primary);" />
+                        <ToolIcon slug={tool.slug} size={28} class="text-primary" />
                         <CategoryBadge label={categoryLabel[tool.category]} class="py-0.5" />
                       </div>
-                      <h2
-                        class="tool-card-title mb-2 font-bold transition-colors"
-                        style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
-                      >
+                      <h2 class="tool-card-title mb-2 font-bold transition-colors section-heading">
                         {tool.name}
                       </h2>
-                      <p
-                        class="mb-4"
-                        style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
-                      >
-                        {tool.description}
-                      </p>
-                      <span
-                        class="text-link-color"
-                        style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
-                      >
-                        開く &rsaquo;
-                      </span>
+                      <p class="mb-4 caption text-muted">{tool.description}</p>
+                      <span class="text-link-color caption">開く &rsaquo;</span>
                     </a>
                   ))}
               </div>
