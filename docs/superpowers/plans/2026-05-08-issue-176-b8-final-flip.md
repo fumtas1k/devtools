@@ -1,5 +1,7 @@
 # `#176` B 案 PR 8 — `style-src 'unsafe-inline'` 最終 flip Implementation Plan
 
+> **更新 2026-05-08 (PR 実装後の scope 縮小)**: 本 plan の Task 2 (CSP flip) / Task 3 (`stripMetaStyleSrc` 撤去) / Task 4 (test 反転) は ResultTable `el.style.setProperty('--col-width', ...)` の CSP3 制約発覚 ([067]) により本 PR から rebase で除外された。後続: PR 9 (#304 ResultTable refactor、Constructable Stylesheets 候補) → PR 10 (#305 B 案最終 flip 再投入)。本 PR で実施したのは Task 1 (Gs1Databar) / Task 5 (Astro 検出網) / Task 6 (decisions [067] 内容差替) / Task 7 (SoT 同期) のみ。原 7-commit 計画は git branch `backup/pr8-full-original` (push しない、ローカル保全) で参照可。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `#176` B 案最終 flip。CSP `style-src 'unsafe-inline'` を header / meta 両 side で削除し、暫定 strip integration を撤去、Astro 検出網を整備、`docs/decisions.md [067]` で B 案完了を記録する。

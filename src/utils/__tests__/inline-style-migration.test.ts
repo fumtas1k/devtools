@@ -61,10 +61,12 @@ describe.skipIf(ASTRO_TARGET_FILES.length === 0)(
     describe.each(ASTRO_TARGET_FILES)('%s', (file) => {
       const content = readFileSync(path.resolve(process.cwd(), file), 'utf-8');
 
-      it('HTML inline style 属性 (style="...") が残っていない', () => {
+      it('HTML inline style 属性 (style="..." / style=\'...\' / style={...}) が残っていない', () => {
         // 前置スペース必須: `<style>` block (Astro scoped、auto-hash 経路) は対象外。
-        // `style="..."` 属性形式のみ検出。
-        expect(content).not.toMatch(/\sstyle\s*=\s*"[^"]*"/);
+        // ダブルクォート / シングルクォート / {expression} の 3 形式すべてを検出。
+        // PR 7a/7b の実績では全てダブルクォート形式だったが、将来 frontmatter
+        // 由来の動的注入や JSX 風 expression 形式が混入した場合の silent skip を防ぐ。
+        expect(content).not.toMatch(/\sstyle\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\})/);
       });
     });
   }
@@ -90,8 +92,18 @@ describe('migration detector の陽性対照', () => {
     expect(violations).toEqual([]);
   });
 
-  it('意図的に Astro style="..." を含む文字列が違反として検出される', () => {
+  it('意図的に Astro style="..." (ダブルクォート) を含む文字列が違反として検出される', () => {
     const malicious = `<div style="color: red" />`;
-    expect(malicious).toMatch(/\sstyle\s*=\s*"[^"]*"/);
+    expect(malicious).toMatch(/\sstyle\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\})/);
+  });
+
+  it("意図的に Astro style='...' (シングルクォート) を含む文字列が違反として検出される", () => {
+    const malicious = `<div style='color: red' />`;
+    expect(malicious).toMatch(/\sstyle\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\})/);
+  });
+
+  it('意図的に Astro style={...} (expression) を含む文字列が違反として検出される', () => {
+    const malicious = `<div style={cssExpr} />`;
+    expect(malicious).toMatch(/\sstyle\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\})/);
   });
 });
