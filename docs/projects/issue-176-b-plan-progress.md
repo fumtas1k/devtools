@@ -32,7 +32,7 @@
 | PR 7a                 | layout/\* 4 + layouts/\* 2 + ui/\*.astro 2 (Astro inline 23 件撤去 + 新規 7 class) — `#289` 由来                                                                               | ✅ merged | [#294 (merged 3d943bd)](https://github.com/fumtas1k/devtools/pull/294) |
 | PR 7b                 | pages/\*.astro 7 ファイル (Astro inline 残 42 件 + 新規 3 class) — `#289` 由来                                                                                                 | ✅ merged | [#299 (merged 87d705a)](https://github.com/fumtas1k/devtools/pull/299) |
 | PR 8                  | scope 縮小: Gs1Databar SVG `currentColor` 化 + Astro 検出網 (`.astro` glob) + `decisions.md [067]` (setProperty CSP3 制約発覚 + 延期記録) — strict 化は PR 10 に延期           | ✅ merged | [#303 (merged e2efd24)](https://github.com/fumtas1k/devtools/pull/303) |
-| **PR 9 (新規)**       | ResultTable `setProperty` の Constructable Stylesheets 化 (or CSS class swap) — CSP `style-src` strict 化の前提整備                                                            | 未着手    | issue [#304](https://github.com/fumtas1k/devtools/issues/304)          |
+| **PR 9**              | ResultTable + ToggleGroup `setProperty` を Constructable Stylesheets 化 (issue 由来 ResultTable のみ → ToggleGroup 12 ツール影響を spec 起草時に発見し scope 拡張)             | 実装中    | issue [#304](https://github.com/fumtas1k/devtools/issues/304)          |
 | **PR 10 (新規)**      | B 案最終 flip: `_headers` + `<meta>` 両側から `style-src 'unsafe-inline'` 削除 + `stripMetaStyleSrc` 撤去 + test 群 strict 化 (PR 8 から rebase で削除した 3 commit を再投入)  | 未着手    | issue [#305](https://github.com/fumtas1k/devtools/issues/305)          |
 
 **重要 — PR 0 の意義**: VRT を ui migration と bundle した PR #253 が architectural 問題で close になったため、VRT を独立 PR で proper sequencing（mock 注入 → CI Linux baseline → required check 外す）で先行導入する。詳細は Claude memory `feedback_vrt_setup_sequencing.md` / `feedback_infra_feature_separation.md` 参照（PC ローカル）。
@@ -118,12 +118,16 @@
 - **次のステップ**: PR 9 (ResultTable refactor) → PR 10 (B 案最終 flip)
 - **post-mortem**: 詳細は `docs/decisions.md [067]` 参照
 
-### PR 9 (issue [#304](https://github.com/fumtas1k/devtools/issues/304)、新規) — ResultTable `setProperty` refactor
+### PR 9 (issue [#304](https://github.com/fumtas1k/devtools/issues/304)) — ResultTable + ToggleGroup `setProperty` refactor
 
-- **scope (案)**: `src/components/ui/ResultTable.tsx:62-78` の `el.style.setProperty('--result-table-min-width' / '--col-width', ...)` を Constructable Stylesheets (`new CSSStyleSheet()` + `document.adoptedStyleSheets`) に書換、もしくは CSS class swap (有限 bucket の `.col-width-XX`) に書換
-- **目的**: PR 10 の `style-src` strict 化で violation を起こさない実装に切替
-- **判断ポイント**: (a) Constructable Stylesheets が Chromium で実際に CSP `style-src` を bypass するか実機検証、(b) UX 維持 (連続値の動的 width 調整) と spec 仕様非依存性のトレードオフ
-- **影響範囲**: ResultTable を使う 11 spec (ulid-generator / uuid-v7 / config-converter / 等) の E2E gate が再 strict pass することで完了判定
+- **scope 拡張 (spec 起草時に発見)**: 当初 issue は ResultTable のみ言及だったが、`ConfigConverter` は `ResultTable` 未使用で `config-converter` violation 1 件の真因は `ToggleGroup.tsx:41` の `setProperty('--toggle-cols', N)` (12 ツールで使用) と確認。PR 9 で **ResultTable + ToggleGroup を一括 refactor** (PR 10 strict 化で全 12 ツールが再違反するのを防ぐ)
+- **採用**: (a) Constructable Stylesheets。Phase 0 minimal repro spec (`tests/e2e/csp-constructable-stylesheet.spec.ts`、永続) で Chromium 実機検証 pass を確認後 refactor
+- **共通 hook**: `src/hooks/useDynamicStyleSheet.ts` (SSR-safe / `useId` ベース) に Constructable Stylesheets 経路を集約。`src/utils/css-length.ts` の `assertCssLength` で CSS injection 防御
+- **migration test 反転**: `inline-style-migration.test.ts` の `setProperty` 除外を撤去し陽性 guard に変更
+- **infra/feature 分離例外**: `applyStrictStyleSrcCsp` helper + Phase 0 spec を本 PR に bundle (PR 5b と同 judgement、`feedback_infra_feature_separation.md` 例外条項)
+- **subagent 委譲方針**: Task 1〜7 は subagent (sonnet) 委譲、Task 8〜10 は親 Opus 直接 (overhead vs. ROI 判断、PR 7a / 7b / 8 と同パターンに揃える)
+- **Phase 2 で発覚した PR 10 申し送り事項**: 13 ツール spec を strict CSP local run したところ、Astro 島ランタイムが injection する固定 inline `<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>` (sha256-vv9I...) が headers 側 strict CSP で block される現象を確認。PR 9 の React refactor 自体は無問題 (`useDynamicStyleSheet` 経路は violation 起こさず) で、PR 10 で `_headers` strict 化と同時に Astro island style hash を取り込む経路設計が必要 (詳細は `docs/decisions.md [067]` PR 9 outcome section 参照)
+- **後続**: PR 10 ([#305]) で `_headers` / `<meta>` strict 化 + `stripMetaStyleSrc` 撤去 + Astro island style hash 取り込み + test 群 strict 化 (PR 8 rebase で削除した 3 commit 再投入)
 
 ### PR 10 (issue [#305](https://github.com/fumtas1k/devtools/issues/305)、新規) — B 案最終 flip
 

@@ -2514,9 +2514,32 @@ CSP3 仕様 (`https://www.w3.org/TR/CSP3/#directive-style-src`) では `style-sr
 - **migration test の検出 regex は実 violation を保証しない**: `inline-style-migration.test.ts` で `setProperty` を意図的に除外していたが、CSP の実評価とは独立して評価される (regex は文字列マッチ、CSP は DOM 状態)。陽性対照テストの境界条件として E2E `applyProductionCsp` gate を 1.5 段階で導入していれば早期検知できた。
 - **「前提崩壊」は overstating**: 当初「B 案不可能」と過剰評価したが、refactor で達成可能。ブロッカー検出時は解決策の現実性を冷静に列挙する習慣が必要。
 
+### PR 9 outcome (2026-05-08)
+
+**採用**: (a) Constructable Stylesheets。Phase 0 minimal repro spec (`tests/e2e/csp-constructable-stylesheet.spec.ts`、永続) で Chromium 実機検証 (陽性対照: インライン `<style>` 要素は violation 起こす / 陰性対照: `new CSSStyleSheet()` + `document.adoptedStyleSheets` は violation 起こさず適用される / CSS 変数注入経由でも問題なし) を pass、refactor 確定。
+
+**scope 拡張**: 当初 issue [#304] / 本 entry は ResultTable のみ言及だったが、PR 9 spec 起草時の調査で `config-converter` violation 1 件の真因が `ToggleGroup.tsx` の `setProperty('--toggle-cols', N)` (12 ツールで使用) と判明。PR 9 で **ResultTable + ToggleGroup を一括 refactor**。
+
+**実装**:
+
+- 共通 hook `src/hooks/useDynamicStyleSheet.ts` (SSR-safe / `useId` ベース) に Constructable Stylesheets 経路を集約
+- `src/utils/css-length.ts` の `assertCssLength` で `replaceSync` 経由 CSS injection を防御 (defense in depth)
+- `tests/e2e/helpers.ts` に `applyStrictStyleSrcCsp` を追加 — `PRODUCTION_CSP` から `style-src 'unsafe-inline'` を `replace` で除いた派生定数 + module load 時の sanity guard で drift を CI 検知
+- `tests/e2e/csp-constructable-stylesheet.spec.ts` を永続 regression 検出網として残す (Chromium 動作変更 / CSP 仕様改訂への早期検知)
+- `inline-style-migration.test.ts` の `setProperty` 除外を撤去し陽性 guard に反転
+- `vitest.config.ts` に `setupFiles: ['./src/test-setup.ts']` を追加 — jsdom polyfill (CSSStyleSheet.replaceSync / document.adoptedStyleSheets) を ToggleGroup / ResultTable をテストする全 jsdom test に共通適用
+
+**Phase 2 検証で発覚した PR 10 への申し送り事項**:
+
+PR 9 の Phase 2 (13 ツール spec を strict CSP local run) で **Astro 島ランタイムが injection する固定 inline `<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>`** (sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow=) が headers 側 strict CSP の `style-src 'self'` で block される現象を確認。PR 9 の React refactor 自体は無問題 (Phase 0 spec が `/` で pass、`useDynamicStyleSheet` 経路は violation 起こさず) で、本件は [064] / `stripMetaStyleSrc` 構造由来の **PR 10 責務範囲**:
+
+- PR 10 で `_headers` strict 化と同時に Astro island runtime の inline style hash を `style-src` directive に取り込む経路設計が必要
+- 案: `astro.config.mjs` の `security.csp` integration を活用 + `stripMetaStyleSrc` 撤去で `<meta>` 側に hash が付与されるため、headers 側にも同 hash を反映するメカニズムを設計 (Astro 公式 build hook で hash を抽出して `_headers` を生成 / または handcoded hash を Astro 側 fingerprint 安定運用)
+- PR 9 完了判定は「React 経由 setProperty 0 件 + Phase 0 spec PASS + 全既存 e2e (`withProductionCsp` 通常 run) PASS」に縮小、Phase 2 strict CSP 検証は PR 10 に統合
+
 ### 関連 PR / issue
 
-- 本 entry を記録: PR 8 (scope 縮小、本 PR で merge)
-- 後続: PR 9 (ResultTable refactor、follow-up issue で起票)、PR 10 (B 案最終 flip)
+- 本 entry を記録: PR 8 (scope 縮小、merge `e2efd24`)、PR 9 outcome 追補
+- 後続: PR 10 (B 案最終 flip + Astro island runtime style hash 取り込み)
 - 過去: [064] (CSP A-1 / script-src strict 化)
 - 起源: `#176` B 案 PR 1.5 (#261) で導入された `setProperty` パターン
