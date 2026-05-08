@@ -604,7 +604,11 @@
 
   /* Section heading: about/privacy h2 + index card title (10 occurrences)
      注: color は class に含めない (10 件中 1 件 = index L112 card title が色無し
-     なため、consumer 側で text-default を選択的に併用)。 */
+     なため、consumer 側で text-default を選択的に併用)。
+     **使い方**: 通常は `.section-heading .text-default` を併用 (= 9/10 ケース)。
+     親要素から色継承で十分なケースのみ単独適用 (例: index.astro の card title が
+     親 .tool-card-title から var(--color-text) を継承)。新規 consumer は
+     原則 `.text-default` 併用が安全 (silent regression 予防)。 */
   .section-heading {
     font-size: 1.125rem;
     line-height: 1.5;
@@ -614,7 +618,10 @@
   /* Body prose text: about/privacy 本文段落 (8 occurrences、全件 neutral-700)
      注: typography + color baked-in。.footer-bar precedent (PR 7a で
      bg+color combined) に追従。8 件全て neutral-700 で一致するため安全。
-     dark mode 対応時に semantic alias 化する想定 (本 PR scope 外)。 */
+     TODO(dark-mode): dark mode 対応時に 8 箇所すべての neutral-700 を
+     semantic alias (`--color-text-secondary` 等) へ書き換え必要。
+     PR 7a の `.footer-bar` も同根 (neutral-900/300 baked-in)、
+     dark mode 対応 issue 起票時にまとめて semantic alias 化検討。 */
   .text-body {
     font-size: 1rem;
     line-height: 1.8;
