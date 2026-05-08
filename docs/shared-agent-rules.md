@@ -109,12 +109,13 @@ post-PR 代行は不要、CI が最終ゲート。
 `git worktree add` 直後に node_modules を必ず整備する。SessionStart hook は session 開始時のみ fire するため、mid-session で worktree を作成した場合は fire せず、手動で `npm ci` を実行する必要がある（subagent isolation / 親手動 `git worktree add` 共通）。
 
 ```bash
-# worktree 作成
-git worktree add .claude/worktrees/<name> origin/develop
+# worktree 作成（slug は branch 命名 `<type>/<slug>` と揃える）
+git worktree add .claude/worktrees/<slug> origin/develop
 
 # 直後に node_modules 整備（mid-session では SessionStart hook が fire しないため必須）
-cd .claude/worktrees/<name>
-ls node_modules 2>/dev/null || npm ci
+# `npm ci` は idempotent。`ls` ガードで skip すると package-lock 更新後に false-skip するため明示実行する
+cd .claude/worktrees/<slug>
+npm ci
 ```
 
 ### 6.3 PR 作成時のベースブランチ
