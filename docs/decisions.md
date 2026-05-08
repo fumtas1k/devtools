@@ -2557,7 +2557,7 @@ PR 9 merge 後の review で 2 件の follow-up issue が起票され、PR 10 �
 
 - callsite 2 箇所 (`UuidV7Generator` minWidth=42rem / `UlidGenerator` minWidth=36rem) すべて hard-coded literal、props 動的変化なし → FOUC は「初回画面の 1 frame」限定
 - `ToggleGroup` `var(--toggle-cols, 2)` の dimensionless 整数 fallback とは異なり、`ResultTable` の `min-width` / `width` は callsite 固有値で 1 つの代表値が原理的に存在しない (option B が常に乖離)
-- PR 10 VRT は `toHaveScreenshot` が networkidle + hydration 後撮影 → FOUC frame は捕捉しない
+- PR 10 VRT は `toHaveScreenshot` が networkidle + hydration 後撮影 → FOUC frame は捕捉しない (想定、PR 10 で実測予定)
 
 **対応**: `useDynamicStyleSheet.ts` JSDoc に FOUC expected behavior 明記 (本 PR で実装)、issue `#309` を close。
 
@@ -2569,11 +2569,11 @@ PR 9 merge 後の review で 2 件の follow-up issue が起票され、PR 10 �
 
 **評価**:
 
-| 案                             | 採否                                                                              |
-| ------------------------------ | --------------------------------------------------------------------------------- |
-| (i) 今 PR で `useRef` 化実装   | 不採用 (rules 変化頻度ゼロで実害なし、YAGNI)                                      |
-| (ii) decision メモのみ実装見送 | ✅ **採用**                                                                       |
-| (iii) close as won't-fix       | 不採用 (将来 dynamic rules 利用時に再起票より open 維持の方が context 保全に優位) |
+| 案                                 | 採否                                                                              |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| (i) 今 PR で `useRef` 化実装       | 不採用 (rules 変化頻度ゼロで実害なし、YAGNI)                                      |
+| (ii) decision メモのみ、実装見送り | ✅ **採用**                                                                       |
+| (iii) close as won't-fix           | 不採用 (将来 dynamic rules 利用時に再起票より open 維持の方が context 保全に優位) |
 
 **(ii) 採用根拠**:
 
