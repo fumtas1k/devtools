@@ -10,10 +10,10 @@ import path from 'node:path';
  * （docs/decisions.md [064]）。本 meta の strictness が壊れると本ファイルのテストが落ち、
  * 設計の前提崩れを CI で即時検知する。
  *
- * astro.config.mjs の `stripMetaStyleSrc()` integration で <meta> から style-src は除去
- * している（CSP3 仕様で hash と 'unsafe-inline' が共存するとブラウザが unsafe-inline を
- * 無視するため、style-src の strict 化は B 案 PR で React style="..." 200+ 箇所の段階移行
- * と合わせて行う）。本テストでは style-src の不在も検証する。
+ * `<meta>` 側の style-src は #176 B 案完了 ([068]) で `'self'` + Astro island hash の
+ * strict 形式に。stripMetaStyleSrc integration を撤去し Astro security.csp の自動 hash
+ * 付与をそのまま活用。本テストで strict 形式 (`'unsafe-inline'` 不在) を陽性 assert +
+ * Astro inline style 検出網 + sha256 整合性メタテストを併設する。
  *
  * 本テストは built dist/ を入力とするため、`npm run build` 後でないと走らない。
  * CI の test job では `npm run build` step を先に走らせる構成（`.github/workflows/test.yml` / #250 で追加）。
@@ -76,14 +76,71 @@ describe('dist/*.html の <meta> CSP（Astro security.csp 由来 / #176 A-1 / #2
         expect(cspContent).not.toMatch(/script-src[^;]*'unsafe-inline'/);
       });
 
-      it('style-src は meta から除去されている (stripMetaStyleSrc integration)', () => {
-        // astro.config.mjs の stripMetaStyleSrc() で <meta> CSP から style-src を除く。
-        // CSP3 仕様で hash と 'unsafe-inline' 共存時にブラウザが unsafe-inline を無視するため、
-        // style-src は header 側 (`'self' 'unsafe-inline'`) のみで制御する。
-        // B 案 (#176 アプローチ B) で React style="..." 200+ 箇所を移行後、
-        // この strip integration 自体を削除して meta side でも strict 化する。
-        expect(cspContent).not.toMatch(/style-src/);
+      it("style-src は 'self' のみで 'unsafe-inline' を含まない (#176 B 案完了 / [068])", () => {
+        // [068] B 案完了。React style={{ / Astro style="" / SVG inline style /
+        // setProperty 経路が全廃された後、<meta> CSP も style-src 'self' で安全に
+        // 運用可能。本 PR commit 2 で stripMetaStyleSrc integration を削除した
+        // 結果、Astro security.csp 由来の <meta> に style-src がそのまま出力される。
+        expect(cspContent).toMatch(/style-src[^;]*'self'/);
+        expect(cspContent).not.toMatch(/style-src[^;]*'unsafe-inline'/);
+      });
+
+      it('style-src に sha256- ハッシュが少なくとも 1 つ含まれる (Astro auto-hash)', () => {
+        // Astro security.csp が <style> ブロックを auto-hash した結果。
+        // Astro island runtime の inline style (sha256-vv9I...) も auto-hash 対象に
+        // 含まれる。1 つも無い場合は security.csp が無効化されているか失敗している。
+        expect(cspContent).toMatch(/style-src[^;]*'sha256-[A-Za-z0-9+/=]+'/);
       });
     });
   }
+});
+
+/**
+ * Astro island runtime の inline style hash 整合性検出網 (#176 B 案完了 / [068]).
+ *
+ * Astro が各ページに injection する固定 inline style:
+ *   <style>astro-island,astro-slot,astro-static-slot{display:contents}</style>
+ * の sha256 hash を `_headers` の style-src に hardcoded fingerprint として
+ * 取り込む handcoded 戦略 (option α、`docs/decisions.md [068]` 参照)。
+ *
+ * 本検出網は以下を assert する:
+ * 1. dist HTML 内に Astro island inline style literal が含まれること
+ * 2. dist HTML inline style content の sha256 が `_headers` の hash 値と一致すること
+ *
+ * Astro が当該 inline style 文字列を変更すると検出 1 / 2 が連鎖的に fail し、
+ * silent regression を防ぐ陽性対照メタテスト。
+ */
+describe('Astro island runtime style hash 整合性 (#176 B 案完了 / [068])', () => {
+  if (distPages.length === 0) {
+    it.skip("dist/*.html が無い → 'npm run build' 後に再実行", () => {});
+    return;
+  }
+
+  const ASTRO_ISLAND_INLINE_STYLE =
+    '<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>';
+  const ASTRO_ISLAND_INLINE_CONTENT = 'astro-island,astro-slot,astro-static-slot{display:contents}';
+
+  it('dist HTML 内に Astro island inline style literal が含まれる (React island ありページ)', () => {
+    // Astro は React island を含むページにのみ astro-island inline style を注入する。
+    // about / privacy 等の純 Astro ページには含まれないため、distPages 全体で
+    // 少なくとも 1 ページに含まれることを assert (some パターン)。
+    const hasInlineStyle = distPages.some((page) =>
+      readFileSync(page, 'utf-8').includes(ASTRO_ISLAND_INLINE_STYLE)
+    );
+    expect(
+      hasInlineStyle,
+      'dist のどのページにも Astro island inline style literal が見つからない'
+    ).toBe(true);
+  });
+
+  it('dist HTML inline style の sha256 が _headers の hash と一致する (陽性対照メタテスト)', async () => {
+    const { createHash } = await import('node:crypto');
+    const computedHash = createHash('sha256').update(ASTRO_ISLAND_INLINE_CONTENT).digest('base64');
+    const expectedToken = `'sha256-${computedHash}'`;
+
+    const headersPath = path.resolve(process.cwd(), 'public', '_headers');
+    const headersContent = readFileSync(headersPath, 'utf-8');
+
+    expect(headersContent).toContain(expectedToken);
+  });
 });

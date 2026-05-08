@@ -86,11 +86,25 @@ describe('public/_headers', () => {
       expect(csp).toMatch(/script-src[^;]*'unsafe-inline'/);
     });
 
-    it("style-src は 'unsafe-inline' を許可（React/Astro のインラインスタイル運用上必要）", () => {
-      // 219+ 箇所の React `style={{...}}` と Astro `style="..."` が存在するため許可。
-      // 中期的には CSS Modules / nonce 化を検討（docs/decisions.md [054] 参照）。
+    it("style-src は 'self' のみで 'unsafe-inline' を含まない (#176 B 案完了 / [068])", () => {
+      // PR 1〜7b で React `style={{` / Astro `style="..."` 全廃 (PR 9 で setProperty
+      // 経路も Constructable Stylesheets 化) + 本 PR (PR 10) で両層 strict 化。
+      // 残る暗黙 inline style 経路は Astro island runtime のみで、当該 hash を取り込む。
+      // CSP3 仕様で hash と 'unsafe-inline' 共存時に unsafe-inline は無効化されるため、
+      // 'unsafe-inline' 不在を陽性 assert する。
+      // 詳細: docs/decisions.md [068]
       expect(csp).toMatch(/style-src[^;]*'self'/);
-      expect(csp).toMatch(/style-src[^;]*'unsafe-inline'/);
+      expect(csp).not.toMatch(/style-src[^;]*'unsafe-inline'/);
+    });
+
+    it('style-src に Astro island runtime hash が含まれる (#176 B 案完了 / [068])', () => {
+      // Astro 島ランタイム injection の inline style:
+      // <style>astro-island,astro-slot,astro-static-slot{display:contents}</style>
+      // の sha256 hash を _headers の style-src に hardcode する handcoded
+      // fingerprint 戦略。Astro が当該文字列を変更すると本テストは pass し続けるが、
+      // meta-csp.test.ts の整合性メタテストが fail して検知する。
+      // 詳細: docs/decisions.md [068]
+      expect(csp).toMatch(/style-src[^;]*'sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L\/9Cfn2H6LMk7\/ow='/);
     });
 
     it('upgrade-insecure-requests を含む（混在コンテンツ防止）', () => {
