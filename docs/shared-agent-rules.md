@@ -104,6 +104,19 @@ post-PR 代行は不要、CI が最終ゲート。
 
 ブランチ作成完成形コマンド・自己検証・rebase 後 push の親引き取り → **`docs/playbooks/pr-creation.md` 1〜2 章**
 
+### 6.2.1 worktree 作成直後の必須セットアップ
+
+`git worktree add` 直後に node_modules を必ず整備する。SessionStart hook は session 開始時のみ fire するため、mid-session で worktree を作成した場合は fire せず、手動で `npm ci` を実行する必要がある（subagent isolation / 親手動 `git worktree add` 共通）。
+
+```bash
+# worktree 作成
+git worktree add .claude/worktrees/<name> origin/develop
+
+# 直後に node_modules 整備（mid-session では SessionStart hook が fire しないため必須）
+cd .claude/worktrees/<name>
+ls node_modules 2>/dev/null || npm ci
+```
+
 ### 6.3 PR 作成時のベースブランチ
 
 `gh pr create` は **`--base develop`** を必ず指定する（デフォルトは `main`）:

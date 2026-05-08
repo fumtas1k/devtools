@@ -11,7 +11,7 @@
 
 - **言語**: コミットメッセージ・PR 説明文は **必ず日本語**。
 - **スタイリング**: Tailwind カラークラスは禁止。**`colors.*` (React)** または **`var(--color-*)` (Astro)** を使用。
-- **検証**: `npm run test`（ユニット）と `astro check`（型）はサブエージェント / 親共通。**`npm run test:e2e` は push 前に必ず実行**（subagent worktree か親で。内部で build + preview を直列起動。post-PR 代行は不要、CI が最終ゲート）。node_modules 不在の worktree は `npm ci` で整備（SessionStart hook で自動実行）。詳細手順 → `docs/playbooks/e2e-validation.md`
+- **検証**: `npm run test`（ユニット）と `astro check`（型）はサブエージェント / 親共通。**`npm run test:e2e` は push 前に必ず実行**（subagent worktree か親で。内部で build + preview を直列起動。post-PR 代行は不要、CI が最終ゲート）。新規作成 worktree (subagent isolation / 親手動 `git worktree add` 共通) では作成直後に手動 `npm ci` 必須。SessionStart hook は session 開始時のみ fire するため、mid-session 作成 worktree では fire しない。詳細手順 → `docs/playbooks/e2e-validation.md`
 - **PR 作成**: 4 点必須 (正本: `docs/playbooks/pr-creation.md` 3〜4 章 / `docs/shared-agent-rules.md` 6.1, 6.3, 9.6 章 — 不一致時は playbook 優先):
   1. **ベース**: `gh pr create --base develop` 明示 (`gh` デフォルトは main / system prompt の "Main branch" 表示に流されない)
   2. **本文**: `--body-file <path>` 経由必須 (`/tmp/claude/pr_body.md` 等、`--body` 直渡しは禁止 — バックティック化け事故防止)

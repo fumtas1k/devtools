@@ -21,13 +21,13 @@ git switch -c <type>/issue-<n>-<slug> origin/develop
 git rev-parse origin/develop
 git merge-base HEAD origin/develop
 
-# node_modules 整備（subagent isolation worktree では特に必須）
+# node_modules 整備（全ての新規作成 worktree で必須。subagent isolation / 親手動 worktree add 共通）
 npm ci
 ```
 
 ブランチ名は `<type>/<slug>`（例: `feat/add-tool`, `fix/issue-123-crash`）。issue がある場合は `<type>/issue-<n>-<slug>` 形式を推奨。
 
-> **`npm ci` 補足**: `.claude/settings.json` の SessionStart hook が条件を満たせば自動実行されるが、明示しておくことで未実行リスクを排除する。subagent isolation worktree では fresh state（node_modules 不在）から始まるため必須。詳細は `docs/playbooks/e2e-validation.md` ステップ 0 補足参照。
+> **`npm ci` 補足**: 新規作成 worktree では必須。SessionStart hook は session 開始時のみ fire し、mid-session で `git worktree add` した worktree には適用されないため、worktree 作成直後に手動で実行する。詳細は `docs/playbooks/e2e-validation.md` ステップ 0 補足参照。
 
 ### 1.2 ベース不一致時のリベース
 
@@ -61,7 +61,7 @@ git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 
 | #   | チェック項目         | コマンド                                                                                                               |
 | --- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 0   | node_modules 整備    | `npm ci`（worktree 内で push する場合のみ。SessionStart hook で自動実行されるが念のため）                              |
+| 0   | node_modules 整備    | `npm ci`（新規作成 worktree では必須。SessionStart hook は session 開始時のみ fire し mid-session 作成 worktree には適用されない）                              |
 | 1   | develop ベース確認   | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致                                          |
 | 2   | スコープ外差分の確認 | `git diff origin/develop --name-only` で想定外ファイルがないか確認。aria-\* 削除行（`git diff` の `-` 行）がないか確認 |
 | 3   | E2E 直列実行         | `npm run test:e2e`（preview 経由・複数 worktree がある場合は同時実行しない、詳細は `e2e-validation.md` 3 章）          |
