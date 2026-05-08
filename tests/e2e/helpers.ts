@@ -2,6 +2,26 @@ import type { Browser, ConsoleMessage, Page, Route } from '@playwright/test';
 import { PRODUCTION_CSP } from '../../src/utils/csp';
 
 /**
+ * PR 9 (#304) verification 専用定数、PR 10 で削除候補。
+ *
+ * `PRODUCTION_CSP` から `style-src` の `'unsafe-inline'` のみ除いた形。
+ * PR 10 で `PRODUCTION_CSP` 自体を strict 化したら本定数は冗長になり、削除する。
+ */
+const STRICT_STYLE_SRC_CSP =
+  "default-src 'self'; " +
+  "img-src 'self' data: blob:; " +
+  "media-src 'self' blob:; " +
+  "style-src 'self'; " + // 'unsafe-inline' を削除した PR 10 想定形 (test 専用 / 暫定値)
+  "script-src 'self' 'unsafe-inline'; " +
+  "connect-src 'self'; " +
+  "worker-src 'self'; " +
+  "object-src 'none'; " +
+  "frame-ancestors 'none'; " +
+  "base-uri 'none'; " +
+  "form-action 'self'; " +
+  'upgrade-insecure-requests';
+
+/**
  * Astro の client:load island は SSR でも DOM に要素が現れるが、
  * React のイベントハンドラはハイドレーション後に初めて有効になる。
  * React がハイドレーション完了すると DOM 要素に __react* キーを付与するため、
@@ -98,7 +118,7 @@ export interface CspGuard {
   dispose(): Promise<void>;
 }
 
-export async function applyProductionCsp(page: Page): Promise<CspGuard> {
+async function applyCspOverride(page: Page, csp: string): Promise<CspGuard> {
   const violations: string[] = [];
 
   const routeHandler = async (route: Route): Promise<void> => {
@@ -112,7 +132,7 @@ export async function applyProductionCsp(page: Page): Promise<CspGuard> {
     // 個別に組み立てて確実に CSP が乗るようにする。
     await route.fulfill({
       status: response.status(),
-      headers: { ...response.headers(), 'content-security-policy': PRODUCTION_CSP },
+      headers: { ...response.headers(), 'content-security-policy': csp },
       body: await response.body(),
     });
   };
@@ -152,6 +172,24 @@ export async function applyProductionCsp(page: Page): Promise<CspGuard> {
       page.off('pageerror', pageErrorHandler);
     },
   };
+}
+
+export async function applyProductionCsp(page: Page): Promise<CspGuard> {
+  return applyCspOverride(page, PRODUCTION_CSP);
+}
+
+/**
+ * **PR 9 (#304) verification 専用 helper、PR 10 で削除候補。**
+ *
+ * `style-src 'self'` (PR 10 で flip 予定の strict 形) を強制注入し、
+ * Constructable Stylesheets / setProperty 経路の挙動を実機検証する。
+ *
+ * `STRICT_STYLE_SRC_CSP` は `PRODUCTION_CSP` から `style-src` の
+ * `'unsafe-inline'` のみ除いた形。PR 10 で `PRODUCTION_CSP` 自体を
+ * strict 化したら本 helper は冗長になり、削除する。
+ */
+export async function applyStrictStyleSrcCsp(page: Page): Promise<CspGuard> {
+  return applyCspOverride(page, STRICT_STYLE_SRC_CSP);
 }
 
 /**
