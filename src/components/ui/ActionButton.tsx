@@ -55,7 +55,7 @@ export function ActionButton({
       onClick={onClick}
       disabled={isDisabled}
       aria-busy={loading ? 'true' : undefined}
-      className={`caption inline-flex items-center rounded-lg whitespace-nowrap btn-action btn-action--${variant} ${SIZE_CLASS[size]}`}
+      className={`caption inline-flex items-center gap-1.5 rounded-lg whitespace-nowrap btn-action btn-action--${variant} ${SIZE_CLASS[size]}`}
       {...rest}
     >
       {children}

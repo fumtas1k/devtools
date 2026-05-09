@@ -54,10 +54,8 @@ export function DownloadButton({
       loading={loading}
       aria-label={ariaLabel ?? label}
     >
-      <span className="inline-flex items-center gap-1.5">
-        <DownloadIcon />
-        {label}
-      </span>
+      <DownloadIcon />
+      {label}
     </ActionButton>
   );
 }

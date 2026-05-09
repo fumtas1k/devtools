@@ -292,7 +292,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <ActionButton onClick={onAddTicket} disabled={tickets.length >= MAX_TICKETS}>
-              <span aria-hidden="true">＋ </span>行を追加
+              <span aria-hidden="true">＋</span>行を追加
             </ActionButton>
             <ActionButton
               onClick={onGenerate}
