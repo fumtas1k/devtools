@@ -1,0 +1,63 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { CharCountTool } from '@/components/tools/CharCount';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'char-count')!;
+---
+
+<ToolLayout tool={tool}>
+  <CharCountTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      入力テキストの文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を一括集計します。
+      すべての処理はブラウザ内で完結し、サーバーへの送信は一切ありません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">VARCHAR 最小長について</h3>
+    <p class="tool-info-body">
+      「VARCHAR 最小長 (utf8mb4)」は MySQL utf8mb4 / PostgreSQL の <code>VARCHAR(N)</code> に対応する値です（Unicode
+      code point 単位）。 SQL Server <code>NVARCHAR(N)</code> や Java <code>String.length()</code> は
+      UTF-16 code unit 単位（サロゲートペアで 2 消費）のため、 上の「JS .length (UTF-16)」の値を参照してください。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">DBエラー予測の使い方</h3>
+    <p class="tool-info-body">
+      絵文字や特殊文字を含む文字列をDBに投入するとエラーになることがあります。
+      <strong>エンコーディング互換性</strong>セクションで投入可否を事前に確認できます。
+    </p>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>
+        <strong>MySQL utf8mb3</strong> (旧来の <code>utf8</code>):
+        BMP外の文字（絵文字・一部CJK）は❌。
+        <code>utf8mb4</code>カラムへの移行を検討してください
+      </li>
+      <li>
+        <strong>Shift_JIS / EUC-JP</strong>: 絵文字・一部記号・CJK拡張文字は❌。
+        round-tripが一致しない文字は不可と判定します
+      </li>
+      <li>
+        <strong>UTF-8 (utf8mb4) / UTF-16</strong>: すべてのUnicode文字を表現できます
+      </li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">? 置換バイト数を表示しない理由</h3>
+    <p class="tool-info-body">
+      非対応エンコーディングでは変換不能文字が ? に置換されますが、
+      そのバイト数はDBに実際に保存される文字列と異なります。
+      誤誘導を防ぐため、非対応時は不可文字数と内訳のみを表示します。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">対応エンコーディング</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li><strong>UTF-8 (utf8mb4)</strong>: MySQL utf8mb4 / PostgreSQL / SQLite / Web標準</li>
+      <li><strong>UTF-8 BMP only (utf8mb3)</strong>: MySQL旧utf8 — U+0000〜U+FFFFのみ対応</li>
+      <li><strong>UTF-16</strong>: SQL Server NVARCHAR / Java内部表現</li>
+      <li><strong>Shift_JIS (CP932)</strong>: Windows日本語 / 日本語CSV</li>
+      <li><strong>EUC-JP</strong>: Unix系日本語ファイル</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">推定読了時間について</h3>
+    <p class="tool-info-body">
+      推定読了時間は日本語の標準的な黙読速度 <strong>600 字/分</strong> を基準に書記素数から算出した概算値です（最小
+      1 分）。 英語主体の文章や音読・速読、専門性の高い内容では実際の読了時間と乖離する場合があります。
+    </p>
+  </ToolInfoSection>
+</ToolLayout>

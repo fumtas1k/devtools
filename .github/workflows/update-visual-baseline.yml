@@ -41,6 +41,8 @@ jobs:
         # 持つ env var が baseline 生成 step に流れていないか early-fail check。
         # 例外: GITHUB_TOKEN は steps[0].with.token で push に必要、RUNNER_* は GH Actions runtime 由来。
         # baseline PNG への secret 焼き付き → git 履歴 permanent leak を防ぐ最終防御層。
+        # shell: bash を明示 (Playwright container は sh がデフォルト、pipefail は bash 専用)
+        shell: bash
         run: |
           set -euo pipefail
           # `GITHUB_TOKEN=` は exact match (末尾 `=` で `GITHUB_TOKEN_FOO=` の意図せぬ allow を防ぐ)。
