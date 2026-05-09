@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write # gh-pages push 用
   pull-requests: write # PR comment 投稿用
 
 jobs:
@@ -57,6 +57,86 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
+      - name: スライダーレポートを生成
+        if: ${{ !cancelled() && steps.vrt.outcome == 'failure' }}
+        id: gen-slider
+        shell: bash
+        run: |
+          node scripts/generate-vrt-slider.mjs
+          if [ -f vrt-slider-report/index.html ]; then
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: スライダーレポートを GitHub Pages へ deploy
+        if: ${{ !cancelled() && steps.gen-slider.outputs.generated == 'true' && github.event.pull_request.number }}
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM=${{ github.event.pull_request.number }}
+          REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+          # --user 1001 環境でも /tmp は書き込み可能
+          export GIT_CONFIG_GLOBAL=/tmp/.gitconfig
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          git config --global --add safe.directory /tmp/gh-pages
+
+          # gh-pages を local branch として worktree 化
+          # （既存: fetch して local branch 作成、なければ孤立ブランチ作成）
+          if git ls-remote --exit-code origin gh-pages 2>/dev/null; then
+            git fetch origin gh-pages:gh-pages
+            git worktree add /tmp/gh-pages gh-pages
+          else
+            git worktree add --orphan -b gh-pages /tmp/gh-pages
+          fi
+
+          # VRT レポートをコピー（cd 後も参照できるよう絶対パスを使用）
+          WS="${GITHUB_WORKSPACE}"
+          mkdir -p /tmp/gh-pages/vrt/pr-${PR_NUM}
+          cp -r "${WS}/vrt-slider-report/." /tmp/gh-pages/vrt/pr-${PR_NUM}/
+
+          cd /tmp/gh-pages
+          git add .
+          if git diff --staged --quiet; then
+            echo "変更なし — スキップ"
+            exit 0
+          fi
+          git commit -m "chore: VRT スライダーレポート更新 PR #${PR_NUM}"
+
+          # push（複数 PR 並走による競合時は fetch → reset → reapply して最大 3 回リトライ）
+          for attempt in 1 2 3; do
+            if git push "${REPO_URL}" gh-pages; then
+              break
+            elif [ $attempt -lt 3 ]; then
+              echo "push 競合 (attempt ${attempt}/3): 最新を取得してリトライ..."
+              git fetch "${REPO_URL}" refs/heads/gh-pages:refs/remotes/tmp/gh-pages
+              git reset --hard refs/remotes/tmp/gh-pages
+              mkdir -p vrt/pr-${PR_NUM}
+              cp -r "${WS}/vrt-slider-report/." vrt/pr-${PR_NUM}/
+              git add .
+              git diff --staged --quiet || git commit -m "chore: VRT スライダーレポート更新 PR #${PR_NUM}"
+              sleep $((attempt * 3))
+            else
+              echo "push 失敗: ${attempt} 回試行しました" >&2
+              exit 1
+            fi
+          done
+
+      - name: GitHub Pages 設定確認（未設定なら Actions warning を出す）
+        if: ${{ !cancelled() && steps.gen-slider.outputs.generated == 'true' }}
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATUS=$(gh api "repos/${{ github.repository }}/pages" --jq '.status' 2>/dev/null || echo "not_found")
+          if [ "$STATUS" = "not_found" ] || [ "$STATUS" = "null" ] || [ -z "$STATUS" ]; then
+            echo "::warning::GitHub Pages が未設定のためスライダー URL が 404 になります。Settings → Pages → Branch: gh-pages / (root) → Save を実行してください。"
+          fi
+
       - name: 既存の VRT comment を検索（dedup 用）
         if: ${{ !cancelled() && github.event.pull_request.number }}
         id: find-vrt-comment
@@ -82,6 +162,10 @@ jobs:
             fi
             echo "- **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             echo "- **Artifact (diff 画像 / playwright-report)**: 上記 workflow run の \`Artifacts\` セクションから download"
+            if [ "${{ steps.gen-slider.outputs.generated }}" = "true" ]; then
+              PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/vrt/pr-${{ github.event.pull_request.number }}/"
+              echo "- **🖼️ スライダー比較レポート**: [差分をブラウザで確認]($PAGES_URL)（deploy 完了まで 1〜2 分）"
+            fi
 
             if [ "${{ steps.vrt.outcome }}" = "failure" ] && [ -f vrt-output.log ]; then
               echo ""
