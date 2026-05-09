@@ -2723,3 +2723,82 @@ B 案完了後も継続運用する検出網:
 - 起源: `#254` (VRT 専用 PR 導入) のセルフレビュー I-1 / I-2
 - 親 issue: `#255` (本 PR で短期 + 防御 2 層完了、長期の peter-evans 化は別議論)
 - 関連: `#176` B 案 [066] (VRT 導入)、本番リリース前 TODO `#323`
+
+---
+
+## [070] 2026-05-09 — char-count: `Intl.Segmenter` をフォールバックなしで採用
+
+日付 2026-05-09 | ステータス: 採用 | issue #345
+
+### 背景
+
+文字カウントツールで書記素クラスタ (grapheme cluster) を正確に数えるライブラリを選定。
+
+### 決断
+
+`Intl.Segmenter` (ブラウザネイティブ API) をフォールバックなしで採用。
+`SPEC.md` §2.2「最新 2 版」サポートポリシーのもと Chromium 87+ / Firefox 125+ / Safari 16.4+ が対象であり、
+対象ブラウザ全てが `Intl.Segmenter` を実装している。
+
+### 却下した選択肢
+
+- `graphemer` / `@formatjs/intl-segmenter-polyfill`: 追加 npm 依存が発生し、既にネイティブ実装があるブラウザで不要なバンドルサイズ増加を招く。
+
+### 結果・トレードオフ
+
+モジュールスコープで 1 インスタンスを生成して使い回す (`const seg = new Intl.Segmenter('ja', ...)`）ことで生成コストを回避。
+
+---
+
+## [071] 2026-05-09 — char-count: `encoding-japanese` round-trip 方式でエンコーディング互換性を判定
+
+日付 2026-05-09 | ステータス: 採用 | issue #345
+
+### 背景
+
+Shift_JIS / EUC-JP で表現不能な文字を正確に検出する方法の選定。
+
+### 決断
+
+`encoding-japanese` (既存依存) を用いた round-trip 判定を採用:
+
+1. 文字列全体を目標エンコーディングへ変換
+2. 逆変換して元文字列と照合
+3. 不一致なら 1 code point ずつ再判定して `failedCount` と breakdown を収集
+
+入力は UTF-16 code unit 配列 (`Array.from({length: s.length}, (_, i) => s.charCodeAt(i))`) とする。
+`[...s]` (code point iteration) は surrogate pair を分解するため不適。
+
+### 却下した選択肢
+
+- Unicode ブロック範囲による静的判定: Shift_JIS の対応範囲が CP932 拡張を含み正確な境界をハードコードしにくい。
+
+### 結果・トレードオフ
+
+追加 npm 依存ゼロ。1MB 超のテキストでは `String.fromCharCode` の stack overflow を回避するため CHUNK=8192 の分割処理が必要。
+
+---
+
+## [072] 2026-05-09 — char-count: 非対応エンコーディングの ? 置換 byte 数を表示しない
+
+日付 2026-05-09 | ステータス: 採用 | issue #345
+
+### 背景
+
+非対応エンコーディングに変換した際、`encoding-japanese` は変換不能文字を `?` (0x3F) に置換する。
+この置換後の byte 数を表示することは DB 保存時のサイズ・挙動と一致しないため誤誘導になる。
+
+### 決断
+
+`EncodingCompat.bytes` は `ok=false` のとき `null` とし、UI 側では byte 数を表示しない。
+代わりに `failedCount` (不可文字数) と `breakdown` (絵文字/VS/ZWJ/CJK拡張B+/その他の内訳) を表示する。
+
+### 背景にある事故
+
+このツールを作りたいと思ったきっかけ: 絵文字を「1 文字」としてカウントした結果、
+MySQL utf8mb3 カラムへの INSERT が SMP 文字 (U+10000 以上) で失敗するエラーを踏んだ。
+? 置換後の byte 数を出すと「問題なく保存できる」と誤解させる。
+
+### 結果・トレードオフ
+
+ユーザーは「なぜ ❌ か」を不可文字数・内訳で把握できる。byte 数は互換時のみ意味のある情報として提示。
