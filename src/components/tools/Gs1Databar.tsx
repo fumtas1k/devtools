@@ -72,11 +72,18 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   const [aiFields, setAiFields] = useState<AiFieldState[]>(DEFAULT_AI_FIELDS);
   const [svgContent, setSvgContent] = useState('');
   const [bwipError, setBwipError] = useState('');
+  const [downloadError, setDownloadError] = useState('');
 
   const inputId = `gtin-input-${cardId}`;
 
-  const gtinResult =
-    gtinInput && !gtinError && gtinInput.length === 13 ? calcGtin14CheckDigit(gtinInput) : null;
+  // useMemo で参照安定化。inline で都度生成すると useEffect deps が render 毎に
+  // 「変化」と判定され、setDownloadError('') が PNG 失敗直後にも走って
+  // ErrorMessage を瞬時に消してしまう (issue #338 対応の race fix)。
+  const gtinResult = useMemo(
+    () =>
+      gtinInput && !gtinError && gtinInput.length === 13 ? calcGtin14CheckDigit(gtinInput) : null,
+    [gtinInput, gtinError]
+  );
 
   const allAiValid = aiFields.every((f) => f.error === '');
   const hasAnyAiValue = aiFields.some((f) => f.value.trim() !== '');
@@ -88,6 +95,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   }, [onSvgChange]);
 
   useEffect(() => {
+    setDownloadError('');
     if (!gtinResult || !allAiValid) {
       setSvgContent('');
       setBwipError('');
@@ -158,12 +166,25 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
   const downloadSvg = () => {
     if (!svgContent || !gtinResult) return;
-    downloadSvgFile(svgContent, `gs1-databar-${gtinResult.fullGtin}.svg`);
+    setDownloadError('');
+    try {
+      downloadSvgFile(svgContent, `gs1-databar-${gtinResult.fullGtin}.svg`);
+    } catch (e) {
+      setDownloadError(getErrorMessage(e, 'SVG ダウンロードに失敗しました'));
+    }
   };
 
-  const downloadPng = () => {
+  // svgContentToPngBlob は img.onerror / canvas.toBlob 失敗で reject する。
+  // await + try/catch で例外を吸収し ErrorMessage 経由でユーザーに通知する
+  // (issue #338: 旧実装は fire-and-forget で unhandled promise rejection)。
+  const downloadPng = async () => {
     if (!svgContent || !gtinResult) return;
-    downloadPngFromSvgContent(svgContent, `gs1-databar-${gtinResult.fullGtin}.png`);
+    setDownloadError('');
+    try {
+      await downloadPngFromSvgContent(svgContent, `gs1-databar-${gtinResult.fullGtin}.png`);
+    } catch (e) {
+      setDownloadError(getErrorMessage(e, 'PNG ダウンロードに失敗しました'));
+    }
   };
 
   const usedAis = useMemo(() => new Set(aiFields.map((f) => f.ai)), [aiFields]);
@@ -324,6 +345,10 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
           <ErrorMessage message={`バーコード生成エラー: ${bwipError}`} variant="block" />
         )}
 
+        {downloadError && (
+          <ErrorMessage message={`ダウンロードエラー: ${downloadError}`} variant="block" />
+        )}
+
         {/* GS1文字列プレビュー */}
         {gtinResult && (
           <details className="rounded-lg border border-default">
@@ -362,6 +387,7 @@ export function Gs1DatabarTool() {
   const [cards, setCards] = useState<CardMeta[]>(() => [{ id: crypto.randomUUID() }]);
   const [cardSvgs, setCardSvgs] = useState<Record<string, CardSvgState>>({});
   const [isZipping, setIsZipping] = useState(false);
+  const [zipError, setZipError] = useState('');
 
   const addCard = () => {
     if (cards.length >= MAX_CARDS) return;
@@ -384,9 +410,13 @@ export function Gs1DatabarTool() {
   const validEntries = Object.entries(cardSvgs).filter(([, v]) => v.svg && v.gtin);
   const canDownloadAll = validEntries.length >= 2;
 
+  // svgContentToPngBlob / downloadZip は reject 可能。旧実装は try/finally のみで
+  // unhandled promise rejection を発生させていた (issue #338)。catch を追加し
+  // ZipError state 経由でユーザーに通知する。
   const downloadAllZip = async () => {
     if (!canDownloadAll || isZipping) return;
     setIsZipping(true);
+    setZipError('');
     try {
       // 各 SVG を PNG 変換してから flat なエントリ一覧を作る。
       // gtin はバリデーション済みだが defense-in-depth でサニタイズする。
@@ -409,6 +439,8 @@ export function Gs1DatabarTool() {
         })
       );
       await downloadZip(fileGroups.flat(), 'gs1-databars.zip');
+    } catch (e) {
+      setZipError(getErrorMessage(e, 'ZIP ダウンロードに失敗しました'));
     } finally {
       setIsZipping(false);
     }
@@ -452,6 +484,8 @@ export function Gs1DatabarTool() {
           />
         )}
       </div>
+
+      {zipError && <ErrorMessage message={`ZIP ダウンロードエラー: ${zipError}`} variant="block" />}
     </div>
   );
 }
