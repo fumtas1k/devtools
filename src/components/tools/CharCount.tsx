@@ -54,8 +54,12 @@ export function CharCountTool() {
   }
 
   function handleSnsLimitChange(val: string) {
-    const n = parseInt(val, 10);
-    setSnsLimit(isNaN(n) || n < 1 ? '1' : val);
+    if (val === '') {
+      setSnsLimit('');
+      return;
+    }
+    if (!/^\d+$/.test(val)) return;
+    setSnsLimit(val);
   }
 
   const { chars, bytes: enc, lines, sns, manuscript } = result;

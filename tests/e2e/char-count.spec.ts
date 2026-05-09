@@ -16,7 +16,8 @@ test.describe('文字カウント', () => {
   test('"😀" 入力で utf8mb3 が ❌ と表示される（DB 互換性 core value）', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('😀');
     // デバウンス後に ❌ が表示される — Playwright assertion が自動リトライ
-    await expect(page.getByText('❌ 不可: 1 文字').first()).toBeVisible();
+    // aria-hidden + sr-only 挿入で text content が変化するため regex で部分一致
+    await expect(page.getByText(/不可: 1 文字/).first()).toBeVisible();
   });
 
   test('"あいうえお" は utf8mb3 を含む全エンコーディングで ✅', async ({ page }) => {
@@ -24,8 +25,8 @@ test.describe('文字カウント', () => {
     // Shift_JIS ✅ 10 byte が表示されること (BMP 文字は全対応)
     await expect(page.getByText(/✅.*10 byte/).first()).toBeVisible();
     // エンコーディング行に「❌ 不可」が出ないこと
-    // (ToolInfoSection の説明文に ❌ が含まれるため /❌/ ではなく /❌ 不可/ で絞り込む)
-    await expect(page.getByText(/❌ 不可/)).toHaveCount(0);
+    // (ToolInfoSection に ❌ が含まれるため、エンコーディング行固有の形式 /不可: \d+ 文字/ で絞り込む)
+    await expect(page.getByText(/不可: \d+ 文字/)).toHaveCount(0);
   });
 
   test('"a\\nb\\nc" を入力すると行 3 / LF と表示される', async ({ page }) => {
@@ -51,7 +52,7 @@ test.describe('文字カウント', () => {
   }) => {
     await withProductionCsp(browser, '/tools/char-count', async (page) => {
       await page.getByLabel('入力テキスト').fill('😀');
-      await expect(page.getByText('❌ 不可: 1 文字').first()).toBeVisible();
+      await expect(page.getByText(/不可: 1 文字/).first()).toBeVisible();
     });
   });
 });
