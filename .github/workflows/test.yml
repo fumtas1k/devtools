@@ -35,17 +35,38 @@ jobs:
       # 内訳をログに残して debug 容易性も担保。
       - name: astro check（errors / warnings / hints すべて 0 を強制）
         run: |
+          # exit code を保持して二重チェック (PR #341 review a/b 反映)。
+          # `npx astro check` は errors > 0 なら exit 1 (Astro CLI 仕様) のため、
+          # parser とは独立した検知経路として併用する。
+          set +e
           output=$(npx astro check 2>&1)
+          exit_code=$?
+          set -e
           echo "$output"
+
+          # フォーマット変更耐性: サマリ行 `Result (N files):` が無い場合は
+          # parser が機能しない false negative を防ぐため明示 fail させる。
+          # `if !` 形式は histexpand 設定によってはノイズ警告が出るため `||` で書く。
+          echo "$output" | grep -qE '^Result \([0-9]+ files\):' || {
+            echo "::error::astro check の出力フォーマットが変わりサマリ行を抽出できない (false negative 防止)"
+            exit 1
+          }
+
           errors=$(echo "$output" | grep -oE '^- [0-9]+ errors?' | tail -1 | grep -oE '[0-9]+' || true)
           warnings=$(echo "$output" | grep -oE '^- [0-9]+ warnings?' | tail -1 | grep -oE '[0-9]+' || true)
           hints=$(echo "$output" | grep -oE '^- [0-9]+ hints?' | tail -1 | grep -oE '[0-9]+' || true)
           errors=${errors:-0}
           warnings=${warnings:-0}
           hints=${hints:-0}
-          echo "Parsed summary: errors=$errors / warnings=$warnings / hints=$hints"
+          echo "Parsed summary: errors=$errors / warnings=$warnings / hints=$hints (astro exit=$exit_code)"
           if [ "$errors" != "0" ] || [ "$warnings" != "0" ] || [ "$hints" != "0" ]; then
             echo "::error::astro check requires 0/0/0 but got errors=$errors / warnings=$warnings / hints=$hints"
+            exit 1
+          fi
+          # 二重チェック: errors=0 なのに astro exit code が非ゼロなら parser と矛盾
+          # → 出力フォーマット変更を疑って fail させる。
+          if [ "$exit_code" != "0" ]; then
+            echo "::error::astro check exit=$exit_code だが parser は errors=0。出力フォーマット変更の可能性"
             exit 1
           fi
 
