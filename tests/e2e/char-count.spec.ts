@@ -61,6 +61,20 @@ test.describe('文字カウント', () => {
     await expect(limit).not.toHaveValue('01');
   });
 
+  // 陽性対照: SNS 上限超過時に該当行 dd に text-error が付与される
+  // 旧実装 (色変更ロジック無し) ではこのテストは fail する
+  test('[陽性対照] Twitter weight 上限超過時 dd に text-error が付与される', async ({ page }) => {
+    await page.getByLabel('入力テキスト').fill('a'.repeat(300));
+    // ASCII 300 文字 = weight 300 > 280
+    await expect(page.locator('dt:has-text("Twitter weight") + dd')).toHaveClass(/text-error/);
+  });
+
+  // 陰性対照: 上限内では text-error が付かない (過検知防止)
+  test('上限内のとき Twitter weight dd に text-error が付かない', async ({ page }) => {
+    await page.getByLabel('入力テキスト').fill('hello');
+    await expect(page.locator('dt:has-text("Twitter weight") + dd')).not.toHaveClass(/text-error/);
+  });
+
   test('クリアボタンで textarea が空になる', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('テスト');
     await page.getByRole('button', { name: 'クリア' }).click();

@@ -7,18 +7,7 @@ import { count } from '@/utils/char-count';
 import type { EncodingCompat } from '@/utils/char-count/types';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
-function formatBreakdown(bd: EncodingCompat['breakdown']): string {
-  const parts: string[] = [];
-  if (bd.emoji > 0) parts.push(`絵文字 ${bd.emoji}`);
-  if (bd.zwj > 0) parts.push(`ZWJ ${bd.zwj}`);
-  if (bd.vs > 0) parts.push(`VS ${bd.vs}`);
-  if (bd.cjkExt > 0) parts.push(`CJK拡張 ${bd.cjkExt}`);
-  if (bd.other > 0) parts.push(`その他 ${bd.other}`);
-  return parts.join(' / ');
-}
-
 function EncRow({ label, compat }: { label: string; compat: EncodingCompat }) {
-  const breakdown = !compat.ok ? formatBreakdown(compat.breakdown) : '';
   return (
     <>
       <dt className="caption text-muted">{label}</dt>
@@ -34,7 +23,6 @@ function EncRow({ label, compat }: { label: string; compat: EncodingCompat }) {
             <span aria-hidden="true">❌</span>
             <span className="sr-only">不可</span>
             {` 不可: ${compat.failedCount} 文字`}
-            {breakdown ? ` (${breakdown})` : ''}
           </span>
         )}
       </dd>
@@ -138,12 +126,24 @@ export function CharCountTool() {
           <dt className="caption text-muted">
             Twitter weight <span className="caption text-muted">（概算）</span>
           </dt>
-          <dd className="caption font-mono text-right">{sns.twitterWeight} / 280</dd>
+          <dd
+            className={`caption font-mono text-right${sns.twitterWeight > 280 ? ' text-error' : ''}`}
+          >
+            {sns.twitterWeight} / 280
+          </dd>
           <dt className="caption text-muted">Bluesky</dt>
-          <dd className="caption font-mono text-right">{sns.blueskyCount} / 300</dd>
+          <dd
+            className={`caption font-mono text-right${sns.blueskyCount > 300 ? ' text-error' : ''}`}
+          >
+            {sns.blueskyCount} / 300
+          </dd>
           <dt className="caption text-muted self-center">任意上限</dt>
           <dd className="caption flex items-center justify-end gap-2">
-            <span className="font-mono">{chars.graphemes}</span>
+            <span
+              className={`font-mono${snsLimit !== '' && chars.graphemes > parseInt(snsLimit, 10) ? ' text-error' : ''}`}
+            >
+              {chars.graphemes}
+            </span>
             <span className="text-muted">/</span>
             <span className="inline-block w-20">
               <BareInput
