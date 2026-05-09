@@ -121,7 +121,7 @@ describe('CharCountTool — SNS 任意上限', () => {
     expect(limitInput.value).toBe('280');
   });
 
-  it('上限を 100 に変更すると残数が再計算される', () => {
+  it('上限を 100 に変更すると入力欄に反映され、文字数が任意上限行に表示される', () => {
     render(<CharCountTool />);
     const textarea = screen.getByLabelText('入力テキスト') as HTMLTextAreaElement;
     act(() => {
@@ -134,7 +134,9 @@ describe('CharCountTool — SNS 任意上限', () => {
     act(() => {
       fireEvent.change(limitInput, { target: { value: '100' } });
     });
-    // 残り = 100 - 5 = 95
-    expect(screen.getByText('95')).toBeTruthy();
+    expect(limitInput.value).toBe('100');
+    // 「残り」表示は廃止 (Twitter/Bluesky と同じく count / limit のみ)
+    // 任意上限行の count 部分に 5 が表示される (他セルにも 5 はあり得るので getAllByText)
+    expect(screen.getAllByText('5').length).toBeGreaterThan(0);
   });
 });
