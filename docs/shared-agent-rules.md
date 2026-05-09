@@ -29,22 +29,29 @@
 
 ## 2. コマンドリファレンス
 
-| 用途                                 | コマンド                                         |
-| :----------------------------------- | :----------------------------------------------- |
-| 開発サーバー (http://localhost:4321) | `npm run dev`                                    |
-| 本番ビルド / プレビュー              | `npm run build` / `npm run preview`              |
-| 整形 / 整形チェック                  | `npm run format` / `npm run format:check`        |
-| 型チェック（コミット前必須）         | `node_modules/.bin/astro check`                  |
-| ユニットテスト (Vitest)              | `npm run test` / `npm run test:watch`            |
-| E2E テスト (Playwright)              | `npm run test:e2e` ❌ `npm run e2e` は存在しない |
+| 用途                                  | コマンド                                         |
+| :------------------------------------ | :----------------------------------------------- |
+| 開発サーバー (http://localhost:4321)  | `npm run dev`                                    |
+| 本番ビルド / プレビュー               | `npm run build` / `npm run preview`              |
+| 整形 / 整形チェック                   | `npm run format` / `npm run format:check`        |
+| 型チェック（コミット前必須）          | `node_modules/.bin/astro check`                  |
+| ユニットテスト (Vitest)               | `npm run test` / `npm run test:watch`            |
+| E2E テスト (Playwright, preview 経由) | `npm run test:e2e` ❌ `npm run e2e` は存在しない |
 
 ---
 
-## 3. 実装後の検証義務
+## 3. 実装後の検証義務（要点）
 
-実装完了後（コミット前）に **`npm run test`** と **`npm run test:e2e`** を必ず実行し、デグレード無しを確認すること。
+> **正本**: `docs/playbooks/e2e-validation.md`（このセクションは要約。手順を変更する場合は playbook 側を先に編集すること）
 
 **E2E テストは実装と同時に書く**: バグ修正・UI 挙動の変更時はコミット前に該当ケースの E2E を追加する。後回し禁止。
+
+**push 前に必須**: `npm run test`（ユニット）／ `node_modules/.bin/astro check`（型）／ `npm run test:e2e`（E2E）。
+post-PR 代行は不要、CI が最終ゲート。
+
+**ガード / バリデータ / 検知機構には陽性対照を必須**: 検出する・拒否する・違反したら fail させる仕組み（CSP 違反検知 / 入力 validator / lint / セキュリティヘッダ assert / E2E ガード / regex マッチ系）を追加 / 修正する場合は **`Skill` tool で `test-gates` skill を必ず呼ぶ**。陰性対照のみでは「検知能力ゼロで green」と区別不能（PR #233 `applyProductionCsp` 空回り事故）。詳細・チェックリストは skill 本体に集約してこの doc では肥大化させない。
+
+詳細手順（サブエージェント / 親別 push 前必須チェックリスト・worktree 整地・失敗パターン判定） → **`docs/playbooks/e2e-validation.md`**
 
 ---
 
@@ -79,22 +86,51 @@
 
 ## 6. AI エージェント操作・Git ワークフロー
 
-### 6.1 GitHub CLI のエスケープ事故防止
+### 6.1 `gh` 本文投稿は常に `--body-file` 経由
 
-`gh` コマンドで複数行・バックティック（\`）を含む本文を渡すときは、**直接引数に渡さず一時ファイル経由で投稿すること**。具体的には `-F`または`--body-file` オプションを使用する（MCP / API 経由は不要）。失敗時は投稿状況を必ず確認し、重複は削除して整合性を保つ。
+`gh pr create` / `gh pr comment` / `gh issue create` / `gh issue comment` の本文は **常に** `-F` / `--body-file` で投稿する。`--body` への直接埋め込みは禁止（MCP / API 経由は不要）。
 
-### 6.2 ブランチ運用
+**なぜ条件付きでなく常時か**: PR 本文はほぼ常にコードブロック（バックティック）や複数行を含み、HEREDOC でバックスラッシュ + バックティック（<code>\\&#96;</code>）にエスケープすると literal `\` が GitHub に流れる事故が頻発する。条件分岐ルールは判断負荷が高く形骸化するため、無条件 default にすれば事故クラス自体が消える。
+
+#### 失敗時のリカバリ
+
+投稿失敗時は `gh pr view` / `gh issue view` で投稿状況を必ず確認し、重複が出ていれば削除して整合性を保つ。
+
+### 6.2 ブランチ運用（要点）
+
+> **正本**: `docs/playbooks/pr-creation.md` 1〜2 章（このセクションは要約。手順を変更する場合は playbook 側を先に編集すること）
 
 - **`develop` には直接コミットしない**: 必ず feature ブランチを切る。誤って始めた場合は `git stash` → ブランチ切替 → `git stash pop`。
-- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b feat/<topic>`（または `fix/`, `docs/`, `refactor/` 等）
+- **新規作業の手順**: `git checkout develop` → `git pull origin develop` → `git checkout -b <type>/<slug>`（例: `feat/add-tool`, `fix/issue-123-crash`）。issue がある場合は `<type>/issue-<n>-<slug>` 形式を推奨。
+- **必ず `origin/develop` 起点を明示**: `git checkout -b <branch>` だけでは worktree が `main` を起点にしてしまう既知問題があり（過去に PR #154, #181 で発生）、ベース確認ステップがないと発覚しない。完成形コマンドと自己検証手順は `docs/playbooks/pr-creation.md` 1.1 章。
+
+ブランチ作成完成形コマンド・自己検証・rebase 後 push の親引き取り → **`docs/playbooks/pr-creation.md` 1〜2 章**
+
+### 6.2.1 worktree 作成直後の必須セットアップ
+
+`git worktree add` 直後に node_modules を必ず整備する。SessionStart hook は session 開始時のみ fire するため、mid-session で worktree を作成した場合は fire せず、手動で `npm ci` を実行する必要がある（subagent isolation / 親手動 `git worktree add` 共通）。
+
+```bash
+# worktree 作成（slug は branch 命名 `<type>/<slug>` と揃える）
+git worktree add .claude/worktrees/<slug> origin/develop
+
+# 直後に node_modules 整備（mid-session では SessionStart hook が fire しないため必須）
+# `npm ci` は idempotent。`ls` ガードで skip すると package-lock 更新後に false-skip するため明示実行する
+cd .claude/worktrees/<slug>
+npm ci
+```
 
 ### 6.3 PR 作成時のベースブランチ
 
 `gh pr create` は **`--base develop`** を必ず指定する（デフォルトは `main`）:
 
 ```bash
-gh pr create --base develop --title "..." --body-file /tmp/pr_body.md
+gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
 ```
+
+**`main` 向けはリリース PR のみ**。通常の機能追加・バグ修正・refactor・docs は全て develop ベース。リリース時は別途 `develop → main` の release PR を切る運用 (release-only branch policy)。
+
+PR 作成・親 push 前チェックリスト・親向けレビュー取得手順 → **`docs/playbooks/pr-creation.md` 3〜5 章**
 
 ### 6.4 先送り（deferral）時は必ず issue 化する
 
@@ -105,34 +141,72 @@ gh pr create --base develop --title "..." --body-file /tmp/pr_body.md
 - 1 行のドキュメント追記など本 PR で完結できる軽微な対応は、先送りせず本 PR に含めるのが優先。
 - スコープ判断で本当に分離が必要な場合のみ issue 化する。issue 化しない口頭の「後で」は形骸化するため禁止。
 
+### 6.5 再利用候補スクリプトの提案
+
+3 行以上の bash・過去にも書いた覚えのある手順・覚えにくいフラグを伴う複合コマンドを書こうとしたら、その場で実行する前に `scripts/` への切り出しをユーザーに提案する（同意を得てからスクリプト化する。先回りして勝手に作らない）。
+
+`scripts/` と `.claude/scripts/` の使い分けは `scripts/README.md` を参照。
+
+### 6.6 settings.json permissions に整合した振る舞い
+
+`.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
+
+- **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Read` / `Write` / `Edit` ともに `/tmp/claude/**` および `$TMPDIR (/var/folders/*/*/T/**)` が allow、`/tmp/**` 直下は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。**credential / secret 類は tmp に置かない**（同 user 配下の Claude セッション間で相互可読）。
+- **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
+- **sandbox `denyWithinAllow` を見て user に手動作業を振らない**: `.claude/settings.json` / `.claude/skills/` 等が sandbox の `denyWithinAllow` に含まれていても、それは **`Bash` の `mkdir` / `rm` / `tee` / `sed -i` 経由を deny する** だけ。**`Edit` / `Write` tool 経由は permissions の `ask` 経路に乗って通る**（user 環境の事前 allow/auto-approve で待ちなしに成功することも多い）。手動で別ターミナル作業を依頼する前に **必ず `Write` / `Edit` tool で実機検証** すること。tool で通れば `git add` 含む後続も Claude 内で完結する。Bash での `mkdir` / `rm` が必要な場合だけが手動依頼の対象。
+
+### 6.7 solo dev 体制での branch protection 提案禁止
+
+solo dev 体制（PR 作成者 = レビュアー = merger が同一人物）では GitHub branch protection の `Require approvals` を有効化すると **self-approve 不可で自分の PR が永久 merge 不能** になる（GitHub policy）。`Require pull request before merging` 単体は他人 review を強制せず、`Restrict who can push` も PR 経由 self-merge を block しない。**team 体制前提の review 強制設計を solo dev に提案しないこと**。
+
+詳細経緯: `docs/decisions.md [069]`
+
+### 6.8 VRT pixel diff の baseline 更新は recommend しない
+
+VRT が小さい pixel diff (例: 0.07%) を検出しても「微小だから baseline 更新で OK」と recommend してはいけない。**pixel 数 ≠ visual design 品質** (design token 由来の意図しない変更でも pixel ratio は小さく見える)。判断は user の目視確認に委ね、エージェントは数値根拠で baseline 更新を勧めない。
+
+### 6.9 サブエージェント運用の補足
+
+- **完了報告は項目別ステータス必須**: 親プロンプトのスコープ箇条書きを subagent が一部のみで「完了」と返すケースがあるため、完了報告フォーマットに「項目ごとに 実装 / 既存で十分 / スキップ理由 を明示する」チェックリスト形式を要求する。親側でも依頼項目数 vs 実装項目数の機械的突き合わせを行う（過去事例: PR #218 で 3 件依頼中 1 件のみ実装で完了報告された）。
+- **`package.json` 変更時は `package-lock.json` 同期確認**: subagent が deps を追加・更新した場合、`git diff origin/develop --name-only` に `package.json` が含まれる場合は必ず `package-lock.json` も含まれているか確認する。漏れていれば親で `npm install --package-lock-only --cache "$TMPDIR/npm-cache" --no-audit --no-fund` を実行し別コミットで lock 同期を push する（過去事例: PR #181 で lock 不整合のまま push される寸前で発覚）。
+- **PR 本文の更新は親で実行**: `gh pr edit --body-file` は `permissions.ask` のため subagent から非対話 deny される。subagent は完了報告に「PR 本文更新が必要」と明記し、親 (司令塔) が `gh pr edit` で引き取る（過去事例: PR #189 で subagent から呼べず指摘事項対応が止まった）。
+
 ---
 
 ## 7. スタイル・UI ルール（基本）
 
 Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50` 等）は **絶対に使用しない**。色は CSS 変数経由で指定する:
 
-- React (`.tsx`): `src/utils/styles.ts` の `colors.*` をインラインスタイルで使用
-- Astro (`.astro`): `var(--color-*)` を `style` 属性または `<style>` ブロックで使用
+- React (`.tsx`): `src/styles/global.css` の `@layer components` で定義された意味クラス（`text-primary` / `bg-subtle` / `alert-success` 等）を `className` で使用。新規 component で既存意味クラスに無い色組み合わせが必要な場合は、まず `@layer components` に意味クラスを追加してから使う（`#176` B 案で `style={{ color: colors.primary }}` 形式は全廃済、`@/utils/styles` import も無効）
+- Astro (`.astro`): 現状 `var(--color-*)` を `style` 属性で書く箇所が残存（[#289](https://github.com/fumtas1k/devtools/issues/289) で CSS class 化を進行中）。新規追加は React と同じ `@layer components` 意味クラスを推奨
 
 ※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は使用可。
 
-UI コンポーネントを実装・改修する際の詳細パターン（ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否 等）は **`docs/ui-conventions.md` 2章** を参照すること。
+UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影して目視確認すること。
+共通コンポーネント・ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否・Playwright 撮影手順・目視確認チェックリスト等の詳細 → **`docs/ui-conventions.md`**
+
+### 7.1 Tailwind v4 `@layer components` の variant 非対応
+
+`global.css` の `@layer components` 内で **手書き定義** した class (`bg-subtle` / `text-primary` / `alert-success` 等) は Tailwind v4 の variant prefix (`hover:` / `focus:` / `aria-pressed:` 等) に **対応しない**。`hover:bg-subtle` のように書いても CSS rule (`.hover\:bg-subtle:hover { ... }`) が生成されず silent regression する。
+
+- ✅ `@theme` トークンから auto-generate される utility (`hover:bg-blue-50`, `hover:text-primary` 等) は variant 対応
+- ❌ `@layer components` 内手書き class への variant prefix は CSS rule 不生成
+
+専用の hover/focus 用 class を `@layer components` 内に `:hover` / `:focus` 擬似クラスごと定義する (`.btn-clear` / `.hover-bg-subtle` / `.btn-remove-card` 等が実例)。JSX 側は `className="caption btn-remove-card"` のように適用 (variant prefix を使わない)。
+
+検証: `@layer components` 内手書き class に variant を新規追加した場合、`npm run build` 後に `dist/_astro/BaseLayout.*.css` で CSS rule が生成されているか必ず確認する。
+
+過去事例: PR #277 (#176 B 案 PR 4) で `hover:bg-error-tint` / `hover:bg-subtle` の Tailwind hover utility 表記により hover フィードバックが完全消失する silent regression。専用 hover class (`.btn-remove-card` / `.hover-bg-subtle` / `.hover-bg-active`) で対応。
+
+**副次発見: コンテンツスキャンで unused utility 混入リスク**
+
+Tailwind v4 vite plugin の auto content scan は `docs/` 配下の markdown も対象とし、spec / plan / agent-lessons / decisions の md ファイル中で説明用に書いた `hover:bg-blue-50` 等の utility 名リテラル文字列を拾って unused utility が build CSS に混入することがある (PR #277 で reviewer 観察)。`src/styles/global.css` 冒頭の `@source not "../../docs"` ディレクティブで対処済 (実装は守られる)。
+
+ただし `src/` 配下の `.css` / `.tsx` 等のコメント内に utility 名リテラルを書くと scan されるため、説明する場合は `hover-prefix + bg + blue-50` のように **分割して記述** する (PR #277 commit `58ebf04` の global.css コメントが実例)。新規に `@layer components` を増やす際は、コメント中の utility 名表記もこの分割記法を採用する。
 
 ---
 
-## 8. UI 変更時の目視確認 (Playwright)
-
-UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影し、コミット前に以下を目視確認:
-
-- 入力・出力エリアの上端揃え／スマホ幅で縦並びレイアウトに切替
-- ボタンの隠れ・重なりがないか／ラベル行高さの左右揃え
-- フォーカスリングの見切れ／タップ領域 ≥ 44x44px
-
-撮影手順・ロケーター推奨など Playwright の詳細は **`docs/ui-conventions.md` 3章** を参照すること。
-
----
-
-## 9. プロジェクト構造
+## 8. プロジェクト構造
 
 - `src/components/tools/`: ツール本体 (React TSX)
 - `src/components/ui/`: 共通UIコンポーネント (`InputField`, `CopyButton` 等)
@@ -143,28 +217,31 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 - `docs/shared-agent-rules.md`: 本ドキュメント（常時遵守する共通規約）
 - `docs/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
 - `docs/agent-lessons.md`: 教訓バッファ（共通ルール化前の蓄積場所）
+- `docs/playbooks/`: タスク開始時に読む手順書（PR 作成 / E2E 検証 等）
+- `docs/setup/`: 環境セットアップ手順（プラグイン install / Gemini policy 等）
+- `tests/meta/`: ドキュメント / 設定の整合性を検証する meta テスト（`src/**/__tests__/` colocation と分離）
 - `tasks/active_context.md`: セッション固有の作業コンテキスト（gitignore 対象）
 
 ---
 
-## 10. コード規約・編集時の安全規則
+## 9. コード規約・編集時の安全規則
 
-### 10.1 React / TypeScript 記法
+### 9.1 React / TypeScript 記法
 
 - JSX / TSX では `class` ではなく **`className`** を使う。
 - `<label>` の `for` 属性は **`htmlFor`** を使う。
 - TypeScript の警告は自分で発見・修正する。ユーザーに指摘させない。
 
-### 10.2 セキュリティ設定変更の禁止
+### 9.2 セキュリティ設定変更の禁止
 
 セキュリティ関連の設定（`.npmrc`・`npm audit` 設定・CI 設定・`.githooks/*` 等）は、**ユーザーの明示的な承認なしに変更・無効化してはならない**。
 
-### 10.3 部分置換時のインポート保護・末尾空白
+### 9.3 部分置換時のインポート保護・末尾空白
 
 - 部分編集前にファイル全体（特に import）を確認。3 箇所以上の変更や import 追加を伴う場合はファイル全体を書き直す。
 - ファイル末尾の空白（trailing whitespace）を含めない。
 
-### 10.4 変更直後の型チェック
+### 9.4 変更直後の型チェック
 
 コード（特に import / JSX）を編集した直後に必ず実行する:
 
@@ -173,13 +250,24 @@ node_modules/.bin/astro check       # 全体
 npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 ```
 
-### 10.5 SVG / `dangerouslySetInnerHTML` の XSS 対策
+### 9.5 SVG / `dangerouslySetInnerHTML` の XSS 対策
 
 外部入力をそのまま挿入すると **反射型 XSS** になる。必ずエスケープ／サニタイズしてから挿入し、可能なら React 要素として組み立てる。
 
+### 9.6 a11y 属性・role 属性の保護
+
+`aria-*` 属性（`aria-live`, `aria-expanded`, `aria-controls`, `aria-label`, `aria-hidden` 等）および
+`role=` 属性は、**明示的に許可されていない限り削除してはならない**。
+
+- ❌ 禁止: refactor・cleanup 中に「不要に見える」として aria 属性を削除する
+- ✅ 必須: `git diff` に `aria-` の削除行（`-` で始まる行）が含まれる場合は親に確認を取る
+- 誤って削除した場合は即 `git restore <file>` してから push する
+
+> **なぜ**: これらの属性は支援技術（スクリーンリーダー等）が依存する意味論的マーカー。見た目上は「余計な属性」に見えても削除すると a11y E2E テストが CI で落ちる（過去に PR #175 追加分が PR #179 の refactor で削除されて発生）。
+
 ---
 
-## 11. 目的の維持とスコープ管理 (ATC運用)
+## 10. 目的の維持とスコープ管理 (ATC運用)
 
 実装中の脱線・スコープ外修正を防ぐため、すべての AI エージェントは **Active Task Context (ATC)** を運用する。
 
@@ -211,7 +299,10 @@ npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 
 ## 🚫 Out of Scope (Do Not Touch)
 
-- [ ] 触らない領域
+- [ ] このセッションの Objective に書かれていないファイル一切
+- [ ] aria-\* / role= 属性の削除（明示的な許可なしには禁止）
+- [ ] issue 本文に記載のない機能追加・設計変更
+<!-- 具体例を追記: 例) src/components/ui/OutputField.tsx の a11y 属性 -->
 
 ## 🟢 Review & Feedback
 
@@ -224,7 +315,7 @@ npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 
 ---
 
-## 12. 教訓の運用 (`docs/agent-lessons.md`)
+## 11. 教訓の運用 (`docs/agent-lessons.md`)
 
 `docs/agent-lessons.md` は教訓を一時蓄積する **バッファ**。本ドキュメントが共通ルールの単一の真実源（Single Source of Truth）であり、再発防止に値する内容は本ドキュメントへ昇格させる。
 

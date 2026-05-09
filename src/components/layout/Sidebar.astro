@@ -14,10 +14,7 @@ const { currentSlug } = Astro.props;
     {
       categories.map((cat) => (
         <div class="mb-6">
-          <h2
-            class="mb-2 px-3 font-bold uppercase"
-            style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.08em; color: var(--color-muted);"
-          >
+          <h2 class="mb-2 px-3 font-bold uppercase caption-wide text-muted">
             {categoryLabel[cat]}
           </h2>
           <ul>
@@ -28,13 +25,12 @@ const { currentSlug } = Astro.props;
                   <a
                     href={`/tools/${tool.slug}`}
                     aria-current={currentSlug === tool.slug ? 'page' : undefined}
-                    class={`flex items-center gap-2 rounded px-3 transition-colors sidebar-link
+                    class={`flex items-center gap-2 rounded px-3 transition-colors sidebar-link min-h-11 caption
                   ${
                     currentSlug === tool.slug
                       ? 'font-bold sidebar-link--active'
                       : 'sidebar-link--inactive'
                   }`}
-                    style="min-height: 44px; font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
                   >
                     <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
                     <span>{tool.name}</span>

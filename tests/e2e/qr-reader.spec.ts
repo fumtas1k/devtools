@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test';
-import { waitForReactHydration } from './helpers';
+import { waitForReactHydration, withProductionCsp } from './helpers';
 
 /**
- * qr-code ツールでテキストからQR SVGを生成し、768px PNG に変換して base64 で返す
+ * 既に /tools/qr-code 上に居る page で、テキストから QR SVG を生成し
+ * 768px PNG に変換して base64 で返す。withProductionCsp の path に
+ * '/tools/qr-code' を渡すことで goto + ハイドレーション待機は wrapper が行うため、
+ * 本関数は現在の page に対して入力 → 描画変換のみ行う。
  */
-async function generateQrPng(page: import('@playwright/test').Page, text: string): Promise<string> {
-  await page.goto('/tools/qr-code');
-  await waitForReactHydration(page);
+async function generateQrPngOnQrCodePage(
+  page: import('@playwright/test').Page,
+  text: string
+): Promise<string> {
   await page.getByLabel('テキスト / URL').fill(text);
   await page.waitForSelector('[data-testid="qr-code-container"] svg');
 
@@ -45,161 +49,179 @@ async function generateQrPng(page: import('@playwright/test').Page, text: string
   });
 }
 
-test.describe('QRリーダー', () => {
+test.describe('QRリーダー（production CSP 適用）', () => {
   test.setTimeout(30000);
-
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/tools/qr-reader');
-    await waitForReactHydration(page);
-  });
 
   // ────────────────────────────────
   // 基本構造
   // ────────────────────────────────
 
-  test('ページが表示されカメラ/アップロードの切替ボタンがある', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'カメラ', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '画像アップロード' })).toBeVisible();
+  test('ページが表示されカメラ/アップロードの切替ボタンがある（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-reader', async (page) => {
+      await expect(page.getByRole('button', { name: 'カメラ', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: '画像アップロード' })).toBeVisible();
+    });
   });
 
   // ────────────────────────────────
   // 画像アップロード: テキスト読取
   // ────────────────────────────────
 
-  test('プレーンテキストを含むQR画像をアップロードして読み取れる', async ({ page }) => {
-    const text = 'Hello DevTools QR Reader';
-    const pngBase64 = await generateQrPng(page, text);
+  test('プレーンテキストを含むQR画像をアップロードして読み取れる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      const text = 'Hello DevTools QR Reader';
+      const pngBase64 = await generateQrPngOnQrCodePage(page, text);
 
-    await page.goto('/tools/qr-reader');
-    await waitForReactHydration(page);
-    await page.getByRole('button', { name: '画像アップロード' }).click();
-    await page.getByLabel('画像を選択').setInputFiles({
-      name: 'qr.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(pngBase64, 'base64'),
+      await page.goto('/tools/qr-reader');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+      await page.getByLabel('画像を選択').setInputFiles({
+        name: 'qr.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(pngBase64, 'base64'),
+      });
+
+      await expect(page.getByText(text)).toBeVisible({ timeout: 10000 });
     });
-
-    await expect(page.getByText(text)).toBeVisible({ timeout: 10000 });
   });
 
-  test('読み取り結果にコピーボタンが表示される', async ({ page }) => {
-    const text = 'copy button test';
-    const pngBase64 = await generateQrPng(page, text);
+  test('読み取り結果にコピーボタンが表示される（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      const text = 'copy button test';
+      const pngBase64 = await generateQrPngOnQrCodePage(page, text);
 
-    await page.goto('/tools/qr-reader');
-    await waitForReactHydration(page);
-    await page.getByRole('button', { name: '画像アップロード' }).click();
-    await page.getByLabel('画像を選択').setInputFiles({
-      name: 'qr.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(pngBase64, 'base64'),
+      await page.goto('/tools/qr-reader');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+      await page.getByLabel('画像を選択').setInputFiles({
+        name: 'qr.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(pngBase64, 'base64'),
+      });
+
+      await expect(page.getByText(text)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
     });
-
-    await expect(page.getByText(text)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
   });
 
-  test('再スキャンボタンを押すと結果がクリアされる', async ({ page }) => {
-    const text = 'rescan test';
-    const pngBase64 = await generateQrPng(page, text);
+  test('再スキャンボタンを押すと結果がクリアされる（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      const text = 'rescan test';
+      const pngBase64 = await generateQrPngOnQrCodePage(page, text);
 
-    await page.goto('/tools/qr-reader');
-    await waitForReactHydration(page);
-    await page.getByRole('button', { name: '画像アップロード' }).click();
-    await page.getByLabel('画像を選択').setInputFiles({
-      name: 'qr.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(pngBase64, 'base64'),
+      await page.goto('/tools/qr-reader');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+      await page.getByLabel('画像を選択').setInputFiles({
+        name: 'qr.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(pngBase64, 'base64'),
+      });
+
+      await expect(page.getByText(text)).toBeVisible({ timeout: 10000 });
+      await page.getByRole('button', { name: '再スキャン' }).click();
+      await expect(page.getByText(text)).toHaveCount(0);
     });
-
-    await expect(page.getByText(text)).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: '再スキャン' }).click();
-    await expect(page.getByText(text)).toHaveCount(0);
   });
 
   // ────────────────────────────────
   // URL 検出 & フィッシング警告
   // ────────────────────────────────
 
-  test('URL を含むQR読取時に警告メッセージと「URLを開く」ボタンが表示される', async ({ page }) => {
-    const url = 'https://example.com/path';
-    const pngBase64 = await generateQrPng(page, url);
+  test('URL を含むQR読取時に警告メッセージと「URLを開く」ボタンが表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      const url = 'https://example.com/path';
+      const pngBase64 = await generateQrPngOnQrCodePage(page, url);
 
-    await page.goto('/tools/qr-reader');
-    await waitForReactHydration(page);
-    await page.getByRole('button', { name: '画像アップロード' }).click();
-    await page.getByLabel('画像を選択').setInputFiles({
-      name: 'qr.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(pngBase64, 'base64'),
+      await page.goto('/tools/qr-reader');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+      await page.getByLabel('画像を選択').setInputFiles({
+        name: 'qr.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(pngBase64, 'base64'),
+      });
+
+      await expect(page.getByText(url)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('link', { name: 'URLを開く' })).toBeVisible();
+      await expect(page.getByText('example.com', { exact: true })).toBeVisible();
     });
-
-    await expect(page.getByText(url)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('link', { name: 'URLを開く' })).toBeVisible();
-    await expect(page.getByText('example.com', { exact: true })).toBeVisible();
   });
 
-  test('「URLを開く」リンクは target=_blank かつ rel=noopener noreferrer で安全に開く', async ({
-    page,
+  test('「URLを開く」リンクは target=_blank かつ rel=noopener noreferrer で安全に開く（CSP 違反なし）', async ({
+    browser,
   }) => {
-    const url = 'https://example.com';
-    const pngBase64 = await generateQrPng(page, url);
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      const url = 'https://example.com';
+      const pngBase64 = await generateQrPngOnQrCodePage(page, url);
 
-    await page.goto('/tools/qr-reader');
-    await waitForReactHydration(page);
-    await page.getByRole('button', { name: '画像アップロード' }).click();
-    await page.getByLabel('画像を選択').setInputFiles({
-      name: 'qr.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(pngBase64, 'base64'),
+      await page.goto('/tools/qr-reader');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+      await page.getByLabel('画像を選択').setInputFiles({
+        name: 'qr.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(pngBase64, 'base64'),
+      });
+
+      const link = page.getByRole('link', { name: 'URLを開く' });
+      await expect(link).toBeVisible({ timeout: 10000 });
+      await expect(link).toHaveAttribute('target', '_blank');
+      await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      await expect(link).toHaveAttribute('href', url);
     });
-
-    const link = page.getByRole('link', { name: 'URLを開く' });
-    await expect(link).toBeVisible({ timeout: 10000 });
-    await expect(link).toHaveAttribute('target', '_blank');
-    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    await expect(link).toHaveAttribute('href', url);
   });
 
   // ────────────────────────────────
   // エラーケース
   // ────────────────────────────────
 
-  test('navigator.mediaDevices が未定義のときカメラ起動で HTTPS 必須メッセージを表示する', async ({
-    page,
+  test('navigator.mediaDevices が未定義のときカメラ起動で HTTPS 必須メッセージを表示する（CSP 違反なし）', async ({
+    browser,
   }) => {
-    // 非HTTPS / localhost 以外の環境では navigator.mediaDevices が undefined になる挙動を再現
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, 'mediaDevices', {
-        configurable: true,
-        get: () => undefined,
+    await withProductionCsp(browser, '/tools/qr-reader', async (page) => {
+      // 非HTTPS / localhost 以外の環境では navigator.mediaDevices が undefined になる挙動を再現。
+      // addInitScript は次回ロードから反映されるため再ナビゲートして適用する。
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'mediaDevices', {
+          configurable: true,
+          get: () => undefined,
+        });
       });
+      await page.goto('/tools/qr-reader');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: 'カメラを起動' }).click();
+
+      await expect(page.getByRole('alert')).toContainText(
+        'カメラの起動には HTTPS 環境または localhost が必要です'
+      );
     });
-
-    // beforeEach で既に goto 済みだが、addInitScript は次回ロードから反映されるため再ナビゲートする
-    await page.goto('/tools/qr-reader');
-    await waitForReactHydration(page);
-    await page.getByRole('button', { name: 'カメラを起動' }).click();
-
-    await expect(page.getByRole('alert')).toContainText(
-      'カメラの起動には HTTPS 環境または localhost が必要です'
-    );
   });
 
-  test('QRコードを含まない画像をアップロードするとエラーが表示される', async ({ page }) => {
-    // 1x1 の白 PNG (QR なし)
-    const blankPng = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      'base64'
-    );
+  test('QRコードを含まない画像をアップロードするとエラーが表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-reader', async (page) => {
+      // 1x1 の白 PNG (QR なし)
+      const blankPng = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64'
+      );
 
-    await page.getByRole('button', { name: '画像アップロード' }).click();
-    await page.getByLabel('画像を選択').setInputFiles({
-      name: 'blank.png',
-      mimeType: 'image/png',
-      buffer: blankPng,
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+      await page.getByLabel('画像を選択').setInputFiles({
+        name: 'blank.png',
+        mimeType: 'image/png',
+        buffer: blankPng,
+      });
+
+      await expect(page.getByRole('alert')).toContainText('QRコードが見つかりませんでした');
     });
-
-    await expect(page.getByRole('alert')).toContainText('画像からQRコードを読み取れませんでした');
   });
 });

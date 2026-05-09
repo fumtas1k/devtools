@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { copyToClipboard } from '@/utils/clipboard';
-import { colors } from '@/utils/styles';
 
 function ClipboardIcon() {
   return (
@@ -39,13 +38,6 @@ function CheckIcon() {
   );
 }
 
-function copyStateColors(copied: boolean, idleColor: string) {
-  return {
-    background: copied ? colors.successBg : colors.bgSubtle,
-    color: copied ? colors.success : idleColor,
-  };
-}
-
 function CopyAnnounce({ copied }: { copied: boolean }) {
   if (!copied) return null;
   return (
@@ -63,6 +55,12 @@ interface Props {
   compact?: boolean;
 }
 
+/**
+ * クリップボードコピー用ボタン。
+ *
+ * style: global.css `@layer components` の `.btn-copy` / `.btn-copy.is-copied` /
+ * `.btn-copy.is-compact` を参照。状態は `is-copied` / `is-compact` className で切替。
+ */
 export function CopyButton({ text, label = 'コピー', className = '', compact = false }: Props) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,20 +80,15 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
     }
   };
 
+  const stateClass = copied ? 'is-copied' : '';
+
   if (compact) {
     return (
       <button
+        type="button"
         onClick={handleClick}
         aria-label={label}
-        className="rounded-md transition-colors"
-        style={{
-          fontSize: '0.75rem',
-          padding: '0.25rem 0.5rem',
-          ...copyStateColors(copied, colors.muted),
-          border: 'none',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap' as const,
-        }}
+        className={`btn-copy is-compact ${stateClass} rounded-md inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap`.trim()}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
         <CopyAnnounce copied={copied} />
@@ -105,16 +98,10 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       aria-label={label}
-      className={`inline-flex items-center gap-1.5 rounded px-3 py-2 font-bold transition-colors whitespace-nowrap ${className}`}
-      style={{
-        fontSize: '0.875rem',
-        lineHeight: 1,
-        letterSpacing: '0.02em',
-        ...copyStateColors(copied, colors.text),
-        border: `1px solid ${copied ? colors.success : colors.border}`,
-      }}
+      className={`btn-copy ${stateClass} caption font-bold inline-flex items-center gap-1.5 rounded px-3 py-2 leading-none tracking-wide whitespace-nowrap ${className}`.trim()}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}
       {label}

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useClampedInput } from '@/hooks/useClampedInput';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 
 type CharType = 'hiragana' | 'katakana' | 'japanese' | 'alphanumeric' | 'lorem';
@@ -97,7 +96,7 @@ export function DummyTextTool() {
     <div className="space-y-6">
       {/* 文字種 */}
       <div>
-        <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.75rem' }}>文字種</p>
+        <p className="body-emphasis text-default mb-3">文字種</p>
         <ToggleGroup
           options={CHAR_TYPES}
           value={charType}
@@ -109,10 +108,7 @@ export function DummyTextTool() {
 
       {/* 文字数 */}
       <div>
-        <label
-          htmlFor="dummy-length"
-          style={{ ...bodyEmphasis, color: colors.text, display: 'block', marginBottom: '0.25rem' }}
-        >
+        <label htmlFor="dummy-length" className="body-emphasis text-default block mb-1">
           文字数
         </label>
         <input
@@ -128,22 +124,14 @@ export function DummyTextTool() {
               handleLengthBlur();
             }
           }}
-          className="rounded-lg px-3 py-2"
-          style={{
-            ...caption,
-            width: '8rem',
-            border: `1px solid ${colors.borderInput}`,
-            outline: 'none',
-            background: colors.bg,
-            color: colors.text,
-          }}
+          className="rounded-lg px-3 py-2 caption w-32 border border-input bg-default text-default"
         />
-        <p style={{ ...caption, color: colors.muted, marginTop: '0.25rem' }}>1〜5000文字</p>
+        <p className="caption text-muted mt-1">1〜5000文字</p>
       </div>
 
       {/* 改行 */}
       <div>
-        <p style={{ ...bodyEmphasis, color: colors.text, marginBottom: '0.25rem' }}>改行</p>
+        <p className="body-emphasis text-default mb-1">改行</p>
         <div className="flex items-center gap-3 flex-wrap">
           <ToggleGroup<'false' | 'true'>
             options={[
@@ -156,7 +144,7 @@ export function DummyTextTool() {
           />
           {lineBreak && (
             <div className="flex items-center gap-2">
-              <label htmlFor="chunk-size" style={{ ...caption, color: colors.muted }}>
+              <label htmlFor="chunk-size" className="caption text-muted">
                 間隔
               </label>
               <input
@@ -167,17 +155,9 @@ export function DummyTextTool() {
                 value={chunkInput}
                 onChange={(e) => handleChunkChange(e.target.value)}
                 onBlur={handleChunkBlur}
-                className="rounded-lg px-3 py-2"
-                style={{
-                  ...caption,
-                  width: '5rem',
-                  border: `1px solid ${colors.borderInput}`,
-                  outline: 'none',
-                  background: colors.bg,
-                  color: colors.text,
-                }}
+                className="rounded-lg px-3 py-2 caption w-20 border border-input bg-default text-default"
               />
-              <span style={{ ...caption, color: colors.muted }}>文字ごと（1〜1000）</span>
+              <span className="caption text-muted">文字ごと（1〜1000）</span>
             </div>
           )}
         </div>
@@ -185,31 +165,16 @@ export function DummyTextTool() {
 
       {/* 結果 */}
       {result && (
-        <div
-          className="rounded-lg"
-          style={{ border: `1px solid ${colors.border}`, overflow: 'hidden' }}
-        >
-          <div
-            className="flex items-center justify-between gap-2 px-4 py-3"
-            style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
-          >
-            <span style={{ ...bodyEmphasis, color: colors.text }}>{result.length} 文字</span>
+        <div className="rounded-lg border border-default overflow-hidden">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 bg-subtle border-b border-default">
+            <span className="body-emphasis text-default">{result.length} 文字</span>
             <div className="flex items-center gap-2">
               <CopyButton text={result} label="コピー" />
               <ClearButton onClick={() => setResult('')} />
             </div>
           </div>
-          <div className="px-4 py-4" style={{ background: colors.bg }}>
-            <p
-              style={{
-                ...caption,
-                color: colors.text,
-                lineHeight: 1.8,
-                wordBreak: 'break-all',
-                whiteSpace: 'pre-wrap',
-                margin: 0,
-              }}
-            >
+          <div className="px-4 py-4 bg-default">
+            <p className="caption text-default leading-[1.8] break-all whitespace-pre-wrap m-0">
               {result}
             </p>
           </div>

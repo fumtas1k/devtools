@@ -1,103 +1,24 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import jsQR from 'jsqr';
+import React, { useState, useCallback, useRef } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { Section } from '@/components/ui/Section';
 import { useQrCamera } from '@/hooks/useQrCamera';
-import { detectQrContent } from '@/utils/qr-reader';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
+import { useAbortableEffect } from '@/hooks/useAbortableEffect';
+import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
+import { validateFile } from '@/utils/file-validation';
 
 const SCAN_OPTIONS = [
   { value: 'camera' as const, label: 'カメラ' },
   { value: 'upload' as const, label: '画像アップロード' },
 ];
 
-// 長辺をこの値以下にダウンスケールして jsQR に渡す（高解像度写真のメモリ節約）
-const MAX_IMG_DIM = 1600;
-
-const sectionStyle = {
-  borderRadius: '0.75rem',
-  border: `1px solid ${colors.border}`,
-  overflow: 'hidden' as const,
-};
-
-const sectionHeaderStyle = {
-  ...bodyEmphasis,
-  color: colors.text,
-  padding: '0.75rem 1rem',
-  margin: 0,
-  background: colors.bgSubtle,
-  borderBottom: `1px solid ${colors.border}`,
-};
-
-const sectionBodyStyle = {
-  padding: '1rem',
-  background: colors.bg,
-};
-
-const rescanButtonStyle: React.CSSProperties = {
-  fontSize: '0.875rem',
-  fontWeight: 700,
-  lineHeight: 1,
-  letterSpacing: '0.02em',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.375rem',
-  padding: '0.5rem 0.75rem',
-  borderRadius: '0.25rem',
-  border: `1px solid ${colors.border}`,
-  background: colors.bgSubtle,
-  color: colors.text,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
-
-const startCameraButtonStyle = {
-  ...caption,
-  fontWeight: 600,
-  display: 'inline-flex' as const,
-  alignItems: 'center' as const,
-  padding: '0.5rem 1.25rem',
-  borderRadius: '0.5rem',
-  border: 'none',
-  background: colors.primary,
-  color: colors.textOnPrimary,
-  cursor: 'pointer' as const,
-};
-
-const stopCameraButtonStyle = {
-  ...caption,
-  fontWeight: 600,
-  display: 'inline-flex' as const,
-  alignItems: 'center' as const,
-  padding: '0.5rem 1.25rem',
-  borderRadius: '0.5rem',
-  border: `1px solid ${colors.error}`,
-  background: colors.errorBg,
-  color: colors.error,
-  cursor: 'pointer' as const,
-};
-
-const uploadLabelStyle = (enabled: boolean): React.CSSProperties => ({
-  ...caption,
-  fontWeight: 600,
-  display: 'inline-block',
-  padding: '0.5rem 1rem',
-  borderRadius: '0.5rem',
-  border: `1px solid ${colors.borderInput}`,
-  background: enabled ? colors.bgSubtle : colors.bgSurface,
-  color: enabled ? colors.text : colors.muted,
-  cursor: enabled ? 'pointer' : 'not-allowed',
-});
-
 export function QrReaderTool() {
   const [scanMode, setScanMode] = useState<'camera' | 'upload'>('camera');
   const [decoded, setDecoded] = useState<string | null>(null);
   const [decodeError, setDecodeError] = useState('');
-  const mountedRef = useRef(true);
 
   const handleQrDetected = useCallback((data: string) => {
-    if (!mountedRef.current) return;
     setDecoded(data);
     setDecodeError('');
   }, []);
@@ -105,59 +26,65 @@ export function QrReaderTool() {
   const camera = useQrCamera({ onQrDetected: handleQrDetected });
   const { stopCamera } = camera;
 
-  useEffect(() => {
-    mountedRef.current = true;
+  // 画像アップロード処理の AbortController を保持する ref。
+  // アンマウント時・連打時に前回の処理をキャンセルする。
+  const uploadAbortRef = useRef<AbortController | null>(null);
+
+  // アンマウント時にカメラを停止し、進行中のアップロードをキャンセルする
+  useAbortableEffect(() => {
     return () => {
-      mountedRef.current = false;
       stopCamera();
+      uploadAbortRef.current?.abort();
     };
   }, [stopCamera]);
 
-  useEffect(() => {
+  // scanMode が camera 以外に切り替わった時にカメラを停止する
+  useAbortableEffect(() => {
     if (scanMode !== 'camera') stopCamera();
   }, [scanMode, stopCamera]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // 同名ファイルを再選択できるよう値をクリア（File 自体は file 変数で参照済み）
+    e.target.value = '';
+
+    const validation = validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
+    if (!validation.ok) {
+      setDecodeError(validation.message);
+      return;
+    }
+
     camera.setCameraError('');
     setDecodeError('');
     setDecoded(null);
 
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, MAX_IMG_DIM / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        if (mountedRef.current) setDecodeError('画像処理に失敗しました');
-        return;
+    // 連打時に前回のアップロードをキャンセルし、新しい controller を設定する
+    uploadAbortRef.current?.abort();
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
+    let result;
+    try {
+      result = await decodeQrFromFile(file, {
+        maxDim: DEFAULT_QR_MAX_DIM,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setDecodeError('画像を読み込めませんでした');
+      return;
+    }
+
+    if (!result.ok) {
+      if (result.reason === 'load-error') {
+        setDecodeError('画像を読み込めませんでした');
+      } else {
+        setDecodeError('QRコードが見つかりませんでした');
       }
-      ctx.drawImage(img, 0, 0, w, h);
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const found = jsQR(imageData.data, imageData.width, imageData.height);
-      if (!found) {
-        if (mountedRef.current) setDecodeError('画像からQRコードを読み取れませんでした');
-        return;
-      }
-      if (mountedRef.current) {
-        setDecoded(found.data);
-        setDecodeError('');
-      }
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      if (mountedRef.current) setDecodeError('画像の読み込みに失敗しました');
-    };
-    img.src = url;
-    // 同名ファイルを再選択できるよう値をクリア（File 自体は file 変数で参照済み）
-    e.target.value = '';
+      return;
+    }
+    setDecoded(result.data);
+    setDecodeError('');
   };
 
   const handleRescan = () => {
@@ -172,9 +99,8 @@ export function QrReaderTool() {
   return (
     <div className="space-y-6">
       {/* 読取方法セクション */}
-      <div style={sectionStyle}>
-        <h3 style={sectionHeaderStyle}>読取方法</h3>
-        <div className="space-y-3" style={sectionBodyStyle}>
+      <Section title="読取方法">
+        <div className="space-y-3">
           <ToggleGroup
             options={SCAN_OPTIONS}
             value={scanMode}
@@ -192,7 +118,11 @@ export function QrReaderTool() {
             <div className="space-y-3">
               {/* カメラ未起動・結果なし時に「起動」ボタンを表示。エラー後もボタンを残すことでリトライを可能にしている */}
               {!camera.cameraActive && !decoded && (
-                <button onClick={camera.startCamera} style={startCameraButtonStyle}>
+                <button
+                  type="button"
+                  onClick={camera.startCamera}
+                  className="caption font-semibold inline-flex items-center px-5 py-2 rounded-lg bg-primary text-on-primary border-0 cursor-pointer"
+                >
                   カメラを起動
                 </button>
               )}
@@ -201,25 +131,23 @@ export function QrReaderTool() {
                 ref={camera.videoRef}
                 playsInline
                 muted
-                style={{
-                  width: '100%',
-                  maxWidth: '400px',
-                  borderRadius: '0.5rem',
-                  display: camera.cameraActive ? 'block' : 'none',
-                  background: '#000',
-                }}
+                className={`w-full max-w-[400px] rounded-lg qr-video-preview ${camera.cameraActive ? '' : 'hidden'}`}
                 aria-label="カメラプレビュー"
               />
               {camera.cameraActive && (
-                <button onClick={stopCamera} style={stopCameraButtonStyle}>
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="caption font-semibold inline-flex items-center px-5 py-2 rounded-lg border border-error bg-error-tint text-error cursor-pointer"
+                >
                   カメラを停止
                 </button>
               )}
-              <canvas ref={camera.canvasRef} style={{ display: 'none' }} aria-hidden="true" />
+              <canvas ref={camera.canvasRef} className="hidden" aria-hidden="true" />
             </div>
           ) : (
             <div className="space-y-2">
-              <p style={{ ...caption, color: colors.muted }}>
+              <p className="caption text-muted">
                 QRコードが写った画像（PNG・JPG 等）をアップロードしてください
               </p>
               {/* input を visually-hidden にしてキーボード・スクリーンリーダーからも操作可能にする */}
@@ -228,45 +156,32 @@ export function QrReaderTool() {
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
-                style={{
-                  position: 'absolute',
-                  width: 1,
-                  height: 1,
-                  opacity: 0,
-                  pointerEvents: 'none',
-                }}
+                className="sr-only"
               />
-              <label htmlFor="qr-image-input" style={uploadLabelStyle(true)}>
+              <label
+                htmlFor="qr-image-input"
+                className="caption font-semibold inline-block px-4 py-2 rounded-lg border border-input bg-subtle text-default cursor-pointer"
+              >
                 画像を選択
               </label>
+              <p className="text-xs text-muted mt-1">
+                対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
+              </p>
             </div>
           )}
 
           {camera.cameraError && <ErrorMessage message={camera.cameraError} />}
           {decodeError && <ErrorMessage message={decodeError} />}
         </div>
-      </div>
+      </Section>
 
       {/* 読取結果セクション */}
       {content !== null && (
-        <div style={sectionStyle}>
-          <h3 style={sectionHeaderStyle}>読取結果</h3>
-          <div className="space-y-4" style={sectionBodyStyle}>
+        <Section title="読取結果" role="status" aria-live="polite">
+          <div className="space-y-4">
             {/* テキスト表示 */}
-            <div
-              className="rounded-lg p-3"
-              style={{ background: colors.bgSubtle, border: `1px solid ${colors.border}` }}
-            >
-              <pre
-                style={{
-                  ...caption,
-                  color: colors.text,
-                  margin: 0,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-all',
-                  fontFamily: 'monospace',
-                }}
-              >
+            <div className="rounded-lg p-3 border border-default bg-subtle">
+              <pre className="caption text-default m-0 whitespace-pre-wrap break-all font-mono">
                 {content.raw}
               </pre>
             </div>
@@ -274,47 +189,34 @@ export function QrReaderTool() {
             {/* コピー & 再スキャンボタン */}
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton text={content.raw} />
-              <button onClick={handleRescan} style={rescanButtonStyle}>
+              <button
+                type="button"
+                onClick={handleRescan}
+                className="caption font-bold leading-none inline-flex items-center gap-1.5 px-3 py-2 rounded border border-default bg-subtle text-default cursor-pointer whitespace-nowrap"
+              >
                 再スキャン
               </button>
             </div>
 
             {/* URLの場合のフィッシング警告 */}
             {content.kind === 'url' && (
-              <div
-                className="rounded-lg p-4 space-y-2"
-                style={{
-                  background: colors.warningBg,
-                  border: `1px solid ${colors.warning}`,
-                }}
-              >
-                <p style={{ ...caption, color: colors.text }}>
-                  <strong style={{ color: colors.text }}>{content.hostname}</strong>{' '}
+              <div className="rounded-lg p-4 space-y-2 border border-warning bg-warning-tint">
+                <p className="caption text-default">
+                  <strong className="text-default">{content.hostname}</strong>{' '}
                   への外部リンクが含まれています。URLをよく確認してから開いてください。
                 </p>
                 <a
                   href={content.raw}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    ...caption,
-                    fontWeight: 600,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '0.375rem 0.875rem',
-                    borderRadius: '0.375rem',
-                    border: `1px solid ${colors.warning}`,
-                    background: colors.bg,
-                    color: colors.text,
-                    textDecoration: 'none',
-                  }}
+                  className="caption font-semibold inline-flex items-center px-3.5 py-1.5 rounded-md border border-warning bg-default text-default no-underline"
                 >
                   URLを開く
                 </a>
               </div>
             )}
           </div>
-        </div>
+        </Section>
       )}
     </div>
   );

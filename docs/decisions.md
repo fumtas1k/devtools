@@ -1803,3 +1803,923 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - ✅ `qr-ticket` の責務（署名検証）が明確になり、両ツールのコードが単純に保たれた。
 - ✅ URL の自動リンク化を行わず、`http:`/`https:` 以外のスキームも `text` として扱うことでフィッシング・XSS リスクを最小化した。
 - ⚠️ Wi-Fi / vCard / mailto 等の QR フォーマット解析は今回スコープ外（将来の拡張候補）。
+
+---
+
+## [054] CSP / セキュリティヘッダを `public/_headers` で付与
+
+**2026-04-30 | ステータス: 採用**
+
+### 背景
+
+ブラウザ完結型 DevTools として「ユーザーデータが外部送信されない」ことが価値の根幹だが、レスポンスヘッダレベルの多層防御（CSP / nosniff / Referrer-Policy / Permissions-Policy）が一切付与されていなかった（issue #158）。
+
+`dangerouslySetInnerHTML` を使う箇所が現状 3 箇所（`QrCode.tsx:115` / `Gs1Databar.tsx:352` / `qr-ticket/GenerateTab.tsx:459`）あり、入力源は QR/バーコード行列のため XSS は成立しないが、依存更新・機能追加で実害化する経路を残していた。また `qr-reader` / `qr-ticket` でカメラ権限を取得する一方、`connect-src` 制約が無く、万一スクリプト実行が成立した場合の二次被害（情報送信）が大きい状態だった。
+
+### 決断
+
+静的ホスティング（現在の Cloudflare Pages：`devtools-d9w.pages.dev`）向けに `public/_headers` を新設し、以下のヘッダを `/*`（全ルート）に付与する。Astro は `public/` 配下を `dist/` にそのままコピーするため、ビルド設定変更は不要。
+
+```
+/*
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=()
+```
+
+各ディレクティブの根拠:
+
+| ディレクティブ                                          | 値                       | 根拠                                                                                                                                                                                                                   |
+| :------------------------------------------------------ | :----------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default-src`                                           | `'self'`                 | 既定で外部送信・読込を全拒否                                                                                                                                                                                           |
+| `img-src`                                               | `'self' data: blob:`     | QR/JAN/GS1/UUID 等で `<canvas>` の `toDataURL()`（`data:`）と画像変換時の `URL.createObjectURL()`（`blob:`）を使用                                                                                                     |
+| `media-src`                                             | `'self' blob:`           | `qr-reader` / `qr-ticket` のカメラ映像ストリーム（MediaStream → blob:）                                                                                                                                                |
+| `style-src`                                             | `'self' 'unsafe-inline'` | `style={{...}}` 219+ 箇所、Astro `style="..."` 多数。詳細は本決断の "却下した選択肢" 参照                                                                                                                              |
+| `script-src`                                            | `'self' 'unsafe-inline'` | Astro 6.1.5 SSG が hydration runtime と MobileDrawer/index 等の島を **インラインスクリプトとして埋め込む**ため必要（`dist/*.html` を `npm run build` 後に grep で確認済み）。`<script is:inline>` も BaseLayout に存在 |
+| `connect-src`                                           | `'self'`                 | アプリは全データをブラウザ内で処理し、外部 API 呼び出しは存在しない（`grep "fetch(" src/` で確認）                                                                                                                     |
+| `worker-src`                                            | `'self'`                 | `sw.js`（Service Worker）登録の許可                                                                                                                                                                                    |
+| `object-src`                                            | `'none'`                 | `<object>`/`<embed>`/`<applet>` 経由の埋め込みを完全禁止                                                                                                                                                               |
+| `frame-ancestors`                                       | `'none'`                 | クリックジャッキング防止（`<iframe>` 埋め込み拒否）                                                                                                                                                                    |
+| `base-uri`                                              | `'none'`                 | `<base>` タグ改ざんによる相対リソースのリダイレクトを防止                                                                                                                                                              |
+| `form-action`                                           | `'self'`                 | フォーム送信先を自身に限定（現状 form 送信は無いがゼロトラスト）                                                                                                                                                       |
+| `Permissions-Policy` `camera=(self)`                    | —                        | `qr-reader` / `qr-ticket` 用に自身のみ許可                                                                                                                                                                             |
+| `Permissions-Policy` `microphone=()` / `geolocation=()` | —                        | 利用していないため明示的に無効化                                                                                                                                                                                       |
+| `upgrade-insecure-requests`                             | —                        | PR #170 レビューで追記。Cloudflare Pages は HTTPS 既定で実害は小さいが、混在コンテンツ防止の補強としてゼロコストで採用                                                                                                 |
+| `X-Frame-Options: DENY`                                 | —                        | PR #170 レビューで追記。`frame-ancestors 'none'` でモダンブラウザはカバーされるが、業界慣習として旧ブラウザ向けに併記                                                                                                  |
+
+### 却下した選択肢
+
+- **`script-src 'self'` のみ（`'unsafe-inline'` 無し）**: Astro 6.1.5 の SSG 出力には hydration ブートストラップやページ固有の島制御が**インライン `<script>` / `<script type="module">`**として埋め込まれるため、CSP 違反で全ページが破壊される。Astro 標準では nonce/hash 注入機構が無く、ビルド後 HTML を後処理する独自スクリプトが必要となるため、本 PR スコープ外で先送り。
+- **`style-src 'self'`（`'unsafe-inline'` 無し）**: React TSX で `style={{...}}` を 219 箇所、Astro でも `style="..."` を多用しており、すべてを CSS Modules / `<style>` ブロックに移行するのは大規模リファクタになる。本 PR では互換性を優先。
+- **`<meta http-equiv="Content-Security-Policy">` での代替**: `frame-ancestors` / `report-uri` 等は meta 経由では効かないため、レスポンスヘッダ方式を採用。
+- **`netlify.toml` / `vercel.json` 等の併設**: 現在のホスティングは Cloudflare Pages のみ。複数ホスティングを実際に使う段階で追加する（YAGNI）。
+
+### 結果・トレードオフ
+
+- ✅ デフォルト全拒否（`default-src 'self'`）+ 利用ディレクティブの個別許可で多層防御が成立。
+- ✅ `frame-ancestors 'none'` でクリックジャッキング、`X-Content-Type-Options: nosniff` で MIME sniffing、`Referrer-Policy` でリファラ漏えいを抑止。
+- ✅ Permissions-Policy で未使用機能（microphone / geolocation）を明示的に無効化し、将来追加コードでの誤利用を防止。
+- ✅ `connect-src 'self'` により、万一 XSS が成立しても外部送信経路を断つ。
+- ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。なお dev / preview server の挙動差で security.csp が未検証だった件は [063] で解消、`script-src 'unsafe-inline'` の実質削減 (meta strict layer 採用) は [064] で実施。
+- ⚠️ Cloudflare Pages 以外のホスティング（Netlify は同形式で動作するが、Vercel は `vercel.json` 形式）に切り替える際は別途設定追加が必要。
+- ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする → **[063] で E2E を preview ベースに移行して解消**。
+
+---
+
+## [055] 月次 issue メトリクス収集ワークフローを追加
+
+**2026-04-30 | ステータス: 採用**
+
+### 背景
+
+devtools リポジトリの issue 活動量（新規作成数・クローズ率等）を定量的に把握し、開発サイクルの健全性を継続モニタリングしたい。手動集計は属人的で継続しづらいため、GitHub Actions で自動化する。
+
+### 決断
+
+`.github/workflows/metrics.yml` を追加し、毎月 1 日 UTC 3:00（JST 12:00）に `github/issue-metrics@v3` で前月分の issue メトリクスを収集し、`peter-evans/create-issue-from-file@v6` でレポート issue を自動作成する。
+
+- `SEARCH_QUERY` は `repo:${{ github.repository }}` でリポジトリ名をハードコードせず、フォーク・リネームにも対応。
+- job-level permissions は `issues: write` のみ（`is:issue` 限定クエリのため `pull-requests: read` は不要）。
+- `workflow_dispatch` を追加しテスト手動実行を可能にしている。
+
+### 却下した選択肢
+
+- **手動集計**: 継続性に欠ける。
+- **外部 SaaS 利用**: ブラウザ完結・データ送信なしの方針と相反する。
+
+### 将来課題
+
+- `peter-evans/create-issue-from-file` のサードパーティ action は現状タグ参照。サプライチェーンリスク低減のため SHA pinning への移行を検討（#174）。
+
+---
+
+## [057] 2026-05-01 — E2E 実行責務をサブエージェントから親（司令塔）に移管
+
+**2026-05-01 | ステータス: 採用**
+
+### 背景
+
+worktree 並列実行を採用しているため、複数のサブエージェントが同時に `npm run test:e2e` を起動すると port 4321 を奪い合い、`waitForReactHydration` timeout として誤報告される事故が頻発した（PR #181 / #188 で実害発生）。また sandbox 制約で dev server を起動できないケースもあり、サブエージェント側の E2E 実行は信頼性が低い。
+
+### 決断
+
+- サブエージェント: **E2E テストコードの追加義務は維持**（11 章原則）。`npm run test:e2e` の **実行は禁止**。検証範囲を unit + 型チェックに限定。
+- 親（司令塔）: push 前後に worktree 内で 1 回だけ E2E を serial 実行。複数 worktree がある場合は同時実行禁止（直列化）。環境由来の失敗が続く場合は CI を最終判断とする。
+
+### 却下した選択肢
+
+- **サブエージェント側で port を可変化**: playwright config と Astro dev server の双方を同期する必要があり、複雑性に見合わない。直列化で十分。
+- **E2E テスト自体を unit 化**: `waitForReactHydration` を含む WCAG / アクセシビリティ系の挙動はブラウザでないと検証できない。
+
+### 安全性確認
+
+- E2E **実装義務**は維持されるため、テストカバレッジは低下しない（実装コードと同時にテストコードが PR に入る原則は変更なし）。
+- CI が最終ゲートとして機能（`.github/workflows/` の e2e ジョブで全件検証）。
+- 親による代行実行は復旧コマンド（`lsof -ti:4321 | xargs kill -9`）と直列化を含むため、port 衝突起因の誤報告は排除される。
+
+### 将来の見直しトリガー
+
+- CI で port 動的割り当てが導入された場合は 3.1 の「実行禁止」を緩和できる（playwright config と Astro dev server の連携が自動化されることが前提）。
+
+### 経緯追記
+
+- **レビュー取得の取りこぼし事故** (2026-05-01): PR #187 / #188 / #189 で親が `gh api .../issues/<n>/comments` のみ確認し、GitHub の "Submit review" 機能経由の正式レビュー（`gh api .../pulls/<n>/reviews`）を 3 件取りこぼした。再発防止として 3.2 章「親向けレビュー取得手順」を追記。
+
+### 関連 PR
+
+- PR #192（本 PR、`docs/shared-agent-rules.md` 3 章改訂）
+- PR #181（fix #149: 元の手順では E2E 待ちで時間切れ）
+- PR #188（refactor #168: worktree 並列で E2E が誤 timeout）
+
+---
+
+## [058] 2026-05-02 — 「先送り表現」の issue 化忘れ検出を script として切り出す
+
+**2026-05-02 | ステータス: 採用**
+
+### 背景
+
+PR レビュー返信や教訓記録に「予定 / 候補 / follow-up / 将来課題」などの先送り表現が含まれているのに、対応する issue 番号 (`#NNN`) が併記されないケースが頻発し、ユーザー指摘を受けて事後起票する事故が複数発生（2026-05-01 の PR #188 → #196、PR #189/#192 → #197/#198）。`docs/shared-agent-rules.md` 6.4 章「先送り時は必ず issue 化する」の規約はあるが、機械的にチェックする手段がなかった。
+
+### 決断
+
+検出ロジックを `scripts/check-followup-refs.sh` として切り出し、memory checklist (`feedback_commander_checklist.md` F 章) と `.claude/hooks/`（#199 で段階導入予定）から **single source of truth として呼び出せる**形にする。
+
+```bash
+bash scripts/check-followup-refs.sh /tmp/claude/issues/reply-*.md
+bash scripts/check-followup-refs.sh docs/agent-lessons.md
+```
+
+exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がない先送り表現を炙り出す。
+
+### 却下した選択肢
+
+- **skill 化** (`skills/pr-review-followup/`): SKILL.md + script + reference をパッケージ化する形だが、現時点では grep スクリプト 1 本に対して構造が大きすぎる。PR レビュー対応フローが定着したら再検討（#199 にて保留記録済み）。
+- **`.claude/hooks/PreToolUse(Bash:gh pr comment*)` でフック化**: 完全自動化だが、フック実装・テスト・配布のコストがある。まず script + memory checklist で運用試行し、効果が見えたらフック化する段階導入を選択（#199）。
+- **memory checklist に正規表現直書き**: 軽量だが single source of truth でなく、サブエージェント完了報告 / hook で重複する。
+
+### 安全性確認
+
+- script は read-only（grep のみ）。誤検出があってもファイル破壊はない。
+- 検出ロジックの誤差（false positive / false negative）は run コストが軽いため許容。実運用で精度の問題が出たら正規表現を更新する。
+
+### 拡張候補（issue 化の判断は実運用後）
+
+- `.claude/hooks/` への移植（#199）: PR レビュー返信投稿前に自動で script を実行し、exit 1 ならブロックする hook を導入する。
+- skill パッケージ化（#199）: PR レビュー対応の完走ワークフローが定着したら、skill としてパッケージ化する案。
+
+### 関連 PR / issue
+
+- PR #199（本決定で採用された script 本体）
+- PR #196（起票忘れ事例: useQrCamera signal 伝播）
+- PR #197（起票忘れ事例: force-with-lease push 運用ルール）
+- PR #198（起票忘れ事例: permissions precedence 実機確認）
+- `docs/shared-agent-rules.md` 6.4 章「先送り時は issue 化必須」
+
+---
+
+## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 宣言のみ採用、自動 install と `.mcp.json` は実証で却下し手動 install + harness 待ちに確定
+
+**ステータス: 採用（A 案（hook 自動 install）/ `.mcp.json` 二重宣言は実証で却下、C 案（手動 install + upstream issue 追従）に確定。context7 Web 403 は harness 側 egress allowlist 対応待ち）**
+
+### 背景
+
+Claude Code Web (claude.ai/code) で `.claude/settings.json` の `enabledPlugins` 配下プラグインに以下の問題が同時発生していた（issue #191）。
+
+| プラグイン                                | 種別     | 症状                                      |
+| ----------------------------------------- | -------- | ----------------------------------------- |
+| `superpowers@claude-plugins-official`     | スキル型 | スキル一覧に出ない（未 install）          |
+| `frontend-design@claude-plugins-official` | スキル型 | 同上                                      |
+| `context7@claude-plugins-official`        | MCP 型   | MCP は登録されるが API 呼び出しが全て 403 |
+
+レビュー時にライブラリ仕様の裏取りや、設計・計画・TDD の支援フローが回らず、誤った提案を投稿して撤回する事案も発生（PR #187）。
+
+### 真因究明の経緯（PR #204 内の段階的検証）
+
+| ステップ                                                                            | 推定された真因（当時）                                                                                                                                                                                                                | 検証結果                                                                                                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| ①初期仮説（issue #191 本文）                                                        | Context7 上流 API の認証・レート制限・障害                                                                                                                                                                                            | 採用未検証で保留                                                                                                                          |
+| ②Web 1 回目検証                                                                     | サンドボックスの `allowedDomains` 不足                                                                                                                                                                                                | `*.context7.com` を追加して再検証 → 効果なし                                                                                              |
+| ③Web 2 回目検証 + WebSearch                                                         | Context7 が API キー必須化（`ctx7sk-` プレフィクス）                                                                                                                                                                                  | 強すぎる断定であった                                                                                                                      |
+| ④CLI セッションで API キー未設定でも疎通することを確認                              | Context7 無認証レート制限が直近で厳格化、Web の共有 IP で 403 を引きやすい                                                                                                                                                            | 推定であって実証されていなかった                                                                                                          |
+| ⑤Web 側調査で `curl` のレスポンスヘッダ／ボディを直接観測（PR #204 review comment） | **Anthropic クラウドコンテナの egress プロキシで `context7.com` / `mcp.context7.com` が host allowlist に未登録**（レスポンスヘッダ `x-deny-reason: host_not_allowed` / ボディ `Host not in allowlist`）。Context7 まで到達していない | 採用（リポジトリ側の `.claude/settings.json` / `.mcp.json` / API キー設定では解消不可。Anthropic harness 側の egress allowlist 対応待ち） |
+
+403 は HTTP プロトコル層では Context7 のアプリ層エラーと区別がつかないが、レスポンスヘッダ `x-deny-reason: host_not_allowed` で **Anthropic 側の egress プロキシが返したもの**と判明。リポジトリ側で書き換え可能な層（local sandbox / MCP server 設定 / API キー）はすべて egress プロキシより内側にあるため、設定変更で解消する余地がない。CLI / Desktop はこの egress プロキシを経由しないため影響なし。
+
+### 決断
+
+PR #204 で最終的に採用する変更は以下の **1 点のみ** に絞る（A 案・`.mcp.json` 併設はいずれも実証で却下した）。
+
+1. **`extraKnownMarketplaces` の宣言**: `.claude/settings.json` に `claude-plugins-official`（GitHub: `anthropics/claude-plugins-official`）を宣言。`~/.claude/plugins/known_marketplaces.json` に登録メタデータが書かれることまでは確認済み（Web セッションでも観測）。**ただしカタログ本体のフェッチや plugin install のトリガーまでは行われない**（既知制約、後述）。
+2. **CLAUDE.md / decisions [059] の運用記述更新**: Web は手動 `/plugin install` を 1 回だけ実施する運用に確定。context7 Web 403 は harness 側 egress allowlist 待ち。API キーは optional で、設定する場合は `~/.claude/settings.json`（user-scoped）の `env` セクションに置けばプラグイン MCP が読む。
+
+### 検証で判明した事実（CLAUDE.md にも反映）
+
+- `extraKnownMarketplaces` は `~/.claude/plugins/known_marketplaces.json` への登録まで動くが、**plugin の install トリガーにはならない**（Claude Code 本体側の既知制約、upstream issue #23737 等）。
+- 既に trust 済みのリポジトリでは Web の install prompt は発火しない（trust 直後イベントに紐づく）。
+- SessionStart hook 内の `claude plugin install` は Web セッションで全 3 件 `Plugin "<name>" not found in marketplace` で fail する。`claude plugin marketplace update` を前置しても同症状（marketplace.json には完全一致で 3 プラグインとも存在することは curl で確認済み）。`claude plugin install` の CLI 経路は cloud session の plugin lookup と整合せず、現状リポジトリ側からの auto-install は不可能。
+- Context7 は API キー必須ではない（CLI / Desktop は無認証で疎通）。`@upstash/context7-mcp` は env `CONTEXT7_API_KEY` で受け取り、`~/.claude/settings.json` の env 経由で渡せばプラグイン MCP も読む。
+- **Web セッションでは Anthropic クラウドコンテナの egress プロキシが `context7.com` / `mcp.context7.com` を host allowlist 未登録で遮断中**（curl レスポンスヘッダ `x-deny-reason: host_not_allowed` を観測）。リポジトリ側で対処不能、harness 側対応待ち。CLI / Desktop はこの egress を経由しないため影響なし。
+
+### 却下した選択肢
+
+- **A 案：SessionStart hook で `claude plugin install` を自動実行**: PR #204 で実装・検証したが Web セッションで全 3 件 fail（`Plugin "<name>" not found in marketplace`）。`claude plugin marketplace update` 前置でも同症状。CLI 経路と cloud session 内部の plugin lookup が整合しないと推測。最終的に hook を撤去して C 案に確定。
+- **`.mcp.json` でプロジェクト直起動の context7 を併設**: PR #204 で実装したが、(i) Web 403 は egress 段で発生するため `.mcp.json` 経由でも解消しない（実証済み）、(ii) CLI / Desktop はプラグイン版の MCP（`mcp__plugin_context7_context7__*`）だけで無認証疎通する、(iii) API キーは `~/.claude/settings.json` の env 経由でプラグイン MCP にも propagate する、ため `.mcp.json` を残す根拠が消失。`mcp__context7__*` と `mcp__plugin_context7_context7__*` の二重登録は混乱の元なので KISS / YAGNI で削除確定。
+- **API キーを `.mcp.json` に直接書く**: secret の commit になり許容できない（`.mcp.json` 自体を撤去したため moot）。
+- **API キーを `.claude/settings.json`（プロジェクトの env）に書く**: 同様に commit されるので不可。`~/.claude/settings.json` の user-scoped 配置に揃える。
+- **`sandbox.network.allowedDomains` に `context7.com` / `*.context7.com` を追加**: 当初「サンドボックス遮断が真因」推定で追加したが、HTTP 403 がアプリ層から返ってきている事実によりサンドボックスは透過していると確認された。「将来の sandbox 仕様変更に備える preventive 措置」として残す案も検討したが、共通規約の YAGNI 原則に反するため**追加せず**確定。
+- **`CLAUDE_CODE_PLUGIN_SEED_DIR` で pre-populated `~/.claude/plugins/` を使う**: Docker image を build できる環境（自前 CI）では有効だが、claude.ai のクラウドコンテナは Anthropic 側 build のため不可。
+
+### 採用した選択肢（C 案：手動 install + upstream 追従）
+
+- 各環境で `/plugin install superpowers@claude-plugins-official` 等を 1 回だけ実行する運用に確定。
+- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` 等が ship されたら CLAUDE.md / decisions [059] を更新。
+- context7 Web 403 は harness 側 egress allowlist 対応待ち。
+
+### トレードオフ
+
+- ✅ `extraKnownMarketplaces` で marketplace 宣言は documented な書き方を残し、運用記述（CLAUDE.md / decisions [059]）を実態に合わせて確定。実証で否定された機能を載せず、PR の scope を「事実の文書化」に集約。
+- ❌ **Web セッションでは plugin install と context7 疎通の両方が現状動かない**（前者は upstream 既知制約、後者は harness 側 egress allowlist 未対応）。リポジトリ側で完全には解消できないため、運用で吸収（手動 install + harness 待ち）。
+- ⚠️ Web では 3 プラグインを 1 回だけ手動 install する手間が残る。CLAUDE.md「推奨プラグイン」節に明記。
+- ⚠️ A 案（SessionStart hook）の試行と却下、`.mcp.json` の追加と削除を同 PR 内で繰り返しており、commit 履歴上は迷走の跡が残る。本決定（[059]）に経緯を集約しているので、後追い時は本記録を読めば十分。
+
+### 後続タスク
+
+- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で context7 を再検証する → issue #205 で追跡。
+- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` / Skill 動的 reload 等が ship されたら本決定を更新（手動 install 手順を撤去）→ issue #206 で追跡。
+
+### 関連 PR / issue
+
+- PR #204（本決定の実装、段階的真因究明を含む）
+- issue #191（症状の整理、本 PR で close）
+- issue #205（後続: Web context7 egress 解消後の再検証）
+- issue #206（後続: plugin auto-install / Skill 動的 reload 制約への対応見直し）
+- PR #187（context7 不在による誤レビュー事例）
+
+---
+
+## [060] 2026-05-02 — qr-ticket: `sanitizeField` を silent 置換から throw 方針に変更
+
+**2026-05-02 | ステータス: 採用**
+
+### 背景
+
+`src/utils/qr-ticket.ts` の `sanitizeField` は従来 `|` を半角スペースに silent 置換していた。これは QR ペイロードのデリミタ衝突回避のための応急処置だったが、ユーザーが意図して入力した `|` がデータ復元時に失われる問題があった（署名対象の payload 文字列に対しても置換後の値が使われるため、再現性の観点でも望ましくない）。
+
+issue #169 項目 3 で `serializeTicket` / `parseQrString` の対称シリアライザペアを整理する過程で、silent な値破壊を残したままにしておくと「シリアライザの可逆性」を成立させられない（往復で値が変わる）ことが明確になり、本決定で挙動方針を変更する。
+
+### 決断
+
+`sanitizeField` を「`|` を含む値が来たら throw する validation 関数」に変更する。silent な値破壊を排し、明示エラーとしてハンドリング可能にする。throw メッセージは `フィールド値に | を含めることはできません: "<value>"` として、どのフィールドが問題かを呼び出し側で特定できるようにする。
+
+### 影響 / 移行
+
+- `serializeTicket` / `buildPayload` / `signTicket` / `ticketToQrString` を経由するコードパスで、`|` 含有の入力時に従来は通っていたところが throw する。
+- 上位 UI 層（`QrTicket.tsx`）では現状汎用 try/catch に拾われて「QRコードの生成中にエラーが発生しました」と表示されるため、UX 観点での専用エラーメッセージ化（`handleGenerate` 事前 validation）は **PR #221（#167-B QrTicket 3 hook 分割）merge 後のフォローアップ PR** で別途対応する（衝突回避のため本 PR では触らない）。issue 番号は親 PR 側で起票・記録予定。
+- E2E テスト・ユニットテストへの直接影響なし（既存テストは `|` を含まない正常系。本 PR で「`|` 含有時に throw する」テストへ更新済み）。
+- 公開 API のシグネチャ（戻り値の型・引数）は変更なし。
+
+### 却下した選択肢
+
+- **silent 置換のまま維持**: 可逆性が成立せず、署名対象の payload と入力値が異なるため将来の検証ロジックで混乱を招く。
+- **置換文字を `|` 以外（例: `_`）に変更**: silent な値破壊である本質は変わらず、解決にならない。
+- **エスケープ方式（`\|` などで `|` をリテラル化）**: parser 側のロジックが複雑化し、QR コード化したときのバイト数増にもつながる。短期的には throw 方針の方が KISS。
+
+### 関連 PR / issue
+
+- PR #218（本変更）
+- issue #169（refactor 親 issue、項目 3 として記録）
+- PR #221（#167-B QrTicket hook 分割、merge 後に UX フォローアップ PR で `handleGenerate` 事前 validation を追加）
+
+---
+
+## [061] 2026-05-02 — config-converter のスキーマ検証を `@cfworker/json-schema` へ差し替え + CSP デグレ検知ゲート追加
+
+**2026-05-02 | ステータス: 採用**
+
+### 背景
+
+`src/components/tools/ConfigConverter.tsx` の「JSON Schema で検証する」ボタンが Cloudflare Pages 本番で次のエラーを返し、機能不全になっていた:
+
+```
+/: スキーマが無効です: Evaluating a string as JavaScript violates the following
+Content Security Policy directive because 'unsafe-eval' is not an allowed source
+of script: script-src 'self' 'unsafe-inline'.
+```
+
+直接原因は `src/utils/config-converter/schema-validator.ts` で使用していた Ajv 8.x が、スキーマを `new Function()` で JIT コンパイルする設計のため `script-src 'unsafe-eval'` を要求すること。`public/_headers` の CSP は `unsafe-eval` を許可していないため本番のみで失敗していた。
+
+より深刻な問題は **CI で検知できなかった** こと。`playwright.config.ts` は `npm run dev`（Astro dev server）で起動するが、dev / preview server は `public/_headers` を解釈しない。結果、ユニット (jsdom) も E2E (Astro dev) も CSP 制約無しで実行され、本番限定の eval 依存違反が素通りした。これは [054] 末尾で「将来課題」と明記していた既知の穴で、本決定でその穴を塞ぐ。
+
+### 決断
+
+2 つの修正をセットで実施する。
+
+**A: バリデータライブラリの差し替え (`ajv` → `@cfworker/json-schema`)**
+
+- `package.json` から `ajv` / `ajv-draft-04` / `ajv-formats` を direct dep から外し、`@cfworker/json-schema@^4.1.1` を追加
+- `schema-validator.ts` を `Validator` ベースに全面書き換え。draft-04 / 7 / 2019-09 / 2020-12 は `$schema` 文字列から検出（既定 draft-07）
+- cfworker は interpreter 実装で `eval` / `new Function` を使わず、CSP `'unsafe-eval'` 不要
+
+**B: E2E に本番相当 CSP を注入するリグレッション検知ゲート**
+
+- `src/utils/csp.ts` に `PRODUCTION_CSP` 定数を新設し、`public/_headers` の CSP 値の single source of truth とする
+- `src/utils/__tests__/headers.test.ts` で `_headers` の CSP 値と `PRODUCTION_CSP` が完全一致することをアサート（片方更新の事故を防ぐ）
+- `tests/e2e/helpers.ts` に `applyProductionCsp(page)` を追加。`page.route` で HTML レスポンスに `PRODUCTION_CSP` を注入し、`console` / `pageerror` を購読して CSP 違反メッセージを蓄積、`assertNoViolations()` で test failure に昇格させる
+- `tests/e2e/config-converter.spec.ts` に `applyProductionCsp` 経由の検証成功シナリオを 1 本追加し、同種の事故を CI で検知できるようにする
+
+### 却下した選択肢
+
+- **CSP に `'unsafe-eval'` を追加**: 最小修正だが、ツール 1 つのために全ページの `script-src` allow-list を緩めることになり、CSP 全体の XSS 緩和効果を後退させる。本ツールは現状ユーザー操作で任意 JSON Schema を `eval` 相当に流せる UX なので、`unsafe-eval` 緩和は将来 schema validator 以外の場所での誤利用も含めて被害面積が大きい。不採用。
+- **Ajv standalone (事前コンパイル)**: 静的に既知のスキーマしか扱えない。本ツールはユーザーが任意の JSON Schema を実行時に貼り付ける UX なので適用不可。
+- **`@hyperjump/json-schema`**: spec 準拠は同等に高いが API が非同期＋スキーマ事前 register 必須で `validateWithSchema` のシグネチャ変更が大きく、unpacked size も 423 KB と cfworker (173 KB) の 2.4 倍。今回の用途では cfworker の方が単純で副作用が少ない。
+- **`wrangler pages dev` で E2E を駆動**: `_headers` を本番同等に解釈できるが、起動コスト・依存追加が大きく、CI 全体に波及する。Playwright `page.route` 注入で目的を達成できるため見送り。
+- **`<meta http-equiv="Content-Security-Policy">` を BaseLayout に追加**: [054] で `frame-ancestors` 等が meta 経由では効かないとして全 CSP の meta 化は却下済み。`script-src` 部分だけの meta 追加は二重管理になり、Playwright route 注入の方が source of truth を一元化できる。
+
+### 影響 / 移行
+
+- **挙動差**: cfworker は JSON Schema 仕様に準拠して未知のキーワード（旧 Ajv `strict: true` で検出していたもの）や型と無関係なキーワード（例: `type: number` に対する `minLength`）を **無視** する。Ajv の独自警告に依存していたユーザーには UX 面の小さな後退があるが、spec 準拠を優先する。`schema-validator.test.ts` に当該挙動を明示する回帰防止テストを置いた。失われた検出能力は将来「スキーマ lint」機能として復活させる予定（追跡: [#235](https://github.com/fumtas1k/devtools/issues/235)）。
+- **依存サイズ**: `ajv-formats` は direct dep から削除（cfworker は draft 既定の formats を内蔵）。`ajv` / `ajv-draft-04` は他の devDependencies の推移依存として残るが、本コードからの import は無し。
+- **CSP gate の射程**: 当初は `tests/e2e/config-converter.spec.ts` の検証ボタン経路 1 本のみ適用。他のツールへ広げる作業は [#234](https://github.com/fumtas1k/devtools/issues/234) で別途議論する（一気に全テスト適用すると、現状混入している他の `unsafe-*` 依存が浮上する可能性があり、本 PR スコープを膨らませるため）。
+
+### 関連 PR / issue
+
+- 本 PR (config-converter CSP 修正 + デグレ検知ゲート)
+- 決定 [054]（CSP 初実装。末尾の「dev/preview 非適用 CSP の検証は将来課題」が本件で具体化）
+
+---
+
+## [062] 2026-05-03 — `agent-worktree-setup.sh` を廃止し SessionStart hook で `npm ci` 自動化に移行
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+`scripts/agent-worktree-setup.sh` は subagent isolation worktree で E2E を回す前に node_modules を「整地」するヘルパーとして 2026-05-02（PR #212）に追加された。docstring が想定する 4 つの問題:
+
+1. sandbox 由来の read-only ファイルを `chmod -R u+w` で書き込み可能化
+2. 古い node_modules を `rm -rf` で削除
+3. `~/.npm` が root-owned 問題を `--cache "$TMPDIR/npm-cache"` で回避
+4. port 4321 を `lsof | xargs kill -9` で解放
+
+PR #240（ルールファイル整理）の派生検証で、上記いずれも **fresh subagent isolation worktree では実態として発生しない** ことが判明した。さらに、スクリプト自身が sandbox 環境では `.idea/` `.vscode/` 同梱の推移依存パッケージで `rm -rf node_modules` が EPERM になり中断する弱点も持つ（実際に検証中、親の作業ディレクトリで誤って実行され node_modules を破壊する事故が発生し復旧が必要だった）。
+
+### 検証結果（sonnet subagent + isolation worktree、2026-05-03）
+
+| 想定された問題             | 実態                                           |
+| -------------------------- | ---------------------------------------------- |
+| (1) sandbox 由来 read-only | fresh worktree に node_modules 不在 → 発生せず |
+| (2) 古い node_modules 削除 | 同上                                           |
+| (3) `~/.npm` root-owned    | 現環境では 501:20 owned で正常 → 回避不要      |
+| (4) port 4321 占有         | fresh worktree に dev server 無し → 発生せず   |
+
+素の `npm ci` で **exit 0 / 5〜10 秒 / 558 packages** インストール完了、`astro check` 0 errors を実測。
+
+### 決断
+
+`scripts/agent-worktree-setup.sh` を削除し、subagent への node_modules 整備手段を素の `npm ci` 一本化する。
+
+加えて、subagent が `npm ci` を忘れて E2E が hydration timeout になる事故を防ぐため、`.claude/settings.json` の SessionStart hook を以下の通り緩和して subagent isolation worktree でも auto-run するようにする:
+
+```diff
+- "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ] && [ ! -d node_modules ]; then npm ci; fi"
++ "command": "if [ ! -d node_modules ] && [ -f package-lock.json ]; then npm ci; fi"
+```
+
+`CLAUDE_CODE_REMOTE` 限定だった条件を「lockfile があり node_modules 不在なら一律実行」に変更することで、cloud session・subagent isolation worktree・初回 clone のいずれでも発火する。
+
+3 層防御で「subagent が npm ci を忘れる」事故を抑止する:
+
+1. **SessionStart hook (自動・主要)**: 緩和した条件で auto-run
+2. **Playbook 規約**: `docs/playbooks/pr-creation.md` 1.1 章のブランチ作成手順に `npm ci` 行を明示追加
+3. **Playbook step 0**: `docs/playbooks/e2e-validation.md` push 前必須チェックリスト ステップ 0 で再確認
+
+### 却下した選択肢
+
+- **スクリプトを修正して動くようにする**（`mv` フォールバック等）: そもそも 4 つの想定問題が fresh worktree で発生しないため、複雑性を足す価値がない。「問題を起こすコードを丁寧に修正する」より「問題を起こさない単純解に置き換える」が KISS。
+- **スクリプトを残し deprecation コメントだけ追加**: 親の作業ディレクトリで誤って実行された際の node_modules 破壊リスクが残る。実際に検証中に発生したため、削除が安全。
+- **SessionStart hook を変更しない**: subagent が `npm ci` を忘れた場合、E2E が hydration timeout で失敗するまで気付けない。手動回復は復旧に時間がかかる（過去の症状が再発する）。
+- **`CLAUDE_CODE_REMOTE` の代わりに subagent 検出（cwd に `.claude/worktrees/agent-` を含むか）を条件にする**: より厳密だが、ローカル CLI 環境で初回 clone した場合などにも npm ci を auto-run したいので、よりシンプルな「lockfile + node_modules 不在」で十分。
+
+### 影響 / 移行
+
+- **削除ファイル**: `scripts/agent-worktree-setup.sh`
+- **更新ファイル**:
+  - `scripts/README.md` — 該当 section 削除
+  - `docs/playbooks/e2e-validation.md` — step 0 を `npm ci` に変更、補足注に npm install シナリオ別 caveats を追加
+  - `docs/playbooks/pr-creation.md` — ブランチ作成完成形に `npm ci` 追加、step 0 を `npm ci` に変更
+  - `docs/agent-lessons.md` — 2026-05-01 entry に「2026-05-03 追記」セクション
+  - `.claude/settings.json` — SessionStart hook 条件緩和（本 PR の別 commit で対応予定）
+- **後方互換**: `bash scripts/agent-worktree-setup.sh` を呼ぶ既存の指示書 / プロンプトテンプレートが残っていたら `npm ci` に置換する必要あり
+
+### npm install シナリオ別の sandbox caveats（補足）
+
+`npm ci` 後に `npm install` 系を走らせる場合の sandbox 影響:
+
+- **新規追加** `npm install foo`: 問題なし（network / 新規 dir 作成 / lockfile 更新は全て allow 範囲）
+- **アップグレード** `npm install foo@new`: foo が `.idea/` `.vscode/` 同梱の場合、古い版の削除フェーズで EPERM の可能性
+- **削除** `npm uninstall foo`: アップグレードと同様
+
+該当しそうな推移依存: `iconv-lite`（`.idea/` 同梱）/ `stream-replace-string`（`.vscode/` 同梱）。直接依存ではないが推移依存先のメジャー更新で巻き込まれる可能性あり。詰まったら親 CLI セッションで実行するか、`mv` で退避してから再 install。
+
+### 関連 PR / issue
+
+- 本 PR (#241 対応、agent-worktree-setup.sh 廃止 + hook 緩和)
+- issue [#241](https://github.com/fumtas1k/devtools/issues/241)（廃止検討）
+- PR [#240](https://github.com/fumtas1k/devtools/pull/240)（ルール整理、本検証の発端）
+- 決定 [057]（E2E 実行責務の親移管。本 [062] で subagent への自動 npm ci によって責務分担が再度更新される）
+
+---
+
+## [063] 2026-05-03 — E2E を `astro dev` から `astro build && astro preview` ベースに切替
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+[054] で導入した CSP は `public/_headers` 経由でレスポンスヘッダとして配信される。後続の [#176](https://github.com/fumtas1k/devtools/issues/176) 改善（`script-src 'unsafe-inline'` 削減）で採用予定の Astro 6.x `security.csp` 機能は、ビルド時に各ページへ `<meta http-equiv="content-security-policy">` を注入してインラインスクリプト/スタイルをハッシュベースで許可する。
+
+しかし [Astro 公式ドキュメント](https://docs.astro.build/en/reference/configuration-reference/#securitycsp) は明確に、`security.csp` は **dev mode で動作せず build/preview モードのみで有効** と記載している。`playwright.config.ts:webServer.command` は `npm run dev` を起動していたため、このまま [#176] を採用しても E2E は `<meta>` 不在の環境で回り、本番との prod-parity が崩れる（[061] で同種の dev/prod 乖離による事故が発生済み）。
+
+[054] 末尾の「preview サーバーまたは実デプロイ後の検証は将来課題とする」の解消にもあたる。
+
+### 決断
+
+`playwright.config.ts:webServer.command` を `npm run build && npm run preview -- --port 4321` に切り替え、E2E を `dist/` 配信に対して実行する。
+
+- `webServer.timeout` は build 時間を含むため 30s → 120s に延長
+- CI（`.github/workflows/test.yml`）の e2e job にも `npm run build` step を明示追加（ログ可読性 + 早期失敗切り分け）
+- `applyProductionCsp` ヘルパは現状ロジック（route 介入で response header に `PRODUCTION_CSP` を上書き）を維持。本 PR 時点では `<meta>` は未生成（`security.csp` 未採用）のため response header のみで評価されるが、後続 [#176](https://github.com/fumtas1k/devtools/issues/176) で `security.csp` が採用されると build 時に `<meta>` が注入され、route 介入の header と AND 評価される構成になる
+- `docs/shared-agent-rules.md` / `docs/playbooks/e2e-validation.md` / `docs/playbooks/pr-creation.md` / `README.md` / `CLAUDE.md` を preview 前提に整合
+
+### 副次効果（重要）— Vite asset inline 化の構造的修正
+
+preview 切替で **本番にも存在していた CSP 違反**が表面化した: `@fontsource/jetbrains-mono` の小さな subset font (cyrillic-ext 等) が Vite デフォルトの `assetsInlineLimit: 4096` で `data:font/woff2;base64,...` として CSS に inline 化され、`public/_headers` の CSP は `font-src` を明示しないため `default-src 'self'` で block されていた。dev mode では asset を bundling せず元ファイル URL のまま配信するため発現せず、長期間気付かれなかった。
+
+`astro.config.mjs` の `vite.build.assetsInlineLimit: 0` で全 asset の inline 化を無効化し、dev/preview/prod の挙動を一致させた。CSP に `font-src 'self' data:` を追加する選択肢もあったが、(a) 同種の問題（小さな画像 / SVG の data: URI 化）が将来再発する温床を残すこと、(b) CSP の許可面を増やすことより asset 配信を統一する方が構造的に強いこと、から inline 無効化を採用した。
+
+inline 化解除のトレードオフ — HTTP/1.1 環境では小ファイルの個別 GET が増えるが、本番ホスト Cloudflare Pages は HTTP/2/3 デフォルトで multiplex 配信されるため実質的なロード差は無い。さらに `@fontsource/jetbrains-mono` は `unicode-range` で subset を gate しており、日本語/英数中心ユーザーのブラウザは cyrillic-ext 等のサブセットを fetch しないため発火経路自体が稀。`dist/` 全体サイズは inline 化解除前後で 16M 据え置きで、ファイル数のみ +7（cyrillic-ext / greek / vietnamese 等の小サブセットが個別ファイル化された分）。
+
+### 却下した選択肢
+
+- **dev のまま維持し、`<meta>` 注入だけ E2E helper で再現**: `dist/` の build 成果物から `<meta>` を抽出して注入する設計が必要で、build 出力と E2E 注入の二重管理になり brittle。prod-parity の本質（実ビルド成果物への E2E）から外れる。
+- **`wrangler pages dev` で E2E を駆動**: [061] で同様検討済み。起動コスト・依存追加が CI 全体に波及する。preview で十分。
+- **`security.csp` 採用を諦めて [#176] を A-2 (post-build hash 化) に倒す**: A-2 は実装複雑度・将来 Astro builtin との互換性で劣る。preview 切替は本番一致のため独立して価値があり、[#176] 以外にも波及効果がある（同種の eval 依存事故 [061] の早期検知精度向上、副次効果欄の data:font 事故も dev/prod parity 確保で恒久的に防止）。
+- **CSP に `font-src 'self' data:` を追加**: 副次効果欄の通り、structural fix を選好。
+
+### 影響 / 移行
+
+- **E2E 実行時間**: cold start で build に 15〜25s 程度上乗せ。`reuseExistingServer: true` のためローカル連続実行では 2 回目以降スキップ。CI では毎回 build が走る（許容範囲）。実測: 1 worker 145 テスト + build 込みで約 1.3 分
+- **手元実行**: `npm run test:e2e` のコマンドは変わらない。内部的に build が走るため初回は数十秒かかる旨を `e2e-validation.md` 0 章に明記
+- **port 4321**: dev / preview で同じため衝突リスクは変わらず。`npm run pretest:e2e` の port kill ロジックも変更不要
+- **preview と dev の挙動差**: `assetsInlineLimit: 0` で吸収できた。test spec への変更は不要だった
+- **dist サイズ**: inline 化解除で 7 ファイル増（cyrillic-ext font 等）。合計サイズはほぼ不変（16M）。HTTP/2 multiplexing 下で実質的なロード差なし
+- **後続作業の解禁**: [#176] の A-1 PR が安全に着手可能になる
+
+### 関連 PR / issue
+
+- 本 PR: #246 で起票
+- 後続: [#176](https://github.com/fumtas1k/devtools/issues/176)（A-1 採用）
+- 過去: [054]（CSP 初導入）／[061]（CSP 違反 CI 検知ゲート初導入）／[062]（worktree setup 簡素化）
+
+---
+
+## [064] 2026-05-03 — `script-src 'unsafe-inline'` 削減: Astro `security.csp` で `<meta>` を strict layer 化、ヘッダは permissive defense-in-depth に分離
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+[054] で導入した CSP は `script-src 'self' 'unsafe-inline'` を含み、Astro の hydration runtime / island 制御スクリプト / `is:inline` ServiceWorker 登録が inline `<script>` で出力されるため `'unsafe-inline'` が必須だった。これは `dangerouslySetInnerHTML` 利用箇所（QrCode / Gs1Databar / qr-ticket GenerateTab の 3 箇所）が将来 sink 化した場合に XSS 防御が効かない既知の弱点だった。[#176](https://github.com/fumtas1k/devtools/issues/176) で 3 案 PoC 並走の結果、A-1（Astro `security.csp` 採用）が第一推奨と確定。E2E の preview 切替（[063]）が完了し A-1 を安全に検証できる土台が整ったため本 PR で実施。
+
+### 当初プランと実装中に判明した architectural な制約
+
+当初プランは「`_headers` から `script-src 'unsafe-inline'` を削除し strict 化」だったが、実装中に CSP 仕様の **Multiple Policies AND 評価**による architectural な制約が判明:
+
+- Astro `security.csp` は `<meta http-equiv="content-security-policy">` を build 時に注入し、inline script を SHA-256 hash で auto-allowlist する
+- 一方、`public/_headers` は HTTP response header 経由の CSP として配信される
+- ブラウザは **複数 CSP policy を AND 評価**: inline script が pass するためには、すべての policy で許可されている必要がある
+- `_headers` の `script-src` から `'unsafe-inline'` を削除すると、header policy が hash も `'unsafe-inline'` も持たない `script-src 'self'` になり、**header 単体で全 inline script を block する**
+- 結果として `<meta>` の hash があっても AND 評価で header が落とし、Astro island loader / SW 登録など Astro 自身の inline script も動かなくなる（preview と本番 Cloudflare Pages の両方で）
+
+### 決断
+
+**「`<meta>` を script-src strict layer、`_headers` を permissive defense-in-depth 層」と再定義する。**
+
+実装内訳:
+
+- `astro.config.mjs` に `security: { csp: { algorithm: 'SHA-256' } }` を追加。Astro の build pipeline が処理する inline `<script>` を自動で SHA-256 hash 化し `<meta>` に列挙
+- `BaseLayout.astro` の SW 登録 `<script is:inline>` から `is:inline` を削除し、Astro pipeline で外部 module bundle に変換（auto-hash 対象に）
+- `astro.config.mjs` に `stripMetaStyleSrc()` カスタム integration を追加し、`<meta>` から `style-src` ディレクティブを除去（後述「style-src の例外」参照）
+- `public/_headers` の `script-src 'self' 'unsafe-inline'` は **意図的に維持**。header は permissive のまま、AND 評価で `<meta>` の hash 制約が支配する
+- `src/utils/csp.ts:PRODUCTION_CSP` に「meta が strict layer の設計」コメント追加。`src/utils/__tests__/headers.test.ts` も同方針に揃え、`'unsafe-inline'` 保持を陽性アサート（comment で意図明記）
+- `src/utils/__tests__/meta-csp.test.ts` を新設し、build 後の `dist/*.html` の `<meta>` CSP が `script-src 'self' 'sha256-...'`（`'unsafe-inline'` 不在）を保つことを Vitest で検証。**meta strict layer の崩壊を CI で即時検知**
+
+### セキュリティ効果
+
+XSS sink への inline script 注入 (`<script>maliciousCode()</script>`) を考えた場合:
+
+- header policy: `'unsafe-inline'` で許可（permissive 層なので）
+- meta policy: hash が一致しないため block
+- AND 評価: meta が block → **全体として block**
+
+これにより `dangerouslySetInnerHTML` 経由の sink 化が起きても CSP で実行を防げる。「`'unsafe-inline'` 削除」の本来の security goal は meta 層で達成された。
+
+`_headers` の `'unsafe-inline'` は misleading に見えるが、コメントで AND 評価設計を明記し、`docs/decisions.md` [064] へリンクすることで現場の誤解を防ぐ。
+
+### `style-src` の例外（`stripMetaStyleSrc()` integration）
+
+`security.csp` を有効にすると Astro はデフォルトで `style-src` にも sha256 hash を付与する。しかし CSP Level 2+ 仕様により **`style-src` に hash と `'unsafe-inline'` が共存するとブラウザは `'unsafe-inline'` を無視する**。本 PR では style-src の strict 化は scope 外（B 案で React `style="..."` 200+ 箇所の段階移行と合わせて行う必要がある）ため、`<meta>` から `style-src` を strip して header 側 (`'self' 'unsafe-inline'`) のみで制御する。
+
+`stripMetaStyleSrc()` は `astro:build:done` フックで `dist/*.html` の `<meta>` content から `style-src ...;` を regex で除去するインライン integration として実装（30 行）。B 案 完了時に **integration ごと削除**し、style-src も meta strict 層に組み込む計画。
+
+### 残課題（B 案 — 別 PR）
+
+`style-src 'unsafe-inline'` は依然として残る。React TSX の `style={{...}}` 200+ 箇所が build 後 `style="..."` 属性として出力されるためで、属性ベース inline style は CSP 仕様上 hash/nonce 照合の対象外。CSS Modules / scoped style への段階移行（[#176](https://github.com/fumtas1k/devtools/issues/176) アプローチ B）を別途進める。完了時に `stripMetaStyleSrc()` integration も削除する。
+
+### 却下した選択肢
+
+- **`_headers` の script-src を完全削除**: header 側に `script-src` ディレクティブを置かなければ `default-src 'self'` にフォールバック。`default-src 'self'` も inline を block するため同じ AND 評価問題が発生。`default-src` を緩めるのは defense-in-depth を後退させるため不採用
+- **`_headers` の script-src に build 時 hash を埋め込んで sync**: build ごとに hash が変わるため `_headers` を build artifact として動的生成する必要があり、Cloudflare Pages の `_headers` 静的配信モデルから外れる。Astro builtin の利点を捨て A-2 (post-build hash 化) と実装複雑度が同等以上になる
+- **A-2 (post-build hash 化) に切替**: 自前 integration で全ページの inline script を抽出 → hash 計算 → header に列挙。Astro builtin (`security.csp`) の auto-hash を捨てることになり、将来 Astro が直接 header CSP 出力をサポートした際の移行コストも増える。A-1 が builtin に乗れる選択肢として優位
+- **A-3 (CSP3 strict-dynamic + nonce)**: 静的 SSG では per-request nonce が出せず、固定 nonce は CSP-Evaluator が HIGH severity 判定。1 ページに nonce 無しの inline script が複数あるため transitive trust も活きない。技術的に実装不可
+- **SW 登録 script の手動 hash 列挙 (`scriptDirective.hashes`)**: SW script の中身が変わるたびに hash 再計算が必要。`is:inline` 削除のほうが zero-maintenance で堅牢
+
+### 影響 / 移行
+
+- **CSP の XSS 緩和効果**: meta layer による hash-only 制約により、`dangerouslySetInnerHTML` 利用箇所が将来 sink 化した場合のインライン XSS 注入が CSP で block されるようになる
+- **build 出力**: 全ページに `<meta http-equiv="content-security-policy" content="script-src 'self' 'sha256-...'">` が注入される（`stripMetaStyleSrc()` で style-src は除去済み）。dist サイズわずかに増、誤差レベル
+- **dev mode**: `security.csp` は dev で動作しない（[063] で確認済の Astro 公式仕様）。dev は引き続き `'unsafe-inline'` 許容で動作するため開発体験への影響なし。E2E は preview ベース ([063]) で評価
+- **CSP gate 強度**: `applyProductionCsp` ヘルパが response header (permissive) と `<meta>` (strict) の AND を評価する形で実体化。新たな inline script を Astro pipeline 外から追加すると CI が違反検出して止まる（meta-csp.test.ts と E2E の両層で検知）
+- **後続作業**: B 案（`style-src 'unsafe-inline'` 削減）は独立 PR として継続。完了時に `stripMetaStyleSrc()` integration を削除し style-src も meta strict 化
+
+### 関連 PR / issue
+
+- 本 PR: [#249](https://github.com/fumtas1k/devtools/pull/249)
+- 解消する issue: [#176](https://github.com/fumtas1k/devtools/issues/176)（A-1 完了）
+- 前提依存: [063]（E2E preview 切替）／[061]（CSP 違反 CI 検知ゲート）／[054]（CSP 初導入）
+- 後続: [#176](https://github.com/fumtas1k/devtools/issues/176) の B 案（`style-src 'unsafe-inline'` 削減）
+
+---
+
+## [065] 2026-05-03 — Playwright `webServer` を `process.env.CI` で分岐
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+[063] で `webServer.command` を `npm run build && npm run preview ...` に切替えた際、`.github/workflows/test.yml` 側でも `npm run build` step を追加したため **CI で build が 2 回走る**構成になっていた（webServer 内 build は incremental cache で軽いとはいえ wasteful、CI ログ可読性も悪化）。加えて `reuseExistingServer: true` + preview の組み合わせで、ローカルで開発者が手動 `npm run preview` を起動したまま `npm run test:e2e` を回すと **古い `dist/` に対して E2E が silent pass** する罠が発生する（dev 時代は HMR で吸収されていた）。
+
+PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で対応することにした。
+
+### 決断
+
+`playwright.config.ts:webServer` を `process.env.CI` で分岐する:
+
+- **CI**: `command: 'npm run preview -- --port 4321'`（事前 step で build 済み）、`timeout: 30_000`（preview 起動は瞬時、env 由来失敗を早期検知）、`reuseExistingServer: true`（fresh runner なので影響なし）
+- **Local**: `command: 'npm run build && npm run preview ...'`（build 忘れの safety net）、`timeout: 120_000`（build 時間込み）、`reuseExistingServer: false`（毎回新規 build/preview で stale dist trap を回避）
+
+ローカルで毎回 build が走るのは incremental cache で 2 回目以降数秒、開発体験への影響は軽微。
+
+### 影響 / 移行
+
+- **CI 実行時間**: build の重複実行がなくなり ~25s 短縮（cold start で計測）
+- **ローカル開発**: `npm run test:e2e` 実行ごとに incremental build が走る。手動 preview を別途起動した状態での E2E は port 衝突で失敗するため、`npm run pretest:e2e` で port 解放してから実行
+- **fail-fast**: CI の env 由来失敗（webServer 起動不可等）が 30s で確定
+- **後続作業**: なし（独立完結）
+
+### 関連 PR / issue
+
+- 本 PR: [#251](https://github.com/fumtas1k/devtools/pull/251)
+- 解消する issue: [#248](https://github.com/fumtas1k/devtools/issues/248)
+- 起源: PR #247 セルフレビュー I-2 / I-3
+- 関連: [063]（preview 切替）
+
+---
+
+## [066] 2026-05-03 — VRT (Visual Regression Test) を独立 PR + 専用 workflow + 非 required check で導入
+
+**2026-05-03 | ステータス: 採用**
+
+### 背景
+
+`#176` B 案 ui migration (`style={{}}` 200+ 箇所の className 化) に向けた visual regression 検出基盤として VRT を導入する。当初は ui migration と同じ PR で導入を試みた（旧 PR #253）が、以下 3 つの構造的問題で破綻し close:
+
+1. **VRT setup を feature work と bundle した結果 infra 設計が後回し**: deterministic mock の注入タイミング、baseline 撮影タイミング、required check 化、すべてが場当たり的になった
+2. **mock を最初から組まなかった**: baseline が non-deterministic な状態で撮影され、後付けで mock を入れても baseline 側が古いまま flake が継続。構造的に fix 不可能
+3. **VRT を required check 想定で作った**: 意図的 visual 変更（例: BareInput の `mono` prop 由来の system mono → JetBrains Mono web font 移行）のたびに merge ブロックが発生する運用 friction
+
+旧 PR #253 のレビュー過程で「修正前の状態でランダムを固定して snapshot を取る必要がある」「修正を意図的にした場合は、こけてても通す必要があるから必須テストに入れてはダメ」とユーザー指摘あり。完全に正当な architectural critique のため close した。
+
+### 決断
+
+VRT を **独立 PR (本 PR)** で先行導入し、以下の 5 つの設計原則を最初から適用する:
+
+1. **Playwright project 分離**: `playwright.config.ts` で `e2e` (通常テスト) と `visual-regression` (VRT 専用) に分離。通常 `npm run test:e2e` は VRT を実行しない
+2. **Deterministic mock 注入**: spec 内 `page.addInitScript()` で `Math.random` (seeded LCG) / `crypto.randomUUID` (incremental counter) / `Date.now` (固定 timestamp) を navigation 前に decorate。production code 無変更
+3. **baseline は CI Linux で生成**: `update-visual-baseline.yml` workflow が CI runner で `--update-snapshots` を実行、bot が同 branch に commit back。ローカル mac の OS 差を排除
+4. **専用 workflow + PR comment + artifact**: `visual-regression.yml` が PR trigger で VRT 実行、結果を PR comment（pass/fail サマリ + artifact link）で報告、`continue-on-error: true` で job 単体は fail しても workflow_run としては記録される
+5. **branch protection の required check に含めない**: GitHub Settings UI で user が手動設定。意図的 visual 変更が merge ブロックしない設計
+
+加えて `update-visual-baseline.yml` には **default branch guard** (`if: github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main'`) を入れ、誤って develop / main 上で trigger されても no-op となり branch protection 違反を回避。
+
+### 却下した選択肢
+
+- **VRT を ui migration と同 PR で導入**: 旧 PR #253 で破綻した
+- **VRT を required check に含める**: 意図的 visual 変更のたびに merge friction が発生し、reviewer の判断機会を奪う。non-required + PR comment + workflow_dispatch baseline 更新の組み合わせがバランス良い
+- **mask で動的領域を screenshot から除外**: 表面的な解決にとどまる。`addInitScript` で source の non-determinism を断つ方が clean
+- **darwin baseline も commit**: ローカル mac DX が改善するが、Linux baseline と乖離した時の混乱が大きい。CI Linux baseline を SoT に固定し、ローカル diff は無視する運用が clean
+
+### 副次効果 / 移行
+
+- 旧 PR #253 で得た 3 件のメモリ (`feedback_vrt_setup_sequencing.md` / `feedback_subagent_verification_trust.md` / `feedback_infra_feature_separation.md`) を保存済み。同じ構造的失敗の再発を抑止
+- 後続 ui migration PR (B 案 PR 1〜PR 6) は本 PR の VRT 監視下で実施。意図的変更は baseline 更新で accept、意図しない regression は fix
+- `tests/e2e/visual-regression.spec.ts` の `addInitScript` mock 範囲は将来追加 page で不足する可能性あり（新 page で別の non-deterministic API を使う場合）。発見次第 mock を拡張する運用
+
+### 関連 PR / issue
+
+- 本 PR: [#254](https://github.com/fumtas1k/devtools/pull/254)
+- 失敗 PR: [#253](https://github.com/fumtas1k/devtools/pull/253) (closed)
+- 起源: `#176` B 案（`style-src 'unsafe-inline'` 削減）の前提整備
+- 過去: [063] (preview 切替), [064] (CSP A-1), [065] (webServer CI 分岐)
+- 後続: B 案 PR 1（基礎工事 + ui/\* simple 11 ファイル migration）から再着手
+
+## [067] 2026-05-08 — `ResultTable` の `setProperty` 経路が CSP `style-src` strict 化と非互換 → B 案最終 flip を別 PR に延期
+
+### 背景
+
+`#176` B 案計画では PR 8 で `_headers` / `<meta>` 両側から `style-src 'unsafe-inline'` を削除し、最終 flip を完了する予定だった ([064] のフォローアップ)。PR 1〜7b で React `style={{` (200+ 箇所) と Astro `style="..."` (65 箇所) を全廃 + PR 8 commit 1 で SVG inline style も `currentColor` 化と、表面的な inline style 経路は完全に撲滅したと認識していた。
+
+### 発覚
+
+PR 8 で実際に `style-src 'self'` strict 化を試みた E2E (`npm run test:e2e`) で 11 件の violation が検知された:
+
+```
+Applying inline style violates the following Content Security Policy directive 'style-src 'self''.
+Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required.
+```
+
+失敗 spec はすべて **生成→ResultTable 表示** 経路 (`ulid-generator.spec.ts` 5 件 / `uuid-v7.spec.ts` 6 件 / `config-converter.spec.ts` JSON Schema 検証 1 件)。原因は `src/components/ui/ResultTable.tsx:62-78` の以下 2 箇所:
+
+```ts
+el.style.setProperty('--result-table-min-width', minWidth);
+el.style.setProperty('--col-width', col.width);
+```
+
+これらは PR 1.5 (#261) で `style={{}}` 撲滅と引き換えに導入した CSSOM API 経由の動的 width 設定であり、`inline-style-migration.test.ts` の検出 regex も `\.style\.setProperty(` を意図的に除外していた。当時の前提は「CSSOM API は CSP 観点で `style="..."` HTML 属性とは別経路」だったが、これは誤りだった。
+
+### 根本原因
+
+CSP3 仕様 (`https://www.w3.org/TR/CSP3/#directive-style-src`) では `style-src` の制御対象に以下が含まれる:
+
+- `<style>` 要素
+- `style` 属性 (HTML attribute)
+- **JavaScript による style modification** (`CSSStyleDeclaration.cssText`, `setProperty`, `style` プロパティ書換え)
+
+`el.style.setProperty('--col-width', '120px')` は DOM 上で `<el style="--col-width: 120px">` を生成し、これは CSP の `style-src` に対して inline style として評価される。`'unsafe-inline'` / hash / nonce のいずれも無いと block される。
+
+### 評価した解 (3 案)
+
+| 案                                | 仕組み                                                                                                                                                            | 実現性                    | 工数                                                                         |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------- |
+| (a) Constructable Stylesheets     | `new CSSStyleSheet()` + `document.adoptedStyleSheets` で programmatic stylesheet を attach。CSP3 で programmatic stylesheet は `style-src` 対象外と仕様上扱われる | 高 (要 Chromium 動作確認) | ResultTable 1 hook の API 切替、UX 維持                                      |
+| (b) CSS class swap                | 連続値 width を有限 bucket (例: `.col-width-XX`) に discretize、pre-defined static CSS で実現                                                                     | 確実 (CSP 仕様非依存)     | ResultTable + 利用 hook の refactor、UX 影響 (微細な列幅調整不可)            |
+| (c) `'unsafe-hashes'` + hash 列挙 | 各 setProperty が生成する style attribute 値の hash を CSP に列挙                                                                                                 | **不可**                  | 連続値で hash 空間無限                                                       |
+| (d) per-request nonce             | 各リクエストに nonce を発行し setProperty 直後に matching nonce を style attribute へ付与                                                                         | 不可                      | Astro 静的 build / Cloudflare Pages では request 単位の nonce を発行できない |
+
+### 決定
+
+- **(a) Constructable Stylesheets を最有力候補として PR 9 で技術検証 + refactor**。Chromium で `setProperty` 経由 violation が `adoptedStyleSheets` 経路で解消することを実機確認後に確定。
+- 不適なら (b) CSS class swap に fallback (確実だが UX 影響を許容)。
+- B 案最終 flip (`_headers` + `<meta>` 両側 strict 化 + `stripMetaStyleSrc` 撤去 + test 群 strict 化) は **PR 10 (新規)** に延期。
+
+### 本 PR (PR 8 scope 縮小) で達成
+
+- Gs1Databar SVG `<text>` の inline style を `fill="currentColor"` + 親 `.gs1-svg-container` の `color: var(--color-text)` 化 (将来の strict 化に向けた事前 refactor)
+- `inline-style-migration.test.ts` に `.astro` glob を並列追加 (Astro 側回帰防止網の整備)
+- 本 entry 記録
+
+`_headers` / `<meta>` / `astro.config.mjs` / test 群の strict 化 commit は **本 PR から rebase で削除**。原実装 7 commit のうち 4 commit (Gs1Databar / Astro 検出網 / decisions [067] / SoT 同期) のみ残す。
+
+### 残課題
+
+- **PR 9 (新規)**: ResultTable `setProperty` の Constructable Stylesheets 化 (or CSS class swap)。`#234` 19 spec 横展開と並行検討の余地あり。
+- **PR 10 (新規)**: B 案最終 flip。PR 8 から削除した 3 commit (CSP flip / `stripMetaStyleSrc` 撤去 / test 群 strict 化) を再投入。
+
+### Lessons learned
+
+- **CSSOM API ≠ CSP `style-src` 対象外**: 「`setProperty` は CSP 観点で別経路」という PR 1.5 設計時の前提は誤り。CSP3 spec を熟読しなかったツケ。
+- **migration test の検出 regex は実 violation を保証しない**: `inline-style-migration.test.ts` で `setProperty` を意図的に除外していたが、CSP の実評価とは独立して評価される (regex は文字列マッチ、CSP は DOM 状態)。陽性対照テストの境界条件として E2E `applyProductionCsp` gate を 1.5 段階で導入していれば早期検知できた。
+- **「前提崩壊」は overstating**: 当初「B 案不可能」と過剰評価したが、refactor で達成可能。ブロッカー検出時は解決策の現実性を冷静に列挙する習慣が必要。
+
+### PR 9 outcome (2026-05-08)
+
+**採用**: (a) Constructable Stylesheets。Phase 0 minimal repro spec (`tests/e2e/csp-constructable-stylesheet.spec.ts`、永続) で Chromium 実機検証 (陽性対照: インライン `<style>` 要素は violation 起こす / 陰性対照: `new CSSStyleSheet()` + `document.adoptedStyleSheets` は violation 起こさず適用される / CSS 変数注入経由でも問題なし) を pass、refactor 確定。
+
+**scope 拡張**: 当初 issue [#304] / 本 entry は ResultTable のみ言及だったが、PR 9 spec 起草時の調査で `config-converter` violation 1 件の真因が `ToggleGroup.tsx` の `setProperty('--toggle-cols', N)` (12 ツールで使用) と判明。PR 9 で **ResultTable + ToggleGroup を一括 refactor**。
+
+**実装**:
+
+- 共通 hook `src/hooks/useDynamicStyleSheet.ts` (SSR-safe / `useId` ベース) に Constructable Stylesheets 経路を集約
+- `src/utils/css-length.ts` の `assertCssLength` で `replaceSync` 経由 CSS injection を防御 (defense in depth)
+- `tests/e2e/helpers.ts` に `applyStrictStyleSrcCsp` を追加 — `PRODUCTION_CSP` から `style-src 'unsafe-inline'` を `replace` で除いた派生定数 + module load 時の sanity guard で drift を CI 検知
+- `tests/e2e/csp-constructable-stylesheet.spec.ts` を永続 regression 検出網として残す (Chromium 動作変更 / CSP 仕様改訂への早期検知)
+- `inline-style-migration.test.ts` の `setProperty` 除外を撤去し陽性 guard に反転
+- `vitest.config.ts` に `setupFiles: ['./src/test-setup.ts']` を追加 — jsdom polyfill (CSSStyleSheet.replaceSync / document.adoptedStyleSheets) を ToggleGroup / ResultTable をテストする全 jsdom test に共通適用
+
+**Phase 2 検証で発覚した PR 10 への申し送り事項**:
+
+PR 9 の Phase 2 (13 ツール spec を strict CSP local run) で **Astro 島ランタイムが injection する固定 inline `<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>`** (sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow=) が headers 側 strict CSP の `style-src 'self'` で block される現象を確認。PR 9 の React refactor 自体は無問題 (Phase 0 spec が `/` で pass、`useDynamicStyleSheet` 経路は violation 起こさず) で、本件は [064] / `stripMetaStyleSrc` 構造由来の **PR 10 責務範囲**:
+
+- PR 10 で `_headers` strict 化と同時に Astro island runtime の inline style hash を `style-src` directive に取り込む経路設計が必要
+- 案: `astro.config.mjs` の `security.csp` integration を活用 + `stripMetaStyleSrc` 撤去で `<meta>` 側に hash が付与されるため、headers 側にも同 hash を反映するメカニズムを設計 (Astro 公式 build hook で hash を抽出して `_headers` を生成 / または handcoded hash を Astro 側 fingerprint 安定運用)
+- PR 9 完了判定は「React 経由 setProperty 0 件 + Phase 0 spec PASS + 全既存 e2e (`withProductionCsp` 通常 run) PASS」に縮小、Phase 2 strict CSP 検証は PR 10 に統合
+
+### Follow-up decisions (PR 10 着手前、2026-05-08)
+
+PR 9 merge 後の review で 2 件の follow-up issue が起票され、PR 10 着手前に方針を確定した。
+
+#### #309 ResultTable FOUC → option A (現状容認)
+
+**現象**: `useDynamicStyleSheet` は `useEffect` 内で `adoptedStyleSheets` に attach するため、SSR HTML → hydration 1 frame だけ dynamic style 未適用 (`min-width` / `width` が auto)。
+
+**評価した解**:
+
+| 案  | 仕組み                                   | 採否                                       |
+| --- | ---------------------------------------- | ------------------------------------------ |
+| A   | 現状容認 + JSDoc 明記                    | ✅ **採用**                                |
+| B   | `global.css` に「型代表値」fallback 復元 | 不採用 (callsite 固有値で代表値原理的不在) |
+| C   | SSR `style="..."` 属性経路 (Astro hash)  | 不採用 (CSP3 strict 化と非互換)            |
+
+**A 採用根拠**:
+
+- callsite 2 箇所 (`UuidV7Generator` minWidth=42rem / `UlidGenerator` minWidth=36rem) すべて hard-coded literal、props 動的変化なし → FOUC は「初回画面の 1 frame」限定
+- `ToggleGroup` `var(--toggle-cols, 2)` の dimensionless 整数 fallback とは異なり、`ResultTable` の `min-width` / `width` は callsite 固有値で 1 つの代表値が原理的に存在しない (option B が常に乖離)
+- PR 10 VRT は `toHaveScreenshot` が networkidle + hydration 後撮影 → FOUC frame は捕捉しない (想定、PR 10 で実測予定)
+
+**対応**: `useDynamicStyleSheet.ts` JSDoc に FOUC expected behavior 明記 (本 PR で実装)、issue `#309` を close。
+
+#### #308 useDynamicStyleSheet sheet 再利用最適化 → (ii) 実装見送り
+
+**現状**: rules 変更ごとに `new CSSStyleSheet()` 生成、cleanup で `adoptedStyleSheets` を filter 走査して取り外す。
+
+**API 設計意図との乖離**: Constructable Stylesheets API は本来 sheet を retain して `replaceSync(newRules)` で in-place 更新できる設計。`useRef<CSSStyleSheet>` で sheet 保持 → 初回のみ attach、以降 `replaceSync` のみで更新の最適化が可能。
+
+**評価**:
+
+| 案                                 | 採否                                                                              |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| (i) 今 PR で `useRef` 化実装       | 不採用 (rules 変化頻度ゼロで実害なし、YAGNI)                                      |
+| (ii) decision メモのみ、実装見送り | ✅ **採用**                                                                       |
+| (iii) close as won't-fix           | 不採用 (将来 dynamic rules 利用時に再起票より open 維持の方が context 保全に優位) |
+
+**(ii) 採用根拠**:
+
+- 現 callsite (`ResultTable` / `ToggleGroup`) は rules 変化頻度ほぼゼロ (props で columns / minWidth が変わるユースケースなし) → 最適化 ROI 低い
+- API 非整合は事実だが、将来 dynamic な rules 利用が出た時に再評価で十分
+
+**再評価条件**: `useDynamicStyleSheet` callsite で props に応じて rules が頻繁に変化するユースケースが追加された時 / `adoptedStyleSheets` 配列が観測可能なほど肥大化した時。
+
+**対応**: 本 entry に decision 記録、issue `#308` は **open のまま** (future enhancement として残置)、本 PR では実装変更なし。
+
+### 関連 PR / issue
+
+- 本 entry を記録: PR 8 (scope 縮小、merge `e2efd24`)、PR 9 outcome 追補
+- 後続: PR 10 (B 案最終 flip + Astro island runtime style hash 取り込み)
+- 過去: [064] (CSP A-1 / script-src strict 化)
+- 起源: `#176` B 案 PR 1.5 (#261) で導入された `setProperty` パターン
+
+## [068] 2026-05-09 — `#176` B 案完了 (両層 `style-src` strict 化 + Astro island hash 取り込み)
+
+### 背景
+
+`#176` B 案 = `style-src 'unsafe-inline'` 削減 (A-1 [#249] 完了後の続編、`docs/decisions.md` [064] 参照)。
+
+`<meta>` strict + `_headers` permissive の AND 評価設計 ([064]) では、header 側に `'unsafe-inline'` を残しているため `<meta>` 自動 hash が壊れた状況 (Astro `security.csp` integration の bug / 設定ミス / build hook 失敗 / Astro 仕様変更) で fallback policy が permissive になる潜在リスクがあった。両層を strict (`'self'` + 必要 hash のみ) に揃えることで XSS 緩和の defense-in-depth を完成させる goal。
+
+PR 0〜10 series で段階的に React / Astro inline style と CSSOM mutation を全廃し、最終 PR 10 で両層 flip + Astro island runtime hash 取り込みを実施。
+
+### B 案 PR 0〜10 series 依存図
+
+```
+PR 0   (#254)  VRT 導入 (mock 注入版、CI Linux baseline、required check 外し)
+PR 1   (#256)  基礎工事 + ui/* simple 11 ファイル (ClearButton CSSOM 撤去含む)
+PR 1.5 (#261)  ui/* complex (ResultTable + InputField, API redesign)
+PR 2   (#272)  qr-ticket/* + #225 同梱
+PR 3   (#275)  JwtDecoder + UuidV7Generator + #262 partial
+PR 4   (#277)  Gs1Databar + EncodingConverter + DummyText
+PR 5a  (#283)  ConfigConverter + QrReader + JanCode (CSSOM hover 含む)
+PR 5b  (#286)  残 7 ツール + zero-style 登録 + ulid-generator E2E gate / #262 close
+PR 6   (#290)  styles.ts 削除 + migration tracker glob 化
+PR 7a  (#294)  layout/ui Astro inline 23 件
+PR 7b  (#299)  pages Astro inline 42 件
+PR 8   (#303)  scope 縮小 (setProperty CSP3 制約発覚で延期、[067])
+PR 9   (#307)  ResultTable + ToggleGroup setProperty を Constructable Stylesheets 化
+PR 9 follow-up (#313)  #309 / #308 decision メモ化
+PR 10  (本 PR) 両層 strict 化 + Astro island hash 取り込み
+```
+
+### 本 PR (PR 10) で達成
+
+- `public/_headers` / `src/utils/csp.ts`: `style-src 'unsafe-inline'` を削除し `style-src 'self' 'sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow='` に flip
+- `astro.config.mjs`: `stripMetaStyleSrc()` 暫定 integration ([064] 由来) を完全撤去
+- `<meta>` 側 CSP は Astro `security.csp` で hash 付き strict 形式に自動切替
+- test 群 strict 化 (`headers.test.ts` / `meta-csp.test.ts` / `astro-config-csp.test.ts`)
+- Astro island hash 検出網追加 (dist HTML literal + `_headers` hash 整合性 + 陽性対照メタテスト)
+
+### Astro island hash 取り込みの設計選定
+
+PR 9 Phase 2 で発覚した、Astro 島ランタイムが React island を含むページに injection する固定 inline style `<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>` の sha256 hash `sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow=` を `_headers` の `style-src` に取り込む必要があった。
+
+**評価した解**:
+
+| 案  | 仕組み                                  | 採否                                    |
+| --- | --------------------------------------- | --------------------------------------- |
+| α   | handcoded fingerprint + 検出網          | ✅ **採用**                             |
+| β   | `astro:build:done` hook で自動抽出      | 不採用 (overkill: hash は 1 個固定)     |
+| γ   | `_headers` permissive 維持、meta strict | 不採用 (B 案 goal「両層 strict」と矛盾) |
+
+**α 採用根拠**:
+
+- 取り込む hash は 1 個 (Astro が当該文字列を変更しない限り stable)
+- β の 80-150 行 hook 実装は 1 hash の自動抽出に対して overweight
+- γ は `<meta>` が壊れた状況で `_headers` permissive のみが効くため XSS 緩和の最終防衛ラインが緩い → goal「両層 strict」と部分矛盾
+- α の運用コスト「Astro 更新で hash 変わると CI fail」は検出網で能動検知できるため silent regression にならない
+
+### 削除した暫定 infra
+
+- `stripMetaStyleSrc()` integration ([064] / `astro.config.mjs`):
+  CSP3 仕様で hash と `'unsafe-inline'` 共存時にブラウザが `'unsafe-inline'` を無視する制約により、`<meta>` から `style-src` を除く暫定。本 PR で両層 strict 化により不要化、撤去。
+- `MIGRATED_FILES` array (`inline-style-migration.test.ts`):
+  PR 6 で glob 化済 (`src/components/**/*.{tsx,astro}` 等)、本 PR では touch せず。
+- `applyStrictStyleSrcCsp` helper (`tests/e2e/helpers.ts`):
+  PR 9 で `applyProductionCsp` から派生として追加。本 PR で `applyProductionCsp` 自体が strict になるため不要化。**削除は別 cleanup PR** に切り出す候補 (memory `feedback_infra_feature_separation.md` 準拠)。
+
+### 設計判断 KEEP 記録
+
+PR 6 必須チェックリスト末尾の未消化項目を本 entry で「現状維持」と確定:
+
+- **`.text-primary` 命名衝突リスク**: PR 2 で導入した `.text-primary` (`--color-primary` 由来) は Tailwind `text-primary` auto-utility と衝突する可能性があるが、現状 `@theme` に `--color-primary` を登録していないため衝突は発生していない。**現状維持**: 将来 `@theme` 切替する場合は `text-brand` 等への rename を検討。
+- **Tailwind `border` utility と `@layer components` の `border-color` 優先度**: PR 2 で導入した `.alert-success` / `.alert-error` は `<div className="rounded-lg p-4 border alert-success">` のように Tailwind `border` と併用。layer 順序によっては期待色にならないリスクが PR 2 review で指摘済だが、CSP strict 化後の VRT 再撮影でも diff が出ていないため実害は未顕在。**現状維持**: 将来 Tailwind v4 layer 仕様変更で問題が顕在化したら再評価。
+
+### 検出網運用ノート
+
+B 案完了後も継続運用する検出網:
+
+- `inline-style-migration.test.ts` (glob、PR 6 で導入): `src/components/**/*.{tsx,astro}` 等で `style={{` / `style="..."` の string match が出現した場合に fail。新規ファイル追加時の自動検出網。
+- `applyProductionCsp(page)` E2E gate (`tests/e2e/helpers.ts`、PR 3 / PR 5b で確立): 本番相当 CSP を dev server に注入して E2E 走行、CSP violation 発生で fail。19 spec のうち重要経路で適用。
+- `csp-constructable-stylesheet.spec.ts` (PR 9 で導入、永続): Phase 0 minimal repro spec。Chromium で `useDynamicStyleSheet` 経路の strict CSP 互換を陽性 / 陰性対照で検証。Chromium 動作変更 / CSP 仕様改訂への早期検知用。
+- 本 PR (PR 10) の Astro island hash 検出網 (`meta-csp.test.ts` / `headers.test.ts` 拡張):
+  - dist HTML 内に Astro inline style literal が含まれること (React island ありページに `distPages.some()` で検出)
+  - `_headers` の `style-src` に対応 hash が含まれること
+  - dist HTML inline style content から計算した sha256 が `_headers` の hash と一致すること (陽性対照メタテスト)
+
+### 関連 PR / issue
+
+- 本 entry を記録: PR 10 (本 PR、`#305` 対応)
+- B 案 series 全 PR: PR 0 (#254) / PR 1 (#256) / PR 1.5 (#261) / PR 2 (#272) / PR 3 (#275) / PR 4 (#277) / PR 5a (#283) / PR 5b (#286) / PR 6 (#290) / PR 7a (#294) / PR 7b (#299) / PR 8 (#303) / PR 9 (#307) / PR 9 follow-up (#313) / PR 10 (本 PR)
+- 過去: [054] (CSP 採用根拠) / [064] (CSP A-1 / script-src strict 化) / [067] (PR 8 setProperty CSP3 制約 + PR 9 outcome + Follow-up decisions)
+- close: `#176` (本 entry で完了確認) / `#305` (PR 10 issue)
+
+### Lessons learned
+
+- **CSP3 仕様の事前確認**: PR 1.5 で `setProperty('--var', value)` パターンを導入した時、「CSSOM API は CSP 観点で `style="..."` HTML 属性とは別経路」という前提で設計したが、これは誤りだった (`[067]` で発覚)。CSP3 仕様 (`https://www.w3.org/TR/CSP3/#directive-style-src`) では `setProperty` 経由の DOM mutation も `style-src` 対象と明記されている。**教訓**: 新規 CSP 関連パターン導入時は仕様を熟読し、E2E `applyProductionCsp` gate を 1.5 段階で導入していれば早期検知できた。
+- **Astro island runtime の暗黙 inline style**: PR 9 Phase 2 で発覚。Astro 自身が injection する inline style は `<meta>` 側 hash には自動取り込みされるが `_headers` 側には自動反映されない。**教訓**: build 出力の HTML 全体を grep して全 inline style 経路を網羅するチェックを strict 化前に実施。
+- **ガード/バリデータには陽性対照を必須とする**: PR 5b の `withProductionCsp` meta-test (#281) や本 PR の Astro hash 検出網メタテストのように、検出網自体が silent pass しないことを陽性対照で能動確認する運用が定着。memory `feedback_positive_control_for_gates.md`。
+- **段階的 PR の本数管理**: B 案は当初 PR 1〜6 想定だったが、実際は PR 0〜10 + follow-up で計 15 PR (含む scope 縮小 PR / 計画外発覚での分割)。「PR の自然分割は infra / foundation / 個別 migration / docs」の方針 (memory `feedback_pr_size.md`) に従ったため、各 PR は review 単位で適切な大きさを維持できた。
+- **subagent 委譲方針の使い分け**: PR 4 / 5a / 5b で「subagent 非 commit + 親で順次 commit」運用を確立、PR 7a / 7b / 8 / 9 / 10 では「親 Opus 直接実装」へ移行 (CSP flip / 高 stakes 検証は subagent verification trust の観点で親直接が安全)。memory `feedback_subagent_verification_trust.md` / `feedback_subagent_model.md`。
+
+## [069] 2026-05-09 — VRT baseline 更新経路の audit + secret 焼き付き防御 2 層導入 (`#255`)
+
+### 背景
+
+`#254` (VRT 専用 PR 導入) のセルフレビューで提起された 2 件 (I-1: bot push の branch protection bypass 可能性、I-2: baseline PNG への secret 焼き付き leak リスク) を `#255` として fix。
+
+### 決定
+
+**I-1: branch protection 監査 — solo dev 体制での適用不可を確認**
+
+- `gh api repos/<owner>/<repo>/branches/develop/protection` は 2026-05-09 時点で **404 "Branch not protected"** を返した。develop は **branch protection 未設定**。
+- ただし solo dev 体制（PR 作成者 = レビュアー = merger が同一人物）では `Require approvals` を有効化すると **self-approve 不可で自分の PR が永久 merge 不能になり詰む**（GitHub policy）。`Require pull request before merging` 単体では「他人による review」を強制せず、`Restrict who can push` も PR 経由の self-merge を block しない。**branch protection 単体で「review なしマージを block する」効果は solo dev では得られない**。
+- bot push (`update-visual-baseline.yml` の最終 step) は `actions/checkout@v6` の `ref: ${{ github.head_ref || github.ref_name }}` により PR の feature branch に push されるため、bot の baseline 変更は **既存 PR の diff の一部** として review pipeline に乗る（develop へ直 push していない）。`if: github.ref != 'refs/heads/develop' && !main` で default branch 上の `workflow_dispatch` 誤 trigger は no-op の二次 safety も既存。
+- → I-1 の **issue 当初想定（bypass list 経由の許可漏れ）は team 体制前提の概念**で solo dev には直接適用できないと結論。短期対策（protection 追加）も中期対策（peter-evans/create-pull-request 化）も solo dev では実効薄。本 PR は audit 結果と適用不可の理由を `docs/playbooks/e2e-validation.md` 7.5 に文書化し、actionable な対策は「VRT PR comment が出た PR は merge 前に diff 目視」運用の継続（既存 7.2 章）に集約する。
+
+**I-2: baseline PNG への secret 混入予防 (本 PR で 2 層実装)**
+
+1. **spec 層 (`tests/e2e/visual-regression.spec.ts`)**: `addInitScript` 冒頭で `localStorage.clear()` / `sessionStorage.clear()` を実行。将来 spec に `setItem('apiKey', ...)` 等が誤って追加されても、init script で直前に clear することで永続化前の baseline 撮影を保証。
+2. **workflow 層 (`.github/workflows/update-visual-baseline.yml`)**: build 前に `*_KEY` / `*_TOKEN` / `*_SECRET` / `*_PASSWORD` / `*_CREDENTIAL` 命名の env var が baseline 生成 step に流れていないか early-fail check。allow list は `GITHUB_TOKEN` / `RUNNER_*` / `GITHUB_RUN_*` / `ACTIONS_*` / `GH_*` / `PIP_*` / `PYPI_*` (GH Actions runtime 由来)。
+
+### Lessons learned
+
+- **Audit 前提が事実と異なるケース**: issue は「bypass list の許可漏れ」を懸念したが、実態は protection 未設定 + solo dev で `Require approvals` 適用不可の二重ズレだった。`gh api` 経由の事実確認 + 体制（solo / team）の文脈確認 が無いと存在しない監査対象や適用不可な対策を議論し続ける危険。**教訓**: ops 系 issue は最初に `gh api` / `gh pr/issue view` で前提事実を読み取り、team / solo の体制差分も明示してから設計する。
+- **PNG への secret 焼き付きは text scan の盲点**: gitleaks / git-secrets は textual content を scan するため、image 内 OCR レベルの leak は検出できない。**教訓**: 画像生成系 workflow は spec 側 (storage clear) と workflow 側 (env audit) の 2 層防御が原則。
+- **Allow list の例外管理**: `GITHUB_TOKEN` 等の GH Actions runtime 由来 env を allow に入れる際は、push 用途で必要であることを明示。allow list が肥大化したら audit 範囲が崩れるため PR review で都度評価。
+
+### 関連 PR / issue
+
+- 本 entry を記録: PR `#333` (`#255` 対応)
+- 起源: `#254` (VRT 専用 PR 導入) のセルフレビュー I-1 / I-2
+- 親 issue: `#255` (本 PR で短期 + 防御 2 層完了、長期の peter-evans 化は別議論)
+- 関連: `#176` B 案 [066] (VRT 導入)、本番リリース前 TODO `#323`

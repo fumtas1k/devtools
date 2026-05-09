@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
 import {
   parseJwt,
@@ -10,30 +9,43 @@ import {
   base64UrlToBytes,
   type ExpStatus,
 } from '@/utils/jwt';
+import { bytesToBase64Url } from '@/utils/base64url';
+import { pemBlockToBytes } from '@/utils/base64';
 
 const SAMPLE_SECRET = 'your-256-bit-secret';
 
-// JWT syntax highlight colors (not UI colors — kept local)
-const jsonKeyColor = colors.link;
-const jsonValueColor = '#6e4f0e';
+type AlgParams =
+  | { name: 'HMAC'; hash: string }
+  | { name: 'RSASSA-PKCS1-v1_5'; hash: string }
+  | { name: 'ECDSA'; hash: string; namedCurve: string };
 
-function toBase64Url(str: string): string {
-  const bytes = new TextEncoder().encode(str);
-  let binary = '';
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
+/** アルゴリズム → WebCrypto パラメーターのマッピング（テスト用にエクスポート） */
+export const ALG_MAP: Record<string, AlgParams> = {
+  HS256: { name: 'HMAC', hash: 'SHA-256' },
+  HS384: { name: 'HMAC', hash: 'SHA-384' },
+  HS512: { name: 'HMAC', hash: 'SHA-512' },
+  RS256: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+  RS384: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-384' },
+  RS512: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-512' },
+  ES256: { name: 'ECDSA', hash: 'SHA-256', namedCurve: 'P-256' },
+  ES384: { name: 'ECDSA', hash: 'SHA-384', namedCurve: 'P-384' },
+  ES512: { name: 'ECDSA', hash: 'SHA-512', namedCurve: 'P-521' },
+};
 
 async function generateSampleJwt(secret: string): Promise<string> {
-  const headerB64 = toBase64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const headerB64 = bytesToBase64Url(
+    new TextEncoder().encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  );
   const now = Math.floor(Date.now() / 1000);
-  const payloadB64 = toBase64Url(
-    JSON.stringify({
-      sub: '1234567890',
-      name: 'John Doe',
-      iat: now,
-      exp: now + 100 * 365 * 24 * 60 * 60,
-    })
+  const payloadB64 = bytesToBase64Url(
+    new TextEncoder().encode(
+      JSON.stringify({
+        sub: '1234567890',
+        name: 'John Doe',
+        iat: now,
+        exp: now + 100 * 365 * 24 * 60 * 60,
+      })
+    )
   );
   const signingInput = `${headerB64}.${payloadB64}`;
   const key = await crypto.subtle.importKey(
@@ -44,24 +56,13 @@ async function generateSampleJwt(secret: string): Promise<string> {
     ['sign']
   );
   const sigBuffer = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput));
-  let binary = '';
-  for (const b of new Uint8Array(sigBuffer)) binary += String.fromCharCode(b);
-  const sigB64 = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  const sigB64 = bytesToBase64Url(new Uint8Array(sigBuffer));
   return `${signingInput}.${sigB64}`;
 }
 
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
-  const binary = atob(b64);
-  const buf = new ArrayBuffer(binary.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
-  return buf;
-}
+export type SigStatus = 'unchecked' | 'verifying' | 'valid' | 'invalid' | 'unsupported' | 'error';
 
-type SigStatus = 'unchecked' | 'verifying' | 'valid' | 'invalid' | 'unsupported' | 'error';
-
-async function verifySignature(
+export async function verifySignature(
   rawHeader: string,
   rawPayload: string,
   signature: string,
@@ -69,19 +70,18 @@ async function verifySignature(
   secretOrKey: string
 ): Promise<SigStatus> {
   const alg = typeof header.alg === 'string' ? header.alg : '';
-  const encoded = new TextEncoder().encode(`${rawHeader}.${rawPayload}`);
-  const buf = new ArrayBuffer(encoded.length);
-  const signingInput = new Uint8Array(buf);
-  signingInput.set(encoded);
+  const algParams = ALG_MAP[alg];
+  if (!algParams) return 'unsupported';
+
+  const signingInput = new TextEncoder().encode(`${rawHeader}.${rawPayload}`);
   const sigBytes = base64UrlToBytes(signature);
 
   try {
-    if (alg.startsWith('HS')) {
-      const hash = alg === 'HS256' ? 'SHA-256' : alg === 'HS384' ? 'SHA-384' : 'SHA-512';
+    if (algParams.name === 'HMAC') {
       const key = await crypto.subtle.importKey(
         'raw',
         new TextEncoder().encode(secretOrKey),
-        { name: 'HMAC', hash },
+        { name: 'HMAC', hash: algParams.hash },
         false,
         ['verify']
       );
@@ -90,12 +90,13 @@ async function verifySignature(
         : 'invalid';
     }
 
-    if (alg.startsWith('RS')) {
-      const hash = alg === 'RS256' ? 'SHA-256' : alg === 'RS384' ? 'SHA-384' : 'SHA-512';
+    // RS* / ES* は公開鍵 PEM を使用
+    const keyBytes = pemBlockToBytes(secretOrKey, 'PUBLIC KEY');
+    if (algParams.name === 'RSASSA-PKCS1-v1_5') {
       const key = await crypto.subtle.importKey(
         'spki',
-        pemToArrayBuffer(secretOrKey),
-        { name: 'RSASSA-PKCS1-v1_5', hash },
+        keyBytes.buffer,
+        { name: 'RSASSA-PKCS1-v1_5', hash: algParams.hash },
         false,
         ['verify']
       );
@@ -104,26 +105,25 @@ async function verifySignature(
         : 'invalid';
     }
 
-    if (alg.startsWith('ES')) {
-      const { hash, namedCurve } =
-        alg === 'ES256'
-          ? { hash: 'SHA-256', namedCurve: 'P-256' }
-          : alg === 'ES384'
-            ? { hash: 'SHA-384', namedCurve: 'P-384' }
-            : { hash: 'SHA-512', namedCurve: 'P-521' };
+    // ECDSA
+    if (algParams.name === 'ECDSA') {
       const key = await crypto.subtle.importKey(
         'spki',
-        pemToArrayBuffer(secretOrKey),
-        { name: 'ECDSA', namedCurve },
+        keyBytes.buffer,
+        { name: 'ECDSA', namedCurve: algParams.namedCurve },
         false,
         ['verify']
       );
-      return (await crypto.subtle.verify({ name: 'ECDSA', hash }, key, sigBytes, signingInput))
+      return (await crypto.subtle.verify(
+        { name: 'ECDSA', hash: algParams.hash },
+        key,
+        sigBytes,
+        signingInput
+      ))
         ? 'valid'
         : 'invalid';
     }
-
-    return 'unsupported';
+    return 'error';
   } catch {
     return 'error';
   }
@@ -135,48 +135,40 @@ function PayloadValue({ k, v }: { k: string; v: unknown }) {
   const isTs = TIMESTAMP_KEYS.includes(k) && typeof v === 'number';
   return (
     <span>
-      <span style={{ color: jsonKeyColor }}>"{k}"</span>
-      <span style={{ color: colors.text }}>: </span>
-      <span style={{ color: jsonValueColor }}>{JSON.stringify(v)}</span>
-      {isTs && (
-        <span className="ml-2" style={{ fontSize: '0.75rem', color: colors.muted }}>
-          → {formatTimestamp(v as number)}
-        </span>
-      )}
+      <span className="jwt-json-key">"{k}"</span>
+      <span className="text-default">: </span>
+      <span className="jwt-json-value">{JSON.stringify(v)}</span>
+      {isTs && <span className="ml-2 text-xs text-muted">→ {formatTimestamp(v as number)}</span>}
     </span>
   );
 }
 
+type SectionVariant = 'header' | 'payload' | 'signature';
+
+const SECTION_CLASSES: Record<SectionVariant, string> = {
+  header: 'section-jwt-header',
+  payload: 'section-jwt-payload',
+  signature: 'section-jwt-signature',
+};
+
 interface SectionProps {
   title: string;
-  accentColor: string;
+  variant: SectionVariant;
   data: Record<string, unknown>;
   renderValue?: (k: string, v: unknown) => React.ReactNode;
   'data-testid'?: string;
 }
 
-function Section({ title, accentColor, data, renderValue, 'data-testid': testId }: SectionProps) {
+function Section({ title, variant, data, renderValue, 'data-testid': testId }: SectionProps) {
   const json = JSON.stringify(data, null, 2);
   return (
-    <div
-      className="rounded-lg p-4"
-      style={{ background: colors.bgSubtle, borderLeft: `4px solid ${accentColor}` }}
-      data-testid={testId}
-    >
+    <div className={`rounded-lg p-4 bg-subtle ${SECTION_CLASSES[variant]}`} data-testid={testId}>
       <div className="mb-2 flex items-center justify-between">
-        <h3 style={{ ...bodyEmphasis, color: colors.text }}>{title}</h3>
+        <h3 className="body-emphasis text-default">{title}</h3>
         <CopyButton text={json} label="コピー" />
       </div>
-      <pre
-        className="overflow-x-auto font-mono"
-        style={{
-          fontSize: '0.75rem',
-          lineHeight: 1.33,
-          letterSpacing: '-0.12px',
-          color: colors.text,
-        }}
-      >
-        <span style={{ color: colors.muted }}>{'{'}</span>
+      <pre className="overflow-x-auto font-mono text-default jwt-pre">
+        <span className="text-muted">{'{'}</span>
         {'\n'}
         {Object.entries(data).map(([k, v]) => (
           <span key={k} className="block pl-4">
@@ -184,14 +176,14 @@ function Section({ title, accentColor, data, renderValue, 'data-testid': testId 
               renderValue(k, v)
             ) : (
               <>
-                <span style={{ color: jsonKeyColor }}>"{k}"</span>
-                <span style={{ color: colors.text }}>: </span>
-                <span style={{ color: jsonValueColor }}>{JSON.stringify(v)}</span>
+                <span className="jwt-json-key">"{k}"</span>
+                <span className="text-default">: </span>
+                <span className="jwt-json-value">{JSON.stringify(v)}</span>
               </>
             )}
           </span>
         ))}
-        <span style={{ color: colors.muted }}>{'}'}</span>
+        <span className="text-muted">{'}'}</span>
       </pre>
     </div>
   );
@@ -235,27 +227,21 @@ export function JwtDecoderTool() {
     ).then(setSigStatus);
   }, [parsed, secretKey]);
 
-  const expBadge: Record<ExpStatus, { label: string; style: React.CSSProperties }> = {
-    valid: { label: '有効', style: { background: colors.successBg, color: colors.success } },
-    expired: { label: '期限切れ', style: { background: colors.errorBg, color: colors.errorText } },
-    'no-exp': { label: 'exp なし', style: { background: colors.warningBg, color: colors.warning } },
+  const expBadge: Record<ExpStatus, { label: string; badgeClass: string }> = {
+    valid: { label: '有効', badgeClass: 'bg-success-tint text-success' },
+    expired: { label: '期限切れ', badgeClass: 'bg-error-tint text-error-text' },
+    'no-exp': { label: 'exp なし', badgeClass: 'bg-warning-tint text-warning' },
   };
 
-  const sigBadge: Record<SigStatus, { label: string; style: React.CSSProperties } | null> = {
+  const sigBadge: Record<SigStatus, { label: string; badgeClass: string } | null> = {
     unchecked: null,
-    verifying: { label: '検証中…', style: { background: colors.bgSubtle, color: colors.muted } },
-    valid: { label: '署名: 有効', style: { background: colors.successBg, color: colors.success } },
-    invalid: {
-      label: '署名: 無効',
-      style: { background: colors.errorBg, color: colors.errorText },
-    },
-    unsupported: {
-      label: '署名: 未対応アルゴリズム',
-      style: { background: colors.bgSubtle, color: colors.muted },
-    },
+    verifying: { label: '検証中…', badgeClass: 'bg-subtle text-muted' },
+    valid: { label: '署名: 有効', badgeClass: 'bg-success-tint text-success' },
+    invalid: { label: '署名: 無効', badgeClass: 'bg-error-tint text-error-text' },
+    unsupported: { label: '署名: 未対応アルゴリズム', badgeClass: 'bg-subtle text-muted' },
     error: {
       label: '署名: 検証エラー（キー形式を確認）',
-      style: { background: colors.errorBg, color: colors.errorText },
+      badgeClass: 'bg-error-tint text-error-text',
     },
   };
 
@@ -285,11 +271,7 @@ export function JwtDecoderTool() {
           label={
             <>
               {keyLabel}
-              <span
-                style={{ ...caption, color: colors.muted, fontWeight: 400, marginLeft: '0.5rem' }}
-              >
-                （任意）
-              </span>
+              <span className="caption text-muted ml-2">（任意）</span>
             </>
           }
           value={secretKey}
@@ -304,15 +286,12 @@ export function JwtDecoderTool() {
 
       {/* 有効期限チェックトグル */}
       {parsed && (
-        <label
-          className="flex items-center gap-2 cursor-pointer"
-          style={{ ...caption, color: colors.text }}
-        >
+        <label className="flex items-center gap-2 cursor-pointer caption text-default">
           <input
             type="checkbox"
             checked={verifyExp}
             onChange={(e) => setVerifyExp(e.target.checked)}
-            style={{ accentColor: colors.link, width: '1rem', height: '1rem' }}
+            className="w-4 h-4 accent-link"
           />
           有効期限（exp）チェックを行う
         </label>
@@ -323,8 +302,7 @@ export function JwtDecoderTool() {
         <div className="flex flex-wrap items-center gap-2">
           {verifyExp && (
             <span
-              className="rounded-full px-3 py-0.5"
-              style={{ ...caption, fontWeight: 500, ...expBadge[parsed.expStatus].style }}
+              className={`rounded-full px-3 py-0.5 caption font-medium ${expBadge[parsed.expStatus].badgeClass}`}
             >
               {expBadge[parsed.expStatus].label}
               {parsed.expStatus === 'valid' && parsed.remainingMs !== undefined && (
@@ -334,8 +312,7 @@ export function JwtDecoderTool() {
           )}
           {sigBadge[sigStatus] && (
             <span
-              className="rounded-full px-3 py-0.5"
-              style={{ ...caption, fontWeight: 500, ...sigBadge[sigStatus]!.style }}
+              className={`rounded-full px-3 py-0.5 caption font-medium ${sigBadge[sigStatus]!.badgeClass}`}
             >
               {sigBadge[sigStatus]!.label}
             </span>
@@ -345,32 +322,27 @@ export function JwtDecoderTool() {
 
       {/* デコード結果 */}
       {parsed && (
-        <div className="space-y-3">
+        <div className="space-y-3" role="status" aria-live="polite">
           <Section
             title="Header (JOSE)"
-            accentColor={colors.error}
+            variant="header"
             data={parsed.header}
             data-testid="jwt-header"
           />
           <Section
             title="Payload (Claims)"
-            accentColor="#9333ea"
+            variant="payload"
             data={parsed.payload}
             renderValue={(k, v) => <PayloadValue k={k} v={v} />}
             data-testid="jwt-payload"
           />
-          <div
-            className="rounded-lg p-4"
-            style={{ background: colors.bgSubtle, borderLeft: `4px solid ${colors.primary}` }}
-          >
+          <div className="rounded-lg p-4 bg-subtle section-jwt-signature">
             <div className="mb-2 flex items-center justify-between">
-              <h3 style={{ ...bodyEmphasis, color: colors.text }}>Signature</h3>
+              <h3 className="body-emphasis text-default">Signature</h3>
               <CopyButton text={parsed.signature} label="コピー" />
             </div>
-            <p className="break-all font-mono" style={{ ...caption, color: colors.text }}>
-              {parsed.signature}
-            </p>
-            <p className="mt-2" style={{ ...caption, color: colors.muted }}>
+            <p className="break-all font-mono caption text-default">{parsed.signature}</p>
+            <p className="mt-2 caption text-muted">
               {secretKey.trim()
                 ? '上記のキーで署名を検証しています'
                 : 'キーを入力すると署名を検証します'}

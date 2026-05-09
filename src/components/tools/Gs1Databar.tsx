@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getErrorMessage } from '@/utils/errors';
 import bwipjs from 'bwip-js';
-import JSZip from 'jszip';
 import { CopyButton } from '@/components/ui/CopyButton';
 import {
   calcGtin14CheckDigit,
@@ -11,8 +10,8 @@ import {
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { InputField } from '@/components/ui/InputField';
+import { BareInput } from '@/components/ui/BareInput';
 import { Select } from '@/components/ui/Select';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
@@ -22,6 +21,8 @@ import {
   downloadPngFromSvgContent,
   svgContentToPngBlob,
 } from '@/utils/download';
+import { downloadZip } from '@/utils/zip';
+import { sanitizeFilename } from '@/utils/filename';
 
 interface AiFieldState {
   ai: AiCode;
@@ -71,11 +72,18 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   const [aiFields, setAiFields] = useState<AiFieldState[]>(DEFAULT_AI_FIELDS);
   const [svgContent, setSvgContent] = useState('');
   const [bwipError, setBwipError] = useState('');
+  const [downloadError, setDownloadError] = useState('');
 
   const inputId = `gtin-input-${cardId}`;
 
-  const gtinResult =
-    gtinInput && !gtinError && gtinInput.length === 13 ? calcGtin14CheckDigit(gtinInput) : null;
+  // useMemo で参照安定化。inline で都度生成すると useEffect deps が render 毎に
+  // 「変化」と判定され、setDownloadError('') が PNG 失敗直後にも走って
+  // ErrorMessage を瞬時に消してしまう (issue #338 対応の race fix)。
+  const gtinResult = useMemo(
+    () =>
+      gtinInput && !gtinError && gtinInput.length === 13 ? calcGtin14CheckDigit(gtinInput) : null,
+    [gtinInput, gtinError]
+  );
 
   const allAiValid = aiFields.every((f) => f.error === '');
   const hasAnyAiValue = aiFields.some((f) => f.value.trim() !== '');
@@ -87,6 +95,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   }, [onSvgChange]);
 
   useEffect(() => {
+    setDownloadError('');
     if (!gtinResult || !allAiValid) {
       setSvgContent('');
       setBwipError('');
@@ -157,12 +166,25 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
   const downloadSvg = () => {
     if (!svgContent || !gtinResult) return;
-    downloadSvgFile(svgContent, `gs1-databar-${gtinResult.fullGtin}.svg`);
+    setDownloadError('');
+    try {
+      downloadSvgFile(svgContent, `gs1-databar-${gtinResult.fullGtin}.svg`);
+    } catch (e) {
+      setDownloadError(getErrorMessage(e, 'SVG ダウンロードに失敗しました'));
+    }
   };
 
-  const downloadPng = () => {
+  // svgContentToPngBlob は img.onerror / canvas.toBlob 失敗で reject する。
+  // await + try/catch で例外を吸収し ErrorMessage 経由でユーザーに通知する
+  // (issue #338: 旧実装は fire-and-forget で unhandled promise rejection)。
+  const downloadPng = async () => {
     if (!svgContent || !gtinResult) return;
-    downloadPngFromSvgContent(svgContent, `gs1-databar-${gtinResult.fullGtin}.png`);
+    setDownloadError('');
+    try {
+      await downloadPngFromSvgContent(svgContent, `gs1-databar-${gtinResult.fullGtin}.png`);
+    } catch (e) {
+      setDownloadError(getErrorMessage(e, 'PNG ダウンロードに失敗しました'));
+    }
   };
 
   const usedAis = useMemo(() => new Set(aiFields.map((f) => f.ai)), [aiFields]);
@@ -180,33 +202,20 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
   );
 
   return (
-    <div
-      className="rounded-lg"
-      style={{ border: `1px solid ${colors.borderInput}`, background: colors.bg }}
-    >
+    <div className="rounded-lg border border-input bg-default">
       {/* カードヘッダー */}
-      <div
-        className="flex items-center justify-between px-4 py-3 rounded-t-lg"
-        style={{ background: colors.bgSubtle, borderBottom: `1px solid ${colors.border}` }}
-      >
-        <span style={{ ...caption, fontWeight: 700, color: colors.text }}>
+      <div className="flex items-center justify-between px-4 py-3 rounded-t-lg bg-subtle border-b border-default">
+        <span className="caption font-bold text-default">
           バーコード {index + 1}
           {gtinResult && (
-            <span
-              className="font-mono ml-2"
-              style={{ ...caption, color: colors.muted, fontWeight: 400 }}
-            >
-              — {gtinResult.fullGtin}
-            </span>
+            <span className="font-mono ml-2 caption text-muted">— {gtinResult.fullGtin}</span>
           )}
         </span>
         {canRemove && (
           <button
+            type="button"
             onClick={onRemove}
-            className="rounded px-2 py-1 transition-colors"
-            style={{ ...caption, color: colors.error, background: 'transparent' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = colors.errorBg)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="rounded px-2 py-1 caption btn-remove-card"
             aria-label={`バーコード ${index + 1} を削除`}
           >
             削除
@@ -233,22 +242,14 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
         {/* GTIN計算結果 */}
         {gtinResult && (
-          <div
-            className="rounded-lg p-3 flex flex-wrap items-center gap-x-6 gap-y-2"
-            style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
-          >
+          <div className="rounded-lg p-3 flex flex-wrap items-center gap-x-6 gap-y-2 border border-default bg-surface">
             <div className="flex items-center gap-2">
-              <span style={{ ...caption, color: colors.muted }}>チェックディジット</span>
-              <span style={{ ...bodyEmphasis, color: colors.primary }}>
-                {gtinResult.checkDigit}
-              </span>
+              <span className="caption text-muted">チェックディジット</span>
+              <span className="body-emphasis text-primary">{gtinResult.checkDigit}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span style={{ ...caption, color: colors.muted }}>GTIN-14</span>
-              <span
-                className="font-mono"
-                style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}
-              >
+              <span className="caption text-muted">GTIN-14</span>
+              <span className="font-mono body-emphasis text-default tracking-widest">
                 {gtinResult.fullGtin}
               </span>
               <span className="hidden sm:inline-flex">
@@ -264,14 +265,12 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {/* AIフィールド */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <span style={{ ...caption, color: colors.text, fontWeight: 600 }}>
-              合成シンボル（任意）
-            </span>
+            <span className="caption text-default font-semibold">合成シンボル（任意）</span>
             {canAddField && (
               <button
+                type="button"
                 onClick={addAiField}
-                style={{ ...caption, color: colors.link }}
-                className="hover:underline"
+                className="caption text-link-color hover:underline"
               >
                 + フィールド追加
               </button>
@@ -296,40 +295,25 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                   </div>
                   <div className="flex-1 w-full flex gap-2 items-start">
                     <div className="flex-1">
-                      <input
+                      <BareInput
                         type="text"
                         value={field.value}
-                        onChange={(e) => handleAiChange(i, e.target.value)}
+                        onChange={(v) => handleAiChange(i, v)}
                         placeholder={def.placeholder}
-                        className="w-full rounded-lg px-3 py-2 font-mono"
-                        style={{
-                          ...caption,
-                          border: `1px solid ${field.error ? colors.error : colors.borderInput}`,
-                          outline: 'none',
-                          background: colors.bg,
-                          color: colors.text,
-                        }}
+                        mono
+                        error={!!field.error}
+                        aria-label={`AI フィールド値 ${i + 1}`}
                       />
                       {field.error && (
-                        <p
-                          role="alert"
-                          style={{ ...caption, color: colors.error, marginTop: '0.25rem' }}
-                        >
+                        <p role="alert" className="caption text-error mt-1">
                           {field.error}
                         </p>
                       )}
                     </div>
                     <button
+                      type="button"
                       onClick={() => removeAiField(i)}
-                      className="rounded-lg p-2 transition-colors shrink-0"
-                      style={{
-                        ...caption,
-                        color: colors.muted,
-                        marginTop: '2px',
-                        background: 'transparent',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5"
                       aria-label="フィールドを削除"
                     >
                       ✕
@@ -344,10 +328,12 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {/* バーコードプレビュー */}
         {svgContent && (
           <div
-            className="rounded-lg flex flex-col items-center gap-4 p-5"
-            style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
+            className="rounded-lg flex flex-col items-center gap-4 p-5 border border-default bg-surface"
+            role="status"
+            aria-live="polite"
           >
             <div
+              className="gs1-svg-container"
               aria-label={`GS1 DataBar ${gtinResult?.fullGtin} のバーコード`}
               dangerouslySetInnerHTML={{ __html: svgContent }}
             />
@@ -359,29 +345,19 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
           <ErrorMessage message={`バーコード生成エラー: ${bwipError}`} variant="block" />
         )}
 
+        {downloadError && (
+          <ErrorMessage message={`ダウンロードエラー: ${downloadError}`} variant="block" />
+        )}
+
         {/* GS1文字列プレビュー */}
         {gtinResult && (
-          <details className="rounded-lg" style={{ border: `1px solid ${colors.border}` }}>
-            <summary
-              className="cursor-pointer px-4 py-3 rounded-lg transition-colors"
-              style={{
-                ...caption,
-                fontWeight: 700,
-                color: colors.text,
-                listStyle: 'none',
-                background: 'transparent',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
+          <details className="rounded-lg border border-default">
+            <summary className="cursor-pointer px-4 py-3 rounded-lg caption font-bold text-default bg-transparent hover-bg-subtle summary-no-marker">
               GS1文字列を見る
             </summary>
             <div className="px-4 pb-4 pt-2">
               <div className="flex items-center gap-2">
-                <code
-                  className="flex-1 rounded px-3 py-2 font-mono break-all"
-                  style={{ ...caption, background: colors.bgSubtle, color: colors.text }}
-                >
+                <code className="flex-1 rounded px-3 py-2 font-mono break-all caption bg-subtle text-default">
                   {gs1String}
                 </code>
                 <CopyButton text={gs1String} label="コピー" />
@@ -411,6 +387,7 @@ export function Gs1DatabarTool() {
   const [cards, setCards] = useState<CardMeta[]>(() => [{ id: crypto.randomUUID() }]);
   const [cardSvgs, setCardSvgs] = useState<Record<string, CardSvgState>>({});
   const [isZipping, setIsZipping] = useState(false);
+  const [zipError, setZipError] = useState('');
 
   const addCard = () => {
     if (cards.length >= MAX_CARDS) return;
@@ -433,28 +410,37 @@ export function Gs1DatabarTool() {
   const validEntries = Object.entries(cardSvgs).filter(([, v]) => v.svg && v.gtin);
   const canDownloadAll = validEntries.length >= 2;
 
+  // svgContentToPngBlob / downloadZip は reject 可能。旧実装は try/finally のみで
+  // unhandled promise rejection を発生させていた (issue #338)。catch を追加し
+  // ZipError state 経由でユーザーに通知する。
   const downloadAllZip = async () => {
     if (!canDownloadAll || isZipping) return;
     setIsZipping(true);
+    setZipError('');
     try {
-      const zip = new JSZip();
-      const folder = zip.folder('gs1-databars')!;
-
-      await Promise.all(
+      // 各 SVG を PNG 変換してから flat なエントリ一覧を作る。
+      // gtin はバリデーション済みだが defense-in-depth でサニタイズする。
+      // `gs1-databars/` サブフォルダ配下に格納して従来の ZIP 構造を維持する。
+      const fileGroups = await Promise.all(
         validEntries.map(async ([, { svg, gtin }]) => {
-          folder.file(`gs1-databar-${gtin}.svg`, svg);
           const pngBlob = await svgContentToPngBlob(svg);
-          folder.file(`gs1-databar-${gtin}.png`, pngBlob);
+          return [
+            {
+              name: sanitizeFilename(`gs1-databar-${gtin}.svg`, ['svg']),
+              content: svg,
+              folder: 'gs1-databars',
+            },
+            {
+              name: sanitizeFilename(`gs1-databar-${gtin}.png`, ['png']),
+              content: pngBlob,
+              folder: 'gs1-databars',
+            },
+          ];
         })
       );
-
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'gs1-databars.zip';
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadZip(fileGroups.flat(), 'gs1-databars.zip');
+    } catch (e) {
+      setZipError(getErrorMessage(e, 'ZIP ダウンロードに失敗しました'));
     } finally {
       setIsZipping(false);
     }
@@ -478,25 +464,15 @@ export function Gs1DatabarTool() {
       <div className="flex flex-wrap items-center gap-3 pt-2">
         {cards.length < MAX_CARDS && (
           <button
+            type="button"
             onClick={addCard}
-            className="rounded px-4 py-2 transition-colors"
-            style={{
-              ...caption,
-              fontWeight: 700,
-              border: `1px solid ${colors.primary}`,
-              color: colors.primary,
-              background: 'transparent',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgPrimary)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="rounded px-4 py-2 caption font-bold border border-primary bg-transparent text-primary hover-bg-active"
           >
             + バーコードを追加
           </button>
         )}
         {cards.length >= MAX_CARDS && (
-          <span style={{ ...caption, color: colors.muted }}>
-            最大 {MAX_CARDS} 件まで追加できます
-          </span>
+          <span className="caption text-muted">最大 {MAX_CARDS} 件まで追加できます</span>
         )}
 
         {canDownloadAll && (
@@ -508,6 +484,8 @@ export function Gs1DatabarTool() {
           />
         )}
       </div>
+
+      {zipError && <ErrorMessage message={`ZIP ダウンロードエラー: ${zipError}`} variant="block" />}
     </div>
   );
 }

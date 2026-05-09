@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForReactHydration } from './helpers';
+import { applyProductionCsp, waitForReactHydration, withProductionCsp } from './helpers';
 
 test.describe('設定ファイル相互変換', () => {
   test.beforeEach(async ({ page }) => {
@@ -152,6 +152,31 @@ test.describe('設定ファイル相互変換', () => {
     await expect(page.getByLabel('TOML')).toHaveValue(/host/);
   });
 
+  test('変換先切り替え直後はダウンロードボタンが disabled になる', async ({ page }) => {
+    // from=JSON, to=YAML（デフォルト）で入力して出力を得る
+    await page.getByLabel('JSON').fill('{"host": "localhost", "port": 8080}');
+
+    // デバウンス完了を待って出力が反映される
+    await expect(page.getByLabel('YAML')).toHaveValue(/host: localhost/);
+
+    // ダウンロードボタンが有効であることを確認
+    const downloadBtn = page.getByRole('button', { name: 'ダウンロード' });
+    await expect(downloadBtn).toBeEnabled();
+
+    // 変換先を TOML に切り替え（デバウンス中は disabled になるはず）
+    await page
+      .getByRole('group', { name: '変換先フォーマット' })
+      .getByRole('button', { name: 'TOML' })
+      .click();
+
+    // 切り替え直後（デバウンス中）はボタンが disabled になること
+    await expect(downloadBtn).toBeDisabled();
+
+    // デバウンス完了後（出力が TOML に更新されたあと）は有効化されること
+    await expect(page.getByLabel('TOML')).toHaveValue(/host/);
+    await expect(downloadBtn).toBeEnabled();
+  });
+
   test('変換元を変更すると入力テキストがクリアされる（回帰テスト）', async ({ page }) => {
     const fromGroup = page.getByRole('group', { name: '変換元フォーマット' });
 
@@ -164,6 +189,73 @@ test.describe('設定ファイル相互変換', () => {
 
     // 入力がクリアされること
     await expect(page.getByLabel('YAML (整形)')).toHaveValue('');
+  });
+
+  test('JSON Schema 検証パネル: 本番相当 CSP 下でも検証が成功し違反が出ない（リグレッション防止）', async ({
+    browser,
+  }) => {
+    // 過去に Ajv (`new Function` JIT) を採用していた時期は本ボタンが
+    // 本番 (Cloudflare Pages) で `unsafe-eval` 違反となり機能不全に陥ったが、
+    // dev server は _headers を読まないため CI が素通りしていた。
+    // 本テストは PRODUCTION_CSP を Playwright で注入することで同種の事故を
+    // CI で検知する。詳細は docs/decisions.md [061] 参照。
+    // ゲート自体の動作確認は後続の陽性対照メタテストが担保する。
+    await withProductionCsp(browser, '/tools/config-converter', async (page) => {
+      // 出力が同 JSON になるよう to=JSON にしてから入力 → 検証
+      await page
+        .getByRole('group', { name: '変換先フォーマット' })
+        .getByRole('button', { name: 'JSON' })
+        .click();
+
+      await page.getByLabel('JSON (整形)').fill('{"name": "太郎", "age": 30}');
+      await expect(page.getByLabel('JSON', { exact: true })).not.toHaveValue('');
+
+      await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
+      await page
+        .getByLabel('JSON Schema (貼り付け)')
+        .fill(
+          '{"type": "object", "required": ["name", "age"], "properties": {"name": {"type": "string"}, "age": {"type": "number"}}}'
+        );
+
+      await page.getByRole('button', { name: '検証する', exact: true }).click();
+
+      await expect(page.getByText('スキーマ検証成功')).toBeVisible();
+    });
+  });
+
+  test('applyProductionCsp は実際に CSP 違反を捕捉する（ゲート自体の動作確認）', async ({
+    browser,
+  }) => {
+    // helper の組み合わせが将来壊れたとき「ゲートが空回りしているのに green」
+    // になる事故を防ぐメタテスト。意図的に CSP 違反を発生させ guard.violations
+    // が確実に増えることを確認する。
+    //
+    // 設計メモ:
+    // - browser から新規 context + 新規 page を作る。describe の beforeEach は
+    //   default page fixture を使うため、本テストはそれと完全に独立させる。
+    // - page.evaluate(() => eval(...)) は Playwright が CDP Runtime.evaluate
+    //   経由でコードを評価するため CSP `unsafe-eval` を回避してしまう。代わりに
+    //   「外部 origin の <script src>」を DOM に挿入する経路で違反を起こす。
+    //   PRODUCTION_CSP は `script-src 'self' 'unsafe-inline'` のため
+    //   example.com の外部スクリプトは確実に block され Chromium が
+    //   "Refused to load the script ... because it violates the following
+    //    Content Security Policy directive ..." を console error に出す。
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      const guard = await applyProductionCsp(page);
+      const response = await page.goto('/tools/config-converter');
+      // 前提検証: route 注入によって本番 CSP がレスポンスヘッダに乗っていること
+      expect(response?.headers()['content-security-policy']).toContain("script-src 'self'");
+      await page.evaluate(() => {
+        const script = document.createElement('script');
+        script.src = 'https://example.com/violates-csp.js';
+        document.head.appendChild(script);
+      });
+      await expect.poll(() => guard.violations.length).toBeGreaterThan(0);
+    } finally {
+      await context.close();
+    }
   });
 
   test('JSON Schema 検証パネル: Cmd/Ctrl+Enter でスキーマ検証が実行される', async ({ page }) => {

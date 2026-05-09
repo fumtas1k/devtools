@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildPayload,
+  serializeTicket,
+  parseQrString,
   generateKeyPair,
   exportKeyPair,
   importPrivateKey,
@@ -11,7 +13,7 @@ import {
   generateQrSvg,
   generateTicketId,
   estimateTicketByteSize,
-  MAX_QR_BYTE_SIZE,
+  PAYLOAD_FIELD_COUNT,
   type TicketPayload,
   type SignedTicket,
 } from '@/utils/qr-ticket';
@@ -67,10 +69,9 @@ describe('buildPayload', () => {
     expect(result).toBe('event-01|T-00001|1735689540|山田 太郎|VIP');
   });
 
-  it('フィールド内の | 文字はスペースに置換される', () => {
+  it('フィールド内に | が含まれる場合は throw する', () => {
     const payload: TicketPayload = { ...base, n: '山田|太郎', p: 'VIP|A' };
-    const result = buildPayload(payload);
-    expect(result).toBe('event-01|T-00001|1735689540|山田 太郎|VIP A');
+    expect(() => buildPayload(payload)).toThrow('|');
   });
 
   it('同一入力で常に同一の出力を返す（決定論性）', () => {
@@ -81,6 +82,70 @@ describe('buildPayload', () => {
     const payload: TicketPayload = { ...base, n: '', p: '' };
     const result = buildPayload(payload);
     expect(result).toBe('event-01|T-00001|1735689540||');
+  });
+});
+
+// ────────────────────────────────────────────
+// PAYLOAD_FIELD_COUNT
+// ────────────────────────────────────────────
+describe('PAYLOAD_FIELD_COUNT', () => {
+  it('6 であること（ペイロード 5 フィールド + 署名 1）', () => {
+    expect(PAYLOAD_FIELD_COUNT).toBe(6);
+  });
+});
+
+// ────────────────────────────────────────────
+// serializeTicket
+// ────────────────────────────────────────────
+describe('serializeTicket', () => {
+  const base: TicketPayload = { e: 'event-01', t: 'T-00001', timestamp: 1735689540 };
+
+  it('buildPayload と同一のパイプ区切り文字列を返す', () => {
+    expect(serializeTicket(base)).toBe(buildPayload(base));
+  });
+
+  it('任意フィールドを含む場合も正しくシリアライズされる', () => {
+    const payload: TicketPayload = { ...base, n: '山田 太郎', p: 'VIP' };
+    expect(serializeTicket(payload)).toBe('event-01|T-00001|1735689540|山田 太郎|VIP');
+  });
+
+  it('フィールドに | が含まれる場合は throw する', () => {
+    const payload: TicketPayload = { ...base, n: 'bad|name' };
+    expect(() => serializeTicket(payload)).toThrow('|');
+  });
+});
+
+// ────────────────────────────────────────────
+// parseQrString
+// ────────────────────────────────────────────
+describe('parseQrString', () => {
+  it('正常系: ペイロードと署名に分解できる', () => {
+    const raw = 'event-01|T-00001|1735689540|山田 太郎|VIP|dummysig';
+    const result = parseQrString(raw);
+    expect(result).not.toBeNull();
+    expect(result?.payload).toBe('event-01|T-00001|1735689540|山田 太郎|VIP');
+    expect(result?.signature).toBe('dummysig');
+  });
+
+  it('任意フィールドなしでも分解できる', () => {
+    const raw = 'ev|T-00001|1704067200|||sig';
+    const result = parseQrString(raw);
+    expect(result).not.toBeNull();
+    expect(result?.signature).toBe('sig');
+  });
+
+  it('パイプなしの文字列は null を返す', () => {
+    expect(parseQrString('nopipe')).toBeNull();
+  });
+
+  it('ペイロードフィールド数が不正な場合は null を返す', () => {
+    // フィールドが少ない（4 フィールド + 署名）
+    expect(parseQrString('a|b|c|sig')).toBeNull();
+  });
+
+  it('署名部が空文字列の場合は null を返す', () => {
+    // 末尾が | で終わる（署名なし）
+    expect(parseQrString('event-01|T-00001|1735689540|n|p|')).toBeNull();
   });
 });
 

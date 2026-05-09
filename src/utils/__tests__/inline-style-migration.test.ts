@@ -1,0 +1,112 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { glob } from 'node:fs/promises';
+import path from 'node:path';
+
+/**
+ * #176 B 案 完了後の `style={{` / CSSOM 直接 mutation 撲滅の永続的回帰防止網。
+ *
+ * PR 1〜5b で漸進的に MIGRATED_FILES array を拡張してきたが、PR 6 で B 案完了に
+ * 伴い array 管理を撤廃し、`src/components/**\/*.tsx` 全件を glob で自動カバー化。
+ * これにより新規追加された .tsx も自動で検出網に含まれ、array 更新忘れによる
+ * 偽陰性を撲滅する。
+ *
+ * PR 9 (#304) で `el.style.setProperty('--var', ...)` も CSP3 style-src の
+ * 制御対象であることが判明 (`docs/decisions.md [067]`)。本 test は元々
+ * `\.style\.X = Y` のみを検出し setProperty を意図的に除外していたが、
+ * PR 9 で codebase から setProperty が完全消滅 (Constructable Stylesheets 経由
+ * の `useDynamicStyleSheet` hook で代替) したため除外を撤去し、新規再導入を
+ * 陽性検出する guard に反転する。
+ *
+ * 参照: docs/decisions.md [067]
+ */
+
+// top-level await: vitest は vite-node 経由で ESM として実行されるため利用可能。
+const TARGET_FILES: string[] = [];
+for await (const f of glob('src/components/**/*.tsx', { cwd: process.cwd() })) {
+  TARGET_FILES.push(f);
+}
+TARGET_FILES.sort();
+
+const ASTRO_TARGET_FILES: string[] = [];
+for await (const f of glob('src/{components,layouts,pages}/**/*.astro', { cwd: process.cwd() })) {
+  ASTRO_TARGET_FILES.push(f);
+}
+ASTRO_TARGET_FILES.sort();
+
+describe.skipIf(TARGET_FILES.length === 0)('#176 B 案 inline style 完全撲滅 (回帰防止)', () => {
+  it(`src/components/**/*.tsx を ${TARGET_FILES.length} 件カバー`, () => {
+    expect(TARGET_FILES.length).toBeGreaterThan(0);
+  });
+
+  describe.each(TARGET_FILES)('%s', (file) => {
+    const content = readFileSync(path.resolve(process.cwd(), file), 'utf-8');
+
+    it('JSX inline style object (style={{) が残っていない', () => {
+      expect(content).not.toMatch(/style=\{\{/);
+    });
+
+    it('DOM style 属性代入 (element.style.X = ... / element.style.setProperty(...)) が残っていない', () => {
+      const assignMatches = content.match(/\.style\.[a-zA-Z]+\s*=(?!=)/g);
+      const setPropertyMatches = content.match(/\.style\.setProperty\s*\(/g);
+      expect(assignMatches ?? []).toEqual([]);
+      expect(setPropertyMatches ?? []).toEqual([]);
+    });
+  });
+});
+
+describe.skipIf(ASTRO_TARGET_FILES.length === 0)(
+  '#176 B 案 Astro inline style 完全撲滅 (回帰防止 / [067])',
+  () => {
+    it(`src/{components,layouts,pages}/**/*.astro を ${ASTRO_TARGET_FILES.length} 件カバー`, () => {
+      expect(ASTRO_TARGET_FILES.length).toBeGreaterThan(0);
+    });
+
+    describe.each(ASTRO_TARGET_FILES)('%s', (file) => {
+      const content = readFileSync(path.resolve(process.cwd(), file), 'utf-8');
+
+      it('HTML inline style 属性 (style="..." / style=\'...\' / style={...}) が残っていない', () => {
+        // 前置スペース必須: `<style>` block (Astro scoped、auto-hash 経路) は対象外。
+        // ダブルクォート / シングルクォート / {expression} の 3 形式すべてを検出。
+        // PR 7a/7b の実績では全てダブルクォート形式だったが、将来 frontmatter
+        // 由来の動的注入や JSX 風 expression 形式が混入した場合の silent skip を防ぐ。
+        expect(content).not.toMatch(/\sstyle\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\})/);
+      });
+    });
+  }
+);
+
+describe('migration detector の陽性対照', () => {
+  it('意図的に style={{ を含む文字列が違反として検出される', () => {
+    const malicious = `<div style={{color: 'red'}} />`;
+    expect(malicious).toMatch(/style=\{\{/);
+  });
+
+  it('意図的に style.X = を含む文字列が違反として検出される', () => {
+    const malicious = `el.style.background = 'red';`;
+    const matches = malicious.match(/\.style\.[a-zA-Z]+\s*=(?!=)/g);
+    expect(matches?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('意図的に setProperty(...) を含む文字列が違反として検出される', () => {
+    // PR 9 で setProperty も陽性検出に変更 (`docs/decisions.md [067]`)
+    const malicious = `ref.current.style.setProperty('--var', '1');`;
+    const matches = malicious.match(/\.style\.setProperty\s*\(/g);
+    expect(matches?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('意図的に Astro style="..." (ダブルクォート) を含む文字列が違反として検出される', () => {
+    const malicious = `<div style="color: red" />`;
+    expect(malicious).toMatch(/\sstyle\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\})/);
+  });
+
+  it("意図的に Astro style='...' (シングルクォート) を含む文字列が違反として検出される", () => {
+    const malicious = `<div style='color: red' />`;
+    expect(malicious).toMatch(/\sstyle\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\})/);
+  });
+
+  it('意図的に Astro style={...} (expression) を含む文字列が違反として検出される', () => {
+    const malicious = `<div style={cssExpr} />`;
+    expect(malicious).toMatch(/\sstyle\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\})/);
+  });
+});

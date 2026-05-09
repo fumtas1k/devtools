@@ -1,0 +1,13 @@
+# Cloudflare Pages / Netlify 互換のレスポンスヘッダ設定
+# 詳細・採用根拠は docs/decisions.md [054] を参照
+# script-src の 'unsafe-inline' は意図的に維持: Astro security.csp が生成する <meta> CSP が
+# script-src 'self' 'sha256-...' で hash-only の strict layer として機能する (browser AND 評価で meta が勝つ)。
+# ヘッダ側は AND 評価が成立するための permissive 層であり、defense-in-depth としても有効。詳細: docs/decisions.md [064]
+# style-src は #176 B 案完了 ([068]) で両層 strict 化。Astro island runtime の inline
+# style hash (`sha256-vv9I...`) を handcoded fingerprint で取り込む。
+/*
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow='; script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=()

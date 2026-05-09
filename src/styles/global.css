@@ -3,6 +3,13 @@
 @import '@fontsource/noto-sans-jp/700.css';
 @import '@fontsource/jetbrains-mono/400.css';
 
+/* docs/ 配下の md は Tailwind の auto content scan 対象外にする。
+   spec / plan / decisions / agent-lessons 等で `hover:bg-blue-50` 等の
+   Tailwind utility 名をリテラル文字列として説明する箇所が多いため、
+   scan されると build CSS に unused utility が混入する。
+   docs/ は実装コードを含まないので scan する意味がない。 */
+@source not "../../docs";
+
 /* ダークモード未サポート: dark: クラスはメディアクエリではなく .dark クラス指定時のみ適用 */
 @variant dark (&:where(.dark, .dark *));
 
@@ -172,4 +179,492 @@
 
 .text-link:visited {
   color: var(--color-link-visited);
+}
+
+/* === issue #176 B 案: inline style 撤去用 semantic class === */
+@layer components {
+  /* === Typography (legacy bodyEmphasis / caption from src/utils/styles.ts) === */
+  .body-emphasis {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+  /* `font-weight: 400` を明示的に指定。bold 親要素の文脈で使う場合に
+     継承を断ち切る (Sidebar/MobileDrawer の link が bold 親に置かれた際の
+     意図せぬ太字化を防ぐ)。bold が必要な場合は consumer 側で
+     Tailwind `font-bold` を併用 (cascade layer 順で utilities が勝つ)。 */
+  .caption {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+
+  /* === Color tokens not in @theme (no Tailwind auto-utility) === */
+  .text-default {
+    color: var(--color-text);
+  }
+  .text-muted {
+    color: var(--color-muted);
+  }
+  .text-on-primary {
+    color: var(--color-text-on-primary);
+  }
+  .bg-default {
+    background: var(--color-bg);
+  }
+  .bg-subtle {
+    background: var(--color-bg-subtle);
+  }
+  .border-default {
+    border-color: var(--color-border);
+  }
+  .border-input {
+    border-color: var(--color-border-input);
+  }
+
+  /* === Semantic aliases for awkward Tailwind auto-utility names === */
+  .bg-error-tint {
+    background: var(--color-error-bg);
+  }
+  .bg-success-tint {
+    background: var(--color-success-bg);
+  }
+
+  /* === Elevation alias === */
+  .shadow-elev-2 {
+    box-shadow: var(--elevation-2);
+  }
+
+  /* === Component-scoped classes === */
+  /* ClearButton: hover bg を CSSOM mutation から CSS :hover へ */
+  .btn-clear {
+    background: transparent;
+    transition: background-color 0.15s;
+  }
+  .btn-clear:hover {
+    background: var(--color-bg-subtle);
+  }
+
+  /* CopyButton: copied 状態の bg / color / border 切替
+     注意: ルール順序は base → is-compact → is-copied。両 class 同時適用時に
+     is-copied (= 後勝ち) で color/bg が success に上書きされる必要があるため。 */
+  .btn-copy {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+    transition:
+      background-color 0.2s,
+      color 0.2s,
+      border-color 0.2s;
+  }
+  .btn-copy.is-compact {
+    border: none;
+    color: var(--color-muted);
+  }
+  /* 注意: compact 時は border:none で描画自体を抑止するため、is-copied の border-color は
+     compact では見えない (旧 develop 実装と同一)。bg/color は is-copied で上書きされ機能維持。 */
+  .btn-copy.is-copied {
+    border-color: var(--color-success);
+    background: var(--color-success-bg);
+    color: var(--color-success);
+  }
+
+  /* ActionButton: variant × disabled マトリクス */
+  .btn-action {
+    border-style: solid;
+    border-width: 1px;
+    transition:
+      background-color 0.15s,
+      filter 0.15s;
+  }
+  .btn-action--default {
+    border-color: var(--color-border-input);
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+  }
+  .btn-action--primary {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-text-on-primary);
+  }
+  .btn-action--secondary {
+    border-color: var(--color-primary);
+    background: transparent;
+    color: var(--color-primary);
+  }
+  .btn-action--danger {
+    border-color: var(--color-error);
+    background: transparent;
+    color: var(--color-error);
+  }
+  /* hover / :focus-visible: variant 別フィードバック。disabled には適用しない。
+     キーボードユーザにも mouse hover と同等のフィードバックを与える (a11y 観点)。
+     :focus 全般ではなく :focus-visible に限定することで、click 押下中の不要な
+     残留視覚反応を避ける。global.css の `:where(...):focus-visible` outline ring と併用。 */
+  .btn-action--primary:hover:not(:disabled),
+  .btn-action--primary:focus-visible:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-action--secondary:hover:not(:disabled),
+  .btn-action--secondary:focus-visible:not(:disabled) {
+    background: var(--color-bg-active);
+  }
+  .btn-action--danger:hover:not(:disabled),
+  .btn-action--danger:focus-visible:not(:disabled) {
+    background: var(--color-error-bg);
+  }
+  .btn-action:disabled {
+    background: var(--color-bg-subtle);
+    color: var(--color-muted);
+    cursor: not-allowed;
+  }
+  .btn-action--primary:disabled {
+    border-color: var(--color-bg-subtle);
+  }
+  .btn-action--secondary:disabled {
+    border-color: var(--color-border);
+    background: transparent;
+  }
+
+  /* ToggleGroup: button 状態切替 + 動的 grid columns 受け口 */
+  .toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--toggle-cols, 2), minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+  .btn-toggle {
+    background: transparent;
+    color: var(--color-muted);
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      box-shadow 0.15s;
+  }
+  .btn-toggle[aria-pressed='true'] {
+    background: var(--color-bg);
+    color: var(--color-text);
+    box-shadow: var(--elevation-2);
+  }
+
+  /* === PR 1.5: Surface bg (used by table thead row & InputField readOnly) === */
+  .bg-surface {
+    background: var(--color-bg-surface);
+  }
+
+  /* === PR 9 ([#304]): ResultTable は Constructable Stylesheets 経路に移行、
+     `.result-table { min-width: var(...) }` / `.result-table-col { width: var(...) }`
+     は撤去。`docs/decisions.md [067]` 参照 === */
+  .result-table-row:nth-child(odd) {
+    background: var(--color-bg);
+  }
+  .result-table-row:nth-child(even) {
+    background: var(--color-bg-surface);
+  }
+  .result-table-row[data-selected='true'] {
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg));
+  }
+  .result-table-row[data-clickable='true'] {
+    cursor: pointer;
+  }
+  /* :where(button, ...):focus-visible は <tr> 不対象のため、clickable row 専用に focus ring を別定義。
+     outline-offset は負値で <tr> 境界の内側に描画し overflow-hidden の親に切られないようにする。 */
+  .result-table-row[data-clickable='true']:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: -2px;
+  }
+  /* selection マーカー (border-top/bottom 2px primary) */
+  .result-table-row[data-selected='true'] > td {
+    border-top: 2px solid var(--color-primary);
+    border-bottom: 2px solid var(--color-primary);
+  }
+  /* 区切り線 (最終行と選択中の行を除く) */
+  .result-table-row:not(:last-child):not([data-selected='true']) > td {
+    box-shadow: inset 0 -1px 0 var(--color-border);
+  }
+
+  /* === PR 1.5: InputField サンプルボタン === */
+  .btn-link-plain {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  /* === PR 2: qr-ticket migration helpers === */
+
+  /* 色 token の text utility (Tailwind auto-utility 不在) */
+  .text-error {
+    color: var(--color-error);
+  }
+  .text-error-text {
+    color: var(--color-error-text);
+  }
+  .text-success {
+    color: var(--color-success);
+  }
+  .text-primary {
+    color: var(--color-primary);
+  }
+
+  /* Validation alert box (VerifyTab 検証結果) */
+  .alert-success {
+    background: var(--color-success-bg);
+    border-color: var(--color-success);
+  }
+  .alert-error {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+  }
+
+  /* File picker label (VerifyTab upload mode) */
+  .qr-file-picker-label {
+    background: var(--color-bg-surface);
+    color: var(--color-muted);
+    border-color: var(--color-border-input);
+    cursor: not-allowed;
+  }
+  .qr-file-picker-label[data-enabled='true'] {
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  /* Category badge pill (GenerateTab 生成結果) */
+  .badge-category {
+    display: inline-block;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    border-radius: 9999px;
+    padding: 0.1rem 0.5rem;
+  }
+
+  /* Row remove button (GenerateTab チケット行削除) */
+  .btn-row-remove {
+    background: transparent;
+    border: 0;
+    color: var(--color-error);
+    cursor: pointer;
+  }
+  .btn-row-remove:disabled {
+    color: var(--color-muted);
+    cursor: not-allowed;
+  }
+
+  /* QR result auto-fill grid (GenerateTab 生成結果カード列) */
+  .qr-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  /* === PR 3: JwtDecoder + UuidV7Generator migration helpers === */
+
+  /* JwtDecoder: Section accent borders */
+  .section-jwt-header {
+    border-left: 4px solid var(--color-error);
+  }
+  .section-jwt-payload {
+    border-left: 4px solid #9333ea;
+  }
+  .section-jwt-signature {
+    border-left: 4px solid var(--color-primary);
+  }
+
+  /* JwtDecoder: JSON syntax colors (not UI tokens, kept local) */
+  .jwt-json-key {
+    color: var(--color-link);
+  }
+  .jwt-json-value {
+    color: #6e4f0e;
+  }
+
+  /* JwtDecoder: <pre> (decoded JSON) typography */
+  .jwt-pre {
+    font-size: 0.75rem;
+    line-height: 1.33;
+    letter-spacing: -0.12px;
+  }
+
+  /* Checkbox accent (link color) */
+  .accent-link {
+    accent-color: var(--color-link);
+  }
+
+  /* Warning semantic palette (expBadge no-exp 用) */
+  .text-warning {
+    color: var(--color-warning);
+  }
+  .bg-warning-tint {
+    background: var(--color-warning-bg);
+  }
+
+  /* UuidV7Generator: 5 field colors (UUID hex parts) */
+  .uuid-field-ts {
+    color: var(--color-primary);
+  }
+  .uuid-field-ver {
+    color: #7c3aed;
+  }
+  .uuid-field-rand-a {
+    color: #059669;
+  }
+  .uuid-field-var {
+    color: #d97706;
+  }
+  .uuid-field-rand-b {
+    color: #0891b2;
+  }
+
+  /* UuidV7Generator: field key label typography
+     `.caption` (font-size 0.875rem) と組み合わせて使い、font-size のみ override する。
+     consumer 側は `caption text-muted uuid-field-key` で適用。
+     `.caption` の後に定義することで source 順位で勝つ (specificity 同等のため)。 */
+  .uuid-field-key {
+    font-size: 0.75rem;
+  }
+  .uuid-field-bits {
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+
+  /* === PR 4: Gs1Databar <details>/<summary> marker hide === */
+  .summary-no-marker {
+    list-style: none;
+  }
+  .summary-no-marker::-webkit-details-marker {
+    display: none;
+  }
+
+  /* === PR 4 review fix: hover state classes ===
+     Tailwind v4 で `@layer components` 内で手書き定義した class は
+     variant (`hover:`, `focus:` 等) に **対応しない** ため、
+     `hover:bg-{custom}` は CSS rule が生成されず silent regression する。
+     `.btn-clear` (PR 1) と同じパターンで専用 hover class を定義する。 */
+
+  /* Gs1Databar: BarcodeCard 削除ボタン (caption + text-error + hover で error-bg) */
+  .btn-remove-card {
+    color: var(--color-error);
+    background: transparent;
+    transition: background-color 0.15s;
+  }
+  .btn-remove-card:hover {
+    background: var(--color-error-bg);
+  }
+
+  /* Gs1Databar: AI フィールド ✕ ボタン / GS1 文字列 <summary> 共通 (hover で bg-subtle) */
+  .hover-bg-subtle {
+    transition: background-color 0.15s;
+  }
+  .hover-bg-subtle:hover {
+    background: var(--color-bg-subtle);
+  }
+
+  /* Gs1Databar: カード追加ボタン (hover で --color-bg-active = blue-50 semantic alias)
+     project rule "Tailwind カラークラス禁止" 遵守のため Tailwind primitive
+     カラー hover utility (hover-prefix + bg + blue-50) を本 class に置換。
+     注意: コメント中に Tailwind utility 名のリテラル文字列を書くと
+     v4 の content scanner に拾われて unused utility が build CSS に
+     混入するため、この種の説明は分割して記述する。 */
+  .hover-bg-active {
+    transition: background-color 0.15s;
+  }
+  .hover-bg-active:hover {
+    background: var(--color-bg-active);
+  }
+
+  /* === PR 5a: QrReader video preview background ===
+     QRリーダーの <video> 要素は getUserMedia 開始前 (display:none で隠蔽中) の
+     コントラスト確保 + 起動失敗時のフォールバック (黒画面) として黒背景を維持する。
+     一意の用途のため component-scoped class とする (色 token 化はしない、
+     PR 3 .jwt-json-value と同じ pattern)。 */
+  .qr-video-preview {
+    background: #000;
+  }
+
+  /* === PR 7a (#289): Astro layout/ui inline migration helpers === */
+
+  /* Caption variant: nav カテゴリラベル等 (letter-spacing wider than .caption) */
+  .caption-wide {
+    font-size: 0.875rem;
+    line-height: 1.7;
+    letter-spacing: 0.08em;
+  }
+
+  /* Icon button color (44x44 SVG ボタンの neutral-700) */
+  .text-icon {
+    color: var(--color-neutral-700);
+  }
+
+  /* Gs1Databar SVG container: dangerouslySetInnerHTML 経由 SVG の currentColor 継承 (#176 PR 8) */
+  .gs1-svg-container {
+    color: var(--color-text);
+  }
+
+  /* CategoryBadge: tertiary color text/bg (PR 2 .text-primary 系列に追従) */
+  .text-tertiary {
+    color: var(--color-tertiary);
+  }
+  .bg-badge {
+    background: var(--color-badge-bg);
+  }
+
+  /* Footer container & meta text (Footer 専用、neutral 系 primitive 色を意味クラス化) */
+  .footer-bar {
+    background: var(--color-neutral-900);
+    color: var(--color-neutral-300);
+  }
+  .text-footer-meta {
+    color: var(--color-neutral-500);
+  }
+
+  /* MobileDrawer backdrop (modal 背景の半透明 overlay)
+     注意: rgba(17,24,39,0.5) は --color-neutral-900 の 50% alpha と同等。
+     CSS variable 化は B 案完了後の semantic alias 整理 PR で検討 (今 YAGNI)。 */
+  .drawer-backdrop {
+    background: rgba(17, 24, 39, 0.5);
+  }
+
+  /* === PR 7b (#289): Astro pages inline migration helpers === */
+
+  /* Section heading: about/privacy h2 + index card title (10 occurrences)
+     注: color は class に含めない (10 件中 1 件 = index L112 card title が色無し
+     なため、consumer 側で text-default を選択的に併用)。
+     **使い方**: 通常は `.section-heading .text-default` を併用 (= 9/10 ケース)。
+     親要素から色継承で十分なケースのみ単独適用 (例: index.astro の card title が
+     親 .tool-card-title から var(--color-text) を継承)。新規 consumer は
+     原則 `.text-default` 併用が安全 (silent regression 予防)。 */
+  .section-heading {
+    font-size: 1.125rem;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+  }
+
+  /* Body prose text: about/privacy 本文段落 (8 occurrences、全件 neutral-700)
+     注: typography + color baked-in。.footer-bar precedent (PR 7a で
+     bg+color combined) に追従。8 件全て neutral-700 で一致するため安全。
+     TODO(dark-mode): dark mode 対応時に 8 箇所すべての neutral-700 を
+     semantic alias (`--color-text-secondary` 等) へ書き換え必要。
+     PR 7a の `.footer-bar` も同根 (neutral-900/300 baked-in)、
+     dark mode 対応 issue 起票時にまとめて semantic alias 化検討。 */
+  .text-body {
+    font-size: 1rem;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    color: var(--color-neutral-700);
+  }
+
+  /* Horizontal scroll snap container: index hero carousel (1 occurrence、5 prop)
+     注: 単発だが property 数が多く、Tailwind arbitrary 6連
+     (`overflow-x-scroll snap-x snap-mandatory scroll-smooth
+     [scrollbar-width:none] [-webkit-overflow-scrolling:touch]`) より
+     class 化が読みやすい。PR 7a `.qr-video-preview` と同 judgement
+     (単発でも property 数多なら class 化)。 */
+  .scroll-snap-x {
+    overflow-x: scroll;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
 }

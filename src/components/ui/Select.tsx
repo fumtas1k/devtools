@@ -1,5 +1,3 @@
-import { caption, colors } from '@/utils/styles';
-
 interface Option<T> {
   value: T;
   label: string;
@@ -16,21 +14,13 @@ interface Props<T extends string> {
 
 export function Select<T extends string>({ options, value, onChange, ariaLabel, id }: Props<T>) {
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="relative">
       <select
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
         aria-label={ariaLabel}
-        className="rounded-lg px-3 py-2 w-full"
-        style={{
-          ...caption,
-          border: `1px solid ${colors.borderInput}`,
-          background: colors.bg,
-          color: colors.text,
-          appearance: 'none',
-          paddingRight: '2.5rem',
-        }}
+        className="caption w-full rounded-lg border border-input bg-default text-default appearance-none pl-3 pr-10 py-2"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value} disabled={opt.disabled}>
@@ -45,14 +35,7 @@ export function Select<T extends string>({ options, value, onChange, ariaLabel, 
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
-        style={{
-          position: 'absolute',
-          right: '0.75rem',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          pointerEvents: 'none',
-          color: colors.muted,
-        }}
+        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted"
       >
         <path
           d="M2 4L6 8L10 4"

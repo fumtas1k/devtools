@@ -1,0 +1,71 @@
+name: Update Visual Regression Baseline
+
+on:
+  # default branch にマージ後は workflow_dispatch (手動 trigger) でのみ実行する。
+  # baseline を意図的に再生成したい時（design system 変更、フォント更新等）に
+  # GitHub Actions UI から手動起動する想定。
+  # 注意: workflow_dispatch は workflow 定義が default branch (develop) に存在することが前提。
+  # 本 PR merge 後に有効化される。
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-baseline:
+    # default branch (develop / main) 上で誤って trigger された場合は no-op。
+    # branch protection 違反を回避し、「baseline 更新は必ず PR ブランチで」を workflow レベルで強制。
+    if: github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # #291: Playwright 公式 image でブラウザバイナリ + OS deps を preinstalled 化し、
+    # `npx playwright install --with-deps chromium` の 7 分超を撤廃。
+    # tag は package.json の `@playwright/test` バージョンと一致させる
+    # (Playwright アップデート時は `mcr.microsoft.com/playwright:vX.Y.Z-noble` も bump)。
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+      options: --user 1001
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Playwright ブラウザは container image に preinstalled 済 (#291)。
+      # PLAYWRIGHT_BROWSERS_PATH=/ms-playwright が image で設定済みのため install step 不要。
+      - name: Secret-like env var の audit (issue #255 I-2)
+        # 想定 secret 命名規則 (*_KEY / *_TOKEN / *_SECRET / *_PASSWORD / *_CREDENTIAL) を
+        # 持つ env var が baseline 生成 step に流れていないか early-fail check。
+        # 例外: GITHUB_TOKEN は steps[0].with.token で push に必要、RUNNER_* は GH Actions runtime 由来。
+        # baseline PNG への secret 焼き付き → git 履歴 permanent leak を防ぐ最終防御層。
+        run: |
+          set -euo pipefail
+          # `GITHUB_TOKEN=` は exact match (末尾 `=` で `GITHUB_TOKEN_FOO=` の意図せぬ allow を防ぐ)。
+          # 他の `RUNNER_` / `GITHUB_RUN_` / `ACTIONS_` / `GH_` / `PIP_` / `PYPI_` は GH Actions runtime 由来の env が
+          # 多数あるため prefix allow を維持。
+          SUSPECT=$(env | grep -iE '^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=' | grep -vE '^(GITHUB_TOKEN=|RUNNER_|GITHUB_RUN_|ACTIONS_|GH_|PIP_|PYPI_)' || true)
+          if [ -n "$SUSPECT" ]; then
+            echo "::error::Secret-like env vars detected. Baseline 生成中止 (PNG への焼き付き leak 防止)。"
+            # 値は redact、key 名のみ出力
+            echo "$SUSPECT" | sed 's/=.*$/=<redacted>/'
+            exit 1
+          fi
+          echo "OK: no secret-like env vars exposed to baseline generation"
+      - name: 本番相当アセットを build
+        run: npm run build
+      - name: Visual regression baseline を再生成
+        run: npx playwright test --project=visual-regression --workers=1 --update-snapshots
+      - name: 変更があれば commit & push
+        run: |
+          if [ -n "$(git status --porcelain tests/e2e/visual-regression.spec.ts-snapshots/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tests/e2e/visual-regression.spec.ts-snapshots/
+            git commit -m "test(vrt): visual regression baseline を CI Linux runner で再生成"
+            git push
+          else
+            echo "baseline 差分なし、commit skip"
+          fi

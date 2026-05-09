@@ -1,3 +1,9 @@
+> ⚠️ **移行中**: issue [#176](https://github.com/fumtas1k/devtools/issues/176) B 案で `colors.* + style={{}}` パターン → `@layer components` semantic class へ移行中。
+>
+> - **新規 component**: class-based パターン（`src/styles/global.css` に semantic class を追加 + className で参照）を使う
+> - **既存 component**: PR 番号順に migration（progress: PR 1 = `ui/*` simple 11、PR 1.5 = `ResultTable` + `InputField`、PR 2 = `qr-ticket/*`、PR 3-5 = tools、PR 6 = CSP flip + `colors.*` 撤去）
+> - 本 SKILL.md / references/components.md の inline-style 例は **移行中の暫定パターン**。PR 6 で全例を class-based に rewrite 予定
+
 # コンポーネント実装リファレンス
 
 デジタル庁デザインシステム（DADS）のコンポーネント実装パターン集。

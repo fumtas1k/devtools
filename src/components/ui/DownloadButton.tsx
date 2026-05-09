@@ -1,11 +1,11 @@
-import { colors, caption } from '@/utils/styles';
+import { ActionButton } from './ActionButton';
 
 interface Props {
   onClick: () => void;
   label: string;
   variant?: 'primary' | 'secondary';
   disabled?: boolean;
-  className?: string;
+  loading?: boolean;
   'aria-label'?: string;
 }
 
@@ -29,63 +29,35 @@ function DownloadIcon() {
   );
 }
 
+/**
+ * ダウンロードアイコン付きのアクションボタン。
+ * `ActionButton` を `size="compact"` で内部使用する薄いラッパー。
+ * - 高さは CopyButton (default) と pixel-perfect に揃う（横並び崩れ回避、#288）
+ * - `variant="primary"`: primary 色背景 + 白文字 (デフォルト)
+ * - `variant="secondary"`: 透過背景 + primary 文字色 + primary ボーダー
+ * - `loading=true`: ActionButton 経由で `aria-busy="true"` と disabled 状態を付与
+ */
 export function DownloadButton({
   onClick,
   label,
   variant = 'primary',
   disabled = false,
-  className = '',
+  loading = false,
   'aria-label': ariaLabel,
 }: Props) {
-  const isPrimary = variant === 'primary';
-
-  const baseStyle: React.CSSProperties = {
-    ...caption,
-    fontWeight: 600,
-    padding: '0.5rem 1rem',
-    lineHeight: 1,
-    borderRadius: '0.5rem',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.375rem',
-    transition: 'all 0.2s',
-    whiteSpace: 'nowrap',
-  };
-
-  const variantStyle: React.CSSProperties = isPrimary
-    ? {
-        background: disabled ? colors.bgSubtle : colors.primary,
-        color: disabled ? colors.muted : colors.textOnPrimary,
-        border: 'none',
-      }
-    : {
-        background: 'transparent',
-        color: disabled ? colors.muted : colors.primary,
-        border: `1px solid ${disabled ? colors.border : colors.primary}`,
-      };
-
   return (
-    <button
-      type="button"
+    <ActionButton
+      variant={variant}
+      size="compact"
       onClick={onClick}
       disabled={disabled}
-      aria-label={ariaLabel || label}
-      className={`${isPrimary ? 'hover:opacity-90' : ''} ${className}`}
-      style={{ ...baseStyle, ...variantStyle }}
-      onMouseEnter={(e) => {
-        if (!disabled && !isPrimary) {
-          e.currentTarget.style.background = colors.bgActive;
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!disabled && !isPrimary) {
-          e.currentTarget.style.background = 'transparent';
-        }
-      }}
+      loading={loading}
+      aria-label={ariaLabel ?? label}
     >
-      <DownloadIcon />
-      {label}
-    </button>
+      <span className="inline-flex items-center gap-1.5">
+        <DownloadIcon />
+        {label}
+      </span>
+    </ActionButton>
   );
 }

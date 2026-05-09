@@ -6,7 +6,6 @@ import { InputField } from '@/components/ui/InputField';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import { calcJan, validateJanInput, type JanMode } from '@/utils/jan-code';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { bodyEmphasis, caption, colors } from '@/utils/styles';
 import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '@/utils/download';
 
 export function JanCodeTool() {
@@ -95,24 +94,20 @@ export function JanCodeTool() {
 
       {/* 結果 */}
       {result && (
-        <div className="space-y-4">
+        <div className="space-y-4" role="status" aria-live="polite">
           {/* チェックディジット・完成コード */}
           <div
             data-testid="jan-code-result"
-            className="rounded-lg p-4 space-y-3"
-            style={{ border: `1px solid ${colors.border}`, background: colors.bgSurface }}
+            className="rounded-lg p-4 space-y-3 border border-default bg-surface"
           >
             <div className="flex items-center justify-between">
-              <span style={{ ...caption, color: colors.muted }}>チェックディジット</span>
-              <span style={{ ...bodyEmphasis, color: colors.primary }}>{result.checkDigit}</span>
+              <span className="caption text-muted">チェックディジット</span>
+              <span className="body-emphasis text-primary">{result.checkDigit}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ ...caption, color: colors.muted }}>完成コード</span>
+              <span className="caption text-muted">完成コード</span>
               <div className="flex items-center gap-2">
-                <span
-                  className="font-mono"
-                  style={{ ...bodyEmphasis, color: colors.text, letterSpacing: '0.1em' }}
-                >
+                <span className="font-mono body-emphasis text-default tracking-[0.1em]">
                   {result.fullCode}
                 </span>
                 <CopyButton text={result.fullCode} label="コピー" />
@@ -121,25 +116,11 @@ export function JanCodeTool() {
           </div>
 
           {/* 計算過程 */}
-          <details className="rounded-lg" style={{ border: `1px solid ${colors.border}` }}>
-            <summary
-              className="cursor-pointer px-4 py-3 font-bold rounded-lg transition-colors"
-              style={{
-                ...caption,
-                fontWeight: 700,
-                color: colors.muted,
-                listStyle: 'none',
-                background: 'transparent',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = colors.bgSubtle)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
+          <details className="rounded-lg border border-default">
+            <summary className="cursor-pointer px-4 py-3 rounded-lg caption font-bold text-muted bg-transparent summary-no-marker hover-bg-subtle">
               計算過程を見る
             </summary>
-            <div
-              className="px-4 pb-4 pt-2 space-y-1 font-mono"
-              style={{ ...caption, color: colors.text }}
-            >
+            <div className="px-4 pb-4 pt-2 space-y-1 font-mono caption text-default">
               {mode === 'jan13' ? (
                 <>
                   <p>
@@ -179,10 +160,7 @@ export function JanCodeTool() {
           </details>
 
           {/* バーコードプレビュー */}
-          <div
-            className="rounded-lg flex flex-col items-center gap-4 p-4"
-            style={{ border: `1px solid ${colors.border}`, background: colors.bg }}
-          >
+          <div className="rounded-lg flex flex-col items-center gap-4 p-4 border border-default bg-default">
             <svg ref={svgRef} aria-label={`JANコード ${result.fullCode} のバーコード`} />
             <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
           </div>

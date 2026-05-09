@@ -4,7 +4,6 @@ import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
-import { caption, colors } from '@/utils/styles';
 import { jsonToCsv, csvToJson } from '@/utils/json-csv';
 import { downloadText } from '@/utils/download';
 import { useCodec } from '@/hooks/useCodec';
@@ -28,7 +27,7 @@ const SAMPLE: Record<Mode, string> = {
 export function JsonCsvTool() {
   const [mode, setMode] = useState<Mode>('json2csv');
 
-  const { input, setInput, output, error, reset } = useCodec(
+  const { input, setInput, output, error, isPending, reset } = useCodec(
     (text) => (mode === 'json2csv' ? jsonToCsv(text) : csvToJson(text)),
     [mode]
   );
@@ -39,13 +38,19 @@ export function JsonCsvTool() {
   };
 
   const handleDownloadCsv = () => {
+    // ボタン側でも `disabled={!output}` で防御しているが念のため二重防御
     if (!output) return;
     downloadText(output, 'output.csv', 'text/csv');
   };
 
   const downloadButton =
     mode === 'json2csv' ? (
-      <DownloadButton onClick={handleDownloadCsv} label="CSVダウンロード" variant="secondary" />
+      <DownloadButton
+        onClick={handleDownloadCsv}
+        label="CSVダウンロード"
+        variant="secondary"
+        disabled={isPending || !output}
+      />
     ) : null;
 
   return (
@@ -62,7 +67,7 @@ export function JsonCsvTool() {
       />
 
       {/* 入力・出力（PC横並び・モバイル縦並び） */}
-      <div className="flex flex-col md:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
+      <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="w-full md:flex-1 min-w-0">
           <InputField
             id="json-csv-input"
