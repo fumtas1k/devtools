@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { base64UrlToBytes, parseJwt, formatTimestamp, formatRemaining } from '@/utils/jwt';
 
 // HS256 で署名されたサンプルトークン（有効期限なし）
