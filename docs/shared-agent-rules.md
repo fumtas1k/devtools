@@ -145,6 +145,13 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 3 行以上の bash・過去にも書いた覚えのある手順・覚えにくいフラグを伴う複合コマンドを書こうとしたら、その場で実行する前に `scripts/` への切り出しをユーザーに提案する（同意を得てからスクリプト化する。先回りして勝手に作らない）。
 
+スクリプト配置の使い分け:
+
+- `scripts/` … 人間 / CI workflow / `package.json` / Claude が Bash で叩く汎用ユーティリティ
+- `.claude/scripts/` … Claude Code harness 専用 (`.claude/settings.json` の `hooks.*` / `statusLine.command` 等から呼ばれるもののみ)
+
+汎用ユーティリティを `.claude/scripts/` に置くと Claude Code を使わない開発者には実行されないため、CI / package.json から参照する性質のものは必ず `scripts/` 側に置く。
+
 ### 6.6 settings.json permissions に整合した振る舞い
 
 `.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
@@ -153,7 +160,25 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 - **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
 - **sandbox `denyWithinAllow` を見て user に手動作業を振らない**: `.claude/settings.json` / `.claude/skills/` 等が sandbox の `denyWithinAllow` に含まれていても、それは **`Bash` の `mkdir` / `rm` / `tee` / `sed -i` 経由を deny する** だけ。**`Edit` / `Write` tool 経由は permissions の `ask` 経路に乗って通る**（user 環境の事前 allow/auto-approve で待ちなしに成功することも多い）。手動で別ターミナル作業を依頼する前に **必ず `Write` / `Edit` tool で実機検証** すること。tool で通れば `git add` 含む後続も Claude 内で完結する。Bash での `mkdir` / `rm` が必要な場合だけが手動依頼の対象。
 
-### 6.7 サブエージェント運用の補足
+### 6.7 solo dev 体制での branch protection 提案禁止
+
+solo dev 体制（PR 作成者 = レビュアー = merger が同一人物）では GitHub branch protection の `Require approvals` を有効化すると **self-approve 不可で自分の PR が永久 merge 不能** になる（GitHub policy）。`Require pull request before merging` 単体は他人 review を強制せず、`Restrict who can push` も PR 経由 self-merge を block しない。**team 体制前提の review 強制設計を solo dev に提案しないこと**。
+
+過去判断: `docs/decisions.md [069]` (PR #333、`#255` 監査結果)。VRT bot push の bypass 懸念は team 体制前提の概念で本 repo には適用不可、actionable 対策は「VRT PR comment が出た PR は merge 前に diff 目視」に集約。
+
+### 6.8 VRT pixel diff の baseline 更新は recommend しない
+
+VRT が小さい pixel diff（例: 723 pixels = 0.07%）を検出したとき「diff が微小だから baseline 更新で OK」と recommend してはいけない。**pixel 数の小ささと visual design 品質の劣化有無は別軸**。design token 由来の意図しない変更が混入していても pixel ratio は小さく見える。
+
+判断順序:
+
+1. diff 画像 (Playwright artifact) を user が **目視確認**
+2. 意図的変更ならその時点で baseline 更新 workflow を trigger
+3. 意図しない regression なら fix
+
+エージェントは「数値的に小さい」を根拠に baseline 更新を勧めない。デザイン品質の SoT は user 視覚評価。
+
+### 6.9 サブエージェント運用の補足
 
 - **完了報告は項目別ステータス必須**: 親プロンプトのスコープ箇条書きを subagent が一部のみで「完了」と返すケースがあるため、完了報告フォーマットに「項目ごとに 実装 / 既存で十分 / スキップ理由 を明示する」チェックリスト形式を要求する。親側でも依頼項目数 vs 実装項目数の機械的突き合わせを行う（過去事例: PR #218 で 3 件依頼中 1 件のみ実装で完了報告された）。
 - **`package.json` 変更時は `package-lock.json` 同期確認**: subagent が deps を追加・更新した場合、`git diff origin/develop --name-only` に `package.json` が含まれる場合は必ず `package-lock.json` も含まれているか確認する。漏れていれば親で `npm install --package-lock-only --cache "$TMPDIR/npm-cache" --no-audit --no-fund` を実行し別コミットで lock 同期を push する（過去事例: PR #181 で lock 不整合のまま push される寸前で発覚）。
