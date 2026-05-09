@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import { test, expect } from '@playwright/test';
-import { waitForReactHydration } from './helpers';
+import { withProductionCsp } from './helpers';
 
 // Shift_JIS "あいうえお\n" (0x82A0 82A2 82A4 82A6 82A8 0A)
 const SJIS_AIUEO = Buffer.from([0x82, 0xa0, 0x82, 0xa2, 0x82, 0xa4, 0x82, 0xa6, 0x82, 0xa8, 0x0a]);
@@ -20,257 +20,294 @@ const UTF8_BOM = Buffer.from([0xef, 0xbb, 0xbf, 0xe3, 0x81, 0x82]);
 // JPEG magic bytes (non-text binary)
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
 
-test.describe('文字コード判定・変換', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/tools/encoding-converter');
-    await waitForReactHydration(page);
-  });
-
-  test('ページが正しく表示される', async ({ page }) => {
-    await expect(page.getByRole('button', { name: '判定' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '変換' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'テキスト' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'ファイル' })).toBeVisible();
-  });
-
-  test('ケースA: UTF-8 テキスト入力 → UTF-8 と判定される', async ({ page }) => {
-    await page.getByLabel('入力テキスト').fill('あいうえお');
-    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
-    await expect(page.getByTestId('detection-bom')).toContainText('なし');
-  });
-
-  test('ケースB: Shift_JIS ファイルアップロード → SJIS 判定とプレビュー', async ({ page }) => {
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test_sjis.txt',
-      mimeType: 'text/plain',
-      buffer: SJIS_AIUEO,
+test.describe('文字コード判定・変換（production CSP 適用）', () => {
+  test('ページが正しく表示される（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await expect(page.getByRole('button', { name: '判定' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '変換' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'テキスト' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'ファイル' })).toBeVisible();
     });
-    await expect(page.getByTestId('detection-encoding')).toContainText('Shift_JIS');
-    await expect(page.getByTestId('detection-result')).toContainText('あいうえお');
   });
 
-  test('ケースC: Shift_JIS → UTF-8 BOM 付き変換', async ({ page }) => {
-    await page.getByRole('button', { name: '変換' }).click();
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test_sjis.txt',
-      mimeType: 'text/plain',
-      buffer: SJIS_AIUEO,
+  test('ケースA: UTF-8 テキスト入力 → UTF-8 と判定される（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByLabel('入力テキスト').fill('あいうえお');
+      await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
+      await expect(page.getByTestId('detection-bom')).toContainText('なし');
     });
-
-    await page.getByLabel('BOM を付与する').check();
-
-    await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
-    await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
-    // hex プレビューに BOM バイト EF BB BF が含まれる
-    await expect(page.getByTestId('output-hex-preview')).toContainText('EF BB BF');
   });
 
-  test('ケースD: EUC-JP → UTF-8 変換', async ({ page }) => {
-    await page.getByRole('button', { name: '変換' }).click();
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test_eucjp.txt',
-      mimeType: 'text/plain',
-      buffer: EUCJP_AIUEO,
-    });
-    await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
-  });
-
-  test('ケースE: UTF-8 BOM 付きファイル → BOM あり と判定', async ({ page }) => {
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test_utf8bom.txt',
-      mimeType: 'text/plain',
-      buffer: UTF8_BOM,
-    });
-    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
-    await expect(page.getByTestId('detection-bom')).toContainText('あり');
-  });
-
-  test('ケースF: 非テキストバイナリ (JPEG) → バリデーションエラーが表示される', async ({
-    page,
+  test('ケースB: Shift_JIS ファイルアップロード → SJIS 判定とプレビュー（CSP 違反なし）', async ({
+    browser,
   }) => {
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test.jpg',
-      mimeType: 'image/jpeg',
-      buffer: JPEG_MAGIC,
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test_sjis.txt',
+        mimeType: 'text/plain',
+        buffer: SJIS_AIUEO,
+      });
+      await expect(page.getByTestId('detection-encoding')).toContainText('Shift_JIS');
+      await expect(page.getByTestId('detection-result')).toContainText('あいうえお');
     });
-    // バリデーションで WRONG_TYPE として弾かれ、エラーメッセージが表示される
-    await expect(page.getByRole('alert')).toBeVisible();
-    await expect(page.getByTestId('detection-result')).not.toBeVisible();
   });
 
-  test('ケースG: クリアボタンで入力がリセットされる', async ({ page }) => {
-    await page.getByLabel('入力テキスト').fill('テスト');
-    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
-    await page.getByRole('button', { name: 'クリア' }).click();
-    await expect(page.getByLabel('入力テキスト')).toHaveValue('');
-    await expect(page.getByTestId('detection-result')).not.toBeVisible();
+  test('ケースC: Shift_JIS → UTF-8 BOM 付き変換（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test_sjis.txt',
+        mimeType: 'text/plain',
+        buffer: SJIS_AIUEO,
+      });
+
+      await page.getByLabel('BOM を付与する').check();
+
+      await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
+      await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
+      // hex プレビューに BOM バイト EF BB BF が含まれる
+      await expect(page.getByTestId('output-hex-preview')).toContainText('EF BB BF');
+    });
   });
 
-  test('ケースH: 変換モードの文字コード Select に全選択肢がありデフォルト値が正しい', async ({
-    page,
+  test('ケースD: EUC-JP → UTF-8 変換（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test_eucjp.txt',
+        mimeType: 'text/plain',
+        buffer: EUCJP_AIUEO,
+      });
+      await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
+    });
+  });
+
+  test('ケースE: UTF-8 BOM 付きファイル → BOM あり と判定（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test_utf8bom.txt',
+        mimeType: 'text/plain',
+        buffer: UTF8_BOM,
+      });
+      await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
+      await expect(page.getByTestId('detection-bom')).toContainText('あり');
+    });
+  });
+
+  test('ケースF: 非テキストバイナリ (JPEG) → バリデーションエラーが表示される（CSP 違反なし）', async ({
+    browser,
   }) => {
-    await page.getByRole('button', { name: '変換' }).click();
-
-    const srcSelect = page.getByLabel('元の文字コード');
-    const tgtSelect = page.getByLabel('変換後の文字コード');
-
-    // デフォルト値
-    await expect(srcSelect).toHaveValue('AUTO');
-    await expect(tgtSelect).toHaveValue('UTF8');
-
-    // 元の文字コードを JIS に変更できる
-    await srcSelect.selectOption('JIS');
-    await expect(srcSelect).toHaveValue('JIS');
-
-    // 変換後の文字コードを SJIS に変更できる
-    await tgtSelect.selectOption('SJIS');
-    await expect(tgtSelect).toHaveValue('SJIS');
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test.jpg',
+        mimeType: 'image/jpeg',
+        buffer: JPEG_MAGIC,
+      });
+      // バリデーションで WRONG_TYPE として弾かれ、エラーメッセージが表示される
+      await expect(page.getByRole('alert')).toBeVisible();
+      await expect(page.getByTestId('detection-result')).not.toBeVisible();
+    });
   });
 
-  test('ケースI: UTF-8 以外ターゲット選択時はコピーボタンが非表示になる', async ({ page }) => {
-    await page.getByRole('button', { name: '変換' }).click();
-    await page.getByLabel('入力テキスト').fill('あいうえお');
-
-    const tgtSelect = page.getByLabel('変換後の文字コード');
-
-    // UTF-8 ターゲット（デフォルト）→ コピーボタンが表示される
-    await tgtSelect.selectOption('UTF8');
-    await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
-
-    // SJIS ターゲット → コピーボタンが非表示になる
-    await tgtSelect.selectOption('SJIS');
-    await expect(page.getByRole('button', { name: 'コピー' })).not.toBeVisible();
-
-    // UTF-8 に戻すとコピーボタンが再表示される
-    await tgtSelect.selectOption('UTF8');
-    await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
+  test('ケースG: クリアボタンで入力がリセットされる（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByLabel('入力テキスト').fill('テスト');
+      await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
+      await page.getByRole('button', { name: 'クリア' }).click();
+      await expect(page.getByLabel('入力テキスト')).toHaveValue('');
+      await expect(page.getByTestId('detection-result')).not.toBeVisible();
+    });
   });
 
-  test('ケースJ: ファイルアップロード変換時のダウンロード名が元拡張子を保持する', async ({
-    page,
+  test('ケースH: 変換モードの文字コード Select に全選択肢がありデフォルト値が正しい（CSP 違反なし）', async ({
+    browser,
   }) => {
-    await page.getByRole('button', { name: '変換' }).click();
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test_sjis.csv',
-      mimeType: 'text/csv',
-      buffer: SJIS_AIUEO,
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+
+      const srcSelect = page.getByLabel('元の文字コード');
+      const tgtSelect = page.getByLabel('変換後の文字コード');
+
+      // デフォルト値
+      await expect(srcSelect).toHaveValue('AUTO');
+      await expect(tgtSelect).toHaveValue('UTF8');
+
+      // 元の文字コードを JIS に変更できる
+      await srcSelect.selectOption('JIS');
+      await expect(srcSelect).toHaveValue('JIS');
+
+      // 変換後の文字コードを SJIS に変更できる
+      await tgtSelect.selectOption('SJIS');
+      await expect(tgtSelect).toHaveValue('SJIS');
     });
-
-    await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
-
-    const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
-    const download = await downloadPromise;
-    expect(download.suggestedFilename()).toBe('test_sjis_utf8.csv');
   });
 
-  test('サンプルボタンでサンプルテキストが入力される', async ({ page }) => {
-    await page.getByRole('button', { name: 'サンプルを入力' }).click();
-    await expect(page.getByLabel('入力テキスト')).not.toBeEmpty();
-    await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
-  });
+  test('ケースI: UTF-8 以外ターゲット選択時はコピーボタンが非表示になる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+      await page.getByLabel('入力テキスト').fill('あいうえお');
 
-  test('ケースK: 改行コード「そのまま」でCRLFがそのまま保持される', async ({ page }) => {
-    await page.getByRole('button', { name: '変換' }).click();
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test_sjis_crlf.txt',
-      mimeType: 'text/plain',
-      buffer: SJIS_CRLF,
+      const tgtSelect = page.getByLabel('変換後の文字コード');
+
+      // UTF-8 ターゲット（デフォルト）→ コピーボタンが表示される
+      await tgtSelect.selectOption('UTF8');
+      await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
+
+      // SJIS ターゲット → コピーボタンが非表示になる
+      await tgtSelect.selectOption('SJIS');
+      await expect(page.getByRole('button', { name: 'コピー' })).not.toBeVisible();
+
+      // UTF-8 に戻すとコピーボタンが再表示される
+      await tgtSelect.selectOption('UTF8');
+      await expect(page.getByRole('button', { name: 'コピー' })).toBeVisible();
     });
-
-    // デフォルトは「そのまま」
-    await expect(
-      page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'そのまま' })
-    ).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
-
-    const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
-    const download = await downloadPromise;
-    const downloadPath = await download.path();
-    const bytes = fs.readFileSync(downloadPath!);
-
-    // CRLF (0x0D 0x0A) が保持されている
-    expect(bytes.indexOf(Buffer.from([0x0d, 0x0a]))).toBeGreaterThan(-1);
   });
 
-  test('ケースL: 改行コード「LF」でCRLFがLFに正規化される', async ({ page }) => {
-    await page.getByRole('button', { name: '変換' }).click();
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test_sjis_crlf.txt',
-      mimeType: 'text/plain',
-      buffer: SJIS_CRLF,
+  test('ケースJ: ファイルアップロード変換時のダウンロード名が元拡張子を保持する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test_sjis.csv',
+        mimeType: 'text/csv',
+        buffer: SJIS_AIUEO,
+      });
+
+      await expect(page.getByLabel('変換結果プレビュー')).toContainText('あいうえお');
+
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe('test_sjis_utf8.csv');
     });
-
-    await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
-
-    await page
-      .getByRole('group', { name: '改行コード' })
-      .getByRole('button', { name: 'LF', exact: true })
-      .click();
-
-    const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
-    const download = await downloadPromise;
-    const downloadPath = await download.path();
-    const bytes = fs.readFileSync(downloadPath!);
-
-    // CRLF が除去されている（0x0D が残っていない）
-    expect(bytes.indexOf(0x0d)).toBe(-1);
-    // LF は残っている
-    expect(bytes.indexOf(0x0a)).toBeGreaterThan(-1);
   });
 
-  test('ケースM: 改行コード「CRLF」でLFがCRLFに正規化される', async ({ page }) => {
-    await page.getByRole('button', { name: '変換' }).click();
-    await page.getByRole('button', { name: 'ファイル' }).click();
-    await page.getByLabel('ファイルを選択').setInputFiles({
-      name: 'test_utf8_lf.txt',
-      mimeType: 'text/plain',
-      buffer: UTF8_LF,
+  test('サンプルボタンでサンプルテキストが入力される（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await expect(page.getByLabel('入力テキスト')).not.toBeEmpty();
+      await expect(page.getByTestId('detection-encoding')).toContainText('UTF-8');
     });
-
-    await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
-
-    await page
-      .getByRole('group', { name: '改行コード' })
-      .getByRole('button', { name: 'CRLF' })
-      .click();
-
-    const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
-    const download = await downloadPromise;
-    const downloadPath = await download.path();
-    const bytes = fs.readFileSync(downloadPath!);
-
-    // CRLF に変換されている
-    expect(bytes.indexOf(Buffer.from([0x0d, 0x0a]))).toBeGreaterThan(-1);
   });
 
-  test('ケースN: UTF-16LE ターゲット選択時は改行コードトグルが非表示になる', async ({ page }) => {
-    await page.getByRole('button', { name: '変換' }).click();
+  test('ケースK: 改行コード「そのまま」でCRLFがそのまま保持される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test_sjis_crlf.txt',
+        mimeType: 'text/plain',
+        buffer: SJIS_CRLF,
+      });
 
-    const tgtSelect = page.getByLabel('変換後の文字コード');
+      // デフォルトは「そのまま」
+      await expect(
+        page.getByRole('group', { name: '改行コード' }).getByRole('button', { name: 'そのまま' })
+      ).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
 
-    // UTF-8 ターゲットでは改行コードトグルが表示される
-    await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible();
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
+      const download = await downloadPromise;
+      const downloadPath = await download.path();
+      const bytes = fs.readFileSync(downloadPath!);
 
-    // UTF-16LE ターゲットに切り替えると非表示になる
-    await tgtSelect.selectOption('UTF16LE');
-    await expect(page.getByRole('group', { name: '改行コード' })).not.toBeVisible();
-    // UTF-16 向けの注記が表示される
-    await expect(page.getByText('UTF-16 では改行コード正規化は適用されません')).toBeVisible();
+      // CRLF (0x0D 0x0A) が保持されている
+      expect(bytes.indexOf(Buffer.from([0x0d, 0x0a]))).toBeGreaterThan(-1);
+    });
+  });
 
-    // UTF-8 に戻すと再表示される
-    await tgtSelect.selectOption('UTF8');
-    await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible();
+  test('ケースL: 改行コード「LF」でCRLFがLFに正規化される（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test_sjis_crlf.txt',
+        mimeType: 'text/plain',
+        buffer: SJIS_CRLF,
+      });
+
+      await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
+
+      await page
+        .getByRole('group', { name: '改行コード' })
+        .getByRole('button', { name: 'LF', exact: true })
+        .click();
+
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
+      const download = await downloadPromise;
+      const downloadPath = await download.path();
+      const bytes = fs.readFileSync(downloadPath!);
+
+      // CRLF が除去されている（0x0D が残っていない）
+      expect(bytes.indexOf(0x0d)).toBe(-1);
+      // LF は残っている
+      expect(bytes.indexOf(0x0a)).toBeGreaterThan(-1);
+    });
+  });
+
+  test('ケースM: 改行コード「CRLF」でLFがCRLFに正規化される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+      await page.getByRole('button', { name: 'ファイル' }).click();
+      await page.getByLabel('ファイルを選択').setInputFiles({
+        name: 'test_utf8_lf.txt',
+        mimeType: 'text/plain',
+        buffer: UTF8_LF,
+      });
+
+      await expect(page.getByLabel('変換結果プレビュー')).not.toBeEmpty();
+
+      await page
+        .getByRole('group', { name: '改行コード' })
+        .getByRole('button', { name: 'CRLF' })
+        .click();
+
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: '変換後ファイルをダウンロード' }).click();
+      const download = await downloadPromise;
+      const downloadPath = await download.path();
+      const bytes = fs.readFileSync(downloadPath!);
+
+      // CRLF に変換されている
+      expect(bytes.indexOf(Buffer.from([0x0d, 0x0a]))).toBeGreaterThan(-1);
+    });
+  });
+
+  test('ケースN: UTF-16LE ターゲット選択時は改行コードトグルが非表示になる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/encoding-converter', async (page) => {
+      await page.getByRole('button', { name: '変換' }).click();
+
+      const tgtSelect = page.getByLabel('変換後の文字コード');
+
+      // UTF-8 ターゲットでは改行コードトグルが表示される
+      await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible();
+
+      // UTF-16LE ターゲットに切り替えると非表示になる
+      await tgtSelect.selectOption('UTF16LE');
+      await expect(page.getByRole('group', { name: '改行コード' })).not.toBeVisible();
+      // UTF-16 向けの注記が表示される
+      await expect(page.getByText('UTF-16 では改行コード正規化は適用されません')).toBeVisible();
+
+      // UTF-8 に戻すと再表示される
+      await tgtSelect.selectOption('UTF8');
+      await expect(page.getByRole('group', { name: '改行コード' })).toBeVisible();
+    });
   });
 });
