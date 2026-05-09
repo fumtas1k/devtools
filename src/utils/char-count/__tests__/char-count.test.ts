@@ -426,6 +426,10 @@ describe('countParagraphs', () => {
   it('"a\\n\\n\\nb" (3連改行) は 2 段落', () => expect(countParagraphs('a\n\n\nb')).toBe(2));
   it('前後の空行は段落数に含めない: "\\n\\na\\n\\n" は 1', () =>
     expect(countParagraphs('\n\na\n\n')).toBe(1));
+  it('CR 単独 "a\\r\\rb" は 2 段落 (Mac 旧式改行)', () =>
+    expect(countParagraphs('a\r\rb')).toBe(2));
+  it('CRLF 空行 "a\\r\\n\\r\\nb" は 2 段落', () => expect(countParagraphs('a\r\n\r\nb')).toBe(2));
+  it('LF+CR 混在空行 "a\\n\\rb" は 2 段落', () => expect(countParagraphs('a\n\rb')).toBe(2));
 });
 
 describe('countReadingMinutes', () => {

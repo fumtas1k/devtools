@@ -8,7 +8,8 @@ export function countGenkoSheets(s: string): number {
 
 /** 空行区切りの段落数 */
 export function countParagraphs(s: string): number {
-  return s.split(/\n\s*\n+/).filter((p) => p.trim().length > 0).length;
+  const normalized = s.replace(/\r\n|\r/g, '\n');
+  return normalized.split(/\n\s*\n+/).filter((p) => p.trim().length > 0).length;
 }
 
 /** 推定読了時間 (日本語 600 字/分、最小 1 分) */
