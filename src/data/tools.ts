@@ -99,6 +99,13 @@ export const tools: Tool[] = [
     description: 'カメラまたは画像ファイルからQRコードを読み取り、テキストを表示します',
     category: 'convert',
   },
+  {
+    slug: 'char-count',
+    name: '文字カウント',
+    description:
+      '文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計します。絵文字のDBエラー予測に対応',
+    category: 'convert',
+  },
 ];
 
 export const categoryLabel: Record<ToolCategory, string> = {
