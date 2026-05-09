@@ -1,0 +1,66 @@
+name: VRT Report Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+# 複数 PR を一括 close した場合の push 競合を防ぐ。
+# cancel-in-progress: false — cleanup を途中 cancel すると残骸が残るため
+concurrency:
+  group: vrt-cleanup-gh-pages
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: gh-pages から VRT レポートを削除
+        shell: bash
+        run: |
+          PR_NUM=${{ github.event.pull_request.number }}
+
+          # gh-pages ブランチが存在しない場合は何もしない
+          if ! git ls-remote --exit-code origin gh-pages 2>/dev/null; then
+            echo "gh-pages ブランチが存在しません — スキップ"
+            exit 0
+          fi
+
+          git fetch origin gh-pages:gh-pages
+          git checkout gh-pages
+
+          if [ ! -d "vrt/pr-${PR_NUM}" ]; then
+            echo "vrt/pr-${PR_NUM} は存在しません — スキップ"
+            exit 0
+          fi
+
+          git rm -rf "vrt/pr-${PR_NUM}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: VRT レポート削除 PR #${PR_NUM}"
+
+          # push（deploy と同時実行による競合時は fetch → reset → re-rm して最大 3 回リトライ）
+          for attempt in 1 2 3; do
+            if git push origin gh-pages; then
+              break
+            elif [ $attempt -lt 3 ]; then
+              echo "push 競合 (attempt ${attempt}/3): 最新を取得してリトライ..."
+              git fetch origin gh-pages
+              git reset --hard origin/gh-pages
+              if [ -d "vrt/pr-${PR_NUM}" ]; then
+                git rm -rf "vrt/pr-${PR_NUM}"
+                git commit -m "chore: VRT レポート削除 PR #${PR_NUM}"
+              else
+                echo "vrt/pr-${PR_NUM} は既に削除済み"
+                exit 0
+              fi
+              sleep $((attempt * 3))
+            else
+              echo "push 失敗: ${attempt} 回試行しました" >&2
+              exit 1
+            fi
+          done
