@@ -41,6 +41,8 @@ export function CharCountTool() {
     setText('');
   }
 
+  // 入力 validator: 空文字または「先頭ゼロを含まない 1 以上の整数」のみ受理。
+  // setState されない値は controlled input が直前値を保持する (UI 上 reject)。
   function handleSnsLimitChange(val: string) {
     if (val === '' || /^[1-9]\d*$/.test(val)) {
       setSnsLimit(val);
@@ -48,6 +50,17 @@ export function CharCountTool() {
   }
 
   const { chars, bytes: enc, lines, sns, manuscript } = result;
+  // 任意上限の数値化 (空欄なら null)。validator により先頭ゼロ・0・空以外は ≥1 整数のみ通過する
+  const customLimit = snsLimit === '' ? null : parseInt(snsLimit, 10);
+  // 各 SNS 上限の超過判定をまとめて算出 (色変更と SR 通知で共通参照)
+  const isOver = useMemo(
+    () => ({
+      twitter: sns.twitterWeight > 280,
+      bluesky: sns.blueskyCount > 300,
+      custom: customLimit !== null && chars.graphemes > customLimit,
+    }),
+    [sns.twitterWeight, sns.blueskyCount, customLimit, chars.graphemes]
+  );
 
   return (
     <div className="space-y-6">
@@ -126,23 +139,20 @@ export function CharCountTool() {
           <dt className="caption text-muted">
             X (旧 Twitter) weight <span className="caption text-muted">（概算）</span>
           </dt>
-          <dd
-            className={`caption font-mono text-right${sns.twitterWeight > 280 ? ' text-error' : ''}`}
-          >
+          <dd className={`caption font-mono text-right${isOver.twitter ? ' text-error' : ''}`}>
             {sns.twitterWeight} / 280
+            {isOver.twitter && <span className="sr-only"> 上限超過</span>}
           </dd>
           <dt className="caption text-muted">Bluesky</dt>
-          <dd
-            className={`caption font-mono text-right${sns.blueskyCount > 300 ? ' text-error' : ''}`}
-          >
+          <dd className={`caption font-mono text-right${isOver.bluesky ? ' text-error' : ''}`}>
             {sns.blueskyCount} / 300
+            {isOver.bluesky && <span className="sr-only"> 上限超過</span>}
           </dd>
           <dt className="caption text-muted self-center">任意上限</dt>
           <dd className="caption flex items-center justify-end gap-2">
-            <span
-              className={`font-mono${snsLimit !== '' && chars.graphemes > parseInt(snsLimit, 10) ? ' text-error' : ''}`}
-            >
+            <span className={`font-mono${isOver.custom ? ' text-error' : ''}`}>
               {chars.graphemes}
+              {isOver.custom && <span className="sr-only"> 上限超過</span>}
             </span>
             <span className="text-muted">/</span>
             <span className="inline-block w-20">
