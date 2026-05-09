@@ -41,6 +41,34 @@ test.describe('文字カウント', () => {
     await expect(page.getByText('95')).toBeVisible();
   });
 
+  test('任意上限を空にすると残数が "—" 表示 + SR 用に "未指定" が併記される', async ({ page }) => {
+    await page.getByLabel('入力テキスト').fill('あいうえお');
+    await page.getByLabel('任意上限').fill('');
+    // 任意上限 input の親 div 内にある font-mono span (残数表示) を確認
+    const remaining = page.getByLabel('任意上限').locator('..').locator('span.font-mono');
+    // 視覚: aria-hidden="true" な span に '—' / SR: sr-only の '未指定'
+    await expect(remaining).toContainText('—');
+    await expect(remaining).toContainText('未指定');
+  });
+
+  // 陽性対照: 入力 validator が "0" を実際に reject することを確認
+  // 旧実装 (/^\d+$/) では '0' が通り value が '0' になるためこのテストは fail する
+  test('[陽性対照] 任意上限欄に "0" を入力しても reject されて値が変わらない', async ({ page }) => {
+    const limit = page.getByLabel('任意上限');
+    await limit.fill('100');
+    await limit.fill('0');
+    // controlled input: setState されなければ value は直前の '100' のまま
+    await expect(limit).not.toHaveValue('0');
+  });
+
+  // 陽性対照: 先頭ゼロ "01" も reject されること (validator 仕様変更検出力強化)
+  test('[陽性対照] 任意上限欄に "01" (先頭ゼロ) を入力しても reject される', async ({ page }) => {
+    const limit = page.getByLabel('任意上限');
+    await limit.fill('100');
+    await limit.fill('01');
+    await expect(limit).not.toHaveValue('01');
+  });
+
   test('クリアボタンで textarea が空になる', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('テスト');
     await page.getByRole('button', { name: 'クリア' }).click();

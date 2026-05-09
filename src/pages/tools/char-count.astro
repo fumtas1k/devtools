@@ -15,6 +15,12 @@ const tool = tools.find((t) => t.slug === 'char-count')!;
       入力テキストの文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を一括集計します。
       すべての処理はブラウザ内で完結し、サーバーへの送信は一切ありません。
     </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">VARCHAR 最小長について</h3>
+    <p class="tool-info-body">
+      「VARCHAR 最小長 (utf8mb4)」は MySQL utf8mb4 / PostgreSQL の <code>VARCHAR(N)</code> に対応する値です（Unicode
+      code point 単位）。 SQL Server <code>NVARCHAR(N)</code> や Java <code>String.length()</code> は
+      UTF-16 code unit 単位（サロゲートペアで 2 消費）のため、 上の「JS .length (UTF-16)」の値を参照してください。
+    </p>
     <h3 class="mb-2 mt-4 tool-info-heading">DBエラー予測の使い方</h3>
     <p class="tool-info-body">
       絵文字や特殊文字を含む文字列をDBに投入するとエラーになることがあります。
