@@ -20,6 +20,16 @@ function findUnregisteredTools(toolList: { slug: string }[], pages: readonly str
   return toolUrls.filter((url) => !pages.includes(url));
 }
 
+/**
+ * PAGES にだけ存在する orphan エントリ (tools.ts から削除されたが PAGES に残存) を返す。
+ * STATIC ページ (`/`, `/about`, `/privacy`) は除外。
+ */
+const STATIC_PAGE_PATHS = new Set<string>(['/', '/about', '/privacy']);
+function findOrphanPages(toolList: { slug: string }[], pages: readonly string[]): string[] {
+  const toolUrls = new Set(toolList.map((t) => `/tools/${t.slug}`));
+  return pages.filter((url) => !STATIC_PAGE_PATHS.has(url) && !toolUrls.has(url));
+}
+
 describe('VRT PAGES coverage', () => {
   it('src/data/tools.ts の全 tool slug が visual-regression PAGES に登録されている', () => {
     const missing = findUnregisteredTools(tools, PAGES);
@@ -50,5 +60,45 @@ describe('[陽性対照] VRT PAGES coverage 検知機構', () => {
     const fakeTools = [{ slug: 'url-encode' }, { slug: 'qr-code' }];
     const missing = findUnregisteredTools(fakeTools, PAGES);
     expect(missing).toEqual([]);
+  });
+});
+
+// orphan 検出 (PAGES にあるが tools.ts には無い): ツール削除時の PAGES 削除忘れ検知
+describe('VRT PAGES orphan 検出', () => {
+  it('PAGES に存在するが tools.ts に対応する slug が無い orphan エントリがない', () => {
+    const orphans = findOrphanPages(tools, PAGES);
+    expect(orphans).toEqual([]);
+  });
+});
+
+describe('[陽性対照] orphan 検出機構', () => {
+  it('tools.ts に無い slug が PAGES にあると orphan として検出される', () => {
+    // ツールが url-encode 1 つだけ存在する fixture → 他の /tools/* は全部 orphan
+    const fakeTools = [{ slug: 'url-encode' }];
+    const orphans = findOrphanPages(fakeTools, PAGES);
+    expect(orphans.length).toBeGreaterThan(0);
+    expect(orphans).not.toContain('/tools/url-encode'); // 登録済みは含まない
+  });
+
+  it('STATIC ページ (`/`, `/about`, `/privacy`) は orphan として検出されない', () => {
+    // ツール 0 件 fixture でも STATIC は除外される
+    const orphans = findOrphanPages([], PAGES);
+    expect(orphans).not.toContain('/');
+    expect(orphans).not.toContain('/about');
+    expect(orphans).not.toContain('/privacy');
+  });
+});
+
+// PAGES の重複登録検出: 同じ URL を 2 回追加してしまった場合の検知
+describe('VRT PAGES 重複登録検出', () => {
+  it('PAGES 配列に重複登録がない', () => {
+    expect(new Set(PAGES).size).toBe(PAGES.length);
+  });
+});
+
+describe('[陽性対照] 重複検出機構', () => {
+  it('重複を含む配列では Set サイズが配列長より小さくなる', () => {
+    const dup = ['/tools/a', '/tools/b', '/tools/a'] as const;
+    expect(new Set(dup).size).toBeLessThan(dup.length);
   });
 });
