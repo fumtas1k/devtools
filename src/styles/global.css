@@ -275,6 +275,9 @@
   .btn-action {
     border-style: solid;
     border-width: 1px;
+    transition:
+      background-color 0.15s,
+      filter 0.15s;
   }
   .btn-action--default {
     border-color: var(--color-border-input);
@@ -295,6 +298,16 @@
     border-color: var(--color-error);
     background: transparent;
     color: var(--color-error);
+  }
+  /* hover: variant 別フィードバック。disabled には適用しない (cursor:not-allowed の既存動作と整合) */
+  .btn-action--primary:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-action--secondary:hover:not(:disabled) {
+    background: var(--color-bg-active);
+  }
+  .btn-action--danger:hover:not(:disabled) {
+    background: var(--color-error-bg);
   }
   .btn-action:disabled {
     background: var(--color-bg-subtle);
