@@ -81,6 +81,17 @@ describe('countWeightedWidth', () => {
     expect(countWeightedWidth('Hello世界')).toBe(4.5));
   it('ASCII と全角スペース "a　b" は 2 (0.5 + 1 + 0.5)', () =>
     expect(countWeightedWidth('a　b')).toBe(2));
+  // 制御文字は ASCII 印刷可能 (U+0020-U+007E) の範囲外なので 1 として扱う
+  it('改行を含む "a\\nb" は 2 (a 0.5 + LF 1 + b 0.5)', () =>
+    expect(countWeightedWidth('a\nb')).toBe(2));
+  it('タブ "\\t" 単独は 1 (制御文字は全角扱い)', () => expect(countWeightedWidth('\t')).toBe(1));
+  // 結合文字シーケンス (NFD): 書記素単位で先頭 code point のみ判定するため ASCII base が支配的
+  // ソース上の char 混入による曖昧化を防ぐため escape sequence で明示
+  it('NFD 形式 (e + U+0301) は 0.5 (ASCII base 文字扱い)', () =>
+    expect(countWeightedWidth('\u0065\u0301')).toBe(0.5));
+  // NFC 形式 "é" (U+00E9 単一 code point) は ASCII 範囲外で 1
+  it('NFC 形式 "é" (U+00E9) は 1 (Latin-1 領域)', () =>
+    expect(countWeightedWidth('\u00e9')).toBe(1));
 });
 
 describe('countGraphemesNoWhitespace', () => {
