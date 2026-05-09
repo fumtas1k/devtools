@@ -2,10 +2,11 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import sitemap from '@astrojs/sitemap';
+import { injectSwBuildId } from './astro/integrations/inject-sw-build-id';
 
 export default defineConfig({
   site: 'https://devtools-d9w.pages.dev',
-  integrations: [react(), sitemap()],
+  integrations: [react(), sitemap(), injectSwBuildId()],
   // #176 A-1: Astro built-in CSP で `<meta http-equiv="content-security-policy">` を各ページに注入し、
   // bundled scripts (Astro island loader 等の inline `<script type="module">` 含む) を自動で SHA-256 hash 化。
   // 結果として `public/_headers` の `script-src` から `'unsafe-inline'` を安全に削除できる。
