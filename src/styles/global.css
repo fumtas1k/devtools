@@ -299,14 +299,20 @@
     background: transparent;
     color: var(--color-error);
   }
-  /* hover: variant 別フィードバック。disabled には適用しない (cursor:not-allowed の既存動作と整合) */
-  .btn-action--primary:hover:not(:disabled) {
+  /* hover / :focus-visible: variant 別フィードバック。disabled には適用しない。
+     キーボードユーザにも mouse hover と同等のフィードバックを与える (a11y 観点)。
+     :focus 全般ではなく :focus-visible に限定することで、click 押下中の不要な
+     残留視覚反応を避ける。global.css の `:where(...):focus-visible` outline ring と併用。 */
+  .btn-action--primary:hover:not(:disabled),
+  .btn-action--primary:focus-visible:not(:disabled) {
     filter: brightness(0.92);
   }
-  .btn-action--secondary:hover:not(:disabled) {
+  .btn-action--secondary:hover:not(:disabled),
+  .btn-action--secondary:focus-visible:not(:disabled) {
     background: var(--color-bg-active);
   }
-  .btn-action--danger:hover:not(:disabled) {
+  .btn-action--danger:hover:not(:disabled),
+  .btn-action--danger:focus-visible:not(:disabled) {
     background: var(--color-error-bg);
   }
   .btn-action:disabled {

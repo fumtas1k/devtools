@@ -51,9 +51,9 @@ CSP `style-src 'unsafe-inline'` 撤去（issue #176 B 案）に伴い、JSX の 
 }
 ```
 
-#### ActionButton variant 別 hover の例
+#### ActionButton variant 別 hover / :focus-visible の例
 
-`ActionButton` は `btn-action` + `btn-action--{variant}` の semantic class を持ち、`global.css` の `@layer components` 内で variant ごとに `:hover:not(:disabled)` を定義する。`:not(:disabled)` で disabled 時に hover 反応が出ないことを保証する。
+`ActionButton` は `btn-action` + `btn-action--{variant}` の semantic class を持ち、`global.css` の `@layer components` 内で variant ごとに `:hover:not(:disabled)` と `:focus-visible:not(:disabled)` を**同じ視覚反応で**定義する。キーボードユーザにも mouse hover と同等のフィードバックを与えるための a11y 配慮。`:not(:disabled)` で disabled 時に反応が出ないことを保証する。`:focus` 全般ではなく `:focus-visible` に限定することで click 押下中の残留視覚反応を避ける（`global.css` の `:where(...):focus-visible` outline ring と併用）。
 
 ```css
 /* global.css `@layer components` ブロック内 */
@@ -62,16 +62,23 @@ CSP `style-src 'unsafe-inline'` 撤去（issue #176 B 案）に伴い、JSX の 
     background-color 0.15s,
     filter 0.15s;
 }
-.btn-action--primary:hover:not(:disabled) {
+.btn-action--primary:hover:not(:disabled),
+.btn-action--primary:focus-visible:not(:disabled) {
   filter: brightness(0.92); /* ベース色を保ちつつ 8% 暗化 */
 }
-.btn-action--secondary:hover:not(:disabled) {
+.btn-action--secondary:hover:not(:disabled),
+.btn-action--secondary:focus-visible:not(:disabled) {
   background: var(--color-bg-active); /* 透過 → blue-50 tint */
 }
-.btn-action--danger:hover:not(:disabled) {
+.btn-action--danger:hover:not(:disabled),
+.btn-action--danger:focus-visible:not(:disabled) {
   background: var(--color-error-bg); /* 透過 → red-50 tint */
 }
 ```
+
+#### `outline-none` Tailwind utility は使わない
+
+input / textarea / button などのフォーカス可能要素の className に `outline-none` を付けると、`:where(button, a, [role='button'], input, textarea, select):focus-visible` の global rule (specificity 0) を Tailwind utility (specificity 1) が上書きし、**キーボード focus 時のフォーカスリングが消滅**する。focus 表示は `global.css` の `:focus-visible` ルールに委ねること。デフォルトの mouse focus アウトラインは `:where(...)` 側で `:focus-visible` 限定なので mouse click では出ない（visible feedback は不要）。
 
 ### 2.2 ボタン高さの揃え
 
