@@ -35,6 +35,12 @@ test.describe('文字カウント', () => {
     await expect(page.getByText('LF')).toBeVisible();
   });
 
+  test('"Hello世界" 入力で半角0.5・全角1換算が 4.5 と表示される', async ({ page }) => {
+    await page.getByLabel('入力テキスト').fill('Hello世界');
+    // ASCII 5 文字 × 0.5 + 全角 2 文字 × 1 = 4.5
+    await expect(page.locator('dt:has-text("半角0.5・全角1換算") + dd')).toContainText('4.5');
+  });
+
   test('任意上限を 100 に変更すると "hello" 入力時に文字数 5 が表示される', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('hello');
     await page.getByLabel('任意上限').fill('100');

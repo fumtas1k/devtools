@@ -20,6 +20,8 @@ export interface CountResult {
     graphemes: number;
     graphemesNoNewline: number;
     graphemesNoWhitespace: number;
+    /** 半角=0.5、全角=1 で計算した文字数 */
+    weightedWidth: number;
   };
   bytes: {
     utf8: EncodingCompat;

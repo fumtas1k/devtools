@@ -5,6 +5,7 @@ import {
   countGraphemes,
   countGraphemesNoNewline,
   countGraphemesNoWhitespace,
+  countWeightedWidth,
 } from '@/utils/char-count/chars';
 import {
   checkUtf8,
@@ -63,6 +64,34 @@ describe('countGraphemesNoNewline', () => {
   it('"a\\r\\nb" は 2 (CRLF を除く)', () => expect(countGraphemesNoNewline('a\r\nb')).toBe(2));
   it('"あいう\\n" は 3', () => expect(countGraphemesNoNewline('あいう\n')).toBe(3));
   it('"😀\\n😀" は 2', () => expect(countGraphemesNoNewline('😀\n😀')).toBe(2));
+});
+
+describe('countWeightedWidth', () => {
+  it('空文字は 0', () => expect(countWeightedWidth('')).toBe(0));
+  it('ASCII 1 文字 "a" は 0.5', () => expect(countWeightedWidth('a')).toBe(0.5));
+  it('ASCII 4 文字 "abcd" は 2', () => expect(countWeightedWidth('abcd')).toBe(2));
+  it('半角スペースは 0.5', () => expect(countWeightedWidth(' ')).toBe(0.5));
+  it('日本語 1 文字 "あ" は 1', () => expect(countWeightedWidth('あ')).toBe(1));
+  it('日本語 3 文字 "あいう" は 3', () => expect(countWeightedWidth('あいう')).toBe(3));
+  it('半角カタカナ "ｱ" は 0.5', () => expect(countWeightedWidth('ｱ')).toBe(0.5));
+  it('半角カタカナ "ｱｲｳ" は 1.5', () => expect(countWeightedWidth('ｱｲｳ')).toBe(1.5));
+  it('絵文字 "😀" は 1 (全角扱い)', () => expect(countWeightedWidth('😀')).toBe(1));
+  it('混在 "aあ" は 1.5 (0.5 + 1)', () => expect(countWeightedWidth('aあ')).toBe(1.5));
+  it('混在 "Hello世界" は 4.5 (5×0.5 + 2×1)', () =>
+    expect(countWeightedWidth('Hello世界')).toBe(4.5));
+  it('ASCII と全角スペース "a　b" は 2 (0.5 + 1 + 0.5)', () =>
+    expect(countWeightedWidth('a　b')).toBe(2));
+  // 制御文字は ASCII 印刷可能 (U+0020-U+007E) の範囲外なので 1 として扱う
+  it('改行を含む "a\\nb" は 2 (a 0.5 + LF 1 + b 0.5)', () =>
+    expect(countWeightedWidth('a\nb')).toBe(2));
+  it('タブ "\\t" 単独は 1 (制御文字は全角扱い)', () => expect(countWeightedWidth('\t')).toBe(1));
+  // 結合文字シーケンス (NFD): 書記素単位で先頭 code point のみ判定するため ASCII base が支配的
+  // ソース上の char 混入による曖昧化を防ぐため escape sequence で明示
+  it('NFD 形式 (e + U+0301) は 0.5 (ASCII base 文字扱い)', () =>
+    expect(countWeightedWidth('\u0065\u0301')).toBe(0.5));
+  // NFC 形式 "é" (U+00E9 単一 code point) は ASCII 範囲外で 1
+  it('NFC 形式 "é" (U+00E9) は 1 (Latin-1 領域)', () =>
+    expect(countWeightedWidth('\u00e9')).toBe(1));
 });
 
 describe('countGraphemesNoWhitespace', () => {

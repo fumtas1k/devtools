@@ -89,6 +89,8 @@ export function CharCountTool() {
           <dd className="caption font-mono text-right">{chars.graphemesNoNewline}</dd>
           <dt className="caption text-muted">書記素 (空白除く)</dt>
           <dd className="caption font-mono text-right">{chars.graphemesNoWhitespace}</dd>
+          <dt className="caption text-muted">半角0.5・全角1換算</dt>
+          <dd className="caption font-mono text-right">{chars.weightedWidth}</dd>
           <dt className="caption text-muted">VARCHAR 最小長 (utf8mb4)</dt>
           <dd className="caption font-mono text-right">{chars.codePoints}</dd>
         </dl>

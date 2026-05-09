@@ -5,6 +5,7 @@ import {
   countGraphemes,
   countGraphemesNoNewline,
   countGraphemesNoWhitespace,
+  countWeightedWidth,
 } from './chars';
 import { checkUtf8, checkUtf8Bmp, checkUtf16, checkSjis, checkEucJp } from './encodings';
 import { analyzeLines } from './lines';
@@ -26,6 +27,7 @@ export function count(s: string): CountResult {
       graphemes: countGraphemes(s),
       graphemesNoNewline: countGraphemesNoNewline(s),
       graphemesNoWhitespace: countGraphemesNoWhitespace(s),
+      weightedWidth: countWeightedWidth(s),
     },
     bytes: {
       utf8: checkUtf8(s),
