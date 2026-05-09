@@ -159,19 +159,11 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 solo dev 体制（PR 作成者 = レビュアー = merger が同一人物）では GitHub branch protection の `Require approvals` を有効化すると **self-approve 不可で自分の PR が永久 merge 不能** になる（GitHub policy）。`Require pull request before merging` 単体は他人 review を強制せず、`Restrict who can push` も PR 経由 self-merge を block しない。**team 体制前提の review 強制設計を solo dev に提案しないこと**。
 
-過去判断: `docs/decisions.md [069]` (PR #333、`#255` 監査結果)。VRT bot push の bypass 懸念は team 体制前提の概念で本 repo には適用不可、actionable 対策は「VRT PR comment が出た PR は merge 前に diff 目視」に集約。
+詳細経緯: `docs/decisions.md [069]`
 
 ### 6.8 VRT pixel diff の baseline 更新は recommend しない
 
-VRT が小さい pixel diff（例: 723 pixels = 0.07%）を検出したとき「diff が微小だから baseline 更新で OK」と recommend してはいけない。**pixel 数の小ささと visual design 品質の劣化有無は別軸**。design token 由来の意図しない変更が混入していても pixel ratio は小さく見える。
-
-判断順序:
-
-1. diff 画像 (Playwright artifact) を user が **目視確認**
-2. 意図的変更ならその時点で baseline 更新 workflow を trigger
-3. 意図しない regression なら fix
-
-エージェントは「数値的に小さい」を根拠に baseline 更新を勧めない。デザイン品質の SoT は user 視覚評価。
+VRT が小さい pixel diff (例: 0.07%) を検出しても「微小だから baseline 更新で OK」と recommend してはいけない。**pixel 数 ≠ visual design 品質** (design token 由来の意図しない変更でも pixel ratio は小さく見える)。判断は user の目視確認に委ね、エージェントは数値根拠で baseline 更新を勧めない。
 
 ### 6.9 サブエージェント運用の補足
 
