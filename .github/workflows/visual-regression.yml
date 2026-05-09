@@ -84,27 +84,46 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global --add safe.directory '*'
 
-          # gh-pages worktree を作成（既存なら fetch、なければ孤立ブランチ作成）
+          # gh-pages を local branch として worktree 化
+          # （既存: fetch して local branch 作成、なければ孤立ブランチ作成）
           if git ls-remote --exit-code origin gh-pages 2>/dev/null; then
-            git fetch origin gh-pages:refs/remotes/origin/gh-pages
-            git worktree add /tmp/gh-pages remotes/origin/gh-pages
+            git fetch origin gh-pages:gh-pages
+            git worktree add /tmp/gh-pages gh-pages
           else
             git worktree add --orphan -b gh-pages /tmp/gh-pages
           fi
 
-          # VRT レポートをコピー
+          # VRT レポートをコピー（cd 後も参照できるよう絶対パスを使用）
+          WS="${GITHUB_WORKSPACE}"
           mkdir -p /tmp/gh-pages/vrt/pr-${PR_NUM}
-          cp -r vrt-slider-report/. /tmp/gh-pages/vrt/pr-${PR_NUM}/
+          cp -r "${WS}/vrt-slider-report/." /tmp/gh-pages/vrt/pr-${PR_NUM}/
 
-          # コミット & push
           cd /tmp/gh-pages
           git add .
           if git diff --staged --quiet; then
             echo "変更なし — スキップ"
-          else
-            git commit -m "chore: VRT スライダーレポート更新 PR #${PR_NUM}"
-            git push "${REPO_URL}" gh-pages
+            exit 0
           fi
+          git commit -m "chore: VRT スライダーレポート更新 PR #${PR_NUM}"
+
+          # push（複数 PR 並走による競合時は fetch → reset → reapply して最大 3 回リトライ）
+          for attempt in 1 2 3; do
+            if git push "${REPO_URL}" gh-pages; then
+              break
+            elif [ $attempt -lt 3 ]; then
+              echo "push 競合 (attempt ${attempt}/3): 最新を取得してリトライ..."
+              git fetch "${REPO_URL}" refs/heads/gh-pages:refs/remotes/tmp/gh-pages
+              git reset --hard refs/remotes/tmp/gh-pages
+              mkdir -p vrt/pr-${PR_NUM}
+              cp -r "${WS}/vrt-slider-report/." vrt/pr-${PR_NUM}/
+              git add .
+              git diff --staged --quiet || git commit -m "chore: VRT スライダーレポート更新 PR #${PR_NUM}"
+              sleep $((attempt * 3))
+            else
+              echo "push 失敗: ${attempt} 回試行しました" >&2
+              exit 1
+            fi
+          done
 
       - name: 既存の VRT comment を検索（dedup 用）
         if: ${{ !cancelled() && github.event.pull_request.number }}
