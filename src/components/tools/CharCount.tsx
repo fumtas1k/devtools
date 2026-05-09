@@ -60,8 +60,7 @@ export function CharCountTool() {
   }
 
   const { chars, bytes: enc, lines, sns, manuscript } = result;
-  const snsRemaining =
-    snsLimit === '' ? null : Math.max(1, parseInt(snsLimit, 10)) - chars.graphemes;
+  const snsRemaining = snsLimit === '' ? null : parseInt(snsLimit, 10) - chars.graphemes;
 
   return (
     <div className="space-y-6">
@@ -158,7 +157,14 @@ export function CharCountTool() {
           <span
             className={`font-mono${snsRemaining !== null && snsRemaining < 0 ? ' text-error' : ''}`}
           >
-            {snsRemaining === null ? '—' : snsRemaining}
+            {snsRemaining === null ? (
+              <>
+                <span aria-hidden="true">—</span>
+                <span className="sr-only">未指定</span>
+              </>
+            ) : (
+              snsRemaining
+            )}
           </span>
         </div>
       </Section>
