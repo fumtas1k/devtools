@@ -2,18 +2,6 @@
 
 このドキュメントは、このリポジトリで作業するすべての AI エージェント（Claude Code, Gemini CLI 等）が遵守すべき共通の規約を定めたものです。
 
-## プロジェクト概要
-
-ブラウザ完結型の開発者ツール集「DevTools」。
-
-- **Framework**: Astro 6.1.5 (SSG)
-- **UI**: React 19 (Islands Architecture)
-- **Styling**: Tailwind CSS 4.0.0
-- **Language**: TypeScript
-- **Package Manager**: **npm**（`pnpm` / `yarn` は使用しない）
-
----
-
 ## 1. 言語・出力規約
 
 - **コミットメッセージ・PR 説明文・ユーザー向けテキスト**: **必ず日本語**で書くこと。
@@ -109,17 +97,7 @@ post-PR 代行は不要、CI が最終ゲート。
 
 ### 6.2.1 worktree 作成直後の必須セットアップ
 
-`git worktree add` 直後に node_modules を必ず整備する。SessionStart hook は session 開始時のみ fire するため、mid-session で worktree を作成した場合は fire せず、手動で `npm ci` を実行する必要がある（subagent isolation / 親手動 `git worktree add` 共通）。
-
-```bash
-# worktree 作成（slug は branch 命名 `<type>/<slug>` と揃える）
-git worktree add .claude/worktrees/<slug> origin/develop
-
-# 直後に node_modules 整備（mid-session では SessionStart hook が fire しないため必須）
-# `npm ci` は idempotent。`ls` ガードで skip すると package-lock 更新後に false-skip するため明示実行する
-cd .claude/worktrees/<slug>
-npm ci
-```
+`git worktree add` 直後は必ず `npm ci` を実行する（mid-session 作成では SessionStart hook が fire しないため）。詳細手順 → `docs/playbooks/e2e-validation.md`
 
 ### 6.3 PR 作成時のベースブランチ
 
@@ -152,9 +130,9 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 `.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
 
-- **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Read` / `Write` / `Edit` ともに `/tmp/claude/**` および `$TMPDIR (/var/folders/*/*/T/**)` が allow、`/tmp/**` 直下は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。**credential / secret 類は tmp に置かない**（同 user 配下の Claude セッション間で相互可読）。
-- **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
-- **sandbox `denyWithinAllow` を見て user に手動作業を振らない**: `.claude/settings.json` / `.claude/skills/` 等が sandbox の `denyWithinAllow` に含まれていても、それは **`Bash` の `mkdir` / `rm` / `tee` / `sed -i` 経由を deny する** だけ。**`Edit` / `Write` tool 経由は permissions の `ask` 経路に乗って通る**（user 環境の事前 allow/auto-approve で待ちなしに成功することも多い）。手動で別ターミナル作業を依頼する前に **必ず `Write` / `Edit` tool で実機検証** すること。tool で通れば `git add` 含む後続も Claude 内で完結する。Bash での `mkdir` / `rm` が必要な場合だけが手動依頼の対象。
+- **一時ファイル**: `$TMPDIR` または `/tmp/claude/` 配下に作成する（`/tmp/**` 直下は ask）。credential / secret 類は置かない。
+- **PR コメント取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`gh api` は ask 経路のため行単位レビューが本当に必要な場合のみ断ってから使う。
+- **sandbox 制約**: `denyWithinAllow` に含まれるファイルへの操作は Bash 経由ではなく `Edit` / `Write` tool 経由を先に試す（tool で通れば Claude 内で完結する）。
 
 ### 6.7 solo dev 体制での branch protection 提案禁止
 
@@ -198,12 +176,6 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 検証: `@layer components` 内手書き class に variant を新規追加した場合、`npm run build` 後に `dist/_astro/BaseLayout.*.css` で CSS rule が生成されているか必ず確認する。
 
 過去事例: PR #277 (#176 B 案 PR 4) で `hover:bg-error-tint` / `hover:bg-subtle` の Tailwind hover utility 表記により hover フィードバックが完全消失する silent regression。専用 hover class (`.btn-remove-card` / `.hover-bg-subtle` / `.hover-bg-active`) で対応。
-
-**副次発見: コンテンツスキャンで unused utility 混入リスク**
-
-Tailwind v4 vite plugin の auto content scan は `docs/` 配下の markdown も対象とし、spec / plan / agent-lessons / decisions の md ファイル中で説明用に書いた `hover:bg-blue-50` 等の utility 名リテラル文字列を拾って unused utility が build CSS に混入することがある (PR #277 で reviewer 観察)。`src/styles/global.css` 冒頭の `@source not "../../docs"` ディレクティブで対処済 (実装は守られる)。
-
-ただし `src/` 配下の `.css` / `.tsx` 等のコメント内に utility 名リテラルを書くと scan されるため、説明する場合は `hover-prefix + bg + blue-50` のように **分割して記述** する (PR #277 commit `58ebf04` の global.css コメントが実例)。新規に `@layer components` を増やす際は、コメント中の utility 名表記もこの分割記法を採用する。
 
 ---
 
@@ -287,32 +259,7 @@ npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
 
 ### ATC のテンプレート
 
-```markdown
-# Active Task Context
-
-## 🎯 Objective
-
-[このセッションで達成する最終ゴールを 1 文]
-
-## 🛠️ Current Steps
-
-- [ ] ステップ1
-
-## 🚫 Out of Scope (Do Not Touch)
-
-- [ ] このセッションの Objective に書かれていないファイル一切
-- [ ] aria-\* / role= 属性の削除（明示的な許可なしには禁止）
-- [ ] issue 本文に記載のない機能追加・設計変更
-<!-- 具体例を追記: 例) src/components/ui/OutputField.tsx の a11y 属性 -->
-
-## 🟢 Review & Feedback
-
-- (指摘事項をここに)
-
-## 📝 Pending (Next Tasks / Improvements)
-
-- (スコープ外の発見をここに)
-```
+テンプレートファイル: `tasks/active_context_template.md`
 
 ---
 
