@@ -42,4 +42,25 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: VRT レポート削除 PR #${PR_NUM}"
-          git push origin gh-pages
+
+          # push（deploy と同時実行による競合時は fetch → reset → re-rm して最大 3 回リトライ）
+          for attempt in 1 2 3; do
+            if git push origin gh-pages; then
+              break
+            elif [ $attempt -lt 3 ]; then
+              echo "push 競合 (attempt ${attempt}/3): 最新を取得してリトライ..."
+              git fetch origin gh-pages
+              git reset --hard origin/gh-pages
+              if [ -d "vrt/pr-${PR_NUM}" ]; then
+                git rm -rf "vrt/pr-${PR_NUM}"
+                git commit -m "chore: VRT レポート削除 PR #${PR_NUM}"
+              else
+                echo "vrt/pr-${PR_NUM} は既に削除済み"
+                exit 0
+              fi
+              sleep $((attempt * 3))
+            else
+              echo "push 失敗: ${attempt} 回試行しました" >&2
+              exit 1
+            fi
+          done
