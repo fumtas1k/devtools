@@ -1,4 +1,4 @@
-const CACHE_NAME = 'devtools-v1';
+const CACHE_NAME = 'devtools-__BUILD_ID__';
 
 // オフライン時のフォールバック先
 const OFFLINE_URL = '/';
