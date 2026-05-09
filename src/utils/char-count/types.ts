@@ -3,7 +3,6 @@ export interface EncodingCompat {
   /** ok=true のときのバイト数。不可なら null (?置換 byte を出さない) */
   bytes: number | null;
   failedCount: number;
-  breakdown: { emoji: number; vs: number; zwj: number; cjkExt: number; other: number };
 }
 
 export interface LineStats {

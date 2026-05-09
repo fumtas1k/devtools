@@ -7,18 +7,7 @@ import { count } from '@/utils/char-count';
 import type { EncodingCompat } from '@/utils/char-count/types';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
-function formatBreakdown(bd: EncodingCompat['breakdown']): string {
-  const parts: string[] = [];
-  if (bd.emoji > 0) parts.push(`絵文字 ${bd.emoji}`);
-  if (bd.zwj > 0) parts.push(`ZWJ ${bd.zwj}`);
-  if (bd.vs > 0) parts.push(`VS ${bd.vs}`);
-  if (bd.cjkExt > 0) parts.push(`CJK拡張 ${bd.cjkExt}`);
-  if (bd.other > 0) parts.push(`その他 ${bd.other}`);
-  return parts.join(' / ');
-}
-
 function EncRow({ label, compat }: { label: string; compat: EncodingCompat }) {
-  const breakdown = !compat.ok ? formatBreakdown(compat.breakdown) : '';
   return (
     <>
       <dt className="caption text-muted">{label}</dt>
@@ -34,7 +23,6 @@ function EncRow({ label, compat }: { label: string; compat: EncodingCompat }) {
             <span aria-hidden="true">❌</span>
             <span className="sr-only">不可</span>
             {` 不可: ${compat.failedCount} 文字`}
-            {breakdown ? ` (${breakdown})` : ''}
           </span>
         )}
       </dd>
@@ -53,6 +41,8 @@ export function CharCountTool() {
     setText('');
   }
 
+  // 入力 validator: 空文字または「先頭ゼロを含まない 1 以上の整数」のみ受理。
+  // setState されない値は controlled input が直前値を保持する (UI 上 reject)。
   function handleSnsLimitChange(val: string) {
     if (val === '' || /^[1-9]\d*$/.test(val)) {
       setSnsLimit(val);
@@ -60,7 +50,17 @@ export function CharCountTool() {
   }
 
   const { chars, bytes: enc, lines, sns, manuscript } = result;
-  const snsRemaining = snsLimit === '' ? null : parseInt(snsLimit, 10) - chars.graphemes;
+  // 任意上限の数値化 (空欄なら null)。validator により先頭ゼロ・0・空以外は ≥1 整数のみ通過する
+  const customLimit = snsLimit === '' ? null : parseInt(snsLimit, 10);
+  // 各 SNS 上限の超過判定をまとめて算出 (色変更と SR 通知で共通参照)
+  const isOver = useMemo(
+    () => ({
+      twitter: sns.twitterWeight > 280,
+      bluesky: sns.blueskyCount > 300,
+      custom: customLimit !== null && chars.graphemes > customLimit,
+    }),
+    [sns.twitterWeight, sns.blueskyCount, customLimit, chars.graphemes]
+  );
 
   return (
     <div className="space-y-6">
@@ -135,38 +135,38 @@ export function CharCountTool() {
 
       {/* 4. SNS */}
       <Section title="SNS" role="status" aria-live="polite">
-        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 mb-3">
+        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1">
           <dt className="caption text-muted">
-            Twitter weight <span className="caption text-muted">（概算）</span>
+            X (旧 Twitter) weight <span className="caption text-muted">（概算）</span>
           </dt>
-          <dd className="caption font-mono text-right">{sns.twitterWeight} / 280</dd>
+          <dd className={`caption font-mono text-right${isOver.twitter ? ' text-error' : ''}`}>
+            {sns.twitterWeight} / 280
+            {isOver.twitter && <span className="sr-only"> 上限超過</span>}
+          </dd>
           <dt className="caption text-muted">Bluesky</dt>
-          <dd className="caption font-mono text-right">{sns.blueskyCount} / 300</dd>
+          <dd className={`caption font-mono text-right${isOver.bluesky ? ' text-error' : ''}`}>
+            {sns.blueskyCount} / 300
+            {isOver.bluesky && <span className="sr-only"> 上限超過</span>}
+          </dd>
+          <dt className="caption text-muted self-center">任意上限</dt>
+          <dd className="caption flex items-center justify-end gap-2">
+            <span className={`font-mono${isOver.custom ? ' text-error' : ''}`}>
+              {chars.graphemes}
+              {isOver.custom && <span className="sr-only"> 上限超過</span>}
+            </span>
+            <span className="text-muted">/</span>
+            <span className="inline-block w-20">
+              <BareInput
+                type="number"
+                inputMode="numeric"
+                value={snsLimit}
+                onChange={handleSnsLimitChange}
+                aria-label="任意上限"
+                min="1"
+              />
+            </span>
+          </dd>
         </dl>
-        <div className="flex items-center gap-2 caption text-muted">
-          <BareInput
-            type="number"
-            inputMode="numeric"
-            value={snsLimit}
-            onChange={handleSnsLimitChange}
-            aria-label="任意上限"
-            className="w-20"
-            min="1"
-          />
-          <span>上限　残り:</span>
-          <span
-            className={`font-mono${snsRemaining !== null && snsRemaining < 0 ? ' text-error' : ''}`}
-          >
-            {snsRemaining === null ? (
-              <>
-                <span aria-hidden="true">—</span>
-                <span className="sr-only">未指定</span>
-              </>
-            ) : (
-              snsRemaining
-            )}
-          </span>
-        </div>
       </Section>
 
       {/* 5. 原稿 */}
