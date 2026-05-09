@@ -30,6 +30,25 @@ jobs:
       - name: フォーマットチェックを実行
         run: npm run format:check
 
+      # #339: astro check は CI で走っていなかったため hint debt が蓄積していた。
+      # errors / warnings / hints すべて 0 を強制し、新規 hint 混入を即時 fail させる。
+      # 内訳をログに残して debug 容易性も担保。
+      - name: astro check（errors / warnings / hints すべて 0 を強制）
+        run: |
+          output=$(npx astro check 2>&1)
+          echo "$output"
+          errors=$(echo "$output" | grep -oE '^- [0-9]+ errors?' | tail -1 | grep -oE '[0-9]+' || true)
+          warnings=$(echo "$output" | grep -oE '^- [0-9]+ warnings?' | tail -1 | grep -oE '[0-9]+' || true)
+          hints=$(echo "$output" | grep -oE '^- [0-9]+ hints?' | tail -1 | grep -oE '[0-9]+' || true)
+          errors=${errors:-0}
+          warnings=${warnings:-0}
+          hints=${hints:-0}
+          echo "Parsed summary: errors=$errors / warnings=$warnings / hints=$hints"
+          if [ "$errors" != "0" ] || [ "$warnings" != "0" ] || [ "$hints" != "0" ]; then
+            echo "::error::astro check requires 0/0/0 but got errors=$errors / warnings=$warnings / hints=$hints"
+            exit 1
+          fi
+
       - name: 本番相当アセットを build（meta-csp.test.ts が dist/ を入力とするため必要 / #250）
         run: npm run build
 
