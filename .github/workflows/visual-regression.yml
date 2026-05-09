@@ -156,7 +156,15 @@ jobs:
             echo "## 🖼️ Visual Regression Test 結果"
             echo ""
             if [ "${{ steps.vrt.outcome }}" = "success" ]; then
-              echo "- **Status**: ✅ 全 36 件 pass"
+              # vrt-output.log の playwright 集計行 "N passed" から件数を動的抽出。
+              # PAGES × VIEWPORTS 数を hardcode していると新規ページ追加時に
+              # 文言と実態が乖離するため (issue #355 の派生対応)。
+              PASS_COUNT=$(grep -oE '[0-9]+ passed' vrt-output.log 2>/dev/null | tail -1 | grep -oE '^[0-9]+' || echo "")
+              if [ -n "$PASS_COUNT" ]; then
+                echo "- **Status**: ✅ 全 ${PASS_COUNT} 件 pass"
+              else
+                echo "- **Status**: ✅ pass"
+              fi
             else
               echo "- **Status**: ❌ 一部 fail"
             fi

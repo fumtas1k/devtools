@@ -77,8 +77,9 @@ post-PR 代行は不要、CI が最終ゲート。
 
 1. `src/components/tools/ToolName.tsx` を作成
 2. `src/pages/tools/tool-slug.astro` を作成（`client:load` で React コンポーネントをマウント）
-3. `src/pages/index.astro` のツール一覧に追加
-4. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
+3. `src/data/tools.ts` の `tools` 配列にエントリを追加（slug / name / description / category）
+4. `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列に `/tools/<slug>` を追加（VRT 対象に登録）。baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を `workflow_dispatch` trigger して生成（mac との font 描画差を回避するためローカル生成は不可）。**漏れた場合は `tests/meta/vrt-pages-coverage.test.ts` が `npm run test` で fail させる**ため CI で必ず検知される（issue #355 で導入）。
+5. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
 
 新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `docs/ui-conventions.md` を参照。
 
