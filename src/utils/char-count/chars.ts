@@ -26,8 +26,19 @@ export function countGraphemesNoWhitespace(s: string): number {
 }
 
 /**
- * 半角文字を 0.5、全角文字を 1 として計算した文字数（書記素ベース）。
- * 半角判定: ASCII 印刷可能 (U+0020–U+007E) + 半角カタカナ (U+FF61–U+FF9F)
+ * 半角を 0.5、全角を 1 として計算した文字数（書記素ベース）。
+ *
+ * 半角判定: 書記素クラスタの**先頭 code point**が
+ *   - ASCII 印刷可能 (U+0020–U+007E) または
+ *   - 半角カタカナ (U+FF61–U+FF9F)
+ * のときのみ 0.5、それ以外（制御文字・Latin-1 領域・全角・絵文字等）を 1 とする。
+ *
+ * **正規化はしない**: NFD `e + U+0301` と NFC `U+00E9` は同じ見た目でも結果が異なる
+ * (前者 0.5 / 後者 1)。`bytes.utf8` / `codePoints` と同じく byte 表現に忠実な指標として扱う。
+ * 視覚的書記素単位の厳密な計数が必要なら `graphemes` を併用すること。
+ *
+ * 用途: 全角換算 N の legacy column 制限など、ASCII/半角カナを 1 byte / 全角を 2 byte とした
+ * Shift_JIS 系の概算チェック。byte / code point の exact チェックには `bytes.utf8` / `codePoints` を使う。
  */
 export function countWeightedWidth(s: string): number {
   if (s.length === 0) return 0;
