@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Section } from '@/components/ui/Section';
 import { InputField } from '@/components/ui/InputField';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -7,17 +7,35 @@ import { count } from '@/utils/char-count';
 import type { EncodingCompat } from '@/utils/char-count/types';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
+function formatBreakdown(bd: EncodingCompat['breakdown']): string {
+  const parts: string[] = [];
+  if (bd.emoji > 0) parts.push(`絵文字 ${bd.emoji}`);
+  if (bd.zwj > 0) parts.push(`ZWJ ${bd.zwj}`);
+  if (bd.vs > 0) parts.push(`VS ${bd.vs}`);
+  if (bd.cjkExt > 0) parts.push(`CJK拡張 ${bd.cjkExt}`);
+  if (bd.other > 0) parts.push(`その他 ${bd.other}`);
+  return parts.join(' / ');
+}
+
 function EncRow({ label, compat }: { label: string; compat: EncodingCompat }) {
+  const breakdown = !compat.ok ? formatBreakdown(compat.breakdown) : '';
   return (
     <>
       <dt className="caption text-muted">{label}</dt>
       <dd className="caption font-mono text-right">
         {compat.ok ? (
           <span className="text-success">
-            ✅ {compat.bytes != null ? `${compat.bytes} byte` : ''}
+            <span aria-hidden="true">✅</span>
+            <span className="sr-only">対応</span>
+            {compat.bytes != null ? ` ${compat.bytes} byte` : ''}
           </span>
         ) : (
-          <span className="text-error">❌ 不可: {compat.failedCount} 文字</span>
+          <span className="text-error">
+            <span aria-hidden="true">❌</span>
+            <span className="sr-only">不可</span>
+            {` 不可: ${compat.failedCount} 文字`}
+            {breakdown ? ` (${breakdown})` : ''}
+          </span>
         )}
       </dd>
     </>
@@ -29,14 +47,15 @@ export function CharCountTool() {
   const [snsLimit, setSnsLimit] = useState('280');
 
   const debouncedText = useDebouncedValue(text, 100);
-  const [result, setResult] = useState(() => count(''));
-
-  useEffect(() => {
-    setResult(count(debouncedText));
-  }, [debouncedText]);
+  const result = useMemo(() => count(debouncedText), [debouncedText]);
 
   function handleClear() {
     setText('');
+  }
+
+  function handleSnsLimitChange(val: string) {
+    const n = parseInt(val, 10);
+    setSnsLimit(isNaN(n) || n < 1 ? '1' : val);
   }
 
   const { chars, bytes: enc, lines, sns, manuscript } = result;
@@ -76,7 +95,7 @@ export function CharCountTool() {
       </Section>
 
       {/* 2. エンコーディング互換性 */}
-      <Section title="エンコーディング互換性">
+      <Section title="エンコーディング互換性" role="status" aria-live="polite">
         <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1">
           <EncRow label="UTF-8 (utf8mb4)" compat={enc.utf8} />
           <EncRow label="UTF-8 BMP only (utf8mb3)" compat={enc.utf8Bmp} />
@@ -129,7 +148,7 @@ export function CharCountTool() {
             type="number"
             inputMode="numeric"
             value={snsLimit}
-            onChange={setSnsLimit}
+            onChange={handleSnsLimitChange}
             aria-label="任意上限"
             className="w-20"
             min="1"

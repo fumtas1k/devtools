@@ -1,3 +1,4 @@
+// 'ja' を選ぶ主目的は東アジア文字前提だが、書記素分割は locale 非依存に近い
 const segmenter = new Intl.Segmenter('ja', { granularity: 'grapheme' });
 
 export function countUtf16Length(s: string): number {
