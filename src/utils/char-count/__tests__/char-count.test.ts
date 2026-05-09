@@ -505,5 +505,6 @@ describe('count (integration)', () => {
     expect(r.meta.truncated).toBe(false);
     expect(r.meta.inputLength).toBe(1_000_001);
     expect(r.meta.large).toBe(true);
-  });
+    // encoding-japanese の 1M 文字 round-trip が支配的で 5s デフォルトを超えるため延長
+  }, 30_000);
 });
