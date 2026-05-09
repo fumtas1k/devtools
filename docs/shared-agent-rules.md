@@ -132,7 +132,7 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 - **一時ファイル**: `$TMPDIR` または `/tmp/claude/` 配下に作成する（`/tmp/**` 直下は ask）。credential / secret 類は置かない。
 - **PR コメント取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`gh api` は ask 経路のため行単位レビューが本当に必要な場合のみ断ってから使う。
-- **sandbox 制約**: `denyWithinAllow` に含まれるファイルへの操作は Bash 経由ではなく `Edit` / `Write` tool 経由を先に試す（tool で通れば Claude 内で完結する）。
+- **sandbox 制約**: `denyWithinAllow` に含まれるファイルへの操作は Bash (`mkdir` / `rm` / `tee` / `sed -i` 等) 経由では deny されるが、`Edit` / `Write` tool 経由は通る（tool で完結できれば別ターミナル依頼不要）。操作前に必ず `Edit` / `Write` を先に試す。`!` prefix は sandbox bypass にならない（memory 参照）。
 
 ### 6.7 solo dev 体制での branch protection 提案禁止
 
@@ -176,6 +176,10 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 検証: `@layer components` 内手書き class に variant を新規追加した場合、`npm run build` 後に `dist/_astro/BaseLayout.*.css` で CSS rule が生成されているか必ず確認する。
 
 過去事例: PR #277 (#176 B 案 PR 4) で `hover:bg-error-tint` / `hover:bg-subtle` の Tailwind hover utility 表記により hover フィードバックが完全消失する silent regression。専用 hover class (`.btn-remove-card` / `.hover-bg-subtle` / `.hover-bg-active`) で対応。
+
+### 7.2 Tailwind v4 の `docs/` auto scan 除外
+
+Tailwind v4 vite plugin は `docs/` 配下の markdown も content scan 対象にするため、`.md` ファイルに書かれた Tailwind class 名 (例: `bg-red-500`) が意図せず CSS に含まれることがある。`src/styles/global.css:11` に `@source not "../../docs";` で除外済み。**「不要に見える」として削除しないこと**。削除すると docs 記述起因の不要 CSS が混入する。
 
 ---
 
