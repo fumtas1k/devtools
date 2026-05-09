@@ -7,8 +7,8 @@ const PLACEHOLDER = '__BUILD_ID__';
 
 export function resolveBuildId(): string {
   const sha =
-    process.env.CF_PAGES_COMMIT_SHA ??
-    process.env.GITHUB_SHA ??
+    process.env.CF_PAGES_COMMIT_SHA ||
+    process.env.GITHUB_SHA ||
     execSync('git rev-parse --short HEAD').toString().trim();
   return sha.slice(0, 7);
 }
