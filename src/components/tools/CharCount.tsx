@@ -60,7 +60,6 @@ export function CharCountTool() {
   }
 
   const { chars, bytes: enc, lines, sns, manuscript } = result;
-  const snsRemaining = snsLimit === '' ? null : parseInt(snsLimit, 10) - chars.graphemes;
 
   return (
     <div className="space-y-6">
@@ -135,17 +134,17 @@ export function CharCountTool() {
 
       {/* 4. SNS */}
       <Section title="SNS" role="status" aria-live="polite">
-        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 mb-3">
+        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1">
           <dt className="caption text-muted">
             Twitter weight <span className="caption text-muted">（概算）</span>
           </dt>
           <dd className="caption font-mono text-right">{sns.twitterWeight} / 280</dd>
           <dt className="caption text-muted">Bluesky</dt>
           <dd className="caption font-mono text-right">{sns.blueskyCount} / 300</dd>
-        </dl>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 caption text-muted">
-          <label className="flex items-center gap-2 whitespace-nowrap">
-            <span>上限:</span>
+          <dt className="caption text-muted self-center">任意上限</dt>
+          <dd className="caption flex items-center justify-end gap-2">
+            <span className="font-mono">{chars.graphemes}</span>
+            <span className="text-muted">/</span>
             <span className="inline-block w-20">
               <BareInput
                 type="number"
@@ -156,23 +155,8 @@ export function CharCountTool() {
                 min="1"
               />
             </span>
-          </label>
-          <span className="flex items-center gap-2 whitespace-nowrap">
-            <span>残り:</span>
-            <span
-              className={`font-mono${snsRemaining !== null && snsRemaining < 0 ? ' text-error' : ''}`}
-            >
-              {snsRemaining === null ? (
-                <>
-                  <span aria-hidden="true">—</span>
-                  <span className="sr-only">未指定</span>
-                </>
-              ) : (
-                snsRemaining
-              )}
-            </span>
-          </span>
-        </div>
+          </dd>
+        </dl>
       </Section>
 
       {/* 5. 原稿 */}

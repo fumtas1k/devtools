@@ -35,20 +35,12 @@ test.describe('文字カウント', () => {
     await expect(page.getByText('LF')).toBeVisible();
   });
 
-  test('任意上限を 100 に変更すると "hello" 入力時に残り 95 が表示される', async ({ page }) => {
+  test('任意上限を 100 に変更すると "hello" 入力時に文字数 5 が表示される', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('hello');
     await page.getByLabel('任意上限').fill('100');
-    await expect(page.getByText('95')).toBeVisible();
-  });
-
-  test('任意上限を空にすると残数が "—" 表示 + SR 用に "未指定" が併記される', async ({ page }) => {
-    await page.getByLabel('入力テキスト').fill('あいうえお');
-    await page.getByLabel('任意上限').fill('');
-    // 「残り:」ラベルの親 span 内にある font-mono span (残数表示) を確認
-    const remaining = page.getByText('残り:').locator('..').locator('span.font-mono');
-    // 視覚: aria-hidden="true" な span に '—' / SR: sr-only の '未指定'
-    await expect(remaining).toContainText('—');
-    await expect(remaining).toContainText('未指定');
+    // 任意上限行 (dt + dd) の dd に文字数 5 が表示される
+    await expect(page.locator('dt:has-text("任意上限") + dd')).toContainText('5');
+    await expect(page.getByLabel('任意上限')).toHaveValue('100');
   });
 
   // 陽性対照: 入力 validator が "0" を実際に reject することを確認
