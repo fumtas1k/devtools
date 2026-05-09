@@ -145,12 +145,7 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 3 行以上の bash・過去にも書いた覚えのある手順・覚えにくいフラグを伴う複合コマンドを書こうとしたら、その場で実行する前に `scripts/` への切り出しをユーザーに提案する（同意を得てからスクリプト化する。先回りして勝手に作らない）。
 
-スクリプト配置の使い分け:
-
-- `scripts/` … 人間 / CI workflow / `package.json` / Claude が Bash で叩く汎用ユーティリティ
-- `.claude/scripts/` … Claude Code harness 専用 (`.claude/settings.json` の `hooks.*` / `statusLine.command` 等から呼ばれるもののみ)
-
-汎用ユーティリティを `.claude/scripts/` に置くと Claude Code を使わない開発者には実行されないため、CI / package.json から参照する性質のものは必ず `scripts/` 側に置く。
+`scripts/` と `.claude/scripts/` の使い分けは `scripts/README.md` を参照。
 
 ### 6.6 settings.json permissions に整合した振る舞い
 
