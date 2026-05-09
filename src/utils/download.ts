@@ -72,8 +72,12 @@ export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
 }
 
 /** SVG文字列からPNGをダウンロードする（Retina x2倍）。SVGにwidth/height属性が必要 */
-export function downloadPngFromSvgContent(svgContent: string, filename: string): Promise<void> {
-  return svgContentToPngBlob(svgContent).then((blob) => downloadBlob(blob, filename));
+export async function downloadPngFromSvgContent(
+  svgContent: string,
+  filename: string
+): Promise<void> {
+  const blob = await svgContentToPngBlob(svgContent);
+  downloadBlob(blob, filename);
 }
 
 /**
