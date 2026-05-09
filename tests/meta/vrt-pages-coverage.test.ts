@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tools } from '../../src/data/tools';
+import { tools } from '@/data/tools';
 import { PAGES } from '../e2e/visual-regression-pages';
 
 /**
