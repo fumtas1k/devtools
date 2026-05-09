@@ -37,6 +37,7 @@ const PAGES = [
   '/tools/json-csv',
   '/tools/encoding-converter',
   '/tools/config-converter',
+  '/tools/char-count',
 ] as const;
 
 const STATIC_PAGES = new Set(['/', '/about', '/privacy']);
