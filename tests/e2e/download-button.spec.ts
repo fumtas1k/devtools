@@ -1,34 +1,34 @@
 import { test, expect } from '@playwright/test';
-import { waitForReactHydration } from './helpers';
+import { withProductionCsp } from './helpers';
 
 const PRIMARY_COLOR = 'rgb(26, 86, 219)';
 
-test.describe('DownloadButton', () => {
-  test.beforeEach(async ({ page }) => {
-    // DownloadButton が使用されているツール（JANコード生成）へ移動
-    await page.goto('/tools/jan-code');
-    await page.getByRole('button', { name: 'サンプルを入力' }).waitFor();
-    await waitForReactHydration(page);
-    await page.getByRole('button', { name: 'サンプルを入力' }).click();
+test.describe('DownloadButton（production CSP 適用）', () => {
+  test('SVGダウンロードボタン（secondary）が表示される（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/jan-code', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+
+      const button = page.getByRole('button', { name: 'SVGダウンロード' });
+      await expect(button).toBeVisible();
+
+      // スタイルの検証（背景が透明、枠線がプライマリ色であること）
+      await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      await expect(button).toHaveCSS('border', `1px solid ${PRIMARY_COLOR}`);
+      await expect(button).toHaveCSS('color', PRIMARY_COLOR);
+    });
   });
 
-  test('SVGダウンロードボタン（secondary）が表示される', async ({ page }) => {
-    const button = page.getByRole('button', { name: 'SVGダウンロード' });
-    await expect(button).toBeVisible();
+  test('PNGダウンロードボタン（primary）が表示される（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/jan-code', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
 
-    // スタイルの検証（背景が透明、枠線がプライマリ色であること）
-    await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    await expect(button).toHaveCSS('border', `1px solid ${PRIMARY_COLOR}`);
-    await expect(button).toHaveCSS('color', PRIMARY_COLOR);
-  });
+      const button = page.getByRole('button', { name: 'PNGダウンロード' });
+      await expect(button).toBeVisible();
 
-  test('PNGダウンロードボタン（primary）が表示される', async ({ page }) => {
-    const button = page.getByRole('button', { name: 'PNGダウンロード' });
-    await expect(button).toBeVisible();
-
-    // スタイルの検証（背景がプライマリ色であること）
-    await expect(button).toHaveCSS('background-color', PRIMARY_COLOR);
-    await expect(button).toHaveCSS('color', 'rgb(255, 255, 255)');
+      // スタイルの検証（背景がプライマリ色であること）
+      await expect(button).toHaveCSS('background-color', PRIMARY_COLOR);
+      await expect(button).toHaveCSS('color', 'rgb(255, 255, 255)');
+    });
   });
 
   test.skip('disabled 状態のスタイルが正しい', async () => {

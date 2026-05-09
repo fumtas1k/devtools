@@ -188,18 +188,32 @@ export async function applyProductionCsp(page: Page): Promise<CspGuard> {
  * **fn throw 時の挙動**: `fn` が例外を投げると `assertNoViolations` は呼ばれず、
  * `finally` で `context.close()` のみ実行される。元の例外が伝播しテストが
  * 失敗する (inline pattern と等価)。
+ *
+ * **`skipHydration` オプション**: 静的ページ (`/privacy` / `/about` / `/` 等の
+ * React island を含まないページ) では `waitForReactHydration` が
+ * `__react*` キーを持つ要素を見つけられず timeout する。これらのページに対しては
+ * `{ skipHydration: true }` を渡してハイドレーション待機を skip する。
+ * tools 配下 (React island あり) では skip しない。
  */
+export interface WithProductionCspOptions {
+  /** true のときは `waitForReactHydration` を skip (static page 用) */
+  skipHydration?: boolean;
+}
+
 export async function withProductionCsp(
   browser: Browser,
   path: string,
-  fn: (page: Page, guard: CspGuard) => Promise<void>
+  fn: (page: Page, guard: CspGuard) => Promise<void>,
+  options?: WithProductionCspOptions
 ): Promise<void> {
   const context = await browser.newContext();
   try {
     const page = await context.newPage();
     const guard = await applyProductionCsp(page);
     await page.goto(path);
-    await waitForReactHydration(page);
+    if (!options?.skipHydration) {
+      await waitForReactHydration(page);
+    }
     await fn(page, guard);
     guard.assertNoViolations();
   } finally {
