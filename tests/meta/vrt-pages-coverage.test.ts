@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tools } from '@/data/tools';
-import { PAGES } from '../e2e/visual-regression-pages';
+import { PAGES, STATIC_PAGES } from '../e2e/visual-regression-pages';
 
 /**
  * meta test: VRT カバレッジ漏れ検出 (issue #355 再発防止策)
@@ -22,12 +22,12 @@ function findUnregisteredTools(toolList: { slug: string }[], pages: readonly str
 
 /**
  * PAGES にだけ存在する orphan エントリ (tools.ts から削除されたが PAGES に残存) を返す。
- * STATIC ページ (`/`, `/about`, `/privacy`) は除外。
+ * STATIC ページ (`/`, `/about`, `/privacy`) は visual-regression-pages.ts で定義済みの
+ * `STATIC_PAGES` を import して除外 (重複定義による drift 防止)。
  */
-const STATIC_PAGE_PATHS = new Set<string>(['/', '/about', '/privacy']);
 function findOrphanPages(toolList: { slug: string }[], pages: readonly string[]): string[] {
   const toolUrls = new Set(toolList.map((t) => `/tools/${t.slug}`));
-  return pages.filter((url) => !STATIC_PAGE_PATHS.has(url) && !toolUrls.has(url));
+  return pages.filter((url) => !STATIC_PAGES.has(url) && !toolUrls.has(url));
 }
 
 describe('VRT PAGES coverage', () => {
