@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { waitForReactHydration } from './helpers';
+import { PAGES, STATIC_PAGES } from './visual-regression-pages';
 
 /**
  * Visual Regression Test (VRT) — `#176` B 案 ui migration の visual change を CI で検出する。
@@ -17,30 +18,6 @@ import { waitForReactHydration } from './helpers';
  *
  * 詳細: docs/superpowers/specs/2026-05-03-vrt-setup-design.md
  */
-
-const PAGES = [
-  '/',
-  '/about',
-  '/privacy',
-  '/tools/ulid-generator',
-  '/tools/uuid-v7',
-  '/tools/dummy-text',
-  '/tools/qr-code',
-  '/tools/jan-code',
-  '/tools/gs1-databar',
-  '/tools/qr-ticket',
-  '/tools/qr-reader',
-  '/tools/url-encode',
-  '/tools/jwt-decoder',
-  '/tools/base64',
-  '/tools/json-xml',
-  '/tools/json-csv',
-  '/tools/encoding-converter',
-  '/tools/config-converter',
-  '/tools/char-count',
-] as const;
-
-const STATIC_PAGES = new Set(['/', '/about', '/privacy']);
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1280, height: 800 },
