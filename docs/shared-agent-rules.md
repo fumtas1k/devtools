@@ -151,6 +151,7 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 - **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Read` / `Write` / `Edit` ともに `/tmp/claude/**` および `$TMPDIR (/var/folders/*/*/T/**)` が allow、`/tmp/**` 直下は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。**credential / secret 類は tmp に置かない**（同 user 配下の Claude セッション間で相互可読）。
 - **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
+- **sandbox `denyWithinAllow` を見て user に手動作業を振らない**: `.claude/settings.json` / `.claude/skills/` 等が sandbox の `denyWithinAllow` に含まれていても、それは **`Bash` の `mkdir` / `rm` / `tee` / `sed -i` 経由を deny する** だけ。**`Edit` / `Write` tool 経由は permissions の `ask` 経路に乗って通る**（user 環境の事前 allow/auto-approve で待ちなしに成功することも多い）。手動で別ターミナル作業を依頼する前に **必ず `Write` / `Edit` tool で実機検証** すること。tool で通れば `git add` 含む後続も Claude 内で完結する。Bash での `mkdir` / `rm` が必要な場合だけが手動依頼の対象。
 
 ### 6.7 サブエージェント運用の補足
 
