@@ -43,7 +43,10 @@ jobs:
         # baseline PNG への secret 焼き付き → git 履歴 permanent leak を防ぐ最終防御層。
         run: |
           set -euo pipefail
-          SUSPECT=$(env | grep -iE '^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=' | grep -vE '^(GITHUB_TOKEN|RUNNER_|GITHUB_RUN_|ACTIONS_|GH_|PIP_|PYPI_)' || true)
+          # `GITHUB_TOKEN=` は exact match (末尾 `=` で `GITHUB_TOKEN_FOO=` の意図せぬ allow を防ぐ)。
+          # 他の `RUNNER_` / `GITHUB_RUN_` / `ACTIONS_` / `GH_` / `PIP_` / `PYPI_` は GH Actions runtime 由来の env が
+          # 多数あるため prefix allow を維持。
+          SUSPECT=$(env | grep -iE '^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=' | grep -vE '^(GITHUB_TOKEN=|RUNNER_|GITHUB_RUN_|ACTIONS_|GH_|PIP_|PYPI_)' || true)
           if [ -n "$SUSPECT" ]; then
             echo "::error::Secret-like env vars detected. Baseline 生成中止 (PNG への焼き付き leak 防止)。"
             # 値は redact、key 名のみ出力
