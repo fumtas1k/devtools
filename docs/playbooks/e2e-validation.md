@@ -193,3 +193,97 @@ npm run test:vrt
 - 新 page を VRT 対象に追加: spec の `PAGES` 配列に path 追記 → baseline 再生成
 - 新 viewport 追加: `VIEWPORTS` 配列に追記 → baseline 再生成
 - 詳細: `docs/decisions.md` [066]
+
+### 7.5 develop branch protection の現状（issue #255 I-1）
+
+`gh api repos/<owner>/<repo>/branches/develop/protection` は 2026-05-09 時点で
+**404 "Branch not protected"** を返す。develop は **branch protection 未設定** の状態。
+
+**solo dev 体制での影響評価（重要）**:
+
+本リポジトリは「PR 作成者 = レビュアー = merger が同一人物」の solo dev 体制。
+GitHub branch protection の主要オプションを solo dev に当てはめると:
+
+| protection オプション                 | solo dev での効果                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `Require pull request before merging` | △ PR workflow を強制するだけで「他人による review」を強制しない                 |
+| `Require approvals` (N≥1)             | × **self-approve 不可で自分の PR が永久 merge 不能になり詰む**（GitHub policy） |
+| `Restrict who can push`               | △ direct push を禁じるが、PR 経由の self-merge は依然可能                       |
+| `Bypass list` 管理                    | × そもそも protection 無効のため audit 対象なし                                 |
+
+→ **`Require approvals` が使えない以上、branch protection 単体では「review なしマージを block する」
+効果は solo dev では得られない**。issue #255 が当初想定した「bypass list 経由の許可漏れ」概念は
+team 体制を前提としており、solo dev には直接適用できない。
+
+**bot push の実体は「PR diff の一部」**:
+
+`update-visual-baseline.yml` の最終 step は `git push` で baseline を更新するが:
+
+- `actions/checkout@v6` の `ref: ${{ github.head_ref || github.ref_name }}` により
+  bot は **PR の feature branch に push する**（develop に直 push しない）。
+- bot の baseline 変更は **既存 PR の diff の一部** として PR comment / files changed に表示され、
+  user (= 自分) が PR 上で目視確認可能。
+- workflow には `if: github.ref != 'refs/heads/develop' && !main` で default branch 上での
+  `workflow_dispatch` 誤 trigger を no-op にする二次 safety がある。
+
+→ bot は review pipeline を bypass せず、user 通常 PR review (7.2 章のフロー) に乗っている。
+solo dev で必要なのは **「VRT PR comment が出た PR は merge 前に必ず diff 目視」という運用規律**であって、
+branch protection 設定変更ではない。この目視運用は 7.2 章で既に明文化済み。
+
+**結論（本 issue I-1 の actionable 範囲）**:
+
+- 短期: **追加対策不要**。既存 workflow 設計 (`if: !default-branch` + bot push を PR branch 限定 + 7.2 章の目視運用) で
+  solo dev に妥当な review 経路は確保されている。
+- 中期: `peter-evans/create-pull-request` 化は team 体制 (review 担当 vs PR 作成者が別人) なら有効だが、
+  solo dev では「baseline 専用 PR が分離されて視認性向上」程度の限定的効果。**pursue は user 判断**。
+- 体制が team に移行した場合は本章を再評価し、`Require approvals` + bypass list 管理 + peter-evans 化を
+  まとめて検討する。
+
+### 7.6 Baseline PNG への secret 混入予防（issue #255 I-2）
+
+baseline PNG は CI runner で生成され git にコミットされる。一度焼き付くと:
+
+- text-based scan（git-secrets / gitleaks）の盲点で検出されない
+- git 履歴は rewrite 困難で permanent leak になりがち
+
+**実装済み防御層 (PR #255 系)**:
+
+1. **spec 層**: `tests/e2e/visual-regression.spec.ts` の `addInitScript` 冒頭で
+   `localStorage.clear()` / `sessionStorage.clear()` を実行。将来 spec に
+   `setItem('apiKey', ...)` 等が誤って追加されても、init script で直前に clear することで
+   永続化前の baseline 撮影を保証する。
+2. **workflow 層**: `update-visual-baseline.yml` の build 前に
+   `*_KEY` / `*_TOKEN` / `*_SECRET` / `*_PASSWORD` / `*_CREDENTIAL` 命名の env var が
+   流れていないか early-fail check。`GITHUB_TOKEN` のみ exact match (`GITHUB_TOKEN_FOO=` の意図せぬ allow を防ぐ)、
+   `RUNNER_*` / `GITHUB_RUN_*` / `ACTIONS_*` / `GH_*` / `PIP_*` / `PYPI_*` は GH Actions runtime 由来として prefix allow。
+
+**Layer 1 の scope 限定（重要）**:
+
+`localStorage.clear()` / `sessionStorage.clear()` は **storage-based 焼き付き** のみ対処する。以下の経路は **未カバー**:
+
+- `document.cookie` (cookie viewer 系ツールが render すれば leak 可能)
+- IndexedDB (より複雑だが原理的に同じ leak 経路)
+- URL params (`?token=xyz` をページ内で表示する設計があれば leak)
+- form pre-fills (`<input value="${secret}">` 直書き)
+
+これらの primary defense は **「spec が secret を扱わない」原則**。Layer 1 / Layer 2 は last resort として位置付ける。spec を新規追加 / 拡張する際は、cookie / IndexedDB / URL / form value に secret を流さないことを reviewer がチェックする。
+
+**Layer 2 audit step の coverage gap（既知）**:
+
+regex `^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=` は接尾辞のみマッチし、以下を取りこぼす:
+
+- 複数形 (`SECRETS=`、`KEYS=`)
+- 中間出現 (`MY_TOKEN_VALUE=`)
+- 別命名 (`AUTH=`、`BEARER_*=`、`PIN=`、`JWT=`、`SESSION=`)
+- `_` 開始 (`_PRIVATE_KEY=`)
+
+false positive 増加とのトレードオフで現状は acceptable な ROI 判断。secret naming convention が拡張された際は本 docs を再評価。
+
+**contributor への注意**:
+
+- spec に `localStorage.setItem(...)` / `sessionStorage.setItem(...)` を追加する場合、
+  その値は **baseline PNG に焼き付く可能性がある**（特に rendered DOM が storage を
+  visualize するツールでは確実に映り込む）。secret-like な値を spec で扱う場合は
+  baseline 生成対象 page を除外するか、screenshot 前に値を masking する。
+- workflow に新規 secret env を追加する場合は spec / job のスコープを最小化し、
+  上記 audit step の allow list を更新するときは PR review で焼き付きリスクを再評価。

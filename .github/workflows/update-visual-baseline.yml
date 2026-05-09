@@ -36,6 +36,24 @@ jobs:
       - run: npm ci
       # Playwright ブラウザは container image に preinstalled 済 (#291)。
       # PLAYWRIGHT_BROWSERS_PATH=/ms-playwright が image で設定済みのため install step 不要。
+      - name: Secret-like env var の audit (issue #255 I-2)
+        # 想定 secret 命名規則 (*_KEY / *_TOKEN / *_SECRET / *_PASSWORD / *_CREDENTIAL) を
+        # 持つ env var が baseline 生成 step に流れていないか early-fail check。
+        # 例外: GITHUB_TOKEN は steps[0].with.token で push に必要、RUNNER_* は GH Actions runtime 由来。
+        # baseline PNG への secret 焼き付き → git 履歴 permanent leak を防ぐ最終防御層。
+        run: |
+          set -euo pipefail
+          # `GITHUB_TOKEN=` は exact match (末尾 `=` で `GITHUB_TOKEN_FOO=` の意図せぬ allow を防ぐ)。
+          # 他の `RUNNER_` / `GITHUB_RUN_` / `ACTIONS_` / `GH_` / `PIP_` / `PYPI_` は GH Actions runtime 由来の env が
+          # 多数あるため prefix allow を維持。
+          SUSPECT=$(env | grep -iE '^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=' | grep -vE '^(GITHUB_TOKEN=|RUNNER_|GITHUB_RUN_|ACTIONS_|GH_|PIP_|PYPI_)' || true)
+          if [ -n "$SUSPECT" ]; then
+            echo "::error::Secret-like env vars detected. Baseline 生成中止 (PNG への焼き付き leak 防止)。"
+            # 値は redact、key 名のみ出力
+            echo "$SUSPECT" | sed 's/=.*$/=<redacted>/'
+            exit 1
+          fi
+          echo "OK: no secret-like env vars exposed to baseline generation"
       - name: 本番相当アセットを build
         run: npm run build
       - name: Visual regression baseline を再生成
