@@ -2690,3 +2690,35 @@ B 案完了後も継続運用する検出網:
 - **ガード/バリデータには陽性対照を必須とする**: PR 5b の `withProductionCsp` meta-test (#281) や本 PR の Astro hash 検出網メタテストのように、検出網自体が silent pass しないことを陽性対照で能動確認する運用が定着。memory `feedback_positive_control_for_gates.md`。
 - **段階的 PR の本数管理**: B 案は当初 PR 1〜6 想定だったが、実際は PR 0〜10 + follow-up で計 15 PR (含む scope 縮小 PR / 計画外発覚での分割)。「PR の自然分割は infra / foundation / 個別 migration / docs」の方針 (memory `feedback_pr_size.md`) に従ったため、各 PR は review 単位で適切な大きさを維持できた。
 - **subagent 委譲方針の使い分け**: PR 4 / 5a / 5b で「subagent 非 commit + 親で順次 commit」運用を確立、PR 7a / 7b / 8 / 9 / 10 では「親 Opus 直接実装」へ移行 (CSP flip / 高 stakes 検証は subagent verification trust の観点で親直接が安全)。memory `feedback_subagent_verification_trust.md` / `feedback_subagent_model.md`。
+
+## [069] 2026-05-09 — VRT baseline 更新経路の audit + secret 焼き付き防御 2 層導入 (`#255`)
+
+### 背景
+
+`#254` (VRT 専用 PR 導入) のセルフレビューで提起された 2 件 (I-1: bot push の branch protection bypass 可能性、I-2: baseline PNG への secret 焼き付き leak リスク) を `#255` として fix。
+
+### 決定
+
+**I-1: branch protection 監査**
+
+- `gh api repos/<owner>/<repo>/branches/develop/protection` は 2026-05-09 時点で **404 "Branch not protected"** を返した。develop は **branch protection 未設定**。issue が当初懸念した「bypass list 経由の許可漏れ」以前に protection そのものが無い。
+- 本 PR は audit 結果の文書化に留める (`docs/playbooks/e2e-validation.md` 7.5)。短期対策 (Settings UI から protection 追加) と中期対策 (`peter-evans/create-pull-request` 化) は user 判断 / 別 issue で扱う。
+- `update-visual-baseline.yml` には既に `if: github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main'` があり、default branch 上での `workflow_dispatch` 誤 trigger は no-op になる二次 safety は確保。
+
+**I-2: baseline PNG への secret 混入予防 (本 PR で 2 層実装)**
+
+1. **spec 層 (`tests/e2e/visual-regression.spec.ts`)**: `addInitScript` 冒頭で `localStorage.clear()` / `sessionStorage.clear()` を実行。将来 spec に `setItem('apiKey', ...)` 等が誤って追加されても、init script で直前に clear することで永続化前の baseline 撮影を保証。
+2. **workflow 層 (`.github/workflows/update-visual-baseline.yml`)**: build 前に `*_KEY` / `*_TOKEN` / `*_SECRET` / `*_PASSWORD` / `*_CREDENTIAL` 命名の env var が baseline 生成 step に流れていないか early-fail check。allow list は `GITHUB_TOKEN` / `RUNNER_*` / `GITHUB_RUN_*` / `ACTIONS_*` / `GH_*` / `PIP_*` / `PYPI_*` (GH Actions runtime 由来)。
+
+### Lessons learned
+
+- **Audit 前提が事実と異なるケース**: issue は「bypass list の許可漏れ」を懸念したが、実態は protection 未設定だった。`gh api` 経由の事実確認が無いと存在しない監査対象を議論し続ける危険。**教訓**: ops 系 issue は最初に `gh api` / `gh pr/issue view` で前提事実を読み取る。
+- **PNG への secret 焼き付きは text scan の盲点**: gitleaks / git-secrets は textual content を scan するため、image 内 OCR レベルの leak は検出できない。**教訓**: 画像生成系 workflow は spec 側 (storage clear) と workflow 側 (env audit) の 2 層防御が原則。
+- **Allow list の例外管理**: `GITHUB_TOKEN` 等の GH Actions runtime 由来 env を allow に入れる際は、push 用途で必要であることを明示。allow list が肥大化したら audit 範囲が崩れるため PR review で都度評価。
+
+### 関連 PR / issue
+
+- 本 entry を記録: PR `#332` follow-up (`#255` 対応)
+- 起源: `#254` (VRT 専用 PR 導入) のセルフレビュー I-1 / I-2
+- 親 issue: `#255` (本 PR で短期 + 防御 2 層完了、長期の peter-evans 化は別議論)
+- 関連: `#176` B 案 [066] (VRT 導入)、本番リリース前 TODO `#323`

@@ -54,6 +54,16 @@ for (const viewport of VIEWPORTS) {
       test(`${url} の screenshot が baseline と一致`, async ({ page }) => {
         // navigation 前に deterministic mock を注入（production code 無変更）
         await page.addInitScript(() => {
+          // localStorage / sessionStorage を sterile に保つ（baseline 再生成時の secret 混入予防）
+          // 将来 spec に setItem('apiKey', ...) 等が誤って追加された場合でも、init script で
+          // 直前に clear することで永続化前の baseline 撮影を保証する (issue #255 I-2)。
+          try {
+            localStorage.clear();
+            sessionStorage.clear();
+          } catch {
+            // 静的ページ等で storage 未許可の context では無視
+          }
+
           // Seeded LCG: Math.random を固定 seed (42) から再現可能な乱数列に
           let seed = 42;
           Math.random = () => {

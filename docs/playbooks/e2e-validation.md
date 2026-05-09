@@ -193,3 +193,61 @@ npm run test:vrt
 - 新 page を VRT 対象に追加: spec の `PAGES` 配列に path 追記 → baseline 再生成
 - 新 viewport 追加: `VIEWPORTS` 配列に追記 → baseline 再生成
 - 詳細: `docs/decisions.md` [066]
+
+### 7.5 develop branch protection の現状（issue #255 I-1）
+
+`gh api repos/<owner>/<repo>/branches/develop/protection` は 2026-05-09 時点で
+**404 "Branch not protected"** を返す。develop は **branch protection 未設定** の状態。
+
+**意味するところ**:
+
+- `update-visual-baseline.yml` の bot push (`secrets.GITHUB_TOKEN`) は protection 違反すらせず
+  develop へ直 push 可能。issue #255 が当初懸念した「bypass list 経由の許可漏れ」以前に、
+  protection そのものが無いため audit 対象が存在しない。
+- 手動 `git push origin develop` も無制限に通る（PR を経ない直 push 可）。
+- workflow 側では `if: github.ref != 'refs/heads/develop'` で **default branch 上の trigger は no-op**
+  にしているため、`workflow_dispatch` が誤って develop で trigger された場合の安全装置はある。
+
+**推奨する短期対策（user 側 manual 設定）**:
+
+1. Settings → Branches → "Add classic branch protection rule"
+   - Branch name pattern: `develop`
+   - Require a pull request before merging
+   - Restrict who can push to matching branches（PR 経由のみ）
+   - Bypass list に `github-actions[bot]` を**含めない**（baseline 更新 PR 化の意義）
+2. enable 後、`update-visual-baseline.yml` の最終 step (`git push`) は本来 fail するため、
+   後述「中期対策」の peter-evans/create-pull-request 化と組み合わせて運用する必要がある。
+3. classic protection から ruleset への移行は別議論。
+
+**中期対策（採用判断後）**:
+
+baseline 更新 workflow を `peter-evans/create-pull-request` action に置換し、
+bot は branch を作るだけ → 人間レビューで baseline PNG diff を audit してから merge。
+新 PR は本 issue ではなく別 issue で扱う。
+
+### 7.6 Baseline PNG への secret 混入予防（issue #255 I-2）
+
+baseline PNG は CI runner で生成され git にコミットされる。一度焼き付くと:
+
+- text-based scan（git-secrets / gitleaks）の盲点で検出されない
+- git 履歴は rewrite 困難で permanent leak になりがち
+
+**実装済み防御層 (PR #255 系)**:
+
+1. **spec 層**: `tests/e2e/visual-regression.spec.ts` の `addInitScript` 冒頭で
+   `localStorage.clear()` / `sessionStorage.clear()` を実行。将来 spec に
+   `setItem('apiKey', ...)` 等が誤って追加されても、init script で直前に clear することで
+   永続化前の baseline 撮影を保証する。
+2. **workflow 層**: `update-visual-baseline.yml` の build 前に
+   `*_KEY` / `*_TOKEN` / `*_SECRET` / `*_PASSWORD` / `*_CREDENTIAL` 命名の env var が
+   流れていないか early-fail check。`GITHUB_TOKEN` / `RUNNER_*` / `GITHUB_RUN_*` /
+   `ACTIONS_*` / `GH_*` / `PIP_*` / `PYPI_*` は GH Actions runtime 由来として allow。
+
+**contributor への注意**:
+
+- spec に `localStorage.setItem(...)` / `sessionStorage.setItem(...)` を追加する場合、
+  その値は **baseline PNG に焼き付く可能性がある**（特に rendered DOM が storage を
+  visualize するツールでは確実に映り込む）。secret-like な値を spec で扱う場合は
+  baseline 生成対象 page を除外するか、screenshot 前に値を masking する。
+- workflow に新規 secret env を追加する場合は spec / job のスコープを最小化し、
+  上記 audit step の allow list を更新するときは PR review で焼き付きリスクを再評価。
