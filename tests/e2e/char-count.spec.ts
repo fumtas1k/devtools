@@ -44,7 +44,9 @@ test.describe('文字カウント', () => {
   test('任意上限を空にすると残数が "—" 表示になる', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('あいうえお');
     await page.getByLabel('任意上限').fill('');
-    await expect(page.getByText('—')).toBeVisible();
+    // 任意上限 input の親 div 内にある font-mono span (残数表示) を確認
+    const remaining = page.getByLabel('任意上限').locator('..').locator('span.font-mono');
+    await expect(remaining).toHaveText('—');
   });
 
   // 陽性対照: 入力 validator が "0" を実際に reject することを確認
