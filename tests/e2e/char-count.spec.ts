@@ -44,8 +44,8 @@ test.describe('文字カウント', () => {
   test('任意上限を空にすると残数が "—" 表示 + SR 用に "未指定" が併記される', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('あいうえお');
     await page.getByLabel('任意上限').fill('');
-    // 任意上限 input の親 div 内にある font-mono span (残数表示) を確認
-    const remaining = page.getByLabel('任意上限').locator('..').locator('span.font-mono');
+    // 「残り:」ラベルの親 span 内にある font-mono span (残数表示) を確認
+    const remaining = page.getByText('残り:').locator('..').locator('span.font-mono');
     // 視覚: aria-hidden="true" な span に '—' / SR: sr-only の '未指定'
     await expect(remaining).toContainText('—');
     await expect(remaining).toContainText('未指定');

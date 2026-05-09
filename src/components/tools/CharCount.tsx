@@ -143,28 +143,34 @@ export function CharCountTool() {
           <dt className="caption text-muted">Bluesky</dt>
           <dd className="caption font-mono text-right">{sns.blueskyCount} / 300</dd>
         </dl>
-        <div className="flex items-center gap-2 caption text-muted">
-          <BareInput
-            type="number"
-            inputMode="numeric"
-            value={snsLimit}
-            onChange={handleSnsLimitChange}
-            aria-label="任意上限"
-            className="w-20"
-            min="1"
-          />
-          <span>上限　残り:</span>
-          <span
-            className={`font-mono${snsRemaining !== null && snsRemaining < 0 ? ' text-error' : ''}`}
-          >
-            {snsRemaining === null ? (
-              <>
-                <span aria-hidden="true">—</span>
-                <span className="sr-only">未指定</span>
-              </>
-            ) : (
-              snsRemaining
-            )}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 caption text-muted">
+          <label className="flex items-center gap-2 whitespace-nowrap">
+            <span>上限:</span>
+            <span className="inline-block w-20">
+              <BareInput
+                type="number"
+                inputMode="numeric"
+                value={snsLimit}
+                onChange={handleSnsLimitChange}
+                aria-label="任意上限"
+                min="1"
+              />
+            </span>
+          </label>
+          <span className="flex items-center gap-2 whitespace-nowrap">
+            <span>残り:</span>
+            <span
+              className={`font-mono${snsRemaining !== null && snsRemaining < 0 ? ' text-error' : ''}`}
+            >
+              {snsRemaining === null ? (
+                <>
+                  <span aria-hidden="true">—</span>
+                  <span className="sr-only">未指定</span>
+                </>
+              ) : (
+                snsRemaining
+              )}
+            </span>
           </span>
         </div>
       </Section>
