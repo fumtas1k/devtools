@@ -51,6 +51,28 @@ CSP `style-src 'unsafe-inline'` 撤去（issue #176 B 案）に伴い、JSX の 
 }
 ```
 
+#### ActionButton variant 別 hover の例
+
+`ActionButton` は `btn-action` + `btn-action--{variant}` の semantic class を持ち、`global.css` の `@layer components` 内で variant ごとに `:hover:not(:disabled)` を定義する。`:not(:disabled)` で disabled 時に hover 反応が出ないことを保証する。
+
+```css
+/* global.css `@layer components` ブロック内 */
+.btn-action {
+  transition:
+    background-color 0.15s,
+    filter 0.15s;
+}
+.btn-action--primary:hover:not(:disabled) {
+  filter: brightness(0.92); /* ベース色を保ちつつ 8% 暗化 */
+}
+.btn-action--secondary:hover:not(:disabled) {
+  background: var(--color-bg-active); /* 透過 → blue-50 tint */
+}
+.btn-action--danger:hover:not(:disabled) {
+  background: var(--color-error-bg); /* 透過 → red-50 tint */
+}
+```
+
 ### 2.2 ボタン高さの揃え
 
 横並びでボタン高さを揃えたい場合は **`leading-none` Tailwind utility を併記する**（`.caption` / `.body-emphasis` class は line-height 1.7 のため意図より大きくなる）。
