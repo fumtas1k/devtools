@@ -54,17 +54,14 @@ export function CharCountTool() {
   }
 
   function handleSnsLimitChange(val: string) {
-    if (val === '') {
-      setSnsLimit('');
-      return;
+    if (val === '' || /^[1-9]\d*$/.test(val)) {
+      setSnsLimit(val);
     }
-    if (!/^\d+$/.test(val)) return;
-    setSnsLimit(val);
   }
 
   const { chars, bytes: enc, lines, sns, manuscript } = result;
-  const snsLimitNum = Math.max(1, parseInt(snsLimit, 10) || 1);
-  const snsRemaining = snsLimitNum - chars.graphemes;
+  const snsRemaining =
+    snsLimit === '' ? null : Math.max(1, parseInt(snsLimit, 10)) - chars.graphemes;
 
   return (
     <div className="space-y-6">
@@ -158,8 +155,10 @@ export function CharCountTool() {
             min="1"
           />
           <span>上限　残り:</span>
-          <span className={`font-mono${snsRemaining < 0 ? ' text-error' : ''}`}>
-            {snsRemaining}
+          <span
+            className={`font-mono${snsRemaining !== null && snsRemaining < 0 ? ' text-error' : ''}`}
+          >
+            {snsRemaining === null ? '—' : snsRemaining}
           </span>
         </div>
       </Section>

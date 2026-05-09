@@ -41,6 +41,22 @@ test.describe('文字カウント', () => {
     await expect(page.getByText('95')).toBeVisible();
   });
 
+  test('任意上限を空にすると残数が "—" 表示になる', async ({ page }) => {
+    await page.getByLabel('入力テキスト').fill('あいうえお');
+    await page.getByLabel('任意上限').fill('');
+    await expect(page.getByText('—')).toBeVisible();
+  });
+
+  // 陽性対照: 入力 validator が "0" を実際に reject することを確認
+  // 旧実装 (/^\d+$/) では '0' が通り value が '0' になるためこのテストは fail する
+  test('[陽性対照] 任意上限欄に "0" を入力しても reject されて値が変わらない', async ({ page }) => {
+    const limit = page.getByLabel('任意上限');
+    await limit.fill('100');
+    await limit.fill('0');
+    // controlled input: setState されなければ value は直前の '100' のまま
+    await expect(limit).not.toHaveValue('0');
+  });
+
   test('クリアボタンで textarea が空になる', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('テスト');
     await page.getByRole('button', { name: 'クリア' }).click();
