@@ -5,6 +5,7 @@ import {
   countGraphemes,
   countGraphemesNoNewline,
   countGraphemesNoWhitespace,
+  countWeightedWidth,
 } from '@/utils/char-count/chars';
 import {
   checkUtf8,
@@ -63,6 +64,23 @@ describe('countGraphemesNoNewline', () => {
   it('"a\\r\\nb" は 2 (CRLF を除く)', () => expect(countGraphemesNoNewline('a\r\nb')).toBe(2));
   it('"あいう\\n" は 3', () => expect(countGraphemesNoNewline('あいう\n')).toBe(3));
   it('"😀\\n😀" は 2', () => expect(countGraphemesNoNewline('😀\n😀')).toBe(2));
+});
+
+describe('countWeightedWidth', () => {
+  it('空文字は 0', () => expect(countWeightedWidth('')).toBe(0));
+  it('ASCII 1 文字 "a" は 0.5', () => expect(countWeightedWidth('a')).toBe(0.5));
+  it('ASCII 4 文字 "abcd" は 2', () => expect(countWeightedWidth('abcd')).toBe(2));
+  it('半角スペースは 0.5', () => expect(countWeightedWidth(' ')).toBe(0.5));
+  it('日本語 1 文字 "あ" は 1', () => expect(countWeightedWidth('あ')).toBe(1));
+  it('日本語 3 文字 "あいう" は 3', () => expect(countWeightedWidth('あいう')).toBe(3));
+  it('半角カタカナ "ｱ" は 0.5', () => expect(countWeightedWidth('ｱ')).toBe(0.5));
+  it('半角カタカナ "ｱｲｳ" は 1.5', () => expect(countWeightedWidth('ｱｲｳ')).toBe(1.5));
+  it('絵文字 "😀" は 1 (全角扱い)', () => expect(countWeightedWidth('😀')).toBe(1));
+  it('混在 "aあ" は 1.5 (0.5 + 1)', () => expect(countWeightedWidth('aあ')).toBe(1.5));
+  it('混在 "Hello世界" は 4.5 (5×0.5 + 2×1)', () =>
+    expect(countWeightedWidth('Hello世界')).toBe(4.5));
+  it('ASCII と全角スペース "a　b" は 2 (0.5 + 1 + 0.5)', () =>
+    expect(countWeightedWidth('a　b')).toBe(2));
 });
 
 describe('countGraphemesNoWhitespace', () => {
