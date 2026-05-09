@@ -78,4 +78,38 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       await expect(page.getByLabel('AI コード 2')).toBeVisible();
     });
   });
+
+  // 陽性対照: PNG ダウンロード失敗時に ErrorMessage が表示されることを保証する
+  // (issue #338: 旧実装は fire-and-forget で unhandled promise rejection、UI feedback 無し)。
+  // svgContentToPngBlob 内の `URL.createObjectURL(svgBlob)` 経路を意図的に throw させ、
+  // Promise reject → downloadPng の try/catch → setDownloadError → role=alert 表示
+  // という全経路を実証する。
+  test('PNG ダウンロード失敗時に ErrorMessage が表示される（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      // GTIN-14 を入力して SVG 生成を待つ
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      // svgContentToPngBlob 内 `URL.createObjectURL(svgBlob)` を意図的に throw させる。
+      // 同期 throw は Promise executor 内なので Promise reject に変換される (Promise spec)。
+      // blob.type は Chromium の正規化で `image/svg+xml;charset=utf-8` になる場合があるため
+      // startsWith で照合する。PNG 出力 blob (`image/png`) は除外され影響しない。
+      await page.evaluate(() => {
+        const orig = URL.createObjectURL.bind(URL);
+        URL.createObjectURL = (blob: Blob) => {
+          if (blob.type.startsWith('image/svg+xml')) {
+            throw new Error('forced failure for E2E positive control');
+          }
+          return orig(blob);
+        };
+      });
+
+      await page.getByRole('button', { name: 'PNGダウンロード' }).click();
+
+      // role=alert の ErrorMessage block に「ダウンロードエラー」が表示される
+      await expect(page.getByRole('alert').filter({ hasText: /ダウンロードエラー/ })).toBeVisible();
+    });
+  });
 });
