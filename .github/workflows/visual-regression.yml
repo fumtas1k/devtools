@@ -82,7 +82,8 @@ jobs:
           export GIT_CONFIG_GLOBAL=/tmp/.gitconfig
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global --add safe.directory '*'
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          git config --global --add safe.directory /tmp/gh-pages
 
           # gh-pages を local branch として worktree 化
           # （既存: fetch して local branch 作成、なければ孤立ブランチ作成）
@@ -124,6 +125,17 @@ jobs:
               exit 1
             fi
           done
+
+      - name: GitHub Pages 設定確認（未設定なら Actions warning を出す）
+        if: ${{ !cancelled() && steps.gen-slider.outputs.generated == 'true' }}
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATUS=$(gh api "repos/${{ github.repository }}/pages" --jq '.status' 2>/dev/null || echo "not_found")
+          if [ "$STATUS" = "not_found" ] || [ "$STATUS" = "null" ] || [ -z "$STATUS" ]; then
+            echo "::warning::GitHub Pages が未設定のためスライダー URL が 404 になります。Settings → Pages → Branch: gh-pages / (root) → Save を実行してください。"
+          fi
 
       - name: 既存の VRT comment を検索（dedup 用）
         if: ${{ !cancelled() && github.event.pull_request.number }}

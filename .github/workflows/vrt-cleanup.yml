@@ -7,6 +7,12 @@ on:
 permissions:
   contents: write
 
+# 複数 PR を一括 close した場合の push 競合を防ぐ。
+# cancel-in-progress: false — cleanup を途中 cancel すると残骸が残るため
+concurrency:
+  group: vrt-cleanup-gh-pages
+  cancel-in-progress: false
+
 jobs:
   cleanup:
     runs-on: ubuntu-latest
