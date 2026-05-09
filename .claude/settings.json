@@ -28,6 +28,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/test-edit-context.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

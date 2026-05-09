@@ -2,6 +2,17 @@
 
 このディレクトリには、開発・CI 運用を補助する bash スクリプトを配置します。
 
+## `scripts/` vs `.claude/scripts/` の使い分け
+
+「誰が呼ぶか」で配置先を分ける:
+
+| 配置先             | 呼び出し元                                                                                    | 例                                       |
+| ------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `scripts/`         | 人間 / CI workflow / `package.json` script / Claude が Bash 経由で叩く汎用ユーティリティ      | `check-followup-refs.sh`                 |
+| `.claude/scripts/` | Claude Code harness のみ (`.claude/settings.json` の `hooks.*` / `statusLine.command` 等から) | `test-edit-context.sh` (PreToolUse hook) |
+
+汎用性のあるユーティリティは `scripts/` 側に置き、Claude Code 設定駆動の挙動 (hook handler、status line generator 等) は `.claude/scripts/` 側に置く。`.claude/scripts/` のスクリプトは Claude Code を使わない開発者には実行されないため、CI / package.json から参照しないこと。
+
 ---
 
 ## check-followup-refs.sh

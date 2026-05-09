@@ -49,6 +49,8 @@
 **push 前に必須**: `npm run test`（ユニット）／ `node_modules/.bin/astro check`（型）／ `npm run test:e2e`（E2E）。
 post-PR 代行は不要、CI が最終ゲート。
 
+**ガード / バリデータ / 検知機構には陽性対照を必須**: 検出する・拒否する・違反したら fail させる仕組み（CSP 違反検知 / 入力 validator / lint / セキュリティヘッダ assert / E2E ガード / regex マッチ系）を追加 / 修正する場合は **`Skill` tool で `test-gates` skill を必ず呼ぶ**。陰性対照のみでは「検知能力ゼロで green」と区別不能（PR #233 `applyProductionCsp` 空回り事故）。詳細・チェックリストは skill 本体に集約してこの doc では肥大化させない。
+
 詳細手順（サブエージェント / 親別 push 前必須チェックリスト・worktree 整地・失敗パターン判定） → **`docs/playbooks/e2e-validation.md`**
 
 ---
@@ -143,14 +145,27 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 3 行以上の bash・過去にも書いた覚えのある手順・覚えにくいフラグを伴う複合コマンドを書こうとしたら、その場で実行する前に `scripts/` への切り出しをユーザーに提案する（同意を得てからスクリプト化する。先回りして勝手に作らない）。
 
+`scripts/` と `.claude/scripts/` の使い分けは `scripts/README.md` を参照。
+
 ### 6.6 settings.json permissions に整合した振る舞い
 
 `.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
 
 - **一時ファイル**: `/tmp/` 直下ではなく `$TMPDIR` または `/tmp/claude/` 配下に作成する（`Read` / `Write` / `Edit` ともに `/tmp/claude/**` および `$TMPDIR (/var/folders/*/*/T/**)` が allow、`/tmp/**` 直下は ask）。`gh pr create --body-file` のパス、一時スクリプト、ログ出力等すべて。**credential / secret 類は tmp に置かない**（同 user 配下の Claude セッション間で相互可読）。
 - **PR コメント取得**: `gh api repos/.../pulls/<N>/comments` ではなく `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う。
+- **sandbox `denyWithinAllow` を見て user に手動作業を振らない**: `.claude/settings.json` / `.claude/skills/` 等が sandbox の `denyWithinAllow` に含まれていても、それは **`Bash` の `mkdir` / `rm` / `tee` / `sed -i` 経由を deny する** だけ。**`Edit` / `Write` tool 経由は permissions の `ask` 経路に乗って通る**（user 環境の事前 allow/auto-approve で待ちなしに成功することも多い）。手動で別ターミナル作業を依頼する前に **必ず `Write` / `Edit` tool で実機検証** すること。tool で通れば `git add` 含む後続も Claude 内で完結する。Bash での `mkdir` / `rm` が必要な場合だけが手動依頼の対象。
 
-### 6.7 サブエージェント運用の補足
+### 6.7 solo dev 体制での branch protection 提案禁止
+
+solo dev 体制（PR 作成者 = レビュアー = merger が同一人物）では GitHub branch protection の `Require approvals` を有効化すると **self-approve 不可で自分の PR が永久 merge 不能** になる（GitHub policy）。`Require pull request before merging` 単体は他人 review を強制せず、`Restrict who can push` も PR 経由 self-merge を block しない。**team 体制前提の review 強制設計を solo dev に提案しないこと**。
+
+詳細経緯: `docs/decisions.md [069]`
+
+### 6.8 VRT pixel diff の baseline 更新は recommend しない
+
+VRT が小さい pixel diff (例: 0.07%) を検出しても「微小だから baseline 更新で OK」と recommend してはいけない。**pixel 数 ≠ visual design 品質** (design token 由来の意図しない変更でも pixel ratio は小さく見える)。判断は user の目視確認に委ね、エージェントは数値根拠で baseline 更新を勧めない。
+
+### 6.9 サブエージェント運用の補足
 
 - **完了報告は項目別ステータス必須**: 親プロンプトのスコープ箇条書きを subagent が一部のみで「完了」と返すケースがあるため、完了報告フォーマットに「項目ごとに 実装 / 既存で十分 / スキップ理由 を明示する」チェックリスト形式を要求する。親側でも依頼項目数 vs 実装項目数の機械的突き合わせを行う（過去事例: PR #218 で 3 件依頼中 1 件のみ実装で完了報告された）。
 - **`package.json` 変更時は `package-lock.json` 同期確認**: subagent が deps を追加・更新した場合、`git diff origin/develop --name-only` に `package.json` が含まれる場合は必ず `package-lock.json` も含まれているか確認する。漏れていれば親で `npm install --package-lock-only --cache "$TMPDIR/npm-cache" --no-audit --no-fund` を実行し別コミットで lock 同期を push する（過去事例: PR #181 で lock 不整合のまま push される寸前で発覚）。
