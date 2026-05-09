@@ -124,7 +124,7 @@ export function CharCountTool() {
       <Section title="SNS" role="status" aria-live="polite">
         <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1">
           <dt className="caption text-muted">
-            Twitter weight <span className="caption text-muted">（概算）</span>
+            X (旧 Twitter) weight <span className="caption text-muted">（概算）</span>
           </dt>
           <dd
             className={`caption font-mono text-right${sns.twitterWeight > 280 ? ' text-error' : ''}`}
