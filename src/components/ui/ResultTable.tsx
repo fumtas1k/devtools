@@ -104,14 +104,26 @@ export function ResultTable<T>({
           <tbody>
             {rows.map((row, i) => {
               const isSelected = selectedIndex === i;
+              const clickable = onRowClick !== undefined;
               return (
                 <tr
                   key={getKey(row)}
-                  onClick={onRowClick ? () => onRowClick(i) : undefined}
+                  onClick={clickable ? () => onRowClick(i) : undefined}
+                  onKeyDown={
+                    clickable
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onRowClick(i);
+                          }
+                        }
+                      : undefined
+                  }
+                  tabIndex={clickable ? 0 : undefined}
                   className="result-table-row"
                   data-selected={isSelected ? 'true' : 'false'}
-                  data-clickable={onRowClick ? 'true' : 'false'}
-                  aria-selected={onRowClick ? isSelected : undefined}
+                  data-clickable={clickable ? 'true' : 'false'}
+                  aria-current={clickable && isSelected ? 'true' : undefined}
                 >
                   {columns.map((col) => (
                     <td

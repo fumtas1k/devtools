@@ -96,6 +96,40 @@ test.describe('UUID v7 生成（production CSP 適用）', () => {
     });
   });
 
+  test('行を Tab フォーカス + Enter / Space で選択できる（WCAG 2.1.1 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
+      await page.getByRole('button', { name: '生成' }).click();
+
+      const rows = page.locator('table tbody tr');
+      await expect(rows).toHaveCount(10);
+
+      // a11y: <tr> は aria-selected を持たない (素 <table> 配下では ARIA spec 違反のため
+      // aria-current で表現する。issue #263)
+      await expect(rows.first()).not.toHaveAttribute('aria-selected', /.*/);
+
+      // 各 clickable row が Tab フォーカス可能であること (WCAG 2.1.1 / issue #264)
+      await expect(rows.first()).toHaveAttribute('tabindex', '0');
+
+      // 初期状態: 生成直後は selectedIndex=0 で row 0 が選択済み
+      await expect(rows.nth(0)).toHaveAttribute('aria-current', 'true');
+
+      // Enter で row 1 を選択
+      await rows.nth(1).focus();
+      await page.keyboard.press('Enter');
+      await expect(rows.nth(1)).toHaveAttribute('aria-current', 'true');
+      await expect(rows.nth(0)).not.toHaveAttribute('aria-current', /.*/);
+      await expect(page.getByText('フィールド分解', { exact: true })).toBeVisible();
+
+      // Space で row 2 を選択 (Space スクロール抑止も含めて検証)
+      await rows.nth(2).focus();
+      await page.keyboard.press(' ');
+      await expect(rows.nth(2)).toHaveAttribute('aria-current', 'true');
+      await expect(rows.nth(1)).not.toHaveAttribute('aria-current', /.*/);
+    });
+  });
+
   test('クリアボタンでリストをリセットできる（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       await page.getByRole('button', { name: '生成' }).click();

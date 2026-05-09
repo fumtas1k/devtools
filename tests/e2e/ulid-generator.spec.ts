@@ -73,6 +73,30 @@ test.describe('ULID生成（production CSP 適用）', () => {
     });
   });
 
+  // 陰性確認: UlidGenerator は onRowClick を渡さないため <tr> に tabindex が付かないこと。
+  // ResultTable の clickable 分岐 (`tabIndex={clickable ? 0 : undefined}`) が
+  // 「未指定 consumer ではキーボード操作干渉ゼロ」を保つことを future-proof で守る (issue #264 受け入れ基準)。
+  test('onRowClick 未指定 consumer では <tr> に tabindex が付かない（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/ulid-generator', async (page) => {
+      await page.getByRole('button', { name: '生成' }).click();
+
+      const dataRows = page
+        .getByRole('row')
+        .filter({ has: page.getByRole('cell', { name: /[0-9A-Z]{26}/ }) });
+      await expect(dataRows.first()).toBeVisible();
+
+      // tabindex 属性が一切付かない (clickable=false 経路の保証)
+      await expect(dataRows.first()).not.toHaveAttribute('tabindex', /.*/);
+      // data-clickable も false (cursor: pointer も付かない)
+      await expect(dataRows.first()).toHaveAttribute('data-clickable', 'false');
+      // aria-current / aria-selected も無 (selection 概念がそもそも consumer に無い)
+      await expect(dataRows.first()).not.toHaveAttribute('aria-current', /.*/);
+      await expect(dataRows.first()).not.toHaveAttribute('aria-selected', /.*/);
+    });
+  });
+
   // 陽性対照 — ゲート自体の動作確認
   test('applyProductionCsp は実際に CSP 違反を捕捉する（ゲート自体の動作確認）', async ({
     browser,

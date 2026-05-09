@@ -368,6 +368,12 @@
   .result-table-row[data-clickable='true'] {
     cursor: pointer;
   }
+  /* :where(button, ...):focus-visible は <tr> 不対象のため、clickable row 専用に focus ring を別定義。
+     outline-offset は負値で <tr> 境界の内側に描画し overflow-hidden の親に切られないようにする。 */
+  .result-table-row[data-clickable='true']:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: -2px;
+  }
   /* selection マーカー (border-top/bottom 2px primary) */
   .result-table-row[data-selected='true'] > td {
     border-top: 2px solid var(--color-primary);
