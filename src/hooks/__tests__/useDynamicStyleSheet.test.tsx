@@ -101,4 +101,30 @@ describe('useDynamicStyleSheet', () => {
     // 旧実装 (毎回 sheet 生成) ではこの assertion が fail する
     expect(document.adoptedStyleSheets.length).toBe(initialCount);
   });
+
+  it('初回 empty → non-empty に変化したら lazy create で sheet を attach する', () => {
+    // mount 直後 empty では sheet を attach しない
+    const { rerender } = renderHook(
+      ({ rules }: { rules: string }) => useDynamicStyleSheet(() => rules),
+      { initialProps: { rules: '' } }
+    );
+    expect(document.adoptedStyleSheets.length).toBe(0);
+    // 後で non-empty になったら sheet を生成 + attach + cssRules に反映される
+    rerender({ rules: '.x { color: red; }' });
+    expect(document.adoptedStyleSheets.length).toBe(1);
+    expect(document.adoptedStyleSheets[0].cssRules[0].cssText).toContain('red');
+  });
+
+  it('non-empty → empty に変化したら sheet は attach 維持で cssRules のみ空になる', () => {
+    const { rerender } = renderHook(
+      ({ rules }: { rules: string }) => useDynamicStyleSheet(() => rules),
+      { initialProps: { rules: '.x { color: red; }' } }
+    );
+    expect(document.adoptedStyleSheets.length).toBe(1);
+    expect(document.adoptedStyleSheets[0].cssRules.length).toBe(1);
+    // empty に切り替わったら sheet は残るが cssRules は 0 件
+    rerender({ rules: '' });
+    expect(document.adoptedStyleSheets.length).toBe(1);
+    expect(document.adoptedStyleSheets[0].cssRules.length).toBe(0);
+  });
 });
