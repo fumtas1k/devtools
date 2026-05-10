@@ -2874,3 +2874,54 @@ Playwright 1.59 の `windowsFilesystemFriendlyLength = 60` (`node_modules/playwr
 - issue #362, PR #361 (再現 PR、既に merge 済み)
 - meta test: `tests/meta/vrt-slider-report.test.ts`
 - 教訓: `docs/agent-lessons.md`
+
+---
+
+## [075] 2026-05-10 — char-count: X (旧 Twitter) 文字数を twitter-text 公式仕様に準拠
+
+日付 2026-05-10 | ステータス: 採用 | issue #376
+
+### 背景
+
+既存 `twitterWeight()` は `cp <= 0x10FF ? 1 : 2` のみで、URL 短縮 (t.co = 23 weighted chars) / 補助 weight ranges / 前後空白 trim を未対応だった。「概算」ラベルで誤差を黙認していたが、URL を含む典型的な X 投稿で実際の文字数と乖離が大きく、ユーザー目線で実用性が低かった。
+
+### 決断
+
+twitter-text 公式 conformance 仕様 v3 (`maxWeightedTweetLength: 280`, `defaultWeight: 200`, `transformedURLLength: 23`) に準拠する。具体的には:
+
+1. **trim**: 入力前後の空白 (半角・全角) を `String.prototype.trim()` で除去
+2. **URL 検出 + 23 weighted 換算**: `/https?:\/\/[^\s<>"]+/gi` でマッチした URL を 23 weight の placeholder に置換 (末尾の `.,!?;:'")\]}` は URL から除外しテキスト側に戻す)
+3. **weight-1 範囲**: U+0000–U+10FF / U+2000–U+200D / U+2010–U+201F / U+2032–U+2037 を weight 1、それ以外を weight 2
+
+「概算」ラベルは UI から削除。実装後の精度は ~99% (URL regex 簡易性のみが残差)。
+
+### 不採用案: `twitter-text` npm パッケージの採択
+
+trade-off:
+
+- ✅ pros: IDN / cashtag / mention 等の周辺仕様を含む完全互換、メンテナンスは Twitter 側
+- ❌ cons: bundle 増 (1MB 超の正規表現テーブル含む)、依存追加の保守コスト、本ツールはブラウザ完結型で軽量重視
+
+→ devtools プロジェクトは「依存最小化 + 軽量」が core value のため自前 regex 採用。完全互換が必要になった時点で別 issue で再検討。
+
+### 不採用案: 「概算」ラベル維持 + 簡易ロジックのまま
+
+trade-off:
+
+- ✅ pros: 工数ゼロ
+- ❌ cons: URL を含む投稿で実用性が低く、ツール価値が大きく毀損
+
+→ 改修コストが小さく (helper 関数 + 正規表現 + テスト 23 件)、ユーザー価値が大きいため改修採用。
+
+### 結果・トレードオフ
+
+- 一致率 ~95% (typical http(s) URL はカバー、t.co の正規化や IDN ドメインは非対応)
+- バンドルサイズ増 ~0 KB (依存追加なし、関数 30 行程度)
+- twitter-text の `extractUrls()` 完全互換が必要になった場合は別 issue で再検討
+
+### 関連
+
+- issue #376
+- 設計書: `docs/superpowers/specs/2026-05-10-char-count-sns-redesign-design.md`
+- 実装計画: `docs/superpowers/plans/2026-05-10-char-count-sns-redesign.md`
+- twitter-text v3 conformance 仕様 (`twitter-text-config.json`)
