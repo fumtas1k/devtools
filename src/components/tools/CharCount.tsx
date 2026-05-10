@@ -55,7 +55,7 @@ function SnsCard({
   captionId,
 }: SnsCardProps) {
   return (
-    <article className="border-default rounded-md border p-3 flex flex-col gap-2">
+    <article className="border-default rounded-md border p-3 flex h-full flex-col gap-2">
       <div>
         <p className="caption font-bold">{title}</p>
         <p className="caption text-muted">{method}</p>
