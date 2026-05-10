@@ -2661,7 +2661,7 @@ PR 9 Phase 2 で発覚した、Astro 島ランタイムが React island を含�
 
 PR 6 必須チェックリスト末尾の未消化項目を本 entry で「現状維持」と確定:
 
-- **`.text-primary` 命名衝突リスク**: PR 2 で導入した `.text-primary` (`--color-primary` 由来) は Tailwind `text-primary` auto-utility と衝突する可能性があるが、現状 `@theme` に `--color-primary` を登録していないため衝突は発生していない。**現状維持**: 将来 `@theme` 切替する場合は `text-brand` 等への rename を検討。
+- **`.text-primary` 命名衝突リスク**: PR 2 で導入した `.text-primary` (`--color-primary` 由来) は Tailwind `text-primary` auto-utility と衝突する可能性があるが、現状 `@theme` に `--color-primary` を登録していないため衝突は発生していない。**現状維持**: 将来 `@theme` 切替する場合は `text-brand` 等への rename を検討。→ **[073] で再評価済**: その後 `--color-primary` は `@theme` 登録済となり、auto-utility と完全同名・同挙動の重複となったため、本 entry の「現状維持」を更新し `.text-primary` 手動定義を削除して auto-utility に統一した。
 - **Tailwind `border` utility と `@layer components` の `border-color` 優先度**: PR 2 で導入した `.alert-success` / `.alert-error` は `<div className="rounded-lg p-4 border alert-success">` のように Tailwind `border` と併用。layer 順序によっては期待色にならないリスクが PR 2 review で指摘済だが、CSP strict 化後の VRT 再撮影でも diff が出ていないため実害は未顕在。**現状維持**: 将来 Tailwind v4 layer 仕様変更で問題が顕在化したら再評価。
 
 ### 検出網運用ノート
@@ -2802,3 +2802,40 @@ MySQL utf8mb3 カラムへの INSERT が SMP 文字 (U+10000 以上) で失敗�
 ### 結果・トレードオフ
 
 ユーザーは「なぜ ❌ か」を不可文字数・内訳で把握できる。byte 数は互換時のみ意味のある情報として提示。
+
+---
+
+## [073] 2026-05-10 — `#176` B 案完了後の semantic alias 整理 (`@theme` auto-utility 重複削減 + `.drawer-backdrop` `color-mix()` 化)
+
+### 状況
+
+`#176` B 案完了 ([068]) 後、PR 1〜5b / 7a で `@layer components` に追加した「色 token text utility」series が Tailwind v4 の `@theme` auto-utility と一部重複していることが判明 (#295 で観察)。
+
+| `@layer components` 手動 class | `@theme` 登録 var                 | Tailwind auto-utility (重複) |
+| ------------------------------ | --------------------------------- | ---------------------------- |
+| `.text-primary`                | `--color-primary`                 | `text-primary`               |
+| `.text-tertiary`               | `--color-tertiary`                | `text-tertiary`              |
+| `.text-icon`                   | `--color-neutral-700` (primitive) | `text-neutral-700`           |
+
+加えて `.drawer-backdrop` は `rgba(17,24,39,0.5)` を hardcode しており、`--color-neutral-900` の 50% alpha と同値だが token 値変更に追従しない。
+
+### 判断
+
+**(a) `.text-primary` / `.text-tertiary` を削除**: semantic token 経由のため auto-utility と完全同名・同挙動。callsite 変更ゼロで重複定義のみ排除できる。
+
+**(b) `.text-icon` は維持**: `--color-neutral-700` は primitive scale。auto-utility (`text-neutral-700`) 直書きは「なぜ 700? 600 じゃダメ?」が読み取れず保守性が下がる。意味クラスで隠蔽することで、将来 hover/focus/disabled 状態追加時に `.text-icon:hover { ... }` で集約定義できる余地も残す (7.1 章の variant 非対応問題により、`@layer components` 手動 class の方が擬似クラス追加で柔軟)。
+
+**(c) `.drawer-backdrop` を `color-mix()` 化**: `color-mix(in srgb, var(--color-neutral-900) 50%, transparent)` で token 値変更に自動追従。ブラウザ対応 (Chrome 111+ / Firefox 113+ / Safari 16.2+) は十分。
+
+**(d) 「Tailwind カラークラス禁止」rule の精緻化** (`docs/shared-agent-rules.md` 7 章): semantic token (`text-primary` 等) は意味的命名のため auto-utility 使用可、primitive scale (`text-blue-500` / `text-neutral-700` 等) は引き続き禁止。境界基準は「token 名から用途が読み取れる (semantic) か、palette 段階値に過ぎない (primitive) か」。
+
+### 残課題 / 副次効果
+
+- `.text-error` / `.text-success` も `@theme` 登録 token 経由のため理論上は同様に削除可能だが、callsite 影響が広く、本 PR では `.text-primary` / `.text-tertiary` のみに留める (issue #295 のスコープ外、必要に応じて別 issue で追加判断)。
+- 他の rgba 直書きは `--elevation-*` の黒シャドウのみで、`var(--color-X)` の alpha 違いではないため `color-mix()` 化対象外。
+
+### 関連
+
+- 解消する issue: [#295](https://github.com/fumtas1k/devtools/issues/295)
+- 上位 issue: [#176](https://github.com/fumtas1k/devtools/issues/176) (B 案完了は [068])
+- rule 更新: `docs/shared-agent-rules.md` 7 章
