@@ -75,14 +75,30 @@ describe('useDynamicStyleSheet', () => {
     expect(document.adoptedStyleSheets.length).toBe(0);
   });
 
-  it('rules が変わると sheet を作り直す', () => {
+  it('rules が変わると同一 sheet を in-place 更新する (sheet を作り直さない)', () => {
     const { rerender } = renderHook(
       ({ color }: { color: string }) => useDynamicStyleSheet((cn) => `.${cn} { color: ${color}; }`),
       { initialProps: { color: 'red' } }
     );
     expect(document.adoptedStyleSheets[0].cssRules[0].cssText).toContain('red');
+    // rules 変更前後で同一インスタンスを保持しているか確認
+    const sheetBefore = document.adoptedStyleSheets[0];
     rerender({ color: 'blue' });
     expect(document.adoptedStyleSheets.length).toBe(1);
     expect(document.adoptedStyleSheets[0].cssRules[0].cssText).toContain('blue');
+    // sheet インスタンスが同一であること (add/filter が発生していない)
+    expect(document.adoptedStyleSheets[0]).toBe(sheetBefore);
+  });
+
+  it('rules を複数回変更しても adoptedStyleSheets に 1 sheet しか追加されない (in-place 更新)', () => {
+    const { rerender } = renderHook(
+      ({ rules }: { rules: string }) => useDynamicStyleSheet(() => rules),
+      { initialProps: { rules: '.x { color: red }' } }
+    );
+    const initialCount = document.adoptedStyleSheets.length;
+    rerender({ rules: '.x { color: blue }' });
+    rerender({ rules: '.x { color: green }' });
+    // 旧実装 (毎回 sheet 生成) ではこの assertion が fail する
+    expect(document.adoptedStyleSheets.length).toBe(initialCount);
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 /**
  * Constructable Stylesheets で per-instance scoped CSS を注入。
@@ -16,6 +16,13 @@ import { useEffect, useId } from 'react';
  * (`docs/decisions.md [067] Follow-up decisions` 参照、option A)。callsite が
  * user input 経由 / props 動的変化を持つ場合は別途検討が必要。
  *
+ * 実装方針 (B 案): effect を 2 本に分割し、Constructable Stylesheets の
+ * in-place 更新のメリットを活かす。
+ *   - 依存配列 [] の effect: mount 時のみ sheet を生成し adoptedStyleSheets に attach、
+ *     unmount 時に detach する。sheet インスタンスは useRef で保持して同一を再利用。
+ *   - 依存配列 [rules] の effect: rules が変化するたびに同一 sheet を replaceSync で
+ *     in-place 更新する。sheet の add / filter を繰り返さないため sheet 数は増えない。
+ *
  * @param buildRules - hook が確定した className を受け取り CSS rules 文字列を
  *   組み立てて返す callback。空文字列を返すと sheet 生成・attach をスキップする。
  * @returns root element に付与する unique class 名
@@ -25,14 +32,26 @@ export function useDynamicStyleSheet(buildRules: (className: string) => string):
   const className = `dyn-${rawId.replaceAll(':', '_')}`;
   const rules = buildRules(className);
 
+  // sheet インスタンスを useRef で保持して同一インスタンスを再利用する
+  const sheetRef = useRef<CSSStyleSheet | null>(null);
+
+  // mount 時のみ sheet を生成して adoptedStyleSheets に attach、unmount 時に detach
   useEffect(() => {
     if (!rules) return;
     const sheet = new CSSStyleSheet();
-    sheet.replaceSync(rules);
+    sheetRef.current = sheet;
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
     return () => {
       document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => s !== sheet);
+      sheetRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // rules が変化するたびに同一 sheet を in-place 更新 (sheet 数は増えない)
+  useEffect(() => {
+    if (!rules || !sheetRef.current) return;
+    sheetRef.current.replaceSync(rules);
   }, [rules]);
 
   return className;
