@@ -2919,9 +2919,13 @@ trade-off:
 - バンドルサイズ増 ~0 KB (依存追加なし、関数 30 行程度)
 - twitter-text の `extractUrls()` 完全互換が必要になった場合は別 issue で再検討
 
+### 既知制約
+
+- **括弧で閉じる URL** (`https://en.wikipedia.org/wiki/Foo_(bar)` 等): `TRAILING_PUNCT = /[.,!?;:'")\]}]+$/` が末尾 `)` を URL から除外するため、URL 内最後の `(...)` の閉じ括弧がテキスト側に戻る。Wikipedia 系 URL で発生し得るが X 投稿の頻度は低く、自前 regex 維持の trade-off として許容。完全対応する場合は URL 内の `(` / `)` 数のバランス判定を入れるか、`twitter-text` lib 採択を検討する (issue #378)。
+
 ### 関連
 
-- issue #376
+- issue #376, follow-up #378
 - 設計書: `docs/superpowers/specs/2026-05-10-char-count-sns-redesign-design.md`
 - 実装計画: `docs/superpowers/plans/2026-05-10-char-count-sns-redesign.md`
 - twitter-text v3 conformance 仕様 (`twitter-text-config.json`)
