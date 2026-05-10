@@ -117,7 +117,7 @@ describe('CharCountTool — SNS 任意上限', () => {
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
-    const limitInput = screen.getByLabelText('任意上限') as HTMLInputElement;
+    const limitInput = screen.getByLabelText('任意上限', { selector: 'input' }) as HTMLInputElement;
     expect(limitInput.value).toBe('280');
   });
 
@@ -130,7 +130,7 @@ describe('CharCountTool — SNS 任意上限', () => {
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
-    const limitInput = screen.getByLabelText('任意上限') as HTMLInputElement;
+    const limitInput = screen.getByLabelText('任意上限', { selector: 'input' }) as HTMLInputElement;
     act(() => {
       fireEvent.change(limitInput, { target: { value: '100' } });
     });
@@ -148,7 +148,9 @@ describe('CharCountTool — SNS 任意上限', () => {
       act(() => {
         vi.advanceTimersByTime(DEBOUNCE_MS);
       });
-      const limitInput = screen.getByLabelText('任意上限') as HTMLInputElement;
+      const limitInput = screen.getByLabelText('任意上限', {
+        selector: 'input',
+      }) as HTMLInputElement;
       act(() => {
         fireEvent.change(limitInput, { target: { value: '0' } });
       });
@@ -161,7 +163,9 @@ describe('CharCountTool — SNS 任意上限', () => {
       act(() => {
         vi.advanceTimersByTime(DEBOUNCE_MS);
       });
-      const limitInput = screen.getByLabelText('任意上限') as HTMLInputElement;
+      const limitInput = screen.getByLabelText('任意上限', {
+        selector: 'input',
+      }) as HTMLInputElement;
       act(() => {
         // type="number" input でも fireEvent は文字列 '-1' を onChange に渡す
         fireEvent.change(limitInput, { target: { value: '-1' } });
@@ -175,7 +179,9 @@ describe('CharCountTool — SNS 任意上限', () => {
       act(() => {
         vi.advanceTimersByTime(DEBOUNCE_MS);
       });
-      const limitInput = screen.getByLabelText('任意上限') as HTMLInputElement;
+      const limitInput = screen.getByLabelText('任意上限', {
+        selector: 'input',
+      }) as HTMLInputElement;
       act(() => {
         fireEvent.change(limitInput, { target: { value: '01' } });
       });

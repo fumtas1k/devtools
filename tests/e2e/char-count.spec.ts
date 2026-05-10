@@ -43,17 +43,17 @@ test.describe('文字カウント', () => {
 
   test('任意上限を 100 に変更すると "hello" 入力時に文字数 5 が表示される', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('hello');
-    await page.getByLabel('任意上限').fill('100');
+    await page.getByRole('spinbutton', { name: '任意上限' }).fill('100');
     // 任意上限カード (article) の current 値に 5 が表示される
     const customCard = page.locator('article').filter({ has: page.getByText('任意上限') });
     await expect(customCard).toContainText('5');
-    await expect(page.getByLabel('任意上限')).toHaveValue('100');
+    await expect(page.getByRole('spinbutton', { name: '任意上限' })).toHaveValue('100');
   });
 
   // 陽性対照: 入力 validator が "0" を実際に reject することを確認
   // 旧実装 (/^\d+$/) では '0' が通り value が '0' になるためこのテストは fail する
   test('[陽性対照] 任意上限欄に "0" を入力しても reject されて値が変わらない', async ({ page }) => {
-    const limit = page.getByLabel('任意上限');
+    const limit = page.getByRole('spinbutton', { name: '任意上限' });
     await limit.fill('100');
     await limit.fill('0');
     // controlled input: setState されなければ value は直前の '100' のまま
@@ -62,7 +62,7 @@ test.describe('文字カウント', () => {
 
   // 陽性対照: 先頭ゼロ "01" も reject されること (validator 仕様変更検出力強化)
   test('[陽性対照] 任意上限欄に "01" (先頭ゼロ) を入力しても reject される', async ({ page }) => {
-    const limit = page.getByLabel('任意上限');
+    const limit = page.getByRole('spinbutton', { name: '任意上限' });
     await limit.fill('100');
     await limit.fill('01');
     await expect(limit).not.toHaveValue('01');

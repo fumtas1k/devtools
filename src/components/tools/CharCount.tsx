@@ -40,7 +40,9 @@ type SnsCardProps = {
   isOver: boolean;
   /** 「current / limit」表示を任意上限 input と組合わせる場合に渡す */
   limitNode?: ReactNode;
-  /** caption 用 id (aria-describedby に使用) */
+  /** title 用 id (article の aria-labelledby に使用) */
+  titleId: string;
+  /** caption 用 id (ProgressBar の aria-describedby に使用) */
   captionId: string;
 };
 
@@ -52,12 +54,18 @@ function SnsCard({
   limit,
   isOver,
   limitNode,
+  titleId,
   captionId,
 }: SnsCardProps) {
   return (
-    <article className="border-default rounded-md border p-3 flex h-full flex-col gap-2">
+    <article
+      aria-labelledby={titleId}
+      className="border-default rounded-md border p-3 flex h-full flex-col gap-2"
+    >
       <div>
-        <p className="caption font-bold">{title}</p>
+        <p id={titleId} className="caption font-bold">
+          {title}
+        </p>
         <p className="caption text-muted">{method}</p>
       </div>
       <div className="flex items-baseline gap-2">
@@ -69,7 +77,7 @@ function SnsCard({
       <ProgressBar current={current} max={limit} aria-describedby={captionId} />
       <p id={captionId} className="caption text-muted">
         {caption}
-        {isOver && <span className="text-error"> (+{current - limit} over)</span>}
+        {isOver && <span className="text-error"> (+{current - limit} 超過)</span>}
       </p>
     </article>
   );
@@ -190,6 +198,7 @@ export function CharCountTool() {
             current={sns.twitterWeight}
             limit={280}
             isOver={isOver.twitter}
+            titleId="sns-card-x-title"
             captionId="sns-card-x-caption"
           />
           <SnsCard
@@ -199,6 +208,7 @@ export function CharCountTool() {
             current={sns.blueskyCount}
             limit={300}
             isOver={isOver.bluesky}
+            titleId="sns-card-bluesky-title"
             captionId="sns-card-bluesky-caption"
           />
           <SnsCard
@@ -208,6 +218,7 @@ export function CharCountTool() {
             current={chars.graphemes}
             limit={customLimit ?? 0}
             isOver={isOver.custom}
+            titleId="sns-card-custom-title"
             captionId="sns-card-custom-caption"
             limitNode={
               <span className="inline-block w-20">
