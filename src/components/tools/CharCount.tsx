@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { Section } from '@/components/ui/Section';
 import { InputField } from '@/components/ui/InputField';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { BareInput } from '@/components/ui/BareInput';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import { count } from '@/utils/char-count';
 import type { EncodingCompat } from '@/utils/char-count/types';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -27,6 +28,58 @@ function EncRow({ label, compat }: { label: string; compat: EncodingCompat }) {
         )}
       </dd>
     </>
+  );
+}
+
+type SnsCardProps = {
+  title: string;
+  method: string;
+  caption: string;
+  current: number;
+  limit: number;
+  isOver: boolean;
+  /** 「current / limit」表示を任意上限 input と組合わせる場合に渡す */
+  limitNode?: ReactNode;
+  /** title 用 id (article の aria-labelledby に使用) */
+  titleId: string;
+  /** caption 用 id (ProgressBar の aria-describedby に使用) */
+  captionId: string;
+};
+
+function SnsCard({
+  title,
+  method,
+  caption,
+  current,
+  limit,
+  isOver,
+  limitNode,
+  titleId,
+  captionId,
+}: SnsCardProps) {
+  return (
+    <article
+      aria-labelledby={titleId}
+      className="border-default rounded-md border p-3 flex h-full flex-col gap-2"
+    >
+      <div>
+        <p id={titleId} className="caption font-bold">
+          {title}
+        </p>
+        <p className="caption text-muted">{method}</p>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className={`font-mono${isOver ? ' text-error' : ''}`}>{current}</span>
+        <span className="text-muted">/</span>
+        {limitNode ?? <span className="font-mono text-muted">{limit}</span>}
+        {isOver && <span className="sr-only"> 上限超過</span>}
+      </div>
+      <ProgressBar current={current} max={limit} aria-describedby={captionId} />
+      <p id={captionId} className="caption text-muted">
+        {caption}
+        {isOver && <span className="text-error"> (+{current - limit} 超過)</span>}
+      </p>
+    </article>
   );
 }
 
@@ -137,38 +190,50 @@ export function CharCountTool() {
 
       {/* 4. SNS */}
       <Section title="SNS" role="status" aria-live="polite">
-        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1">
-          <dt className="caption text-muted">
-            X (旧 Twitter) weight <span className="caption text-muted">（概算）</span>
-          </dt>
-          <dd className={`caption font-mono text-right${isOver.twitter ? ' text-error' : ''}`}>
-            {sns.twitterWeight} / 280
-            {isOver.twitter && <span className="sr-only"> 上限超過</span>}
-          </dd>
-          <dt className="caption text-muted">Bluesky</dt>
-          <dd className={`caption font-mono text-right${isOver.bluesky ? ' text-error' : ''}`}>
-            {sns.blueskyCount} / 300
-            {isOver.bluesky && <span className="sr-only"> 上限超過</span>}
-          </dd>
-          <dt className="caption text-muted self-center">任意上限</dt>
-          <dd className="caption flex items-center justify-end gap-2">
-            <span className={`font-mono${isOver.custom ? ' text-error' : ''}`}>
-              {chars.graphemes}
-              {isOver.custom && <span className="sr-only"> 上限超過</span>}
-            </span>
-            <span className="text-muted">/</span>
-            <span className="inline-block w-20">
-              <BareInput
-                type="number"
-                inputMode="numeric"
-                value={snsLimit}
-                onChange={handleSnsLimitChange}
-                aria-label="任意上限"
-                min="1"
-              />
-            </span>
-          </dd>
-        </dl>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <SnsCard
+            title="X (旧 Twitter)"
+            method="Twitter weight"
+            caption="URL を 23 字換算、CJK は 2 weight"
+            current={sns.twitterWeight}
+            limit={280}
+            isOver={isOver.twitter}
+            titleId="sns-card-x-title"
+            captionId="sns-card-x-caption"
+          />
+          <SnsCard
+            title="Bluesky"
+            method="書記素 (grapheme)"
+            caption="絵文字や合字も 1 文字として計上"
+            current={sns.blueskyCount}
+            limit={300}
+            isOver={isOver.bluesky}
+            titleId="sns-card-bluesky-title"
+            captionId="sns-card-bluesky-caption"
+          />
+          <SnsCard
+            title="任意上限"
+            method="書記素"
+            caption="書記素クラスタ単位で計上"
+            current={chars.graphemes}
+            limit={customLimit ?? 0}
+            isOver={isOver.custom}
+            titleId="sns-card-custom-title"
+            captionId="sns-card-custom-caption"
+            limitNode={
+              <span className="inline-block w-20">
+                <BareInput
+                  type="number"
+                  inputMode="numeric"
+                  value={snsLimit}
+                  onChange={handleSnsLimitChange}
+                  aria-label="任意上限"
+                  min="1"
+                />
+              </span>
+            }
+          />
+        </div>
       </Section>
 
       {/* 5. 原稿 */}
