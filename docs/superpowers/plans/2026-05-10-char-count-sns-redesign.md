@@ -853,7 +853,7 @@ EOF
 
 ### - [ ] Step 2: README.md / SPEC.md の影響を確認
 
-CLAUDE.md 4 章のドキュメント更新ルールに従い、以下を確認:
+`docs/shared-agent-rules.md` 4 章のドキュメント更新ルールに従い、以下を確認:
 
 - ツール追加 / 削除 / slug 変更 → なし
 - ライブラリ追加 / 削除 → なし (twitter-text 不採用)
