@@ -86,6 +86,18 @@ function sanitizeId(s) {
   return s.replace(/[^\w]/g, '_').slice(0, 80);
 }
 
+/**
+ * Playwright の retry attempt 用 dir かどうかを判定。
+ * Playwright は retry 時に `<test-dir>-retry1`, `-retry2` のような suffix を付けて
+ * 別 dir を作る。同じ test の再試行を slider に重複表示しないため、本判定で skip する。
+ *
+ * 注意: sanitize 前の raw な basename(dir) を渡すこと
+ * (sanitize 後だと `slice(0, 80)` で `-retry1` が途中で切れる場合がある)。
+ */
+export function isRetryDir(dirName) {
+  return /-retry\d+$/.test(dirName);
+}
+
 function esc(s) {
   return s
     .replace(/&/g, '&amp;')
@@ -98,6 +110,15 @@ function generateHTML(comparisons) {
   const navItems = comparisons
     .map(({ label, id }) => `<li><a href="#${id}">${esc(label)}</a></li>`)
     .join('\n      ');
+
+  // handle slot に左右矢印 SVG を入れて「drag できる UI」であることを視覚的に示す。
+  // 矢印アイコン単独では PointerDown が拾えない場合があるため、circle 背景で十分な
+  // クリック領域 (40px) を確保する。
+  const handleSvg = `<svg slot="handle" class="handle-icon" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="22" fill="#1e40af" stroke="#fff" stroke-width="3"/>
+        <path d="M40 42 L32 50 L40 58" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M60 42 L68 50 L60 58" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
 
   const cards = comparisons
     .map(
@@ -113,6 +134,7 @@ function generateHTML(comparisons) {
         <img src="images/${id}-actual.png" alt="Actual">
         <figcaption>Actual（実際）</figcaption>
       </figure>
+      ${handleSvg}
     </img-comparison-slider>${
       hasDiff
         ? `
@@ -148,8 +170,10 @@ function generateHTML(comparisons) {
     .badge{display:inline-block;background:#dc2626;color:#fff;font-size:.75rem;font-weight:600;padding:.2rem .5rem;border-radius:4px;margin-bottom:1rem}
     .card{background:#fff;border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
     h2{margin:0 0 .75rem;font-size:.9rem;color:#374151;word-break:break-all}
-    img-comparison-slider{width:100%;--default-handle-color:#1e40af;--default-handle-width:3px}
+    img-comparison-slider{width:100%;--default-handle-color:#1e40af;--default-handle-width:6px;--default-handle-opacity:1}
     img-comparison-slider img{width:100%;display:block}
+    .handle-icon{width:48px;height:48px;cursor:ew-resize;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
+    @media (hover:hover){.handle-icon:hover{transform:scale(1.1)}}
     figure{margin:0;position:relative}
     figcaption{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:.7rem;padding:.2rem .5rem}
     details{margin-top:.75rem}
@@ -160,7 +184,7 @@ function generateHTML(comparisons) {
 <body>
 <header>
   <h1>🖼️ Visual Regression Diff Viewer</h1>
-  <p>← スライドして比較 &nbsp;|&nbsp; 左: <strong>Baseline（期待値）</strong> &nbsp; 右: <strong>Actual（実際）</strong></p>
+  <p>中央の <strong>⇆ ハンドル</strong> を左右に drag して比較 &nbsp;|&nbsp; 左半分: <strong>Baseline（期待値）</strong> &nbsp; 右半分: <strong>Actual（実際）</strong></p>
 </header>
 <nav>
   <ul>
@@ -191,6 +215,11 @@ async function main() {
 
   for (const actualPath of actualFiles) {
     const dir = dirname(actualPath);
+
+    // retry attempt の dir (`-retry1`, `-retry2` 等) は skip。
+    // 同じ test の再試行を slider に重複表示しないため (initial attempt のみ採用)。
+    if (isRetryDir(basename(dir))) continue;
+
     const actualName = basename(actualPath);
     const trimmedBase = actualName.replace(/-actual\.png$/, '');
 
