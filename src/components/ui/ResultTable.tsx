@@ -11,7 +11,9 @@ export interface TableColumn<T> {
    * CSS length token (例: '3.5rem')。**hard-coded リテラルのみ許容**。
    * Constructable Stylesheets 経由で per-instance scoped rule に展開されるため、
    * `assertCssLength` で `{number}{unit?}` 形式以外を reject する (CSS injection 防御)。
-   * user input を bridge する場合は事前 sanitize 必須。
+   * **render-time throw**: validate 失敗時は render 中に例外を throw する。
+   * Error Boundary 不在の場合は UI 全体が落ちるため、user input を bridge する場合は
+   * 呼出側で必ず事前 sanitize すること。
    * 詳細は `docs/decisions.md [067]` / PR 9 spec § 4.2 / 4.3 参照。
    */
   width?: string;
@@ -28,7 +30,9 @@ interface Props<T> {
   getKey: (row: T) => string | number;
   /**
    * CSS length token (hard-coded literals only)。`TableColumn.width` と同じ origin discipline。
-   * `assertCssLength` で形式 validate。
+   * `assertCssLength` で形式 validate。**render-time throw**: validate 失敗時は render 中に
+   * 例外を throw する。Error Boundary 不在の場合は UI 全体が落ちるため、user input を
+   * bridge する場合は呼出側で必ず事前 sanitize すること。
    */
   minWidth?: string;
   selectedIndex?: number | null;
