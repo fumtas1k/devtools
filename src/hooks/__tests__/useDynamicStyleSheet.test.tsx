@@ -75,14 +75,56 @@ describe('useDynamicStyleSheet', () => {
     expect(document.adoptedStyleSheets.length).toBe(0);
   });
 
-  it('rules が変わると sheet を作り直す', () => {
+  it('rules が変わると同一 sheet を in-place 更新する (sheet を作り直さない)', () => {
     const { rerender } = renderHook(
       ({ color }: { color: string }) => useDynamicStyleSheet((cn) => `.${cn} { color: ${color}; }`),
       { initialProps: { color: 'red' } }
     );
     expect(document.adoptedStyleSheets[0].cssRules[0].cssText).toContain('red');
+    // rules 変更前後で同一インスタンスを保持しているか確認
+    const sheetBefore = document.adoptedStyleSheets[0];
     rerender({ color: 'blue' });
     expect(document.adoptedStyleSheets.length).toBe(1);
     expect(document.adoptedStyleSheets[0].cssRules[0].cssText).toContain('blue');
+    // sheet インスタンスが同一であること (add/filter が発生していない)
+    expect(document.adoptedStyleSheets[0]).toBe(sheetBefore);
+  });
+
+  it('rules を複数回変更しても adoptedStyleSheets に 1 sheet しか追加されない (in-place 更新)', () => {
+    const { rerender } = renderHook(
+      ({ rules }: { rules: string }) => useDynamicStyleSheet(() => rules),
+      { initialProps: { rules: '.x { color: red }' } }
+    );
+    const initialCount = document.adoptedStyleSheets.length;
+    rerender({ rules: '.x { color: blue }' });
+    rerender({ rules: '.x { color: green }' });
+    // 旧実装 (毎回 sheet 生成) ではこの assertion が fail する
+    expect(document.adoptedStyleSheets.length).toBe(initialCount);
+  });
+
+  it('初回 empty → non-empty に変化したら lazy create で sheet を attach する', () => {
+    // mount 直後 empty では sheet を attach しない
+    const { rerender } = renderHook(
+      ({ rules }: { rules: string }) => useDynamicStyleSheet(() => rules),
+      { initialProps: { rules: '' } }
+    );
+    expect(document.adoptedStyleSheets.length).toBe(0);
+    // 後で non-empty になったら sheet を生成 + attach + cssRules に反映される
+    rerender({ rules: '.x { color: red; }' });
+    expect(document.adoptedStyleSheets.length).toBe(1);
+    expect(document.adoptedStyleSheets[0].cssRules[0].cssText).toContain('red');
+  });
+
+  it('non-empty → empty に変化したら sheet は attach 維持で cssRules のみ空になる', () => {
+    const { rerender } = renderHook(
+      ({ rules }: { rules: string }) => useDynamicStyleSheet(() => rules),
+      { initialProps: { rules: '.x { color: red; }' } }
+    );
+    expect(document.adoptedStyleSheets.length).toBe(1);
+    expect(document.adoptedStyleSheets[0].cssRules.length).toBe(1);
+    // empty に切り替わったら sheet は残るが cssRules は 0 件
+    rerender({ rules: '' });
+    expect(document.adoptedStyleSheets.length).toBe(1);
+    expect(document.adoptedStyleSheets[0].cssRules.length).toBe(0);
   });
 });
