@@ -139,4 +139,116 @@ describe('CharCountTool — SNS 任意上限', () => {
     // 任意上限行の count 部分に 5 が表示される (他セルにも 5 はあり得るので getAllByText)
     expect(screen.getAllByText('5').length).toBeGreaterThan(0);
   });
+
+  // 陽性対照: handleSnsLimitChange バリデータが不正入力を reject することの検証。
+  // 旧実装で validator を削除すると「0」や「abc」が setState され下記 assert が fail する。
+  describe('handleSnsLimitChange — バリデータ陽性対照', () => {
+    it('「0」を入力してもデフォルト値 280 のまま (先頭ゼロ不可)', () => {
+      render(<CharCountTool />);
+      act(() => {
+        vi.advanceTimersByTime(DEBOUNCE_MS);
+      });
+      const limitInput = screen.getByLabelText('任意上限') as HTMLInputElement;
+      act(() => {
+        fireEvent.change(limitInput, { target: { value: '0' } });
+      });
+      // 0 は先頭ゼロ / ゼロ値のため validator が reject → 直前値 280 を保持
+      expect(limitInput.value).toBe('280');
+    });
+
+    it('「-1」を入力してもデフォルト値 280 のまま (負数 reject)', () => {
+      render(<CharCountTool />);
+      act(() => {
+        vi.advanceTimersByTime(DEBOUNCE_MS);
+      });
+      const limitInput = screen.getByLabelText('任意上限') as HTMLInputElement;
+      act(() => {
+        // type="number" input でも fireEvent は文字列 '-1' を onChange に渡す
+        fireEvent.change(limitInput, { target: { value: '-1' } });
+      });
+      // 負数は /^[1-9]\d*$/ に不一致で reject → 直前値 280 を保持
+      expect(limitInput.value).toBe('280');
+    });
+
+    it('「01」を入力してもデフォルト値 280 のまま (先頭ゼロ付き整数 reject)', () => {
+      render(<CharCountTool />);
+      act(() => {
+        vi.advanceTimersByTime(DEBOUNCE_MS);
+      });
+      const limitInput = screen.getByLabelText('任意上限') as HTMLInputElement;
+      act(() => {
+        fireEvent.change(limitInput, { target: { value: '01' } });
+      });
+      // 先頭ゼロ付きは reject → 直前値 280 を保持
+      expect(limitInput.value).toBe('280');
+    });
+  });
+});
+
+describe('CharCountTool — SNS カード', () => {
+  it('SNS カード 3 枚 (X / Bluesky / 任意上限) が描画される', () => {
+    render(<CharCountTool />);
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    expect(screen.getByText('X (旧 Twitter)')).toBeTruthy();
+    expect(screen.getByText('Bluesky')).toBeTruthy();
+    expect(screen.getByText('任意上限')).toBeTruthy();
+  });
+
+  it('各カードに progressbar role が描画される', () => {
+    render(<CharCountTool />);
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    const bars = screen.getAllByRole('progressbar');
+    expect(bars.length).toBe(3);
+  });
+
+  it('X カードの aria-valuemax は 280', () => {
+    render(<CharCountTool />);
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    const bars = screen.getAllByRole('progressbar');
+    expect(bars[0].getAttribute('aria-valuemax')).toBe('280');
+    expect(bars[1].getAttribute('aria-valuemax')).toBe('300');
+    expect(bars[2].getAttribute('aria-valuemax')).toBe('280');
+  });
+
+  it('上限超過時: aria-valuenow が max で clamp される', () => {
+    render(<CharCountTool />);
+    const textarea = screen.getByLabelText('入力テキスト') as HTMLTextAreaElement;
+    act(() => {
+      fireEvent.change(textarea, { target: { value: 'a'.repeat(281) } });
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    const bars = screen.getAllByRole('progressbar');
+    expect(bars[0].getAttribute('aria-valuenow')).toBe('280'); // X
+    expect(bars[2].getAttribute('aria-valuenow')).toBe('280'); // 任意上限
+  });
+
+  it('カード caption に計算方法説明が表示される', () => {
+    render(<CharCountTool />);
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    expect(screen.getByText(/URL を 23 字換算/)).toBeTruthy();
+    expect(screen.getByText(/絵文字や合字も 1 文字/)).toBeTruthy();
+    expect(screen.getByText(/書記素クラスタ単位/)).toBeTruthy();
+  });
+
+  it('「概算」ラベルは X カードから消えている', () => {
+    render(<CharCountTool />);
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    // X カードの article 要素内に「概算」テキストが存在しないことを確認
+    // (原稿セクションの「推定読了時間（概算）」は別セクションのため対象外)
+    const xCard = screen.getByText('X (旧 Twitter)').closest('article');
+    expect(xCard).not.toBeNull();
+    expect(xCard!.textContent).not.toMatch(/概算/);
+  });
 });
