@@ -1,41 +1,12 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { render, cleanup, screen } from '@testing-library/react';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 
-// useDynamicStyleSheet が依存する Constructable Stylesheets を jsdom で polyfill
-beforeAll(() => {
-  if (!CSSStyleSheet.prototype.replaceSync) {
-    CSSStyleSheet.prototype.replaceSync = function (cssText: string) {
-      while (this.cssRules.length > 0) {
-        this.deleteRule(0);
-      }
-      const rules = cssText
-        .split('\n')
-        .map((r) => r.trim())
-        .filter(Boolean);
-      rules.forEach((rule, i) => {
-        try {
-          this.insertRule(rule, i);
-        } catch {
-          // jsdom の insertRule が拒否する rule は握りつぶす
-        }
-      });
-    };
-  }
+// Constructable Stylesheets polyfill は src/test-setup.ts でグローバルに設定済み (重複排除)
 
-  if (!('adoptedStyleSheets' in document)) {
-    const sheets: CSSStyleSheet[] = [];
-    Object.defineProperty(document, 'adoptedStyleSheets', {
-      get() {
-        return sheets;
-      },
-      set(v: CSSStyleSheet[]) {
-        sheets.length = 0;
-        sheets.push(...v);
-      },
-    });
-  }
+beforeEach(() => {
+  document.adoptedStyleSheets = [];
 });
 
 afterEach(() => {
@@ -97,6 +68,17 @@ describe('ProgressBar', () => {
     render(<ProgressBar current={50} max={100} />);
     const css = adoptedCssText();
     expect(css).toContain('--progress-fill-width: 50%');
+  });
+
+  it('current === max (ぴったり 100%): progress-fill は 100%、overflow なし', () => {
+    const { container } = render(<ProgressBar current={100} max={100} />);
+    const bar = screen.getByRole('progressbar');
+    expect(bar.getAttribute('aria-valuenow')).toBe('100');
+    // overflow セグメントは描画されない
+    expect(container.querySelector('.progress-overflow')).toBeNull();
+    // fill は 100%
+    const css = adoptedCssText();
+    expect(css).toContain('--progress-fill-width: 100%');
   });
 
   it('100% 超時: progress-fill は 100%、progress-overflow は超過率 (clamp 100%)', () => {

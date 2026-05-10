@@ -12,6 +12,7 @@ type ProgressBarProps = {
  * - max=0 なら描画しない (任意上限の空欄想定)
  * - current が max 以下: 単一の filled セグメント
  * - current が max 超: filled (max ぶん) + overflow (超過分、最大 100% で clamp)
+ *   - overflow 幅は max を 100% とした超過率 (clamp at 100%、超過 200% 以上はラベルで表示)
  *
  * a11y:
  * - role="progressbar"
@@ -39,6 +40,8 @@ export function ProgressBar({ current, max, 'aria-describedby': describedBy }: P
       .join('\n');
   });
 
+  // useDynamicStyleSheet は hook のため early return より先に呼ぶ必要がある (Rules of Hooks)。
+  // max <= 0 の場合 hook 内で空ルールを返し、ここで描画を抑止する。
   if (max <= 0) return null;
 
   const valuenow = Math.min(current, max);
