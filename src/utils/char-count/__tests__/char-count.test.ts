@@ -15,7 +15,7 @@ import {
   checkEucJp,
 } from '@/utils/char-count/encodings';
 import { analyzeLines } from '@/utils/char-count/lines';
-import { twitterWeight, blueskyCount } from '@/utils/char-count/sns';
+import { twitterWeight, blueskyCount, extractUrlRanges } from '@/utils/char-count/sns';
 import {
   countGenkoSheets,
   countParagraphs,
@@ -408,6 +408,30 @@ describe('analyzeLines', () => {
 // sns
 // ────────────────────────────────────────────────────────────
 
+describe('extractUrlRanges', () => {
+  it('URL なし: 空配列', () => {
+    expect(extractUrlRanges('hello world')).toEqual([]);
+  });
+  it('URL 単体: range 1 件、開始 0 / 終了 文字数', () => {
+    const result = extractUrlRanges('https://example.com');
+    expect(result).toEqual([{ start: 0, end: 19 }]);
+  });
+  it('文中の URL: 周囲のテキストを含めない range', () => {
+    const result = extractUrlRanges('see https://example.com here');
+    expect(result).toEqual([{ start: 4, end: 23 }]);
+  });
+  it('末尾句読点を URL から除外: "https://example.com." → "https://example.com"', () => {
+    const result = extractUrlRanges('https://example.com.');
+    expect(result).toEqual([{ start: 0, end: 19 }]);
+  });
+  it('連続する 2 URL: 両方 range 化', () => {
+    const result = extractUrlRanges('https://a.com https://b.com');
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ start: 0, end: 13 });
+    expect(result[1]).toEqual({ start: 14, end: 27 });
+  });
+});
+
 describe('twitterWeight', () => {
   // 既存の基本ケース (挙動不変)
   it('空文字は 0', () => expect(twitterWeight('')).toBe(0));
@@ -445,6 +469,15 @@ describe('twitterWeight', () => {
   it('horizontal ellipsis "…" (U+2026) は weight 2 (0x2010-201F 範囲外)', () =>
     expect(twitterWeight('…')).toBe(2));
   it('範囲外の punctuation "★" (U+2605) は weight 2', () => expect(twitterWeight('★')).toBe(2));
+
+  // 範囲境界
+  it('weight-1 範囲上限 U+10FF は weight 1', () => expect(twitterWeight('ჿ')).toBe(1));
+  it('U+1100 (Hangul Jamo, 0x10FF 直後) は weight 2', () => expect(twitterWeight('ᄀ')).toBe(2));
+  it('U+2020 (range 3 と range 4 の間隙) は weight 2', () => expect(twitterWeight('†')).toBe(2));
+
+  // 連続 URL
+  it('連続する 2 URL: "https://a.com https://b.com" → 23 + 1 + 23 = 47', () =>
+    expect(twitterWeight('https://a.com https://b.com')).toBe(47));
 
   // 内部空白は trim 対象外
   it('内部空白は保持: "a  b" → 4', () => expect(twitterWeight('a  b')).toBe(4));

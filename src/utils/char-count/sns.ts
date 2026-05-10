@@ -16,6 +16,8 @@ export function extractUrlRanges(s: string): Array<{ start: number; end: number 
     let url = m[0];
     const trail = url.match(TRAILING_PUNCT);
     if (trail) url = url.slice(0, -trail[0].length);
+    // 防御的: URL_PATTERN は `https?://` + `[^\s<>"]+` で最低 8 文字、句読点 strip 後も
+    // 7 文字残るため url.length は 0 にならないが、regex 改修時の安全網として残す
     if (url.length === 0) continue;
     const start = m.index!;
     ranges.push({ start, end: start + url.length });
@@ -39,6 +41,15 @@ function isWeightOne(cp: number): boolean {
   );
 }
 
+function weightSegment(segment: string): number {
+  let w = 0;
+  for (const ch of segment) {
+    // for...of は string を code point 単位で iterate するため codePointAt(0) は必ず定義済み
+    w += isWeightOne(ch.codePointAt(0)!) ? 1 : 2;
+  }
+  return w;
+}
+
 const URL_WEIGHT = 23;
 
 /**
@@ -59,21 +70,13 @@ export function twitterWeight(s: string): number {
   let cursor = 0;
   for (const { start, end } of ranges) {
     if (start > cursor) {
-      const segment = trimmed.slice(cursor, start);
-      for (const ch of segment) {
-        const cp = ch.codePointAt(0)!;
-        weight += isWeightOne(cp) ? 1 : 2;
-      }
+      weight += weightSegment(trimmed.slice(cursor, start));
     }
     weight += URL_WEIGHT;
     cursor = end;
   }
   if (cursor < trimmed.length) {
-    const segment = trimmed.slice(cursor);
-    for (const ch of segment) {
-      const cp = ch.codePointAt(0)!;
-      weight += isWeightOne(cp) ? 1 : 2;
-    }
+    weight += weightSegment(trimmed.slice(cursor));
   }
   return weight;
 }

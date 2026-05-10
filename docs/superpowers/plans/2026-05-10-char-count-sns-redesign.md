@@ -76,8 +76,8 @@ describe('twitterWeight', () => {
   it('em-dash "—" (U+2014) は weight 1', () => expect(twitterWeight('—')).toBe(1));
   it('prime "′" (U+2032) は weight 1', () => expect(twitterWeight('′')).toBe(1));
   it('zero-width joiner (U+200D) は weight 1', () => expect(twitterWeight('‍')).toBe(1));
-  it('horizontal ellipsis "…" (U+2026) は weight 1 (U+2010-201F 範囲)', () =>
-    expect(twitterWeight('…')).toBe(1));
+  it('horizontal ellipsis "…" (U+2026) は weight 2 (U+2010-201F 範囲外)', () =>
+    expect(twitterWeight('…')).toBe(2));
   it('範囲外の punctuation "★" (U+2605) は weight 2', () => expect(twitterWeight('★')).toBe(2));
 
   // 内部空白は trim 対象外
