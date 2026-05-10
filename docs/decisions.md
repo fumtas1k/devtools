@@ -2839,3 +2839,38 @@ MySQL utf8mb3 カラムへの INSERT が SMP 文字 (U+10000 以上) で失敗�
 - 解消する issue: [#295](https://github.com/fumtas1k/devtools/issues/295)
 - 上位 issue: [#176](https://github.com/fumtas1k/devtools/issues/176) (B 案完了は [068])
 - rule 更新: `docs/shared-agent-rules.md` 7 章
+
+---
+
+## [074] 2026-05-10 — VRT slider レポートの baseline 解決を `-expected.png` 直参照に変更
+
+日付 2026-05-10 | ステータス: 採用 | issue #362
+
+### 背景
+
+`scripts/generate-vrt-slider.mjs` が VRT 失敗時に「baseline が見つかりません」を出して slider レポートを生成しないバグ (issue #362)。PR #361 で `/tools/char-count` に行追加した時に初の visual diff が発生して顕在化した。
+
+### 根本原因
+
+Playwright 1.59 の `windowsFilesystemFriendlyLength = 60` (`node_modules/playwright/lib/util.js:208-217` の `trimLongString`) により attachment 側ファイル名が 60 文字 + 中央 SHA1 5 桁で truncate される。一方 baseline (`tests/e2e/visual-regression.spec.ts-snapshots/`) は non-truncated の長いファイル名。スクリプトは両者を同名前提で照合していたため全ページで lookup 失敗。
+
+### 採用案: `-expected.png` 直参照 (C 案系統 ハイブリッド)
+
+`node_modules/playwright/lib/matchers/toMatchSnapshot.js:67,149` で `legacyExpectedPath = addSuffixToFilePath(outputBasePath, "-expected")` が定義され、diff 検出時に `writeFileSync(this.legacyExpectedPath, expected)` が同期実行される。`-actual.png` の隣に同じ truncated base 名で `-expected.png` が物理コピーされるため、baseline 名復元は不要。
+
+ラベル整形だけ `error-context.md` の `- Name:` 行 (`node_modules/playwright/lib/errorContext.js:44-90` の literal template) から best-effort で full title を復元。format 不一致時は raw fallback で slider 機能は止めない。
+
+### 不採用案: error-context.md parse + baseline 名復元 (issue #362 推奨の F 案)
+
+`error-context.md` の MD format と baseline naming テンプレート両方への format 依存があり脆弱。Playwright が既に物理コピーを置いているのに使わないのは冗長。
+
+### failure mode
+
+- `handleMissing` 経路 (baseline 不在で `--update-snapshots` 走った時) は `-expected.png` が出ないが、その経路では slider 比較が成立しないため `expected が見つかりません` で skip (正しい挙動)
+- `error-context.md` format ドリフト → `makeLabelFromContextContent` が null 返却 → 既存 `makeLabel` で raw 表示 (slider 本体は影響なし)
+
+### 関連
+
+- issue #362, PR #361 (再現 PR、既に merge 済み)
+- meta test: `tests/meta/vrt-slider-report.test.ts`
+- 教訓: `docs/agent-lessons.md`

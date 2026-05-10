@@ -1,17 +1,22 @@
 import { readdir, copyFile, mkdir, writeFile } from 'fs/promises';
 import { join, basename, dirname } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 // VRT スライダーレポート生成
-// test-results/ の *-actual.png と tests/e2e/.../snapshots/ のベースラインを突き合わせて
+// test-results/ の *-actual.png と隣接する *-expected.png を使って
 // img-comparison-slider 入りの HTML を vrt-slider-report/ に生成する。
 //
 // ファイル名の対応:
-//   actual:   test-results/**/{snapshot-name}-actual.png
-//   baseline: tests/e2e/visual-regression.spec.ts-snapshots/{snapshot-name}.png
-//   diff:     test-results/**/{snapshot-name}-diff.png
+//   actual:   test-results/**/{trimmed-base}-actual.png
+//   baseline: test-results/**/{trimmed-base}-expected.png  (Playwright が物理コピー)
+//   diff:     test-results/**/{trimmed-base}-diff.png
+//   ラベル整形: 同 dir の error-context.md から best-effort で full title 復元
+//
+// Playwright 1.59 は attachment ファイル名を windowsFilesystemFriendlyLength=60 で
+// truncate する (node_modules/playwright/lib/util.js の trimLongString)。
+// baseline (snapshots/) と attachment の名前が一致しないため、snapshots/ は参照せず
+// test-results/ 内の -expected.png を直接利用する (issue #362)。
 
-const SNAPSHOTS_DIR = 'tests/e2e/visual-regression.spec.ts-snapshots';
 const TEST_RESULTS_DIR = 'test-results';
 const OUTPUT_DIR = 'vrt-slider-report';
 
@@ -33,11 +38,46 @@ async function findFiles(dir, suffix) {
   return results;
 }
 
-function makeLabel(snapshotBase) {
-  return snapshotBase
+function makeLabel(trimmedBase) {
+  return trimmedBase
     .replace(/^visual-regression---/, '')
     .replace(/-の-screenshot-が-baseline-と一致-\d+-visual-regression-linux$/, '')
     .replace(/^(desktop|mobile)-(\d+x\d+)-/, '[$1 $2] ');
+}
+
+/**
+ * error-context.md の Playwright literal template (`- Name:` 行) を parse して
+ * `[viewport WxH] /url` 形式の整形ラベルを返す。失敗時 null。
+ * Playwright 1.59 の node_modules/playwright/lib/errorContext.js が source of truth。
+ * format が将来変わっても null を返すだけで slider 本体は動く。
+ */
+export function makeLabelFromContextContent(content) {
+  if (typeof content !== 'string') return null;
+  const m = content.match(/^- Name:\s*(.+)$/m);
+  if (!m) return null;
+  const parts = m[1].split(' >> ');
+  if (parts.length < 3) return null;
+  const describe = parts[parts.length - 2];
+  const title = parts[parts.length - 1];
+  const vp = describe.match(/(\w+)\s*\((\d+x\d+)\)/);
+  const url = title.replace(/\s*の\s*screenshot.*$/, '');
+  if (!vp) return null;
+  return `[${vp[1]} ${vp[2]}] ${url}`;
+}
+
+function makeLabelFromContextPath(errorContextPath) {
+  if (!existsSync(errorContextPath)) return null;
+  let content;
+  try {
+    content = readFileSync(errorContextPath, 'utf-8');
+  } catch {
+    return null;
+  }
+  return makeLabelFromContextContent(content);
+}
+
+function sanitizeId(s) {
+  return s.replace(/[^\w]/g, '_').slice(0, 80);
 }
 
 function esc(s) {
@@ -141,25 +181,38 @@ async function main() {
   await mkdir(imagesDir, { recursive: true });
 
   const comparisons = [];
+  const seenIds = new Set();
 
   for (const actualPath of actualFiles) {
+    const dir = dirname(actualPath);
     const actualName = basename(actualPath);
-    const snapshotBase = actualName.replace(/-actual\.png$/, '');
-    const snapshotFileName = snapshotBase + '.png';
-    const baselinePath = join(SNAPSHOTS_DIR, snapshotFileName);
-    const diffPath = join(dirname(actualPath), snapshotBase + '-diff.png');
+    const trimmedBase = actualName.replace(/-actual\.png$/, '');
 
-    if (!existsSync(baselinePath)) {
-      console.warn(`baseline が見つかりません: ${baselinePath}`);
+    // baseline は同 dir の -expected.png を使う (Playwright が物理コピー済)。
+    // baseline 名を文字列復元する F 案より堅牢: attachment と baseline の
+    // 名前不一致 (windowsFilesystemFriendlyLength=60 truncate) は構造的に発生しない。
+    const expectedPath = join(dir, `${trimmedBase}-expected.png`);
+    const diffPath = join(dir, `${trimmedBase}-diff.png`);
+
+    if (!existsSync(expectedPath)) {
+      console.warn(`expected が見つかりません (skip): ${expectedPath}`);
       continue;
     }
 
-    const id = snapshotBase.replace(/[^\w]/g, '_');
-    const label = makeLabel(snapshotBase);
-    const hasDiff = existsSync(diffPath);
+    // ラベルは error-context.md から best-effort で full title 復元。
+    // 失敗時は truncated 名のまま (UX は劣化するが slider 機能は止まらない)。
+    const errorContextPath = join(dir, 'error-context.md');
+    const label = makeLabelFromContextPath(errorContextPath) ?? makeLabel(trimmedBase);
 
+    // id は test directory 名で組む (Playwright が unique 保証)。
+    // retry attempt は別 dir になるため最初のものだけ slider に載せる。
+    const id = sanitizeId(basename(dir));
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+
+    const hasDiff = existsSync(diffPath);
     await copyFile(actualPath, join(imagesDir, `${id}-actual.png`));
-    await copyFile(baselinePath, join(imagesDir, `${id}-baseline.png`));
+    await copyFile(expectedPath, join(imagesDir, `${id}-baseline.png`));
     if (hasDiff) {
       await copyFile(diffPath, join(imagesDir, `${id}-diff.png`));
     }

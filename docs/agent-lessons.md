@@ -230,3 +230,13 @@ baseline 更新は「意図した変更」を承認する操作であり、**真
 - PR 7a spec § VRT (Visual Regression Test): 「意図的差分があれば `update-visual-baseline.yml` workflow で baseline 更新」 (本ルールはこの判断基準を **明示化**)
 - 関連個人 memory (PC ローカル、本 repo 未収録): `feedback_vrt_ci_only.md` (VRT は CI Linux のみで検証)
 - （規約昇格候補）`docs/shared-agent-rules.md` の VRT 関連 sub-section として昇格検討。本 PR review (`#299` 軽微指摘 #3) で reviewer から「次 PR では VRT 差分が出た場合 baseline 更新前に必ず DOM diff / computed style diff を確認する手順を agent-lessons に明記する価値あり」と提案を受けて記録
+
+---
+
+## 2026-05-10 — Playwright attachment は windowsFilesystemFriendlyLength=60 で truncate される
+
+`scripts/generate-vrt-slider.mjs` (issue #362) で attachment 名と baseline 名の不一致による slider 生成失敗を修正。
+
+- Playwright 1.59 の attachment ファイル名は `node_modules/playwright/lib/util.js:208-217` の `trimLongString` で 60 文字 + 中央 SHA1 5 桁 (`-XXXXX-`) に truncate される (定数名 `windowsFilesystemFriendlyLength`、`kMaxAttachmentNameLength` という名前は存在しない)
+- baseline 名を文字列復元する前に、Playwright が同 test-results dir に置いている関連ファイル (`-expected.png` / `-diff.png` / `error-context.md`) を確認する。物理コピー経路の方が format 依存が少なく堅牢
+- issue 起票時の調査が「未確認」で見送った経路でも、node_modules source / 実 CI log で実証可能なら採用候補に戻す
