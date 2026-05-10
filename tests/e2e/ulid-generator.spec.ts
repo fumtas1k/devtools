@@ -111,7 +111,7 @@ test.describe('ULID生成（production CSP 適用）', () => {
     //   経由でコードを評価するため CSP `unsafe-eval` を回避してしまう。代わりに
     //   「外部 origin の <script src>」を DOM に挿入する経路で違反を起こす。
     //   PRODUCTION_CSP は `script-src 'self' 'unsafe-inline'` のため
-    //   example.com の外部スクリプトは確実に block され Chromium が
+    //   blocked.invalid の外部スクリプトは確実に block され Chromium が
     //   "Refused to load the script ... because it violates the following
     //    Content Security Policy directive ..." を console error に出す。
     const context = await browser.newContext();
@@ -123,7 +123,7 @@ test.describe('ULID生成（production CSP 適用）', () => {
       expect(response?.headers()['content-security-policy']).toContain("script-src 'self'");
       await page.evaluate(() => {
         const script = document.createElement('script');
-        script.src = 'https://example.com/violates-csp.js';
+        script.src = 'https://blocked.invalid/violates-csp.js';
         document.head.appendChild(script);
       });
       await expect.poll(() => guard.violations.length).toBeGreaterThan(0);

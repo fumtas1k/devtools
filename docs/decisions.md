@@ -2661,7 +2661,7 @@ PR 9 Phase 2 で発覚した、Astro 島ランタイムが React island を含�
 
 PR 6 必須チェックリスト末尾の未消化項目を本 entry で「現状維持」と確定:
 
-- **`.text-primary` 命名衝突リスク**: PR 2 で導入した `.text-primary` (`--color-primary` 由来) は Tailwind `text-primary` auto-utility と衝突する可能性があるが、現状 `@theme` に `--color-primary` を登録していないため衝突は発生していない。**現状維持**: 将来 `@theme` 切替する場合は `text-brand` 等への rename を検討。
+- **`.text-primary` 命名衝突リスク**: PR 2 で導入した `.text-primary` (`--color-primary` 由来) は Tailwind `text-primary` auto-utility と衝突する可能性があるが、現状 `@theme` に `--color-primary` を登録していないため衝突は発生していない。**現状維持**: 将来 `@theme` 切替する場合は `text-brand` 等への rename を検討。→ **[073] で再評価済**: その後 `--color-primary` は `@theme` 登録済となり、auto-utility と完全同名・同挙動の重複となったため、本 entry の「現状維持」を更新し `.text-primary` 手動定義を削除して auto-utility に統一した。
 - **Tailwind `border` utility と `@layer components` の `border-color` 優先度**: PR 2 で導入した `.alert-success` / `.alert-error` は `<div className="rounded-lg p-4 border alert-success">` のように Tailwind `border` と併用。layer 順序によっては期待色にならないリスクが PR 2 review で指摘済だが、CSP strict 化後の VRT 再撮影でも diff が出ていないため実害は未顕在。**現状維持**: 将来 Tailwind v4 layer 仕様変更で問題が顕在化したら再評価。
 
 ### 検出網運用ノート
@@ -2802,3 +2802,130 @@ MySQL utf8mb3 カラムへの INSERT が SMP 文字 (U+10000 以上) で失敗�
 ### 結果・トレードオフ
 
 ユーザーは「なぜ ❌ か」を不可文字数・内訳で把握できる。byte 数は互換時のみ意味のある情報として提示。
+
+---
+
+## [073] 2026-05-10 — `#176` B 案完了後の semantic alias 整理 (`@theme` auto-utility 重複削減 + `.drawer-backdrop` `color-mix()` 化)
+
+### 状況
+
+`#176` B 案完了 ([068]) 後、PR 1〜5b / 7a で `@layer components` に追加した「色 token text utility」series が Tailwind v4 の `@theme` auto-utility と一部重複していることが判明 (#295 で観察)。
+
+| `@layer components` 手動 class | `@theme` 登録 var                 | Tailwind auto-utility (重複) |
+| ------------------------------ | --------------------------------- | ---------------------------- |
+| `.text-primary`                | `--color-primary`                 | `text-primary`               |
+| `.text-tertiary`               | `--color-tertiary`                | `text-tertiary`              |
+| `.text-icon`                   | `--color-neutral-700` (primitive) | `text-neutral-700`           |
+
+加えて `.drawer-backdrop` は `rgba(17,24,39,0.5)` を hardcode しており、`--color-neutral-900` の 50% alpha と同値だが token 値変更に追従しない。
+
+### 判断
+
+**(a) `.text-primary` / `.text-tertiary` を削除**: semantic token 経由のため auto-utility と完全同名・同挙動。callsite 変更ゼロで重複定義のみ排除できる。
+
+**(b) `.text-icon` は維持**: `--color-neutral-700` は primitive scale。auto-utility (`text-neutral-700`) 直書きは「なぜ 700? 600 じゃダメ?」が読み取れず保守性が下がる。意味クラスで隠蔽することで、将来 hover/focus/disabled 状態追加時に `.text-icon:hover { ... }` で集約定義できる余地も残す (7.1 章の variant 非対応問題により、`@layer components` 手動 class の方が擬似クラス追加で柔軟)。
+
+**(c) `.drawer-backdrop` を `color-mix()` 化**: `color-mix(in srgb, var(--color-neutral-900) 50%, transparent)` で token 値変更に自動追従。ブラウザ対応 (Chrome 111+ / Firefox 113+ / Safari 16.2+) は十分。
+
+**(d) 「Tailwind カラークラス禁止」rule の精緻化** (`docs/shared-agent-rules.md` 7 章): semantic token (`text-primary` 等) は意味的命名のため auto-utility 使用可、primitive scale (`text-blue-500` / `text-neutral-700` 等) は引き続き禁止。境界基準は「token 名から用途が読み取れる (semantic) か、palette 段階値に過ぎない (primitive) か」。
+
+### 残課題 / 副次効果
+
+- `.text-error` / `.text-success` も `@theme` 登録 token 経由のため理論上は同様に削除可能だが、callsite 影響が広く、本 PR では `.text-primary` / `.text-tertiary` のみに留める (issue #295 のスコープ外、必要に応じて別 issue で追加判断)。
+- 他の rgba 直書きは `--elevation-*` の黒シャドウのみで、`var(--color-X)` の alpha 違いではないため `color-mix()` 化対象外。
+
+### 関連
+
+- 解消する issue: [#295](https://github.com/fumtas1k/devtools/issues/295)
+- 上位 issue: [#176](https://github.com/fumtas1k/devtools/issues/176) (B 案完了は [068])
+- rule 更新: `docs/shared-agent-rules.md` 7 章
+
+---
+
+## [074] 2026-05-10 — VRT slider レポートの baseline 解決を `-expected.png` 直参照に変更
+
+日付 2026-05-10 | ステータス: 採用 | issue #362
+
+### 背景
+
+`scripts/generate-vrt-slider.mjs` が VRT 失敗時に「baseline が見つかりません」を出して slider レポートを生成しないバグ (issue #362)。PR #361 で `/tools/char-count` に行追加した時に初の visual diff が発生して顕在化した。
+
+### 根本原因
+
+Playwright 1.59 の `windowsFilesystemFriendlyLength = 60` (`node_modules/playwright/lib/util.js:208-217` の `trimLongString`) により attachment 側ファイル名が 60 文字 + 中央 SHA1 5 桁で truncate される。一方 baseline (`tests/e2e/visual-regression.spec.ts-snapshots/`) は non-truncated の長いファイル名。スクリプトは両者を同名前提で照合していたため全ページで lookup 失敗。
+
+### 採用案: `-expected.png` 直参照 (C 案系統 ハイブリッド)
+
+`node_modules/playwright/lib/matchers/toMatchSnapshot.js:67,149` で `legacyExpectedPath = addSuffixToFilePath(outputBasePath, "-expected")` が定義され、diff 検出時に `writeFileSync(this.legacyExpectedPath, expected)` が同期実行される。`-actual.png` の隣に同じ truncated base 名で `-expected.png` が物理コピーされるため、baseline 名復元は不要。
+
+ラベル整形だけ `error-context.md` の `- Name:` 行 (`node_modules/playwright/lib/errorContext.js:44-90` の literal template) から best-effort で full title を復元。format 不一致時は raw fallback で slider 機能は止めない。
+
+### 不採用案: error-context.md parse + baseline 名復元 (issue #362 推奨の F 案)
+
+`error-context.md` の MD format と baseline naming テンプレート両方への format 依存があり脆弱。Playwright が既に物理コピーを置いているのに使わないのは冗長。
+
+### failure mode
+
+- `handleMissing` 経路 (baseline 不在で `--update-snapshots` 走った時) は `-expected.png` が出ないが、その経路では slider 比較が成立しないため `expected が見つかりません` で skip (正しい挙動)
+- `error-context.md` format ドリフト → `makeLabelFromContextContent` が null 返却 → 既存 `makeLabel` で raw 表示 (slider 本体は影響なし)
+
+### 関連
+
+- issue #362, PR #361 (再現 PR、既に merge 済み)
+- meta test: `tests/meta/vrt-slider-report.test.ts`
+- 教訓: `docs/agent-lessons.md`
+
+---
+
+## [075] 2026-05-10 — char-count: X (旧 Twitter) 文字数を twitter-text 公式仕様に準拠
+
+日付 2026-05-10 | ステータス: 採用 | issue #376
+
+### 背景
+
+既存 `twitterWeight()` は `cp <= 0x10FF ? 1 : 2` のみで、URL 短縮 (t.co = 23 weighted chars) / 補助 weight ranges / 前後空白 trim を未対応だった。「概算」ラベルで誤差を黙認していたが、URL を含む典型的な X 投稿で実際の文字数と乖離が大きく、ユーザー目線で実用性が低かった。
+
+### 決断
+
+twitter-text 公式 conformance 仕様 v3 (`maxWeightedTweetLength: 280`, `defaultWeight: 200`, `transformedURLLength: 23`) に準拠する。具体的には:
+
+1. **trim**: 入力前後の空白 (半角・全角) を `String.prototype.trim()` で除去
+2. **URL 検出 + 23 weighted 換算**: `/https?:\/\/[^\s<>"]+/gi` でマッチした URL を 23 weight の placeholder に置換 (末尾の `.,!?;:'")\]}` は URL から除外しテキスト側に戻す)
+3. **weight-1 範囲**: U+0000–U+10FF / U+2000–U+200D / U+2010–U+201F / U+2032–U+2037 を weight 1、それ以外を weight 2
+
+「概算」ラベルは UI から削除。実装後の精度は ~99% (URL regex 簡易性のみが残差)。
+
+### 不採用案: `twitter-text` npm パッケージの採択
+
+trade-off:
+
+- ✅ pros: IDN / cashtag / mention 等の周辺仕様を含む完全互換、メンテナンスは Twitter 側
+- ❌ cons: bundle 増 (1MB 超の正規表現テーブル含む)、依存追加の保守コスト、本ツールはブラウザ完結型で軽量重視
+
+→ devtools プロジェクトは「依存最小化 + 軽量」が core value のため自前 regex 採用。完全互換が必要になった時点で別 issue で再検討。
+
+### 不採用案: 「概算」ラベル維持 + 簡易ロジックのまま
+
+trade-off:
+
+- ✅ pros: 工数ゼロ
+- ❌ cons: URL を含む投稿で実用性が低く、ツール価値が大きく毀損
+
+→ 改修コストが小さく (helper 関数 + 正規表現 + テスト 23 件)、ユーザー価値が大きいため改修採用。
+
+### 結果・トレードオフ
+
+- 一致率 ~95% (typical http(s) URL はカバー、t.co の正規化や IDN ドメインは非対応)
+- バンドルサイズ増 ~0 KB (依存追加なし、関数 30 行程度)
+- twitter-text の `extractUrls()` 完全互換が必要になった場合は別 issue で再検討
+
+### 既知制約
+
+- **括弧で閉じる URL** (`https://en.wikipedia.org/wiki/Foo_(bar)` 等): `TRAILING_PUNCT = /[.,!?;:'")\]}]+$/` が末尾 `)` を URL から除外するため、URL 内最後の `(...)` の閉じ括弧がテキスト側に戻る。Wikipedia 系 URL で発生し得るが X 投稿の頻度は低く、自前 regex 維持の trade-off として許容。完全対応する場合は URL 内の `(` / `)` 数のバランス判定を入れるか、`twitter-text` lib 採択を検討する (issue #378)。
+
+### 関連
+
+- issue #376, follow-up #378
+- 設計書: `docs/superpowers/specs/2026-05-10-char-count-sns-redesign-design.md`
+- 実装計画: `docs/superpowers/plans/2026-05-10-char-count-sns-redesign.md`
+- twitter-text v3 conformance 仕様 (`twitter-text-config.json`)
