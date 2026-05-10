@@ -240,3 +240,4 @@ baseline 更新は「意図した変更」を承認する操作であり、**真
 - Playwright 1.59 の attachment ファイル名は `node_modules/playwright/lib/util.js:208-217` の `trimLongString` で 60 文字 + 中央 SHA1 5 桁 (`-XXXXX-`) に truncate される (定数名 `windowsFilesystemFriendlyLength`、`kMaxAttachmentNameLength` という名前は存在しない)
 - baseline 名を文字列復元する前に、Playwright が同 test-results dir に置いている関連ファイル (`-expected.png` / `-diff.png` / `error-context.md`) を確認する。物理コピー経路の方が format 依存が少なく堅牢
 - issue 起票時の調査が「未確認」で見送った経路でも、node_modules source / 実 CI log で実証可能なら採用候補に戻す
+- **Playwright メジャー upgrade 時の回帰確認**: `-expected.png` を生成する Playwright 内識別子は `legacyExpectedPath` (`node_modules/playwright/lib/matchers/toMatchSnapshot.js:67`) で `legacy` prefix 付き = 将来 deprecation の兆候。upgrade 時は `-expected` suffix 生成経路が残っているか必ず grep 確認する。生成器自体が消えたら `scripts/generate-vrt-slider.mjs` の `-expected.png` 直参照経路も影響を受ける

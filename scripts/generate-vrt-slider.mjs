@@ -65,6 +65,9 @@ export function makeLabelFromContextContent(content) {
   return `[${vp[1]} ${vp[2]}] ${url}`;
 }
 
+// existsSync で先に確認するのは「ファイル無し」ケースを ENOENT 例外なく判別するため。
+// try/catch だけでも動作するが、race condition (確認後に削除) は対象外の前提
+// (本スクリプトは CI runner 上で test 直後に走るため別プロセスの干渉は想定しない)。
 function makeLabelFromContextPath(errorContextPath) {
   if (!existsSync(errorContextPath)) return null;
   let content;
@@ -76,6 +79,9 @@ function makeLabelFromContextPath(errorContextPath) {
   return makeLabelFromContextContent(content);
 }
 
+// 上限 80 は念のための過剰防衛。Playwright の test directory 名は実質
+// windowsFilesystemFriendlyLength=60 + SHA1 5 桁で収まるため通常 80 は超えない。
+// HTML 出力サイズ膨張の予防線として残す。
 function sanitizeId(s) {
   return s.replace(/[^\w]/g, '_').slice(0, 80);
 }
@@ -205,7 +211,8 @@ async function main() {
     const label = makeLabelFromContextPath(errorContextPath) ?? makeLabel(trimmedBase);
 
     // id は test directory 名で組む (Playwright が unique 保証)。
-    // retry attempt は別 dir になるため最初のものだけ slider に載せる。
+    // 防御的 dedup: 同 id が複数発生する未知ケース (Playwright の dir 命名衝突等)
+    // でも 1 件に絞る。retry attempt は別 dir 扱いのため通常 hit しない。
     const id = sanitizeId(basename(dir));
     if (seenIds.has(id)) continue;
     seenIds.add(id);
