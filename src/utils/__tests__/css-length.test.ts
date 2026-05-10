@@ -47,6 +47,7 @@ describe('assertCssLength', () => {
     it.each([
       ['0', 'unitless 0'],
       ['-0', 'unitless -0'],
+      ['+0', 'unitless +0'],
     ])('%s (%s) は許容される', (value) => {
       expect(() => assertCssLength(value, 'test')).not.toThrow();
     });
@@ -58,6 +59,8 @@ describe('assertCssLength', () => {
       ['2', 'unitless integer'],
       ['-3', 'unitless negative integer'],
       ['-1.5', 'unitless negative decimal'],
+      ['+1', 'unitless +1 (符号付き非ゼロ)'],
+      ['+1.5', 'unitless +1.5 (符号付き非ゼロ decimal)'],
     ])('%s (%s) は throw する', (value) => {
       expect(() => assertCssLength(value, 'test')).toThrow(/Invalid CSS length for test/);
     });
