@@ -79,6 +79,8 @@ test.describe('文字カウント', () => {
     await expect(xCard.locator('span.text-error').first()).toBeVisible();
     // 補強: progressbar の aria-valuenow が max (280) で clamp される
     await expect(xCard.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '280');
+    // SR 補強: aria-valuetext で実数値 (300) と「上限超過」を通知する
+    await expect(xCard.getByRole('progressbar')).toHaveAttribute('aria-valuetext', /300.*上限超過/);
   });
 
   // 陰性対照: 上限内では text-error が付かない (過検知防止)
