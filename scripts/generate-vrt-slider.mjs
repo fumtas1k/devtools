@@ -170,7 +170,7 @@ function generateHTML(comparisons) {
     .badge{display:inline-block;background:#dc2626;color:#fff;font-size:.75rem;font-weight:600;padding:.2rem .5rem;border-radius:4px;margin-bottom:1rem}
     .card{background:#fff;border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
     h2{margin:0 0 .75rem;font-size:.9rem;color:#374151;word-break:break-all}
-    img-comparison-slider{width:100%;--default-handle-color:#1e40af;--default-handle-width:6px;--default-handle-opacity:1}
+    img-comparison-slider{width:100%;cursor:ew-resize;--default-handle-color:#1e40af;--default-handle-width:6px;--default-handle-opacity:1}
     img-comparison-slider img{width:100%;display:block}
     .handle-icon{width:48px;height:48px;cursor:ew-resize;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));transition:transform .15s ease}
     @media (hover:hover){.handle-icon:hover{transform:scale(1.1)}}
