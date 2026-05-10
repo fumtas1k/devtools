@@ -250,7 +250,7 @@ describe('CharCountTool — SNS カード', () => {
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
-    expect(screen.getByText(/URL を 23 字換算/)).toBeTruthy();
+    expect(screen.getByText(/URL を 23 字、CJK は 2 字換算/)).toBeTruthy();
     expect(screen.getByText(/絵文字や合字も 1 文字/)).toBeTruthy();
     expect(screen.getByText(/書記素クラスタ単位/)).toBeTruthy();
   });

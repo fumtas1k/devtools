@@ -194,7 +194,7 @@ export function CharCountTool() {
           <SnsCard
             title="X (旧 Twitter)"
             method="Twitter weight"
-            caption="URL を 23 字換算、CJK は 2 weight"
+            caption="URL を 23 字、CJK は 2 字換算"
             current={sns.twitterWeight}
             limit={280}
             isOver={isOver.twitter}

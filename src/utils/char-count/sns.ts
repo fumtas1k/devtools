@@ -19,7 +19,9 @@ export function extractUrlRanges(s: string): Array<{ start: number; end: number 
     // 防御的: URL_PATTERN は `https?://` + `[^\s<>"]+` で最低 8 文字、句読点 strip 後も
     // 7 文字残るため url.length は 0 にならないが、regex 改修時の安全網として残す
     if (url.length === 0) continue;
-    const start = m.index!;
+    // matchAll の RegExpMatchArray.index は実装上常に number だが TS 型は ?: number のため
+    // defensive に nullish coalesce する (実害なし)
+    const start = m.index ?? 0;
     ranges.push({ start, end: start + url.length });
   }
   return ranges;
