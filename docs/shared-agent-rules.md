@@ -154,7 +154,9 @@ VRT が小さい pixel diff (例: 0.07%) を検出しても「微小だから ba
 
 ## 7. スタイル・UI ルール（基本）
 
-Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50` 等）は **絶対に使用しない**。色は CSS 変数経由で指定する:
+Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50` 等の **primitive scale 直書き**）は **絶対に使用しない**。色は CSS 変数経由で指定する:
+
+ただし `@theme` 登録された **semantic token** (`--color-primary` / `--color-tertiary` / `--color-success` 等) の auto-utility (`text-primary` / `text-tertiary` / `text-success` 等) は意味的命名のため使用可。primitive scale (`text-blue-500` / `text-neutral-700` 等) は引き続き禁止。判断基準: 「token 名から用途が読み取れる (semantic) か、palette 段階値に過ぎない (primitive) か」。
 
 - React (`.tsx`): `src/styles/global.css` の `@layer components` で定義された意味クラス（`text-primary` / `bg-subtle` / `alert-success` 等）を `className` で使用。新規 component で既存意味クラスに無い色組み合わせが必要な場合は、まず `@layer components` に意味クラスを追加してから使う（`#176` B 案で `style={{ color: colors.primary }}` 形式は全廃済、`@/utils/styles` import も無効）
 - Astro (`.astro`): 現状 `var(--color-*)` を `style` 属性で書く箇所が残存（[#289](https://github.com/fumtas1k/devtools/issues/289) で CSS class 化を進行中）。新規追加は React と同じ `@layer components` 意味クラスを推奨

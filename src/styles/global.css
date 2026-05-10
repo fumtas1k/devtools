@@ -394,7 +394,7 @@
 
   /* === PR 2: qr-ticket migration helpers === */
 
-  /* 色 token の text utility (Tailwind auto-utility 不在) */
+  /* 色 token の text utility */
   .text-error {
     color: var(--color-error);
   }
@@ -403,9 +403,6 @@
   }
   .text-success {
     color: var(--color-success);
-  }
-  .text-primary {
-    color: var(--color-primary);
   }
 
   /* Validation alert box (VerifyTab 検証結果) */
@@ -601,10 +598,7 @@
     color: var(--color-text);
   }
 
-  /* CategoryBadge: tertiary color text/bg (PR 2 .text-primary 系列に追従) */
-  .text-tertiary {
-    color: var(--color-tertiary);
-  }
+  /* CategoryBadge: badge background (`--color-badge-bg` は `:root` 定義、auto-utility 不在のため意味クラス維持) */
   .bg-badge {
     background: var(--color-badge-bg);
   }
@@ -619,10 +613,9 @@
   }
 
   /* MobileDrawer backdrop (modal 背景の半透明 overlay)
-     注意: rgba(17,24,39,0.5) は --color-neutral-900 の 50% alpha と同等。
-     CSS variable 化は B 案完了後の semantic alias 整理 PR で検討 (今 YAGNI)。 */
+     `--color-neutral-900` 50% alpha。将来 dark mode / theme 切替で token 値変更に自動追従。 */
   .drawer-backdrop {
-    background: rgba(17, 24, 39, 0.5);
+    background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
   }
 
   /* === PR 7b (#289): Astro pages inline migration helpers === */
