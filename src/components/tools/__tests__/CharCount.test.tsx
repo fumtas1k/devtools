@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act, cleanup, fireEvent, screen } from '@testing-library/react';
+import { render, act, cleanup, fireEvent, screen, within } from '@testing-library/react';
 
 vi.mock('@/utils/char-count', async () => {
   const actual = await vi.importActual<typeof import('@/utils/char-count')>('@/utils/char-count');
@@ -210,10 +210,16 @@ describe('CharCountTool — SNS カード', () => {
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
-    const bars = screen.getAllByRole('progressbar');
-    expect(bars[0].getAttribute('aria-valuemax')).toBe('280');
-    expect(bars[1].getAttribute('aria-valuemax')).toBe('300');
-    expect(bars[2].getAttribute('aria-valuemax')).toBe('280');
+    const xArticle = screen.getByText('X (旧 Twitter)').closest('article')!;
+    const blueskyArticle = screen.getByText('Bluesky').closest('article')!;
+    const customArticle = screen.getByText('任意上限').closest('article')!;
+    expect(within(xArticle).getByRole('progressbar').getAttribute('aria-valuemax')).toBe('280');
+    expect(within(blueskyArticle).getByRole('progressbar').getAttribute('aria-valuemax')).toBe(
+      '300'
+    );
+    expect(within(customArticle).getByRole('progressbar').getAttribute('aria-valuemax')).toBe(
+      '280'
+    );
   });
 
   it('上限超過時: aria-valuenow が max で clamp される', () => {
@@ -225,9 +231,12 @@ describe('CharCountTool — SNS カード', () => {
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
-    const bars = screen.getAllByRole('progressbar');
-    expect(bars[0].getAttribute('aria-valuenow')).toBe('280'); // X
-    expect(bars[2].getAttribute('aria-valuenow')).toBe('280'); // 任意上限
+    const xArticle = screen.getByText('X (旧 Twitter)').closest('article')!;
+    const customArticle = screen.getByText('任意上限').closest('article')!;
+    expect(within(xArticle).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('280');
+    expect(within(customArticle).getByRole('progressbar').getAttribute('aria-valuenow')).toBe(
+      '280'
+    );
   });
 
   it('カード caption に計算方法説明が表示される', () => {

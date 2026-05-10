@@ -57,7 +57,7 @@ function SnsCard({
   return (
     <article className="border-default rounded-md border p-3 flex flex-col gap-2">
       <div>
-        <h3 className="caption font-bold">{title}</h3>
+        <p className="caption font-bold">{title}</p>
         <p className="caption text-muted">{method}</p>
       </div>
       <div className="flex items-baseline gap-2">
