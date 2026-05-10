@@ -44,8 +44,9 @@ test.describe('文字カウント', () => {
   test('任意上限を 100 に変更すると "hello" 入力時に文字数 5 が表示される', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('hello');
     await page.getByLabel('任意上限').fill('100');
-    // 任意上限行 (dt + dd) の dd に文字数 5 が表示される
-    await expect(page.locator('dt:has-text("任意上限") + dd')).toContainText('5');
+    // 任意上限カード (article) の current 値に 5 が表示される
+    const customCard = page.locator('article').filter({ has: page.getByText('任意上限') });
+    await expect(customCard).toContainText('5');
     await expect(page.getByLabel('任意上限')).toHaveValue('100');
   });
 
@@ -67,18 +68,84 @@ test.describe('文字カウント', () => {
     await expect(limit).not.toHaveValue('01');
   });
 
-  // 陽性対照: SNS 上限超過時に該当行 dd に text-error が付与される
+  // 陽性対照: SNS 上限超過時に X カードの current 値に text-error が付与される
   // 旧実装 (色変更ロジック無し) ではこのテストは fail する
-  test('[陽性対照] Twitter weight 上限超過時 dd に text-error が付与される', async ({ page }) => {
+  test('[陽性対照] Twitter weight 上限超過時 X カードの current に text-error が付与される', async ({
+    page,
+  }) => {
     await page.getByLabel('入力テキスト').fill('a'.repeat(300));
-    // ASCII 300 文字 = weight 300 > 280
-    await expect(page.locator('dt:has-text("旧 Twitter") + dd')).toHaveClass(/text-error/);
+    const xCard = page.locator('article').filter({ has: page.getByText('X (旧 Twitter)') });
+    // current 値の <span> に text-error class
+    await expect(xCard.locator('span.text-error').first()).toBeVisible();
+    // 補強: progressbar の aria-valuenow が max (280) で clamp される
+    await expect(xCard.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '280');
   });
 
   // 陰性対照: 上限内では text-error が付かない (過検知防止)
-  test('上限内のとき Twitter weight dd に text-error が付かない', async ({ page }) => {
+  test('上限内のとき X カードの current に text-error が付かない', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('hello');
-    await expect(page.locator('dt:has-text("旧 Twitter") + dd')).not.toHaveClass(/text-error/);
+    const xCard = page.locator('article').filter({ has: page.getByText('X (旧 Twitter)') });
+    // current 値の <span> に text-error class が付いていないこと
+    await expect(xCard.locator('span.text-error')).toHaveCount(0);
+  });
+
+  test('SNS カード 3 枚 (X / Bluesky / 任意上限) が描画される', async ({ page }) => {
+    await expect(page.getByText('X (旧 Twitter)')).toBeVisible();
+    await expect(page.getByText('Bluesky')).toBeVisible();
+    await expect(page.getByText('任意上限')).toBeVisible();
+    // 3 progressbar が見える (X/Bluesky/任意上限 用)
+    await expect(page.getByRole('progressbar')).toHaveCount(3);
+  });
+
+  test('PC viewport (1280x800): SNS カード 3 枚が横並びになる', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const xCard = page.locator('article').filter({ has: page.getByText('X (旧 Twitter)') });
+    const blueskyCard = page.locator('article').filter({ has: page.getByText('Bluesky') });
+    const customCard = page.locator('article').filter({ has: page.getByText('任意上限') });
+    const xBox = await xCard.boundingBox();
+    const bskyBox = await blueskyCard.boundingBox();
+    const customBox = await customCard.boundingBox();
+    expect(xBox).not.toBeNull();
+    expect(bskyBox).not.toBeNull();
+    expect(customBox).not.toBeNull();
+    if (xBox && bskyBox && customBox) {
+      // 同じ Y 座標 (±5px) に並ぶ
+      expect(Math.abs(xBox.y - bskyBox.y)).toBeLessThan(5);
+      expect(Math.abs(xBox.y - customBox.y)).toBeLessThan(5);
+      // X 座標は左→右の順
+      expect(bskyBox.x).toBeGreaterThan(xBox.x);
+      expect(customBox.x).toBeGreaterThan(bskyBox.x);
+    }
+  });
+
+  test('モバイル viewport (390x844): SNS カード 3 枚が縦積みになる', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const xCard = page.locator('article').filter({ has: page.getByText('X (旧 Twitter)') });
+    const blueskyCard = page.locator('article').filter({ has: page.getByText('Bluesky') });
+    const customCard = page.locator('article').filter({ has: page.getByText('任意上限') });
+    const xBox = await xCard.boundingBox();
+    const bskyBox = await blueskyCard.boundingBox();
+    const customBox = await customCard.boundingBox();
+    expect(xBox).not.toBeNull();
+    expect(bskyBox).not.toBeNull();
+    expect(customBox).not.toBeNull();
+    if (xBox && bskyBox && customBox) {
+      // Y 座標が下に並ぶ
+      expect(bskyBox.y).toBeGreaterThan(xBox.y);
+      expect(customBox.y).toBeGreaterThan(bskyBox.y);
+    }
+  });
+
+  test('URL を入れると X weight が 23 換算される', async ({ page }) => {
+    await page.getByLabel('入力テキスト').fill('https://example.com');
+    const xCard = page.locator('article').filter({ has: page.getByText('X (旧 Twitter)') });
+    await expect(xCard.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '23');
+  });
+
+  test('「概算」ラベルが X カードから削除されている', async ({ page }) => {
+    const xCard = page.locator('article').filter({ has: page.getByText('X (旧 Twitter)') });
+    await expect(xCard.getByText('概算')).toHaveCount(0);
+    await expect(xCard.getByText('（概算）')).toHaveCount(0);
   });
 
   test('クリアボタンで textarea が空になる', async ({ page }) => {
