@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeLabelFromContextContent } from '../../scripts/generate-vrt-slider.mjs';
+import { isRetryDir, makeLabelFromContextContent } from '../../scripts/generate-vrt-slider.mjs';
 
 /**
  * meta test: generate-vrt-slider.mjs の error-context.md parse ロジック検証
@@ -78,5 +78,39 @@ describe('[陽性対照] makeLabelFromContextContent (format 異常時に必ず 
 
   it('空文字列は null を返す', () => {
     expect(makeLabelFromContextContent('')).toBeNull();
+  });
+});
+
+/**
+ * isRetryDir: Playwright の retry attempt dir を判定するフィルタ。
+ * regex `/-retry\d+$/` は raw な dir 名 (sanitize 前) を渡される前提。
+ * 誤検知 (非 retry を retry と判定) / 見逃し (retry を見逃す) 両方の陽性対照を網羅。
+ */
+describe('isRetryDir (retry attempt 検出)', () => {
+  it('retry suffix を含む dir 名は true', () => {
+    expect(isRetryDir('visual-regression-foo-retry1')).toBe(true);
+    expect(isRetryDir('foo-retry2')).toBe(true);
+    expect(isRetryDir('foo-retry99')).toBe(true);
+  });
+});
+
+describe('[陽性対照] isRetryDir (誤検知・見逃しの検出)', () => {
+  it('retry なしの dir 名は false (見逃しゼロ確認用)', () => {
+    expect(isRetryDir('visual-regression-foo')).toBe(false);
+    expect(isRetryDir('foo')).toBe(false);
+  });
+
+  it('retry が末尾でないと false (中間/先頭で誤検知しない)', () => {
+    expect(isRetryDir('foo-retry1-suffix')).toBe(false);
+    expect(isRetryDir('retry1-foo')).toBe(false);
+  });
+
+  it('retry の後ろが数字以外だと false', () => {
+    expect(isRetryDir('foo-retry')).toBe(false);
+    expect(isRetryDir('foo-retryX')).toBe(false);
+  });
+
+  it('"retry" の前にハイフンが無いと false', () => {
+    expect(isRetryDir('fooretry1')).toBe(false);
   });
 });
