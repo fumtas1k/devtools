@@ -158,7 +158,7 @@ Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50`
 
 ただし `@theme` 登録された **semantic token** (`--color-primary` / `--color-tertiary` / `--color-success` 等) の auto-utility (`text-primary` / `text-tertiary` / `text-success` 等) は意味的命名のため使用可。primitive scale (`text-blue-500` / `text-neutral-700` 等) は引き続き禁止。判断基準: 「token 名から用途が読み取れる (semantic) か、palette 段階値に過ぎない (primitive) か」。
 
-- React (`.tsx`): `src/styles/global.css` の `@layer components` で定義された意味クラス（`text-primary` / `bg-subtle` / `alert-success` 等）を `className` で使用。新規 component で既存意味クラスに無い色組み合わせが必要な場合は、まず `@layer components` に意味クラスを追加してから使う（`#176` B 案で `style={{ color: colors.primary }}` 形式は全廃済、`@/utils/styles` import も無効）
+- React (`.tsx`): `src/styles/global.css` の `@layer components` で定義された意味クラス（`bg-subtle` / `alert-success` / `text-icon` 等）を `className` で使用。`@theme` 登録 semantic token は同名 auto-utility (`text-primary` 等) を直接使ってよい。新規 component で既存意味クラスに無い色組み合わせが必要な場合は、まず `@layer components` に意味クラスを追加してから使う（`#176` B 案で `style={{ color: colors.primary }}` 形式は全廃済、`@/utils/styles` import も無効）
 - Astro (`.astro`): 現状 `var(--color-*)` を `style` 属性で書く箇所が残存（[#289](https://github.com/fumtas1k/devtools/issues/289) で CSS class 化を進行中）。新規追加は React と同じ `@layer components` 意味クラスを推奨
 
 ※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は使用可。
@@ -168,7 +168,7 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 
 ### 7.1 Tailwind v4 `@layer components` の variant 非対応
 
-`global.css` の `@layer components` 内で **手書き定義** した class (`bg-subtle` / `text-primary` / `alert-success` 等) は Tailwind v4 の variant prefix (`hover:` / `focus:` / `aria-pressed:` 等) に **対応しない**。`hover:bg-subtle` のように書いても CSS rule (`.hover\:bg-subtle:hover { ... }`) が生成されず silent regression する。
+`global.css` の `@layer components` 内で **手書き定義** した class (`bg-subtle` / `text-icon` / `alert-success` 等) は Tailwind v4 の variant prefix (`hover:` / `focus:` / `aria-pressed:` 等) に **対応しない**。`hover:bg-subtle` のように書いても CSS rule (`.hover\:bg-subtle:hover { ... }`) が生成されず silent regression する。
 
 - ✅ `@theme` トークンから auto-generate される utility (`hover:bg-blue-50`, `hover:text-primary` 等) は variant 対応
 - ❌ `@layer components` 内手書き class への variant prefix は CSS rule 不生成

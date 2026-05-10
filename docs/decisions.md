@@ -2661,7 +2661,7 @@ PR 9 Phase 2 で発覚した、Astro 島ランタイムが React island を含�
 
 PR 6 必須チェックリスト末尾の未消化項目を本 entry で「現状維持」と確定:
 
-- **`.text-primary` 命名衝突リスク**: PR 2 で導入した `.text-primary` (`--color-primary` 由来) は Tailwind `text-primary` auto-utility と衝突する可能性があるが、現状 `@theme` に `--color-primary` を登録していないため衝突は発生していない。**現状維持**: 将来 `@theme` 切替する場合は `text-brand` 等への rename を検討。
+- **`.text-primary` 命名衝突リスク**: PR 2 で導入した `.text-primary` (`--color-primary` 由来) は Tailwind `text-primary` auto-utility と衝突する可能性があるが、現状 `@theme` に `--color-primary` を登録していないため衝突は発生していない。**現状維持**: 将来 `@theme` 切替する場合は `text-brand` 等への rename を検討。→ **[073] で再評価済**: その後 `--color-primary` は `@theme` 登録済となり、auto-utility と完全同名・同挙動の重複となったため、本 entry の「現状維持」を更新し `.text-primary` 手動定義を削除して auto-utility に統一した。
 - **Tailwind `border` utility と `@layer components` の `border-color` 優先度**: PR 2 で導入した `.alert-success` / `.alert-error` は `<div className="rounded-lg p-4 border alert-success">` のように Tailwind `border` と併用。layer 順序によっては期待色にならないリスクが PR 2 review で指摘済だが、CSP strict 化後の VRT 再撮影でも diff が出ていないため実害は未顕在。**現状維持**: 将来 Tailwind v4 layer 仕様変更で問題が顕在化したら再評価。
 
 ### 検出網運用ノート
