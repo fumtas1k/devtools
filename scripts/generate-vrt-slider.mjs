@@ -172,7 +172,7 @@ function generateHTML(comparisons) {
     h2{margin:0 0 .75rem;font-size:.9rem;color:#374151;word-break:break-all}
     img-comparison-slider{width:100%;--default-handle-color:#1e40af;--default-handle-width:6px;--default-handle-opacity:1}
     img-comparison-slider img{width:100%;display:block}
-    .handle-icon{width:48px;height:48px;cursor:ew-resize;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
+    .handle-icon{width:48px;height:48px;cursor:ew-resize;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));transition:transform .15s ease}
     @media (hover:hover){.handle-icon:hover{transform:scale(1.1)}}
     figure{margin:0;position:relative}
     figcaption{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:.7rem;padding:.2rem .5rem}
