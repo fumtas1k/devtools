@@ -409,13 +409,48 @@ describe('analyzeLines', () => {
 // ────────────────────────────────────────────────────────────
 
 describe('twitterWeight', () => {
+  // 既存の基本ケース (挙動不変)
   it('空文字は 0', () => expect(twitterWeight('')).toBe(0));
   it('ASCII 1 文字は weight 1', () => expect(twitterWeight('a')).toBe(1));
   it('ASCII 10 文字は weight 10', () => expect(twitterWeight('abcdefghij')).toBe(10));
   it('日本語 1 文字は weight 2', () => expect(twitterWeight('あ')).toBe(2));
   it('日本語 5 文字は weight 10', () => expect(twitterWeight('あいうえお')).toBe(10));
-  it('絵文字 "😀" は weight 2 (SMP = weight 2)', () => expect(twitterWeight('😀')).toBe(2));
+  it('絵文字 "😀" は weight 2 (U+1F600 > U+10FF)', () => expect(twitterWeight('😀')).toBe(2));
   it('ASCII と日本語の混在: "abc あ" → 3+1+2=6', () => expect(twitterWeight('abc あ')).toBe(6));
+
+  // 新仕様: URL 検知
+  it('URL 単体は 23 weighted (短縮 t.co 換算)', () =>
+    expect(twitterWeight('https://example.com')).toBe(23));
+  it('長い URL も 23 weighted', () =>
+    expect(twitterWeight('https://very-long-domain-name.example.com/path/to/resource?q=1')).toBe(
+      23
+    ));
+  it('URL + テキスト: "Check https://example.com out" → 6 + 23 + 4 = 33', () =>
+    expect(twitterWeight('Check https://example.com out')).toBe(33));
+  it('URL 末尾の句読点 "." は URL に含めない: "see https://example.com." → 4 + 23 + 1 = 28', () =>
+    expect(twitterWeight('see https://example.com.')).toBe(28));
+  it('http:// も対象: "http://a.com" → 23', () => expect(twitterWeight('http://a.com')).toBe(23));
+  it('URL 内の日本語ドメインは現状の簡易 regex で扱う (typical https? のみ正確)', () =>
+    expect(twitterWeight('https://example.com/日本')).toBe(23));
+
+  // 新仕様: trim
+  it('前後空白は trim される: "  hello  " → 5', () => expect(twitterWeight('  hello  ')).toBe(5));
+  it('前後空白のみは 0', () => expect(twitterWeight('   ')).toBe(0));
+  it('全角空白も trim される: "　hello　" → 5', () => expect(twitterWeight('　hello　')).toBe(5));
+
+  // 新仕様: weight-1 ranges (一般句読点)
+  it('em-dash "—" (U+2014) は weight 1', () => expect(twitterWeight('—')).toBe(1));
+  it('prime "′" (U+2032) は weight 1', () => expect(twitterWeight('′')).toBe(1));
+  it('zero-width joiner (U+200D) は weight 1', () => expect(twitterWeight('‍')).toBe(1));
+  it('horizontal ellipsis "…" (U+2026) は weight 2 (0x2010-201F 範囲外)', () =>
+    expect(twitterWeight('…')).toBe(2));
+  it('範囲外の punctuation "★" (U+2605) は weight 2', () => expect(twitterWeight('★')).toBe(2));
+
+  // 内部空白は trim 対象外
+  it('内部空白は保持: "a  b" → 4', () => expect(twitterWeight('a  b')).toBe(4));
+
+  // 改行
+  it('改行 LF "a\\nb" → 3 (LF は U+0A、weight 1)', () => expect(twitterWeight('a\nb')).toBe(3));
 });
 
 describe('blueskyCount', () => {
