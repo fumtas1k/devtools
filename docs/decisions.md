@@ -2960,5 +2960,5 @@ issue #382 で `OutputField` の a11y 欠落を改修。初期実装 (PR #402 �
 - ✅ `off→polite` の同一レンダー race condition を排除
 - ✅ `role="status"` のスコープが textarea のみで意味論的に明確
 - ✅ `aria-atomic="false"` 明示で SR 間の atomic 扱い差異を吸収
-- ⚠️ `readOnly textarea` の value 変更を live region 内でも通知しない SR（NVDA / VoiceOver の特定バージョン）が存在する—spec グレーゾーン。実機 SR 検証は別 issue で追跡
+- ⚠️ `readOnly textarea` の value 変更を live region 内でも通知しない SR（NVDA / VoiceOver の特定バージョン）が存在する—spec グレーゾーン。実機 SR 検証は issue #403 で追跡
 - ⚠️ 複数 OutputField を同一ツール内で使う場合の多重 `role="status"` は YAGNI で preemptive 対応なし。該当ケースが発生したら `ariaLabel` prop を status wrapper に転記して識別可能にする
