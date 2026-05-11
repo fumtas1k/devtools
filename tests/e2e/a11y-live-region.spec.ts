@@ -48,31 +48,35 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
     });
   });
 
-  test('Base64: 変換結果が role="status" で包まれ aria-live が off→polite に切り替わる（CSP 違反なし）', async ({
+  test('Base64: 変換結果が role="status" で包まれ常時 aria-live="polite" で SR 通知可能（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/base64', async (page) => {
-      // 入力前: OutputField の status 領域は aria-live="off"（初期描画の過剰通知を防ぐ）
+      // OutputField は常時 role="status" aria-live="polite" を持つ
       const statusEl = page.getByRole('status').first();
-      await expect(statusEl).toHaveAttribute('aria-live', 'off');
-
-      // 入力後: aria-live="polite" に切り替わりスクリーンリーダーが通知可能になる
-      await page.getByLabel('入力').fill('Hello');
+      await expect(statusEl).toBeVisible();
       await expect(statusEl).toHaveAttribute('aria-live', 'polite');
+
+      // 入力後: status 領域内の textarea に変換結果が反映される
+      await page.getByLabel('入力').fill('Hello');
+      await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8=');
+      await expect(statusEl.locator('textarea')).toHaveValue('SGVsbG8=');
     });
   });
 
-  test('JSON→CSV: 変換結果が role="status" で包まれ aria-live が off→polite に切り替わる（CSP 違反なし）', async ({
+  test('JSON→CSV: 変換結果が role="status" で包まれ常時 aria-live="polite" で SR 通知可能（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/json-csv', async (page) => {
-      // 入力前: OutputField の status 領域は aria-live="off"
+      // OutputField は常時 role="status" aria-live="polite" を持つ
       const statusEl = page.getByRole('status').first();
-      await expect(statusEl).toHaveAttribute('aria-live', 'off');
-
-      // JSON 入力後: aria-live="polite" に切り替わる
-      await page.getByLabel('入力').fill('[{"id":1,"name":"太郎"}]');
+      await expect(statusEl).toBeVisible();
       await expect(statusEl).toHaveAttribute('aria-live', 'polite');
+
+      // JSON 入力後: status 領域内の textarea に CSV 結果が反映される
+      await page.getByLabel('入力').fill('[{"id":1,"name":"太郎"}]');
+      await expect(page.getByLabel('変換結果')).toHaveValue(/id,name/);
+      await expect(statusEl.locator('textarea')).toHaveValue(/id,name/);
     });
   });
 });
