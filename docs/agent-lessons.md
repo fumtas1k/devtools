@@ -241,3 +241,61 @@ baseline 更新は「意図した変更」を承認する操作であり、**真
 - baseline 名を文字列復元する前に、Playwright が同 test-results dir に置いている関連ファイル (`-expected.png` / `-diff.png` / `error-context.md`) を確認する。物理コピー経路の方が format 依存が少なく堅牢
 - issue 起票時の調査が「未確認」で見送った経路でも、node_modules source / 実 CI log で実証可能なら採用候補に戻す
 - **Playwright メジャー upgrade 時の回帰確認**: `-expected.png` を生成する Playwright 内識別子は `legacyExpectedPath` (`node_modules/playwright/lib/matchers/toMatchSnapshot.js:67`) で `legacy` prefix 付き = 将来 deprecation の兆候。upgrade 時は `-expected` suffix 生成経路が残っているか必ず grep 確認する。生成器自体が消えたら `scripts/generate-vrt-slider.mjs` の `-expected.png` 直参照経路も影響を受ける
+
+---
+
+## 2026-05-11 — gh CLI の TLS verification が macOS で intermittent / method 依存で失敗する。curl にフォールバックする
+
+### 現象
+
+19 件の issue 一括ラベル付与・タイトル変更で `gh issue edit` および `gh api repos/.../issues/N --method PATCH` が **全件** 次のエラーで失敗:
+
+```
+tls: failed to verify certificate: x509: OSStatus -26276
+```
+
+OSStatus -26276 (`errSecHostNameMismatch` 付近の cert validation エラー) は macOS Security framework の証明書検証拒否。
+
+### 計測した再現条件
+
+| 操作                                       | 件数       | 結果                     |
+| ------------------------------------------ | ---------- | ------------------------ |
+| `gh issue create` (POST)                   | 19 件連続  | **全件 OK**              |
+| `gh api repos/.../labels --method POST`    | 8 件連続   | **全件 OK**              |
+| `gh api user` (GET)                        | 1 件       | OK                       |
+| `gh label list` (GraphQL GET)              | 1 件       | FAIL (TLS) — 再実行で OK |
+| `gh issue edit` (GraphQL PATCH)            | 19 件 bulk | **全件 FAIL**            |
+| `gh api repos/.../issues/N --method PATCH` | 19 件 bulk | **全件 FAIL**            |
+| 同上 standalone 1 回呼び                   | 1 件       | OK                       |
+| `curl -X PATCH` + `gh auth token`          | 19 件 bulk | **全件 OK**              |
+
+POST / GET は安定、PATCH (REST PATCH も GraphQL も) が著しく不安定。standalone では通る場合があるため flake 性もある。
+
+### 推測される原因
+
+- gh CLI が使う Go `net/http` クライアントが macOS の SecTrustEvaluate を経由する際、PATCH のような pre-flight CONNECT 後の追加 round-trip で certificate chain の検証に失敗するケースがある
+- POST/GET が連続成功する一方 PATCH だけ落ちる理由は未特定だが、`net/http` の `Transport` 内部 state（keep-alive / TLS session resumption）と SecTrust のキャッシュ整合性のずれが疑わしい
+
+### 回復手順 (今後 PATCH が固まったら即適用)
+
+```bash
+TOKEN=$(gh auth token)
+# title + labels の例 (jq で JSON body を組む)
+body=$(jq -n -c --arg t "[P1] foo" --argjson l '["P1","refactor"]' '{title:$t,labels:$l}')
+curl -s -X PATCH "https://api.github.com/repos/<owner>/<repo>/issues/<n>" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  -d "$body" -o /dev/null -w "%{http_code}\n"
+```
+
+### 注意点
+
+- `gh auth token` の取り出しは `.claude/settings.json` で許可済み経路。token 自体を memory / log に書かない
+- curl 直接叩き経路は `permissions.ask` 相当になる可能性がある。`gh` で失敗を 1 度は確認してから curl にフォールバックする運用が無難
+- 単発呼び出しでは通ることが多いので、最初に PATCH 1 件で疎通確認 → 全件 bulk に進む手順がコスト的に最良
+
+### 関連
+
+- 本セッション (2026-05-11) のリファクタ監査 issue 化（#382–#400）でタイトル + ラベル一括変更時に発生
+- 個人 memory: `feedback_settings_allow_first.md` (gh コマンドは permissions.allow に乗せる) — 今回は curl fallback も同じ精神で `gh` 経路を優先しつつ failover を持つ運用が妥当

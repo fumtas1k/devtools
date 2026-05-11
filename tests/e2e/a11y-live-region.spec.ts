@@ -47,6 +47,38 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
       await expect(statusRegions.first()).toBeVisible();
     });
   });
+
+  test('Base64: 変換結果が role="status" で包まれ常時 aria-live="polite" で SR 通知可能（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/base64', async (page) => {
+      // OutputField は常時 role="status" aria-live="polite" を持つ
+      const statusEl = page.getByRole('status').first();
+      await expect(statusEl).toBeVisible();
+      await expect(statusEl).toHaveAttribute('aria-live', 'polite');
+
+      // 入力後: status 領域内の textarea に変換結果が反映される
+      await page.getByLabel('入力').fill('Hello');
+      await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8=');
+      await expect(statusEl.locator('textarea')).toHaveValue('SGVsbG8=');
+    });
+  });
+
+  test('JSON→CSV: 変換結果が role="status" で包まれ常時 aria-live="polite" で SR 通知可能（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-csv', async (page) => {
+      // OutputField は常時 role="status" aria-live="polite" を持つ
+      const statusEl = page.getByRole('status').first();
+      await expect(statusEl).toBeVisible();
+      await expect(statusEl).toHaveAttribute('aria-live', 'polite');
+
+      // JSON 入力後: status 領域内の textarea に CSV 結果が反映される
+      await page.getByLabel('入力').fill('[{"id":1,"name":"太郎"}]');
+      await expect(page.getByLabel('変換結果')).toHaveValue(/id,name/);
+      await expect(statusEl.locator('textarea')).toHaveValue(/id,name/);
+    });
+  });
 });
 
 test.describe('a11y aria-expanded (issue #163, production CSP 適用)', () => {
