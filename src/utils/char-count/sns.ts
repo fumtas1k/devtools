@@ -43,11 +43,54 @@ function isWeightOne(cp: number): boolean {
   );
 }
 
+// X (Twitter) v3 config: emojiParsingEnabled=true
+// 絵文字 grapheme cluster は構成コードポイント数に関わらず単一 weight-2 ユニットとして扱う
+const snsSegmenter = new Intl.Segmenter('ja', { granularity: 'grapheme' });
+const SKIN_TONE_RE = /[\u{1F3FB}-\u{1F3FF}]/u;
+
+/**
+ * grapheme cluster が絵文字シーケンスかどうか判定する。
+ *
+ * 単一コードポイントは weight ranges で処理するため false を返す:
+ * - BMP 記号 (© U+00A9) → weight-1 range で weight 1 のまま
+ * - SMP 絵文字 (😀 U+1F600) → weight 2 のまま（結果に変化なし）
+ *
+ * 複数コードポイントで以下を含む場合は絵文字クラスタ:
+ * - U+FE0F (VS16): ❤️, ☺️ など
+ * - U+200D (ZWJ): 家族絵文字 👨‍👩‍👧‍👦 など
+ * - U+20E3 (COMBINING ENCLOSING KEYCAP): 1️⃣ など
+ * - U+1F3FB–U+1F3FF (skin tone modifiers): 👋🏽 など
+ * - 先頭が Regional Indicator (U+1F1E0–U+1F1FF): 🇯🇵 など
+ *
+ * 既知の対応外ケース:
+ * - subdivision flag tag sequence (🏴󠁧󠁢󠁥󠁮󠁧 等): U+E0020-E007F タグ chars を持つが検出しない。
+ *   構成 code point ごとに weight 2 となる（実害低のため別 issue 追跡推奨）。
+ * - VS15 text presentation (U+FE0E): 絵文字 cluster 判定外で fall-through し
+ *   code point 単位の weight に従う。X 公式値は未確認。
+ */
+function isEmojiCluster(cluster: string): boolean {
+  if ([...cluster].length === 1) return false;
+  const cp0 = cluster.codePointAt(0) ?? 0;
+  return (
+    cluster.includes('\u{FE0F}') || // VS16: ❤️, ☺️ など
+    cluster.includes('\u{200D}') || // ZWJ: 👨‍👩‍👧‍👦 など
+    cluster.includes('\u{20E3}') || // COMBINING ENCLOSING KEYCAP: 1️⃣
+    SKIN_TONE_RE.test(cluster) ||
+    (cp0 >= 0x1f1e0 && cp0 <= 0x1f1ff) // Regional Indicator pair: 🇯🇵
+  );
+}
+
 function weightSegment(segment: string): number {
   let w = 0;
-  for (const ch of segment) {
-    // for...of は string を code point 単位で iterate するため codePointAt(0) は必ず定義済み
-    w += isWeightOne(ch.codePointAt(0)!) ? 1 : 2;
+  for (const { segment: cluster } of snsSegmenter.segment(segment)) {
+    if (isEmojiCluster(cluster)) {
+      w += 2;
+    } else {
+      for (const ch of cluster) {
+        // for...of は string を code point 単位で iterate するため codePointAt(0) は必ず定義済み
+        w += isWeightOne(ch.codePointAt(0)!) ? 1 : 2;
+      }
+    }
   }
   return w;
 }
