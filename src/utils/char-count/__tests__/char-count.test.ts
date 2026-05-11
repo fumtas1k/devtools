@@ -484,6 +484,22 @@ describe('twitterWeight', () => {
 
   // 改行
   it('改行 LF "a\\nb" → 3 (LF は U+0A、weight 1)', () => expect(twitterWeight('a\nb')).toBe(3));
+
+  // 複合絵文字: grapheme cluster 単位で weight 2 (emojiParsingEnabled=true 準拠)
+  it('皮膚トーン付き絵文字 "👋🏽" は weight 2 (U+1F44B + skin tone = 1 cluster)', () =>
+    expect(twitterWeight('👋🏽')).toBe(2));
+  it('VS16 付き絵文字 "❤️" は weight 2 (U+2764 + U+FE0F = 1 cluster)', () =>
+    expect(twitterWeight('❤️')).toBe(2));
+  it('家族 ZWJ 絵文字 "👨‍👩‍👧‍👦" は weight 2 (ZWJ sequence = 1 cluster)', () =>
+    expect(twitterWeight('👨‍👩‍👧‍👦')).toBe(2));
+  it('キーキャップ "1️⃣" は weight 2 (digit + VS16 + U+20E3 = 1 cluster)', () =>
+    expect(twitterWeight('1️⃣')).toBe(2));
+  it('国旗 "🇯🇵" は weight 2 (regional indicator pair = 1 cluster)', () =>
+    expect(twitterWeight('🇯🇵')).toBe(2));
+  it('© 単体 (VS16 なし, U+00A9) は weight 1 (weight-1 range, 挙動変化なし)', () =>
+    expect(twitterWeight('©')).toBe(1));
+  it('絵文字 + テキスト混在 "Hi 👋🏽" は weight 5 (H+i+space=3, 👋🏽=2)', () =>
+    expect(twitterWeight('Hi 👋🏽')).toBe(5));
 });
 
 describe('blueskyCount', () => {
