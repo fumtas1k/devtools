@@ -47,6 +47,34 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
       await expect(statusRegions.first()).toBeVisible();
     });
   });
+
+  test('Base64: 変換結果が role="status" で包まれ aria-live が off→polite に切り替わる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/base64', async (page) => {
+      // 入力前: OutputField の status 領域は aria-live="off"（初期描画の過剰通知を防ぐ）
+      const statusEl = page.getByRole('status').first();
+      await expect(statusEl).toHaveAttribute('aria-live', 'off');
+
+      // 入力後: aria-live="polite" に切り替わりスクリーンリーダーが通知可能になる
+      await page.getByLabel('入力').fill('Hello');
+      await expect(statusEl).toHaveAttribute('aria-live', 'polite');
+    });
+  });
+
+  test('JSON→CSV: 変換結果が role="status" で包まれ aria-live が off→polite に切り替わる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-csv', async (page) => {
+      // 入力前: OutputField の status 領域は aria-live="off"
+      const statusEl = page.getByRole('status').first();
+      await expect(statusEl).toHaveAttribute('aria-live', 'off');
+
+      // JSON 入力後: aria-live="polite" に切り替わる
+      await page.getByLabel('入力').fill('[{"id":1,"name":"太郎"}]');
+      await expect(statusEl).toHaveAttribute('aria-live', 'polite');
+    });
+  });
 });
 
 test.describe('a11y aria-expanded (issue #163, production CSP 適用)', () => {

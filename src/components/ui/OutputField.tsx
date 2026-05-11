@@ -44,7 +44,7 @@ export function OutputField({
   const monoClass = mono ? 'font-mono' : '';
   const resizeClass = resize ? 'resize-y' : 'resize-none';
   return (
-    <div className="w-full">
+    <div className="w-full" role="status" aria-live={hasValue ? 'polite' : 'off'}>
       <div className="flex items-center justify-between mb-3 min-h-8">
         <label htmlFor={id} className="body-emphasis text-default">
           {label}
