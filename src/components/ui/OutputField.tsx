@@ -56,14 +56,16 @@ export function OutputField({
           </div>
         )}
       </div>
-      <textarea
-        id={id}
-        readOnly
-        value={value}
-        rows={rows}
-        className={`caption ${monoClass} ${resizeClass} w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide`.trim()}
-        aria-label={ariaLabel ?? label}
-      />
+      <div role="status" aria-live="polite" aria-atomic="false">
+        <textarea
+          id={id}
+          readOnly
+          value={value}
+          rows={rows}
+          className={`caption ${monoClass} ${resizeClass} w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide`.trim()}
+          aria-label={ariaLabel ?? label}
+        />
+      </div>
     </div>
   );
 }

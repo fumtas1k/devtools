@@ -2929,3 +2929,36 @@ trade-off:
 - 設計書: `docs/superpowers/specs/2026-05-10-char-count-sns-redesign-design.md`
 - 実装計画: `docs/superpowers/plans/2026-05-10-char-count-sns-redesign.md`
 - twitter-text v3 conformance 仕様 (`twitter-text-config.json`)
+
+---
+
+## [076] 2026-05-11 — OutputField の aria-live を常時 polite + textarea wrap に統一
+
+**日付 2026-05-11 | ステータス: 採用 | issue #382, PR #402**
+
+### 背景
+
+issue #382 で `OutputField` の a11y 欠落を改修。初期実装 (PR #402 初版) は issue 提案通り最外殻 `<div>` に `role="status"` + `aria-live={hasValue ? 'polite' : 'off'}` の動的切替を採用した。PR レビューで以下 2 件の中優先度指摘を受領:
+
+1. `role="status"` のスコープが label + CopyButton + textarea の全体に及び、status region として広すぎる
+2. `off → polite` の同一レンダー切替は SR が announce を取りこぼす known anti-pattern（Safari/VoiceOver、JAWS での事例あり）
+
+### 決断
+
+- `aria-live` は **常時 `"polite"`** で固定（動的切替を廃止）
+- `role="status"` は **textarea を wrap する内側 `<div>`** に限定（label/CopyButton を status region から除外）
+- `aria-atomic="false"` を明示し、一部 SR が `role="status"` を atomic として扱う実装に備える
+- 初期 mount 時の過剰通知は ARIA spec の「live region 初期 content は announce しない」挙動に依拠
+
+### 却下した選択肢
+
+- **条件 mount (JanCode パターン)**: `hasValue` が真のときのみ live region をマウントする案。textarea 要素の重複描画または条件 wrapper によるツリー再 mount でフォーカス喪失リスクがある
+- **視覚隠し SR ミラー**: `<div class="sr-only" role="status">` に value を text node として複製する案。Base64 等の長い出力を全文読み上げる UX 課題と、2 つの真実の源が生じるメンテナンスコスト
+
+### 結果・トレードオフ
+
+- ✅ `off→polite` の同一レンダー race condition を排除
+- ✅ `role="status"` のスコープが textarea のみで意味論的に明確
+- ✅ `aria-atomic="false"` 明示で SR 間の atomic 扱い差異を吸収
+- ⚠️ `readOnly textarea` の value 変更を live region 内でも通知しない SR（NVDA / VoiceOver の特定バージョン）が存在する—spec グレーゾーン。実機 SR 検証は issue #403 で追跡
+- ⚠️ 複数 OutputField を同一ツール内で使う場合の多重 `role="status"` は YAGNI で preemptive 対応なし。該当ケースが発生したら `ariaLabel` prop を status wrapper に転記して識別可能にする
