@@ -61,14 +61,20 @@ const SKIN_TONE_RE = /[\u{1F3FB}-\u{1F3FF}]/u;
  * - U+20E3 (COMBINING ENCLOSING KEYCAP): 1️⃣ など
  * - U+1F3FB–U+1F3FF (skin tone modifiers): 👋🏽 など
  * - 先頭が Regional Indicator (U+1F1E0–U+1F1FF): 🇯🇵 など
+ *
+ * 既知の対応外ケース:
+ * - subdivision flag tag sequence (🏴󠁧󠁢󠁥󠁮󠁧 等): U+E0020-E007F タグ chars を持つが検出しない。
+ *   構成 code point ごとに weight 2 となる（実害低のため別 issue 追跡推奨）。
+ * - VS15 text presentation (U+FE0E): 絵文字 cluster 判定外で fall-through し
+ *   code point 単位の weight に従う。X 公式値は未確認。
  */
 function isEmojiCluster(cluster: string): boolean {
   if ([...cluster].length === 1) return false;
   const cp0 = cluster.codePointAt(0) ?? 0;
   return (
-    cluster.includes('️') || // VS16: ❤️, ☺️ など
-    cluster.includes('‍') || // ZWJ: 👨‍👩‍👧‍👦 など
-    cluster.includes('⃣') || // COMBINING ENCLOSING KEYCAP: 1️⃣
+    cluster.includes('\u{FE0F}') || // VS16: ❤️, ☺️ など
+    cluster.includes('\u{200D}') || // ZWJ: 👨‍👩‍👧‍👦 など
+    cluster.includes('\u{20E3}') || // COMBINING ENCLOSING KEYCAP: 1️⃣
     SKIN_TONE_RE.test(cluster) ||
     (cp0 >= 0x1f1e0 && cp0 <= 0x1f1ff) // Regional Indicator pair: 🇯🇵
   );
