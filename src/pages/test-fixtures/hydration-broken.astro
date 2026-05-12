@@ -1,0 +1,19 @@
+---
+import { HydrationMismatchFixture } from '@/components/test-fixtures/HydrationMismatch';
+---
+
+<!--
+  陽性対照テスト用 fixture page。tests/e2e/hydration-check.gate.spec.ts から
+  訪問され、watchHydrationWarnings の検知能力を保証する (test-gates skill 要件)。
+  tools.ts 非登録 + noindex meta で UI から到達不能・検索エンジン indexing 防止。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Hydration Mismatch Fixture</title>
+  </head>
+  <body>
+    <HydrationMismatchFixture client:load />
+  </body>
+</html>
