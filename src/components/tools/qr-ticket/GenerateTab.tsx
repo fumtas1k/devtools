@@ -1,3 +1,4 @@
+import { CloseIcon } from '@/components/ui/CloseIcon';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -115,9 +116,22 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
               onClick={onToggleImport}
               aria-expanded={showImport}
               aria-controls="qr-ticket-import-panel"
-              className="caption text-link-color btn-link-plain"
+              className="caption text-link-color btn-link-plain inline-flex items-center gap-1"
             >
-              <span aria-hidden="true">{showImport ? '▲ ' : '▼ '}</span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className={`inline-block align-middle transition-transform duration-150 ease-in-out${showImport ? ' rotate-180' : ''}`}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
               {showImport ? '秘密鍵インポートを閉じる' : '既存の秘密鍵をインポート'}
             </button>
           </div>
@@ -283,7 +297,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                       disabled={tickets.length <= 1}
                       aria-label={`行 ${i + 1} を削除`}
                     >
-                      <span aria-hidden="true">✕</span>
+                      <CloseIcon size={16} />
                     </button>
                   </div>
                 </div>

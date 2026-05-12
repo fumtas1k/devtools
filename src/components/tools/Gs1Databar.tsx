@@ -15,6 +15,7 @@ import { BareInput } from '@/components/ui/BareInput';
 import { Select } from '@/components/ui/Select';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
+import { CloseIcon } from '@/components/ui/CloseIcon';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
   downloadSvg as downloadSvgFile,
@@ -313,10 +314,10 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                     <button
                       type="button"
                       onClick={() => removeAiField(i)}
-                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5"
+                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5 inline-flex items-center justify-center"
                       aria-label="フィールドを削除"
                     >
-                      ✕
+                      <CloseIcon size={16} />
                     </button>
                   </div>
                 </div>

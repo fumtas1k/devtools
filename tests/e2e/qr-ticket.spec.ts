@@ -118,9 +118,9 @@ test.describe('QRチケット（production CSP 適用）', () => {
       // 2つ目のtextarea（readOnly）が公開鍵JWK
       const pubKeyJwk = await page.getByLabel('公開鍵（検証スタッフへ共有）').inputValue();
 
-      await page.getByText('▼ 既存の秘密鍵をインポート').click();
+      await page.getByRole('button', { name: '既存の秘密鍵をインポート' }).click();
       await page.getByLabel('秘密鍵 JWK').fill(pubKeyJwk);
-      // exact: true で「▲ 秘密鍵インポートを閉じる」との混同を防ぐ
+      // exact: true で「秘密鍵インポートを閉じる」との混同を防ぐ
       await page.getByRole('button', { name: 'インポート', exact: true }).click();
       await expect(page.getByRole('alert')).toContainText('公開鍵です');
     });
