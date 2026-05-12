@@ -15,13 +15,13 @@ function EncRow({ label, compat }: { label: string; compat: EncodingCompat }) {
       <dt className="caption text-muted">{label}</dt>
       <dd className="caption font-mono text-right">
         {compat.ok ? (
-          <span className="text-success inline-flex items-center gap-1 justify-end">
+          <span className="text-success">
             <StatusIcon variant="success" />
             <span className="sr-only">対応</span>
             {compat.bytes != null ? ` ${compat.bytes} byte` : ''}
           </span>
         ) : (
-          <span className="text-error inline-flex items-center gap-1 justify-end">
+          <span className="text-error">
             <StatusIcon variant="error" />
             <span className="sr-only">不可</span>
             {` 不可: ${compat.failedCount} 文字`}
@@ -178,9 +178,8 @@ export function CharCountTool() {
             {lines.newline === 'crlf' && 'CRLF'}
             {lines.newline === 'cr' && 'CR'}
             {lines.newline === 'mixed' && (
-              <span className="inline-flex items-center gap-1 justify-end">
-                混在
-                <StatusIcon variant="warning" />
+              <span>
+                混在 <StatusIcon variant="warning" />
                 <span className="sr-only">警告</span>
               </span>
             )}
