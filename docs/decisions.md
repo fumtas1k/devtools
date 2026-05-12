@@ -2962,3 +2962,40 @@ issue #382 で `OutputField` の a11y 欠落を改修。初期実装 (PR #402 �
 - ✅ `aria-atomic="false"` 明示で SR 間の atomic 扱い差異を吸収
 - ⚠️ `readOnly textarea` の value 変更を live region 内でも通知しない SR（NVDA / VoiceOver の特定バージョン）が存在する—spec グレーゾーン。実機 SR 検証は issue #403 で追跡
 - ⚠️ 複数 OutputField を同一ツール内で使う場合の多重 `role="status"` は YAGNI で preemptive 対応なし。該当ケースが発生したら `ariaLabel` prop を status wrapper に転記して識別可能にする
+
+## [077] 2026-05-12 — Gs1Databar の id 生成を `useId` 化 + hydration mismatch 検知 meta infra (陰性+陽性対照) を追加
+
+**日付 2026-05-12 | ステータス: 採用 | PR #408**
+
+### 背景
+
+`src/components/tools/Gs1Databar.tsx` で `useState(() => [{ id: crypto.randomUUID() }])` の lazy initializer が SSR と CSR で別の UUID を生成し、React の hydration mismatch (production の `Minified React error #418`) を引き起こしていた。
+
+- 元 commit `4c21a58` (2026-04-12) で StrictMode 二重マウントと hot reload での ID 衝突回避のために導入されたが、Astro `client:load` 経由の SSR ↔ CSR 境界で UUID が割れる問題が考慮されていなかった
+- 既存 e2e (`helpers.ts` の console listener) は CSP 違反のみを watch しており hydration warning は filter から漏れていた
+- production build では React が silent recovery してメッセージが minify されるため目視でも気付きにくく、1 ヶ月以上潜在した
+- 「修正したのに修正の確認ができない PR」を回避するため、本 PR で fix と検知 infra を同梱
+
+### 決断
+
+1. **fix**: `crypto.randomUUID()` を React 18 の `useId()` + monotonic counter (`${idPrefix}-card-${n}`) に置換。SSR/CSR で同一 ID を保証しつつ、StrictMode / hot reload での衝突回避意図 (`[4c21a58]`) も継承
+2. **検知 listener**: `tests/e2e/helpers.ts` に `watchHydrationWarnings` を追加。CSP guard と独立、dev message + production minified ID 両対応の regex (具体パターン一覧は `helpers.ts` の `HYDRATION_WARNING_RE` を SoT として参照)
+3. **陰性対照**: `tests/e2e/hydration-check.spec.ts` が `visual-regression-pages.ts` の全 `PAGES` を 1 context 内で巡回し warning 0 件を assert。新ツール追加時も自動カバー
+4. **陽性対照** (test-gates skill 要件): `tests/e2e/hydration-check.gate.spec.ts` + `src/pages/test-fixtures/hydration-broken.astro` (SSR で `SERVER`・CSR で `CLIENT` を出す fixture) で listener の検知能力を保証。Playwright preview の production code path を実走させ、`console.log('[hydration-gate] captured: ...')` で CI artifact に hit message を残し将来の minified ID 変化を早期検知
+5. **fixture の prod 除外**: `public/_redirects` の `/test-fixtures/* /404 404` で Cloudflare Pages 本番のみ 404 化。`public/robots.txt` の `Disallow: /test-fixtures/` で indexing も二重防御
+
+### 却下した選択肢
+
+- **Astro middleware で `import.meta.env.PROD` 分岐**: Playwright `webServer.env` に flag を渡す必要があり CI workflow 変更も波及する。`_redirects` 1 行で同じ目的を達成できるため不採用
+- **`_` prefix で fixture を build 除外**: Astro convention の `_` 除外は preview build にも適用されるため Playwright e2e から到達不能になり陽性対照が機能しない
+- **fixture を Playwright `page.route` で intercept**: React bundle 配信や CSP との両立で実装複雑度が上がる。fixture page を直接配信し本番だけ `_redirects` で消す方が簡単
+- **per-page で `newContext` を立てる構造**: 当初 19 page を別 test として実行していたが、context 生成コストが CI 時間を圧迫するためレビュー指摘 (#4) で 1 test + 内部 loop に統合
+
+### 結果・トレードオフ
+
+- ✅ Gs1Databar の hydration mismatch を解消、CI で同種 regression を陰性+陽性対照で機械的に catch する infra が整った
+- ✅ astro preview は `_redirects` を解釈しないため fixture page は e2e で従来通り到達可能、本番のみ攻撃面を消せる (middleware / CI workflow 変更を回避)
+- ✅ 陽性対照が production code path (Astro `client:load` → React `hydrateRoot`) を実走するため、将来 React 19+ への upgrade で minified ID が変わった際は spec が即 fail に昇格 → regex 縮退を早期検知
+- ⚠️ 陰性対照 spec を 1 test に統合した結果、Playwright reporter での粒度が page 単位 → spec 単位に低下。failure 時の page 特定は `expect(..., { message: path })` で明示
+- ⚠️ Gs1Databar が `crypto.randomUUID` を呼ばなくなったため、VRT spec ([066]) の `crypto.randomUUID` mock 注入が dead code 化。cleanup は issue #412 で別途追跡
+- ⚠️ `_redirects` の destination `/404` は `src/pages/404.astro` が未整備のため CF default 404 に解決される (status 404 は保証)。サイト全体の 404 UX 改善は issue #411 で別途追跡
