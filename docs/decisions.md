@@ -2979,9 +2979,9 @@ issue #382 で `OutputField` の a11y 欠落を改修。初期実装 (PR #402 �
 ### 決断
 
 1. **fix**: `crypto.randomUUID()` を React 18 の `useId()` + monotonic counter (`${idPrefix}-card-${n}`) に置換。SSR/CSR で同一 ID を保証しつつ、StrictMode / hot reload での衝突回避意図 (`[4c21a58]`) も継承
-2. **検知 listener**: `tests/e2e/helpers.ts` に `watchHydrationWarnings` を追加。CSP guard と独立、dev message + production minified ID (`#418/#419/#422/#423/#425`) 両対応の regex
+2. **検知 listener**: `tests/e2e/helpers.ts` に `watchHydrationWarnings` を追加。CSP guard と独立、dev message + production minified ID 両対応の regex (具体パターン一覧は `helpers.ts` の `HYDRATION_WARNING_RE` を SoT として参照)
 3. **陰性対照**: `tests/e2e/hydration-check.spec.ts` が `visual-regression-pages.ts` の全 `PAGES` を 1 context 内で巡回し warning 0 件を assert。新ツール追加時も自動カバー
-4. **陽性対照** (test-gates skill 要件): `tests/e2e/hydration-check.gate.spec.ts` + `src/pages/test-fixtures/hydration-broken.astro` (SSR で `SERVER`・CSR で `CLIENT` を出す fixture) で listener の検知能力を保証。Playwright preview の production code path を実走させる
+4. **陽性対照** (test-gates skill 要件): `tests/e2e/hydration-check.gate.spec.ts` + `src/pages/test-fixtures/hydration-broken.astro` (SSR で `SERVER`・CSR で `CLIENT` を出す fixture) で listener の検知能力を保証。Playwright preview の production code path を実走させ、`console.log('[hydration-gate] captured: ...')` で CI artifact に hit message を残し将来の minified ID 変化を早期検知
 5. **fixture の prod 除外**: `public/_redirects` の `/test-fixtures/* /404 404` で Cloudflare Pages 本番のみ 404 化。`public/robots.txt` の `Disallow: /test-fixtures/` で indexing も二重防御
 
 ### 却下した選択肢
