@@ -1,0 +1,5 @@
+# Cloudflare Pages: 本番では e2e 陽性対照 fixture を 404 化する
+# astro preview (Playwright webServer) は _redirects を解釈しないため
+# 本 file は CI / 本番のみで効き、ローカル / e2e に影響しない。
+# 採用根拠: PR #408 review feedback (issue #409 相当の対応)
+/test-fixtures/*  /404  404
