@@ -38,7 +38,7 @@ export function StatusIcon({ variant, size = 16, className = '' }: Props) {
     <svg {...common} strokeWidth={2}>
       <path d="M12 3 L22 20 L2 20 Z" />
       <line x1="12" y1="10" x2="12" y2="14" />
-      <line x1="12" y1="17.5" x2="12" y2="17.5" />
+      <circle cx="12" cy="17.5" r="1.25" fill="currentColor" />
     </svg>
   );
 }
