@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /test-fixtures/
 
 Sitemap: https://devtools-d9w.pages.dev/sitemap-index.xml

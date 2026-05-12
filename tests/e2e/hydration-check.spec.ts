@@ -23,9 +23,10 @@ test.describe('Hydration mismatch 検知 (陰性対照)', () => {
         if (!STATIC_PAGES.has(path)) {
           await waitForReactHydration(page);
         }
-        // hydration warning は load 直後の microtask で発火するため
-        // 一呼吸置いてから assert (waitForReactHydration の後でも reliable)
-        await page.waitForTimeout(200);
+        // hydration warning は load 直後の microtask / 次 task で発火する。固定
+        // timeout だと低速 CI で false negative の余地があるため、ブラウザ側で
+        // 1 task 明示的に進めて React の error commit を確実に flush する。
+        await page.evaluate(() => new Promise<void>((r) => setTimeout(r, 0)));
         guard.assertNoWarnings();
       } finally {
         await context.close();

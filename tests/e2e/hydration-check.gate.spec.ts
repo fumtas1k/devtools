@@ -28,6 +28,10 @@ test('watchHydrationWarnings は実際に hydration mismatch を捕捉する (�
     // React hydration は load 直後の microtask で走り、mismatch を発見し次第
     // console.error を発火する。poll で確実に捕捉する。
     await expect.poll(() => guard.warnings.length, { timeout: 5000 }).toBeGreaterThan(0);
+    // 将来 React upgrade で minified ID が変わったとき早期検知できるよう
+    // どの message 経路 (dev / minified #418 等) に hit したかを artifact log に残す。
+    // eslint-disable-next-line no-console
+    console.log('[hydration-gate] captured:', guard.warnings[0]);
   } finally {
     await context.close();
   }
