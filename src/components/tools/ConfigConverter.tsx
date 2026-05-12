@@ -5,6 +5,7 @@ import { OutputField } from '@/components/ui/OutputField';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ActionButton } from '@/components/ui/ActionButton';
+import { StatusIcon } from '@/components/ui/StatusIcon';
 import { useCodec } from '@/hooks/useCodec';
 import { convert } from '@/utils/config-converter';
 import type { ConfigFormat } from '@/utils/config-converter';
@@ -259,8 +260,11 @@ export function ConfigConverterTool() {
                 aria-live={validationResult.valid ? 'polite' : 'assertive'}
               >
                 {validationResult.valid ? (
-                  <p className="caption text-default">
-                    <span aria-hidden="true">✅ </span>スキーマ検証成功
+                  <p className="caption text-default inline-flex items-center gap-1">
+                    <span className="text-success">
+                      <StatusIcon variant="success" />
+                    </span>
+                    スキーマ検証成功
                   </p>
                 ) : (
                   <ul className="caption text-error-text m-0 pl-5">

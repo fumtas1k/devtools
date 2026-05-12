@@ -28,13 +28,15 @@ const tool = tools.find((t) => t.slug === 'char-count')!;
     </p>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>
-        <strong>MySQL utf8mb3</strong> (旧来の <code>utf8</code>):
-        BMP外の文字（絵文字・一部CJK）は❌。
+        <strong>MySQL utf8mb3</strong> (旧来の <code>utf8</code>): BMP外の文字（絵文字・一部CJK）は<strong
+          class="text-error">不可</strong
+        >。
         <code>utf8mb4</code>カラムへの移行を検討してください
       </li>
       <li>
-        <strong>Shift_JIS / EUC-JP</strong>: 絵文字・一部記号・CJK拡張文字は❌。
-        round-tripが一致しない文字は不可と判定します
+        <strong>Shift_JIS / EUC-JP</strong>: 絵文字・一部記号・CJK拡張文字は<strong
+          class="text-error">不可</strong
+        >。 round-tripが一致しない文字は不可と判定します
       </li>
       <li>
         <strong>UTF-8 (utf8mb4) / UTF-16</strong>: すべてのUnicode文字を表現できます

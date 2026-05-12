@@ -1,3 +1,5 @@
+import { ChevronIcon } from '@/components/ui/ChevronIcon';
+import { CloseIcon } from '@/components/ui/CloseIcon';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -115,9 +117,9 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
               onClick={onToggleImport}
               aria-expanded={showImport}
               aria-controls="qr-ticket-import-panel"
-              className="caption text-link-color btn-link-plain"
+              className="caption text-link-color btn-link-plain inline-flex items-center gap-1"
             >
-              <span aria-hidden="true">{showImport ? '▲ ' : '▼ '}</span>
+              <ChevronIcon open={showImport} />
               {showImport ? '秘密鍵インポートを閉じる' : '既存の秘密鍵をインポート'}
             </button>
           </div>
@@ -283,7 +285,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                       disabled={tickets.length <= 1}
                       aria-label={`行 ${i + 1} を削除`}
                     >
-                      <span aria-hidden="true">✕</span>
+                      <CloseIcon size={16} />
                     </button>
                   </div>
                 </div>

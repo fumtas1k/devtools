@@ -93,8 +93,8 @@ describe('CharCountTool — 結果表示', () => {
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
-    // utf8mb3 行が不可表示 (❌ または「不可」を含むテキスト)
-    const notOkElements = screen.queryAllByText(/❌|不可/);
+    // utf8mb3 行が不可表示 (sr-only「不可」テキスト + " 不可: N 文字" フォーマット)
+    const notOkElements = screen.queryAllByText(/不可/);
     expect(notOkElements.length).toBeGreaterThan(0);
   });
 

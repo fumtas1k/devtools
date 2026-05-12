@@ -22,10 +22,9 @@ test.describe('文字カウント', () => {
 
   test('"あいうえお" は utf8mb3 を含む全エンコーディングで ✅', async ({ page }) => {
     await page.getByLabel('入力テキスト').fill('あいうえお');
-    // Shift_JIS ✅ 10 byte が表示されること (BMP 文字は全対応)
-    await expect(page.getByText(/✅.*10 byte/).first()).toBeVisible();
-    // エンコーディング行に「❌ 不可」が出ないこと
-    // (ToolInfoSection に ❌ が含まれるため、エンコーディング行固有の形式 /不可: \d+ 文字/ で絞り込む)
+    // Shift_JIS 行に "10 byte" が表示されること (BMP 文字は全対応)
+    await expect(page.locator('dt:has-text("Shift_JIS") + dd')).toContainText('10 byte');
+    // エンコーディング行に「不可: N 文字」が出ないこと
     await expect(page.getByText(/不可: \d+ 文字/)).toHaveCount(0);
   });
 
