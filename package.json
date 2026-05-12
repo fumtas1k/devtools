@@ -16,6 +16,8 @@
     "test:e2e": "playwright test --project=e2e",
     "pretest:vrt": "lsof -ti:4321 | xargs kill -9 2>/dev/null || true",
     "test:vrt": "playwright test --project=visual-regression",
+    "pretest:e2e:dev": "lsof -ti:4322 | xargs kill -9 2>/dev/null || true",
+    "test:e2e:dev": "playwright test --project=hydration-dev",
     "pretest:e2e:ui": "lsof -ti:4321 | xargs kill -9 2>/dev/null || true",
     "test:e2e:ui": "playwright test --ui",
     "format": "prettier --write .",
