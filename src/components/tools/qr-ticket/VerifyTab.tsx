@@ -1,4 +1,5 @@
 import { InputField } from '@/components/ui/InputField';
+import { StatusIcon } from '@/components/ui/StatusIcon';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Section } from '@/components/ui/Section';
@@ -157,17 +158,23 @@ export function VerifyTab({
                     className={`body-emphasis ${verificationResult.valid ? 'text-success' : 'text-error'} ${verificationResult.ticket ? 'mb-3' : ''}`}
                   >
                     {verificationResult.valid ? (
-                      <>
-                        <span aria-hidden="true">✓ </span>有効なチケット
-                      </>
+                      <span className="inline-flex items-center gap-2">
+                        <StatusIcon variant="success" size={20} />
+                        <span className="sr-only">有効: </span>
+                        有効なチケット
+                      </span>
                     ) : verificationResult.expired ? (
-                      <>
-                        <span aria-hidden="true">✕ </span>有効期限切れ
-                      </>
+                      <span className="inline-flex items-center gap-2">
+                        <StatusIcon variant="error" size={20} />
+                        <span className="sr-only">期限切れ: </span>
+                        有効期限切れ
+                      </span>
                     ) : (
-                      <>
-                        <span aria-hidden="true">✕ </span>無効なチケット
-                      </>
+                      <span className="inline-flex items-center gap-2">
+                        <StatusIcon variant="error" size={20} />
+                        <span className="sr-only">無効: </span>
+                        無効なチケット
+                      </span>
                     )}
                   </p>
                   {verificationResult.error && !verificationResult.valid && (
