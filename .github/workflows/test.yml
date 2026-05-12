@@ -124,6 +124,12 @@ jobs:
       - name: E2E テストを実行
         run: npm run test:e2e
 
+      # #414: dev mode 経路 hydration check (attribute mismatch は production silent
+      # recovery で catch 不可なため、astro dev server + React dev build を併走させる)。
+      # webServer は playwright.config.ts で port 4322 に dev server を別途起動する設定。
+      - name: dev mode hydration check
+        run: npm run test:e2e:dev
+
       - name: テストレポートをアップロード（失敗時）
         uses: actions/upload-artifact@v7
         if: failure()

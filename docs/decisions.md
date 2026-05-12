@@ -2999,3 +2999,41 @@ issue #382 で `OutputField` の a11y 欠落を改修。初期実装 (PR #402 �
 - ⚠️ 陰性対照 spec を 1 test に統合した結果、Playwright reporter での粒度が page 単位 → spec 単位に低下。failure 時の page 特定は `expect(..., { message: path })` で明示
 - ⚠️ Gs1Databar が `crypto.randomUUID` を呼ばなくなったため、VRT spec ([066]) の `crypto.randomUUID` mock 注入が dead code 化。cleanup は issue #412 で別途追跡
 - ⚠️ `_redirects` の destination `/404` は `src/pages/404.astro` が未整備のため CF default 404 に解決される (status 404 は保証)。サイト全体の 404 UX 改善は issue #411 で別途追跡
+
+## [078] 2026-05-13 — dev mode 経路の hydration check を併設し attribute mismatch も catch する 2 層検知 infra
+
+**日付 2026-05-13 | ステータス: 採用 | issue #414, PR #415**
+
+### 背景
+
+[077] で導入した hydration mismatch 検知 meta spec は Playwright `webServer = preview` (= React production build) 経路で動作する。本番 Cloudflare Pages を実機検証して (https://devtools-d9w.pages.dev/tools/gs1-databar/) console error 0 件であることが確認できたが、その理由は **React 18 が attribute mismatch を production build で silent recovery する仕様** にある:
+
+| mismatch 種別                                              | dev mode                                                                                                              | production build                                  |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| **attribute mismatch** (例: `<input id="...">` 属性値違い) | console.error (`A tree hydrated but some attributes of the server rendered HTML didn't match the client properties.`) | **silent recovery (warning / error 一切なし)**    |
+| **text content / structure mismatch**                      | console.error                                                                                                         | pageerror で `Minified React error #418` を throw |
+
+つまり [077] の meta spec は text/structure mismatch しか catch できず、今回 PR #408 で fix した Gs1Databar の `<input id>` attribute mismatch のような bug が **再度入っても production 経路では検知できない** 穴がある。
+
+### 決断
+
+1. **dev server 併走**: Astro `npm run dev` (React dev build) を port 4322 で並列起動し、`watchHydrationWarnings` の dev message regex (`A tree hydrated but some attributes...`) を経由で attribute mismatch を catch
+2. **専用 Playwright project**: `hydration-dev` project (testMatch: `hydration-check-dev*.spec.ts`, baseURL override: localhost:4322) で dev 経路の spec を分離。既存 `e2e` project は testIgnore で dev mode spec を除外し相互独立
+3. **port 分離**: preview 4321 / dev 4322 で衝突回避、`pretest:e2e:dev` で両 port を clean
+4. **attribute mismatch 専用 fixture**: SSR で `data-rendered="server"` CSR で `data-rendered="client"` を出す `<div>` を `client:load` mount。`<input id>` ではなく `data-*` を使うことで「真に attribute mismatch only」の経路を経由し検知能力を純粋に保証する
+5. **CI step は 2 step 分離**: `.github/workflows/test.yml` で `npm run test:e2e` (e2e project) と `npm run test:e2e:dev` (hydration-dev project) を別 step に分け、failure 時のレポート粒度を保つ
+
+### 却下した選択肢
+
+- **dev mode に統一して preview 経路を廃止**: text/structure mismatch 用の production code path 実走の保証が失われる ([077] の `Minified React error #418` 検知能力)。2 層検知を維持
+- **既存 `hydration-check.spec.ts` を dev mode に切替**: production code path の検知能力が消える。spec を分離して両方を保持する方が安全
+- **CI で 1 step に統合 (`playwright test --project=e2e --project=hydration-dev`)**: webServer 1 回起動で CI 時間 -15s だが、失敗 step の粒度が落ち e2e / hydration-dev の failure が混在する。failure granularity 優先で 2 step 分離を採用 (PR #415 レビュー指摘 #1)
+- **per-project webServer**: Playwright は native でサポートしておらず `process.env.PLAYWRIGHT_PROJECT` 等で `playwright.config.ts` 側構築切替が必要。config 複雑化に対して得られる節約は小さく不採用
+
+### 結果・トレードオフ
+
+- ✅ Gs1Databar 型の attribute mismatch が再度入った場合に CI で機械的に catch される (test-gates checklist #2: 旧 `crypto.randomUUID()` 版で陰性対照が `gtin-input-<UUID_SERVER>` vs `<UUID_CLIENT>` の attribute diff を捕捉して fail 昇格を実機確認)
+- ✅ 既存 [077] の text/structure mismatch 検知 + 本 [078] の attribute mismatch 検知が **直交する 2 層**を成し、hydration mismatch を網羅的にカバー
+- ✅ `watchHydrationWarnings` の regex は既存資産を流用 (helper 改修ゼロ)、`_redirects` の `/test-fixtures/*` rule も attribute fixture を同 redirect でカバー
+- ⚠️ CI step を 2 つに分けたため `webServer` 配列 (preview + dev) が両 step で起動される (preview build artefact は reuse されるが dev server は cold start)。CI 時間影響は実測 +15s 程度で failure granularity との trade-off で許容
+- ⚠️ dev server を CI で起動する分の起動 timeout (`30_000`) は preview と同値。Astro dev server の初回 vite bundle が CI runner で遅延した場合の tight 化リスクは観測ベースで未発生のため現状値で運用
