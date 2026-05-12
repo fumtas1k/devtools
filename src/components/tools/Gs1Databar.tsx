@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useId, useRef, useMemo } from 'react';
 import { getErrorMessage } from '@/utils/errors';
 import bwipjs from 'bwip-js';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -15,6 +15,7 @@ import { BareInput } from '@/components/ui/BareInput';
 import { Select } from '@/components/ui/Select';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
+import { CloseIcon } from '@/components/ui/CloseIcon';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
   downloadSvg as downloadSvgFile,
@@ -313,10 +314,10 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                     <button
                       type="button"
                       onClick={() => removeAiField(i)}
-                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5"
+                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5 inline-flex items-center justify-center"
                       aria-label="フィールドを削除"
                     >
-                      ✕
+                      <CloseIcon size={16} />
                     </button>
                   </div>
                 </div>
@@ -384,14 +385,19 @@ interface CardSvgState {
 }
 
 export function Gs1DatabarTool() {
-  const [cards, setCards] = useState<CardMeta[]>(() => [{ id: crypto.randomUUID() }]);
+  // useId は SSR/CSR で同じ値を返すため hydration mismatch を避けられる。
+  // 複数 card 用に incremental counter で suffix を付与する (crypto.randomUUID() は SSR/CSR で値が割れるため不可)。
+  const idPrefix = useId();
+  const cardCounterRef = useRef(1);
+  const [cards, setCards] = useState<CardMeta[]>(() => [{ id: `${idPrefix}-card-0` }]);
   const [cardSvgs, setCardSvgs] = useState<Record<string, CardSvgState>>({});
   const [isZipping, setIsZipping] = useState(false);
   const [zipError, setZipError] = useState('');
 
   const addCard = () => {
     if (cards.length >= MAX_CARDS) return;
-    setCards((prev) => [...prev, { id: crypto.randomUUID() }]);
+    const newId = `${idPrefix}-card-${cardCounterRef.current++}`;
+    setCards((prev) => [...prev, { id: newId }]);
   };
 
   const removeCard = (id: string) => {

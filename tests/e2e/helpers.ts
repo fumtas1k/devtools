@@ -220,3 +220,76 @@ export async function withProductionCsp(
     await context.close();
   }
 }
+
+/**
+ * React 18 の hydration mismatch を console error / pageerror から捕捉する guard。
+ *
+ * Astro `client:load` で SSR された React island が CSR 時に server HTML と
+ * 一致しない場合、React は console.error / pageerror で警告する。これらは
+ * dev mode では派手に出るが production build でも出力される (silent recovery
+ * しても警告自体は残る)。本 guard はその警告メッセージを正規表現で検出する。
+ *
+ * **対象 regex (dev mode message + production minified ID 両対応)**:
+ * - "A tree hydrated but some attributes..." (text/attribute mismatch / dev)
+ * - "Hydration failed because..." (構造 mismatch / dev)
+ * - "while hydrating" / "during hydration" (rethrow 含む / dev)
+ * - "Text content does not match server-rendered HTML" (dev)
+ * - "Minified React error #(418|419|422|423|425)" (production build の minified ID)
+ *   - 418: Hydration failed because the initial UI does not match
+ *   - 419: while hydrating (recoverable)
+ *   - 422: invalid hydration
+ *   - 423: Suspense boundary hydration error
+ *   - 425: Text content does not match server-rendered HTML
+ *
+ * Playwright の webServer は preview build (production React) を起動するため
+ * 実運用では minified ID 経路で hit する。陽性対照
+ * (`hydration-check.gate.spec.ts`) はこの production code path を通る。
+ *
+ * CSP guard とは独立して動作するため、同 page に対して両方を同時に attach 可能。
+ */
+const HYDRATION_WARNING_RE =
+  /A tree hydrated|Hydration failed|while hydrating|during hydration|Text content does not match|did not match the client|Minified React error #(418|419|422|423|425)\b/i;
+
+export interface HydrationGuard {
+  readonly warnings: readonly string[];
+  assertNoWarnings(): void;
+  dispose(): void;
+}
+
+export function watchHydrationWarnings(page: Page): HydrationGuard {
+  const warnings: string[] = [];
+
+  const consoleHandler = (msg: ConsoleMessage): void => {
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    if (HYDRATION_WARNING_RE.test(text)) {
+      warnings.push(text);
+    }
+  };
+
+  const pageErrorHandler = (err: Error): void => {
+    if (HYDRATION_WARNING_RE.test(err.message)) {
+      warnings.push(err.message);
+    }
+  };
+
+  page.on('console', consoleHandler);
+  page.on('pageerror', pageErrorHandler);
+
+  return {
+    get warnings() {
+      return warnings.slice();
+    },
+    assertNoWarnings() {
+      if (warnings.length > 0) {
+        throw new Error(
+          `Hydration warning が ${warnings.length} 件検知されました:\n` + warnings.join('\n---\n')
+        );
+      }
+    },
+    dispose() {
+      page.off('console', consoleHandler);
+      page.off('pageerror', pageErrorHandler);
+    },
+  };
+}

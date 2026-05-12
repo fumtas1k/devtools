@@ -1,0 +1,20 @@
+---
+import { AttrMismatchFixture } from '@/components/test-fixtures/AttrMismatchFixture';
+---
+
+<!--
+  陽性対照テスト用 attribute mismatch fixture page (issue #414)。
+  hydration-check-dev.gate.spec.ts (dev mode 経路) から訪問され、
+  watchHydrationWarnings が attribute mismatch を catch できることを保証する。
+  本番 deploy は public/_redirects の `/test-fixtures/* /404 404` で 404 化される。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Attribute Hydration Mismatch Fixture</title>
+  </head>
+  <body>
+    <AttrMismatchFixture client:load />
+  </body>
+</html>
