@@ -1,3 +1,4 @@
+import { ChevronIcon } from '@/components/ui/ChevronIcon';
 import { CloseIcon } from '@/components/ui/CloseIcon';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { InputField } from '@/components/ui/InputField';
@@ -118,20 +119,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
               aria-controls="qr-ticket-import-panel"
               className="caption text-link-color btn-link-plain inline-flex items-center gap-1"
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-                className={`inline-block align-middle transition-transform duration-150 ease-in-out${showImport ? ' rotate-180' : ''}`}
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+              <ChevronIcon open={showImport} />
               {showImport ? '秘密鍵インポートを閉じる' : '既存の秘密鍵をインポート'}
             </button>
           </div>
