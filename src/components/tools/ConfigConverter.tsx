@@ -264,7 +264,6 @@ export function ConfigConverterTool() {
                     <span className="text-success">
                       <StatusIcon variant="success" />
                     </span>
-                    <span className="sr-only">成功: </span>
                     スキーマ検証成功
                   </p>
                 ) : (

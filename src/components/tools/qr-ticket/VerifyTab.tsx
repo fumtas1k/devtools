@@ -160,19 +160,16 @@ export function VerifyTab({
                     {verificationResult.valid ? (
                       <span className="inline-flex items-center gap-2">
                         <StatusIcon variant="success" size={20} />
-                        <span className="sr-only">有効: </span>
                         有効なチケット
                       </span>
                     ) : verificationResult.expired ? (
                       <span className="inline-flex items-center gap-2">
                         <StatusIcon variant="error" size={20} />
-                        <span className="sr-only">期限切れ: </span>
                         有効期限切れ
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-2">
                         <StatusIcon variant="error" size={20} />
-                        <span className="sr-only">無効: </span>
                         無効なチケット
                       </span>
                     )}
