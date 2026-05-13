@@ -214,6 +214,18 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
     });
   });
 
+  test('無効な Base32 入力時はヒントメッセージが表示されない（陽性対照・CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      // 無効な Base32 を入力。ヒントは「発行者名・アカウント未入力」用なので
+      // secret エラー時に出てはいけない。旧実装は `!otpauthUri` 条件で広く出していた
+      // ため本テストが silent regression を検知する。
+      await page.getByLabel('Base32 シークレット').fill('INVALID!');
+      await expect(page.getByText('発行者名とアカウントを両方入力すると')).not.toBeVisible();
+    });
+  });
+
   test('発行者名・アカウント空のとき fallback で MyApp / user@example.com を埋めない（陽性対照・CSP 違反なし）', async ({
     browser,
   }) => {

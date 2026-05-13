@@ -492,11 +492,14 @@ export function TotpHotpGeneratorTool() {
             copyLabel="URIをコピー"
             ariaLabel="otpauth URI"
           />
-          {!otpauthUri && secretBase32.trim() && !issuerHasColon && (
-            <p className="caption text-muted">
-              発行者名とアカウントを両方入力すると otpauth URI が生成されます。
-            </p>
-          )}
+          {secretBytes &&
+            !issuerHasColon &&
+            !(mode === 'hotp' && counterError) &&
+            (!issuer.trim() || !accountLabel.trim()) && (
+              <p className="caption text-muted" role="status">
+                発行者名とアカウントを両方入力すると otpauth URI が生成されます。
+              </p>
+            )}
           {otpauthUri && (
             <p className="caption text-muted">
               このURIをコピーして{' '}
