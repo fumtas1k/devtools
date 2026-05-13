@@ -112,6 +112,46 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
     });
   });
 
+  test('ランダム生成ボタンで Base32 シークレットが生成されコードが計算される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      const secretInput = page.getByLabel('Base32 シークレット');
+      // まずクリアして空の状態から生成を確認
+      await page.getByRole('button', { name: 'クリア' }).click();
+      await expect(secretInput).toHaveValue('');
+
+      await page.getByRole('button', { name: /ランダム生成/ }).click();
+
+      // 生成された secret は 32 文字 (= 20 byte、Base32 アルファベットのみ、padding なし)
+      const generated = await secretInput.inputValue();
+      expect(generated).toMatch(/^[A-Z2-7]{32}$/);
+
+      // 生成された secret で TOTP コードが計算されること（valid な Base32 形式である陽性対照）
+      const codeSpan = page.getByRole('status').locator('span[aria-label*="現在のコード"]');
+      await expect(codeSpan).not.toHaveText(/^[─\s]+$/, { timeout: 5000 });
+    });
+  });
+
+  test('ランダム生成を連続クリックすると異なる secret が生成される（陽性対照・CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      const secretInput = page.getByLabel('Base32 シークレット');
+      const generateBtn = page.getByRole('button', { name: /ランダム生成/ });
+
+      await generateBtn.click();
+      const first = await secretInput.inputValue();
+      await generateBtn.click();
+      const second = await secretInput.inputValue();
+
+      // crypto.getRandomValues が固定値を返したら同一値になる silent regression を検知
+      expect(first).not.toBe(second);
+      expect(first).toMatch(/^[A-Z2-7]{32}$/);
+      expect(second).toMatch(/^[A-Z2-7]{32}$/);
+    });
+  });
+
   test('検証モードで Cmd/Ctrl+Enter で検証が発火する（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
       // TOTP モードで現在のコードを取得

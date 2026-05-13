@@ -10,6 +10,7 @@ import { ActionButton } from '@/components/ui/ActionButton';
 import { OutputField } from '@/components/ui/OutputField';
 import {
   base32Decode,
+  generateRandomBase32Secret,
   hotp,
   totp,
   verifyTotp,
@@ -19,7 +20,11 @@ import {
   type Period,
 } from '@/utils/totp-hotp';
 
-export const SAMPLE_SECRET_BASE32 = 'JBSWY3DPEB3W64TMMQ';
+// RFC 6238 Appendix B SHA-1 テストベクタの secret (ASCII "12345678901234567890") を Base32 化したもの。
+// 32 文字 = 160 bit で RFC 4226 §4 R6 強推奨を満たし、ツール自身の「ランダム生成は 160 bit」
+// 方針とも整合する。テストベクタの secret なのでサンプルで生成される OTP は実装の正しさの
+// 視覚的確認にもなる (RFC 6238 公式値 94287082 など)。
+export const SAMPLE_SECRET_BASE32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
 
 export const DEFAULTS = {
   algorithm: 'SHA-1' as HashAlgo,
@@ -151,6 +156,15 @@ export function TotpHotpGeneratorTool() {
     setHotpCode('');
   };
 
+  // secret 差し替え時の派生 state リセットを 1 箇所に集約。
+  // 入力欄編集とランダム生成ボタンの両経路から呼ばれる single source of truth。
+  const replaceSecret = (next: string) => {
+    setSecretBase32(next);
+    setCurrentCode('');
+    setHotpCode('');
+    setVerificationResult(null);
+  };
+
   const handleGenerateHotp = async () => {
     if (!secretBytes || counterError) {
       setHotpCode('');
@@ -245,26 +259,31 @@ export function TotpHotpGeneratorTool() {
               <label htmlFor="totp-secret" className="body-emphasis text-default">
                 Base32 シークレット
               </label>
-              <button
-                type="button"
-                onClick={() => setShowSecret((v) => !v)}
-                className="caption text-link-color btn-link-plain"
-                aria-label={showSecret ? 'シークレットを隠す' : 'シークレットを表示する'}
-              >
-                {showSecret ? '隠す' : '表示'}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => replaceSecret(generateRandomBase32Secret())}
+                  className="caption text-link-color btn-link-plain"
+                  aria-label="ランダム生成（新しいシークレット）"
+                >
+                  ランダム生成
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSecret((v) => !v)}
+                  className="caption text-link-color btn-link-plain"
+                  aria-label={showSecret ? 'シークレットを隠す' : 'シークレットを表示する'}
+                >
+                  {showSecret ? '隠す' : '表示'}
+                </button>
+              </div>
             </div>
             <BareInput
               id="totp-secret"
               type={showSecret ? 'text' : 'password'}
               value={secretBase32}
-              onChange={(v) => {
-                setSecretBase32(v);
-                setCurrentCode('');
-                setHotpCode('');
-                setVerificationResult(null);
-              }}
-              placeholder="JBSWY3DPEB3W64TMMQ"
+              onChange={replaceSecret}
+              placeholder="GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
               mono
               aria-label="Base32 シークレット"
               error={!!secretError}

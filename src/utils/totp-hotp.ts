@@ -31,6 +31,19 @@ export function base32Decode(input: string): Uint8Array<ArrayBuffer> {
   return new Uint8Array(output);
 }
 
+/**
+ * RFC 4226 §4 R6 推奨の 160 bit (20 byte) ランダム HMAC secret を生成し、
+ * Base32 文字列 (32 文字、padding なし) として返す。
+ * Web Crypto の `crypto.getRandomValues` を使用し CSPRNG 強度を保証する。
+ */
+export function generateRandomBase32Secret(): string {
+  const bytes = new Uint8Array(20);
+  crypto.getRandomValues(bytes);
+  // 20 byte = 160 bit / 5 bit per char = 32 char exact なので base32Encode の
+  // padding loop (`% 8 !== 0`) は発火せず padding `=` は付かない。
+  return base32Encode(bytes);
+}
+
 export function base32Encode(bytes: Uint8Array): string {
   if (!bytes.length) return '';
   let bits = 0;

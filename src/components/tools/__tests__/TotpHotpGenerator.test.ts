@@ -7,8 +7,11 @@ describe('SAMPLE_SECRET_BASE32', () => {
     expect(() => base32Decode(SAMPLE_SECRET_BASE32)).not.toThrow();
   });
 
-  it('デコードすると 1 バイト以上の secret になる', () => {
-    expect(base32Decode(SAMPLE_SECRET_BASE32).length).toBeGreaterThan(0);
+  // 陽性対照: RFC 4226 §4 R6 強推奨の 160 bit (= 20 byte) を満たすか検証。
+  // ツール自身が「ランダム生成は 160 bit」と謳いつつ、サンプルだけ短い (90 bit 等) に
+  // 戻る silent regression を本テストが捕捉して fail させる。
+  it('RFC 4226 §4 R6 強推奨の 160 bit (= 20 byte) 以上を満たす', () => {
+    expect(base32Decode(SAMPLE_SECRET_BASE32).length).toBeGreaterThanOrEqual(20);
   });
 });
 
