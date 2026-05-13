@@ -121,7 +121,7 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
       await page.getByRole('button', { name: 'クリア' }).click();
       await expect(secretInput).toHaveValue('');
 
-      await page.getByRole('button', { name: 'ランダムなシークレットを生成' }).click();
+      await page.getByRole('button', { name: /ランダム生成/ }).click();
 
       // 生成された secret は 32 文字 (= 20 byte、Base32 アルファベットのみ、padding なし)
       const generated = await secretInput.inputValue();
@@ -138,7 +138,7 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
   }) => {
     await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
       const secretInput = page.getByLabel('Base32 シークレット');
-      const generateBtn = page.getByRole('button', { name: 'ランダムなシークレットを生成' });
+      const generateBtn = page.getByRole('button', { name: /ランダム生成/ });
 
       await generateBtn.click();
       const first = await secretInput.inputValue();

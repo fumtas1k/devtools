@@ -156,6 +156,15 @@ export function TotpHotpGeneratorTool() {
     setHotpCode('');
   };
 
+  // secret 差し替え時の派生 state リセットを 1 箇所に集約。
+  // 入力欄編集とランダム生成ボタンの両経路から呼ばれる single source of truth。
+  const replaceSecret = (next: string) => {
+    setSecretBase32(next);
+    setCurrentCode('');
+    setHotpCode('');
+    setVerificationResult(null);
+  };
+
   const handleGenerateHotp = async () => {
     if (!secretBytes || counterError) {
       setHotpCode('');
@@ -253,14 +262,9 @@ export function TotpHotpGeneratorTool() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSecretBase32(generateRandomBase32Secret());
-                    setCurrentCode('');
-                    setHotpCode('');
-                    setVerificationResult(null);
-                  }}
+                  onClick={() => replaceSecret(generateRandomBase32Secret())}
                   className="caption text-link-color btn-link-plain"
-                  aria-label="ランダムなシークレットを生成"
+                  aria-label="ランダム生成（新しいシークレット）"
                 >
                   ランダム生成
                 </button>
@@ -278,12 +282,7 @@ export function TotpHotpGeneratorTool() {
               id="totp-secret"
               type={showSecret ? 'text' : 'password'}
               value={secretBase32}
-              onChange={(v) => {
-                setSecretBase32(v);
-                setCurrentCode('');
-                setHotpCode('');
-                setVerificationResult(null);
-              }}
+              onChange={replaceSecret}
               placeholder="GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
               mono
               aria-label="Base32 シークレット"
