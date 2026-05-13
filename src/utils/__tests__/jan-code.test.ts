@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcJan, validateJanInput } from '@/utils/jan-code';
+import { calcJan, generateJanSample, validateJanInput } from '@/utils/jan-code';
 
 // ────────────────────────────────────────────
 // calcJan — JAN-13
@@ -99,5 +99,36 @@ describe('validateJanInput', () => {
   it('桁数超過はエラー', () => {
     expect(validateJanInput('4901234567890', 'jan13')).toContain('現在13桁');
     expect(validateJanInput('49012345', 'jan8')).toContain('現在8桁');
+  });
+});
+
+// ────────────────────────────────────────────
+// generateJanSample — サンプル入力値生成
+// ────────────────────────────────────────────
+describe('generateJanSample', () => {
+  it('JAN-13: 12桁の数字列を "49" 始まりで返す（先頭 0 落ち無し）', () => {
+    for (let i = 0; i < 100; i++) {
+      const s = generateJanSample('jan13');
+      expect(s).toMatch(/^49\d{10}$/);
+    }
+  });
+
+  it('JAN-8: 7桁の数字列を "49" 始まりで返す（先頭 0 落ち無し）', () => {
+    for (let i = 0; i < 100; i++) {
+      const s = generateJanSample('jan8');
+      expect(s).toMatch(/^49\d{5}$/);
+    }
+  });
+
+  it('複数回呼ぶと異なる値が出る（毎回ランダム化されている）', () => {
+    // 10^10 通りから 30 個取って衝突する確率は無視できるレベル
+    const samples = new Set<string>();
+    for (let i = 0; i < 30; i++) samples.add(generateJanSample('jan13'));
+    expect(samples.size).toBeGreaterThanOrEqual(28);
+  });
+
+  it('生成したサンプルは validateJanInput で正常入力と判定される', () => {
+    expect(validateJanInput(generateJanSample('jan13'), 'jan13')).toBe('');
+    expect(validateJanInput(generateJanSample('jan8'), 'jan8')).toBe('');
   });
 });
