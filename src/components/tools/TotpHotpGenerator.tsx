@@ -193,11 +193,15 @@ export function TotpHotpGeneratorTool() {
   const otpauthUri = useMemo(() => {
     if (issuerHasColon || !secretBytes) return '';
     if (mode === 'hotp' && counterError) return '';
+    // 発行者名 / アカウントが未入力のときに 'MyApp' / 'user@example.com' を fallback で
+    // 埋めると、ユーザーが入力忘れに気付かずコピー → 認証アプリで「MyApp / user@example.com」
+    // として登録される事故を招くため、両方入力されるまで URI を生成しない。
+    if (!issuer.trim() || !accountLabel.trim()) return '';
     try {
       return buildOtpauthUri({
         type: (mode === 'verify' ? 'totp' : mode) as 'totp' | 'hotp',
-        issuer: issuer.trim() || 'MyApp',
-        account: accountLabel.trim() || 'user@example.com',
+        issuer: issuer.trim(),
+        account: accountLabel.trim(),
         secretBase32: secretBase32.trim(),
         algorithm,
         digits,
@@ -488,6 +492,14 @@ export function TotpHotpGeneratorTool() {
             copyLabel="URIをコピー"
             ariaLabel="otpauth URI"
           />
+          {secretBytes &&
+            !issuerHasColon &&
+            !(mode === 'hotp' && counterError) &&
+            (!issuer.trim() || !accountLabel.trim()) && (
+              <p className="caption text-muted" role="status">
+                発行者名とアカウントを両方入力すると otpauth URI が生成されます。
+              </p>
+            )}
           {otpauthUri && (
             <p className="caption text-muted">
               このURIをコピーして{' '}
