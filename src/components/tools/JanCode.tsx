@@ -59,9 +59,13 @@ export function JanCodeTool() {
     downloadPngFromSvgElement(svgRef.current, `jan-${result!.fullCode}.png`);
   };
 
-  const SAMPLE: Record<JanMode, string> = {
-    jan13: '490123456789',
-    jan8: '4901234',
+  const generateSample = (m: JanMode): string => {
+    const restLength = m === 'jan13' ? 10 : 5;
+    let rest = '';
+    for (let i = 0; i < restLength; i++) {
+      rest += Math.floor(Math.random() * 10).toString();
+    }
+    return '49' + rest;
   };
 
   return (
@@ -88,7 +92,7 @@ export function JanCodeTool() {
         maxLength={mode === 'jan13' ? 12 : 7}
         error={error || undefined}
         hint={`${input.length} / ${mode === 'jan13' ? 12 : 7} 桁`}
-        onSampleClick={() => handleInput(SAMPLE[mode])}
+        onSampleClick={() => handleInput(generateSample(mode))}
         mono
       />
 
