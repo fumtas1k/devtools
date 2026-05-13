@@ -195,11 +195,36 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
     });
   });
 
-  test('otpauth URI が生成されコピーできる（CSP 違反なし）', async ({ browser }) => {
+  test('発行者名・アカウント両方入力時のみ otpauth URI が生成される（CSP 違反なし）', async ({
+    browser,
+  }) => {
     await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
-      // URI 出力欄に otpauth:// の文字列が含まれる
       const uriOutput = page.getByLabel('otpauth URI');
-      await expect(uriOutput).toHaveValue(/^otpauth:\/\/totp\//);
+      // 初期状態: 発行者名・アカウントが未入力なので URI は空 + 案内テキストが出る
+      await expect(uriOutput).toHaveValue('');
+      await expect(page.getByText('発行者名とアカウントを両方入力すると')).toBeVisible();
+
+      // 片方だけでは URI は出ない
+      await page.getByLabel('発行者名').fill('MyService');
+      await expect(uriOutput).toHaveValue('');
+
+      // 両方入力で初めて URI が生成される
+      await page.getByLabel('アカウント').fill('alice@example.com');
+      await expect(uriOutput).toHaveValue(/^otpauth:\/\/totp\/MyService%3Aalice%40example\.com\?/);
+    });
+  });
+
+  test('発行者名・アカウント空のとき fallback で MyApp / user@example.com を埋めない（陽性対照・CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      // secret はデフォルトで入っている状態。issuer / account は空。
+      const uriOutput = page.getByLabel('otpauth URI');
+      const value = await uriOutput.inputValue();
+      // 旧実装は `MyApp` / `user@example.com` を fallback として埋めて URI を完成形に
+      // していたため、本テストが silent regression を検知する。
+      expect(value).not.toContain('MyApp');
+      expect(value).not.toContain('user@example.com');
     });
   });
 
