@@ -249,3 +249,21 @@ const attrs = {
     </svg>
   )
 }
+
+{
+  slug === 'totp-hotp' && (
+    <svg {...attrs}>
+      {/* 時計（TOTP の時間ベース生成を表現） */}
+      <circle cx="12" cy="9" r="7" />
+      <line x1="12" y1="4.5" x2="12" y2="9" />
+      <line x1="12" y1="9" x2="15" y2="11" />
+      {/* 6桁 OTP を 2グループ3桁ずつで表現（例: 123 456） */}
+      <circle cx="4" cy="20" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="7" cy="20" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="10" cy="20" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="14" cy="20" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="17" cy="20" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="20" cy="20" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
