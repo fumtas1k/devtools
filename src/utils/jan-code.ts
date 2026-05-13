@@ -54,6 +54,21 @@ export function calcJan(input: string, mode: JanMode): JanResult {
   };
 }
 
+/**
+ * サンプル入力値を生成する。先頭2桁は日本国コード「49」固定、残り桁はランダム。
+ * JAN-13: 12桁（"49" + 10桁ランダム）、JAN-8: 7桁（"49" + 5桁ランダム）。
+ * Math.floor 後の数値文字列は padStart で 0 埋めし、先頭 0 が落ちないようにする。
+ */
+export function generateJanSample(mode: JanMode): string {
+  const restLength = mode === 'jan13' ? 10 : 5;
+  return (
+    '49' +
+    Math.floor(Math.random() * 10 ** restLength)
+      .toString()
+      .padStart(restLength, '0')
+  );
+}
+
 /** 入力バリデーション。エラーメッセージを返す（正常時は空文字） */
 export function validateJanInput(input: string, mode: JanMode): string {
   if (!input) return '';
