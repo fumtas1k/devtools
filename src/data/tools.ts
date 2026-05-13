@@ -106,6 +106,13 @@ export const tools: Tool[] = [
       '文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計します。絵文字のDBエラー予測に対応',
     category: 'convert',
   },
+  {
+    slug: 'totp-hotp',
+    name: 'TOTP/HOTP ジェネレータ',
+    description:
+      'TOTP（RFC 6238）・HOTP（RFC 4226）のワンタイムコードを生成・検証します。シークレット鍵はブラウザ外に送信しません',
+    category: 'generate',
+  },
 ];
 
 export const categoryLabel: Record<ToolCategory, string> = {

@@ -3037,3 +3037,31 @@ issue #382 で `OutputField` の a11y 欠落を改修。初期実装 (PR #402 �
 - ✅ `watchHydrationWarnings` の regex は既存資産を流用 (helper 改修ゼロ)、`_redirects` の `/test-fixtures/*` rule も attribute fixture を同 redirect でカバー
 - ⚠️ CI step を 2 つに分けたため `webServer` 配列 (preview + dev) が両 step で起動される (preview build artefact は reuse されるが dev server は cold start)。CI 時間影響は実測 +15s 程度で failure granularity との trade-off で許容
 - ⚠️ dev server を CI で起動する分の起動 timeout (`30_000`) は preview と同値。Astro dev server の初回 vite bundle が CI runner で遅延した場合の tight 化リスクは観測ベースで未発生のため現状値で運用
+
+## [079] 2026-05-13 — TOTP/HOTP ジェネレータ (`totp-hotp`) 追加
+
+### 背景
+
+`docs/tool-candidates.md` のブレスト候補から、「ブラウザ完結の必然性が高く・実装コストが低い」基準で TOTP/HOTP を選定。2FA シークレット鍵は外部サービスへの送信が原則 NGのため、クライアントサイド計算との親和性が非常に高い。
+
+### 設計判断
+
+**[079-1] Base32 デコードを自前実装**
+
+`package.json` に Base32 系の依存ライブラリが存在しないため自前実装（約 30 行）。`src/utils/base64url.ts` と同等のプリミティブとして `src/utils/totp-hotp.ts` に集約。RFC 4648 §6 に準拠し、大文字/小文字許容・padding 任意・不正文字で throw。
+
+**[079-2] otpauth URI 内に QR コードを直接描画しない**
+
+secret を含む QR コードをページ内に自動表示すると、画面録画・スクリーンショット等で意図せず secret が露出するリスクがある。本ツールは otpauth URI を出力するにとどめ、QR コードへの変換は `/tools/qr-code` ツールへ手動コピーで誘導する設計を採用。
+
+**[079-3] 検証 window を ±1 固定**
+
+RFC 6238 §5.2 推奨値。30 秒周期で前後 1 period を許容（実質 90 秒）。`verifyTotp` の引数として `window?: number` を受け付け将来の拡張に備えつつ、UI では固定値を使用。
+
+**[079-4] `timestamp?: number` を util 関数に注入**
+
+`Date.now` をモックせず RFC 6238 Appendix B の公式テストベクタ（T=59, 1111111109, ... の 18 ケース）を直接検証可能にするため、`totp` と `verifyTotp` の opts に `timestamp?: number` を追加。テストでは `timestamp: T * 1000` を渡す。
+
+**[079-5] 型安全: `Uint8Array<ArrayBuffer>` を使用**
+
+TypeScript 5.9.3 では `Uint8Array = Uint8Array<ArrayBufferLike>` だが、Web Crypto API (`crypto.subtle.importKey` 等) は `BufferSource = ArrayBuffer | ArrayBufferView<ArrayBuffer>` を要求する。`base32Decode` の戻り値・`hotp`/`totp`/`verifyTotp` の secret 引数を `Uint8Array<ArrayBuffer>` に明示することで型エラーを解消。
