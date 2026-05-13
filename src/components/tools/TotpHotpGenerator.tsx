@@ -10,7 +10,7 @@ import { ActionButton } from '@/components/ui/ActionButton';
 import { OutputField } from '@/components/ui/OutputField';
 import {
   base32Decode,
-  base32Encode,
+  generateRandomBase32Secret,
   hotp,
   totp,
   verifyTotp,
@@ -21,16 +21,6 @@ import {
 } from '@/utils/totp-hotp';
 
 export const SAMPLE_SECRET_BASE32 = 'JBSWY3DPEB3W64TMMQ';
-
-// RFC 4226 §4 R6 推奨: HOTP secret は最低 128 bit、160 bit (= 20 byte) 強く推奨。
-// 20 byte → Base32 で 32 文字。
-const GENERATED_SECRET_BYTES = 20;
-
-function generateRandomBase32Secret(): string {
-  const bytes = new Uint8Array(GENERATED_SECRET_BYTES);
-  crypto.getRandomValues(bytes);
-  return base32Encode(bytes);
-}
 
 export const DEFAULTS = {
   algorithm: 'SHA-1' as HashAlgo,

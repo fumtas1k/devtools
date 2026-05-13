@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   base32Decode,
   base32Encode,
+  generateRandomBase32Secret,
   hotp,
   totp,
   verifyTotp,
@@ -75,6 +76,34 @@ describe('base32Encode', () => {
 
   it('0xff を "74======" にエンコードする', () => {
     expect(base32Encode(new Uint8Array([0xff]))).toBe('74======');
+  });
+});
+
+describe('generateRandomBase32Secret', () => {
+  it('Base32 アルファベットのみで構成される 32 文字を返す（160 bit secret）', () => {
+    const secret = generateRandomBase32Secret();
+    expect(secret).toMatch(/^[A-Z2-7]{32}$/);
+  });
+
+  it('返り値は base32Decode で 20 byte に decode できる', () => {
+    const secret = generateRandomBase32Secret();
+    const decoded = base32Decode(secret);
+    expect(decoded.length).toBe(20);
+  });
+});
+
+// 陽性対照: CSPRNG が固定値を返すような silent regression を検知する。
+// 旧実装で `crypto.getRandomValues` を `new Uint8Array(20)` で初期化したまま
+// 渡し忘れた場合、常に全 0 (= "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA") が返るため
+// 連続呼び出しで同一値が出る → 本テストが fail に昇格する。
+describe('generateRandomBase32Secret - 固定値返却の silent regression 検知（陽性対照）', () => {
+  it('連続呼び出しで異なる secret を生成する', () => {
+    const a = generateRandomBase32Secret();
+    const b = generateRandomBase32Secret();
+    const c = generateRandomBase32Secret();
+    expect(a).not.toBe(b);
+    expect(b).not.toBe(c);
+    expect(a).not.toBe(c);
   });
 });
 
