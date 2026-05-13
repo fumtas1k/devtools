@@ -95,7 +95,7 @@ export function TotpHotpGeneratorTool() {
 
   const secretInvalid = secretBase32.trim() !== '' && secretBytes === null;
   const secretError = secretInvalid
-    ? '有効な Base32 形式で入力してください（A-Z, 2-7 のみ、長さ 2/4/5/7/8n 文字）'
+    ? '有効な Base32 形式で入力してください（A-Z, 2-7 のみ、長さ 2/4/5/7 文字 または 8 の倍数）'
     : '';
 
   // HOTP counter: 空欄は 0 として扱い、それ以外は非負整数のみ受け付ける。
