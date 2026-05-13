@@ -388,12 +388,21 @@ export function TotpHotpGeneratorTool() {
                 placeholder={'0'.repeat(digits)}
                 inputMode="numeric"
                 mono
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing) return;
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    if (!verificationInput.trim() || verifying || !secretBytes) return;
+                    e.preventDefault();
+                    handleVerify();
+                  }
+                }}
               />
               <ActionButton
                 onClick={handleVerify}
                 variant="primary"
                 loading={verifying}
                 disabled={!verificationInput.trim()}
+                aria-keyshortcuts="Meta+Enter Control+Enter"
               >
                 {verifying ? '検証中…' : '検証する'}
               </ActionButton>

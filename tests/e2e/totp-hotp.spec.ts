@@ -112,6 +112,46 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
     });
   });
 
+  test('検証モードで Cmd/Ctrl+Enter で検証が発火する（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      // TOTP モードで現在のコードを取得
+      await page.getByLabel('Base32 シークレット').fill(RFC_SECRET_BASE32);
+      const codeSpan = page.getByRole('status').locator('span[aria-label*="現在のコード"]');
+      await expect(codeSpan).not.toHaveText(/^[─\s]+$/, { timeout: 5000 });
+      const labelText = await codeSpan.getAttribute('aria-label');
+      const currentCode = labelText?.split(': ')[1] ?? '';
+
+      // 検証モードへ切替 → input にコード入力 → Enter ボタンを押さずキーボードショートカットで発火
+      await page.getByRole('button', { name: '検証' }).click();
+      const verifyInput = page.getByLabel('検証するコードを入力');
+      await verifyInput.fill(currentCode);
+      const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+      await verifyInput.press(`${modifier}+Enter`);
+
+      const verifyResult = page.locator('[aria-live="assertive"]');
+      await expect(verifyResult).toContainText(/有効|無効/, { timeout: 5000 });
+    });
+  });
+
+  test('検証モードで input が空の状態の Cmd/Ctrl+Enter は検証を発火しない（陽性対照・CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      await page.getByLabel('Base32 シークレット').fill(RFC_SECRET_BASE32);
+      await page.getByRole('button', { name: '検証' }).click();
+
+      // 空のまま Cmd/Ctrl+Enter を押下
+      const verifyInput = page.getByLabel('検証するコードを入力');
+      await verifyInput.focus();
+      const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+      await verifyInput.press(`${modifier}+Enter`);
+
+      // 結果が表示されないこと（disabled guard が効いている）
+      const verifyResult = page.locator('[aria-live="assertive"]');
+      await expect(verifyResult).toHaveCount(0);
+    });
+  });
+
   test('otpauth URI が生成されコピーできる（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
       // URI 出力欄に otpauth:// の文字列が含まれる
