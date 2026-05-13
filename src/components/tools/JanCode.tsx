@@ -61,11 +61,12 @@ export function JanCodeTool() {
 
   const generateSample = (m: JanMode): string => {
     const restLength = m === 'jan13' ? 10 : 5;
-    let rest = '';
-    for (let i = 0; i < restLength; i++) {
-      rest += Math.floor(Math.random() * 10).toString();
-    }
-    return '49' + rest;
+    return (
+      '49' +
+      Math.floor(Math.random() * 10 ** restLength)
+        .toString()
+        .padStart(restLength, '0')
+    );
   };
 
   return (
