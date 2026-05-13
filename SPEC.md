@@ -243,32 +243,34 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全14ツール）
+## 4. ツール一覧（全17ツール）
 
 ### カテゴリ A: 生成ツール
 
-| #   | ツール名           | slug             | 概要                                                                              |
-| --- | ------------------ | ---------------- | --------------------------------------------------------------------------------- |
-| 1   | ULID生成           | `ulid-generator` | 生成数を指定（1〜100）して一括生成。タイムスタンプ表示付き                        |
-| 2   | UUID v7 生成       | `uuid-v7`        | 生成数を指定（1〜100）して一括生成。タイムスタンプ・フィールド分解表示付き        |
-| 3   | ダミーテキスト生成 | `dummy-text`     | 文字種（全角ひらがな/カタカナ/漢字混じり/半角英数）と文字数を指定して生成         |
-| 4   | QRコード生成       | `qr-code`        | テキスト/URL入力 → QRコード画像生成。PNG/SVGダウンロード                          |
-| 5   | JANコード生成      | `jan-code`       | 12桁入力 → チェックディジット自動計算 → バーコード画像生成                        |
-| 6   | GS1 DataBar 生成   | `gs1-databar`    | GTIN-14入力 → GS1 DataBar Limited合成シンボル生成。CC-A対応（AI: 17/10/11/15/21） |
-| 7   | QRチケット         | `qr-ticket`      | ECDSA署名付きQRチケットを生成し、公開鍵でオフライン検証                           |
+| #   | ツール名               | slug             | 概要                                                                                                     |
+| --- | ---------------------- | ---------------- | -------------------------------------------------------------------------------------------------------- |
+| 1   | ULID生成               | `ulid-generator` | 生成数を指定（1〜100）して一括生成。タイムスタンプ表示付き                                               |
+| 2   | UUID v7 生成           | `uuid-v7`        | 生成数を指定（1〜100）して一括生成。タイムスタンプ・フィールド分解表示付き                               |
+| 3   | ダミーテキスト生成     | `dummy-text`     | 文字種（全角ひらがな/カタカナ/漢字混じり/半角英数）と文字数を指定して生成                                |
+| 4   | QRコード生成           | `qr-code`        | テキスト/URL入力 → QRコード画像生成。PNG/SVGダウンロード                                                 |
+| 5   | JANコード生成          | `jan-code`       | 12桁入力 → チェックディジット自動計算 → バーコード画像生成                                               |
+| 6   | GS1 DataBar 生成       | `gs1-databar`    | GTIN-14入力 → GS1 DataBar Limited合成シンボル生成。CC-A対応（AI: 17/10/11/15/21）                        |
+| 7   | QRチケット             | `qr-ticket`      | ECDSA署名付きQRチケットを生成し、公開鍵でオフライン検証                                                  |
+| 8   | TOTP/HOTP ジェネレータ | `totp-hotp`      | TOTP（RFC 6238）・HOTP（RFC 4226）のワンタイムコードを生成・検証。シークレット鍵はブラウザ外に送信しない |
 
 ### カテゴリ B: 変換・解析ツール
 
 | #   | ツール名                  | slug                 | 概要                                                                                                                     |
 | --- | ------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 7   | JWTデコーダー             | `jwt-decoder`        | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応                                                |
-| 8   | URLエンコード/デコード    | `url-encode`         | テキスト⇔URLエンコード相互変換                                                                                           |
-| 9   | Base64エンコード/デコード | `base64`             | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                                                        |
-| 10  | JSON / XML 変換           | `json-xml`           | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式                                           |
-| 11  | JSON / CSV 変換           | `json-csv`           | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                                                            |
-| 12  | 文字コード判定・変換      | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                     |
-| 13  | 設定ファイル相互変換      | `config-converter`   | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート） |
-| 14  | QRリーダー                | `qr-reader`          | カメラまたは画像ファイルからQRコードを読み取り、テキスト・URLを表示                                                      |
+| 9   | JWTデコーダー             | `jwt-decoder`        | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応                                                |
+| 10  | URLエンコード/デコード    | `url-encode`         | テキスト⇔URLエンコード相互変換                                                                                           |
+| 11  | Base64エンコード/デコード | `base64`             | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                                                        |
+| 12  | JSON / XML 変換           | `json-xml`           | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式                                           |
+| 13  | JSON / CSV 変換           | `json-csv`           | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                                                            |
+| 14  | 文字コード判定・変換      | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                     |
+| 15  | 設定ファイル相互変換      | `config-converter`   | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート） |
+| 16  | QRリーダー                | `qr-reader`          | カメラまたは画像ファイルからQRコードを読み取り、テキスト・URLを表示                                                      |
+| 17  | 文字カウント              | `char-count`         | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応                        |
 
 ---
 
@@ -860,6 +862,47 @@ eventId|ticketId|timestamp|name|category|signature
 
 ---
 
+### 5.14 TOTP/HOTP ジェネレータ（`totp-hotp`）
+
+**入力:**
+
+- モード: [TOTP] / [HOTP] / [検証] トグル
+- Base32 シークレット（password 型、表示/非表示トグル付き）
+- アルゴリズム: [SHA-1] / [SHA-256] / [SHA-512]
+- 桁数: [6桁] / [7桁] / [8桁]
+- （TOTPのみ）周期: [30秒] / [60秒]
+- （HOTPのみ）カウンタ値
+- 発行者名 / アカウント（otpauth URI 生成用）
+
+**処理:**
+
+- `base32Decode` → `crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: algorithm }, false, ['sign'])` → `crypto.subtle.sign`
+- TOTP: `counter = floor(timestamp / (period * 1000))` → `hotp()` を 250ms 間隔でポーリング
+- HOTP: ボタン押下時に単発生成
+- RFC 4226 dynamic truncation: `offset = mac[mac.length-1] & 0x0f` → `(mac[offset]&0x7f)<<24 | ... % 10^digits`
+- 検証: 現在カウンタ ± `window=1` 範囲で総当たり比較
+
+**出力:**
+
+- 現在コード（`role="status"`、`aria-label="現在のコード: XXXXXX"`）
+- 次コード（TOTP のみ）
+- 残り秒数プログレスバー（TOTP のみ、countdown 方向）
+- otpauth:// URI（`role="textbox"`、コピーボタン付き）
+- 検証結果（`aria-live="assertive"`、有効 / 無効）
+
+**セキュリティ方針:**
+
+- シークレット鍵はサーバーへ一切送信しない（すべてクライアント計算）
+- シークレット入力は `type="password"` 規定、ページ離脱で State 消去
+- otpauth URI 内の QR コードは本ツール内で描画しない（`/tools/qr-code` へ誘導）。secret を含む QR を自動表示すると画面録画等での意図せず露出リスクがあるため
+
+**制約:**
+
+- `crypto.subtle` が利用可能な HTTPS または localhost 環境必須
+- Base32 アルファベット外の文字（`!` 等）は入力時点でエラー表示
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1014,7 +1057,8 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] 文字コード判定・変換（`encoding-converter`）
   - [x] 設定ファイル相互変換（`config-converter`）
   - [x] QRリーダー（`qr-reader`）
-  - [ ] JSON整形、Diff、パスワード生成、ハッシュ、文字数カウント等
+  - [x] TOTP/HOTP ジェネレータ（`totp-hotp`）
+  - [ ] JSON整形、Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
 - [ ] OGP画像自動生成
