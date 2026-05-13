@@ -146,7 +146,10 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
       const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
       await verifyInput.press(`${modifier}+Enter`);
 
-      // 結果が表示されないこと（disabled guard が効いている）
+      // 結果が表示されないこと（disabled guard が効いている）。
+      // `toHaveCount(0)` は要素「存在しない」を即時評価するため、guard を外した場合の
+      // `setVerificationResult` async 反映を確実に観測できるよう待機してから assert する。
+      await page.waitForTimeout(300);
       const verifyResult = page.locator('[aria-live="assertive"]');
       await expect(verifyResult).toHaveCount(0);
     });
