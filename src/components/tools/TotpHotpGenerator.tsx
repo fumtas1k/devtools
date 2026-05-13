@@ -10,6 +10,7 @@ import { ActionButton } from '@/components/ui/ActionButton';
 import { OutputField } from '@/components/ui/OutputField';
 import {
   base32Decode,
+  base32Encode,
   hotp,
   totp,
   verifyTotp,
@@ -20,6 +21,16 @@ import {
 } from '@/utils/totp-hotp';
 
 export const SAMPLE_SECRET_BASE32 = 'JBSWY3DPEB3W64TMMQ';
+
+// RFC 4226 §4 R6 推奨: HOTP secret は最低 128 bit、160 bit (= 20 byte) 強く推奨。
+// 20 byte → Base32 で 32 文字。
+const GENERATED_SECRET_BYTES = 20;
+
+function generateRandomBase32Secret(): string {
+  const bytes = new Uint8Array(GENERATED_SECRET_BYTES);
+  crypto.getRandomValues(bytes);
+  return base32Encode(bytes);
+}
 
 export const DEFAULTS = {
   algorithm: 'SHA-1' as HashAlgo,
@@ -245,14 +256,29 @@ export function TotpHotpGeneratorTool() {
               <label htmlFor="totp-secret" className="body-emphasis text-default">
                 Base32 シークレット
               </label>
-              <button
-                type="button"
-                onClick={() => setShowSecret((v) => !v)}
-                className="caption text-link-color btn-link-plain"
-                aria-label={showSecret ? 'シークレットを隠す' : 'シークレットを表示する'}
-              >
-                {showSecret ? '隠す' : '表示'}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSecretBase32(generateRandomBase32Secret());
+                    setCurrentCode('');
+                    setHotpCode('');
+                    setVerificationResult(null);
+                  }}
+                  className="caption text-link-color btn-link-plain"
+                  aria-label="ランダムなシークレットを生成"
+                >
+                  ランダム生成
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSecret((v) => !v)}
+                  className="caption text-link-color btn-link-plain"
+                  aria-label={showSecret ? 'シークレットを隠す' : 'シークレットを表示する'}
+                >
+                  {showSecret ? '隠す' : '表示'}
+                </button>
+              </div>
             </div>
             <BareInput
               id="totp-secret"
