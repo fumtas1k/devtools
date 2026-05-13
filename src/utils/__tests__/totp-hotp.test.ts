@@ -47,6 +47,17 @@ describe('base32Decode - 不正入力バリデーション（陽性対照）', (
   it('記号 "!" で throw する', () => {
     expect(() => base32Decode('MEOW!')).toThrow();
   });
+
+  // RFC 4648 §6 で許容される padding 除去後の長さは 0/2/4/5/7 (mod 8) のみ。
+  // それ以外は末尾 bit を黙って捨てると user 側で「コードが一致しない原因」を
+  // 特定しづらいため明示的に throw する。
+  it.each([
+    ['1 文字', 'A'],
+    ['3 文字', 'AAA'],
+    ['6 文字', 'AAAAAA'],
+  ])('Base32 長さが無効 (%s) で throw する', (_label, input) => {
+    expect(() => base32Decode(input)).toThrow();
+  });
 });
 
 describe('base32Encode', () => {

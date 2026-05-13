@@ -3,10 +3,16 @@ export type Digits = 6 | 7 | 8;
 export type Period = 30 | 60;
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+// RFC 4648 §6 で許容される padding 除去後の長さ (mod 8)。
+// 1/3/6 文字 mod 8 は末尾 bit が中途半端で 1 byte 未満しか作れないため無効。
+const VALID_BASE32_REMAINDERS = new Set([0, 2, 4, 5, 7]);
 
 export function base32Decode(input: string): Uint8Array<ArrayBuffer> {
   if (!input) return new Uint8Array(0);
   const s = input.toUpperCase().replace(/=+$/, '');
+  if (!VALID_BASE32_REMAINDERS.has(s.length % 8)) {
+    throw new Error(`Invalid Base32 length: ${s.length}`);
+  }
   let bits = 0;
   let bitCount = 0;
   const output: number[] = [];
@@ -102,18 +108,31 @@ export async function verifyTotp(
   const currentCounter = BigInt(Math.floor(ts / (opts.period * 1000)));
   const windowSize = opts.window ?? 1;
 
+  let result: { valid: boolean; offset: number | null } = { valid: false, offset: null };
+  // タイミング攻撃耐性: 早期 return せず window 全件を走査し、
+  // 各 OTP 比較も constant-time で行う。クライアント完結ツールで現実的脅威は低いが
+  // 暗号ライブラリのベストプラクティスとして定数時間化する。
   for (let offset = -windowSize; offset <= windowSize; offset++) {
     const counter = currentCounter + BigInt(offset);
     const expected = await hotp(secret, counter, {
       algorithm: opts.algorithm,
       digits: opts.digits,
     });
-    if (expected === code) {
-      return { valid: true, offset };
+    if (timingSafeEqual(expected, code) && !result.valid) {
+      result = { valid: true, offset };
     }
   }
 
-  return { valid: false, offset: null };
+  return result;
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 export function buildOtpauthUri(opts: {
@@ -134,7 +153,9 @@ export function buildOtpauthUri(opts: {
   const algorithmName = opts.algorithm.replace('-', '');
 
   const paramParts = [
-    `secret=${opts.secretBase32}`,
+    // secret は Base32 (A-Z, 2-7) なので素のままで URL safe だが、padding `=` を
+    // 含む値が渡った場合に query 区切りと衝突するリスクを排除するため defensive に encode。
+    `secret=${encodeURIComponent(opts.secretBase32)}`,
     `issuer=${encodeURIComponent(opts.issuer)}`,
     `algorithm=${algorithmName}`,
     `digits=${opts.digits}`,

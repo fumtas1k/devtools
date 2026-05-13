@@ -80,37 +80,60 @@ export function TotpHotpGeneratorTool() {
   const [verificationResult, setVerificationResult] = useState<VerifyResult>(null);
   const [verifying, setVerifying] = useState(false);
 
-  const [secretError, setSecretError] = useState('');
-
   const issuerHasColon = issuer.includes(':');
 
+  // 250ms 間隔の tick で毎回再デコードしないよう secret bytes をキャッシュ。
+  // null = 入力が空 or Base32 として不正。
+  const secretBytes = useMemo<Uint8Array<ArrayBuffer> | null>(() => {
+    if (!secretBase32.trim()) return null;
+    try {
+      return base32Decode(secretBase32.trim());
+    } catch {
+      return null;
+    }
+  }, [secretBase32]);
+
+  const secretInvalid = secretBase32.trim() !== '' && secretBytes === null;
+  const secretError = secretInvalid
+    ? '有効な Base32 形式で入力してください（A-Z, 2-7 のみ、長さ 2/4/5/7/8n 文字）'
+    : '';
+
+  // HOTP counter: 空欄は 0 として扱い、それ以外は非負整数のみ受け付ける。
+  // 旧実装の `parseInt(counterStr) || 0` だと "abc" や "-5" を silent に 0 へ
+  // 丸めて user 側で「コードが認証側と一致しない」原因を特定しづらかった。
+  const counterError = useMemo(() => {
+    const t = counterStr.trim();
+    if (t === '') return '';
+    return /^\d+$/.test(t) ? '' : 'カウンタは 0 以上の整数を入力してください';
+  }, [counterStr]);
+
+  const parsedCounter = useMemo<bigint>(() => {
+    const t = counterStr.trim();
+    if (counterError || t === '') return 0n;
+    return BigInt(t);
+  }, [counterStr, counterError]);
+
   useEffect(() => {
-    if (mode !== 'totp') return;
+    if (mode !== 'totp' || !secretBytes) {
+      setCurrentCode('');
+      setNextCode('');
+      return;
+    }
     let cancelled = false;
 
     const tick = async () => {
       if (cancelled) return;
-      try {
-        const secretBytes = base32Decode(secretBase32.trim());
-        setSecretError('');
-        const now = Date.now();
-        const remaining = period - Math.floor((now / 1000) % period);
-        setRemainingSec(remaining);
-        const nextPeriodStart = (Math.floor(now / 1000 / period) + 1) * period * 1000;
-        const [code, next] = await Promise.all([
-          totp(secretBytes, { algorithm, digits, period, timestamp: now }),
-          totp(secretBytes, { algorithm, digits, period, timestamp: nextPeriodStart }),
-        ]);
-        if (!cancelled) {
-          setCurrentCode(code);
-          setNextCode(next);
-        }
-      } catch {
-        if (!cancelled) {
-          setSecretError('有効な Base32 形式で入力してください（A-Z, 2-7 のみ）');
-          setCurrentCode('');
-          setNextCode('');
-        }
+      const now = Date.now();
+      const remaining = period - Math.floor((now / 1000) % period);
+      setRemainingSec(remaining);
+      const nextPeriodStart = (Math.floor(now / 1000 / period) + 1) * period * 1000;
+      const [code, next] = await Promise.all([
+        totp(secretBytes, { algorithm, digits, period, timestamp: now }),
+        totp(secretBytes, { algorithm, digits, period, timestamp: nextPeriodStart }),
+      ]);
+      if (!cancelled) {
+        setCurrentCode(code);
+        setNextCode(next);
       }
     };
 
@@ -120,7 +143,7 @@ export function TotpHotpGeneratorTool() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [mode, secretBase32, algorithm, digits, period]);
+  }, [mode, secretBytes, algorithm, digits, period]);
 
   const handleModeChange = (next: Mode) => {
     setMode(next);
@@ -129,41 +152,34 @@ export function TotpHotpGeneratorTool() {
   };
 
   const handleGenerateHotp = async () => {
-    try {
-      const secretBytes = base32Decode(secretBase32.trim());
-      setSecretError('');
-      const counter = BigInt(Math.max(0, parseInt(counterStr, 10) || 0));
-      const code = await hotp(secretBytes, counter, { algorithm, digits });
-      setHotpCode(code);
-    } catch {
-      setSecretError('有効な Base32 形式で入力してください（A-Z, 2-7 のみ）');
+    if (!secretBytes || counterError) {
       setHotpCode('');
+      return;
     }
+    const code = await hotp(secretBytes, parsedCounter, { algorithm, digits });
+    setHotpCode(code);
   };
 
   const handleVerify = async () => {
+    if (!secretBytes) return;
     setVerifying(true);
     setVerificationResult(null);
     try {
-      const secretBytes = base32Decode(secretBase32.trim());
-      setSecretError('');
       const result = await verifyTotp(verificationInput.trim(), secretBytes, {
         algorithm,
         digits,
         period,
       });
       setVerificationResult(result);
-    } catch {
-      setSecretError('有効な Base32 形式で入力してください（A-Z, 2-7 のみ）');
     } finally {
       setVerifying(false);
     }
   };
 
   const otpauthUri = useMemo(() => {
-    if (issuerHasColon || !secretBase32.trim()) return '';
+    if (issuerHasColon || !secretBytes) return '';
+    if (mode === 'hotp' && counterError) return '';
     try {
-      base32Decode(secretBase32.trim());
       return buildOtpauthUri({
         type: (mode === 'verify' ? 'totp' : mode) as 'totp' | 'hotp',
         issuer: issuer.trim() || 'MyApp',
@@ -172,20 +188,22 @@ export function TotpHotpGeneratorTool() {
         algorithm,
         digits,
         period: mode !== 'hotp' ? period : undefined,
-        counter: mode === 'hotp' ? BigInt(Math.max(0, parseInt(counterStr, 10) || 0)) : undefined,
+        counter: mode === 'hotp' ? parsedCounter : undefined,
       });
     } catch {
       return '';
     }
   }, [
     mode,
+    secretBytes,
     secretBase32,
     issuer,
     accountLabel,
     algorithm,
     digits,
     period,
-    counterStr,
+    parsedCounter,
+    counterError,
     issuerHasColon,
   ]);
 
@@ -196,7 +214,6 @@ export function TotpHotpGeneratorTool() {
     setHotpCode('');
     setVerificationInput('');
     setVerificationResult(null);
-    setSecretError('');
     setCounterStr('0');
     setIssuer('');
     setAccountLabel('');
@@ -299,7 +316,9 @@ export function TotpHotpGeneratorTool() {
                 value={counterStr}
                 onChange={setCounterStr}
                 aria-label="カウンタ"
+                error={!!counterError}
               />
+              {counterError && <ErrorMessage message={counterError} />}
             </div>
           )}
         </div>

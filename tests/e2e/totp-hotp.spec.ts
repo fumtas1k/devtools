@@ -26,7 +26,7 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
       // コード表示エリアに 6 桁の数字が現れるまで待機
       await expect(
         page.getByRole('status').locator('span[aria-label*="現在のコード"]')
-      ).not.toHaveText('─────');
+      ).not.toHaveText(/^[─\s]+$/);
     });
   });
 
@@ -39,7 +39,7 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
 
       // コードが生成されるまで待機
       const codeSpan = page.getByRole('status').locator('span[aria-label*="現在のコード"]');
-      await expect(codeSpan).not.toHaveText('─────', { timeout: 5000 });
+      await expect(codeSpan).not.toHaveText(/^[─\s]+$/, { timeout: 5000 });
 
       const labelText = await codeSpan.getAttribute('aria-label');
       // aria-label は "現在のコード: XXXXXX" 形式
@@ -95,7 +95,7 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
       // まず TOTP モードでコードを取得
       await page.getByLabel('Base32 シークレット').fill(RFC_SECRET_BASE32);
       const codeSpan = page.getByRole('status').locator('span[aria-label*="現在のコード"]');
-      await expect(codeSpan).not.toHaveText('─────', { timeout: 5000 });
+      await expect(codeSpan).not.toHaveText(/^[─\s]+$/, { timeout: 5000 });
       const labelText = await codeSpan.getAttribute('aria-label');
       const currentCode = labelText?.split(': ')[1] ?? '';
 
@@ -104,10 +104,11 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
       await page.getByLabel('検証するコードを入力').fill(currentCode);
       await page.getByRole('button', { name: '検証する' }).click();
 
-      // 有効 or 無効の結果が表示されること（コードが期間をまたいだ場合は無効になり得るため両方を許容）
-      await expect(
-        page.getByRole('region', { name: /有効|無効/ }).or(page.locator('[aria-live="assertive"]'))
-      ).toBeAttached({ timeout: 5000 });
+      // 有効 or 無効の結果テキストが直接表示されることを確認する。
+      // 旧実装は `or` fallback により aria-live 要素が存在するだけで pass していたため
+      // 「結果表示が消えても test が通る」silent regression を許していた。
+      const verifyResult = page.locator('[aria-live="assertive"]');
+      await expect(verifyResult).toContainText(/有効|無効/, { timeout: 5000 });
     });
   });
 
