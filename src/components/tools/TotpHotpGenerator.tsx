@@ -20,7 +20,11 @@ import {
   type Period,
 } from '@/utils/totp-hotp';
 
-export const SAMPLE_SECRET_BASE32 = 'JBSWY3DPEB3W64TMMQ';
+// RFC 6238 Appendix B SHA-1 テストベクタの secret (ASCII "12345678901234567890") を Base32 化したもの。
+// 32 文字 = 160 bit で RFC 4226 §4 R6 強推奨を満たし、ツール自身の「ランダム生成は 160 bit」
+// 方針とも整合する。テストベクタの secret なのでサンプルで生成される OTP は実装の正しさの
+// 視覚的確認にもなる (RFC 6238 公式値 94287082 など)。
+export const SAMPLE_SECRET_BASE32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
 
 export const DEFAULTS = {
   algorithm: 'SHA-1' as HashAlgo,
@@ -280,7 +284,7 @@ export function TotpHotpGeneratorTool() {
                 setHotpCode('');
                 setVerificationResult(null);
               }}
-              placeholder="JBSWY3DPEB3W64TMMQ"
+              placeholder="GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
               mono
               aria-label="Base32 シークレット"
               error={!!secretError}
