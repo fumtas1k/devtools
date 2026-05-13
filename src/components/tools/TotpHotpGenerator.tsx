@@ -388,15 +388,31 @@ export function TotpHotpGeneratorTool() {
                 placeholder={'0'.repeat(digits)}
                 inputMode="numeric"
                 mono
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing) return;
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    // 将来 <form> 化したとき空入力 Cmd+Enter が submit に流れる silent regression を
+                    // 防ぐため guard より前に preventDefault する。
+                    e.preventDefault();
+                    if (!verificationInput.trim() || verifying || !secretBytes) return;
+                    handleVerify();
+                  }
+                }}
               />
-              <ActionButton
-                onClick={handleVerify}
-                variant="primary"
-                loading={verifying}
-                disabled={!verificationInput.trim()}
-              >
-                {verifying ? '検証中…' : '検証する'}
-              </ActionButton>
+              <div className="flex items-center gap-3">
+                <ActionButton
+                  onClick={handleVerify}
+                  variant="primary"
+                  loading={verifying}
+                  disabled={!verificationInput.trim()}
+                  aria-keyshortcuts="Meta+Enter Control+Enter"
+                >
+                  {verifying ? '検証中…' : '検証する'}
+                </ActionButton>
+                <kbd className="caption text-muted font-mono" aria-hidden="true">
+                  Cmd/Ctrl+Enter
+                </kbd>
+              </div>
               {verificationResult !== null && (
                 <div aria-live="assertive">
                   {verificationResult.valid ? (
