@@ -1,0 +1,37 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { TotpHotpGeneratorTool } from '@/components/tools/TotpHotpGenerator';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'totp-hotp')!;
+---
+
+<ToolLayout tool={tool}>
+  <TotpHotpGeneratorTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      TOTP（RFC 6238）・HOTP（RFC 4226）のワンタイムコードをブラウザ上で生成・検証します。
+      <code class="rounded px-1 font-mono bg-subtle text-sm">BASE32</code> 形式のシークレット鍵を入力するだけで、
+      Google Authenticator・Authy 等と同じアルゴリズムでコードを計算します。 シークレット鍵はサーバーに送信されず、すべての計算はブラウザ内で完結します。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>2FA 実装のデバッグ時に、シークレット鍵からコードを手動で確認したい</li>
+      <li>TOTP/HOTP ライブラリの動作検証に RFC 公式テストベクタと照合したい</li>
+      <li>認証アプリに登録する QR コード（otpauth:// URI）を生成したい</li>
+      <li>TOTP コードの検証ロジックが正しく動いているか確認したい</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">対応アルゴリズム</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>
+        <strong>TOTP</strong>（Time-based OTP, RFC 6238）: 30秒・60秒周期、SHA-1/256/512
+      </li>
+      <li>
+        <strong>HOTP</strong>（HMAC-based OTP, RFC 4226）: カウンタベース、SHA-1/256/512
+      </li>
+      <li>桁数: 6・7・8桁（デフォルト 6桁）</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>

@@ -31,6 +31,7 @@ export const PAGES = [
   '/tools/encoding-converter',
   '/tools/config-converter',
   '/tools/char-count',
+  '/tools/totp-hotp',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy']);
