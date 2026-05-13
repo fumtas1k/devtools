@@ -4,7 +4,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
-import { calcJan, validateJanInput, type JanMode } from '@/utils/jan-code';
+import { calcJan, generateJanSample, validateJanInput, type JanMode } from '@/utils/jan-code';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '@/utils/download';
 
@@ -59,11 +59,6 @@ export function JanCodeTool() {
     downloadPngFromSvgElement(svgRef.current, `jan-${result!.fullCode}.png`);
   };
 
-  const SAMPLE: Record<JanMode, string> = {
-    jan13: '490123456789',
-    jan8: '4901234',
-  };
-
   return (
     <div className="space-y-6">
       {/* モード切替 */}
@@ -88,7 +83,7 @@ export function JanCodeTool() {
         maxLength={mode === 'jan13' ? 12 : 7}
         error={error || undefined}
         hint={`${input.length} / ${mode === 'jan13' ? 12 : 7} 桁`}
-        onSampleClick={() => handleInput(SAMPLE[mode])}
+        onSampleClick={() => handleInput(generateJanSample(mode))}
         mono
       />
 
