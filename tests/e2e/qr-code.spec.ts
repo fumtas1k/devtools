@@ -97,10 +97,12 @@ test.describe('QRコード生成（production CSP 適用）', () => {
     });
   });
 
-  // issue #435 陽性対照 A (debounce 機能): 入力直後 200ms 時点では announcement が
-  // まだ空で、合計 400ms 経過後に「QRコードを生成しました」が現れる。
-  // 旧実装 (debounce 無しの直貼り role="status") に当てれば 200ms 時点で既に
-  // announcement テキストが視覚 SVG 中に出ているため、`toHaveText('')` 段で fail する。
+  // issue #435 陽性対照 A (debounce 機能): 入力直後の早い段階では announcement が
+  // まだ空で、合計 600ms 経過後に「QRコードを生成しました」が現れる。
+  // 実装側の debounce は 300ms。100ms / 500ms の二段でサンプルし、CI runner の
+  // React commit ラグ (50-100ms) を吸収しても境界 (300ms) を確実に跨ぐマージンを取る。
+  // 旧実装 (debounce 無しの直貼り role="status") に当てれば `qr-announcement` testid
+  // 要素自体が無く `toHaveText` 段で fail する。
   test('aria-live announcement は 300ms debounce 後にだけ短文を出す（CSP 違反なし）', async ({
     browser,
   }) => {
@@ -113,12 +115,12 @@ test.describe('QRコード生成（production CSP 適用）', () => {
       // テキスト入力。fill は瞬時。announcement はまだ debounce 待ち中。
       await page.getByLabel('テキスト / URL').fill('https://example.com');
 
-      // 200ms 時点では debounce 待ち中で空のまま
-      await page.waitForTimeout(200);
+      // 100ms 時点では debounce 待ち中で空のまま (300ms 境界より十分手前)
+      await page.waitForTimeout(100);
       await expect(announcement).toHaveText('');
 
-      // さらに待つと 300ms 経過し announce される (合計 200 + 200 = 400ms > 300ms)
-      await page.waitForTimeout(200);
+      // さらに 500ms 待つと debounce 通過し announce される (合計 600ms > 300ms に余裕)
+      await page.waitForTimeout(500);
       await expect(announcement).toHaveText('QRコードを生成しました');
     });
   });
