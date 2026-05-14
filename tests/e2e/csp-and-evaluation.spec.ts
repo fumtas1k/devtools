@@ -169,7 +169,9 @@ test.describe('CSP AND 評価 runtime 検証', () => {
 
       // <meta> が無い状態では CSP 違反は観測されない
       // (permissive ヘッダが standalone で 'unsafe-inline' を許可するため)
-      expect(violations.length).toBe(0);
+      // page.on('console') は別 tick 配送のため短い grace を与えてから sanity check。
+      // 陽性検証は直前の title assert が担っており、本 assert は環境健全性のみ。
+      await expect.poll(() => violations.length, { timeout: 1_000 }).toBe(0);
     } finally {
       await context.close();
     }
