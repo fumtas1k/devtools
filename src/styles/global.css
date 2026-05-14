@@ -369,6 +369,16 @@
     color: var(--color-text);
     box-shadow: var(--elevation-2);
   }
+  /* hover / :focus-visible: 未選択ボタンへの a11y / UX フィードバック (issue #385)。
+     コンテナ自体が --color-bg-subtle で塗られているため、hover に同色は使えず
+     --color-bg-active (blue-50) を採用 (btn-action--secondary:hover と統一)。
+     focus-visible の outline は global :where(button, ...):focus-visible で適用済み。
+     §7.1 の variant 非対応制約により :hover / :focus-visible 擬似クラスを直接定義する。 */
+  .btn-toggle:hover:not([aria-pressed='true']):not(:disabled),
+  .btn-toggle:focus-visible:not([aria-pressed='true']):not(:disabled) {
+    background: var(--color-bg-active);
+    color: var(--color-text);
+  }
 
   /* === PR 1.5: Surface bg (used by table thead row & InputField readOnly) === */
   .bg-surface {
