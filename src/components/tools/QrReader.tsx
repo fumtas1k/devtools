@@ -3,6 +3,7 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Section } from '@/components/ui/Section';
+import { FileInputButton } from '@/components/ui/FileInputButton';
 import { useQrCamera } from '@/hooks/useQrCamera';
 import { useAbortableEffect } from '@/hooks/useAbortableEffect';
 import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
@@ -150,20 +151,10 @@ export function QrReaderTool() {
               <p className="caption text-muted">
                 QRコードが写った画像（PNG・JPG 等）をアップロードしてください
               </p>
-              {/* input を visually-hidden にしてキーボード・スクリーンリーダーからも操作可能にする */}
-              <input
-                id="qr-image-input"
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="sr-only"
-              />
-              <label
-                htmlFor="qr-image-input"
-                className="caption font-semibold inline-block px-4 py-2 rounded-lg border border-input bg-subtle text-default cursor-pointer"
-              >
+              {/* FileInputButton: label 内包 input 構造でキーボードフォーカス時の outline ring を可視化 */}
+              <FileInputButton accept="image/*" onChange={handleImageUpload} id="qr-image-input">
                 画像を選択
-              </label>
+              </FileInputButton>
               <p className="text-xs text-muted mt-1">
                 対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
               </p>
