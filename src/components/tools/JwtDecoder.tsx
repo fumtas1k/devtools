@@ -218,13 +218,19 @@ export function JwtDecoderTool() {
       return;
     }
     setSigStatus('verifying');
+    let cancelled = false;
     verifySignature(
       parsed.rawHeader,
       parsed.rawPayload,
       parsed.signature,
       parsed.header,
       secretKey.trim()
-    ).then(setSigStatus);
+    ).then((result) => {
+      if (!cancelled) setSigStatus(result);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [parsed, secretKey]);
 
   const expBadge: Record<ExpStatus, { label: string; badgeClass: string }> = {
