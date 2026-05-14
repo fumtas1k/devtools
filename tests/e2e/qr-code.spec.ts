@@ -67,26 +67,23 @@ test.describe('QRコード生成（production CSP 適用）', () => {
     });
   });
 
-  // issue #386: a11y。SR が生成完了と SVG の意味（URL 等の本文）を読み取れること。
-  // 修正前は role="status" / aria-live も <title> も無いため、この test は fail する。
-  // accessible name に URL の本文が含まれることを assert することで、aria-label で
-  // `<title>` が上書きされてしまう regression も検知できる (PR #434 レビュー指摘)。
-  test('生成結果が role="status" として読め、SVG の accessible name に URL 本文が含まれる（CSP 違反なし）', async ({
+  // issue #386 / #435: SVG の `<title>` は維持しつつ視覚プレビュー側の role="status" を
+  // 撤去 (連呼防止)。sr-only な debounce live region でだけ短文を announce する。
+  // accessible name の URL 本文 + aria-label 上書き防止 + <title> first child を assert する。
+  test('SVG の accessible name に URL 本文が含まれ、aria-label で上書きされない（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/qr-code', async (page) => {
       await page.getByLabel('テキスト / URL').fill('https://example.com');
 
-      const status = page
-        .getByRole('status')
-        .filter({ has: page.getByTestId('qr-code-container') });
-      await expect(status).toBeVisible();
+      const container = page.getByTestId('qr-code-container');
+      await expect(container).toBeVisible();
 
       // SVG は role="img" を持ち、`<title>` が first child であることが accessible name の
       // 計算条件 (Accessible Name and Description Computation 4.3.1)。
-      // aria-label を併用すると <title> が無視されるため、本 PR では aria-label を
+      // aria-label を併用すると <title> が無視されるため、本コンポーネントは aria-label を
       // 付けない。属性として aria-label が無いことも陽性対照として確認する。
-      const svgImg = status.locator('svg[role="img"]');
+      const svgImg = container.locator('svg[role="img"]');
       await expect(svgImg).toHaveCount(1);
       await expect(svgImg).not.toHaveAttribute('aria-label', /.*/);
 
@@ -97,6 +94,53 @@ test.describe('QRコード生成（production CSP 適用）', () => {
       const titleText = await svgImg.locator('> title').textContent();
       expect(titleText).toContain('QRコード:');
       expect(titleText).toContain('https://example.com');
+    });
+  });
+
+  // issue #435 陽性対照 A (debounce 機能): 入力直後 200ms 時点では announcement が
+  // まだ空で、合計 400ms 経過後に「QRコードを生成しました」が現れる。
+  // 旧実装 (debounce 無しの直貼り role="status") に当てれば 200ms 時点で既に
+  // announcement テキストが視覚 SVG 中に出ているため、`toHaveText('')` 段で fail する。
+  test('aria-live announcement は 300ms debounce 後にだけ短文を出す（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      const announcement = page.getByTestId('qr-announcement');
+
+      // 初期状態は空
+      await expect(announcement).toHaveText('');
+
+      // テキスト入力。fill は瞬時。announcement はまだ debounce 待ち中。
+      await page.getByLabel('テキスト / URL').fill('https://example.com');
+
+      // 200ms 時点では debounce 待ち中で空のまま
+      await page.waitForTimeout(200);
+      await expect(announcement).toHaveText('');
+
+      // さらに待つと 300ms 経過し announce される (合計 200 + 200 = 400ms > 300ms)
+      await page.waitForTimeout(200);
+      await expect(announcement).toHaveText('QRコードを生成しました');
+    });
+  });
+
+  // issue #435 陽性対照 B (構造): 視覚プレビュー側 div は role="status" / aria-live を
+  // 持たない (持たせると入力 1 文字ごとに SVG title が連呼される旧実装に逆戻り)。
+  // sr-only 専用 span がただ 1 つの aria-live 領域である構造の回帰を検知する。
+  test('視覚プレビュー div は aria-live を持たず、sr-only span 1 つだけが live region である（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      await page.getByLabel('テキスト / URL').fill('https://example.com');
+
+      // 視覚プレビュー div の祖先に aria-live を持つ要素が無い
+      const container = page.getByTestId('qr-code-container');
+      const liveAncestors = container.locator('xpath=ancestor-or-self::*[@aria-live]');
+      await expect(liveAncestors).toHaveCount(0);
+
+      // aria-live="polite" を持つ要素は qr-announcement の sr-only span ただ 1 つ
+      const liveRegions = page.locator('[aria-live="polite"]');
+      await expect(liveRegions).toHaveCount(1);
+      await expect(liveRegions).toHaveAttribute('data-testid', 'qr-announcement');
     });
   });
 
