@@ -602,6 +602,36 @@
     background: var(--color-bg-active);
   }
 
+  /* === #136: FileInputButton (label 内包 input 構造のファイル選択ボタン) ===
+     input を label の子にすることで :focus-within が parent label に効き、
+     キーボードフォーカス時に outline ring が可視化される。
+     §7.1 の variant 非対応制約により :focus-within / [aria-disabled] を直接定義。 */
+  .btn-file-input {
+    /* QrReader.tsx の旧 label スタイルと等価: caption font-semibold inline-block px-4 py-2 rounded-lg border border-input bg-subtle text-default cursor-pointer */
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border-input);
+    background: var(--color-bg-subtle);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  /* focus-within: sr-only の input がフォーカスを受けたとき、parent label に outline を表示 */
+  .btn-file-input:focus-within:not([aria-disabled='true']) {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+  /* disabled 状態: カーソルを not-allowed に変え、opacity で無効感を表現 */
+  .btn-file-input[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
   /* === PR 5a: QrReader video preview background ===
      QRリーダーの <video> 要素は getUserMedia 開始前 (display:none で隠蔽中) の
      コントラスト確保 + 起動失敗時のフォールバック (黒画面) として黒背景を維持する。
