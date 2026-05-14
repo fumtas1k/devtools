@@ -166,6 +166,9 @@ export function DummyTextTool() {
       {/* 結果 */}
       {result && (
         <div className="rounded-lg border border-default overflow-hidden">
+          <span role="status" aria-live="polite" className="sr-only">
+            {`${result.length}文字のダミーテキストを生成しました`}
+          </span>
           <div className="flex items-center justify-between gap-2 px-4 py-3 bg-subtle border-b border-default">
             <span className="body-emphasis text-default">{result.length} 文字</span>
             <div className="flex items-center gap-2">
