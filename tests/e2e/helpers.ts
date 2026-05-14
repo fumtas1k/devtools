@@ -79,6 +79,10 @@ export async function waitForReactHydration(
  * 「applyProductionCsp は実際に CSP 違反を捕捉する」が陽性対照を提供する。
  * helper を修正したときは必ずこれらのメタテストが通ることを確認する。
  *
+ * **CSP AND 評価の runtime 検証**: `<meta>` strict 層と HTTP ヘッダ permissive 層の
+ * AND 評価が実サーバーで効くことを検証する spec は
+ * `tests/e2e/csp-and-evaluation.spec.ts` を参照。
+ *
  * **検出メッセージの依存性**: 違反検出は Chromium のメッセージ表現
  * （`Refused to ... because it violates the following Content Security Policy
  * directive ...`）の "Content Security Policy" 部分に対する正規表現マッチに
