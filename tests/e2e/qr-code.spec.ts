@@ -67,9 +67,11 @@ test.describe('QRコード生成（production CSP 適用）', () => {
     });
   });
 
-  // issue #386: a11y。SR が生成完了と SVG の意味を読み取れること。
+  // issue #386: a11y。SR が生成完了と SVG の意味（URL 等の本文）を読み取れること。
   // 修正前は role="status" / aria-live も <title> も無いため、この test は fail する。
-  test('生成結果が role="status" として読め、SVG に <title> が含まれる（CSP 違反なし）', async ({
+  // accessible name に URL の本文が含まれることを assert することで、aria-label で
+  // `<title>` が上書きされてしまう regression も検知できる (PR #434 レビュー指摘)。
+  test('生成結果が role="status" として読め、SVG の accessible name に URL 本文が含まれる（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/qr-code', async (page) => {
@@ -80,12 +82,20 @@ test.describe('QRコード生成（production CSP 適用）', () => {
         .filter({ has: page.getByTestId('qr-code-container') });
       await expect(status).toBeVisible();
 
-      // SVG が img role + aria-label でアクセシブル名を持つ
-      const svgImg = status.getByRole('img', { name: 'QRコード' });
-      await expect(svgImg).toBeVisible();
+      // SVG は role="img" を持ち、`<title>` が first child であることが accessible name の
+      // 計算条件 (Accessible Name and Description Computation 4.3.1)。
+      // aria-label を併用すると <title> が無視されるため、本 PR では aria-label を
+      // 付けない。属性として aria-label が無いことも陽性対照として確認する。
+      const svgImg = status.locator('svg[role="img"]');
+      await expect(svgImg).toHaveCount(1);
+      await expect(svgImg).not.toHaveAttribute('aria-label', /.*/);
 
-      // <title> 要素にテキスト内容が含まれる
-      const titleText = await status.locator('svg title').textContent();
+      // <title> が SVG の最初の子要素であり、URL 本文を含むこと
+      const firstChildTag = await svgImg.evaluate((el) => el.firstElementChild?.tagName);
+      expect(firstChildTag?.toLowerCase()).toBe('title');
+
+      const titleText = await svgImg.locator('> title').textContent();
+      expect(titleText).toContain('QRコード:');
       expect(titleText).toContain('https://example.com');
     });
   });

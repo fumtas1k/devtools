@@ -33,11 +33,12 @@ function generateQrSvg(text: string, errorLevel: ErrorLevel): string | null {
     qr.addData(text);
     qr.make();
     const svg = qr.createSvgTag({ scalable: true });
-    // SR が SVG の意味を読み取れるよう `<title>` と role/aria-label を注入する
-    // (issue #386)。dangerouslySetInnerHTML 経由で挿入されるため、SVG 自身に
-    // a11y メタデータを持たせる必要がある。
+    // SR が SVG の意味を読み取れるよう role="img" + `<title>` を first child として
+    // 注入する (issue #386)。`aria-label` は意図的に付けない: ARIA Accessible Name
+    // and Description Computation 4.3.1 で aria-label があると `<title>` が name
+    // 計算から除外され、URL 等の本文が読まれなくなる (PR #434 レビュー指摘)。
     const title = `<title>QRコード: ${escapeXml(text)}</title>`;
-    return svg.replace(/<svg([^>]*)>/, `<svg$1 role="img" aria-label="QRコード">${title}`);
+    return svg.replace(/<svg([^>]*)>/, `<svg$1 role="img">${title}`);
   } catch {
     return null;
   }
