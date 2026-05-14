@@ -2,6 +2,9 @@
  * ファイルダウンロードユーティリティ
  */
 
+/** Retina 表示向けに canvas を 2 倍解像度で描画するためのスケール係数。 */
+const RETINA_SCALE = 2;
+
 /**
  * Blob を `<a download>` 経由でダウンロードする共通処理。
  * テキスト・バイナリ・SVG・PNG・ZIP すべての出口で利用される。
@@ -46,12 +49,11 @@ export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
       reject(new Error('SVG に width/height がありません'));
       return;
     }
-    const scale = 2;
     const canvas = document.createElement('canvas');
-    canvas.width = parseInt(m[1], 10) * scale;
-    canvas.height = parseInt(m[2], 10) * scale;
+    canvas.width = parseInt(m[1], 10) * RETINA_SCALE;
+    canvas.height = parseInt(m[2], 10) * RETINA_SCALE;
     const ctx = canvas.getContext('2d')!;
-    ctx.scale(scale, scale);
+    ctx.scale(RETINA_SCALE, RETINA_SCALE);
     const img = new Image();
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -89,12 +91,11 @@ export async function downloadPngFromSvgContent(
 export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const { width, height } = svgEl.getBoundingClientRect();
-    const scale = 2;
     const canvas = document.createElement('canvas');
-    canvas.width = width * scale;
-    canvas.height = height * scale;
+    canvas.width = width * RETINA_SCALE;
+    canvas.height = height * RETINA_SCALE;
     const ctx = canvas.getContext('2d')!;
-    ctx.scale(scale, scale);
+    ctx.scale(RETINA_SCALE, RETINA_SCALE);
     const img = new Image();
     const blob = new Blob([svgEl.outerHTML], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
