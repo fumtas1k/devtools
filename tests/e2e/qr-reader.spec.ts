@@ -179,6 +179,44 @@ test.describe('QRリーダー（production CSP 適用）', () => {
   });
 
   // ────────────────────────────────
+  // キーボードフォーカス可視化 (#136)
+  // ────────────────────────────────
+
+  test('[陽性対照] 画像アップロードモードで Tab フォーカス時に「画像を選択」ラベルに outline が表示される', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-reader', async (page) => {
+      // 画像アップロードモードに切り替え
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+
+      // ページ内の最初のフォーカス可能要素から Tab を押して「画像を選択」の input へ移動
+      const fileInput = page.locator('#qr-image-input');
+      await fileInput.focus();
+
+      // parent label (.btn-file-input) に :focus-within で outline が表示されることを確認
+      const label = page.locator('label.btn-file-input');
+      const outlineStyle = await label.evaluate((el) => window.getComputedStyle(el).outlineStyle);
+      // :focus-within で outline が有効化されているため 'none' でないこと (陽性対照)
+      expect(outlineStyle).not.toBe('none');
+    });
+  });
+
+  test('[陰性対照] フォーカスを当てない初期状態では「画像を選択」ラベルに outline が表示されない', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-reader', async (page) => {
+      // 画像アップロードモードに切り替え (フォーカスは当てない)
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+
+      // input にフォーカスを当てる前の label の outline を確認
+      const label = page.locator('label.btn-file-input');
+      const outlineStyle = await label.evaluate((el) => window.getComputedStyle(el).outlineStyle);
+      // フォーカスなし状態では outline が見えないこと (陰性対照)
+      expect(outlineStyle).toBe('none');
+    });
+  });
+
+  // ────────────────────────────────
   // エラーケース
   // ────────────────────────────────
 
