@@ -299,3 +299,81 @@ curl -s -X PATCH "https://api.github.com/repos/<owner>/<repo>/issues/<n>" \
 
 - 本セッション (2026-05-11) のリファクタ監査 issue 化（#382–#400）でタイトル + ラベル一括変更時に発生
 - 個人 memory: `feedback_settings_allow_first.md` (gh コマンドは permissions.allow に乗せる) — 今回は curl fallback も同じ精神で `gh` 経路を優先しつつ failover を持つ運用が妥当
+
+---
+
+## [2026-05-14] Cloudflare Pages の content-hash upload dedup trap
+
+### 現象
+
+`develop.devtools-d9w.pages.dev` で特定 URL だけが下記レスポンスで返り、他は正常という不均一な障害が発生した。
+
+- `/tools/gs1-databar/`
+- `/tools/config-converter/`
+- `/tools/json-csv/`
+- `/_astro/download.<hash>.js`（動的 import される共有 chunk）
+
+```
+HTTP/2 500
+content-length: 0
+server: cloudflare
+(etag / cf-cache-status / content-type 欠落)
+```
+
+`/tools/qr-code/` 自体は 200 だったが、上記 `download` chunk の取得失敗で hydration が破綻し、ToggleGroup が制御されずに 2x2 グリッドで描画 + サンプル入力ボタン無反応（実機 console で `[astro-island] Error hydrating ... Failed to fetch dynamically imported module` 確認）。ローカル `npm run build` の `dist/` には当該 HTML / chunk すべて正常生成されていた。
+
+### 根本原因
+
+Cloudflare Pages の upload pipeline は **コンテンツハッシュベースで dedup** している。過去 deploy で何らかの原因（CF 側 transient bug）で edge 上の特定 asset hash が壊れた状態のまま「アップロード済み」として記録されると、次回以降の deploy で同じバイト列の artifact が来ても "already uploaded" としてスキップされ、edge の壊れた状態がそのまま温存される。
+
+deploy log 上の確定ログ:
+
+```
+Uploading... (599/599)
+✨ Success! Uploaded 1 files (598 already uploaded) (1.06 sec)
+```
+
+598/599 がスキップされた状態で 500 が直らない時点で dedup trap 確定。
+
+### 効かない対策（試して確認済み）
+
+| 対策                                              | 結果     | 理由                                                                |
+| ------------------------------------------------- | -------- | ------------------------------------------------------------------- |
+| Cloudflare ダッシュボード「再デプロイ」           | 改善なし | 同じバイト列で同じ dedup 判定                                       |
+| 「ビルドキャッシュをクリア」                      | 改善なし | build 工程キャッシュのみ。upload pipeline は touch しない           |
+| 「ビルドキャッシュを無効にする」                  | 改善なし | 同上                                                                |
+| feature branch から空コミットを PR → merge (#437) | 改善なし | Astro/Vite は決定論的 build。chunk hash と HTML 全て byte-identical |
+
+### 効く対策
+
+**落ちている artifact のソースを実体変更して bundle のバイト列を変える。**
+
+PR [#438](https://github.com/fumtas1k/devtools/pull/438) で `src/utils/download.ts` の `const scale = 2` を `RETINA_SCALE` 定数に集約する軽微 refactor を入れた結果:
+
+- `download.<hash>.js` の hash が `COE_M25P` → `DJxhgQSF` に変化
+- それを import する 6 ページの bundle chunk と HTML 内 `<script src=...>` も連動して変化
+- Cloudflare 上で「新規 upload」扱いとなり edge の壊れた dedup キャッシュをバイパス → 全 200 復帰
+
+### 切り分け手順（次回類似障害向け）
+
+1. 失敗 URL のレスポンスヘッダで `content-length: 0` + `etag` 欠落 + `cf-cache-status` 欠落を確認 → Cloudflare 側 edge ファイル不整合の徴候
+2. ローカル `npm run build` で `dist/` 配下に当該 artifact が正常生成されるか確認 → ビルド側の問題切り分け
+3. Cloudflare Pages deploy log の `Uploaded N files (M already uploaded)` を確認 → `M` が大きく `N` が極小で 500 が残るなら dedup trap 確定
+4. 該当 artifact のソースに微小な real change を入れて PR → byte 変化で edge をバイパス
+
+### 副次的発見（別件）
+
+deploy log で下記 warning も観測:
+
+```
+Found invalid redirect lines:
+  - #5: /test-fixtures/*  /404  404
+    Valid status codes are 200, 301, 302 (default), 303, 307, or 308. Got 404.
+```
+
+`public/_redirects` の 404 ルールは Cloudflare に拒否されており効いていない（本番で test-fixture 配下が公開されている既存バグ）。本件と無関係だが要別途対応。
+
+### 関連
+
+- PR #437（空コミットによる fresh build 試行、結果として原因切り分けに寄与）
+- PR #438（実体変更による解消）
