@@ -93,6 +93,9 @@ describe('downloadPngFromSvgElement', () => {
       }),
     });
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    // imgInstance は Image の src setter で確定される。
+    // テスト本体は src 代入後 (= production code の img.src = url) に
+    // imgInstance.onload / onerror を発火させる。
     vi.stubGlobal(
       'Image',
       class {
@@ -108,7 +111,6 @@ describe('downloadPngFromSvgElement', () => {
         }
       }
     );
-    imgInstance = { onload: null, onerror: null, src: '' };
   });
 
   afterEach(() => {
@@ -142,6 +144,32 @@ describe('downloadPngFromSvgElement', () => {
     imgInstance.onerror?.();
     await expect(promise).rejects.toThrow('PNG への変換に失敗しました');
     // 失敗経路でも ObjectURL は確実に解放される
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+  });
+
+  it('陽性対照: img.onload 内で canvas.toDataURL が throw した場合も Promise は reject する', async () => {
+    // canvas.toDataURL を throw する stub に差し替える (tainted canvas 等の SecurityError 相当)
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => {
+        if (tag === 'canvas') {
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ({ scale: vi.fn(), drawImage: vi.fn() }),
+            toDataURL: () => {
+              throw new Error('canvas is tainted');
+            },
+          };
+        }
+        if (tag === 'a') return { href: '', download: '', click: vi.fn() };
+        return {};
+      }),
+    });
+
+    const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
+    imgInstance.onload?.();
+    await expect(promise).rejects.toThrow('canvas is tainted');
+    // finally で ObjectURL は解放される
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
 });

@@ -99,13 +99,21 @@ export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string
     const blob = new Blob([svgEl.outerHTML], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     img.onload = () => {
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = filename;
-      a.click();
-      resolve();
+      try {
+        ctx.drawImage(img, 0, 0);
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = filename;
+        a.click();
+        resolve();
+      } catch (e) {
+        // drawImage / toDataURL は canvas tainted 等で SecurityError を throw する。
+        // try/catch しないと unhandled error として外に逃げ、caller の Promise には
+        // reject されず silent failure 経路が残る (PR #434 レビュー指摘)。
+        reject(e instanceof Error ? e : new Error('PNG への変換に失敗しました'));
+      } finally {
+        URL.revokeObjectURL(url);
+      }
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
