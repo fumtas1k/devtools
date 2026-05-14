@@ -102,7 +102,23 @@ export interface CspGuard {
   dispose(): Promise<void>;
 }
 
-async function applyCspOverride(page: Page, csp: string): Promise<CspGuard> {
+/**
+ * `applyCspOverride` / `applyProductionCsp` のオプション。
+ *
+ * `transformBody` を指定すると document レスポンスの body 文字列に対して変換を
+ * 適用してから `route.fulfill` する。`<meta http-equiv="content-security-policy">`
+ * を除去して header 単独で動かしたい陽性対照メタテスト等で利用する
+ * (`tests/e2e/csp-and-evaluation.spec.ts` 参照)。
+ */
+export interface ApplyCspOptions {
+  transformBody?: (body: string) => string;
+}
+
+async function applyCspOverride(
+  page: Page,
+  csp: string,
+  options?: ApplyCspOptions
+): Promise<CspGuard> {
   const violations: string[] = [];
 
   const routeHandler = async (route: Route): Promise<void> => {
@@ -114,10 +130,14 @@ async function applyCspOverride(page: Page, csp: string): Promise<CspGuard> {
     // route.fulfill に { response, headers } 並列指定すると Playwright 1.59 では
     // headers の上書きが反映されない事象を確認したため、status / headers / body を
     // 個別に組み立てて確実に CSP が乗るようにする。
+    // transformBody 指定時は body 文字列に対して変換を適用する (meta strip 等)。
+    const body = options?.transformBody
+      ? options.transformBody(await response.text())
+      : await response.body();
     await route.fulfill({
       status: response.status(),
       headers: { ...response.headers(), 'content-security-policy': csp },
-      body: await response.body(),
+      body,
     });
   };
 
@@ -158,8 +178,8 @@ async function applyCspOverride(page: Page, csp: string): Promise<CspGuard> {
   };
 }
 
-export async function applyProductionCsp(page: Page): Promise<CspGuard> {
-  return applyCspOverride(page, PRODUCTION_CSP);
+export async function applyProductionCsp(page: Page, options?: ApplyCspOptions): Promise<CspGuard> {
+  return applyCspOverride(page, PRODUCTION_CSP, options);
 }
 
 /**
