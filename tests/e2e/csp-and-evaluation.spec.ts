@@ -35,7 +35,6 @@
 
 import { test, expect } from '@playwright/test';
 import { applyProductionCsp, waitForReactHydration } from './helpers';
-import { PRODUCTION_CSP } from '../../src/utils/csp';
 
 /**
  * inline script 注入プローブ:
@@ -114,44 +113,19 @@ test.describe('CSP AND 評価 runtime 検証', () => {
     try {
       const page = await context.newPage();
 
-      // CSP 違反を収集するリスナーを手動設置 (applyProductionCsp は使わず
-      // 独自の route handler で <meta> を除去した上で permissive ヘッダを注入する)
-      const violations: string[] = [];
-      page.on('console', (msg) => {
-        if (msg.type() === 'error' && /Content Security Policy/i.test(msg.text())) {
-          violations.push(msg.text());
-        }
-      });
-      page.on('pageerror', (err) => {
-        if (/Content Security Policy/i.test(err.message)) {
-          violations.push(err.message);
-        }
-      });
-
-      // route handler: document リクエストのみ介入し
-      //   1. <meta http-equiv="content-security-policy" ...> タグを正規表現で除去
-      //   2. permissive HTTP CSP ヘッダ (PRODUCTION_CSP) を付与して返す
-      // JS/CSS/画像 等は素通し
-      await page.route('**/*', async (route) => {
-        if (route.request().resourceType() !== 'document') {
-          await route.continue();
-          return;
-        }
-        const response = await route.fetch();
-        const bodyText = await response.text();
-        // <meta http-equiv="content-security-policy" ...> タグを除去
-        const strippedBody = bodyText.replace(
-          /<meta\s+http-equiv=["']content-security-policy["'][^>]*>/gi,
-          ''
-        );
-        await route.fulfill({
-          status: response.status(),
-          headers: {
-            ...response.headers(),
-            'content-security-policy': PRODUCTION_CSP,
-          },
-          body: strippedBody,
-        });
+      // applyProductionCsp の transformBody hook で <meta> CSP を除去しつつ
+      // permissive HTTP ヘッダ (PRODUCTION_CSP) を注入する (#442)。
+      //
+      // meta タグ抽出は 2-pass で attribute 順非依存:
+      //   1. <meta ...> タグ全体を捕捉
+      //   2. その attribute 群に http-equiv="content-security-policy" があれば削除
+      // これにより Astro が将来 <meta content="..." http-equiv="..."> 形式で
+      // 出力した場合でも regex 空振りせず対応できる (PR #441 review nit 3)。
+      const guard = await applyProductionCsp(page, {
+        transformBody: (body) =>
+          body.replace(/<meta\s+[^>]*>/gi, (match) =>
+            /http-equiv\s*=\s*["']content-security-policy["']/i.test(match) ? '' : match
+          ),
       });
 
       await page.goto('/tools/uuid-v7');
@@ -171,7 +145,7 @@ test.describe('CSP AND 評価 runtime 検証', () => {
       // (permissive ヘッダが standalone で 'unsafe-inline' を許可するため)
       // page.on('console') は別 tick 配送のため短い grace を与えてから sanity check。
       // 陽性検証は直前の title assert が担っており、本 assert は環境健全性のみ。
-      await expect.poll(() => violations.length, { timeout: 1_000 }).toBe(0);
+      await expect.poll(() => guard.violations.length, { timeout: 1_000 }).toBe(0);
     } finally {
       await context.close();
     }
