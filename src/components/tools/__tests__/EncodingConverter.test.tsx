@@ -147,9 +147,7 @@ describe('EncodingConverterTool — ファイル読込失敗時のエラー表�
       screen.getByRole('button', { name: 'ファイル' }).click();
     });
 
-    const input = container.querySelector(
-      'input[type="file"]'
-    ) as HTMLInputElement | null;
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement | null;
     expect(input).not.toBeNull();
 
     await act(async () => {
