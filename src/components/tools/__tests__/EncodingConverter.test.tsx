@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useState } from 'react';
-import { render, act, cleanup, fireEvent, screen } from '@testing-library/react';
+import { render, act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 
 // `EncodingConverterTool` 内で呼ばれる encoding ユーティリティを spy 化する。
 // 直接 `runDetect` / `runConvert` を spy する代わりに、内部から呼ばれる
@@ -124,6 +124,50 @@ describe('EncodingConverterTool — 入力非依存の再 render では detect �
 // ────────────────────────────────────────────
 // 変換モードでも debounce 中の連続入力は convert 1 回に集約される
 // ────────────────────────────────────────────
+// ────────────────────────────────────────────
+// #391: file.arrayBuffer() の reject 時に error 表示が出る
+// ────────────────────────────────────────────
+describe('EncodingConverterTool — ファイル読込失敗時のエラー表示 (issue #391)', () => {
+  it('file.arrayBuffer() が reject すると ErrorMessage に fallback が表示される', async () => {
+    // beforeEach の fakeTimers だと waitFor の内部 setTimeout が回らないため
+    // 本 test だけ real timer に戻す
+    vi.useRealTimers();
+
+    // jsdom は本物の File を返すが arrayBuffer は controllable ではないため
+    // Object.defineProperty で reject に差し替える
+    const file = new File(['dummy'], 'sample.txt', { type: 'text/plain' });
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: () => Promise.reject(new Error('read failed')),
+    });
+
+    const { container } = render(<EncodingConverterTool />);
+
+    // 入力方式を「ファイル」に切替
+    act(() => {
+      screen.getByRole('button', { name: 'ファイル' }).click();
+    });
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement | null;
+    expect(input).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.change(input!, { target: { files: [file] } });
+    });
+
+    // reject の microtask が flush されるのを待つ
+    await waitFor(() => {
+      const alerts = container.querySelectorAll('[role="alert"]');
+      expect(alerts.length).toBeGreaterThan(0);
+    });
+    const alertText = Array.from(container.querySelectorAll('[role="alert"]'))
+      .map((n) => n.textContent ?? '')
+      .join('');
+    // Error.message を優先するため "read failed" を含む。
+    // (旧実装は .catch なしのため unhandled rejection で alert が出ず本 test は fail する)
+    expect(alertText).toMatch(/read failed|ファイルの読み込みに失敗しました/);
+  });
+});
+
 describe('EncodingConverterTool — 変換モードでも debounce で convert は最終 1 回', () => {
   it('変換モードに切替後、連続入力中は convertBytes が 1 回のみ呼ばれる', () => {
     const { container } = render(<EncodingConverterTool />);
