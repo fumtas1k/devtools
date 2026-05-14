@@ -204,4 +204,15 @@ describe('injectCompositeText', () => {
     const result = injectCompositeText(noVbSvg, 'test');
     expect(result).toBe(noVbSvg);
   });
+
+  it('caller が raw HTML を渡しても sink が escape する (sink-side escape contract)', () => {
+    // caller responsibility ではなく callee 側で escape する設計契約の回帰防止。
+    // 旧実装 (caller 側 escape) では二重 escape で &amp;amp; が残る事故につながる。
+    const rawHtml = 'A & B & C';
+    const result = injectCompositeText(mockSvg, rawHtml);
+    // sink 側で escape されているため &amp; に変換されていること
+    expect(result).toContain('A &amp; B &amp; C');
+    // 二重 escape されていないこと (&amp;amp; が残らないこと)
+    expect(result).not.toContain('&amp;amp;');
+  });
 });
