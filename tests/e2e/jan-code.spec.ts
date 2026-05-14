@@ -64,4 +64,42 @@ test.describe('JANコード生成（production CSP 適用）', () => {
       ).toBeVisible();
     });
   });
+
+  // issue #392: downloadPngFromSvgElement Promise 化の陽性対照 E2E。
+  // Image 読み込みを強制 onerror させ、async downloadPng の catch 経路で
+  // ErrorMessage が表示されることを観測可能な振る舞いとして assert する
+  // (旧 void 実装ではこの ErrorMessage は絶対に出ない silent failure)。
+  test('JAN-13: PNG ダウンロード失敗時に role="alert" でエラー表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/jan-code', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await expect(page.getByText('完成コード', { exact: true })).toBeVisible();
+
+      // hydration 後・クリック前に Image を必ず onerror させる stub に差し替える。
+      // withProductionCsp は page.goto 後に fn が呼ばれるため addInitScript では
+      // 次回ナビゲーション分しか効かない。
+      await page.evaluate(() => {
+        class FailingImage {
+          onload: (() => void) | null = null;
+          onerror: (() => void) | null = null;
+          private _src = '';
+          get src() {
+            return this._src;
+          }
+          set src(v: string) {
+            this._src = v;
+            queueMicrotask(() => this.onerror?.());
+          }
+        }
+        (window as unknown as { Image: unknown }).Image = FailingImage;
+      });
+
+      await page.getByRole('button', { name: 'PNGダウンロード' }).click();
+
+      const alert = page.getByRole('alert').filter({ hasText: /PNG への変換に失敗しました/ });
+      await expect(alert).toBeVisible();
+      await expect(alert).toContainText('ダウンロードエラー');
+    });
+  });
 });

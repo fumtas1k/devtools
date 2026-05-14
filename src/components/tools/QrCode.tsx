@@ -15,13 +15,30 @@ const ERROR_LEVELS: { value: ErrorLevel; label: string; desc: string }[] = [
   { value: 'H', label: 'H', desc: '30%' },
 ];
 
+// SVG `<title>` に埋め込む文字列は HTML 特殊文字を実体参照化する必要がある
+// (text が URL や `<` を含む可能性があるため XSS 二次防衛線も兼ねる)。
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function generateQrSvg(text: string, errorLevel: ErrorLevel): string | null {
   if (!text) return null;
   try {
     const qr = qrcode(0, errorLevel);
     qr.addData(text);
     qr.make();
-    return qr.createSvgTag({ scalable: true });
+    const svg = qr.createSvgTag({ scalable: true });
+    // SR が SVG の意味を読み取れるよう role="img" + `<title>` を first child として
+    // 注入する (issue #386)。`aria-label` は意図的に付けない: ARIA Accessible Name
+    // and Description Computation 4.3.1 で aria-label があると `<title>` が name
+    // 計算から除外され、URL 等の本文が読まれなくなる (PR #434 レビュー指摘)。
+    const title = `<title>QRコード: ${escapeXml(text)}</title>`;
+    return svg.replace(/<svg([^>]*)>/, `<svg$1 role="img">${title}`);
   } catch {
     return null;
   }
@@ -98,7 +115,7 @@ export function QrCodeGenerator() {
             <span className="body-emphasis text-default">プレビュー</span>
             <DownloadButton onClick={handleDownload} label="SVGダウンロード" variant="secondary" />
           </div>
-          <div className="flex justify-center p-8 bg-default">
+          <div className="flex justify-center p-8 bg-default" role="status" aria-live="polite">
             <div
               ref={containerRef}
               data-testid="qr-code-container"

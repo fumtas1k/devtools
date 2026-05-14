@@ -82,29 +82,43 @@ export async function downloadPngFromSvgContent(
 
 /**
  * SVG要素からPNGをダウンロードする（getBoundingClientRectで寸法取得、Retina x2倍）
- * 要素がDOMに描画されている必要がある
+ * 要素がDOMに描画されている必要がある。
+ * Image 読み込み失敗時は reject し、呼出側で UI 通知できるようにする
+ * (svgContentToPngBlob と同じ pattern)。
  */
-export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string): void {
-  const { width, height } = svgEl.getBoundingClientRect();
-  const scale = 2;
-  const canvas = document.createElement('canvas');
-  canvas.width = width * scale;
-  canvas.height = height * scale;
-  const ctx = canvas.getContext('2d')!;
-  ctx.scale(scale, scale);
-  const img = new Image();
-  const blob = new Blob([svgEl.outerHTML], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  img.onload = () => {
-    ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-    const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
-    a.download = filename;
-    a.click();
-  };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-  };
-  img.src = url;
+export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const { width, height } = svgEl.getBoundingClientRect();
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(scale, scale);
+    const img = new Image();
+    const blob = new Blob([svgEl.outerHTML], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      try {
+        ctx.drawImage(img, 0, 0);
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = filename;
+        a.click();
+        resolve();
+      } catch (e) {
+        // drawImage / toDataURL は canvas tainted 等で SecurityError を throw する。
+        // try/catch しないと unhandled error として外に逃げ、caller の Promise には
+        // reject されず silent failure 経路が残る (PR #434 レビュー指摘)。
+        reject(e instanceof Error ? e : new Error('PNG への変換に失敗しました'));
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('PNG への変換に失敗しました'));
+    };
+    img.src = url;
+  });
 }

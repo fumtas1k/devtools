@@ -66,4 +66,59 @@ test.describe('QRコード生成（production CSP 適用）', () => {
       await expect(downloadButton).toBeEnabled();
     });
   });
+
+  // issue #386: a11y。SR が生成完了と SVG の意味（URL 等の本文）を読み取れること。
+  // 修正前は role="status" / aria-live も <title> も無いため、この test は fail する。
+  // accessible name に URL の本文が含まれることを assert することで、aria-label で
+  // `<title>` が上書きされてしまう regression も検知できる (PR #434 レビュー指摘)。
+  test('生成結果が role="status" として読め、SVG の accessible name に URL 本文が含まれる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      await page.getByLabel('テキスト / URL').fill('https://example.com');
+
+      const status = page
+        .getByRole('status')
+        .filter({ has: page.getByTestId('qr-code-container') });
+      await expect(status).toBeVisible();
+
+      // SVG は role="img" を持ち、`<title>` が first child であることが accessible name の
+      // 計算条件 (Accessible Name and Description Computation 4.3.1)。
+      // aria-label を併用すると <title> が無視されるため、本 PR では aria-label を
+      // 付けない。属性として aria-label が無いことも陽性対照として確認する。
+      const svgImg = status.locator('svg[role="img"]');
+      await expect(svgImg).toHaveCount(1);
+      await expect(svgImg).not.toHaveAttribute('aria-label', /.*/);
+
+      // <title> が SVG の最初の子要素であり、URL 本文を含むこと
+      const firstChildTag = await svgImg.evaluate((el) => el.firstElementChild?.tagName);
+      expect(firstChildTag?.toLowerCase()).toBe('title');
+
+      const titleText = await svgImg.locator('> title').textContent();
+      expect(titleText).toContain('QRコード:');
+      expect(titleText).toContain('https://example.com');
+    });
+  });
+
+  // issue #386: XSS 二次防衛線。<title> 内に挿入される text は XML エスケープされる。
+  // 旧実装 (生 text 連結) ではこの test が <script> 文字列の生置換で fail する設計
+  // (test-gates 陽性対照: title 注入機構の escape が機能していないと検知)。
+  test('<title> 内のテキストは HTML 特殊文字がエスケープされる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      await page.getByLabel('テキスト / URL').fill('<script>alert(1)</script>');
+
+      const container = page.getByTestId('qr-code-container');
+      // textContent は DOM パース後の値なので元の文字列がそのまま見える
+      const titleText = await container.locator('svg title').textContent();
+      expect(titleText).toContain('<script>alert(1)</script>');
+
+      // 一方、生の HTML 文字列上では実体参照化されており、<script> タグとして
+      // パースされていない (XSS sink である dangerouslySetInnerHTML の前段で防御)。
+      const containerHtml = await container.innerHTML();
+      expect(containerHtml).toContain('&lt;script&gt;');
+      expect(await container.locator('script').count()).toBe(0);
+    });
+  });
 });
