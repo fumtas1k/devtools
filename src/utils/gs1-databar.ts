@@ -185,7 +185,8 @@ export function escapeHtml(text: string): string {
  * SVG 文字列を直接操作してテキスト要素を追加する。
  *
  * @param svg - bwip-js が生成した SVG 文字列
- * @param text - 挿入するテキスト
+ * @param text - 挿入するテキスト (raw 文字列を渡す)。内部で escapeHtml を適用するため、
+ *   呼出側で escape してはならない (二重 escape で `&amp;` が表示文字として残る)。
  * @returns テキストを挿入した SVG 文字列
  */
 export function injectCompositeText(svg: string, text: string): string {
