@@ -156,8 +156,9 @@ export function TotpHotpGeneratorTool() {
     setHotpCode('');
   };
 
-  // secret 差し替え時の派生 state リセットを 1 箇所に集約。
-  // 入力欄編集とランダム生成ボタンの両経路から呼ばれる single source of truth。
+  // secret 自体に紐づく派生 state リセットを 1 箇所に集約。
+  // 入力欄編集とランダム生成ボタンの両経路から呼ばれる。
+  // counter のリセットは「ランダム生成時のみ」という別軸の責務なので呼び出し側で行う。
   const replaceSecret = (next: string) => {
     setSecretBase32(next);
     setCurrentCode('');
@@ -266,7 +267,10 @@ export function TotpHotpGeneratorTool() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => replaceSecret(generateRandomBase32Secret())}
+                  onClick={() => {
+                    replaceSecret(generateRandomBase32Secret());
+                    setCounterStr('0');
+                  }}
                   className="caption text-link-color btn-link-plain"
                   aria-label="ランダム生成（新しいシークレット）"
                 >
