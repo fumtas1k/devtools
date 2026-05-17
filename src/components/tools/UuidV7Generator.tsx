@@ -7,6 +7,7 @@ import { ClearButton } from '@/components/ui/ClearButton';
 import { ResultTable } from '@/components/ui/ResultTable';
 import type { TableColumn } from '@/components/ui/ResultTable';
 import { parseUuidV7Fields, extractUuidV7Timestamp } from '@/utils/uuid-v7';
+import { useQuoteStyle, QUOTE_OPTIONS, type QuoteStyle } from '@/hooks/useQuoteStyle';
 
 interface UuidRow {
   id: string;
@@ -28,8 +29,6 @@ function generateRows(count: number): UuidRow[] {
     return { id, timestamp: extractUuidV7Timestamp(id) };
   });
 }
-
-type QuoteStyle = 'none' | 'single' | 'double';
 
 /** UUID 文字列を色分けして表示する */
 function ColoredUuid({ uuid, quoteStyle }: { uuid: string; quoteStyle: QuoteStyle }) {
@@ -92,17 +91,9 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
 export function UuidV7GeneratorTool() {
   const [rows, setRows] = useState<UuidRow[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
+  const { quoteStyle, setQuoteStyle, formatId, formatAll } = useQuoteStyle();
 
-  const quote = quoteStyle === 'double' ? '"' : quoteStyle === 'single' ? "'" : '';
-  const formatId = (id: string) => `${quote}${id}${quote}`;
-
-  const allUuids = rows
-    .map((r, i) => {
-      const isLast = i === rows.length - 1;
-      return `${quote}${r.id}${quote}${isLast ? '' : ','}`;
-    })
-    .join('\n');
+  const allUuids = formatAll(rows.map((r) => r.id));
 
   const columns: TableColumn<UuidRow>[] = [
     {
@@ -164,11 +155,7 @@ export function UuidV7GeneratorTool() {
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="shrink-0">
                     <ToggleGroup<QuoteStyle>
-                      options={[
-                        { value: 'none', label: 'なし' },
-                        { value: 'double', label: '"..."' },
-                        { value: 'single', label: "'...'" },
-                      ]}
+                      options={QUOTE_OPTIONS}
                       value={quoteStyle}
                       onChange={setQuoteStyle}
                       ariaLabel="クォートスタイル"
