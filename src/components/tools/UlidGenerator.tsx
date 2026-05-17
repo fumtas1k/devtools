@@ -6,6 +6,7 @@ import { CountInput } from '@/components/ui/CountInput';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ResultTable } from '@/components/ui/ResultTable';
 import type { TableColumn } from '@/components/ui/ResultTable';
+import { useQuoteStyle, QUOTE_OPTIONS, type QuoteStyle } from '@/hooks/useQuoteStyle';
 
 interface UlidRow {
   id: string;
@@ -20,26 +21,11 @@ function generateRows(count: number): UlidRow[] {
   });
 }
 
-type QuoteStyle = 'none' | 'single' | 'double';
-
 export function UlidGeneratorTool() {
   const [rows, setRows] = useState<UlidRow[]>([]);
-  const [quoteStyle, setQuoteStyle] = useState<QuoteStyle>('none');
+  const { quoteStyle, setQuoteStyle, formatId, formatAll } = useQuoteStyle();
 
-  const formatId = (id: string) => {
-    if (quoteStyle === 'double') return `"${id}"`;
-    if (quoteStyle === 'single') return `'${id}'`;
-    return id;
-  };
-
-  const allUlids = rows
-    .map((r, i) => {
-      const isLast = i === rows.length - 1;
-      if (quoteStyle === 'double') return `"${r.id}"${isLast ? '' : ','}`;
-      if (quoteStyle === 'single') return `'${r.id}'${isLast ? '' : ','}`;
-      return r.id;
-    })
-    .join('\n');
+  const allUlids = formatAll(rows.map((r) => r.id));
 
   const columns: TableColumn<UlidRow>[] = [
     {
@@ -101,11 +87,7 @@ export function UlidGeneratorTool() {
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="shrink-0">
                     <ToggleGroup<QuoteStyle>
-                      options={[
-                        { value: 'none', label: 'なし' },
-                        { value: 'double', label: '"..."' },
-                        { value: 'single', label: "'...'" },
-                      ]}
+                      options={QUOTE_OPTIONS}
                       value={quoteStyle}
                       onChange={setQuoteStyle}
                       ariaLabel="クォートスタイル"
