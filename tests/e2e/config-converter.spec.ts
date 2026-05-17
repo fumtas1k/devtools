@@ -295,4 +295,30 @@ test.describe('設定ファイル相互変換', () => {
     // 検証成功メッセージが表示されること
     await expect(page.getByText('スキーマ検証成功')).toBeVisible();
   });
+
+  test('JSON Schema 検証パネル: スキーマ未入力で Cmd/Ctrl+Enter は検証を発火しない（陽性対照）', async ({
+    page,
+  }) => {
+    // from=JSON, to=JSON にセットして output を発生させる
+    const toGroup = page.getByRole('group', { name: '変換先フォーマット' });
+    await toGroup.getByRole('button', { name: 'JSON' }).click();
+
+    const inputTextarea = page.getByLabel('JSON (整形)');
+    await inputTextarea.fill('{"name":"Alice"}');
+    await expect(page.getByLabel('JSON', { exact: true })).toHaveValue(/"name"/);
+
+    // スキーマパネルを開くが、スキーマは未入力のまま
+    await page.getByRole('button', { name: /json schema/i }).click();
+    const schemaTextarea = page.getByLabel(/json schema/i);
+    await schemaTextarea.focus();
+
+    // 空のまま Cmd/Ctrl+Enter を押下
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.keyboard.press(`${modifier}+Enter`);
+
+    // guard が効いて検証結果（成功/失敗いずれの message も）が表示されないこと
+    await page.waitForTimeout(300);
+    await expect(page.getByText('スキーマ検証成功')).toHaveCount(0);
+    await expect(page.getByText('スキーマ検証失敗')).toHaveCount(0);
+  });
 });
