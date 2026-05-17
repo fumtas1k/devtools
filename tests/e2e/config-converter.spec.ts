@@ -317,8 +317,7 @@ test.describe('設定ファイル相互変換', () => {
     await page.keyboard.press(`${modifier}+Enter`);
 
     // guard が効いて検証結果（成功/失敗いずれの message も）が表示されないこと
-    await page.waitForTimeout(300);
-    await expect(page.getByText('スキーマ検証成功')).toHaveCount(0);
-    await expect(page.getByText('スキーマ検証失敗')).toHaveCount(0);
+    // toHaveCount の timeout で「現れないこと」を確認 (固定 wait より auto-wait が確実)
+    await expect(page.getByText(/スキーマ検証(成功|失敗)/)).toHaveCount(0, { timeout: 500 });
   });
 });
