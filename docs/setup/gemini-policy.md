@@ -12,8 +12,10 @@
 
 ```bash
 mkdir -p ~/.gemini/policies
-ln -sfn "$(pwd)/.gemini/policies/security.toml" ~/.gemini/policies/security.toml
+ln -sfn "$(git rev-parse --show-toplevel)/.gemini/policies/security.toml" ~/.gemini/policies/security.toml
 ```
+
+> `$(git rev-parse --show-toplevel)` でリポジトリルートを動的解決するため、コマンド実行時の cwd がリポジトリ内のどのサブディレクトリでも壊れた symlink にならない。
 
 ---
 
