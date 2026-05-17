@@ -156,8 +156,9 @@ export function TotpHotpGeneratorTool() {
     setHotpCode('');
   };
 
-  // secret 差し替え時の派生 state リセットを 1 箇所に集約。
-  // 入力欄編集とランダム生成ボタンの両経路から呼ばれる single source of truth。
+  // secret 自体に紐づく派生 state リセットを 1 箇所に集約。
+  // 入力欄編集とランダム生成ボタンの両経路から呼ばれる。
+  // counter のリセットは「ランダム生成時のみ」という別軸の責務なので呼び出し側で行う。
   const replaceSecret = (next: string) => {
     setSecretBase32(next);
     setCurrentCode('');
