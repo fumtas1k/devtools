@@ -130,6 +130,35 @@ test.describe('UUID v7 生成（production CSP 適用）', () => {
     });
   });
 
+  test('「すべてコピー」: none では改行のみ・quoted では trailing comma 付き array-like で出力する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.getByRole('button', { name: '生成' }).click();
+      await expect(page.getByText('10 件生成')).toBeVisible();
+
+      // none では comma が付かず改行のみで結合される
+      await page.getByRole('button', { name: 'すべてコピー' }).click();
+      const noneCopied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(noneCopied).not.toContain(',');
+      expect(noneCopied.split('\n')).toHaveLength(10);
+
+      // double では各行にダブルクォート + trailing comma（最終行を除く）
+      await page.getByRole('button', { name: '"..."' }).click();
+      await page.getByRole('button', { name: 'すべてコピー' }).click();
+      const doubleCopied = await page.evaluate(() => navigator.clipboard.readText());
+      const doubleLines = doubleCopied.split('\n');
+      expect(doubleLines).toHaveLength(10);
+      // 最終行以外は `"...",` で終わる
+      for (const line of doubleLines.slice(0, -1)) {
+        expect(line).toMatch(/^".+",$/);
+      }
+      // 最終行は trailing comma 無し
+      expect(doubleLines[doubleLines.length - 1]).toMatch(/^".+"$/);
+    });
+  });
+
   test('クリアボタンでリストをリセットできる（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       await page.getByRole('button', { name: '生成' }).click();
