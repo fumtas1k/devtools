@@ -266,7 +266,10 @@ export function TotpHotpGeneratorTool() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => replaceSecret(generateRandomBase32Secret())}
+                  onClick={() => {
+                    replaceSecret(generateRandomBase32Secret());
+                    setCounterStr('0');
+                  }}
                   className="caption text-link-color btn-link-plain"
                   aria-label="ランダム生成（新しいシークレット）"
                 >
