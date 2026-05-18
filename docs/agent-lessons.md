@@ -396,7 +396,7 @@ PR #450 で `databarlimitedcomposite` (GS1 DataBar Limited Composite) が以下 
 - Dynamsoft Barcode Reader online demo (https://demo.dynamsoft.com/barcode-reader-js/) に各バーコード種別の PNG を upload し `formatString` / `confidence` が一致することを確認
 - ZXing / QuaggaJS / @zxing/library 等のブラウザ side decoder を E2E に組み込み、CI で実 decode 検証
 
-現状 CI で実 scanner decode を保証する仕組みは無いため、`bwip-js` を `package.json` で更新する PR では **手動 decode 検証ログ (Dynamsoft `format` + `confidence` 値、対象バーコード種別) を PR 本文に必須記載** とする運用が望ましい。
+現状 CI で実 scanner decode を保証する仕組みは無いため、`bwip-js` を `package.json` で更新する PR では **手動 decode 検証ログ (Dynamsoft `format` + `confidence` 値、対象バーコード種別) を PR 本文に必須記載** とする (mandatory)。
 
 ### スコープ
 

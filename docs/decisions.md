@@ -2584,6 +2584,14 @@ PR 9 merge 後の review で 2 件の follow-up issue が起票され、PR 10 �
 
 **対応**: 本 entry に decision 記録、issue `#308` は **open のまま** (future enhancement として残置)、本 PR では実装変更なし。
 
+### Update (2026-05-19) — PR #450 で `.gs1-svg-container` 撤回
+
+本 ADR の「本 PR (PR 8 scope 縮小) で達成」項目に記載した「Gs1Databar SVG `<text>` の inline style を `fill="currentColor"` + 親 `.gs1-svg-container` の `color: var(--color-text)` 化」は、**PR #450 で撤回** した。
+
+**撤回理由**: `<text>` injection 自体 (`injectCompositeText` 関数) が、composite component (CC-A/CC-B) 上端 GS1 quiet zone (1X) にテキストのディセンダーを侵入させ、scanner が decode 不能になることが実機 Dynamsoft Barcode Reader 検証で発覚 (詳細 `docs/agent-lessons.md` 2026-05-19 entry)。`textRowH` を 3X (= 9px) に広げる代替案も decode 不能で撤回し、`injectCompositeText` 関数本体と参照 className / CSS rule (`.gs1-svg-container`) をまとめて削除。
+
+**CSP strict 化への影響**: bwip-js v4.9.0 の `toSVG` 出力は `fill="#000000"` / `stroke="#000000"` 固定で `currentColor` 参照を含まず、inline `style=""` も 0 件のため `style-src` 強化 ([068] 完了済み) に対する追加リスクなし。currentColor 化 refactor の意図 (将来 dark mode 等) は別途検討余地あり (本 ADR scope 外、新 issue で扱う可能性)。
+
 ### 関連 PR / issue
 
 - 本 entry を記録: PR 8 (scope 縮小、merge `e2efd24`)、PR 9 outcome 追補
