@@ -59,6 +59,7 @@
     "@types/jsbarcode": "^3.11.4",
     "@types/uuid": "10.0.0",
     "@vitest/coverage-v8": "4.1.4",
+    "img-comparison-slider": "8.0.7",
     "jsdom": "^26.1.0",
     "lint-staged": "16.4.0",
     "prettier": "3.8.2",
