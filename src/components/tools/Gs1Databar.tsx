@@ -6,7 +6,6 @@ import {
   calcGtin14CheckDigit,
   validateGtin14Input,
   buildBwipText,
-  injectCompositeText,
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
@@ -125,12 +124,13 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         textsize: 7,
       });
 
-      const compositeText = aiFields
-        .filter((f) => f.value.trim() !== '')
-        .map((f) => `(${f.ai})${f.value.trim()}`)
-        .join('');
-      const sizedSvg = addSvgDimensions(rawSvg);
-      const finalSvg = compositeText ? injectCompositeText(sizedSvg, compositeText) : sizedSvg;
+      // composite component 上に AI テキスト ((17)... 等) を SVG injection する
+      // 旧実装は、テキストのディセンダーが composite 上端の quiet zone (1X) に
+      // 侵入してスキャナが decode 不能になる問題があった (Dynamsoft Reader 0 件 →
+      // injection 撤去で `GS1_COMPOSITE` 100% 認識を確認)。textRowH を広げて
+      // quiet zone を 3X 確保する案も検証したが decode 不能のため撤回し撤去で確定。
+      // 合成シンボル内の AI 値は下部の「GS1文字列を見る」セクションで人間可読として確認できる。
+      const finalSvg = addSvgDimensions(rawSvg);
       setSvgContent(finalSvg);
       setBwipError('');
       onSvgChangeRef.current(finalSvg, gtinResult.fullGtin);
