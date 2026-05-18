@@ -655,11 +655,6 @@
     color: var(--color-neutral-700);
   }
 
-  /* Gs1Databar SVG container: dangerouslySetInnerHTML 経由 SVG の currentColor 継承 (#176 PR 8) */
-  .gs1-svg-container {
-    color: var(--color-text);
-  }
-
   /* CategoryBadge: badge background (`--color-badge-bg` は `:root` 定義、auto-utility 不在のため意味クラス維持) */
   .bg-badge {
     background: var(--color-badge-bg);
