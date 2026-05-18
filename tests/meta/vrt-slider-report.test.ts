@@ -87,11 +87,6 @@ describe('[陽性対照] makeLabelFromContextContent (format 異常時に必ず 
 });
 
 /**
- * isRetryDir: Playwright の retry attempt dir を判定するフィルタ。
- * regex `/-retry\d+$/` は raw な dir 名 (sanitize 前) を渡される前提。
- * 誤検知 (非 retry を retry と判定) / 見逃し (retry を見逃す) 両方の陽性対照を網羅。
- */
-/**
  * generateHTML: img-comparison-slider の参照経路を検証 (#352)。
  * 旧実装 (unpkg CDN) に当てると pass しないことが陽性対照テストで担保される。
  */
@@ -145,6 +140,11 @@ describe('[陽性対照] CDN 参照検知 assertion が機能している', () =
   });
 });
 
+/**
+ * isRetryDir: Playwright の retry attempt dir を判定するフィルタ。
+ * regex `/-retry\d+$/` は raw な dir 名 (sanitize 前) を渡される前提。
+ * 誤検知 (非 retry を retry と判定) / 見逃し (retry を見逃す) 両方の陽性対照を網羅。
+ */
 describe('isRetryDir (retry attempt 検出)', () => {
   it('retry suffix を含む dir 名は true', () => {
     expect(isRetryDir('visual-regression-foo-retry1')).toBe(true);
