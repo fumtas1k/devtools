@@ -377,3 +377,34 @@ Found invalid redirect lines:
 
 - PR #437（空コミットによる fresh build 試行、結果として原因切り分けに寄与）
 - PR #438（実体変更による解消）
+
+---
+
+## [2026-05-19] bwip-js upgrade 時は実機 scanner decode 検証 mandatory
+
+### 現象
+
+PR #450 で `databarlimitedcomposite` (GS1 DataBar Limited Composite) が以下 2 原因で scanner decode 不能だったことが判明。両方とも DOM / CSP / 描画レベルの E2E では検出不能で、実機の Dynamsoft Barcode Reader 等で初めて発覚した。
+
+1. `bwip-js v4.9.0` の `databarlimitedcomposite` は `height` パラメータを linear 部だけでなく composite component (CC-A/CC-B) のモジュール縦サイズにも適用する。`scale: 3 + height: 6` で CC module が `3×12` (1X × 4X) に縦長化し、GS1 spec 要求の ~1X × 1X 正方形から大きく外れる
+2. composite 上端への AI テキスト SVG injection (`injectCompositeText`) が、テキストのディセンダー (paren `( )` の下端カーブ ~4px) を composite quiet zone (GS1 spec 1X 最小) に侵入させる
+
+### 教訓
+
+`bwip-js` (および barcode 生成 library 一般) の upgrade を行う場合は **CI の DOM / VRT pass だけでは回帰検出不十分**。以下のいずれかが mandatory:
+
+- Dynamsoft Barcode Reader online demo (https://demo.dynamsoft.com/barcode-reader-js/) に各バーコード種別の PNG を upload し `formatString` / `confidence` が一致することを確認
+- ZXing / QuaggaJS / @zxing/library 等のブラウザ side decoder を E2E に組み込み、CI で実 decode 検証
+
+現状 CI で実 scanner decode を保証する仕組みは無いため、`bwip-js` を `package.json` で更新する PR では **手動 decode 検証ログ (Dynamsoft `format` + `confidence` 値、対象バーコード種別) を PR 本文に必須記載** とする (mandatory)。
+
+### スコープ
+
+- 対象 library: `bwip-js` (現行 `v4.9.0`)
+- 対象ツール: `src/components/tools/Gs1Databar.tsx` (今後追加されうる他の barcode tool も同様)
+- トリガー: `package.json` で `bwip-js` の version 文字列が変わる PR
+
+### 関連
+
+- PR #450（本件、`height` + `injectCompositeText` の 2 段修正）
+- `src/components/tools/Gs1Databar.tsx:113-117` （`bwip-js v4.9.0` の挙動依存をコメントで明示）
