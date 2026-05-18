@@ -20,6 +20,14 @@ import { existsSync, readFileSync } from 'fs';
 const TEST_RESULTS_DIR = 'test-results';
 const OUTPUT_DIR = 'vrt-slider-report';
 
+// img-comparison-slider を npm dep として同梱する (#352)。
+// unpkg CDN は SLA なし・SRI hash なし・patch ロード不確定のため、
+// node_modules からビルド済みファイルを `vrt-slider-report/lib/` にコピーし
+// HTML はローカル相対パスで参照する。
+const SLIDER_LIB_SOURCE_DIR = 'node_modules/img-comparison-slider/dist';
+const SLIDER_LIB_OUTPUT_DIR = 'lib';
+const SLIDER_LIB_FILES = ['index.js', 'styles.css'];
+
 async function findFiles(dir, suffix) {
   const results = [];
   if (!existsSync(dir)) {
@@ -106,7 +114,7 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-function generateHTML(comparisons) {
+export function generateHTML(comparisons) {
   const navItems = comparisons
     .map(({ label, id }) => `<li><a href="#${id}">${esc(label)}</a></li>`)
     .join('\n      ');
@@ -154,8 +162,8 @@ function generateHTML(comparisons) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>VRT Diff Viewer</title>
-  <script type="module" src="https://unpkg.com/img-comparison-slider@8/dist/index.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/img-comparison-slider@8/dist/styles.css">
+  <script type="module" src="lib/index.js"></script>
+  <link rel="stylesheet" href="lib/styles.css">
   <style>
     *{box-sizing:border-box}
     body{font-family:system-ui,sans-serif;margin:0;background:#f3f4f6;color:#111}
@@ -209,6 +217,23 @@ async function main() {
 
   const imagesDir = join(OUTPUT_DIR, 'images');
   await mkdir(imagesDir, { recursive: true });
+
+  // img-comparison-slider のビルド済みファイルを `vrt-slider-report/lib/` にコピー (#352)。
+  // node_modules 配置に依存するが、CI は本スクリプト実行前に `npm ci` を済ませており
+  // ローカル実行も同様の前提。欠落時は ENOENT で早期失敗させ CDN fallback はしない
+  // (silent に CDN へ落ちる旧挙動を温存すると再現性保証の意義が失われるため)。
+  const libDir = join(OUTPUT_DIR, SLIDER_LIB_OUTPUT_DIR);
+  await mkdir(libDir, { recursive: true });
+  for (const file of SLIDER_LIB_FILES) {
+    const source = join(SLIDER_LIB_SOURCE_DIR, file);
+    if (!existsSync(source)) {
+      throw new Error(
+        `img-comparison-slider 配下のファイルが見つかりません: ${source}\n` +
+          '`npm ci` を実行して devDependency を導入してから再実行してください。'
+      );
+    }
+    await copyFile(source, join(libDir, file));
+  }
 
   const comparisons = [];
   const seenIds = new Set();

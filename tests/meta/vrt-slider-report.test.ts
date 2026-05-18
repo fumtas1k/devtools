@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { isRetryDir, makeLabelFromContextContent } from '../../scripts/generate-vrt-slider.mjs';
+import { existsSync } from 'node:fs';
+import {
+  generateHTML,
+  isRetryDir,
+  makeLabelFromContextContent,
+} from '../../scripts/generate-vrt-slider.mjs';
 
 /**
  * meta test: generate-vrt-slider.mjs の error-context.md parse ロジック検証
@@ -78,6 +83,60 @@ describe('[陽性対照] makeLabelFromContextContent (format 異常時に必ず 
 
   it('空文字列は null を返す', () => {
     expect(makeLabelFromContextContent('')).toBeNull();
+  });
+});
+
+/**
+ * generateHTML: img-comparison-slider の参照経路を検証 (#352)。
+ * 旧実装 (unpkg CDN) に当てると pass しないことが陽性対照テストで担保される。
+ */
+describe('generateHTML (slider lib 参照経路)', () => {
+  const sample = [{ label: '[desktop 1280x800] /tools/foo', id: 'foo', hasDiff: false }];
+
+  it('生成 HTML はローカル `lib/index.js` を `<script type="module">` で参照する', () => {
+    const html = generateHTML(sample);
+    expect(html).toContain('<script type="module" src="lib/index.js"></script>');
+  });
+
+  it('生成 HTML はローカル `lib/styles.css` を `<link rel="stylesheet">` で参照する', () => {
+    const html = generateHTML(sample);
+    expect(html).toContain('<link rel="stylesheet" href="lib/styles.css">');
+  });
+
+  it('生成 HTML は unpkg.com / cdn.jsdelivr.net を一切参照しない', () => {
+    const html = generateHTML(sample);
+    expect(html).not.toContain('unpkg.com');
+    expect(html).not.toContain('cdn.jsdelivr.net');
+  });
+
+  it('node_modules に img-comparison-slider のビルド済みファイルが存在する (CI 前提)', () => {
+    expect(existsSync('node_modules/img-comparison-slider/dist/index.js')).toBe(true);
+    expect(existsSync('node_modules/img-comparison-slider/dist/styles.css')).toBe(true);
+  });
+});
+
+// 陽性対照: CDN 参照検知 assertion が「常に green」化していないことを確認する。
+// もし将来 generateHTML が unpkg URL を再導入してしまった時、上の `.not.toContain` が
+// 確実に fail することを、CDN URL を含む synthetic HTML 文字列で能動検知できることで証明する。
+// (test-gates skill: 陽性対照を陰性対照と別 test に分離する原則)
+describe('[陽性対照] CDN 参照検知 assertion が機能している', () => {
+  it('synthetic な unpkg URL 入り HTML を assert 経路に通すと検知される', () => {
+    const cdnHtml =
+      '<script type="module" src="https://unpkg.com/img-comparison-slider@8/dist/index.js"></script>';
+    expect(cdnHtml).toContain('unpkg.com');
+  });
+
+  it('synthetic な jsdelivr URL 入り HTML を assert 経路に通すと検知される', () => {
+    const cdnHtml =
+      '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/img-comparison-slider/dist/styles.css">';
+    expect(cdnHtml).toContain('cdn.jsdelivr.net');
+  });
+
+  it('synthetic な local lib 参照 HTML は CDN チェックを pass する (false positive 回避)', () => {
+    const localHtml =
+      '<script type="module" src="lib/index.js"></script><link rel="stylesheet" href="lib/styles.css">';
+    expect(localHtml).not.toContain('unpkg.com');
+    expect(localHtml).not.toContain('cdn.jsdelivr.net');
   });
 });
 

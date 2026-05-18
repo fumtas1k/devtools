@@ -3073,3 +3073,39 @@ RFC 6238 §5.2 推奨値。30 秒周期で前後 1 period を許容（実質 90 
 **[079-5] 型安全: `Uint8Array<ArrayBuffer>` を使用**
 
 TypeScript 5.9.3 では `Uint8Array = Uint8Array<ArrayBufferLike>` だが、Web Crypto API (`crypto.subtle.importKey` 等) は `BufferSource = ArrayBuffer | ArrayBufferView<ArrayBuffer>` を要求する。`base32Decode` の戻り値・`hotp`/`totp`/`verifyTotp` の secret 引数を `Uint8Array<ArrayBuffer>` に明示することで型エラーを解消。
+
+---
+
+## [080] 2026-05-18 — VRT slider レポートの img-comparison-slider を npm dep + 同梱化 (unpkg CDN 依存排除)
+
+日付 2026-05-18 | ステータス: 採用 | issue #352
+
+### 背景
+
+`scripts/generate-vrt-slider.mjs` が生成する HTML が unpkg.com から `img-comparison-slider@8` を動的ロードしていた。CDN 依存には以下の問題があった:
+
+- unpkg.com に SLA なし → ダウン時に VRT viewer (gh-pages) が全滅
+- `@8` major-only pin で patch リリースが任意にロードされる
+- SRI hash なしで CDN 改竄の検出機構が無い
+
+### 採用案: devDependency 化 + `vrt-slider-report/lib/` への物理同梱
+
+1. `img-comparison-slider@8.0.7` を devDependency に exact pin (lockfile 再現性確保)
+2. `scripts/generate-vrt-slider.mjs` 起動時に `node_modules/img-comparison-slider/dist/{index.js,styles.css}` を `vrt-slider-report/lib/` へ物理コピー
+3. 生成 HTML の `<script>` / `<link>` 参照を `lib/index.js` / `lib/styles.css` に書き換え
+
+### 不採用案
+
+- **SRI hash 付与のみで CDN を継続**: SLA・patch ロード不確定の問題が残る。npm に既に正規 dist がある以上 CDN 経由する積極的理由が無い
+- **`import.meta.resolve` で動的に node_modules path 解決**: 現スクリプトは cwd=project root の前提で全パスが書かれており (`TEST_RESULTS_DIR='test-results'` 等)、整合性を保つため同じ前提で `'node_modules/img-comparison-slider/dist'` を hardcode
+
+### failure mode
+
+- `npm ci` 前にスクリプトを実行 → `existsSync` check で早期 throw (silent CDN fallback はしない: 再現性保証の意義が失われるため)
+- 上記 throw は CI workflow (`visual-regression.yml`) で `npm ci` step が必ず先行するため通常発生しない
+
+### 関連
+
+- issue #352
+- meta test: `tests/meta/vrt-slider-report.test.ts` の `generateHTML (slider lib 参照経路)` describe (陰性対照: ローカル `lib/` 参照を assert) + `[陽性対照] CDN 参照検知 assertion が機能している` describe (`unpkg.com` / `cdn.jsdelivr.net` を含む synthetic HTML で検知 assertion 自体の機能を担保)
+- CI workflow: `.github/workflows/visual-regression.yml` (改修不要、`npm ci` step が既に存在)
