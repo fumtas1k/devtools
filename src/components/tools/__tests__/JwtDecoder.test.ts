@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ALG_MAP, verifySignature } from '../JwtDecoder';
+import { ALG_MAP, verifySignature } from '@/utils/jwt-verify';
 import { bytesToBase64Url } from '@/utils/base64url';
 
 // ────────────────────────────────────────────

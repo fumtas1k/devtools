@@ -64,6 +64,21 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
     });
   });
 
+  test('ダミーテキスト: 生成完了が role="status" aria-live="polite" で SR 通知可能（CSP 違反なし、issue #388）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/dummy-text', async (page) => {
+      // ページ読込時に auto-generate されるため status は即時存在する
+      const status = page.getByRole('status').first();
+      await expect(status).toHaveAttribute('aria-live', 'polite');
+      await expect(status).toContainText('ダミーテキストを生成しました');
+
+      // 文字種を変えると result が再生成され、status の文言も更新される
+      await page.getByRole('button', { name: 'ひらがな' }).click();
+      await expect(status).toContainText('ダミーテキストを生成しました');
+    });
+  });
+
   test('JSON→CSV: 変換結果が role="status" で包まれ常時 aria-live="polite" で SR 通知可能（CSP 違反なし）', async ({
     browser,
   }) => {

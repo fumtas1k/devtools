@@ -152,6 +152,22 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
     });
   });
 
+  test('HOTP モードでランダム生成すると counter が 0 にリセットされる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      await page.getByRole('button', { name: 'HOTP' }).click();
+
+      const counterInput = page.getByLabel('カウンタ');
+      await counterInput.fill('42');
+      await expect(counterInput).toHaveValue('42');
+
+      await page.getByRole('button', { name: /ランダム生成/ }).click();
+
+      await expect(counterInput).toHaveValue('0');
+    });
+  });
+
   test('検証モードで Cmd/Ctrl+Enter で検証が発火する（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
       // TOTP モードで現在のコードを取得

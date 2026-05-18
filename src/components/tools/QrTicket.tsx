@@ -44,17 +44,13 @@ export function QrTicketTool() {
     generation.setExpiry(getDefaultExpiry());
   }, []);
 
-  // モード切替時にカメラを停止する
+  // モード切替時 / アンマウント時にカメラを停止する
   useAbortableEffect(() => {
     if (mode !== 'verify') verification.camera.stopCamera();
-  }, [mode, verification.camera.stopCamera]);
-
-  // アンマウント時にカメラを停止する
-  useAbortableEffect(() => {
     return () => {
       verification.camera.stopCamera();
     };
-  }, [verification.camera.stopCamera]);
+  }, [mode, verification.camera.stopCamera]);
 
   return (
     <div className="space-y-6">

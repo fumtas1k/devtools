@@ -11,6 +11,9 @@
  *
  * 各ディレクティブの採用根拠は `docs/decisions.md` [054] を参照。
  *
+ * AND 評価が runtime で実際に効くことの E2E 検証は
+ * `tests/e2e/csp-and-evaluation.spec.ts` を参照。
+ *
  * #176 A-1 以降、script-src の 'unsafe-inline' は意図的に維持している。Astro
  * `security.csp` が生成する `<meta>` CSP が `script-src 'self' 'sha256-...'` で
  * hash-only の strict layer を提供し、ブラウザの AND 評価で実質的な strictness は

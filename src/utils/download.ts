@@ -2,6 +2,9 @@
  * ファイルダウンロードユーティリティ
  */
 
+/** Retina 表示向けに canvas を 2 倍解像度で描画するためのスケール係数。 */
+const RETINA_SCALE = 2;
+
 /**
  * Blob を `<a download>` 経由でダウンロードする共通処理。
  * テキスト・バイナリ・SVG・PNG・ZIP すべての出口で利用される。
@@ -46,12 +49,11 @@ export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
       reject(new Error('SVG に width/height がありません'));
       return;
     }
-    const scale = 2;
     const canvas = document.createElement('canvas');
-    canvas.width = parseInt(m[1], 10) * scale;
-    canvas.height = parseInt(m[2], 10) * scale;
+    canvas.width = parseInt(m[1], 10) * RETINA_SCALE;
+    canvas.height = parseInt(m[2], 10) * RETINA_SCALE;
     const ctx = canvas.getContext('2d')!;
-    ctx.scale(scale, scale);
+    ctx.scale(RETINA_SCALE, RETINA_SCALE);
     const img = new Image();
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -82,29 +84,42 @@ export async function downloadPngFromSvgContent(
 
 /**
  * SVG要素からPNGをダウンロードする（getBoundingClientRectで寸法取得、Retina x2倍）
- * 要素がDOMに描画されている必要がある
+ * 要素がDOMに描画されている必要がある。
+ * Image 読み込み失敗時は reject し、呼出側で UI 通知できるようにする
+ * (svgContentToPngBlob と同じ pattern)。
  */
-export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string): void {
-  const { width, height } = svgEl.getBoundingClientRect();
-  const scale = 2;
-  const canvas = document.createElement('canvas');
-  canvas.width = width * scale;
-  canvas.height = height * scale;
-  const ctx = canvas.getContext('2d')!;
-  ctx.scale(scale, scale);
-  const img = new Image();
-  const blob = new Blob([svgEl.outerHTML], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  img.onload = () => {
-    ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-    const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
-    a.download = filename;
-    a.click();
-  };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-  };
-  img.src = url;
+export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const { width, height } = svgEl.getBoundingClientRect();
+    const canvas = document.createElement('canvas');
+    canvas.width = width * RETINA_SCALE;
+    canvas.height = height * RETINA_SCALE;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(RETINA_SCALE, RETINA_SCALE);
+    const img = new Image();
+    const blob = new Blob([svgEl.outerHTML], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      try {
+        ctx.drawImage(img, 0, 0);
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = filename;
+        a.click();
+        resolve();
+      } catch (e) {
+        // drawImage / toDataURL は canvas tainted 等で SecurityError を throw する。
+        // try/catch しないと unhandled error として外に逃げ、caller の Promise には
+        // reject されず silent failure 経路が残る (PR #434 レビュー指摘)。
+        reject(e instanceof Error ? e : new Error('PNG への変換に失敗しました'));
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('PNG への変換に失敗しました'));
+    };
+    img.src = url;
+  });
 }

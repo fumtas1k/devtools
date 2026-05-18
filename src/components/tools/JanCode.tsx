@@ -4,14 +4,17 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { calcJan, generateJanSample, validateJanInput, type JanMode } from '@/utils/jan-code';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { downloadSvg as downloadSvgFile, downloadPngFromSvgElement } from '@/utils/download';
+import { getErrorMessage } from '@/utils/errors';
 
 export function JanCodeTool() {
   const [mode, setMode] = useState<JanMode>('jan13');
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
+  const [downloadError, setDownloadError] = useState('');
   const svgRef = useRef<SVGSVGElement>(null);
 
   const result =
@@ -51,12 +54,25 @@ export function JanCodeTool() {
 
   const downloadSvg = () => {
     if (!svgRef.current) return;
-    downloadSvgFile(svgRef.current.outerHTML, `jan-${result!.fullCode}.svg`);
+    setDownloadError('');
+    try {
+      downloadSvgFile(svgRef.current.outerHTML, `jan-${result!.fullCode}.svg`);
+    } catch (e) {
+      setDownloadError(getErrorMessage(e, 'SVG ダウンロードに失敗しました'));
+    }
   };
 
-  const downloadPng = () => {
+  // downloadPngFromSvgElement は img.onerror / canvas エラーで reject する。
+  // await + try/catch で例外を吸収し ErrorMessage 経由でユーザーに通知する
+  // (Gs1Databar の downloadPng と同じ pattern, issue #392)。
+  const downloadPng = async () => {
     if (!svgRef.current) return;
-    downloadPngFromSvgElement(svgRef.current, `jan-${result!.fullCode}.png`);
+    setDownloadError('');
+    try {
+      await downloadPngFromSvgElement(svgRef.current, `jan-${result!.fullCode}.png`);
+    } catch (e) {
+      setDownloadError(getErrorMessage(e, 'PNG ダウンロードに失敗しました'));
+    }
   };
 
   return (
@@ -159,6 +175,10 @@ export function JanCodeTool() {
             <svg ref={svgRef} aria-label={`JANコード ${result.fullCode} のバーコード`} />
             <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
           </div>
+
+          {downloadError && (
+            <ErrorMessage message={`ダウンロードエラー: ${downloadError}`} variant="block" />
+          )}
         </div>
       )}
 

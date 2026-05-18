@@ -162,7 +162,7 @@ export function EncodingConverterTool() {
     }
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
@@ -177,13 +177,16 @@ export function EncodingConverterTool() {
       return;
     }
 
-    file.arrayBuffer().then((buf) => {
+    try {
+      const buf = await file.arrayBuffer();
       setFileBytes(new Uint8Array(buf));
       setFileName(file.name);
       setError('');
       setOutputBytes(null);
       setOutputPreview('');
-    });
+    } catch (e) {
+      setError(getErrorMessage(e, 'ファイルの読み込みに失敗しました'));
+    }
   }
 
   function handleClear() {
