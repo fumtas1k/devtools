@@ -111,18 +111,15 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
     try {
       const bcid = hasAnyAiValue ? 'databarlimitedcomposite' : 'databarlimited';
-      // bwip-js は composite で `height` を指定すると linear 部分だけでなく
+      // bwip-js v4.9.0 は composite で `height` を指定すると linear 部だけでなく
       // composite component (CC-A/CC-B) のモジュール縦サイズも一緒にスケールし、
-      // GS1 spec が要求する X-dimension 同等の正方形モジュール (~1X×1X) が
-      // ~1X×4X まで縦長に潰れて scanner が decode 不能になる
-      // (bwip-js v4.9.0 で再現: scale=3 + height=6 の場合 cc module = 3×12)。
-      // composite 時のみ `height` を default (linear 10.3X = GS1 最小値) に委ねる。
-      // 単体 databarlimited 時は読みやすさのため `height: 6` (=17X) を維持。
+      // GS1 spec の ~1X×1X 正方形モジュールが ~1X×4X に潰れて scanner が decode
+      // 不能になる (scale=3 + height=6 で cc module = 3×12)。`height` を default
+      // に委ねる (linear 10.3X = GS1 最小値、bwip-js demo の default と同じ)。
       const rawSvg = bwipjs.toSVG({
         bcid,
         text: bwipText,
         scale: 3,
-        ...(hasAnyAiValue ? {} : { height: 6 }),
         includetext: true,
         textxalign: 'center',
         textsize: 7,
