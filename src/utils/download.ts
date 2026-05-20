@@ -53,6 +53,11 @@ export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
     canvas.width = parseInt(m[1], 10) * RETINA_SCALE;
     canvas.height = parseInt(m[2], 10) * RETINA_SCALE;
     const ctx = canvas.getContext('2d')!;
+    // バーコード/QR の bar/space edge を sharp に保つため smoothing 無効化。
+    // 有効のままだと SVG → Image → Canvas 経路で edge が灰色に滲み、scanner が
+    // 黒/白の二値閾値で bar 幅を取り違えて decode 失敗する（GS1 DataBar の
+    // composite CC-A 1X 矩形 module が読めなくなる原因）。
+    ctx.imageSmoothingEnabled = false;
     ctx.scale(RETINA_SCALE, RETINA_SCALE);
     const img = new Image();
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
@@ -95,6 +100,8 @@ export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string
     canvas.width = width * RETINA_SCALE;
     canvas.height = height * RETINA_SCALE;
     const ctx = canvas.getContext('2d')!;
+    // bar/space の edge anti-aliasing を抑止 (svgContentToPngBlob と同じ理由)。
+    ctx.imageSmoothingEnabled = false;
     ctx.scale(RETINA_SCALE, RETINA_SCALE);
     const img = new Image();
     const blob = new Blob([svgEl.outerHTML], { type: 'image/svg+xml' });
