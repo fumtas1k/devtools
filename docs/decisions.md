@@ -207,6 +207,8 @@ JANコードで使用した JsBarcode は EAN/UPC 系のみ対応で、GS1 DataB
 また、`includetext: true` で合成部の上に AI テキストが描画されない bwip-js のバージョン挙動の問題は、
 SVG 文字列を後処理してテキスト要素を直接注入することで解決した。
 
+加えて、bwip-js の default 出力には `shape-rendering` 指定がないため、ブラウザ表示 / SVG→`<img>`→Canvas 経路の両方で bar/space edge が sub-pixel anti-alias で滲み、scanner が黒/白二値閾値で bar 幅を誤判定する事象が発生していた（特に composite CC-A の 1X 矩形 module でロット (10) が decode 不能）。`addSvgDimensions()` で `shape-rendering="crispEdges"` を同時注入し、PNG 変換側 (`svgContentToPngBlob` / `downloadPngFromSvgElement`) では `ctx.imageSmoothingEnabled = false` を設定し、表示プレビュー側は `.barcode-preview { image-rendering: pixelated }` で crisp edge を強制することで全経路の anti-aliasing を抑止した。
+
 ### 却下した選択肢
 
 - **JsBarcode**: GS1 DataBar 非対応のため却下。

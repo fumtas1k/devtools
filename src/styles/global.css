@@ -557,6 +557,17 @@
     opacity: 0.7;
   }
 
+  /* === Gs1Databar: バーコードプレビューの sub-pixel anti-alias 抑止 ===
+     SVG 内 <rect> は vector だがブラウザは high-DPR / 非整数 scaling 時に
+     raster cache を介して anti-alias する。barcode の bar/space edge が
+     灰色に滲むと scanner の黒/白二値閾値で bar 幅判定が失敗する
+     (特に composite CC-A の 1X 矩形 module でロット (10) decode 失敗)。
+     `pixelated` を指定して crisp edge を強制する。SVG 自体には
+     shape-rendering="crispEdges" を別途付与済み (utils/gs1-databar.ts)。 */
+  .barcode-preview {
+    image-rendering: pixelated;
+  }
+
   /* === PR 4: Gs1Databar <details>/<summary> marker hide === */
   .summary-no-marker {
     list-style: none;

@@ -166,3 +166,23 @@ export function buildBwipText(
   const composite = filledFields.map((f) => `(${f.ai})${f.value.trim()}`).join('');
   return `${linear}|${composite}`;
 }
+
+/**
+ * bwip-js の toSVG 出力は viewBox のみで width/height を持たない。
+ * (1) flex コンテナでの寸法不定 / Image の natural size = 0x0 → PNG 空回避のため
+ *     viewBox から pixel 寸法を取り出して width/height 属性を注入する。
+ * (2) shape-rendering="crispEdges" を同時に注入する。bwip-js default では未指定で、
+ *     付けないとブラウザ表示・Image→Canvas 経路の両方で bar/space edge が
+ *     sub-pixel anti-alias で滲み、scanner が黒/白二値閾値で bar 幅を誤判定する
+ *     (特に composite CC-A の 1X 矩形 module でロット (10) が読めない事象の原因)。
+ */
+export function addSvgDimensions(svg: string): string {
+  const m = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  if (!m) return svg;
+  const w = Math.round(parseFloat(m[1]));
+  const h = Math.round(parseFloat(m[2]));
+  return svg.replace(
+    '<svg viewBox=',
+    `<svg width="${w}" height="${h}" shape-rendering="crispEdges" viewBox=`
+  );
+}

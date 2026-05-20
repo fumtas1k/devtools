@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { downloadBlob, downloadPngFromSvgElement } from '@/utils/download';
+import { downloadBlob, downloadPngFromSvgElement, svgContentToPngBlob } from '@/utils/download';
 
 /**
  * downloadBlob のスモークテスト。
@@ -147,6 +147,36 @@ describe('downloadPngFromSvgElement', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
 
+  it('陽性対照: Canvas context の imageSmoothingEnabled が false に設定される (バーコード edge anti-alias 抑止)', async () => {
+    // fix を revert (imageSmoothingEnabled = false 行を消す) すると context は
+    // mock default の true のままで本テストが fail する設計 (test-gates 鉄則 1)。
+    let capturedCtx: { imageSmoothingEnabled: boolean; scale: unknown; drawImage: unknown } | null =
+      null;
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => {
+        if (tag === 'canvas') {
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => {
+              capturedCtx = { imageSmoothingEnabled: true, scale: vi.fn(), drawImage: vi.fn() };
+              return capturedCtx;
+            },
+            toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
+          };
+        }
+        if (tag === 'a') return { href: '', download: '', click: vi.fn() };
+        return {};
+      }),
+    });
+
+    const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
+    imgInstance.onload?.();
+    await promise;
+    expect(capturedCtx).not.toBeNull();
+    expect(capturedCtx!.imageSmoothingEnabled).toBe(false);
+  });
+
   it('陽性対照: img.onload 内で canvas.toDataURL が throw した場合も Promise は reject する', async () => {
     // canvas.toDataURL を throw する stub に差し替える (tainted canvas 等の SecurityError 相当)
     vi.stubGlobal('document', {
@@ -171,5 +201,77 @@ describe('downloadPngFromSvgElement', () => {
     await expect(promise).rejects.toThrow('canvas is tainted');
     // finally で ObjectURL は解放される
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+  });
+});
+
+/**
+ * svgContentToPngBlob: PNG 変換時の anti-aliasing 抑止 (GS1 DataBar 認識失敗修正)。
+ *
+ * fix を revert (download.ts:55 付近の `ctx.imageSmoothingEnabled = false` を削る)
+ * と本テストが必ず fail する陽性対照 (test-gates 鉄則 1)。
+ *
+ * 旧実装は ctx.drawImage(img, 0, 0) を smoothing 有効 default のまま呼んでおり、
+ * scanner が黒/白二値閾値で bar 幅を取り違える事象を起こしていた。
+ */
+describe('svgContentToPngBlob', () => {
+  let createObjectURL: ReturnType<typeof vi.fn>;
+  let revokeObjectURL: ReturnType<typeof vi.fn>;
+  let imgInstance: { onload: (() => void) | null; onerror: (() => void) | null; src: string };
+  let capturedCtx: { imageSmoothingEnabled: boolean; scale: unknown; drawImage: unknown } | null;
+
+  beforeEach(() => {
+    capturedCtx = null;
+    createObjectURL = vi.fn(() => 'blob:mock-url');
+    revokeObjectURL = vi.fn();
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => {
+        if (tag === 'canvas') {
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => {
+              capturedCtx = { imageSmoothingEnabled: true, scale: vi.fn(), drawImage: vi.fn() };
+              return capturedCtx;
+            },
+            toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(['png'], { type: 'image/png' })),
+          };
+        }
+        return {};
+      }),
+    });
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    vi.stubGlobal(
+      'Image',
+      class {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        _src = '';
+        get src() {
+          return this._src;
+        }
+        set src(v: string) {
+          this._src = v;
+          imgInstance = this;
+        }
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('陽性対照: Canvas context の imageSmoothingEnabled が false に設定される', async () => {
+    const svg = '<svg width="100" height="50" viewBox="0 0 100 50"></svg>';
+    const promise = svgContentToPngBlob(svg);
+    imgInstance.onload?.();
+    await promise;
+    expect(capturedCtx).not.toBeNull();
+    expect(capturedCtx!.imageSmoothingEnabled).toBe(false);
+  });
+
+  it('width/height が無い SVG は reject される (既存契約)', async () => {
+    const svg = '<svg viewBox="0 0 100 50"></svg>';
+    await expect(svgContentToPngBlob(svg)).rejects.toThrow('width/height');
   });
 });

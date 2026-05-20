@@ -6,6 +6,7 @@ import {
   calcGtin14CheckDigit,
   validateGtin14Input,
   buildBwipText,
+  addSvgDimensions,
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
@@ -38,21 +39,6 @@ const DEFAULT_AI_FIELDS: AiFieldState[] = [
 const SAMPLE_GTINS = ['0498700000001', '0498700000018', '0498700000025'];
 
 const MAX_CARDS = 10;
-
-/**
- * bwip-js の toSVG は viewBox のみで width/height を持たない SVG を返す。
- * width/height がないと:
- *   - flex コンテナでの描画が不安定になる
- *   - Image 要素の natural size が 0x0 になり PNG が空になる
- * viewBox から pixel 寸法を取り出して属性として追加する。
- */
-function addSvgDimensions(svg: string): string {
-  const m = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
-  if (!m) return svg;
-  const w = Math.round(parseFloat(m[1]));
-  const h = Math.round(parseFloat(m[2]));
-  return svg.replace('<svg viewBox=', `<svg width="${w}" height="${h}" viewBox=`);
-}
 
 // ─────────────────────────────────────────────
 // BarcodeCard
@@ -339,6 +325,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
           >
             <div
               aria-label={`GS1 DataBar ${gtinResult?.fullGtin} のバーコード`}
+              className="barcode-preview"
               dangerouslySetInnerHTML={{ __html: svgContent }}
             />
             <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
