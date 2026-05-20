@@ -569,6 +569,16 @@
     image-rendering: pixelated;
   }
 
+  /* === Gs1Databar: composite シンボル上部 AI テキスト (injectCompositeText) 色継承 ===
+     `injectCompositeText` (utils/gs1-databar.ts) が SVG に注入する <text> は
+     `fill="currentColor"` で親要素の color を継承する。本 class が container 側で
+     `color: var(--color-text)` を確定させることで、theme (light/dark) に追従した
+     text 色を実現する。class が外れると text の塗り色が UA default (通常 black)
+     にフォールバックして dark theme で読みにくくなるため削除しないこと。 */
+  .gs1-svg-container {
+    color: var(--color-text);
+  }
+
   /* === PR 4: Gs1Databar <details>/<summary> marker hide === */
   .summary-no-marker {
     list-style: none;

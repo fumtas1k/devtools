@@ -53,6 +53,11 @@ export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
     canvas.width = parseInt(m[1], 10) * RETINA_SCALE;
     canvas.height = parseInt(m[2], 10) * RETINA_SCALE;
     const ctx = canvas.getContext('2d')!;
+    // Canvas2D default は transparent。bwip-js / JsBarcode の SVG は背景 rect を持たない
+    // ため、一部 reader (Dynamsoft 等) が transparent を「黒」と解釈して decode 失敗する。
+    // scale 前に device px 単位で全面白塗り。詳細経緯 / 代替案: docs/decisions.md [082]。
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     // バーコード/QR の bar/space edge を sharp に保つため smoothing 無効化。
     // 有効のままだと SVG → Image → Canvas 経路で edge が灰色に滲み、scanner が
     // 黒/白の二値閾値で bar 幅を取り違えて decode 失敗する（GS1 DataBar の
@@ -100,6 +105,10 @@ export function downloadPngFromSvgElement(svgEl: SVGSVGElement, filename: string
     canvas.width = width * RETINA_SCALE;
     canvas.height = height * RETINA_SCALE;
     const ctx = canvas.getContext('2d')!;
+    // 背景を白で fill (svgContentToPngBlob と同じ理由: transparent 背景は reader が
+    // 黒 pixel と解釈して decode 失敗するため、scale 前の device px 単位で全面塗り)。
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     // bar/space の edge anti-aliasing を抑止 (svgContentToPngBlob と同じ理由)。
     ctx.imageSmoothingEnabled = false;
     ctx.scale(RETINA_SCALE, RETINA_SCALE);

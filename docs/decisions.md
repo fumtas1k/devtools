@@ -3171,3 +3171,98 @@ PR #450 (`height` オプション削除) と PR #453 (`shape-rendering="crispEdg
 - 過去 fix: PR #450 (`height` 削除), PR #453 (`shape-rendering` 注入)
 - 陽性対照 (composite): `tests/e2e/gs1-databar.spec.ts` の `composite シンボルに GS1 推奨の 10X quiet zone (paddingwidth) が確保されている`
 - 陽性対照 (non-composite): 同 spec の `non-composite シンボルには paddingwidth が適用されない`
+
+## [082] 2026-05-20 — PNG 変換 Canvas2D の透明背景が原因の reader decode 失敗を白塗りで解消
+
+### 背景
+
+`[081]` の `paddingwidth: 10` で composite の左右 quiet zone を GS1 推奨 10X に拡張したが、ユーザーから「ツールで生成した PNG (`gs1-databar-04987000000017.png`) が読取サイト (Dynamsoft Barcode Reader online) で `Found 0 barcodes` になるが、同 PNG を画面 screenshot 経由で再ラスタライズしたものは confidence=100 で decode 成功する」という事象が報告された。
+
+### 根本原因（仮説の差し替え経緯）
+
+**初期仮説 (誤り)**: 垂直 quiet zone (上下余白) の不足。bwip-js の `bordertop/borderbottom` が default 0 のため bars / CC-A 上端が image 上端に密着しており、image-based scanner が symbol 境界を検出できないと推定し、`paddingheight: 10` の追加を試した。
+
+しかし `paddingheight: 10` で上下 30 svg-px の quiet zone を確保しても、Dynamsoft は依然 `Found 0 barcodes` を返した。一方、同じ PNG の screenshot は依然 decode 成功する。垂直 quiet zone は decode 成立条件ではなかったため `paddingheight` 案は revert した。
+
+**真因 (実機 pixel 計測で確定)**: `src/utils/download.ts` の `svgContentToPngBlob` / `downloadPngFromSvgElement` が **Canvas2D default の透明背景** (RGBA=0,0,0,0) のまま `drawImage(svg)` を呼んでいた。bwip-js / JsBarcode の SVG は黒バーのみ `<path>` で描画し背景 `<rect>` を持たないため、生成 PNG の **quiet zone / バー間 pixel が完全 transparent** になっていた (Playwright で `getImageData` 計測: 4 隅すべて α=0, RGB=(0,0,0))。
+
+ブラウザ表示時はページ白背景が透過するため視覚上は白だが、image-based barcode reader (Dynamsoft 等) は **transparent pixel を「黒」と解釈** する実装があり、quiet zone が黒判定 → 全面ノイズ → decode 不能になっていた。screenshot 経由で読めるのは、ブラウザが PNG を白ページ上に rendering した結果を screen capture すると実 RGB 値が白になり、再生成 PNG が通常の white-background 画像になるためである。
+
+### 決定
+
+1. **PNG 変換 Canvas の背景を白で塗る** (`src/utils/download.ts`)
+   - `svgContentToPngBlob` / `downloadPngFromSvgElement` 両方で `ctx.scale()` 前に `ctx.fillStyle = 'white'` + `ctx.fillRect(0, 0, canvas.width, canvas.height)` を呼ぶ
+   - 順序は **fillRect (device px 単位) → ctx.scale (retina 変換) → drawImage (bars を overdraw)**。scale 後だと rect 寸法が CSS px 扱いになり半分しか塗れない
+   - 影響範囲: GS1 DataBar (`svgContentToPngBlob` 経由) と JAN コード (`downloadPngFromSvgElement` 経由) の両 PNG ダウンロード
+2. **陽性対照テスト** (`src/utils/__tests__/download.test.ts` + `tests/e2e/gs1-databar.spec.ts`):
+   - unit: `svgContentToPngBlob` / `downloadPngFromSvgElement` の `fillStyle === 'white'`, `fillRect` の引数 (canvas 全面 device px), 呼び出し順序 (fillRect → scale → drawImage) を assert (各経路 3 件 × 2 経路 = 6 件)
+   - E2E: composite 生成 PNG を Canvas で実生成し 4 隅の quiet zone pixel が `α=255 / RGB=(255,255,255)` であることを `getImageData` で assert。fix を revert すると α=0 (transparent) に戻り全件 fail する設計
+
+### 検討した代替案
+
+- **垂直 quiet zone (paddingheight) のみで解決を目指す**: 当初の仮説。実機検証で否定 (Dynamsoft 依然 `Found 0`)。screenshot 経由が読める真因は余白ではなく **再ラスタライズで透明→白に変換される** ことだった。誤仮説で追加した `paddingheight: 10` と陽性対照 2 件 (`non-composite シンボルに垂直 quiet zone` / `composite シンボルに垂直 quiet zone`) は user 判断で revert した (YAGNI: scope discipline 優先)
+- **SVG 側に背景 `<rect width="100%" height="100%" fill="white"/>` を注入**: bwip-js 出力の SVG を post-process することで Image→Canvas 経路に依存せず白背景を持たせる選択肢。だが SVG 内に rect を入れると `addSvgDimensions` の regex match 経路に影響し、preview 表示時の image-rendering: pixelated との相互作用も発生するため副作用が大きい。**Canvas 側で fill する方が影響範囲が局所的** (`svgContentToPngBlob` / `downloadPngFromSvgElement` の 2 関数のみ) で安全
+- **`canvas.getContext('2d', { alpha: false })`**: alpha チャネルを完全に無効化する選択肢。canvas の background が黒になる仕様で、`fillRect` で白塗りする必要があるため結局同じ工程になる。明示的な `fillStyle = 'white' + fillRect` のほうが意図が読みやすい
+
+### 結果・トレードオフ
+
+- ✅ Dynamsoft Barcode Reader (online) で composite シンボルが `Found 1 barcode (confidence: 100)` で decode 成功することを実機検証 (user 環境で確認)
+- ✅ JAN コード (`downloadPngFromSvgElement`) も同じ修正の恩恵を受け、同様の reader 互換性向上が見込まれる
+- ✅ SVG viewBox / preview の見た目は変更なし。PNG 画素値のみ「quiet zone を透明から白に変える」局所修正なので VRT baseline (`/tools/gs1-databar`) への影響は preview 経路では無し
+
+### 関連
+
+- 関連 fix: PR #456 (`paddingwidth: 10` for composite, decisions `[081]`)
+- 陽性対照 (unit): `src/utils/__tests__/download.test.ts` の `svgContentToPngBlob: PNG 背景白塗り (transparent decode 失敗修正)` describe / `downloadPngFromSvgElement` の `陽性対照: fillStyle が white にセットされて fillRect が canvas 全面で呼ばれる` / `陽性対照: 呼び出し順序は fillRect → scale → drawImage`
+- 陽性対照 (E2E): `tests/e2e/gs1-databar.spec.ts` の `生成 PNG の quiet zone が透明ではなく白 (α=255) で塗られている`
+
+## [083] 2026-05-21 — Gs1Databar 合成シンボル上部の AI テキスト injection を `injectCompositeText` 復活で再導入
+
+### 背景
+
+`[067]` update / PR #450 (commit `c563cf5`, 2026-05-19) は、合成シンボル (`databarlimitedcomposite`) 上部に AI テキスト ((17)YYMMDD / (10)LOT 等) を SVG `<text>` で注入する `injectCompositeText` 関数を撤去した。撤去理由として「テキストのディセンダー (paren `( )` の下端カーブ ~4px) が composite 上端の 1X quiet zone に侵入し Dynamsoft Barcode Reader が decode 不能 (0 件)」「textRowH を 3X gap (= 9px) に広げる代替案も decode 不能で撤回」と記録されていた。
+
+しかし `[082]` / PR #458 で composite PNG decode 不能の真因が **Canvas2D の透明背景** (`svgContentToPngBlob` が `fillStyle = 'white'` 未設定で α=0 のまま) と判明。PR #450 当時の実機検証はすべて透明背景時に行われており、descender 仮説は **transparent 背景という別バグに巻き込まれた red herring** だった可能性が極めて高いと user が指摘した。
+
+### 根本原因の再評価
+
+PR #450 で行った decode 検証 3 種類:
+
+1. `injectCompositeText` 有効、1X gap → Dynamsoft 0 件
+2. `injectCompositeText` 有効、3X gap (textRowH 拡大) → Dynamsoft 0 件
+3. `injectCompositeText` 撤去 → Dynamsoft 100% 認識
+
+3 検証はすべて PNG 背景が transparent のまま実施。reader が transparent pixel を黒判定するため、quiet zone の幅に関わらず全面ノイズ → decode 不能になっていた。撤去ケース (3) で decode 成功した理由は、SVG 出力が小さく screenshot 経由などで再ラスタライズされる経路を含んだ可能性がある (詳細は当時のテスト手順が残っていない)。
+
+実機 user 検証 (本 PR 2026-05-20): PR #458 の白背景 fix を merge した状態で `injectCompositeText` を旧 geometry (textRowH = fontSize + 6 = 24px、text baseline y=21、barcode translate y=24) でそのまま復活 → Dynamsoft online reader (https://demo.dynamsoft.com/barcode-reader-js/) で `Found 1 barcode + GS1_COMPOSITE + confidence: 100` の decode 成功を確認。
+
+descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「composite 周囲 1X quiet zone」要求自体は依然有効だが、image-based reader の binary threshold 動作には透明背景の方が遥かに支配的な影響を与えていた。
+
+### 決定
+
+1. **`escapeHtml` / `injectCompositeText` を `src/utils/gs1-databar.ts` に復元**: PR #450 撤去時 (commit `c563cf5`) から geometry / 関数シグネチャ不変で復元。コメントブロックで「PR #450 撤去 → PR #458 真因判明 → 本 PR 復活」の時系列を明示
+2. **`src/components/tools/Gs1Databar.tsx` の wiring を復元**: `addSvgDimensions(rawSvg)` 後に `compositeText` (非空時) を `injectCompositeText` に通す
+3. **`.gs1-svg-container` クラスを `src/styles/global.css` に復元**: `<text fill="currentColor">` が `color: var(--color-text)` を継承するための container 色設定。preview wrapper (`Gs1Databar.tsx:352`) に `barcode-preview gs1-svg-container` 併用
+4. **陽性対照テスト**:
+   - unit (`src/utils/__tests__/gs1-databar.test.ts`): `escapeHtml` 6 件 + `injectCompositeText` 8 件。geometry (y=21, height +=24, translate y=24)、XSS escape (`<script>` → `&lt;script&gt;`)、text < barcode width / text > barcode width の centering 両条件
+   - E2E (`tests/e2e/gs1-databar.spec.ts`): composite 入力時に `<text>` 要素 + `(17)...(10)...` 内容 + y="21" / text-anchor="middle" / fill="currentColor" を assert。non-composite (AI 未入力) では `<text>` 要素に AI 文字列が含まれないことも別 case で assert (常時 injection regression 検知)
+
+### 検討した代替案
+
+- **`textRowH` を旧 3X gap (= 34px) で安全側に**: GS1 spec 推奨に厳密に揃える案。だが旧 geometry (textRowH=24) で実機 decode 成功を確認できたため YAGNI で見送り。後続 reader 互換性問題が出たら拡張する
+- **AI テキストを SVG 外 (HTML レベル) で render**: preview には表示できるが downloaded PNG に反映されないため、印刷用バーコードとしての利用 (一般的な GS1 ラベル慣習) を満たさない。user 要求と不一致
+- **TEC-IT 等 reference 実装相当の独自 layout を組む**: 既存 `injectCompositeText` 復元で要件を満たすため過剰
+
+### 結果・トレードオフ
+
+- ✅ user 要求「合成シンボル内容を人間可読で確認」を満たす ((17)YYMMDD / (10)LOT 等を visual に確認可能)
+- ✅ Dynamsoft Barcode Reader (online) で `confidence: 100` decode 成功 (実機検証済 / 2026-05-20)
+- ✅ PR #458 白背景 fix と組み合わせで symbol 構造に影響なし
+- ⚠️ 生成 SVG / PNG の **全高が 24 svg-px 拡張** される (textRowH = fontSize + 6)。VRT baseline (`/tools/gs1-databar`) は composite シンボル表示時の差分が出る可能性 → CI `workflow_dispatch` で生成 → user 目視確認後に commit (CLAUDE.md 6.8)
+- ⚠️ AI 値が長い (例: lot 20 文字) と SVG 全幅が barcode より広がり centering される (旧実装の挙動と同じ)。preview / PNG の見た目は受け入れ可能だが、将来 layout 上の問題が出たら multi-line 対応も検討
+
+### 関連
+
+- 関連 fix: PR #450 (撤去, decisions `[067]` update) / PR #458 (透明背景真因判明, decisions `[082]`)
+- 陽性対照 (unit): `src/utils/__tests__/gs1-databar.test.ts` の `escapeHtml` / `injectCompositeText` describe
+- 陽性対照 (E2E): `tests/e2e/gs1-databar.spec.ts` の `composite シンボルに AI テキスト ((17)... (10)...) が SVG 上部に注入される` / `non-composite (AI フィールド未入力) シンボルには AI テキスト注入されない`

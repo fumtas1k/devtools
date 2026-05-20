@@ -4,6 +4,8 @@ import {
   validateGtin14Input,
   buildBwipText,
   addSvgDimensions,
+  escapeHtml,
+  injectCompositeText,
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
@@ -204,5 +206,154 @@ describe('addSvgDimensions', () => {
     expect(out).toContain('height="40"');
     expect(out).toContain('shape-rendering="crispEdges"');
     expect(out).toContain('class="foo"');
+  });
+});
+
+// ────────────────────────────────────────────
+// escapeHtml
+// ────────────────────────────────────────────
+//
+// 陽性対照: `injectCompositeText` が AI 値を SVG <text> として埋め込む際の XSS 対策。
+// fix を revert (関数削除 / `replace(/</g, ...)` 等の置換を削除) すると raw `<` `>`
+// `"` が SVG に流れて XSS / SVG 破損が起き、本 describe の expected/actual 比較で
+// 必ず差分が出て fail する設計。
+describe('escapeHtml', () => {
+  it('& は &amp; に変換される (最初に処理しないと連鎖 escape の事故になる)', () => {
+    expect(escapeHtml('Tom & Jerry')).toBe('Tom &amp; Jerry');
+  });
+
+  it('< と > はタグ injection 防止のため変換される', () => {
+    expect(escapeHtml('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('" は属性 injection 防止のため &quot; に変換される', () => {
+    expect(escapeHtml('say "hi"')).toBe('say &quot;hi&quot;');
+  });
+
+  it("' は属性 injection 防止のため &#039; に変換される", () => {
+    expect(escapeHtml("it's")).toBe('it&#039;s');
+  });
+
+  it('複数文字が混在しても順序通り escape される (& 先頭で連鎖 escape を防ぐ)', () => {
+    // `&` が `&amp;` に展開された後に再度 escape されると `&amp;amp;` になる事故を防ぐ。
+    expect(escapeHtml('a & b < c')).toBe('a &amp; b &lt; c');
+  });
+
+  it('escape 不要な文字 (英数記号 / 日本語) はそのまま', () => {
+    expect(escapeHtml('(17)231231(10)ABC123')).toBe('(17)231231(10)ABC123');
+    expect(escapeHtml('賞味期限')).toBe('賞味期限');
+  });
+});
+
+// ────────────────────────────────────────────
+// injectCompositeText
+// ────────────────────────────────────────────
+//
+// 陽性対照: PR #450 (commit c563cf5) で撤去された AI テキスト SVG injection を
+// PR #458 (透明背景真因判明) を受けて復活させる際の geometry / XSS 安全性 / dimension
+// 拡張の回帰防止テスト一式。
+//
+// fix revert (関数削除 / dimension 拡張ロジック削除 / escape 削除) で必ず fail する
+// 設計。具体的には:
+//   - 関数削除: import error → test ファイル全体 fail
+//   - dimension 拡張削除: newH = h + textRowH を確認する assert が fail
+//   - text 配置 y 削除: `<text ... y="21" ...>` 文字列が存在しない fail
+//   - XSS escape 削除: raw `<script>` が SVG 文字列に残って escape 検証 fail
+describe('injectCompositeText', () => {
+  // bwip-js + addSvgDimensions の出力に近い fixture
+  const baseSvg =
+    '<svg width="293" height="75" shape-rendering="crispEdges" viewBox="0 0 293 75"' +
+    ' xmlns="http://www.w3.org/2000/svg">' +
+    '<path stroke="#000000" stroke-width="3" d="M0 0L293 0"/></svg>';
+
+  it('空 text は SVG をそのまま返す (early return)', () => {
+    expect(injectCompositeText(baseSvg, '')).toBe(baseSvg);
+  });
+
+  it('viewBox を持たない SVG は変更せず返す (想定外 fixture 破壊防止)', () => {
+    const noVb = '<svg width="100" height="50"><path/></svg>';
+    expect(injectCompositeText(noVb, '(17)231231')).toBe(noVb);
+  });
+
+  it('text が injection され y=21 (textRowH - 3) に配置される', () => {
+    const out = injectCompositeText(baseSvg, '(17)231231(10)ABC123');
+    // text element の baseline 位置 (textRowH=24 - 3 = 21)
+    expect(out).toMatch(/<text [^>]*y="21" /);
+    // 中身は escape された AI 値
+    expect(out).toContain('>(17)231231(10)ABC123</text>');
+    expect(out).toContain('font-size="18"');
+    expect(out).toContain('text-anchor="middle"');
+    expect(out).toContain('fill="currentColor"');
+    expect(out).toContain('font-family="\'Courier New\',Courier,monospace"');
+  });
+
+  it('viewBox 高さは元の barcode 高さ + textRowH(24) に拡張される', () => {
+    const out = injectCompositeText(baseSvg, '(17)231231');
+    // baseSvg height=75 + textRowH=24 = 99
+    expect(out).toMatch(/viewBox="0 0 \S+ 99\.0"/);
+    expect(out).toContain('height="99"');
+  });
+
+  it('barcode が text より広いときは barcode 幅を維持し translate は y=24 のみ (横 shift 0)', () => {
+    // baseSvg width=293、text 長 10 文字 + padding 16 → 推定幅 ~76px < 293
+    const out = injectCompositeText(baseSvg, '(17)231231');
+    expect(out).toContain('width="293"');
+    expect(out).toMatch(/viewBox="0 0 293\.0 99\.0"/);
+    // translate(0, 24) で barcode は下方向のみ shift
+    expect(out).toContain('transform="translate(0.0,24)"');
+  });
+
+  it('text が barcode より広いときは SVG 幅を拡張し barcode を中央寄せする', () => {
+    // 54 文字 ((17) + '1'×50) × charW=10.8 + padding=16 = 599.2 > 293
+    const longText = '(17)' + '1'.repeat(50);
+    const out = injectCompositeText(baseSvg, longText);
+    expect(out).toMatch(/viewBox="0 0 599\.2 99\.0"/);
+    expect(out).toContain('width="599"'); // Math.round(599.2)
+    // (newW - barcodeW) / 2 = (599.2 - 293) / 2 = 153.1
+    expect(out).toContain('transform="translate(153.1,24)"');
+  });
+
+  it('XSS escape: <script> tag を含む text は &lt;script&gt; に escape される', () => {
+    const out = injectCompositeText(baseSvg, '<script>alert(1)</script>');
+    // raw `<script>` は SVG に出ない
+    expect(out).not.toContain('<script>');
+    expect(out).not.toContain('</script>');
+    // escape 後の文字列が text element 内に含まれる
+    expect(out).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('barcode 部は <g transform="translate(_, 24)"> でラップされる (元 inner を保持)', () => {
+    const out = injectCompositeText(baseSvg, '(17)231231');
+    // 元 SVG の <path .../> が <g transform="..."> 内に残る
+    expect(out).toMatch(/<g transform="translate\([\d.]+,24\)">.*<path[^>]*\/>.*<\/g>/s);
+  });
+
+  // 陽性対照 (#462 review A 対応): width / height 置換 regex は **<svg> 開始タグ内に
+  // anchor** されており、`<svg>` に width/height 属性が無く子要素にだけ `width="N"`
+  // がある場合に **子要素を wrong match して破壊しない** ことを実観測する。
+  //
+  // anchor を外して旧形 (`/width="\d+"/`) に戻すと、最初の match が子要素
+  // `<rect width="10">` になり `<rect width="76">` (newW=76) に誤置換されて
+  // 子要素 width assertion が必ず fail する設計 (test-gates 鉄則 1)。
+  //
+  // 実運用では `addSvgDimensions` が `<svg>` に width/height を必ず注入するため
+  // anchor の差は顕在化しないが、bwip-js / addSvgDimensions の将来変更で svg root
+  // から width/height が外れた場合の silent regression を防ぐ防御ガード。
+  it('<svg> ルートに width 属性無し + 子要素 <rect width="N"> ありの場合に子要素を破壊しない (anchor 検証)', () => {
+    // svg root に width/height 属性なし、viewBox のみ。子要素 <rect width="10">。
+    // injectCompositeText は viewBox から barcodeW=100 / h=50 を取得して動作する。
+    const svgNoRootWidth =
+      '<svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="10" height="20" fill="#000"/></svg>';
+    // text 長さ 10 文字 → estimatedTextW = 10 * 10.8 + 16 = 124 → newW = max(100, 124) = 124
+    // newH = 50 + 24 = 74
+    const out = injectCompositeText(svgNoRootWidth, '(17)231231');
+    // 子要素 <rect> の width / height は元のまま (10 / 20)。
+    // 旧 regex (anchor 無し) なら最初の `width="10"` が `width="124"` に誤置換されて
+    // `<rect width="124" height="74">` になり、本 assert が fail する。
+    expect(out).toMatch(/<rect width="10" height="20"/);
+    // svg root には元々 width 属性が無いため anchor 付き regex は no-op (注入もしない)。
+    // viewBox は別 regex で更新される (anchor 無関係)。
+    expect(out).toMatch(/viewBox="0 0 124\.0 74\.0"/);
   });
 });

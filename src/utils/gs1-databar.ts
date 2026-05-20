@@ -196,3 +196,98 @@ export function addSvgDimensions(svg: string): string {
     `${beforeViewBox} viewBox="0 0 ${wStr} ${hStr}"${afterViewBox}>`;
   return svg.replace(originalTag, newTag);
 }
+
+/**
+ * HTML/XML 特殊文字をエスケープする (`injectCompositeText` の安全な text 注入用)。
+ */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * 合成シンボル (`databarlimitedcomposite`) の上に AI テキストを SVG `<text>` で注入する。
+ *
+ * bwip-js の `includetext: true` は linear 部の `(01)GTIN` のみ render するため、
+ * AI 値 ((17)YYMMDD / (10)LOT 等) は barcode binary に encode されるだけで visual には
+ * 出ない。本関数は SVG 文字列を直接操作して composite 上に AI テキスト行を 1 行追加する。
+ *
+ * ## 復活の経緯 (PR #450 → PR #458 → 本 PR)
+ * - PR #450 (commit `c563cf5`): 「テキストのディセンダーが composite 上端 1X quiet
+ *   zone に侵入して Dynamsoft Reader decode 不能」を根拠に撤去 (decisions [067] update)。
+ *   `textRowH` を 3X gap (= 9px) に広げる alternative も decode 不能で撤回。
+ * - PR #458 (commit `977f6b6`): composite PNG decode 不能の真因が **Canvas2D の透明
+ *   背景** (`svgContentToPngBlob` で `fillStyle = 'white'` 未設定) だったと判明。
+ *   PR #450 の検証はすべて透明背景時に行われたため、descender 仮説は red herring
+ *   だった可能性が高い (decisions [082])。
+ * - 本 PR (decisions [083]): 白背景 fix とセットなら decode 成功するという user 仮説を
+ *   実機 Dynamsoft で empirical 検証 → 成功 → 復活。
+ *
+ * ## geometry
+ * - `fontSize = 18`, `textRowH = fontSize + 6 = 24`
+ * - text baseline `y = textRowH - 3 = 21` (Courier New descender ~4px 含む)
+ * - barcode 全体を `translate(_, textRowH)` で下に 24px shift
+ * - text が barcode より広いときは centering (`(newW - barcodeW) / 2`)
+ *
+ * ## 引数
+ * @param svg - bwip-js が生成 + `addSvgDimensions` 済み SVG 文字列。viewBox / width /
+ *   height 属性が必須 (regex で抽出するため)。
+ * @param text - 注入する **raw** 文字列 (例: `(17)231231(10)ABC123`)。内部で
+ *   `escapeHtml` を適用するため、呼出側で escape してはならない (二重 escape で `&amp;`
+ *   が文字として表示される事故になる)。
+ * @returns text を注入した SVG 文字列。`text` が空なら入力 SVG をそのまま返す。
+ *
+ * ## 色
+ * `<text>` の `fill="currentColor"` で親要素の `color` を継承する。`Gs1Databar.tsx`
+ * の preview wrapper は `.gs1-svg-container` クラスで `color: var(--color-text)` を
+ * 設定する前提 (`global.css`)。親 className を変更する際は color 設定を維持すること。
+ */
+export function injectCompositeText(svg: string, text: string): string {
+  if (!text) return svg;
+
+  const escapedText = escapeHtml(text);
+  const vbMatch = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  if (!vbMatch) return svg;
+  const barcodeW = parseFloat(vbMatch[1]);
+  const h = parseFloat(vbMatch[2]);
+
+  const fontSize = 18;
+  const textRowH = fontSize + 6;
+
+  // Courier New monospace: 1 文字あたり約 0.6em。
+  // 見積もりはエスケープ前の文字数で行う (ブラウザは実体参照を 1 文字分で描画するため)。
+  const charW = fontSize * 0.6;
+  const padding = 16;
+  const estimatedTextW = text.length * charW + padding;
+
+  // text が barcode より広い場合は SVG 全体を横に拡張し barcode を中央寄せする。
+  const newW = Math.max(barcodeW, estimatedTextW);
+  const newH = h + textRowH;
+  const barcodeOffsetX = (newW - barcodeW) / 2;
+
+  // 置換 regex は `<svg` 開始タグ内 (`<svg ... width="N" height="N" ...>`) に anchor する。
+  // 将来 bwip-js が SVG 内に `<rect width="N">` 等の子要素を含むようになった場合に
+  // **最初の match が子要素になって wrong match する** silent regression を防ぐ (#462 review A)。
+  const result = svg
+    .replace(/viewBox="0 0 [\d.]+ [\d.]+"/, `viewBox="0 0 ${newW.toFixed(1)} ${newH.toFixed(1)}"`)
+    .replace(/(<svg\s[^>]*?)width="\d+"/, `$1width="${Math.round(newW)}"`)
+    .replace(/(<svg\s[^>]*?)height="\d+"/, `$1height="${Math.round(newH)}"`);
+
+  const openEnd = result.indexOf('>') + 1;
+  const closeStart = result.lastIndexOf('</svg>');
+  const openTag = result.slice(0, openEnd);
+  const inner = result.slice(openEnd, closeStart);
+
+  const textEl =
+    `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" ` +
+    `text-anchor="middle" font-family="'Courier New',Courier,monospace" ` +
+    `font-size="${fontSize}" fill="currentColor">${escapedText}</text>`;
+
+  const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
+
+  return `${openTag}${textEl}<g transform="${barcodeTranslate}">${inner}</g></svg>`;
+}

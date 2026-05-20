@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { withProductionCsp } from './helpers';
 
 test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
@@ -235,6 +236,156 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       // `paddingwidth: 10` が誤って適用された場合は 30 svg-px 更に右にシフト
       // (≈ 37) するため、< 25 の閾値で確実に分離できる。
       expect(leftPaddingPx).toBeLessThan(25);
+    });
+  });
+
+  // 陽性対照: composite シンボル上部に `injectCompositeText` で AI テキストが注入
+  // されることを実 preview SVG で検証する。
+  //
+  // PR #450 で撤去された関数を PR #458 (透明背景真因判明) を受けて復活させた経緯
+  // (decisions [083])。`src/utils/gs1-databar.ts` の `injectCompositeText` を削除
+  // または `Gs1Databar.tsx` の wiring (`compositeText ? injectCompositeText(...) : sizedSvg`)
+  // を削ると本 test の text 要素 / 文字列 / y=21 配置 assert が全て fail する。
+  //
+  // non-composite (AI フィールド未入力) では injection されない (`compositeText` が
+  // 空文字で early return) ことも別 case で確認し、誤って常時注入する regression
+  // を捕捉する。
+  test('composite シンボルに AI テキスト ((17)... (10)...) が SVG 上部に注入される（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await page.getByLabel('AI フィールド値 1').fill('231231');
+      await page.getByLabel('AI フィールド値 2').fill('ABC123');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      const inspection = await page.getByLabel(/GS1 DataBar.*のバーコード/).evaluate((el) => {
+        const svg = el.querySelector('svg');
+        if (!svg) return null;
+        const textEls = Array.from(svg.querySelectorAll('text'));
+        const compositeText = textEls.find((t) => /\(17\).*\(10\)/.test(t.textContent ?? ''));
+        if (!compositeText) {
+          return { found: false, textContents: textEls.map((t) => t.textContent) };
+        }
+        return {
+          found: true,
+          content: compositeText.textContent,
+          y: compositeText.getAttribute('y'),
+          textAnchor: compositeText.getAttribute('text-anchor'),
+          fontSize: compositeText.getAttribute('font-size'),
+          fill: compositeText.getAttribute('fill'),
+        };
+      });
+
+      expect(inspection?.found, '<text> 要素が AI テキストを含んで存在する').toBe(true);
+      // バー code text 表示 = "(17)YYMMDD(10)LOT" の compact 形式 (decisions [083] user 決定)
+      expect(inspection?.content).toBe('(17)231231(10)ABC123');
+      // geometry: textRowH - 3 = 24 - 3 = 21 (Courier New baseline)
+      expect(inspection?.y).toBe('21');
+      expect(inspection?.textAnchor).toBe('middle');
+      expect(inspection?.fontSize).toBe('18');
+      // <text> の塗り色は `.gs1-svg-container` の color から継承 (global.css)
+      expect(inspection?.fill).toBe('currentColor');
+    });
+  });
+
+  test('non-composite (AI フィールド未入力) シンボルには AI テキスト注入されない（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      // GTIN のみ入力 (`compositeText` が空文字 → injectCompositeText は early return)
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      const aiTextPresent = await page.getByLabel(/GS1 DataBar.*のバーコード/).evaluate((el) => {
+        const svg = el.querySelector('svg');
+        if (!svg) return false;
+        // bwip-js の `includetext: true` で linear 部 "(01)GTIN" は出るが
+        // それは <text> ではなく <path> として描画される。AI テキスト形式
+        // `(17)` / `(10)` の <text> 要素は injection されないはず。
+        const textEls = Array.from(svg.querySelectorAll('text'));
+        return textEls.some((t) => /\(17\)|\(10\)|\(11\)|\(15\)|\(21\)/.test(t.textContent ?? ''));
+      });
+      expect(aiTextPresent).toBe(false);
+    });
+  });
+
+  // 陽性対照: 生成 PNG の **背景が transparent ではなく白 (RGBA=255,255,255,255)**
+  // であることを **実 download click 経路** で検証する。
+  //
+  // 旧実装は Canvas2D default の transparent 背景 (RGBA=0,0,0,0) のまま drawImage
+  // していたため、quiet zone / バー間 pixel が完全 transparent になり、image-based
+  // barcode reader (Dynamsoft Barcode Reader 等) が transparent pixel を「黒」と
+  // 解釈して decode 失敗していた (実例: dev server 生成 PNG → Dynamsoft 0 件、
+  // 同 PNG を画面 screenshot → 同 reader で confidence=100 で decode 成功)。
+  //
+  // `src/utils/download.ts` の svgContentToPngBlob で `ctx.fillStyle = 'white'` +
+  // `ctx.fillRect(0, 0, canvas.width, canvas.height)` を scale 前に呼ぶことで
+  // PNG 背景を実 RGB 白として記録する。
+  //
+  // 検証方法 (#458 review C 対応):
+  //  - PNG ダウンロードボタン click → page.waitForEvent('download') で実 blob を受け取る
+  //  - download.path() で OS 一時 file に書き出された実 PNG を Node fs で読み込む
+  //  - その PNG を base64 化して page.evaluate 内に渡し、<img> → canvas drawImage 経由で
+  //    pixel を decode → 4 隅 quiet zone の RGBA を sampling
+  //  - 本物の svgContentToPngBlob (download.ts) の出力 PNG を assert する経路なので、
+  //    fix を revert すると α=0 (transparent) に戻り全件 fail する設計を維持
+  //  - 旧版 (test 内で svgContentToPngBlob を再実装) は本実装を bypass する false
+  //    negative リスクがあったため、実 production code 経由に置換
+  test('生成 PNG の quiet zone が透明ではなく白 (α=255) で塗られている（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      // composite を生成 (PNG dimensions: 293 × 75 @ scale=3, paddingwidth=10)
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await page.getByLabel('AI フィールド値 2').fill('ABC123');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      // 実 download click → OS 一時 file 取得
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'PNGダウンロード' }).click();
+      const download = await downloadPromise;
+      const path = await download.path();
+      expect(path, 'download path should be defined').toBeTruthy();
+
+      // 実 PNG を読み込み base64 化して browser に転送 → <img> 経由で pixel decode
+      const pngBase64 = (await readFile(path!)).toString('base64');
+      const samples = await page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = 'data:image/png;base64,' + b64;
+        await img.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(img, 0, 0);
+        // quiet zone 4 隅で sampling (image-based reader が境界検出に使う領域)
+        const points = [
+          { name: 'top-left', x: 5, y: 5 },
+          { name: 'top-right', x: canvas.width - 5, y: 5 },
+          { name: 'bottom-left', x: 5, y: canvas.height - 5 },
+          { name: 'bottom-right', x: canvas.width - 5, y: canvas.height - 5 },
+        ];
+        return {
+          width: canvas.width,
+          height: canvas.height,
+          pixels: points.map((p) => {
+            const d = ctx.getImageData(p.x, p.y, 1, 1).data;
+            return { name: p.name, r: d[0], g: d[1], b: d[2], a: d[3] };
+          }),
+        };
+      }, pngBase64);
+
+      expect(samples).not.toBeNull();
+      // 全 quiet zone 4 隅で α=255 / RGB=(255,255,255) (transparent 0 ではなく白)
+      // fix revert 時は α=0, RGB=(0,0,0) になり全件 fail する。
+      for (const s of samples!.pixels) {
+        expect.soft(s.a, `${s.name} alpha`).toBe(255);
+        expect.soft(s.r, `${s.name} red`).toBe(255);
+        expect.soft(s.g, `${s.name} green`).toBe(255);
+        expect.soft(s.b, `${s.name} blue`).toBe(255);
+      }
     });
   });
 });
