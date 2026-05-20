@@ -175,6 +175,10 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       // SVG viewBox の min-x からシンボル左端までの padding を svg-px で取得。
       // bwip-js は描画要素を <path>/<rect> で出力する。最も左にある描画要素の
       // x 座標 (= 左端からの padding) を測定する。
+      // `<text>` (includetext: true の人間可読 GTIN) は textxalign='center' で
+      // symbol 中央配置されるため最左にならないが、stroke-width 計算で getBBox
+      // の挙動が path/rect と微妙に異なるため、quiet zone 計測対象から明示的に
+      // 除外する (rect, path のみを query)。
       const leftPaddingPx = await preview.evaluate((el) => {
         const svg = el.querySelector('svg');
         if (!svg) return -1;
@@ -193,6 +197,44 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       // 浮動小数点誤差が乗る可能性があるため > 25 で判定する (paddingwidth 削除時は
       // 0〜3 svg-px 程度になるため十分な余裕)。
       expect(leftPaddingPx).toBeGreaterThan(25);
+    });
+  });
+
+  // 陽性対照 (補): non-composite (`databarlimited` 単独) には `paddingwidth` が
+  // **適用されない** ことを assert する。renlinear が default で持つ
+  // `borderleft: 10` (10X quiet zone) のみ反映され、symbol 全幅が必要以上に
+  // 拡大しない設計を回帰防止する。
+  //
+  // 検証方法: GTIN のみ入力 (AI フィールド未入力) → `hasAnyAiValue=false` →
+  // `databarlimited` 経路 + paddingwidth スキップ。最左描画要素の x が
+  // 25 svg-px 未満であることを assert。`paddingwidth: 10` を non-composite にも
+  // 誤って適用すると leftmost x が 37 svg-px 付近に shift して fail する。
+  test('non-composite シンボルには paddingwidth が適用されない（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      // GTIN のみ入力 (AI フィールド未入力で composite 経路に入らない)
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      const preview = page.getByLabel(/GS1 DataBar.*のバーコード/);
+      const leftPaddingPx = await preview.evaluate((el) => {
+        const svg = el.querySelector('svg');
+        if (!svg) return -1;
+        const items = svg.querySelectorAll('rect, path');
+        let minX = Infinity;
+        for (const it of items) {
+          const bbox = (it as SVGGraphicsElement).getBBox();
+          if (bbox.x < minX) minX = bbox.x;
+        }
+        return Number.isFinite(minX) ? minX : -1;
+      });
+
+      // renlinear の borderleft=10 (X-dim) + scale=3 = 30 svg-px 内に最初のバーが
+      // 入る (実測 M.x=8.50 付近, stroke-width 込みで getBBox.x ≈ 7)。
+      // `paddingwidth: 10` が誤って適用された場合は 30 svg-px 更に右にシフト
+      // (≈ 37) するため、< 25 の閾値で確実に分離できる。
+      expect(leftPaddingPx).toBeLessThan(25);
     });
   });
 });

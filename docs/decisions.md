@@ -3138,12 +3138,16 @@ PR #450 (`height` オプション削除) と PR #453 (`shape-rendering="crispEdg
 
 ### 決断
 
-1. **`bwipjs.toSVG()` に `paddingwidth: 10` を追加** (`src/components/tools/Gs1Databar.tsx`)
+1. **`bwipjs.toSVG()` に `paddingwidth: 10` を composite 時のみ条件付き適用** (`src/components/tools/Gs1Databar.tsx`)
    - `FixupOptions` (`bwip-js` 公式 type 定義) で `paddingleft = paddingright = 10 * scale = 30 svg-px` が viewBox 左右に挿入される
    - renlinear が linear 部に確保していた 10X とは別経路で、**CC 部含む symbol 外周** に GS1 推奨の 10X quiet zone を確実に確保
    - 結果として CC 左右の quiet zone は実質 `1X (micropdf417 内側) + 10X (paddingwidth)` に拡張され、厳密実装のスキャナでも CC を分離検出できる
+   - **non-composite (`databarlimited` 単独) には適用しない**: renlinear が default で持つ `borderleft/right=10` で既に 10X quiet zone が確保されているため、`paddingwidth: 10` を追加すると実質 20X となり symbol 全幅が必要以上に拡大する (仕様違反ではないが過剰)。`isComposite = hasAnyAiValue` の判定で適用範囲を composite に限定し、レイアウト影響を最小化する (#456 レビュー指摘)
 2. **PR #450 のコメントを訂正**: `Gs1Databar.tsx` の `bwipjs.toSVG()` 上の説明を「~1X×1X 正方形モジュール」から「CC-A 1X × 2X (ISO/IEC 24723 準拠) + CC 部 quiet zone 不足の経緯」に書き直し、将来の誤解の温床を断つ
-3. **陽性対照テスト** (`tests/e2e/gs1-databar.spec.ts`): composite シンボルを生成し SVG の最も左にある描画要素 (`<path>`) の `getBBox().x` が `> 25 svg-px` であることを assert。`paddingwidth` を削ると leftmost x が 4.01 → 削除時 fail、`paddingwidth: 10` 適用時は 34.01 → pass。test-gates skill 要件 (旧実装で fail することを実機検証) も満たす
+3. **陽性対照テスト 2 件** (`tests/e2e/gs1-databar.spec.ts`):
+   - **composite 経路**: AI フィールド入力で composite シンボルを生成し SVG の最も左にある描画要素 (`<path>`) の `getBBox().x` が `> 25 svg-px` であることを assert。`paddingwidth` を削ると leftmost x が 4.01 → 削除時 fail、`paddingwidth: 10` 適用時は 34.01 → pass
+   - **non-composite 経路**: GTIN のみ入力 (AI フィールド未入力) で `databarlimited` 単独を生成し `getBBox().x` が `< 25 svg-px` であることを assert。条件分岐を削除して常時 `paddingwidth: 10` 適用する旧実装に戻すと leftmost x が 7 → 37 にシフトして fail することを実機検証済
+   - 両方とも test-gates skill 要件 (旧実装で fail することを実機検証) を満たす
 
 ### 却下した選択肢
 
@@ -3151,16 +3155,19 @@ PR #450 (`height` オプション削除) と PR #453 (`shape-rendering="crispEdg
 - **`parse: true` / `parsefnc: true` 追加**: 現コードの bracket syntax `(01)x|(10)y` は bwip-js の `gs1process` が既に自動処理しているため不要
 - **`scale` を 3 → 4/5 に増やす**: 横方向の X-dim は既に linear と CC で一致しており、scale 増加では quiet zone 不足の根本解決にならない
 - **`ccversion: 'b'` で CC-B 強制**: ユーザー要件 (CC-A 維持) に反する
+- **`paddingwidth: 10` を non-composite にも常時適用**: renlinear で既に 10X 確保されているため二重 padding (実質 20X) になり symbol 幅が必要以上に拡大。GS1 仕様違反ではないが過剰。条件分岐で composite のみに限定 (上記 1) する方針
 
 ### 結果・トレードオフ
 
 - ✅ CC 部の左右 quiet zone が GS1 推奨の 10X (実質 11X) に拡張され、厳密実装スキャナでも CC-A を分離検出できる見込み
 - ✅ PR #450 の GS1 仕様誤読がコード comment 上から除去され、将来「~1X×1X」を根拠にした逆走 fix を防げる
-- ⚠️ SVG / PNG の symbol 全幅が 60 svg-px 拡張される → VRT baseline 差分が確定発生。CLAUDE.md 6.8 に従い数値根拠で baseline 更新を recommend せず、user 目視確認後に CI `workflow_dispatch` で更新
+- ✅ non-composite (`databarlimited` 単独) は従来通りの symbol 幅を維持。VRT baseline 差分は composite 経路に限定される
+- ⚠️ composite シンボル (`databarlimitedcomposite`) の SVG / PNG 全幅は 60 svg-px 拡張される → composite ケースの VRT baseline 差分が発生する可能性がある。CLAUDE.md 6.8 に従い数値根拠で baseline 更新を recommend せず、user 目視確認後に CI `workflow_dispatch` で更新
 - ⚠️ 実機スキャナで decode 改善するかは user 検証次第。改善しない場合は `paddingheight: 2` (CC 上下 2X 追加) / `rowmult: 1` (spec 違反だが scanner 寛容性に賭ける) を段階的に試す別 issue を起票する
 
 ### 関連
 
 - bwip-js 公式 type (`node_modules/bwip-js/dist/bwip-js.d.ts:79-85`): `paddingwidth` / `paddingleft` 等は公式 typed option
 - 過去 fix: PR #450 (`height` 削除), PR #453 (`shape-rendering` 注入)
-- 陽性対照: `tests/e2e/gs1-databar.spec.ts` の `composite シンボルに GS1 推奨の 10X quiet zone (paddingwidth) が確保されている`
+- 陽性対照 (composite): `tests/e2e/gs1-databar.spec.ts` の `composite シンボルに GS1 推奨の 10X quiet zone (paddingwidth) が確保されている`
+- 陽性対照 (non-composite): 同 spec の `non-composite シンボルには paddingwidth が適用されない`

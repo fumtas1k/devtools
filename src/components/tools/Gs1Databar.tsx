@@ -95,7 +95,8 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
     );
 
     try {
-      const bcid = hasAnyAiValue ? 'databarlimitedcomposite' : 'databarlimited';
+      const isComposite = hasAnyAiValue;
+      const bcid = isComposite ? 'databarlimitedcomposite' : 'databarlimited';
       // bwip-js v4.9.0 メモ (composite component):
       //  - `databarlimitedcomposite` は linear を `bwipp_renlinear`、CC を
       //    `bwipp_renmatrix` で別経路描画する。`height` オプションは renmatrix の
@@ -110,11 +111,16 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
       //    1X だとスキャナの実装次第で CC を分離検出できず GTIN だけ返って CC-A
       //    (AI 10 等) が decode 不能になる。`paddingwidth: 10` で symbol 外周に
       //    GS1 推奨の 10X quiet zone を確実に確保する。
+      //  - **`paddingwidth` は composite 時のみ適用**: non-composite (databarlimited
+      //    単独) は renlinear が既に 10X quiet zone を確保しているため、追加すると
+      //    実質 20X となり symbol 全幅が必要以上に拡大する (仕様違反ではないが過剰)。
+      //    composite 経路の CC 部だけが quiet zone 不足の問題を持つので適用範囲を
+      //    限定する。
       const rawSvg = bwipjs.toSVG({
         bcid,
         text: bwipText,
         scale: 3,
-        paddingwidth: 10,
+        ...(isComposite ? { paddingwidth: 10 } : {}),
         includetext: true,
         textxalign: 'center',
         textsize: 7,
