@@ -7,6 +7,7 @@ import {
   validateGtin14Input,
   buildBwipText,
   addSvgDimensions,
+  injectCompositeText,
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
@@ -126,13 +127,20 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         textsize: 7,
       });
 
-      // composite component 上に AI テキスト ((17)... 等) を SVG injection する
-      // 旧実装は、テキストのディセンダーが composite 上端の quiet zone (1X) に
-      // 侵入してスキャナが decode 不能になる問題があった (Dynamsoft Reader 0 件 →
-      // injection 撤去で `GS1_COMPOSITE` 100% 認識を確認)。textRowH を広げて
-      // quiet zone を 3X 確保する案も検証したが decode 不能のため撤回し撤去で確定。
-      // 合成シンボル内の AI 値は下部の「GS1文字列を見る」セクションで人間可読として確認できる。
-      const finalSvg = addSvgDimensions(rawSvg);
+      // composite component 上に AI テキスト ((17)... 等) を SVG injection する。
+      //
+      // 経緯: PR #450 (commit c563cf5) は「ディセンダーが composite 上端 1X quiet
+      // zone に侵入して Dynamsoft Reader が decode 不能」を理由に撤去したが、PR #458
+      // (commit 977f6b6) で真因は **Canvas2D の透明背景** (一部 reader が transparent
+      // pixel を黒判定) と判明。PR #450 の検証はすべて透明背景時だったため descender
+      // 仮説は red herring と判断、白背景 fix とセットで復活させ user 実機検証で
+      // decode 成功を確認した (decisions [083])。
+      const compositeText = aiFields
+        .filter((f) => f.value.trim() !== '')
+        .map((f) => `(${f.ai})${f.value.trim()}`)
+        .join('');
+      const sizedSvg = addSvgDimensions(rawSvg);
+      const finalSvg = compositeText ? injectCompositeText(sizedSvg, compositeText) : sizedSvg;
       setSvgContent(finalSvg);
       setBwipError('');
       onSvgChangeRef.current(finalSvg, gtinResult.fullGtin);
@@ -341,7 +349,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
           >
             <div
               aria-label={`GS1 DataBar ${gtinResult?.fullGtin} のバーコード`}
-              className="barcode-preview"
+              className="barcode-preview gs1-svg-container"
               dangerouslySetInnerHTML={{ __html: svgContent }}
             />
             <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
