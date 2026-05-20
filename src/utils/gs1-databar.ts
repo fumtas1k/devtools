@@ -179,6 +179,11 @@ export function buildBwipText(
  * 属性順依存を避けるため <svg> 開始タグ全体を regex で捕捉し、`viewBox` の
  * 前後どちらに `xmlns` 等が来ても動くようにする (bwip-js upgrade で属性順が
  * 変わっても silent regression しないようにするため)。
+ *
+ * 出力契約 (downstream dependency): 注入する `width=...` と `height=...` は
+ * 連続して並べる。これは `utils/download.ts` の `svgContentToPngBlob` が
+ * `match(/width="(\d+)" height="(\d+)"/)` で canvas サイズを抽出するため
+ * (隣接していないと match 失敗 → reject)。間に他属性を挟まないこと。
  */
 export function addSvgDimensions(svg: string): string {
   const openTagMatch = svg.match(/<svg(\s[^>]*?)?\s+viewBox="0 0 ([\d.]+) ([\d.]+)"([^>]*)>/);
