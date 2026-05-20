@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { withProductionCsp } from './helpers';
 
 test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
@@ -239,7 +240,7 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
   });
 
   // 陽性対照: 生成 PNG の **背景が transparent ではなく白 (RGBA=255,255,255,255)**
-  // であることをブラウザ実機で検証する。
+  // であることを **実 download click 経路** で検証する。
   //
   // 旧実装は Canvas2D default の transparent 背景 (RGBA=0,0,0,0) のまま drawImage
   // していたため、quiet zone / バー間 pixel が完全 transparent になり、image-based
@@ -251,65 +252,64 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
   // `ctx.fillRect(0, 0, canvas.width, canvas.height)` を scale 前に呼ぶことで
   // PNG 背景を実 RGB 白として記録する。
   //
-  // 検証方法: ツールが実 download に使う経路 (svgContentToPngBlob と同等) を
-  // 再現し、quiet zone 領域の pixel が α=255 / RGB=(255,255,255) であることを
-  // ImageData 経由で assert。fix を revert すると α=0 (transparent) に戻り fail する。
+  // 検証方法 (#458 review C 対応):
+  //  - PNG ダウンロードボタン click → page.waitForEvent('download') で実 blob を受け取る
+  //  - download.path() で OS 一時 file に書き出された実 PNG を Node fs で読み込む
+  //  - その PNG を base64 化して page.evaluate 内に渡し、<img> → canvas drawImage 経由で
+  //    pixel を decode → 4 隅 quiet zone の RGBA を sampling
+  //  - 本物の svgContentToPngBlob (download.ts) の出力 PNG を assert する経路なので、
+  //    fix を revert すると α=0 (transparent) に戻り全件 fail する設計を維持
+  //  - 旧版 (test 内で svgContentToPngBlob を再実装) は本実装を bypass する false
+  //    negative リスクがあったため、実 production code 経由に置換
   test('生成 PNG の quiet zone が透明ではなく白 (α=255) で塗られている（陽性対照 / CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
-      // composite を生成 (paddingheight + 全 4 辺の quiet zone を持つ最大サイズ)
+      // composite を生成 (PNG dimensions: 293 × 75 @ scale=3, paddingwidth=10)
       await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
       await page.getByLabel('AI フィールド値 2').fill('ABC123');
       await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
 
-      const samples = await page.evaluate(async () => {
-        const preview = document.querySelector('[aria-label*="のバーコード"]');
-        const svg = preview?.querySelector('svg');
-        if (!svg) return null;
-        const svgContent = svg.outerHTML;
-        const m = svgContent.match(/width="(\d+)" height="(\d+)"/);
-        if (!m) return null;
-        const w = parseInt(m[1], 10);
-        const h = parseInt(m[2], 10);
-        const RETINA_SCALE = 2;
+      // 実 download click → OS 一時 file 取得
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'PNGダウンロード' }).click();
+      const download = await downloadPromise;
+      const path = await download.path();
+      expect(path, 'download path should be defined').toBeTruthy();
+
+      // 実 PNG を読み込み base64 化して browser に転送 → <img> 経由で pixel decode
+      const pngBase64 = (await readFile(path!)).toString('base64');
+      const samples = await page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = 'data:image/png;base64,' + b64;
+        await img.decode();
         const canvas = document.createElement('canvas');
-        canvas.width = w * RETINA_SCALE;
-        canvas.height = h * RETINA_SCALE;
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
-        // 本物の svgContentToPngBlob と完全に同じ順序を再現
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.imageSmoothingEnabled = false;
-        ctx.scale(RETINA_SCALE, RETINA_SCALE);
-        const img = new Image();
-        const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        await new Promise<void>((res, rej) => {
-          img.onload = () => res();
-          img.onerror = () => rej(new Error('img load failed'));
-          img.src = url;
-        });
         ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-        // quiet zone 4 隅で sampling
+        // quiet zone 4 隅で sampling (image-based reader が境界検出に使う領域)
         const points = [
           { name: 'top-left', x: 5, y: 5 },
           { name: 'top-right', x: canvas.width - 5, y: 5 },
           { name: 'bottom-left', x: 5, y: canvas.height - 5 },
           { name: 'bottom-right', x: canvas.width - 5, y: canvas.height - 5 },
         ];
-        return points.map((p) => {
-          const d = ctx.getImageData(p.x, p.y, 1, 1).data;
-          return { name: p.name, r: d[0], g: d[1], b: d[2], a: d[3] };
-        });
-      });
+        return {
+          width: canvas.width,
+          height: canvas.height,
+          pixels: points.map((p) => {
+            const d = ctx.getImageData(p.x, p.y, 1, 1).data;
+            return { name: p.name, r: d[0], g: d[1], b: d[2], a: d[3] };
+          }),
+        };
+      }, pngBase64);
 
       expect(samples).not.toBeNull();
       // 全 quiet zone 4 隅で α=255 / RGB=(255,255,255) (transparent 0 ではなく白)
       // fix revert 時は α=0, RGB=(0,0,0) になり全件 fail する。
-      for (const s of samples!) {
+      for (const s of samples!.pixels) {
         expect.soft(s.a, `${s.name} alpha`).toBe(255);
         expect.soft(s.r, `${s.name} red`).toBe(255);
         expect.soft(s.g, `${s.name} green`).toBe(255);

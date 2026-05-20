@@ -53,16 +53,9 @@ export function svgContentToPngBlob(svgContent: string): Promise<Blob> {
     canvas.width = parseInt(m[1], 10) * RETINA_SCALE;
     canvas.height = parseInt(m[2], 10) * RETINA_SCALE;
     const ctx = canvas.getContext('2d')!;
-    // Canvas2D の default 背景は **transparent (RGBA=0,0,0,0)**。bwip-js / JsBarcode の
-    // SVG は背景 rect を持たず黒バーのみ <path>/<rect> で描画するため、`drawImage` 後の
-    // PNG は bars 以外が全 transparent になる。ブラウザ表示時は白ページ背景が透過するため
-    // 視覚上は白だが、image-based barcode reader (Dynamsoft Barcode Reader 等) は
-    // transparent pixel を「黒」と解釈する実装があり、quiet zone が黒判定 → 全面ノイズ →
-    // decode 不能になる事象を起こす (実例: dev server 生成 PNG → Dynamsoft 0 件、同 PNG を
-    // 画面 screenshot → 同 reader で confidence=100 decode 成功)。
-    // `fillRect` で **scale 適用前の device px 単位で canvas 全面を白塗り** することで
-    // PNG の quiet zone を実 RGB 白として記録する。順序は: (1) ctx.scale 前に fillRect →
-    // (2) ctx.scale で retina 変換 → (3) drawImage で bars 描画 (overdraw)。
+    // Canvas2D default は transparent。bwip-js / JsBarcode の SVG は背景 rect を持たない
+    // ため、一部 reader (Dynamsoft 等) が transparent を「黒」と解釈して decode 失敗する。
+    // scale 前に device px 単位で全面白塗り。詳細経緯 / 代替案: docs/decisions.md [082]。
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     // バーコード/QR の bar/space edge を sharp に保つため smoothing 無効化。

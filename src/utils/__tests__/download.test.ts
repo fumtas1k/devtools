@@ -2,10 +2,159 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { downloadBlob, downloadPngFromSvgElement, svgContentToPngBlob } from '@/utils/download';
 
 /**
+ * `src/utils/download.ts` の private const `RETINA_SCALE` の mirror。
+ * canvas 寸法計算 (canvas.width = SVG.width * RETINA_SCALE) を test 側で再現する際に、
+ * `200` / `100` 等の生数値ではなくこの定数を経由することで、将来 RETINA_SCALE を変更
+ * した場合の link を明示する (#458 review B 対応)。
+ */
+const RETINA_SCALE = 2;
+
+// ─────────────────────────────────────────────
+// 共通 mock setup (#458 review A 対応)
+//
+// `downloadPngFromSvgElement` (`toDataURL` 出力) と `svgContentToPngBlob` (`toBlob` 出力)
+// で重複していた canvas / Image / URL / anchor の stubGlobal 構築を `setupBrowserMocks()`
+// に集約。観測対象 (call log / fillStyle / ctx / image / anchor) を MockHandles で返す。
+//
+// design 方針:
+// - call log / capturedFillStyle / capturedCtx は **常に観測** (test 側で assert する/しないを選択)。
+//   overhead は無視できる (vi.fn の wrapper のみ)。
+// - 出力 API は `output: 'toBlob' | 'toDataURL'` で切替。`toDataURL` 時は `throwsOnInvoke`
+//   で SecurityError 相当を強制可能 (tainted canvas 経路の陽性対照用)。
+// - imgInstance / anchors は getter 経由 (closure 安定化、test 内で時間差発火可能)。
+// ─────────────────────────────────────────────
+
+type CallLog = { method: string; args: unknown[] };
+
+interface MockedCtx {
+  imageSmoothingEnabled: boolean;
+  fillStyle: string;
+  fillRect: ReturnType<typeof vi.fn>;
+  scale: ReturnType<typeof vi.fn>;
+  drawImage: ReturnType<typeof vi.fn>;
+}
+
+interface AnchorStub {
+  href: string;
+  download: string;
+  click: ReturnType<typeof vi.fn>;
+}
+
+interface ImgInstance {
+  onload: (() => void) | null;
+  onerror: (() => void) | null;
+  src: string;
+}
+
+interface MockHandles {
+  callLog: CallLog[];
+  capturedCtx: { value: MockedCtx | null };
+  getCapturedFillStyle: () => string | undefined;
+  getImgInstance: () => ImgInstance | undefined;
+  getCreatedAnchors: () => AnchorStub[];
+  createObjectURL: ReturnType<typeof vi.fn>;
+  revokeObjectURL: ReturnType<typeof vi.fn>;
+}
+
+type SetupOptions = { output: 'toBlob' } | { output: 'toDataURL'; throwsOnInvoke?: Error };
+
+function setupBrowserMocks(opts: SetupOptions): MockHandles {
+  const callLog: CallLog[] = [];
+  let capturedFillStyle: string | undefined;
+  const capturedCtx: { value: MockedCtx | null } = { value: null };
+  let imgInstance: ImgInstance | undefined;
+  const createdAnchors: AnchorStub[] = [];
+
+  const createObjectURL = vi.fn(() => 'blob:mock-url');
+  const revokeObjectURL = vi.fn();
+
+  vi.stubGlobal('document', {
+    createElement: vi.fn((tag: string) => {
+      if (tag === 'canvas') {
+        const ctxStub = {
+          imageSmoothingEnabled: true,
+          set fillStyle(v: string) {
+            capturedFillStyle = v;
+            callLog.push({ method: 'set fillStyle', args: [v] });
+          },
+          get fillStyle() {
+            return capturedFillStyle ?? '';
+          },
+          fillRect: vi.fn((...args: number[]) => callLog.push({ method: 'fillRect', args })),
+          scale: vi.fn((...args: number[]) => callLog.push({ method: 'scale', args })),
+          drawImage: vi.fn((...args: unknown[]) => callLog.push({ method: 'drawImage', args })),
+        } as MockedCtx;
+        const canvasEl: Record<string, unknown> = {
+          width: 0,
+          height: 0,
+          getContext: () => {
+            capturedCtx.value = ctxStub;
+            return ctxStub;
+          },
+        };
+        if (opts.output === 'toBlob') {
+          canvasEl.toBlob = (cb: (b: Blob | null) => void) =>
+            cb(new Blob(['png'], { type: 'image/png' }));
+        } else {
+          canvasEl.toDataURL = vi.fn(() => {
+            if (opts.throwsOnInvoke) throw opts.throwsOnInvoke;
+            return 'data:image/png;base64,XXX';
+          });
+        }
+        return canvasEl;
+      }
+      if (tag === 'a') {
+        const el: AnchorStub = { href: '', download: '', click: vi.fn() };
+        createdAnchors.push(el);
+        return el;
+      }
+      return {};
+    }),
+  });
+
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+
+  vi.stubGlobal(
+    'Image',
+    class {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      _src = '';
+      get src() {
+        return this._src;
+      }
+      set src(v: string) {
+        this._src = v;
+        imgInstance = this as unknown as ImgInstance;
+      }
+    }
+  );
+
+  return {
+    callLog,
+    capturedCtx,
+    getCapturedFillStyle: () => capturedFillStyle,
+    getImgInstance: () => imgInstance,
+    getCreatedAnchors: () => createdAnchors,
+    createObjectURL,
+    revokeObjectURL,
+  };
+}
+
+// テスト用 SVGSVGElement のスタブ (downloadPngFromSvgElement 用)
+const makeSvgStub = () =>
+  ({
+    getBoundingClientRect: () => ({ width: 100, height: 50 }),
+    outerHTML: '<svg width="100" height="50"></svg>',
+  }) as unknown as SVGSVGElement;
+
+/**
  * downloadBlob のスモークテスト。
  * vitest の environment は node なので DOM API は存在しない。
  * テストごとに必要な API（document, URL.createObjectURL/revokeObjectURL）を
  * vi.stubGlobal でモックし、終了後にリセットする。
+ *
+ * 注: canvas を使わないため `setupBrowserMocks` は経由せず、anchor のみ stub する。
  */
 describe('downloadBlob', () => {
   let createdAnchor: { href: string; download: string; click: ReturnType<typeof vi.fn> };
@@ -62,135 +211,45 @@ describe('downloadBlob', () => {
  * 存在せず `await` できないため必ず fail する (test-gates 鉄則 1)。
  */
 describe('downloadPngFromSvgElement', () => {
-  let createdElements: Array<{ tag: string; el: Record<string, unknown> }>;
-  let imgInstance: { onload: (() => void) | null; onerror: (() => void) | null; src: string };
-  let createObjectURL: ReturnType<typeof vi.fn>;
-  let revokeObjectURL: ReturnType<typeof vi.fn>;
+  let m: MockHandles;
 
   beforeEach(() => {
-    createdElements = [];
-    createObjectURL = vi.fn(() => 'blob:mock-url');
-    revokeObjectURL = vi.fn();
-
-    vi.stubGlobal('document', {
-      createElement: vi.fn((tag: string) => {
-        if (tag === 'canvas') {
-          const el = {
-            width: 0,
-            height: 0,
-            getContext: vi.fn(() => ({
-              fillStyle: '',
-              fillRect: vi.fn(),
-              scale: vi.fn(),
-              drawImage: vi.fn(),
-            })),
-            toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
-          };
-          createdElements.push({ tag, el });
-          return el;
-        }
-        if (tag === 'a') {
-          const el = { href: '', download: '', click: vi.fn() };
-          createdElements.push({ tag, el });
-          return el;
-        }
-        return {};
-      }),
-    });
-    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
-    // imgInstance は Image の src setter で確定される。
-    // テスト本体は src 代入後 (= production code の img.src = url) に
-    // imgInstance.onload / onerror を発火させる。
-    vi.stubGlobal(
-      'Image',
-      class {
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        _src = '';
-        get src() {
-          return this._src;
-        }
-        set src(v: string) {
-          this._src = v;
-          imgInstance = this;
-        }
-      }
-    );
+    m = setupBrowserMocks({ output: 'toDataURL' });
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  // テスト用 SVGSVGElement のスタブ
-  const makeSvgStub = () =>
-    ({
-      getBoundingClientRect: () => ({ width: 100, height: 50 }),
-      outerHTML: '<svg width="100" height="50"></svg>',
-    }) as unknown as SVGSVGElement;
-
   it('陰性対照: img.onload が発火すると Promise は resolve し anchor.click() が呼ばれる', async () => {
     const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
     // src setter で imgInstance が確定 → onload を発火
-    imgInstance.onload?.();
+    m.getImgInstance()?.onload?.();
     await expect(promise).resolves.toBeUndefined();
 
-    const anchor = createdElements.find((e) => e.tag === 'a')!.el as {
-      download: string;
-      click: ReturnType<typeof vi.fn>;
-    };
-    expect(anchor.download).toBe('jan-test.png');
-    expect(anchor.click).toHaveBeenCalledTimes(1);
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    const anchors = m.getCreatedAnchors();
+    expect(anchors).toHaveLength(1);
+    expect(anchors[0].download).toBe('jan-test.png');
+    expect(anchors[0].click).toHaveBeenCalledTimes(1);
+    expect(m.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
 
   it('陽性対照: img.onerror が発火すると Promise は "PNG への変換に失敗しました" で reject する', async () => {
     const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
-    imgInstance.onerror?.();
+    m.getImgInstance()?.onerror?.();
     await expect(promise).rejects.toThrow('PNG への変換に失敗しました');
     // 失敗経路でも ObjectURL は確実に解放される
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(m.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
 
   it('陽性対照: Canvas context の imageSmoothingEnabled が false に設定される (バーコード edge anti-alias 抑止)', async () => {
     // fix を revert (imageSmoothingEnabled = false 行を消す) すると context は
     // mock default の true のままで本テストが fail する設計 (test-gates 鉄則 1)。
-    let capturedCtx: {
-      imageSmoothingEnabled: boolean;
-      fillStyle: string;
-      fillRect: unknown;
-      scale: unknown;
-      drawImage: unknown;
-    } | null = null;
-    vi.stubGlobal('document', {
-      createElement: vi.fn((tag: string) => {
-        if (tag === 'canvas') {
-          return {
-            width: 0,
-            height: 0,
-            getContext: () => {
-              capturedCtx = {
-                imageSmoothingEnabled: true,
-                fillStyle: '',
-                fillRect: vi.fn(),
-                scale: vi.fn(),
-                drawImage: vi.fn(),
-              };
-              return capturedCtx;
-            },
-            toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
-          };
-        }
-        if (tag === 'a') return { href: '', download: '', click: vi.fn() };
-        return {};
-      }),
-    });
-
     const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
-    imgInstance.onload?.();
+    m.getImgInstance()?.onload?.();
     await promise;
-    expect(capturedCtx).not.toBeNull();
-    expect(capturedCtx!.imageSmoothingEnabled).toBe(false);
+    expect(m.capturedCtx.value).not.toBeNull();
+    expect(m.capturedCtx.value!.imageSmoothingEnabled).toBe(false);
   });
 
   // ─────────────────────────────────────────────
@@ -202,178 +261,61 @@ describe('downloadPngFromSvgElement', () => {
   // fail する設計 (call ログから fillRect が消える / fillStyle が undefined のまま)。
   // ─────────────────────────────────────────────
   it('陽性対照: fillStyle が white にセットされて fillRect が canvas 全面で呼ばれる (背景透明 → 白)', async () => {
-    type CallLog = { method: string; args: unknown[] };
-    const callLog: CallLog[] = [];
-    let capturedFillStyle: string | undefined;
-    vi.stubGlobal('document', {
-      createElement: vi.fn((tag: string) => {
-        if (tag === 'canvas') {
-          const ctxStub = {
-            set fillStyle(v: string) {
-              capturedFillStyle = v;
-              callLog.push({ method: 'set fillStyle', args: [v] });
-            },
-            get fillStyle() {
-              return capturedFillStyle ?? '';
-            },
-            fillRect: vi.fn((...args: number[]) => callLog.push({ method: 'fillRect', args })),
-            imageSmoothingEnabled: true,
-            scale: vi.fn((...args: number[]) => callLog.push({ method: 'scale', args })),
-            drawImage: vi.fn((...args: unknown[]) => callLog.push({ method: 'drawImage', args })),
-          };
-          return {
-            width: 0,
-            height: 0,
-            getContext: () => ctxStub,
-            toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
-          };
-        }
-        if (tag === 'a') return { href: '', download: '', click: vi.fn() };
-        return {};
-      }),
-    });
-
     const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
-    imgInstance.onload?.();
+    m.getImgInstance()?.onload?.();
     await promise;
-    expect(capturedFillStyle).toBe('white');
-    const fillRectCalls = callLog.filter((c) => c.method === 'fillRect');
+    expect(m.getCapturedFillStyle()).toBe('white');
+    const fillRectCalls = m.callLog.filter((c) => c.method === 'fillRect');
     expect(fillRectCalls).toHaveLength(1);
-    // getBoundingClientRect = { width: 100, height: 50 } → canvas は 100*2 × 50*2 = 200×100 device px
-    expect(fillRectCalls[0].args).toEqual([0, 0, 200, 100]);
+    // getBoundingClientRect = { width: 100, height: 50 } → canvas は scale 前 device px 単位
+    expect(fillRectCalls[0].args).toEqual([0, 0, 100 * RETINA_SCALE, 50 * RETINA_SCALE]);
   });
 
   it('陽性対照: 呼び出し順序は fillRect → scale → drawImage (背景 → retina 変換 → bars)', async () => {
-    type CallLog = { method: string; args: unknown[] };
-    const callLog: CallLog[] = [];
-    vi.stubGlobal('document', {
-      createElement: vi.fn((tag: string) => {
-        if (tag === 'canvas') {
-          const ctxStub = {
-            fillStyle: '',
-            fillRect: vi.fn((...args: number[]) => callLog.push({ method: 'fillRect', args })),
-            imageSmoothingEnabled: true,
-            scale: vi.fn((...args: number[]) => callLog.push({ method: 'scale', args })),
-            drawImage: vi.fn((...args: unknown[]) => callLog.push({ method: 'drawImage', args })),
-          };
-          return {
-            width: 0,
-            height: 0,
-            getContext: () => ctxStub,
-            toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
-          };
-        }
-        if (tag === 'a') return { href: '', download: '', click: vi.fn() };
-        return {};
-      }),
-    });
-
     const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
-    imgInstance.onload?.();
+    m.getImgInstance()?.onload?.();
     await promise;
-    const fillRectIdx = callLog.findIndex((c) => c.method === 'fillRect');
-    const scaleIdx = callLog.findIndex((c) => c.method === 'scale');
-    const drawImageIdx = callLog.findIndex((c) => c.method === 'drawImage');
+    const fillRectIdx = m.callLog.findIndex((c) => c.method === 'fillRect');
+    const scaleIdx = m.callLog.findIndex((c) => c.method === 'scale');
+    const drawImageIdx = m.callLog.findIndex((c) => c.method === 'drawImage');
     expect(fillRectIdx).toBeGreaterThanOrEqual(0);
     expect(scaleIdx).toBeGreaterThan(fillRectIdx);
     expect(drawImageIdx).toBeGreaterThan(scaleIdx);
   });
 
   it('陽性対照: img.onload 内で canvas.toDataURL が throw した場合も Promise は reject する', async () => {
-    // canvas.toDataURL を throw する stub に差し替える (tainted canvas 等の SecurityError 相当)
-    vi.stubGlobal('document', {
-      createElement: vi.fn((tag: string) => {
-        if (tag === 'canvas') {
-          return {
-            width: 0,
-            height: 0,
-            getContext: () => ({
-              fillStyle: '',
-              fillRect: vi.fn(),
-              scale: vi.fn(),
-              drawImage: vi.fn(),
-            }),
-            toDataURL: () => {
-              throw new Error('canvas is tainted');
-            },
-          };
-        }
-        if (tag === 'a') return { href: '', download: '', click: vi.fn() };
-        return {};
-      }),
+    // canvas.toDataURL を throw する mock に差し替える (tainted canvas 等の SecurityError 相当)
+    vi.unstubAllGlobals();
+    const m2 = setupBrowserMocks({
+      output: 'toDataURL',
+      throwsOnInvoke: new Error('canvas is tainted'),
     });
-
     const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
-    imgInstance.onload?.();
+    m2.getImgInstance()?.onload?.();
     await expect(promise).rejects.toThrow('canvas is tainted');
     // finally で ObjectURL は解放される
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(m2.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
 });
 
 /**
- * svgContentToPngBlob: PNG 変換時の anti-aliasing 抑止 (GS1 DataBar 認識失敗修正)。
+ * svgContentToPngBlob: PNG 変換時の anti-aliasing 抑止 (GS1 DataBar 認識失敗修正) +
+ * PNG 背景白塗り (transparent decode 失敗修正)。
  *
- * fix を revert (download.ts:55 付近の `ctx.imageSmoothingEnabled = false` を削る)
- * と本テストが必ず fail する陽性対照 (test-gates 鉄則 1)。
+ * fix を revert (`imageSmoothingEnabled = false` / `fillStyle = 'white'` /
+ * `fillRect(...)` を削る) と各陽性対照テストが必ず fail する設計 (test-gates 鉄則 1)。
  *
  * 旧実装は ctx.drawImage(img, 0, 0) を smoothing 有効 default のまま呼んでおり、
- * scanner が黒/白二値閾値で bar 幅を取り違える事象を起こしていた。
+ * scanner が黒/白二値閾値で bar 幅を取り違える事象を起こしていた。さらに Canvas2D
+ * default の transparent 背景のまま drawImage していたため、生成 PNG の quiet zone /
+ * バー間 pixel が RGBA=0,0,0,0 になり image-based barcode reader (Dynamsoft 等) が
+ * transparent を「黒」と解釈して decode 失敗する事象も併発していた。
  */
 describe('svgContentToPngBlob', () => {
-  let createObjectURL: ReturnType<typeof vi.fn>;
-  let revokeObjectURL: ReturnType<typeof vi.fn>;
-  let imgInstance: { onload: (() => void) | null; onerror: (() => void) | null; src: string };
-  let capturedCtx: {
-    imageSmoothingEnabled: boolean;
-    fillStyle: string;
-    fillRect: unknown;
-    scale: unknown;
-    drawImage: unknown;
-  } | null;
+  let m: MockHandles;
 
   beforeEach(() => {
-    capturedCtx = null;
-    createObjectURL = vi.fn(() => 'blob:mock-url');
-    revokeObjectURL = vi.fn();
-    vi.stubGlobal('document', {
-      createElement: vi.fn((tag: string) => {
-        if (tag === 'canvas') {
-          return {
-            width: 0,
-            height: 0,
-            getContext: () => {
-              capturedCtx = {
-                imageSmoothingEnabled: true,
-                fillStyle: '',
-                fillRect: vi.fn(),
-                scale: vi.fn(),
-                drawImage: vi.fn(),
-              };
-              return capturedCtx;
-            },
-            toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(['png'], { type: 'image/png' })),
-          };
-        }
-        return {};
-      }),
-    });
-    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
-    vi.stubGlobal(
-      'Image',
-      class {
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        _src = '';
-        get src() {
-          return this._src;
-        }
-        set src(v: string) {
-          this._src = v;
-          imgInstance = this;
-        }
-      }
-    );
+    m = setupBrowserMocks({ output: 'toBlob' });
   });
 
   afterEach(() => {
@@ -383,121 +325,45 @@ describe('svgContentToPngBlob', () => {
   it('陽性対照: Canvas context の imageSmoothingEnabled が false に設定される', async () => {
     const svg = '<svg width="100" height="50" viewBox="0 0 100 50"></svg>';
     const promise = svgContentToPngBlob(svg);
-    imgInstance.onload?.();
+    m.getImgInstance()?.onload?.();
     await promise;
-    expect(capturedCtx).not.toBeNull();
-    expect(capturedCtx!.imageSmoothingEnabled).toBe(false);
+    expect(m.capturedCtx.value).not.toBeNull();
+    expect(m.capturedCtx.value!.imageSmoothingEnabled).toBe(false);
   });
 
   it('width/height が無い SVG は reject される (既存契約)', async () => {
     const svg = '<svg viewBox="0 0 100 50"></svg>';
     await expect(svgContentToPngBlob(svg)).rejects.toThrow('width/height');
   });
-});
-
-/**
- * svgContentToPngBlob / downloadPngFromSvgElement: PNG 背景白塗り (transparent
- * decode 失敗修正)。
- *
- * 旧実装は Canvas2D default の transparent 背景のまま drawImage して PNG 化していた。
- * SVG が背景 rect を持たないため、quiet zone / バー間 pixel が RGBA=0,0,0,0 になり、
- * image-based barcode reader (Dynamsoft Barcode Reader 等) が transparent を「黒」と
- * 解釈して decode 失敗する事象を起こしていた (実例: 同 PNG を screenshot 経由で
- * 再ラスタライズすると同 reader で confidence=100 decode 成功)。
- *
- * fix を revert (`ctx.fillStyle = 'white'` / `ctx.fillRect(...)` を削る) と本テストが
- * 必ず fail する陽性対照。fillStyle / fillRect の呼び出し有無と call 順序
- * (fillRect → scale → drawImage) を実観測する。
- */
-describe('svgContentToPngBlob: PNG 背景白塗り (transparent decode 失敗修正)', () => {
-  type CallLog = { method: string; args: unknown[] };
-  let createObjectURL: ReturnType<typeof vi.fn>;
-  let revokeObjectURL: ReturnType<typeof vi.fn>;
-  let imgInstance: { onload: (() => void) | null; onerror: (() => void) | null; src: string };
-  let callLog: CallLog[];
-  let capturedFillStyle: string | undefined;
-
-  beforeEach(() => {
-    callLog = [];
-    capturedFillStyle = undefined;
-    createObjectURL = vi.fn(() => 'blob:mock-url');
-    revokeObjectURL = vi.fn();
-    vi.stubGlobal('document', {
-      createElement: vi.fn((tag: string) => {
-        if (tag === 'canvas') {
-          const ctxStub = {
-            set fillStyle(v: string) {
-              capturedFillStyle = v;
-              callLog.push({ method: 'set fillStyle', args: [v] });
-            },
-            get fillStyle() {
-              return capturedFillStyle ?? '';
-            },
-            fillRect: vi.fn((...args: number[]) => callLog.push({ method: 'fillRect', args })),
-            imageSmoothingEnabled: true,
-            scale: vi.fn((...args: number[]) => callLog.push({ method: 'scale', args })),
-            drawImage: vi.fn((...args: unknown[]) => callLog.push({ method: 'drawImage', args })),
-          };
-          return {
-            width: 0,
-            height: 0,
-            getContext: () => ctxStub,
-            toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(['png'], { type: 'image/png' })),
-          };
-        }
-        return {};
-      }),
-    });
-    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
-    vi.stubGlobal(
-      'Image',
-      class {
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        _src = '';
-        get src() {
-          return this._src;
-        }
-        set src(v: string) {
-          this._src = v;
-          imgInstance = this;
-        }
-      }
-    );
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
 
   it('陽性対照: fillStyle が white にセットされる', async () => {
     const svg = '<svg width="100" height="50" viewBox="0 0 100 50"></svg>';
     const promise = svgContentToPngBlob(svg);
-    imgInstance.onload?.();
+    m.getImgInstance()?.onload?.();
     await promise;
-    expect(capturedFillStyle).toBe('white');
+    expect(m.getCapturedFillStyle()).toBe('white');
   });
 
   it('陽性対照: fillRect が canvas 全面 (device px, scale 前) で呼ばれる', async () => {
     const svg = '<svg width="100" height="50" viewBox="0 0 100 50"></svg>';
     const promise = svgContentToPngBlob(svg);
-    imgInstance.onload?.();
+    m.getImgInstance()?.onload?.();
     await promise;
-    const fillRectCalls = callLog.filter((c) => c.method === 'fillRect');
+    const fillRectCalls = m.callLog.filter((c) => c.method === 'fillRect');
     expect(fillRectCalls).toHaveLength(1);
-    // canvas.width = 100 * RETINA_SCALE(2) = 200, canvas.height = 50 * 2 = 100
-    expect(fillRectCalls[0].args).toEqual([0, 0, 200, 100]);
+    // canvas は scale 前 device px 単位 (SVG width/height × RETINA_SCALE)
+    expect(fillRectCalls[0].args).toEqual([0, 0, 100 * RETINA_SCALE, 50 * RETINA_SCALE]);
   });
 
   it('陽性対照: 呼び出し順序は fillRect → scale → drawImage (背景 → retina 変換 → bars)', async () => {
     const svg = '<svg width="100" height="50" viewBox="0 0 100 50"></svg>';
     const promise = svgContentToPngBlob(svg);
-    imgInstance.onload?.();
+    m.getImgInstance()?.onload?.();
     await promise;
     // fillRect は scale より先 (scale 前 device px 単位での塗り潰しが必須)
-    const fillRectIdx = callLog.findIndex((c) => c.method === 'fillRect');
-    const scaleIdx = callLog.findIndex((c) => c.method === 'scale');
-    const drawImageIdx = callLog.findIndex((c) => c.method === 'drawImage');
+    const fillRectIdx = m.callLog.findIndex((c) => c.method === 'fillRect');
+    const scaleIdx = m.callLog.findIndex((c) => c.method === 'scale');
+    const drawImageIdx = m.callLog.findIndex((c) => c.method === 'drawImage');
     expect(fillRectIdx).toBeGreaterThanOrEqual(0);
     expect(scaleIdx).toBeGreaterThan(fillRectIdx);
     expect(drawImageIdx).toBeGreaterThan(scaleIdx);
