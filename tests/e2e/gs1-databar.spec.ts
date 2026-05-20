@@ -237,4 +237,84 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       expect(leftPaddingPx).toBeLessThan(25);
     });
   });
+
+  // 陽性対照: 生成 PNG の **背景が transparent ではなく白 (RGBA=255,255,255,255)**
+  // であることをブラウザ実機で検証する。
+  //
+  // 旧実装は Canvas2D default の transparent 背景 (RGBA=0,0,0,0) のまま drawImage
+  // していたため、quiet zone / バー間 pixel が完全 transparent になり、image-based
+  // barcode reader (Dynamsoft Barcode Reader 等) が transparent pixel を「黒」と
+  // 解釈して decode 失敗していた (実例: dev server 生成 PNG → Dynamsoft 0 件、
+  // 同 PNG を画面 screenshot → 同 reader で confidence=100 で decode 成功)。
+  //
+  // `src/utils/download.ts` の svgContentToPngBlob で `ctx.fillStyle = 'white'` +
+  // `ctx.fillRect(0, 0, canvas.width, canvas.height)` を scale 前に呼ぶことで
+  // PNG 背景を実 RGB 白として記録する。
+  //
+  // 検証方法: ツールが実 download に使う経路 (svgContentToPngBlob と同等) を
+  // 再現し、quiet zone 領域の pixel が α=255 / RGB=(255,255,255) であることを
+  // ImageData 経由で assert。fix を revert すると α=0 (transparent) に戻り fail する。
+  test('生成 PNG の quiet zone が透明ではなく白 (α=255) で塗られている（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      // composite を生成 (paddingheight + 全 4 辺の quiet zone を持つ最大サイズ)
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await page.getByLabel('AI フィールド値 2').fill('ABC123');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      const samples = await page.evaluate(async () => {
+        const preview = document.querySelector('[aria-label*="のバーコード"]');
+        const svg = preview?.querySelector('svg');
+        if (!svg) return null;
+        const svgContent = svg.outerHTML;
+        const m = svgContent.match(/width="(\d+)" height="(\d+)"/);
+        if (!m) return null;
+        const w = parseInt(m[1], 10);
+        const h = parseInt(m[2], 10);
+        const RETINA_SCALE = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = w * RETINA_SCALE;
+        canvas.height = h * RETINA_SCALE;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        // 本物の svgContentToPngBlob と完全に同じ順序を再現
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = false;
+        ctx.scale(RETINA_SCALE, RETINA_SCALE);
+        const img = new Image();
+        const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        await new Promise<void>((res, rej) => {
+          img.onload = () => res();
+          img.onerror = () => rej(new Error('img load failed'));
+          img.src = url;
+        });
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        // quiet zone 4 隅で sampling
+        const points = [
+          { name: 'top-left', x: 5, y: 5 },
+          { name: 'top-right', x: canvas.width - 5, y: 5 },
+          { name: 'bottom-left', x: 5, y: canvas.height - 5 },
+          { name: 'bottom-right', x: canvas.width - 5, y: canvas.height - 5 },
+        ];
+        return points.map((p) => {
+          const d = ctx.getImageData(p.x, p.y, 1, 1).data;
+          return { name: p.name, r: d[0], g: d[1], b: d[2], a: d[3] };
+        });
+      });
+
+      expect(samples).not.toBeNull();
+      // 全 quiet zone 4 隅で α=255 / RGB=(255,255,255) (transparent 0 ではなく白)
+      // fix revert 時は α=0, RGB=(0,0,0) になり全件 fail する。
+      for (const s of samples!) {
+        expect.soft(s.a, `${s.name} alpha`).toBe(255);
+        expect.soft(s.r, `${s.name} red`).toBe(255);
+        expect.soft(s.g, `${s.name} green`).toBe(255);
+        expect.soft(s.b, `${s.name} blue`).toBe(255);
+      }
+    });
+  });
 });

@@ -78,7 +78,12 @@ describe('downloadPngFromSvgElement', () => {
           const el = {
             width: 0,
             height: 0,
-            getContext: vi.fn(() => ({ scale: vi.fn(), drawImage: vi.fn() })),
+            getContext: vi.fn(() => ({
+              fillStyle: '',
+              fillRect: vi.fn(),
+              scale: vi.fn(),
+              drawImage: vi.fn(),
+            })),
             toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
           };
           createdElements.push({ tag, el });
@@ -150,8 +155,13 @@ describe('downloadPngFromSvgElement', () => {
   it('陽性対照: Canvas context の imageSmoothingEnabled が false に設定される (バーコード edge anti-alias 抑止)', async () => {
     // fix を revert (imageSmoothingEnabled = false 行を消す) すると context は
     // mock default の true のままで本テストが fail する設計 (test-gates 鉄則 1)。
-    let capturedCtx: { imageSmoothingEnabled: boolean; scale: unknown; drawImage: unknown } | null =
-      null;
+    let capturedCtx: {
+      imageSmoothingEnabled: boolean;
+      fillStyle: string;
+      fillRect: unknown;
+      scale: unknown;
+      drawImage: unknown;
+    } | null = null;
     vi.stubGlobal('document', {
       createElement: vi.fn((tag: string) => {
         if (tag === 'canvas') {
@@ -159,7 +169,13 @@ describe('downloadPngFromSvgElement', () => {
             width: 0,
             height: 0,
             getContext: () => {
-              capturedCtx = { imageSmoothingEnabled: true, scale: vi.fn(), drawImage: vi.fn() };
+              capturedCtx = {
+                imageSmoothingEnabled: true,
+                fillStyle: '',
+                fillRect: vi.fn(),
+                scale: vi.fn(),
+                drawImage: vi.fn(),
+              };
               return capturedCtx;
             },
             toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
@@ -177,6 +193,92 @@ describe('downloadPngFromSvgElement', () => {
     expect(capturedCtx!.imageSmoothingEnabled).toBe(false);
   });
 
+  // ─────────────────────────────────────────────
+  // 陽性対照: PNG 背景白塗り (transparent decode 失敗修正)
+  //
+  // downloadPngFromSvgElement (JAN コード経路) も svgContentToPngBlob と同じく
+  // Canvas2D default transparent 背景のまま drawImage していた。fix を revert
+  // (`ctx.fillStyle = 'white'` / `ctx.fillRect(...)` を削る) と本テスト 2 件が
+  // fail する設計 (call ログから fillRect が消える / fillStyle が undefined のまま)。
+  // ─────────────────────────────────────────────
+  it('陽性対照: fillStyle が white にセットされて fillRect が canvas 全面で呼ばれる (背景透明 → 白)', async () => {
+    type CallLog = { method: string; args: unknown[] };
+    const callLog: CallLog[] = [];
+    let capturedFillStyle: string | undefined;
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => {
+        if (tag === 'canvas') {
+          const ctxStub = {
+            set fillStyle(v: string) {
+              capturedFillStyle = v;
+              callLog.push({ method: 'set fillStyle', args: [v] });
+            },
+            get fillStyle() {
+              return capturedFillStyle ?? '';
+            },
+            fillRect: vi.fn((...args: number[]) => callLog.push({ method: 'fillRect', args })),
+            imageSmoothingEnabled: true,
+            scale: vi.fn((...args: number[]) => callLog.push({ method: 'scale', args })),
+            drawImage: vi.fn((...args: unknown[]) => callLog.push({ method: 'drawImage', args })),
+          };
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ctxStub,
+            toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
+          };
+        }
+        if (tag === 'a') return { href: '', download: '', click: vi.fn() };
+        return {};
+      }),
+    });
+
+    const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
+    imgInstance.onload?.();
+    await promise;
+    expect(capturedFillStyle).toBe('white');
+    const fillRectCalls = callLog.filter((c) => c.method === 'fillRect');
+    expect(fillRectCalls).toHaveLength(1);
+    // getBoundingClientRect = { width: 100, height: 50 } → canvas は 100*2 × 50*2 = 200×100 device px
+    expect(fillRectCalls[0].args).toEqual([0, 0, 200, 100]);
+  });
+
+  it('陽性対照: 呼び出し順序は fillRect → scale → drawImage (背景 → retina 変換 → bars)', async () => {
+    type CallLog = { method: string; args: unknown[] };
+    const callLog: CallLog[] = [];
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => {
+        if (tag === 'canvas') {
+          const ctxStub = {
+            fillStyle: '',
+            fillRect: vi.fn((...args: number[]) => callLog.push({ method: 'fillRect', args })),
+            imageSmoothingEnabled: true,
+            scale: vi.fn((...args: number[]) => callLog.push({ method: 'scale', args })),
+            drawImage: vi.fn((...args: unknown[]) => callLog.push({ method: 'drawImage', args })),
+          };
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ctxStub,
+            toDataURL: vi.fn(() => 'data:image/png;base64,XXX'),
+          };
+        }
+        if (tag === 'a') return { href: '', download: '', click: vi.fn() };
+        return {};
+      }),
+    });
+
+    const promise = downloadPngFromSvgElement(makeSvgStub(), 'jan-test.png');
+    imgInstance.onload?.();
+    await promise;
+    const fillRectIdx = callLog.findIndex((c) => c.method === 'fillRect');
+    const scaleIdx = callLog.findIndex((c) => c.method === 'scale');
+    const drawImageIdx = callLog.findIndex((c) => c.method === 'drawImage');
+    expect(fillRectIdx).toBeGreaterThanOrEqual(0);
+    expect(scaleIdx).toBeGreaterThan(fillRectIdx);
+    expect(drawImageIdx).toBeGreaterThan(scaleIdx);
+  });
+
   it('陽性対照: img.onload 内で canvas.toDataURL が throw した場合も Promise は reject する', async () => {
     // canvas.toDataURL を throw する stub に差し替える (tainted canvas 等の SecurityError 相当)
     vi.stubGlobal('document', {
@@ -185,7 +287,12 @@ describe('downloadPngFromSvgElement', () => {
           return {
             width: 0,
             height: 0,
-            getContext: () => ({ scale: vi.fn(), drawImage: vi.fn() }),
+            getContext: () => ({
+              fillStyle: '',
+              fillRect: vi.fn(),
+              scale: vi.fn(),
+              drawImage: vi.fn(),
+            }),
             toDataURL: () => {
               throw new Error('canvas is tainted');
             },
@@ -217,7 +324,13 @@ describe('svgContentToPngBlob', () => {
   let createObjectURL: ReturnType<typeof vi.fn>;
   let revokeObjectURL: ReturnType<typeof vi.fn>;
   let imgInstance: { onload: (() => void) | null; onerror: (() => void) | null; src: string };
-  let capturedCtx: { imageSmoothingEnabled: boolean; scale: unknown; drawImage: unknown } | null;
+  let capturedCtx: {
+    imageSmoothingEnabled: boolean;
+    fillStyle: string;
+    fillRect: unknown;
+    scale: unknown;
+    drawImage: unknown;
+  } | null;
 
   beforeEach(() => {
     capturedCtx = null;
@@ -230,7 +343,13 @@ describe('svgContentToPngBlob', () => {
             width: 0,
             height: 0,
             getContext: () => {
-              capturedCtx = { imageSmoothingEnabled: true, scale: vi.fn(), drawImage: vi.fn() };
+              capturedCtx = {
+                imageSmoothingEnabled: true,
+                fillStyle: '',
+                fillRect: vi.fn(),
+                scale: vi.fn(),
+                drawImage: vi.fn(),
+              };
               return capturedCtx;
             },
             toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(['png'], { type: 'image/png' })),
@@ -273,5 +392,114 @@ describe('svgContentToPngBlob', () => {
   it('width/height が無い SVG は reject される (既存契約)', async () => {
     const svg = '<svg viewBox="0 0 100 50"></svg>';
     await expect(svgContentToPngBlob(svg)).rejects.toThrow('width/height');
+  });
+});
+
+/**
+ * svgContentToPngBlob / downloadPngFromSvgElement: PNG 背景白塗り (transparent
+ * decode 失敗修正)。
+ *
+ * 旧実装は Canvas2D default の transparent 背景のまま drawImage して PNG 化していた。
+ * SVG が背景 rect を持たないため、quiet zone / バー間 pixel が RGBA=0,0,0,0 になり、
+ * image-based barcode reader (Dynamsoft Barcode Reader 等) が transparent を「黒」と
+ * 解釈して decode 失敗する事象を起こしていた (実例: 同 PNG を screenshot 経由で
+ * 再ラスタライズすると同 reader で confidence=100 decode 成功)。
+ *
+ * fix を revert (`ctx.fillStyle = 'white'` / `ctx.fillRect(...)` を削る) と本テストが
+ * 必ず fail する陽性対照。fillStyle / fillRect の呼び出し有無と call 順序
+ * (fillRect → scale → drawImage) を実観測する。
+ */
+describe('svgContentToPngBlob: PNG 背景白塗り (transparent decode 失敗修正)', () => {
+  type CallLog = { method: string; args: unknown[] };
+  let createObjectURL: ReturnType<typeof vi.fn>;
+  let revokeObjectURL: ReturnType<typeof vi.fn>;
+  let imgInstance: { onload: (() => void) | null; onerror: (() => void) | null; src: string };
+  let callLog: CallLog[];
+  let capturedFillStyle: string | undefined;
+
+  beforeEach(() => {
+    callLog = [];
+    capturedFillStyle = undefined;
+    createObjectURL = vi.fn(() => 'blob:mock-url');
+    revokeObjectURL = vi.fn();
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => {
+        if (tag === 'canvas') {
+          const ctxStub = {
+            set fillStyle(v: string) {
+              capturedFillStyle = v;
+              callLog.push({ method: 'set fillStyle', args: [v] });
+            },
+            get fillStyle() {
+              return capturedFillStyle ?? '';
+            },
+            fillRect: vi.fn((...args: number[]) => callLog.push({ method: 'fillRect', args })),
+            imageSmoothingEnabled: true,
+            scale: vi.fn((...args: number[]) => callLog.push({ method: 'scale', args })),
+            drawImage: vi.fn((...args: unknown[]) => callLog.push({ method: 'drawImage', args })),
+          };
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ctxStub,
+            toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(['png'], { type: 'image/png' })),
+          };
+        }
+        return {};
+      }),
+    });
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    vi.stubGlobal(
+      'Image',
+      class {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        _src = '';
+        get src() {
+          return this._src;
+        }
+        set src(v: string) {
+          this._src = v;
+          imgInstance = this;
+        }
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('陽性対照: fillStyle が white にセットされる', async () => {
+    const svg = '<svg width="100" height="50" viewBox="0 0 100 50"></svg>';
+    const promise = svgContentToPngBlob(svg);
+    imgInstance.onload?.();
+    await promise;
+    expect(capturedFillStyle).toBe('white');
+  });
+
+  it('陽性対照: fillRect が canvas 全面 (device px, scale 前) で呼ばれる', async () => {
+    const svg = '<svg width="100" height="50" viewBox="0 0 100 50"></svg>';
+    const promise = svgContentToPngBlob(svg);
+    imgInstance.onload?.();
+    await promise;
+    const fillRectCalls = callLog.filter((c) => c.method === 'fillRect');
+    expect(fillRectCalls).toHaveLength(1);
+    // canvas.width = 100 * RETINA_SCALE(2) = 200, canvas.height = 50 * 2 = 100
+    expect(fillRectCalls[0].args).toEqual([0, 0, 200, 100]);
+  });
+
+  it('陽性対照: 呼び出し順序は fillRect → scale → drawImage (背景 → retina 変換 → bars)', async () => {
+    const svg = '<svg width="100" height="50" viewBox="0 0 100 50"></svg>';
+    const promise = svgContentToPngBlob(svg);
+    imgInstance.onload?.();
+    await promise;
+    // fillRect は scale より先 (scale 前 device px 単位での塗り潰しが必須)
+    const fillRectIdx = callLog.findIndex((c) => c.method === 'fillRect');
+    const scaleIdx = callLog.findIndex((c) => c.method === 'scale');
+    const drawImageIdx = callLog.findIndex((c) => c.method === 'drawImage');
+    expect(fillRectIdx).toBeGreaterThanOrEqual(0);
+    expect(scaleIdx).toBeGreaterThan(fillRectIdx);
+    expect(drawImageIdx).toBeGreaterThan(scaleIdx);
   });
 });
