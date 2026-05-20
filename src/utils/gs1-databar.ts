@@ -166,3 +166,33 @@ export function buildBwipText(
   const composite = filledFields.map((f) => `(${f.ai})${f.value.trim()}`).join('');
   return `${linear}|${composite}`;
 }
+
+/**
+ * bwip-js の toSVG 出力は viewBox のみで width/height を持たない。
+ * (1) flex コンテナでの寸法不定 / Image の natural size = 0x0 → PNG 空回避のため
+ *     viewBox から pixel 寸法を取り出して width/height 属性を注入する。
+ * (2) shape-rendering="crispEdges" を同時に注入する。bwip-js default では未指定で、
+ *     付けないとブラウザ表示・Image→Canvas 経路の両方で bar/space edge が
+ *     sub-pixel anti-alias で滲み、scanner が黒/白二値閾値で bar 幅を誤判定する
+ *     (特に composite CC-A の 1X 矩形 module でロット (10) が読めない事象の原因)。
+ *
+ * 属性順依存を避けるため <svg> 開始タグ全体を regex で捕捉し、`viewBox` の
+ * 前後どちらに `xmlns` 等が来ても動くようにする (bwip-js upgrade で属性順が
+ * 変わっても silent regression しないようにするため)。
+ *
+ * 出力契約 (downstream dependency): 注入する `width=...` と `height=...` は
+ * 連続して並べる。これは `utils/download.ts` の `svgContentToPngBlob` が
+ * `match(/width="(\d+)" height="(\d+)"/)` で canvas サイズを抽出するため
+ * (隣接していないと match 失敗 → reject)。間に他属性を挟まないこと。
+ */
+export function addSvgDimensions(svg: string): string {
+  const openTagMatch = svg.match(/<svg(\s[^>]*?)?\s+viewBox="0 0 ([\d.]+) ([\d.]+)"([^>]*)>/);
+  if (!openTagMatch) return svg;
+  const [originalTag, beforeViewBox = '', wStr, hStr, afterViewBox = ''] = openTagMatch;
+  const w = Math.round(parseFloat(wStr));
+  const h = Math.round(parseFloat(hStr));
+  const newTag =
+    `<svg width="${w}" height="${h}" shape-rendering="crispEdges"` +
+    `${beforeViewBox} viewBox="0 0 ${wStr} ${hStr}"${afterViewBox}>`;
+  return svg.replace(originalTag, newTag);
+}

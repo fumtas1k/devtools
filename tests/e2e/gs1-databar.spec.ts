@@ -112,4 +112,43 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       await expect(page.getByRole('alert').filter({ hasText: /ダウンロードエラー/ })).toBeVisible();
     });
   });
+
+  // ─────────────────────────────────────────────
+  // バーコード認識安定化 (anti-aliasing 抑止) のブラウザ実測検証
+  //
+  // 旧実装は (a) bwip-js SVG に shape-rendering 未指定、(b) Canvas→PNG 時に
+  // imageSmoothingEnabled = true (default) のため、bar/space edge が灰色に滲み
+  // scanner が黒/白二値閾値で decode 失敗する事象を起こしていた (composite CC-A
+  // のロット (10) が読めない事象)。fix を revert すると以下 2 ケースは必ず fail
+  // する陽性対照。
+  // ─────────────────────────────────────────────
+  test('生成 SVG に shape-rendering="crispEdges" が付与されている（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      const preview = page.getByLabel(/GS1 DataBar.*のバーコード/);
+      const innerHtml = await preview.evaluate((el) => el.innerHTML);
+      expect(innerHtml).toContain('shape-rendering="crispEdges"');
+    });
+  });
+
+  test('バーコードプレビューの image-rendering が pixelated（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      const preview = page.getByLabel(/GS1 DataBar.*のバーコード/);
+      await expect(preview).toBeVisible();
+
+      const rendering = await preview.evaluate((el) => getComputedStyle(el).imageRendering);
+      // Chromium (本リポジトリ playwright.config.ts の唯一の project) は
+      // 'pixelated' をそのまま正規化して返す。本 assertion はあくまで CSS class が
+      // 適用されたことの観測であり、実際の raster cache 経路でのピクセル化挙動は
+      // ブラウザ実装依存のため別途実機検証が必要。
+      expect(rendering).toBe('pixelated');
+    });
+  });
 });
