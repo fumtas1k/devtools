@@ -239,6 +239,77 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
     });
   });
 
+  // 陽性対照: composite シンボル上部に `injectCompositeText` で AI テキストが注入
+  // されることを実 preview SVG で検証する。
+  //
+  // PR #450 で撤去された関数を PR #458 (透明背景真因判明) を受けて復活させた経緯
+  // (decisions [083])。`src/utils/gs1-databar.ts` の `injectCompositeText` を削除
+  // または `Gs1Databar.tsx` の wiring (`compositeText ? injectCompositeText(...) : sizedSvg`)
+  // を削ると本 test の text 要素 / 文字列 / y=21 配置 assert が全て fail する。
+  //
+  // non-composite (AI フィールド未入力) では injection されない (`compositeText` が
+  // 空文字で early return) ことも別 case で確認し、誤って常時注入する regression
+  // を捕捉する。
+  test('composite シンボルに AI テキスト ((17)... (10)...) が SVG 上部に注入される（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await page.getByLabel('AI フィールド値 1').fill('231231');
+      await page.getByLabel('AI フィールド値 2').fill('ABC123');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      const inspection = await page.getByLabel(/GS1 DataBar.*のバーコード/).evaluate((el) => {
+        const svg = el.querySelector('svg');
+        if (!svg) return null;
+        const textEls = Array.from(svg.querySelectorAll('text'));
+        const compositeText = textEls.find((t) => /\(17\).*\(10\)/.test(t.textContent ?? ''));
+        if (!compositeText) {
+          return { found: false, textContents: textEls.map((t) => t.textContent) };
+        }
+        return {
+          found: true,
+          content: compositeText.textContent,
+          y: compositeText.getAttribute('y'),
+          textAnchor: compositeText.getAttribute('text-anchor'),
+          fontSize: compositeText.getAttribute('font-size'),
+          fill: compositeText.getAttribute('fill'),
+        };
+      });
+
+      expect(inspection?.found, '<text> 要素が AI テキストを含んで存在する').toBe(true);
+      // バー code text 表示 = "(17)YYMMDD(10)LOT" の compact 形式 (decisions [083] user 決定)
+      expect(inspection?.content).toBe('(17)231231(10)ABC123');
+      // geometry: textRowH - 3 = 24 - 3 = 21 (Courier New baseline)
+      expect(inspection?.y).toBe('21');
+      expect(inspection?.textAnchor).toBe('middle');
+      expect(inspection?.fontSize).toBe('18');
+      // <text> の塗り色は `.gs1-svg-container` の color から継承 (global.css)
+      expect(inspection?.fill).toBe('currentColor');
+    });
+  });
+
+  test('non-composite (AI フィールド未入力) シンボルには AI テキスト注入されない（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      // GTIN のみ入力 (`compositeText` が空文字 → injectCompositeText は early return)
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      const aiTextPresent = await page.getByLabel(/GS1 DataBar.*のバーコード/).evaluate((el) => {
+        const svg = el.querySelector('svg');
+        if (!svg) return false;
+        // bwip-js の `includetext: true` で linear 部 "(01)GTIN" は出るが
+        // それは <text> ではなく <path> として描画される。AI テキスト形式
+        // `(17)` / `(10)` の <text> 要素は injection されないはず。
+        const textEls = Array.from(svg.querySelectorAll('text'));
+        return textEls.some((t) => /\(17\)|\(10\)|\(11\)|\(15\)|\(21\)/.test(t.textContent ?? ''));
+      });
+      expect(aiTextPresent).toBe(false);
+    });
+  });
+
   // 陽性対照: 生成 PNG の **背景が transparent ではなく白 (RGBA=255,255,255,255)**
   // であることを **実 download click 経路** で検証する。
   //
