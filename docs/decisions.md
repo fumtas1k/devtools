@@ -3171,3 +3171,47 @@ PR #450 (`height` オプション削除) と PR #453 (`shape-rendering="crispEdg
 - 過去 fix: PR #450 (`height` 削除), PR #453 (`shape-rendering` 注入)
 - 陽性対照 (composite): `tests/e2e/gs1-databar.spec.ts` の `composite シンボルに GS1 推奨の 10X quiet zone (paddingwidth) が確保されている`
 - 陽性対照 (non-composite): 同 spec の `non-composite シンボルには paddingwidth が適用されない`
+
+## [082] 2026-05-20 — PNG 変換 Canvas2D の透明背景が原因の reader decode 失敗を白塗りで解消
+
+### 背景
+
+`[081]` の `paddingwidth: 10` で composite の左右 quiet zone を GS1 推奨 10X に拡張したが、ユーザーから「ツールで生成した PNG (`gs1-databar-04987000000017.png`) が読取サイト (Dynamsoft Barcode Reader online) で `Found 0 barcodes` になるが、同 PNG を画面 screenshot 経由で再ラスタライズしたものは confidence=100 で decode 成功する」という事象が報告された。
+
+### 根本原因（仮説の差し替え経緯）
+
+**初期仮説 (誤り)**: 垂直 quiet zone (上下余白) の不足。bwip-js の `bordertop/borderbottom` が default 0 のため bars / CC-A 上端が image 上端に密着しており、image-based scanner が symbol 境界を検出できないと推定し、`paddingheight: 10` の追加を試した。
+
+しかし `paddingheight: 10` で上下 30 svg-px の quiet zone を確保しても、Dynamsoft は依然 `Found 0 barcodes` を返した。一方、同じ PNG の screenshot は依然 decode 成功する。垂直 quiet zone は decode 成立条件ではなかったため `paddingheight` 案は revert した。
+
+**真因 (実機 pixel 計測で確定)**: `src/utils/download.ts` の `svgContentToPngBlob` / `downloadPngFromSvgElement` が **Canvas2D default の透明背景** (RGBA=0,0,0,0) のまま `drawImage(svg)` を呼んでいた。bwip-js / JsBarcode の SVG は黒バーのみ `<path>` で描画し背景 `<rect>` を持たないため、生成 PNG の **quiet zone / バー間 pixel が完全 transparent** になっていた (Playwright で `getImageData` 計測: 4 隅すべて α=0, RGB=(0,0,0))。
+
+ブラウザ表示時はページ白背景が透過するため視覚上は白だが、image-based barcode reader (Dynamsoft 等) は **transparent pixel を「黒」と解釈** する実装があり、quiet zone が黒判定 → 全面ノイズ → decode 不能になっていた。screenshot 経由で読めるのは、ブラウザが PNG を白ページ上に rendering した結果を screen capture すると実 RGB 値が白になり、再生成 PNG が通常の white-background 画像になるためである。
+
+### 決定
+
+1. **PNG 変換 Canvas の背景を白で塗る** (`src/utils/download.ts`)
+   - `svgContentToPngBlob` / `downloadPngFromSvgElement` 両方で `ctx.scale()` 前に `ctx.fillStyle = 'white'` + `ctx.fillRect(0, 0, canvas.width, canvas.height)` を呼ぶ
+   - 順序は **fillRect (device px 単位) → ctx.scale (retina 変換) → drawImage (bars を overdraw)**。scale 後だと rect 寸法が CSS px 扱いになり半分しか塗れない
+   - 影響範囲: GS1 DataBar (`svgContentToPngBlob` 経由) と JAN コード (`downloadPngFromSvgElement` 経由) の両 PNG ダウンロード
+2. **陽性対照テスト** (`src/utils/__tests__/download.test.ts` + `tests/e2e/gs1-databar.spec.ts`):
+   - unit: `svgContentToPngBlob` / `downloadPngFromSvgElement` の `fillStyle === 'white'`, `fillRect` の引数 (canvas 全面 device px), 呼び出し順序 (fillRect → scale → drawImage) を assert (各経路 3 件 × 2 経路 = 6 件)
+   - E2E: composite 生成 PNG を Canvas で実生成し 4 隅の quiet zone pixel が `α=255 / RGB=(255,255,255)` であることを `getImageData` で assert。fix を revert すると α=0 (transparent) に戻り全件 fail する設計
+
+### 検討した代替案
+
+- **垂直 quiet zone (paddingheight) のみで解決を目指す**: 当初の仮説。実機検証で否定 (Dynamsoft 依然 `Found 0`)。screenshot 経由が読める真因は余白ではなく **再ラスタライズで透明→白に変換される** ことだった。誤仮説で追加した `paddingheight: 10` と陽性対照 2 件 (`non-composite シンボルに垂直 quiet zone` / `composite シンボルに垂直 quiet zone`) は user 判断で revert した (YAGNI: scope discipline 優先)
+- **SVG 側に背景 `<rect width="100%" height="100%" fill="white"/>` を注入**: bwip-js 出力の SVG を post-process することで Image→Canvas 経路に依存せず白背景を持たせる選択肢。だが SVG 内に rect を入れると `addSvgDimensions` の regex match 経路に影響し、preview 表示時の image-rendering: pixelated との相互作用も発生するため副作用が大きい。**Canvas 側で fill する方が影響範囲が局所的** (`svgContentToPngBlob` / `downloadPngFromSvgElement` の 2 関数のみ) で安全
+- **`canvas.getContext('2d', { alpha: false })`**: alpha チャネルを完全に無効化する選択肢。canvas の background が黒になる仕様で、`fillRect` で白塗りする必要があるため結局同じ工程になる。明示的な `fillStyle = 'white' + fillRect` のほうが意図が読みやすい
+
+### 結果・トレードオフ
+
+- ✅ Dynamsoft Barcode Reader (online) で composite シンボルが `Found 1 barcode (confidence: 100)` で decode 成功することを実機検証 (user 環境で確認)
+- ✅ JAN コード (`downloadPngFromSvgElement`) も同じ修正の恩恵を受け、同様の reader 互換性向上が見込まれる
+- ✅ SVG viewBox / preview の見た目は変更なし。PNG 画素値のみ「quiet zone を透明から白に変える」局所修正なので VRT baseline (`/tools/gs1-databar`) への影響は preview 経路では無し
+
+### 関連
+
+- 関連 fix: PR #456 (`paddingwidth: 10` for composite, decisions `[081]`)
+- 陽性対照 (unit): `src/utils/__tests__/download.test.ts` の `svgContentToPngBlob: PNG 背景白塗り (transparent decode 失敗修正)` describe / `downloadPngFromSvgElement` の `陽性対照: fillStyle が white にセットされて fillRect が canvas 全面で呼ばれる` / `陽性対照: 呼び出し順序は fillRect → scale → drawImage`
+- 陽性対照 (E2E): `tests/e2e/gs1-databar.spec.ts` の `生成 PNG の quiet zone が透明ではなく白 (α=255) で塗られている`
