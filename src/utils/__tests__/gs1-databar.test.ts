@@ -182,4 +182,27 @@ describe('addSvgDimensions', () => {
     const input = '<svg width="100" height="50"></svg>';
     expect(addSvgDimensions(input)).toBe(input);
   });
+
+  // 陽性対照 (silent regression 防止): bwip-js が将来 `<svg xmlns="..." viewBox=...>`
+  // の属性順で出力するように変わった場合でも fix が動き続けることを保証する。
+  // 旧実装 (literal `<svg viewBox=` で String.prototype.replace) ではここで no-op
+  // になり width/height/shape-rendering が一切注入されない silent regression を
+  // 起こしていた。
+  it('viewBox の前に xmlns 属性があっても寸法と crispEdges を注入する', () => {
+    const input = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 50"></svg>';
+    const out = addSvgDimensions(input);
+    expect(out).toContain('width="96"');
+    expect(out).toContain('height="50"');
+    expect(out).toContain('shape-rendering="crispEdges"');
+    expect(out).toContain('xmlns="http://www.w3.org/2000/svg"');
+  });
+
+  it('viewBox の後に追加属性 (xmlns, class) があっても注入する', () => {
+    const input = '<svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg" class="foo"></svg>';
+    const out = addSvgDimensions(input);
+    expect(out).toContain('width="80"');
+    expect(out).toContain('height="40"');
+    expect(out).toContain('shape-rendering="crispEdges"');
+    expect(out).toContain('class="foo"');
+  });
 });

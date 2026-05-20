@@ -175,14 +175,19 @@ export function buildBwipText(
  *     付けないとブラウザ表示・Image→Canvas 経路の両方で bar/space edge が
  *     sub-pixel anti-alias で滲み、scanner が黒/白二値閾値で bar 幅を誤判定する
  *     (特に composite CC-A の 1X 矩形 module でロット (10) が読めない事象の原因)。
+ *
+ * 属性順依存を避けるため <svg> 開始タグ全体を regex で捕捉し、`viewBox` の
+ * 前後どちらに `xmlns` 等が来ても動くようにする (bwip-js upgrade で属性順が
+ * 変わっても silent regression しないようにするため)。
  */
 export function addSvgDimensions(svg: string): string {
-  const m = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
-  if (!m) return svg;
-  const w = Math.round(parseFloat(m[1]));
-  const h = Math.round(parseFloat(m[2]));
-  return svg.replace(
-    '<svg viewBox=',
-    `<svg width="${w}" height="${h}" shape-rendering="crispEdges" viewBox=`
-  );
+  const openTagMatch = svg.match(/<svg(\s[^>]*?)?\s+viewBox="0 0 ([\d.]+) ([\d.]+)"([^>]*)>/);
+  if (!openTagMatch) return svg;
+  const [originalTag, beforeViewBox = '', wStr, hStr, afterViewBox = ''] = openTagMatch;
+  const w = Math.round(parseFloat(wStr));
+  const h = Math.round(parseFloat(hStr));
+  const newTag =
+    `<svg width="${w}" height="${h}" shape-rendering="crispEdges"` +
+    `${beforeViewBox} viewBox="0 0 ${wStr} ${hStr}"${afterViewBox}>`;
+  return svg.replace(originalTag, newTag);
 }

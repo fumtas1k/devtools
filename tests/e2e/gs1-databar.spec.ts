@@ -144,7 +144,10 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       await expect(preview).toBeVisible();
 
       const rendering = await preview.evaluate((el) => getComputedStyle(el).imageRendering);
-      // ブラウザは 'pixelated' を正規化して返す (Chromium / WebKit / Firefox 共通)。
+      // Chromium (本リポジトリ playwright.config.ts の唯一の project) は
+      // 'pixelated' をそのまま正規化して返す。本 assertion はあくまで CSS class が
+      // 適用されたことの観測であり、実際の raster cache 経路でのピクセル化挙動は
+      // ブラウザ実装依存のため別途実機検証が必要。
       expect(rendering).toBe('pixelated');
     });
   });
