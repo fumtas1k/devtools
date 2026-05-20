@@ -3113,3 +3113,54 @@ TypeScript 5.9.3 では `Uint8Array = Uint8Array<ArrayBufferLike>` だが、Web 
 - issue #352
 - meta test: `tests/meta/vrt-slider-report.test.ts` の `generateHTML (slider lib 参照経路)` describe (陰性対照: ローカル `lib/` 参照を assert) + `[陽性対照] CDN 参照検知 assertion が機能している` describe (`unpkg.com` / `cdn.jsdelivr.net` を含む synthetic HTML で検知 assertion 自体の機能を担保)
 - CI workflow: `.github/workflows/visual-regression.yml` (改修不要、`npm ci` step が既に存在)
+
+---
+
+## [081] 2026-05-20 — Gs1Databar Composite に `paddingwidth: 10` を追加 + PR #450 のコメント誤読を訂正
+
+**日付 2026-05-20 | ステータス: 採用**
+
+### 背景
+
+`databarlimitedcomposite` で生成した GS1 DataBar Limited 合成シンボルを PC スキャナで読み取ると、**GTIN-14 (AI 01) は decode されるがロット番号 (AI 10) など CC-A 部が一切返らない** 事象が報告された。他ツールで作成した同種シンボルは同じスキャナで読めており、当ツールの出力に GS1 仕様面の不足があると判明。
+
+PR #450 (`height` オプション削除) と PR #453 (`shape-rendering="crispEdges"` 注入) で 2 段階の修正を入れていたが、本症状は再発した。bwip-js v4.9.0 の内部構造を再調査した結果、以下 2 点が判明した。
+
+### bwip-js v4.9.0 内部構造の再整理
+
+1. **`databarlimitedcomposite` は linear と CC を別レンダラで描画する**
+   - linear 部: `bwipp_renlinear` (`bwipp.js` 周辺の renlinear 経路)。`borderleft: 10` / `borderright: 10` を default で持ち 10X quiet zone を確保
+   - CC 部 (CC-A/CC-B): `bwipp_renmatrix` 経由で `bwipp_micropdf417` が `borderleft: 1` / `borderright: 1` しか渡さない → **CC の左右 quiet zone が 1X (= 3 svg-px @ scale=3) しかない**
+2. **CC-A モジュールが 1X × 2X 長方形なのは ISO/IEC 24723 仕様準拠**
+   - `bwipp_micropdf417` は `rowmult: 2` を default に持ち、CC-A 各行の高さは 2X となる
+   - GS1 General Spec 5.9.2.2 が要求する「X-dim 一致」は **横方向のみ** で、CC モジュールが正方形である必要はない (= PR #450 のコメント「~1X×1X 正方形」は GS1 仕様の誤読だった)
+   - PR #450 が本当に解決したのは「`height: 6mm` 指定が renmatrix の processoptions で CC 行高も上書きしていた (cc module = 1X × 4X に潰れた)」点で、修正そのものは正しい
+
+### 決断
+
+1. **`bwipjs.toSVG()` に `paddingwidth: 10` を追加** (`src/components/tools/Gs1Databar.tsx`)
+   - `FixupOptions` (`bwip-js` 公式 type 定義) で `paddingleft = paddingright = 10 * scale = 30 svg-px` が viewBox 左右に挿入される
+   - renlinear が linear 部に確保していた 10X とは別経路で、**CC 部含む symbol 外周** に GS1 推奨の 10X quiet zone を確実に確保
+   - 結果として CC 左右の quiet zone は実質 `1X (micropdf417 内側) + 10X (paddingwidth)` に拡張され、厳密実装のスキャナでも CC を分離検出できる
+2. **PR #450 のコメントを訂正**: `Gs1Databar.tsx` の `bwipjs.toSVG()` 上の説明を「~1X×1X 正方形モジュール」から「CC-A 1X × 2X (ISO/IEC 24723 準拠) + CC 部 quiet zone 不足の経緯」に書き直し、将来の誤解の温床を断つ
+3. **陽性対照テスト** (`tests/e2e/gs1-databar.spec.ts`): composite シンボルを生成し SVG の最も左にある描画要素 (`<path>`) の `getBBox().x` が `> 25 svg-px` であることを assert。`paddingwidth` を削ると leftmost x が 4.01 → 削除時 fail、`paddingwidth: 10` 適用時は 34.01 → pass。test-gates skill 要件 (旧実装で fail することを実機検証) も満たす
+
+### 却下した選択肢
+
+- **`rowmult: 1` で CC 行高を 1X に強制**: ISO/IEC 24723 違反になり、厳密実装の物理スキャナで逆に decode 不能になる懸念。`paddingwidth` で解決しない場合のみ別タスクで段階的に検証する方針
+- **`parse: true` / `parsefnc: true` 追加**: 現コードの bracket syntax `(01)x|(10)y` は bwip-js の `gs1process` が既に自動処理しているため不要
+- **`scale` を 3 → 4/5 に増やす**: 横方向の X-dim は既に linear と CC で一致しており、scale 増加では quiet zone 不足の根本解決にならない
+- **`ccversion: 'b'` で CC-B 強制**: ユーザー要件 (CC-A 維持) に反する
+
+### 結果・トレードオフ
+
+- ✅ CC 部の左右 quiet zone が GS1 推奨の 10X (実質 11X) に拡張され、厳密実装スキャナでも CC-A を分離検出できる見込み
+- ✅ PR #450 の GS1 仕様誤読がコード comment 上から除去され、将来「~1X×1X」を根拠にした逆走 fix を防げる
+- ⚠️ SVG / PNG の symbol 全幅が 60 svg-px 拡張される → VRT baseline 差分が確定発生。CLAUDE.md 6.8 に従い数値根拠で baseline 更新を recommend せず、user 目視確認後に CI `workflow_dispatch` で更新
+- ⚠️ 実機スキャナで decode 改善するかは user 検証次第。改善しない場合は `paddingheight: 2` (CC 上下 2X 追加) / `rowmult: 1` (spec 違反だが scanner 寛容性に賭ける) を段階的に試す別 issue を起票する
+
+### 関連
+
+- bwip-js 公式 type (`node_modules/bwip-js/dist/bwip-js.d.ts:79-85`): `paddingwidth` / `paddingleft` 等は公式 typed option
+- 過去 fix: PR #450 (`height` 削除), PR #453 (`shape-rendering` 注入)
+- 陽性対照: `tests/e2e/gs1-databar.spec.ts` の `composite シンボルに GS1 推奨の 10X quiet zone (paddingwidth) が確保されている`

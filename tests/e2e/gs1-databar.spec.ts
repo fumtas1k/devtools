@@ -151,4 +151,48 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       expect(rendering).toBe('pixelated');
     });
   });
+
+  // 陽性対照: composite シンボルに GS1 推奨の 10X quiet zone (左右 padding) が
+  // 確保されていることを実出力 SVG で検証する。bwip-js v4.9.0 の renmatrix は
+  // micropdf417 経由で渡される `borderleft/right=1` しか CC 部に持たず、CC-A
+  // 周囲の quiet zone が 1X (= 3 svg-px @ scale=3) に縮退する。GS1 General Spec
+  // は CC component 周囲に 10X 推奨を要求し、PC スキャナの decode 失敗実例が
+  // あるため `paddingwidth: 10` を `bwipjs.toSVG` に明示している。
+  //
+  // 検証方法: AI フィールド入力で composite シンボルを生成 → SVG の最初の
+  // <rect/path> の x 座標が `scale × paddingwidth = 30` 以上であることを確認。
+  // `paddingwidth` を削ると 0〜数 svg-px (1X 相当) になるため必ず fail する。
+  test('composite シンボルに GS1 推奨の 10X quiet zone (paddingwidth) が確保されている（陽性対照 / CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+      // GTIN + ロット (10) を入力して databarlimitedcomposite を生成
+      await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+      await page.getByLabel('AI フィールド値 2').fill('ABC123');
+      await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+      const preview = page.getByLabel(/GS1 DataBar.*のバーコード/);
+      // SVG viewBox の min-x からシンボル左端までの padding を svg-px で取得。
+      // bwip-js は描画要素を <path>/<rect> で出力する。最も左にある描画要素の
+      // x 座標 (= 左端からの padding) を測定する。
+      const leftPaddingPx = await preview.evaluate((el) => {
+        const svg = el.querySelector('svg');
+        if (!svg) return -1;
+        // SVGGraphicsElement.getBBox() は viewBox 座標系で要素群の bounding box を返す。
+        // viewBox 全体に対し描画要素群の x が paddingleft 分だけ右にオフセットされる。
+        const items = svg.querySelectorAll('rect, path');
+        let minX = Infinity;
+        for (const it of items) {
+          const bbox = (it as SVGGraphicsElement).getBBox();
+          if (bbox.x < minX) minX = bbox.x;
+        }
+        return Number.isFinite(minX) ? minX : -1;
+      });
+
+      // paddingwidth: 10 × scale: 3 = 30 svg-px。bwip-js の内部処理で多少の
+      // 浮動小数点誤差が乗る可能性があるため > 25 で判定する (paddingwidth 削除時は
+      // 0〜3 svg-px 程度になるため十分な余裕)。
+      expect(leftPaddingPx).toBeGreaterThan(25);
+    });
+  });
 });
