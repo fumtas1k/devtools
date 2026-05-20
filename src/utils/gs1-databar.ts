@@ -269,10 +269,13 @@ export function injectCompositeText(svg: string, text: string): string {
   const newH = h + textRowH;
   const barcodeOffsetX = (newW - barcodeW) / 2;
 
+  // 置換 regex は `<svg` 開始タグ内 (`<svg ... width="N" height="N" ...>`) に anchor する。
+  // 将来 bwip-js が SVG 内に `<rect width="N">` 等の子要素を含むようになった場合に
+  // **最初の match が子要素になって wrong match する** silent regression を防ぐ (#462 review A)。
   const result = svg
     .replace(/viewBox="0 0 [\d.]+ [\d.]+"/, `viewBox="0 0 ${newW.toFixed(1)} ${newH.toFixed(1)}"`)
-    .replace(/width="\d+"/, `width="${Math.round(newW)}"`)
-    .replace(/height="\d+"/, `height="${Math.round(newH)}"`);
+    .replace(/(<svg\s[^>]*?)width="\d+"/, `$1width="${Math.round(newW)}"`)
+    .replace(/(<svg\s[^>]*?)height="\d+"/, `$1height="${Math.round(newH)}"`);
 
   const openEnd = result.indexOf('>') + 1;
   const closeStart = result.lastIndexOf('</svg>');

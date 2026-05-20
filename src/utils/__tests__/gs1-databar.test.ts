@@ -327,4 +327,33 @@ describe('injectCompositeText', () => {
     // 元 SVG の <path .../> が <g transform="..."> 内に残る
     expect(out).toMatch(/<g transform="translate\([\d.]+,24\)">.*<path[^>]*\/>.*<\/g>/s);
   });
+
+  // 陽性対照 (#462 review A 対応): width / height 置換 regex は **<svg> 開始タグ内に
+  // anchor** されており、`<svg>` に width/height 属性が無く子要素にだけ `width="N"`
+  // がある場合に **子要素を wrong match して破壊しない** ことを実観測する。
+  //
+  // anchor を外して旧形 (`/width="\d+"/`) に戻すと、最初の match が子要素
+  // `<rect width="10">` になり `<rect width="76">` (newW=76) に誤置換されて
+  // 子要素 width assertion が必ず fail する設計 (test-gates 鉄則 1)。
+  //
+  // 実運用では `addSvgDimensions` が `<svg>` に width/height を必ず注入するため
+  // anchor の差は顕在化しないが、bwip-js / addSvgDimensions の将来変更で svg root
+  // から width/height が外れた場合の silent regression を防ぐ防御ガード。
+  it('<svg> ルートに width 属性無し + 子要素 <rect width="N"> ありの場合に子要素を破壊しない (anchor 検証)', () => {
+    // svg root に width/height 属性なし、viewBox のみ。子要素 <rect width="10">。
+    // injectCompositeText は viewBox から barcodeW=100 / h=50 を取得して動作する。
+    const svgNoRootWidth =
+      '<svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="10" height="20" fill="#000"/></svg>';
+    // text 長さ 10 文字 → estimatedTextW = 10 * 10.8 + 16 = 124 → newW = max(100, 124) = 124
+    // newH = 50 + 24 = 74
+    const out = injectCompositeText(svgNoRootWidth, '(17)231231');
+    // 子要素 <rect> の width / height は元のまま (10 / 20)。
+    // 旧 regex (anchor 無し) なら最初の `width="10"` が `width="124"` に誤置換されて
+    // `<rect width="124" height="74">` になり、本 assert が fail する。
+    expect(out).toMatch(/<rect width="10" height="20"/);
+    // svg root には元々 width 属性が無いため anchor 付き regex は no-op (注入もしない)。
+    // viewBox は別 regex で更新される (anchor 無関係)。
+    expect(out).toMatch(/viewBox="0 0 124\.0 74\.0"/);
+  });
 });
