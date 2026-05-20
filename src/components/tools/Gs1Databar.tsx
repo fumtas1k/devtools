@@ -95,16 +95,32 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
     );
 
     try {
-      const bcid = hasAnyAiValue ? 'databarlimitedcomposite' : 'databarlimited';
-      // bwip-js v4.9.0 は composite で `height` を指定すると linear 部だけでなく
-      // composite component (CC-A/CC-B) のモジュール縦サイズも一緒にスケールし、
-      // GS1 spec の ~1X×1X 正方形モジュールが ~1X×4X に潰れて scanner が decode
-      // 不能になる (scale=3 + height=6 で cc module = 3×12)。`height` を default
-      // に委ねる (linear 10.3X = GS1 最小値、bwip-js demo の default と同じ)。
+      const isComposite = hasAnyAiValue;
+      const bcid = isComposite ? 'databarlimitedcomposite' : 'databarlimited';
+      // bwip-js v4.9.0 メモ (composite component):
+      //  - `databarlimitedcomposite` は linear を `bwipp_renlinear`、CC を
+      //    `bwipp_renmatrix` で別経路描画する。`height` オプションは renmatrix の
+      //    processoptions で CC 行高も上書きしてしまうため指定不可 (PR #450)。
+      //  - CC-A 行高は ISO/IEC 24723 で 2X 最小と規定されており、bwip-js は
+      //    `bwipp_micropdf417` の `rowmult: 2` で実現する。GS1 General Spec
+      //    5.9.2.2 が要求する「X-dim 一致」は横方向のみで、CC モジュールが
+      //    1X × 2X 長方形なのは仕様準拠 (PR #450 のコメント記述は誤りだった)。
+      //  - linear 部は renlinear が `borderleft/right=10` を持つので 10X quiet
+      //    zone を確保するが、CC 部は micropdf417 が `borderleft/right=1` しか
+      //    渡さないため CC 左右の quiet zone が 1X しかない。GS1 推奨は 10X で、
+      //    1X だとスキャナの実装次第で CC を分離検出できず GTIN だけ返って CC-A
+      //    (AI 10 等) が decode 不能になる。`paddingwidth: 10` で symbol 外周に
+      //    GS1 推奨の 10X quiet zone を確実に確保する。
+      //  - **`paddingwidth` は composite 時のみ適用**: non-composite (databarlimited
+      //    単独) は renlinear が既に 10X quiet zone を確保しているため、追加すると
+      //    実質 20X となり symbol 全幅が必要以上に拡大する (仕様違反ではないが過剰)。
+      //    composite 経路の CC 部だけが quiet zone 不足の問題を持つので適用範囲を
+      //    限定する。
       const rawSvg = bwipjs.toSVG({
         bcid,
         text: bwipText,
         scale: 3,
+        ...(isComposite ? { paddingwidth: 10 } : {}),
         includetext: true,
         textxalign: 'center',
         textsize: 7,
