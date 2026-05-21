@@ -333,30 +333,36 @@ describe('injectCompositeText', () => {
   // 陽性対照 (本修正で導入): text descender 終端と barcode 上端の間に GS1 General Spec
   // 5.9.2.6 が要求する ≥1X (= 3px @ scale=3) の quiet zone を確保していることを実観測する。
   //
+  // 本テストは既存の `transform="translate(0.0,33)"` 直接照合 (固定値 assert) と異なり、
+  // **「gap が spec 下限 ≥1X を満たす」という行動的不変条件** を検証する責務。fontSize
+  // が将来変更されて translate y が固定値から動いても、本テストは spec 下限制約のみを
+  // 評価するため引き続き正しく動作する (固定値レベルと spec レベルの assertion を
+  // 分離して提供する)。
+  //
   // 旧実装 (barcode translate y = textRegionH = 24) では:
-  //   - text baseline y=21 + Courier New descender ~4px → descender 終端 ~y=25
-  //   - barcode 上端 = y=24 → 実際は descender が CC-A 上端を **1px 侵食**
+  //   - text baseline y=21 + Courier New descender (fontSize×0.28 ≈ 5px) → descender 終端 ~y=26
+  //   - barcode 上端 = y=24 → 実際は descender が CC-A 上端を **1-2px 侵食**
   // → composite reader (Dynamsoft / 医薬品 reader) が CC-A の row indicator pattern を
-  //   誤検出して AI 10/17 が decode 不能になる回帰。PR #450 で同問題が「ディセンダー
-  //   侵入」として認知され撤去されたが、PR #458 で transparent 背景という独立要因が
-  //   見つかり PR #462 で AI text 復活時に descender 仮説が red herring 扱いされた。
-  //   実際は両方とも独立した decode 阻害要因で、印刷物 + 業務 reader 経路では
-  //   descender 侵入が再浮上していた。
+  //   誤検出して AI 10/17 が decode 不能になる回帰。
   //
   // 本 assert が fail する revert pattern:
   //   - `barcodeOffsetY = textRegionH + quietZone` を `= textRegionH` に戻す
-  //   - `quietZone = 9` を `= 0` にする
-  // → translate y が 24 に戻り `translate(0.0,33)` assert が fail。
+  //   - `quietZone` を 0 または `< descender approximation` に下げる
+  // → gap < 3px (= 1X) で本 assert が fail。
   it('陽性対照: text descender 終端と barcode 上端の gap が GS1 spec ≥1X (3px @ scale=3) を満たす', () => {
     const out = injectCompositeText(baseSvg, '(17)231231');
-    // baseline y=21 + Courier New descender ~4-5px → 描画 bottom y ≈ 25-26
-    // barcode top y = 33 (translate y)
-    // → gap = 33 - 26 = 7px = ~2.3X @ scale=3 ≥ 1X spec要求 ✓
     const translateMatch = out.match(/<g transform="translate\([\d.]+,(\d+)\)">/);
     expect(translateMatch, 'barcode translate y を抽出できない').not.toBeNull();
     const barcodeTopY = Number(translateMatch![1]);
-    const baselineY = 21;
-    const descenderApprox = 5; // Courier New @ fontSize=18 の安全側見積もり
+    // 実装の geometry 定数を陽性対照側でも再現する。fontSize / baselineY が将来変更
+    // されたら本テストの定数も連動して em 比で再計算されるため silent regression を
+    // 起こさない (review #465 should-fix #1 対応: 旧実装は `descenderApprox = 5` を
+    // hardcode していたため fontSize 変更時に追従破綻する穴があった)。
+    const fontSize = 18;
+    const baselineY = fontSize + 6 - 3; // = textRegionH - 3 = 21
+    // Courier New の descender は概ね fontSize の 0.28 倍。Math.ceil で安全側に
+    // 切り上げて gap 計算で過小評価しない。
+    const descenderApprox = Math.ceil(fontSize * 0.28);
     const gap = barcodeTopY - (baselineY + descenderApprox);
     const oneXAtScale3 = 3;
     expect(
@@ -372,11 +378,14 @@ describe('injectCompositeText', () => {
   // 防ぐ defense in depth。
   //
   // fail する revert pattern: `<rect ... fill="white"/>` の挿入を撤去 → 本 assert が fail。
-  it('陽性対照: 白背景 rect が <svg> 開始タグ直後 (text / barcode より背面) に挿入される', () => {
+  //
+  // `data-role="bg"` 属性は E2E paddingwidth 陽性対照との fragility 低減 identifier
+  // (review #465 nice #2 対応)。これも併せて assert する。
+  it('陽性対照: 白背景 rect が <svg> 開始タグ直後 (text / barcode より背面) に data-role="bg" 付きで挿入される', () => {
     const out = injectCompositeText(baseSvg, '(17)231231');
-    // <svg ...><rect width="293.0" height="108.0" fill="white"/> の順
+    // <svg ...><rect data-role="bg" width="293.0" height="108.0" fill="white"/> の順
     expect(out).toMatch(
-      /<svg[^>]*>\s*<rect width="293\.0" height="108\.0" fill="white"\/>\s*<text /
+      /<svg[^>]*>\s*<rect data-role="bg" width="293\.0" height="108\.0" fill="white"\/>\s*<text /
     );
   });
 

@@ -3238,6 +3238,8 @@ PR #450 で行った decode 検証 3 種類:
 
 descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「composite 周囲 1X quiet zone」要求自体は依然有効だが、image-based reader の binary threshold 動作には透明背景の方が遥かに支配的な影響を与えていた。
 
+> **訂正 ([084] 参照)**: 本「明確に否定」は **PNG ファイル → reader app 直入力経路に限定した結論**。後続の `[084]` で印刷物 + 業務 reader 経路では descender 侵入が独立した阻害要因として成立することが判明し、本 ADR は経路条件付きでのみ有効。
+
 ### 決定
 
 1. **`escapeHtml` / `injectCompositeText` を `src/utils/gs1-databar.ts` に復元**: PR #450 撤去時 (commit `c563cf5`) から geometry / 関数シグネチャ不変で復元。コメントブロックで「PR #450 撤去 → PR #458 真因判明 → 本 PR 復活」の時系列を明示
@@ -3314,7 +3316,8 @@ GS1 General Specifications 5.9.2.6 は composite component 上下に **≥1X (= 
 - ✅ 既存 unit 42 件 / 全体 unit 1310 件 pass + astro check 0 errors
 - ⚠️ 生成 SVG / PNG の **全高がさらに 9 svg-px 拡張** (旧 24 → 新 33 が barcode offset)。VRT baseline (`/tools/gs1-databar`) の composite シンボル表示は差分必須 → CI `workflow_dispatch` で再生成 (CLAUDE.md 6.8、mac local 生成不可)
 - ⚠️ 実機 decode 検証は user 環境 (印刷物 + 医薬品向け業務 reader) でのみ可能。エージェント側では unit / 型 / E2E (preview SVG) までで、最終 OK は user 実機確認
-- ⚠️ `[083]` の「descender 仮説は明確に否定された」記述は **PNG ファイル経路に限定した結論** として残置 (印刷物経路では成立しない旨を本 [084] で訂正)
+- ⚠️ `[083]` の「descender 仮説は明確に否定された」記述は **PNG ファイル経路に限定した結論** として残置 (印刷物経路では成立しない旨を本 [084] で訂正、`[083]` 側にも forward reference 注記)
+- ⚠️ **dark mode UI でも白背景 rect (`fill="white"`) を固定**: SVG は `dangerouslySetInnerHTML` でページに直接 embed されるため、dark theme 適用時に白い矩形がプレビュー領域に浮く可能性がある。decode 信頼性 (reader aggressive binarization 対策) > 視覚調和、を優先する判断 (現状の preview wrapper `.gs1-svg-container` は `bg-surface` で light のため顕在化していないが、将来 dark wrapper に変更しても rect は white 固定)
 
 ### 関連
 

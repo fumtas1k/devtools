@@ -269,7 +269,11 @@ export function injectCompositeText(svg: string, text: string): string {
   const fontSize = 18;
   const textRegionH = fontSize + 6;
   // GS1 General Spec 5.9.2.6: composite component 上下に ≥1X (= 3px @ scale=3) の
-  // quiet zone 必須。安全マージン込みで 3X (= 9px) を確保する。
+  // quiet zone 必須。9px (= 3X) を選択した根拠:
+  //  - spec 下限 1X (= 3px) は reader 個体差 / 印刷品質劣化のマージンが薄い
+  //  - 12X 以上は visual gap が広く preview / PNG で text と barcode が分離して見える
+  //  - 3X は spec の 3 倍マージンで頑健、かつ視覚的にも text と barcode が
+  //    同じ symbol の一部として認知される距離 (経験則による選択)
   const quietZone = 9;
   const barcodeOffsetY = textRegionH + quietZone;
   const baselineY = textRegionH - 3;
@@ -293,7 +297,13 @@ export function injectCompositeText(svg: string, text: string): string {
     .replace(/(<svg\s[^>]*?)width="\d+"/, `$1width="${Math.round(newW)}"`)
     .replace(/(<svg\s[^>]*?)height="\d+"/, `$1height="${Math.round(newH)}"`);
 
-  const openEnd = result.indexOf('>') + 1;
+  // `<svg ...>` 開始タグ末尾を **regex で anchor** して抽出する。`indexOf('>')` 単純
+  // 切断は属性値内に `>` が含まれた場合 (例: `<svg data-foo="a>b">`) に誤切断する
+  // 潜在リスクがある。現状の bwip-js + `addSvgDimensions` 出力では発生しないが、
+  // 将来 attribute 追加で silent regression しないよう defensive に regex 化する。
+  const openTagMatch = result.match(/<svg[^>]*>/);
+  if (!openTagMatch) return svg;
+  const openEnd = (openTagMatch.index ?? 0) + openTagMatch[0].length;
   const closeStart = result.lastIndexOf('</svg>');
   const openTag = result.slice(0, openEnd);
   const inner = result.slice(openEnd, closeStart);
@@ -301,7 +311,11 @@ export function injectCompositeText(svg: string, text: string): string {
   // 白背景 rect は最背面 (text / barcode より前) に置く。SVG transparent な状態で
   // dark UI に embed されたり reader が aggressive binarization する場合に CC-A が
   // 黒判定されて decode 失敗するのを防ぐ defense in depth。
-  const bgRect = `<rect width="${newW.toFixed(1)}" height="${newH.toFixed(1)}" fill="white"/>`;
+  // `data-role="bg"` を付与: 将来 bwip-js が `fill="white"` の decorative rect を
+  // 出力するようになった場合に、E2E paddingwidth 陽性対照 (`fill === 'white'` で除外
+  // していた) との semantic 衝突を避ける identifier。E2E 側は `data-role="bg"` で
+  // 識別する。
+  const bgRect = `<rect data-role="bg" width="${newW.toFixed(1)}" height="${newH.toFixed(1)}" fill="white"/>`;
 
   const textEl =
     `<text x="${(newW / 2).toFixed(1)}" y="${baselineY}" ` +

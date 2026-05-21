@@ -187,13 +187,16 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
         // viewBox 全体に対し描画要素群の x が paddingleft 分だけ右にオフセットされる。
         //
         // `injectCompositeText` (decisions [084]) が defense-in-depth で挿入する
-        // **白背景 `<rect width="W" height="H" fill="white"/>`** は SVG 全域を x=0 から
-        // 覆うため barcode quiet zone 計測対象から除外する。除外しないと minX=0 に
-        // 引きずられて本 assert (leftPaddingPx > 25) が誤 fail する。
+        // **白背景 `<rect data-role="bg" width="W" height="H" fill="white"/>`** は
+        // SVG 全域を x=0 から覆うため barcode quiet zone 計測対象から除外する。
+        // 除外しないと minX=0 に引きずられて本 assert (leftPaddingPx > 25) が誤 fail する。
+        // 識別子は `data-role="bg"` (semantic 属性): `fill === 'white'` 識別では将来
+        // bwip-js が `fill="white"` の decorative rect を出すと誤除外する fragility が
+        // ある (review #465 nice #2 対応)。
         const items = svg.querySelectorAll('rect, path');
         let minX = Infinity;
         for (const it of items) {
-          if ((it as Element).getAttribute('fill') === 'white') continue;
+          if ((it as Element).getAttribute('data-role') === 'bg') continue;
           const bbox = (it as SVGGraphicsElement).getBBox();
           if (bbox.x < minX) minX = bbox.x;
         }
