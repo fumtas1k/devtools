@@ -280,7 +280,9 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       expect(inspection?.found, '<text> 要素が AI テキストを含んで存在する').toBe(true);
       // バー code text 表示 = "(17)YYMMDD(10)LOT" の compact 形式 (decisions [083] user 決定)
       expect(inspection?.content).toBe('(17)231231(10)ABC123');
-      // geometry: textRowH - 3 = 24 - 3 = 21 (Courier New baseline)
+      // geometry: textRegionH(24) - 3 = 21 (Courier New baseline)。barcode 全体は
+      // 別途 textRegionH + quietZone(9) = 33px 下に translate される (CC-A 上端の
+      // 1X quiet zone 確保。詳細は `gs1-databar.ts` の injectCompositeText JSDoc)。
       expect(inspection?.y).toBe('21');
       expect(inspection?.textAnchor).toBe('middle');
       expect(inspection?.fontSize).toBe('18');

@@ -129,12 +129,19 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
       // composite component 上に AI テキスト ((17)... 等) を SVG injection する。
       //
-      // 経緯: PR #450 (commit c563cf5) は「ディセンダーが composite 上端 1X quiet
-      // zone に侵入して Dynamsoft Reader が decode 不能」を理由に撤去したが、PR #458
-      // (commit 977f6b6) で真因は **Canvas2D の透明背景** (一部 reader が transparent
-      // pixel を黒判定) と判明。PR #450 の検証はすべて透明背景時だったため descender
-      // 仮説は red herring と判断、白背景 fix とセットで復活させ user 実機検証で
-      // decode 成功を確認した (decisions [083])。
+      // 経緯:
+      //  - PR #450 (commit c563cf5): 「ディセンダーが composite 上端 1X quiet zone を
+      //    侵入して Dynamsoft Reader decode 不能」を理由に撤去。
+      //  - PR #458 (commit 977f6b6): PNG decode 不能の独立要因として Canvas2D の透明
+      //    背景が判明、白背景 fix を入れた。
+      //  - PR #462: PR #458 と組合せれば PNG ファイル → reader app 経路で decode 成功
+      //    することを user 実機 (Dynamsoft) で確認し AI text を復活させた。
+      //  - 本修正: しかし PR #462 の検証は PNG ファイル単体経路のみで **印刷物 → 業務
+      //    reader 経路は検証されていなかった**。印刷物では reader の前処理が画像直入力
+      //    より弱く、descender 終端が CC-A 上端を侵食していた旧 geometry (gap -1px) で
+      //    AI 10/17 が decode 不能だった (linear GTIN は読める = CC-A 単独失敗)。
+      //    `injectCompositeText` の geometry を text 領域 + quiet zone (3X @ scale=3) に
+      //    分離して GS1 General Spec 5.9.2.6 準拠の gap を確保。詳細は同関数 JSDoc。
       const compositeText = aiFields
         .filter((f) => f.value.trim() !== '')
         .map((f) => `(${f.ai})${f.value.trim()}`)

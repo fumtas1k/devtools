@@ -228,10 +228,21 @@ export function escapeHtml(text: string): string {
  *   実機 Dynamsoft で empirical 検証 → 成功 → 復活。
  *
  * ## geometry
- * - `fontSize = 18`, `textRowH = fontSize + 6 = 24`
- * - text baseline `y = textRowH - 3 = 21` (Courier New descender ~4px 含む)
- * - barcode 全体を `translate(_, textRowH)` で下に 24px shift
+ * - `fontSize = 18`, `textRegionH = fontSize + 6 = 24` (text 描画領域)
+ * - text baseline `y = textRegionH - 3 = 21`、Courier New descender ~4px → 終端 ~y=25
+ * - **`quietZone = 9` (= 3X @ scale=3) を text 領域と barcode の間に確保**。
+ *   GS1 General Specifications 5.9.2.6 は composite component 上下に ≥1X (= 3px @
+ *   scale=3) の quiet zone を要求するため、descender 終端 ~y=25 が CC-A 上端
+ *   を侵食しないよう余裕を取る (旧実装 `textRowH=24` を barcode offset と兼用
+ *   していたため gap が -1px と CC-A 上端を侵食し、composite reader で AI 10/17
+ *   が decode 不能だった事象の再発防止: PR #450 で同問題を撤去 / PR #458 で
+ *   透明背景真因判明により復活 / 本修正で印刷物の医薬品 reader 失敗対応)。
+ * - barcode 全体を `translate(_, barcodeOffsetY = textRegionH + quietZone = 33)` で
+ *   下に 33px shift
  * - text が barcode より広いときは centering (`(newW - barcodeW) / 2`)
+ * - SVG 全域に `<rect fill="white">` を最背面に挿入。CC-A 透明背景による decode
+ *   失敗 (PR #458 で判明) を SVG 単体でも防ぐ defense in depth (canvas2D 経由の
+ *   白背景 fill は `svgContentToPngBlob` 側で別途実装済み)。
  *
  * ## 引数
  * @param svg - bwip-js が生成 + `addSvgDimensions` 済み SVG 文字列。viewBox / width /
@@ -256,7 +267,12 @@ export function injectCompositeText(svg: string, text: string): string {
   const h = parseFloat(vbMatch[2]);
 
   const fontSize = 18;
-  const textRowH = fontSize + 6;
+  const textRegionH = fontSize + 6;
+  // GS1 General Spec 5.9.2.6: composite component 上下に ≥1X (= 3px @ scale=3) の
+  // quiet zone 必須。安全マージン込みで 3X (= 9px) を確保する。
+  const quietZone = 9;
+  const barcodeOffsetY = textRegionH + quietZone;
+  const baselineY = textRegionH - 3;
 
   // Courier New monospace: 1 文字あたり約 0.6em。
   // 見積もりはエスケープ前の文字数で行う (ブラウザは実体参照を 1 文字分で描画するため)。
@@ -266,7 +282,7 @@ export function injectCompositeText(svg: string, text: string): string {
 
   // text が barcode より広い場合は SVG 全体を横に拡張し barcode を中央寄せする。
   const newW = Math.max(barcodeW, estimatedTextW);
-  const newH = h + textRowH;
+  const newH = h + barcodeOffsetY;
   const barcodeOffsetX = (newW - barcodeW) / 2;
 
   // 置換 regex は `<svg` 開始タグ内 (`<svg ... width="N" height="N" ...>`) に anchor する。
@@ -282,12 +298,17 @@ export function injectCompositeText(svg: string, text: string): string {
   const openTag = result.slice(0, openEnd);
   const inner = result.slice(openEnd, closeStart);
 
+  // 白背景 rect は最背面 (text / barcode より前) に置く。SVG transparent な状態で
+  // dark UI に embed されたり reader が aggressive binarization する場合に CC-A が
+  // 黒判定されて decode 失敗するのを防ぐ defense in depth。
+  const bgRect = `<rect width="${newW.toFixed(1)}" height="${newH.toFixed(1)}" fill="white"/>`;
+
   const textEl =
-    `<text x="${(newW / 2).toFixed(1)}" y="${textRowH - 3}" ` +
+    `<text x="${(newW / 2).toFixed(1)}" y="${baselineY}" ` +
     `text-anchor="middle" font-family="'Courier New',Courier,monospace" ` +
     `font-size="${fontSize}" fill="currentColor">${escapedText}</text>`;
 
-  const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${textRowH})`;
+  const barcodeTranslate = `translate(${barcodeOffsetX.toFixed(1)},${barcodeOffsetY})`;
 
-  return `${openTag}${textEl}<g transform="${barcodeTranslate}">${inner}</g></svg>`;
+  return `${openTag}${bgRect}${textEl}<g transform="${barcodeTranslate}">${inner}</g></svg>`;
 }

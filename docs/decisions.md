@@ -3266,3 +3266,57 @@ descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「co
 - 関連 fix: PR #450 (撤去, decisions `[067]` update) / PR #458 (透明背景真因判明, decisions `[082]`)
 - 陽性対照 (unit): `src/utils/__tests__/gs1-databar.test.ts` の `escapeHtml` / `injectCompositeText` describe
 - 陽性対照 (E2E): `tests/e2e/gs1-databar.spec.ts` の `composite シンボルに AI テキスト ((17)... (10)...) が SVG 上部に注入される` / `non-composite (AI フィールド未入力) シンボルには AI テキスト注入されない`
+
+---
+
+## [084] 2026-05-21 — Gs1Databar `injectCompositeText` の text 描画領域と barcode offset を分離し CC-A 上端 quiet zone を 3X 確保
+
+### 背景
+
+`[083]` (PR #462) で復活させた `injectCompositeText` を user 実機で運用したところ、PNG ファイル単体を業務 reader に流す経路では decode 成功するが、**印刷物を医薬品向け業務 reader (CC-A 対応) で読ませると linear GTIN-14 (01) は読めるのに合成 CC-A 側の AI (17) 賞味期限 / (10) ロット番号だけが decode 不能**になることが判明 (2026-05-21 user 報告)。reader の対応可否ではない (他生成系の GS1 は同 reader で読める)。
+
+### 根本原因の再評価
+
+`[083]` で「descender 仮説は明確に否定された」と結論したが、これは **PNG ファイル → reader app という 1 経路のみ** での empirical 検証で、印刷物 → カメラ撮像 → reader 経路は対象外だった。後者は reader 側の前処理 (binarization threshold / contrast normalization) が画像直入力より弱く、わずかな noise が CC-A の row indicator pattern 検出を破綻させる。
+
+旧 geometry を実数で再検証:
+
+- `fontSize = 18`, `textRowH = fontSize + 6 = 24` を **text 描画領域と barcode translate offset の兼用** 変数として使用
+- text baseline `y = textRowH - 3 = 21`、Courier New descender ≈ 4-5px → descender 終端 `y ≈ 25-26`
+- barcode 上端 = `translate(_, textRowH=24)` → **descender 終端 (~25) > barcode 上端 (24) で実質 1-2px CC-A 上端を侵食**
+
+GS1 General Specifications 5.9.2.6 は composite component 上下に **≥1X (= 3px @ scale=3) の quiet zone 必須** と規定。旧 geometry はこの仕様要求を `gap = -1px` で違反していた。透明背景バグ (`[082]`) が解消した後も、印刷物 + 業務 reader 経路ではこの spec 違反が独立した阻害要因として残存していた。
+
+`[083]` の descender 仮説否定は **PNG ファイル経路に限定すれば正しい** が、印刷物経路では誤りだった。両仮説 (透明背景 / descender 侵入) はそれぞれ独立した CC-A decode 阻害要因。
+
+### 決定
+
+1. **`textRegionH` と `barcodeOffsetY` を変数として分離** (`src/utils/gs1-databar.ts:259` 周辺):
+   - `textRegionH = fontSize + 6 = 24` (text 描画専用)
+   - `quietZone = 9` (= 3X @ scale=3、spec ≥1X に対して 3X の安全マージン)
+   - `barcodeOffsetY = textRegionH + quietZone = 33` (barcode translate 専用)
+   - `newH = h + barcodeOffsetY` (旧: `h + textRowH`)
+2. **SVG 全域に白背景 `<rect fill="white">` を最背面挿入**: PR #458 が canvas2D 経路のみで対処していた領域を SVG 単体でも防ぐ defense in depth。dark UI embed / reader aggressive binarization 時の CC-A 透明 pixel 黒判定を SVG 自己完結で回避
+3. **陽性対照テスト追加** (`src/utils/__tests__/gs1-databar.test.ts`):
+   - `text descender 終端と barcode 上端の gap が GS1 spec ≥1X (3px @ scale=3) を満たす`: 旧 geometry (`barcodeOffsetY = textRegionH`) に戻すと gap = -2px で fail
+   - `白背景 rect が <svg> 開始タグ直後 (text / barcode より背面) に挿入される`: 白背景 rect 撤去で match 不能 fail
+
+### 検討した代替案
+
+- **AI text を撤去 (PR #450 状態に戻す)**: HRI が肉眼で読めなくなり UX 後退。decisions [083] の user 要求 (合成シンボル内容を人間可読で確認) を満たさない
+- **AI text を barcode の下に移動 (linear HRI のさらに下)**: CC-A 上端 quiet zone に一切触れない物理分離で堅牢だが、SVG geometry を大きく組み替える必要があり test/VRT diff が広範囲。最小変更の本案で spec 準拠 gap を確保できるため過剰
+- **`quietZone = 3` (= spec 最低値 1X)**: spec 上は十分だが reader 個体差 / 印刷品質劣化のマージンが薄い。`9` (3X) で堅牢化
+
+### 結果・トレードオフ
+
+- ✅ GS1 General Spec 5.9.2.6 の CC-A 上下 quiet zone 要求 (≥1X) を 3X で満たす geometry に修正
+- ✅ SVG 単体での透明背景問題も defense in depth で防止 (PR #458 の canvas2D fix と独立)
+- ✅ 既存 unit 42 件 / 全体 unit 1310 件 pass + astro check 0 errors
+- ⚠️ 生成 SVG / PNG の **全高がさらに 9 svg-px 拡張** (旧 24 → 新 33 が barcode offset)。VRT baseline (`/tools/gs1-databar`) の composite シンボル表示は差分必須 → CI `workflow_dispatch` で再生成 (CLAUDE.md 6.8、mac local 生成不可)
+- ⚠️ 実機 decode 検証は user 環境 (印刷物 + 医薬品向け業務 reader) でのみ可能。エージェント側では unit / 型 / E2E (preview SVG) までで、最終 OK は user 実機確認
+- ⚠️ `[083]` の「descender 仮説は明確に否定された」記述は **PNG ファイル経路に限定した結論** として残置 (印刷物経路では成立しない旨を本 [084] で訂正)
+
+### 関連
+
+- 関連 fix: PR #450 (旧 descender 仮説で撤去, `[067]` update) / PR #458 (透明背景真因判明, `[082]`) / PR #462 (AI text 復活, `[083]`)
+- 陽性対照 (unit): `src/utils/__tests__/gs1-databar.test.ts` の `injectCompositeText > 陽性対照: text descender 終端と barcode 上端の gap が GS1 spec ≥1X (3px @ scale=3) を満たす` / `陽性対照: 白背景 rect が <svg> 開始タグ直後 (text / barcode より背面) に挿入される`
