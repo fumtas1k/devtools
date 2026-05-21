@@ -185,9 +185,15 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
         if (!svg) return -1;
         // SVGGraphicsElement.getBBox() は viewBox 座標系で要素群の bounding box を返す。
         // viewBox 全体に対し描画要素群の x が paddingleft 分だけ右にオフセットされる。
+        //
+        // `injectCompositeText` (decisions [084]) が defense-in-depth で挿入する
+        // **白背景 `<rect width="W" height="H" fill="white"/>`** は SVG 全域を x=0 から
+        // 覆うため barcode quiet zone 計測対象から除外する。除外しないと minX=0 に
+        // 引きずられて本 assert (leftPaddingPx > 25) が誤 fail する。
         const items = svg.querySelectorAll('rect, path');
         let minX = Infinity;
         for (const it of items) {
+          if ((it as Element).getAttribute('fill') === 'white') continue;
           const bbox = (it as SVGGraphicsElement).getBBox();
           if (bbox.x < minX) minX = bbox.x;
         }
