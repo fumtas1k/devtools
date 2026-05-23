@@ -23,7 +23,7 @@ const toolEntries: Tool[] = [
     name: 'JWTデコーダー',
     description: 'JWTトークンのHeader・Payload・署名を分解表示します',
     category: 'convert',
-    yomi: 'じぇいだぶりゅーてぃーでこーだー',
+    yomi: 'じょっとでこーだー',
   },
   {
     slug: 'ulid-generator',
