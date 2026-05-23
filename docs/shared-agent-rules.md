@@ -65,7 +65,7 @@ post-PR 代行は不要、CI が最終ゲート。
 
 1. `src/components/tools/ToolName.tsx` を作成
 2. `src/pages/tools/tool-slug.astro` を作成（`client:load` で React コンポーネントをマウント）
-3. `src/data/tools.ts` の `tools` 配列にエントリを追加（slug / name / description / category）
+3. `src/data/tools.ts` の `toolEntries` 配列にエントリを追加（slug / name / description / category / yomi）。`yomi` は並び替え用の読み仮名（ひらがな）で、表示順はこの `yomi` の五十音順に自動ソートされる（手動で位置を決める必要はない）
 4. `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列に `/tools/<slug>` を追加（VRT 対象に登録）。baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を `workflow_dispatch` trigger して生成（mac との font 描画差を回避するためローカル生成は不可）。**漏れた場合は `tests/meta/vrt-pages-coverage.test.ts` が `npm run test` で fail させる**ため CI で必ず検知される（issue #355 で導入）。
 5. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
 

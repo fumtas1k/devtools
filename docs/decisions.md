@@ -3266,3 +3266,30 @@ descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「co
 - 関連 fix: PR #450 (撤去, decisions `[067]` update) / PR #458 (透明背景真因判明, decisions `[082]`)
 - 陽性対照 (unit): `src/utils/__tests__/gs1-databar.test.ts` の `escapeHtml` / `injectCompositeText` describe
 - 陽性対照 (E2E): `tests/e2e/gs1-databar.spec.ts` の `composite シンボルに AI テキスト ((17)... (10)...) が SVG 上部に注入される` / `non-composite (AI フィールド未入力) シンボルには AI テキスト注入されない`
+
+---
+
+## [084] 2026-05-23 — ツール並び順を yomi（読み仮名）五十音順に統一
+
+### 背景
+
+`src/data/tools.ts` の `tools` 配列はツールの **追加（作成）順** のまま並んでおり、Sidebar / MobileDrawer / index / about の 4 箇所がこの配列順をそのまま（または category で filter して）表示していた。ツールが増えるほど目的のツールを探しづらく、追加のたびに「どこに挿入するか」を考える必要があった。
+
+### 決定
+
+`Tool` interface に `yomi`（ひらがなの読み仮名）フィールドを追加し、`src/data/tools.ts` のモジュール読み込み時に `yomi` で `localeCompare('ja')` ソートした配列を `export` する。
+
+- ソース上のエントリ順は追加順のまま残し（可読性維持）、表示順だけソートで決める。
+- `filter` はソート済み配列の相対順序を保つため、category 内も自動的に五十音順になる。消費側（Sidebar / MobileDrawer / index / about）は変更不要。
+- 全 `yomi` がひらがなのため collation は安定（ひらがなは Unicode 上も五十音順に連続）。
+
+### 却下した選択肢
+
+- **使用頻度順**: 本サイトはクライアント完結でアクセス解析・トラッキングを一切持たない設計（about.astro 設計方針）のため、頻度の実測データが存在しない。結局「たぶんよく使う順」という主観の手動メンテになり、ツール追加のたびに判断が発生して形骸化するため不採用。
+- **単純な name 順（`name` で localeCompare）**: ツール名が Latin 始まり（URL/JWT/Base64）と日本語始まり（ダミー/文字）で混在しており、直感的な五十音読み順とズレるため不採用。`yomi` フィールドで読み順を明示する方式を採用した。
+
+### 結果・トレードオフ
+
+- ✅ 新規ツール追加は `yomi` を埋めるだけで自動整列。手動の位置決めが不要になり、順序ズレが構造的に発生しない（= 表示順を強制する guard テストは不要）。
+- ⚠️ `yomi` は読み仮名の主観が入る（特に頭字語の読み）。追加時に既存の表記（QR→「きゅーあーる」等）と揃える運用が必要。
+- ⚠️ Sidebar が全ツールページに表示されるため、表示順変更で `/`・`/about`・全 `/tools/*` の VRT baseline が変わる。CI `Update Visual Regression Baseline` workflow を `workflow_dispatch` で再生成する（CLAUDE.md 6.8 / ローカル生成不可）。
