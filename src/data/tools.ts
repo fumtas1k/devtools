@@ -5,7 +5,7 @@ export interface Tool {
   name: string;
   description: string;
   category: ToolCategory;
-  /** 並び替え用の読み仮名（ひらがな）。category 内を五十音順にソートするのに使う */
+  /** 並び替え用の読み仮名（ひらがな）。全体（index「すべて」/ about）＋ category 内の表示順を五十音順に駆動する */
   yomi: string;
 }
 
