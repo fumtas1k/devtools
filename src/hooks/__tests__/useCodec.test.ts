@@ -285,3 +285,114 @@ describe('useCodec — transform が throw した後でも後続の入力で rec
     expect(result.current.output).toBe('GOOD');
   });
 });
+
+// ────────────────────────────────────────────
+// useCodecWithMeta
+// ────────────────────────────────────────────
+import { useCodecWithMeta } from '@/hooks/useCodec';
+
+describe('useCodecWithMeta — デバウンス完了後に output と meta が同時に反映される', () => {
+  it('debounce 完了後に output と meta が両方更新される', async () => {
+    const transform = vi.fn((s: string) => ({ output: s.toUpperCase(), meta: [s.length] }));
+    const { result } = renderHook(() =>
+      useCodecWithMeta(transform, [] as number[], [], { debounceMs: DEBOUNCE_MS })
+    );
+
+    act(() => {
+      result.current.setInput('hello');
+    });
+    expect(result.current.isPending).toBe(true);
+
+    await act(async () => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    expect(result.current.isPending).toBe(false);
+    expect(result.current.output).toBe('HELLO');
+    expect(result.current.meta).toEqual([5]);
+  });
+});
+
+describe('useCodecWithMeta — 空入力で meta が initialMeta にリセットされる', () => {
+  it('一度変換後に空入力を渡すと output・meta・error が即時クリアされる', async () => {
+    const transform = vi.fn((s: string) => ({ output: s.toUpperCase(), meta: [s.length] }));
+    const { result } = renderHook(() =>
+      useCodecWithMeta(transform, [] as number[], [], { debounceMs: DEBOUNCE_MS })
+    );
+
+    // 一度変換を完了させる
+    act(() => {
+      result.current.setInput('hello');
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    expect(result.current.output).toBe('HELLO');
+    expect(result.current.meta).toEqual([5]);
+
+    // 空入力 → debounce を進めなくても即時クリアされる（リグレッション保護: PR #149）
+    act(() => {
+      result.current.setInput('');
+    });
+
+    expect(result.current.output).toBe('');
+    expect(result.current.error).toBe('');
+    expect(result.current.meta).toEqual([]);
+    expect(result.current.isPending).toBe(false);
+  });
+});
+
+describe('useCodecWithMeta — transform が throw したとき error が設定され meta が initialMeta になる', () => {
+  it('transform が throw すると error がセットされ output・meta がリセットされる', async () => {
+    const transform = vi.fn((_s: string): { output: string; meta: string[] } => {
+      throw new Error('変換エラー');
+    });
+    const { result } = renderHook(() =>
+      useCodecWithMeta(transform, [] as string[], [], { debounceMs: DEBOUNCE_MS })
+    );
+
+    act(() => {
+      result.current.setInput('bad input');
+    });
+    expect(result.current.isPending).toBe(true);
+
+    await act(async () => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    expect(result.current.isPending).toBe(false);
+    expect(result.current.error).toBe('変換エラー');
+    expect(result.current.output).toBe('');
+    expect(result.current.meta).toEqual([]);
+  });
+});
+
+describe('useCodecWithMeta — reset() で input・output・meta が全リセットされる', () => {
+  it('reset() を呼ぶと全状態が初期値に戻る', async () => {
+    const transform = vi.fn((s: string) => ({ output: s.toUpperCase(), meta: [s.length] }));
+    const { result } = renderHook(() =>
+      useCodecWithMeta(transform, [] as number[], [], { debounceMs: DEBOUNCE_MS })
+    );
+
+    // 変換を完了させる
+    act(() => {
+      result.current.setInput('hello');
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    expect(result.current.output).toBe('HELLO');
+    expect(result.current.meta).toEqual([5]);
+
+    // reset() で全リセット
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.input).toBe('');
+    expect(result.current.output).toBe('');
+    expect(result.current.error).toBe('');
+    expect(result.current.meta).toEqual([]);
+    expect(result.current.isPending).toBe(false);
+  });
+});

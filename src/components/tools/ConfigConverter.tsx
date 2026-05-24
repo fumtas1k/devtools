@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
@@ -6,7 +6,7 @@ import { DownloadButton } from '@/components/ui/DownloadButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { StatusIcon } from '@/components/ui/StatusIcon';
-import { useCodec } from '@/hooks/useCodec';
+import { useCodecWithMeta } from '@/hooks/useCodec';
 import { convert } from '@/utils/config-converter';
 import type { ConfigFormat } from '@/utils/config-converter';
 import type { ValidationResult } from '@/utils/config-converter/schema-validator';
@@ -51,44 +51,50 @@ const FORMAT_OPTIONS: { value: ConfigFormat; label: string }[] = [
   { value: 'dotenv', label: '.env' },
 ];
 
+// useCodecWithMeta の initialMeta に安定参照を渡す。毎レンダー新規配列だと
+// 空入力分岐・catch・reset() で setMeta が参照差により不要な再描画を起こすため。
+const EMPTY_WARNINGS: string[] = [];
+
 export function ConfigConverterTool() {
   const [from, setFrom] = useState<ConfigFormat>('json');
   const [to, setTo] = useState<ConfigFormat>('yaml');
-  const [warnings, setWarnings] = useState<string[]>([]);
   const [schemaOpen, setSchemaOpen] = useState(false);
   const [schemaText, setSchemaText] = useState('');
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
 
-  const warningsRef = useRef<string[]>([]);
-  const { input, setInput, output, error, isPending, reset } = useCodec(
+  const {
+    input,
+    setInput,
+    output,
+    error,
+    isPending,
+    reset,
+    meta: warnings,
+  } = useCodecWithMeta(
     (text) => {
       const result = convert(text, from, to);
-      warningsRef.current = result.warnings;
-      return result.output;
+      return { output: result.output, meta: result.warnings };
     },
+    EMPTY_WARNINGS,
     [from, to]
   );
 
+  // output / error 変化時に validationResult をリセットする（UI リセット目的、side-channel ではない）
   useEffect(() => {
-    if (!output && !error) {
-      setWarnings([]);
-      return;
-    }
-    setWarnings(error ? [] : warningsRef.current);
     setValidationResult(null);
   }, [output, error]);
 
   const handleFromChange = (next: ConfigFormat) => {
     setFrom(next);
+    // reset() が meta（warnings）を initialMeta（[]）にリセットする
     reset();
-    setWarnings([]);
     setValidationResult(null);
   };
 
   const handleToChange = (next: ConfigFormat) => {
     setTo(next);
-    setWarnings([]);
+    // to は deps に含まれるため、変更で transform が再走し meta（warnings）が更新される
     setValidationResult(null);
   };
 
@@ -284,8 +290,8 @@ export function ConfigConverterTool() {
       <div className="flex justify-end gap-2">
         <ClearButton
           onClick={() => {
+            // reset() が meta（warnings）も initialMeta（[]）にリセットする
             reset();
-            setWarnings([]);
             setValidationResult(null);
             setSchemaText('');
           }}
