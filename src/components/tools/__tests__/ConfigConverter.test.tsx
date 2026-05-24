@@ -13,9 +13,7 @@ afterEach(() => {
 describe('ConfigConverter a11y live region 常設 (issue #483)', () => {
   it('warnings 用 sr-only live region が入力前から role="status" aria-live="polite" で常設される', () => {
     const { container } = render(<ConfigConverterTool />);
-    const el = container.querySelector(
-      '[data-testid="config-converter-warning-announcement"]'
-    );
+    const el = container.querySelector('[data-testid="config-converter-warning-announcement"]');
     expect(el).not.toBeNull();
     expect(el!.getAttribute('role')).toBe('status');
     expect(el!.getAttribute('aria-live')).toBe('polite');
@@ -25,9 +23,7 @@ describe('ConfigConverter a11y live region 常設 (issue #483)', () => {
 
   it('validationResult 用 sr-only live region が検証前から role="status" aria-live="polite" で常設される', () => {
     const { container } = render(<ConfigConverterTool />);
-    const el = container.querySelector(
-      '[data-testid="config-converter-validation-announcement"]'
-    );
+    const el = container.querySelector('[data-testid="config-converter-validation-announcement"]');
     expect(el).not.toBeNull();
     expect(el!.getAttribute('role')).toBe('status');
     expect(el!.getAttribute('aria-live')).toBe('polite');
