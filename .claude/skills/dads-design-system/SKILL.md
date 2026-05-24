@@ -1,13 +1,7 @@
 ---
 name: dads-design-system
-description: デジタル庁デザインシステム（DADS）準拠でウェブサイトやウェブアプリを作成するスキル。青基調のカラー、Noto Sans JP、アクセシビリティ対応コンポーネントを含む。サイト作成、ランディングページ、ダッシュボード、フォーム画面などを作る際に使用すること。「デジタル庁」「DADS」「青基調」「日本語サイト」等でもトリガーする。
+description: このプロジェクト（devtools）のフロントエンド UI を作成・変更する際に参照する、デジタル庁デザインシステム（DADS）ベースのデザイン規約。青基調カラー・Noto Sans JP・余白/角丸スケール・アクセシビリティ対応コンポーネント（ボタン/入力/テーブル/通知バナー等）の実装パターンを含む。新しいツールの追加、既存ツール画面の UI 変更、入力欄・ボタン・フォームのスタイル実装、配色・タイポグラフィの判断が必要なときに使うこと。DADS / 青基調 等でもトリガー。
 ---
-
-> ⚠️ **移行中**: issue [#176](https://github.com/fumtas1k/devtools/issues/176) B 案で `colors.* + style={{}}` パターン → `@layer components` semantic class へ移行中。
->
-> - **新規 component**: class-based パターン（`src/styles/global.css` に semantic class を追加 + className で参照）を使う
-> - **既存 component**: PR 番号順に migration（progress: PR 1 = `ui/*` simple 11、PR 1.5 = `ResultTable` + `InputField`、PR 2 = `qr-ticket/*`、PR 3-5 = tools、PR 6 = CSP flip + `colors.*` 撤去）
-> - 本 SKILL.md / references/components.md の inline-style 例は **移行中の暫定パターン**。PR 6 で全例を class-based に rewrite 予定
 
 # デジタル庁デザインシステム（DADS）スキル
 
@@ -360,7 +354,7 @@ DADS標準のフォーカスリングは **黒アウトライン4px＋黄色リ�
 }
 ```
 
-> このプロジェクト固有の実装（青フォーカスリング）については「11. このプロジェクト固有の実装パターン」を参照。
+> このリポジトリ（devtools）の focus 実装は `:focus-visible` に CSS で一括適用されている（`var(--focus-ring)`、JS ハンドラ不要）。プロジェクト固有の規約は「11. このプロジェクト（devtools）で実装する場合」を参照。
 
 ---
 
@@ -438,118 +432,20 @@ import {
 
 ---
 
-## 11. このプロジェクト固有の実装パターン
+## 11. このプロジェクト（devtools）で実装する場合
 
-### カラー管理の構造
+DADS の汎用仕様（1〜10章）に加えて devtools 固有のスタイリング規約があるが、**本スキルでは重複管理しない**。以前はここに旧実装（`src/utils/styles.ts` の `colors.*` + inline `style`）を記載していたが、issue #176 B 案で全廃され `styles.ts` も削除されたのに記述が残って陳腐化した。正本を一本化してドリフトを防ぐため、以下を直接参照すること:
 
-色の実値は `src/styles/global.css` の CSS 変数で一元管理。
-`src/utils/styles.ts` の `colors` オブジェクトは `var(--color-*)` の参照のみを持つ。
+| 知りたいこと | 正本 |
+|---|---|
+| 色・スタイリング規約（`@layer components` semantic class 経由、primitive scale 直書き禁止、HTML inline `style` 禁止） | `CLAUDE.md` §7 |
+| 共通 UI コンポーネント（`InputField` / `CopyButton` / `DownloadButtonGroup` / `ToggleGroup` / `ErrorMessage` 等）と共通フック（`useClampedInput` 等） | `docs/ui-conventions.md`、`CLAUDE.md` §5・§8 |
+| ツール追加の実装フロー | `CLAUDE.md` §5 |
+| `style-src` strict 化（`unsafe-inline` 撤去）の経緯と CSP 制約 | `docs/projects/issue-176-b-plan-progress.md`、`docs/decisions.md [064][067][068]` |
 
-```
-global.css (@theme / :root) ← 実際の色値はここだけ
-    ↑
-styles.ts (colors.*)        ← var(--color-*) 参照
-    ↑
-各コンポーネント             ← colors.* を import して使う
-```
-
-**ダークモード追加時は `global.css` に `.dark { }` を追加するだけでよい。コンポーネントは変更不要。**
-
-### カラー・タイポグラフィの参照方法
-
-```tsx
-// ✅ 正しい: styles.ts のトークンを使う
-import { colors, caption, bodyEmphasis } from '../../utils/styles';
-
-<p style={{ ...caption, color: colors.muted }}>ヒントテキスト</p>
-<span style={{ ...bodyEmphasis, color: colors.primary }}>強調テキスト</span>
-<input style={{ border: `1px solid ${colors.borderInput}` }} />
-```
-
-```tsx
-// ❌ 誤り: 生のhex値を直書きしない
-<p style={{ color: '#6B7280' }}>ヒントテキスト</p>
-```
-
-> **注意**: JsBarcode・bwip-js 等のサードパーティレンダラーに渡す色は CSS 変数を解釈できないため hex で直書きする（例: `background: '#ffffff'`）。
-
-### styles.ts のトークン一覧
-
-| トークン | CSS 変数 | 用途 |
-|---|---|---|
-| `colors.text` | `--color-text` | 本文テキスト |
-| `colors.muted` | `--color-muted` | ヒント・補足テキスト |
-| `colors.primary` | `--color-primary` | CTA・強調 |
-| `colors.primaryBg` | `--color-background` | セクション背景（blue-50相当） |
-| `colors.link` | `--color-link` | リンク・このプロジェクトの青フォーカスリング |
-| `colors.bg` | `--color-bg` | 基本背景 |
-| `colors.bgSurface` | `--color-bg-surface` | カード・パネル背景 |
-| `colors.bgSubtle` | `--color-bg-subtle` | ヘッダー・subtle背景 |
-| `colors.border` | `--color-border` | 区切り線・カード枠 |
-| `colors.borderInput` | `--color-border-input` | 入力欄の枠線 |
-| `colors.error` | `--color-error` | エラー枠線 |
-| `colors.errorText` | `--color-error-text` | エラーテキスト |
-| `colors.errorBg` | `--color-error-bg` | エラー背景 |
-| `colors.warning` | `--color-warning` | 警告テキスト（amber-800、WCAG AA 確保） |
-| `colors.warningBg` | `--color-warning-bg` | 警告背景 |
-| `colors.success` | `--color-success` | 成功テキスト |
-| `colors.successBg` | `--color-success-bg` | 成功背景 |
-
-### タイポグラフィスタイル
-
-| 定数 | サイズ | weight | 用途 |
-|---|---|---|---|
-| `bodyEmphasis` | 17px | 700 | 強調本文・ラベル見出し |
-| `caption` | 14px | 400 | UI制約のある小テキスト |
-| `micro` | `caption` のエイリアス | — | ヒント・補足テキスト |
-
-### Tailwind との使い分け
-
-- **Tailwind**: レイアウト・余白・フレックス・グリッド（`flex`, `gap-4`, `rounded`, `space-y-4` 等）
-- **`colors.*` インラインスタイル**: 色（Tailwindのカラークラスは使わない）
-
-### フォーカスリング（このプロジェクト固有）
-
-> ⚠️ **DADS標準との差分**: DADS本来は「黒アウトライン4px＋黄色リング」だが、このプロジェクトは採用前に青フォーカスリングを実装済みのため変更していない。
-
-このプロジェクトでは `onFocusRing` / `onBlurRing` を `src/utils/styles.ts` からインポートして使う。`InputField` コンポーネントを使う場合は内部で処理されるため不要。
-
-```tsx
-import { onFocusRing, onBlurRing } from '../../utils/styles';
-
-// InputField を使わない生の <input> にのみ付与する
-<input onFocus={onFocusRing} onBlur={onBlurRing} />
-```
-
-### 共通 UI コンポーネント（`src/components/ui/`）
-
-新規ツール作成時はこれらを使うこと。生の `<input>` / `<textarea>` / エラー `<p>` は原則使わない。
-
-| コンポーネント | ファイル | 用途 |
-|---|---|---|
-| `InputField` | `ui/InputField.tsx` | label・input または textarea・error/hint・サンプルボタンを統合。`multiline` `mono` `resize` `readOnly` 等のプロパティあり |
-| `ErrorMessage` | `ui/ErrorMessage.tsx` | `role="alert"` 付きエラー表示。`id` を渡すと `aria-describedby` と連動 |
-| `DownloadButtonGroup` | `ui/DownloadButtonGroup.tsx` | SVG/PNGダウンロードボタンペア。`onDownloadPng` は省略可 |
-| `CopyButton` | `ui/CopyButton.tsx` | クリップボードコピー。`compact` プロパティでアイコンのみ表示（テーブル行内用） |
-| `ToggleGroup<T>` | `ui/ToggleGroup.tsx` | モード切替タブ UI。`options`・`value`・`onChange`・`ariaLabel` を受け取るジェネリックコンポーネント |
-
-```tsx
-import { InputField } from '../ui/InputField';
-import { DownloadButtonGroup } from '../ui/DownloadButtonGroup';
-import { ErrorMessage } from '../ui/ErrorMessage';
-import { CopyButton } from '../ui/CopyButton';
-import { ToggleGroup } from '../ui/ToggleGroup';
-```
-
-### 共通フック（`src/hooks/`）
-
-| フック | ファイル | 用途 |
-|---|---|---|
-| `useClampedInput` | `hooks/useClampedInput.ts` | 数値入力の min/max クランプ処理。`{ value, inputStr, handleChange, handleBlur }` を返す |
-
-```tsx
-import { useClampedInput } from '../../hooks/useClampedInput';
-
-const { value: count, inputStr: countInput, handleChange, handleBlur } = useClampedInput(10, 1, 100);
-```
+> ⚠️ **使ってはいけない旧パターン**:
+> - `import { colors, onFocusRing, onBlurRing } from '../../utils/styles'` — `styles.ts` は削除済みでビルドエラーになる。
+> - `style={{ color: ... }}` 等の HTML inline `style` — `style-src` が strict（`public/_headers`）なため**適用されず CSP 違反**になる。
+>
+> 色は `global.css` の semantic class（`text-muted` / `alert-error` / `bg-subtle` 等）か `@theme` auto-utility（`text-primary` 等）で指定する。focus は `:focus-visible` に CSS 一括適用済み（`var(--focus-ring)`）で JS ハンドラ不要。
 
