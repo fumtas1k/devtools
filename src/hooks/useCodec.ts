@@ -51,6 +51,9 @@ export function useCodec(
  * ①空入力で debounce を待たず即時クリア（source=null → core が即時クリア）
  * ②debounce 中の再入力で前回 schedule をキャンセル（cleanup の clearTimeout）
  * ③`isPending` は input/deps 変化〜debounce 完了まで true
+ *
+ * `initialMeta` は安定参照（module 定数等）を推奨。可変参照でも最新値にリセットされるが、
+ * 安定参照なら emptyResult が再生成されず core の bailout が効いて余計な再描画が出ない。
  */
 export function useCodecWithMeta<M>(
   transform: (input: string) => { output: string; meta: M },
@@ -59,13 +62,11 @@ export function useCodecWithMeta<M>(
   options: UseCodecOptions = {}
 ) {
   const [input, setInput] = useState('');
-  // core は emptyResult の安定参照を要求するため useMemo で安定化
-  const emptyResult = useMemo(
-    () => ({ output: '', meta: initialMeta }),
-    // initialMeta は hook の初回マウント時のみ参照する想定（deps 変更に追従しない）
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  // core は emptyResult の安定参照を要求するため useMemo で安定化。
+  // initialMeta を deps に含めることで、可変参照が渡された場合も空入力 / error / reset 時に
+  // 最新の initialMeta へリセットされる（旧 useCodecWithMeta の実行時参照と等価）。
+  // 安定参照（module 定数等）を渡せば再 memo されず core 初回の bailout も効く。
+  const emptyResult = useMemo(() => ({ output: '', meta: initialMeta }), [initialMeta]);
   const { result, error, isPending } = useDebouncedTransform(
     input === '' ? null : input, // 空入力は source=null で即時クリア（PR #149 の挙動を core 側で再現）
     transform,
