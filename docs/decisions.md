@@ -3346,6 +3346,7 @@ descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「co
 
 - **実装方式**: トップページは React 非依存の Astro + Vanilla JS 構成のため、検索もこれに合わせ新たな React 依存を持ち込まない。マッチ判定ロジックのみ純粋関数 `src/utils/tool-search.ts`（`normalizeQuery` / `buildSearchText` / `kataToHira`）に切り出し、Vitest で陽性/陰性対照付きの単体テスト（`src/utils/__tests__/tool-search.test.ts`）を書く。Astro `<script>` から `normalizeQuery` を import し、ビルド時に `ToolCard.astro` が `buildSearchText` で算出した `data-search` 属性を実行時に `includes()` で照合する。
 - **検索対象**: ツール名・説明文・slug・読み仮名(`yomi`)・カテゴリ名。`buildSearchText` で小文字化 + カタカナ→ひらがな正規化を適用するため、`json`・`JSON`・`じぇいそん`・`ジェイソン` がすべて同一視される。
+- **複数語クエリ**: クエリは空白で分割（`queryTokens`）し、全トークンの AND マッチ（`matchesSearchText`）。`json csv` で JSON/CSV 変換のみヒットし、順序非依存。haystack は各フィールドを単一スペースで連結した 1 本の文字列のため、単純 `includes` だと `json csv` が連続部分文字列として一致せず 0 件になる問題を回避する。
 - **カード markup の共通化**: パネルと検索結果グリッドの 2 箇所で同一カードを使うため `src/components/ui/ToolCard.astro` を新設し、index.astro のインライン markup を移設。
 - **表示制御**: CSP style-src を侵さないよう inline style / CSSOM mutation を使わず、`el.hidden` 属性トグルで実装。Tailwind の `.flex` / `.block` に UA 既定 `[hidden]{display:none}` が詳細度で負ける問題は、`global.css` に `[hidden]{display:none!important}` を 1 箇所追加して解消した。
 

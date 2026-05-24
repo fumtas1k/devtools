@@ -37,6 +37,22 @@ test.describe('トップページ ツール検索（production CSP 適用）', (
     );
   });
 
+  test('複数語クエリは全トークン AND マッチする', async ({ browser }) => {
+    await withProductionCsp(
+      browser,
+      '/',
+      async (page) => {
+        // 「json csv」は両トークンを含む json-csv のみヒットし、csv を含まない
+        // json-xml はヒットしない（AND の陽性/陰性を 1 ケースで検証）
+        await page.getByRole('searchbox', { name: 'ツールを検索' }).fill('json csv');
+
+        await expect(page.locator(card('json-csv'))).toBeVisible();
+        await expect(page.locator(card('json-xml'))).toBeHidden();
+      },
+      { skipHydration: true }
+    );
+  });
+
   test('カタカナ入力でもひらがな読み(yomi)にヒットする', async ({ browser }) => {
     await withProductionCsp(
       browser,

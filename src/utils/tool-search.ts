@@ -28,3 +28,22 @@ export function buildSearchText(tool: Tool, categoryLabel: Record<ToolCategory, 
     [tool.name, tool.description, tool.slug, tool.yomi, categoryLabel[tool.category]].join(' ')
   );
 }
+
+/**
+ * クエリを正規化し、空白で分割したトークン配列を返す（空トークンは除外）。
+ * 複数語クエリ（例: 「json csv」）を AND マッチさせるための前処理。
+ */
+export function queryTokens(query: string): string[] {
+  return normalizeQuery(query)
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
+}
+
+/**
+ * haystack（buildSearchText 済みの検索対象文字列）が全トークンを含むか判定する。
+ * 全トークン AND マッチ。空クエリ（トークン 0 件）は常に false。
+ */
+export function matchesSearchText(searchText: string, query: string): boolean {
+  const tokens = queryTokens(query);
+  return tokens.length > 0 && tokens.every((token) => searchText.includes(token));
+}

@@ -196,7 +196,7 @@ const jsonLd = {
 </style>
 
 <script>
-  import { normalizeQuery } from '@/utils/tool-search';
+  import { queryTokens } from '@/utils/tool-search';
 
   const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab-btn'));
   const panels = document.getElementById('panels')!;
@@ -235,8 +235,9 @@ const jsonLd = {
   // が Tailwind の `.flex` / `.block` に勝つ）。inline style / CSSOM mutation を
   // 避けることで CSP style-src を侵さない。
   function applySearch() {
-    const q = normalizeQuery(searchInput.value);
-    const searching = q.length > 0;
+    // 空白区切りの複数語は全トークン AND マッチ（「json csv」で JSON/CSV のみヒット）
+    const tokens = queryTokens(searchInput.value);
+    const searching = tokens.length > 0;
 
     searchClear.hidden = !searching;
     tabBar.hidden = searching;
@@ -251,7 +252,8 @@ const jsonLd = {
 
     let count = 0;
     for (const card of resultCards) {
-      const hit = (card.dataset.search ?? '').includes(q);
+      const haystack = card.dataset.search ?? '';
+      const hit = tokens.every((token) => haystack.includes(token));
       card.hidden = !hit;
       if (hit) count++;
     }
