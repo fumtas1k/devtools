@@ -53,6 +53,33 @@ describe('useDebouncedTransform — immediate: true で setTimeout なしに同�
     expect(result.current.result).toBe('WORLD');
     expect(transform).toHaveBeenCalledTimes(2);
   });
+
+  it('[陽性] debounce パス(isPending=true)から immediate へ遷移すると isPending が false に正規化される', () => {
+    const transform = vi.fn((s: string) => s.toUpperCase());
+
+    const { result, rerender } = renderHook(
+      ({ src, immediate }: { src: string; immediate: boolean }) =>
+        useDebouncedTransform(src, transform, EMPTY_STRING, [], {
+          immediate,
+          debounceMs: DEBOUNCE_MS,
+        }),
+      { initialProps: { src: 'hello', immediate: false } }
+    );
+
+    // debounce パスでは isPending が true
+    expect(result.current.isPending).toBe(true);
+
+    // immediate へ遷移（前 effect の cleanup は clearTimeout のみで isPending を触らない）
+    act(() => {
+      rerender({ src: 'hello2', immediate: true });
+    });
+
+    // immediate パスでも isPending が false に正規化される。
+    // fix 前（immediate ブランチに setIsPending(false) が無い）実装に当てると
+    // isPending が true のまま stuck し本 assert が fail する = 陽性対照。
+    expect(result.current.isPending).toBe(false);
+    expect(result.current.result).toBe('HELLO2');
+  });
 });
 
 // ────────────────────────────────────────────

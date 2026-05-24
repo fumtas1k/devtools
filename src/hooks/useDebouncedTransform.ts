@@ -56,7 +56,9 @@ export function useDebouncedTransform<I, R>(
         setResult(emptyResult);
         setError(getErrorMessage(e, fallbackError));
       }
-      // isPending は false のまま（setIsPending 不要）
+      // debounce パスから immediate へ遷移したときに isPending が true で
+      // stuck しないよう、即時パスでも明示的に false へ正規化する。
+      setIsPending(false);
       return;
     }
 
