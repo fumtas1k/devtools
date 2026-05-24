@@ -199,11 +199,7 @@ export function ConfigConverterTool() {
       </div>
 
       {warnings.length > 0 && (
-        <div
-          className="rounded-lg p-3 border border-warning bg-warning-tint"
-          role="status"
-          aria-live="polite"
-        >
+        <div className="rounded-lg p-3 border border-warning bg-warning-tint">
           <ul className="caption text-default m-0 pl-5">
             {warnings.map((w, i) => (
               <li key={i}>{w}</li>
@@ -266,8 +262,6 @@ export function ConfigConverterTool() {
             {validationResult && (
               <div
                 className={`rounded-lg p-3 border ${validationResult.valid ? 'alert-success' : 'alert-error'}`}
-                role={validationResult.valid ? 'status' : 'alert'}
-                aria-live={validationResult.valid ? 'polite' : 'assertive'}
               >
                 {validationResult.valid ? (
                   <p className="caption text-default inline-flex items-center gap-1">
@@ -300,6 +294,34 @@ export function ConfigConverterTool() {
             setSchemaText('');
           }}
         />
+      </div>
+
+      {/*
+       * SR 用の常設 live region。可視ボックス（warnings / validationResult）は条件付き
+       * マウントのままだが、live region 要素自体はページ読込時から常設し、中身（要約文言）
+       * だけを後から変化させることで挿入が確実に読み上げられるようにする（issue #483）。
+       * sr-only は margin:-1px / position:absolute でレイアウトに影響しない。
+       * 文言は可視テキストの逐語複製ではなく要約（CopyButton / DummyText と同方式）。
+       */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="sr-only"
+        data-testid="config-converter-warning-announcement"
+      >
+        {warnings.length > 0 ? `変換に関する警告が${warnings.length}件あります` : ''}
+      </div>
+      <div
+        role="status"
+        aria-live={validationResult && !validationResult.valid ? 'assertive' : 'polite'}
+        className="sr-only"
+        data-testid="config-converter-validation-announcement"
+      >
+        {validationResult
+          ? validationResult.valid
+            ? 'スキーマ検証に成功しました'
+            : `スキーマ検証で${validationResult.errors.length}件のエラーが見つかりました`
+          : ''}
       </div>
     </div>
   );
