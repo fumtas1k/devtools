@@ -51,6 +51,10 @@ const FORMAT_OPTIONS: { value: ConfigFormat; label: string }[] = [
   { value: 'dotenv', label: '.env' },
 ];
 
+// useCodecWithMeta の initialMeta に安定参照を渡す。毎レンダー新規配列だと
+// 空入力分岐・catch・reset() で setMeta が参照差により不要な再描画を起こすため。
+const EMPTY_WARNINGS: string[] = [];
+
 export function ConfigConverterTool() {
   const [from, setFrom] = useState<ConfigFormat>('json');
   const [to, setTo] = useState<ConfigFormat>('yaml');
@@ -72,7 +76,7 @@ export function ConfigConverterTool() {
       const result = convert(text, from, to);
       return { output: result.output, meta: result.warnings };
     },
-    [] as string[],
+    EMPTY_WARNINGS,
     [from, to]
   );
 

@@ -320,4 +320,38 @@ test.describe('設定ファイル相互変換', () => {
     // toHaveCount の timeout で「現れないこと」を確認 (固定 wait より auto-wait が確実)
     await expect(page.getByText(/スキーマ検証(成功|失敗)/)).toHaveCount(0, { timeout: 500 });
   });
+
+  // ────────────────────────────────────────────
+  // warnings 表示の回帰ガード (#390: meta → warnings UI 結線の陽性対照)
+  // useCodecWithMeta の meta が ConfigConverter の warnings UI へ正しく結線され、
+  // convert() の warnings が画面に描画されることを保証する。meta の取り違えや
+  // warnings ブロックの描画欠落（= finding L-2 が懸念する silent breakage）が
+  // 起きると本テストが fail する。
+  // ────────────────────────────────────────────
+  test('JSON→.env変換: 値の文字列化 warning が表示される（陽性対照）', async ({ page }) => {
+    // 変換先を .env に変更（from=JSON のまま）
+    await page
+      .getByRole('group', { name: '変換先フォーマット' })
+      .getByRole('button', { name: '.env' })
+      .click();
+
+    // フラットな JSON を入力（ネストなしなので変換は成功し warning のみ出る）
+    await page.getByLabel('JSON').fill('{"host": "localhost", "port": 8080}');
+
+    // convert() が push する warning が画面に描画される
+    await expect(page.getByText('値はすべて文字列に変換されます')).toBeVisible();
+  });
+
+  test('warning の出ないフォーマットへ切替えると warning が消える', async ({ page }) => {
+    const toGroup = page.getByRole('group', { name: '変換先フォーマット' });
+
+    // まず JSON→.env で warning を出す
+    await toGroup.getByRole('button', { name: '.env' }).click();
+    await page.getByLabel('JSON').fill('{"host": "localhost", "port": 8080}');
+    await expect(page.getByText('値はすべて文字列に変換されます')).toBeVisible();
+
+    // 変換先を YAML に切替（JSON→YAML は warning なし）→ debounce 完了後 warning が消える
+    await toGroup.getByRole('button', { name: 'YAML' }).click();
+    await expect(page.getByText('値はすべて文字列に変換されます')).toBeHidden();
+  });
 });
