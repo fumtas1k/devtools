@@ -1,0 +1,40 @@
+---
+import ToolIcon from '@/components/ui/ToolIcon.astro';
+import CategoryBadge from '@/components/ui/CategoryBadge.astro';
+import { categoryLabel, type Tool } from '@/data/tools';
+import { buildSearchText } from '@/utils/tool-search';
+
+interface Props {
+  tool: Tool;
+}
+
+const { tool } = Astro.props;
+const searchText = buildSearchText(tool, categoryLabel);
+---
+
+<a
+  href={`/tools/${tool.slug}`}
+  data-search={searchText}
+  class="tool-card rounded-lg p-6 block transition-shadow hover:shadow-md bg-default border border-default"
+>
+  <div class="mb-4 flex items-start justify-between">
+    <ToolIcon slug={tool.slug} size={28} class="text-primary" />
+    <CategoryBadge label={categoryLabel[tool.category]} class="py-0.5" />
+  </div>
+  <h2 class="tool-card-title mb-2 font-bold transition-colors section-heading">
+    {tool.name}
+  </h2>
+  <p class="mb-4 caption text-muted">{tool.description}</p>
+  <span class="text-link-color caption">開く &rsaquo;</span>
+</a>
+
+<style>
+  /* カードタイトルの通常色とホバー色。markup と同一コンポーネントに置くことで
+     Astro の scoped style (data-astro-cid) がカード要素に確実に適用される。 */
+  .tool-card-title {
+    color: var(--color-text);
+  }
+  .tool-card:hover .tool-card-title {
+    color: var(--color-primary);
+  }
+</style>

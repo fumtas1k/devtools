@@ -107,6 +107,14 @@
   outline-offset: 2px;
 }
 
+/* `hidden` 属性は UA 既定 display:none が Tailwind の `.flex` / `.block` 等
+   (同一詳細度) に source order で負けて効かないことがある。`hidden` 指定時は
+   常に非表示にしたいので !important で確定させる。inline style / CSSOM 直接
+   mutation を避けつつ JS から `el.hidden = true/false` で CSP 安全に表示制御できる。 */
+[hidden] {
+  display: none !important;
+}
+
 /* スキップリンク（キーボードユーザー向け） */
 .skip-link {
   position: fixed;
