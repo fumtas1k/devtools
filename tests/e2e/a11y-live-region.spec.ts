@@ -142,6 +142,30 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
       await expect(announcer).toHaveAttribute('aria-live', 'assertive');
     });
   });
+
+  test('ConfigConverter: スキーマ検証成功が常設 sr-only live region で polite 通知可能（CSP 違反なし、issue #483）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/config-converter', async (page) => {
+      const announcer = page.getByTestId('config-converter-validation-announcement');
+
+      // from=to=JSON にして JSON 出力にし、スキーマに適合するデータで検証する
+      await page
+        .getByRole('group', { name: '変換先フォーマット' })
+        .getByRole('button', { name: 'JSON' })
+        .click();
+      await page.getByLabel('JSON (整形)').fill('{"age":30}');
+      await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
+      await page
+        .getByLabel('JSON Schema (貼り付け)')
+        .fill('{"type":"object","properties":{"age":{"type":"number"}}}');
+      await page.getByRole('button', { name: '検証する', exact: true }).click();
+
+      // 検証成功時はアナウンサに成功文言が入り aria-live は polite を維持する
+      await expect(announcer).toContainText('スキーマ検証に成功しました');
+      await expect(announcer).toHaveAttribute('aria-live', 'polite');
+    });
+  });
 });
 
 test.describe('a11y aria-expanded (issue #163, production CSP 適用)', () => {
