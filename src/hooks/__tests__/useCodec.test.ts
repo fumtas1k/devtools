@@ -396,3 +396,44 @@ describe('useCodecWithMeta — reset() で input・output・meta が全リセッ
     expect(result.current.isPending).toBe(false);
   });
 });
+
+// ────────────────────────────────────────────
+// useCodecWithMeta — initialMeta 追従（emptyResult の memo deps が [initialMeta] であることの契約）
+//
+// emptyResult を useMemo([]) で安定化すると initialMeta は初回マウント値のみ捕捉され、
+// その後 initialMeta が変化しても空入力時に初回値へ戻る（footgun）。deps を [initialMeta]
+// にすることで最新値にリセットされる（旧 useCodecWithMeta の実行時参照と等価）。
+// 本テストは参照同一性(toBe)で契約を固定する。memo deps を [] に戻すと fail する＝陽性対照。
+// ────────────────────────────────────────────
+describe('useCodecWithMeta — initialMeta が変化した後の空入力は最新の initialMeta にリセットされる', () => {
+  it('[陽性] rerender で initialMeta を差し替えた後に空入力すると meta が最新 initialMeta を参照する', async () => {
+    const transform = vi.fn((s: string) => ({ output: s.toUpperCase(), meta: [s.length] }));
+    const metaA: number[] = [10];
+    const metaB: number[] = [20];
+
+    const { result, rerender } = renderHook(
+      ({ im }: { im: number[] }) =>
+        useCodecWithMeta(transform, im, [], { debounceMs: DEBOUNCE_MS }),
+      { initialProps: { im: metaA } }
+    );
+
+    // 変換を完了させる
+    act(() => {
+      result.current.setInput('hello');
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    expect(result.current.meta).toEqual([5]);
+
+    // initialMeta を metaB に差し替えて rerender
+    rerender({ im: metaB });
+
+    // 空入力 → 最新の initialMeta(metaB) にリセットされる（初回 metaA ではない）
+    act(() => {
+      result.current.setInput('');
+    });
+
+    expect(result.current.meta).toBe(metaB);
+  });
+});
