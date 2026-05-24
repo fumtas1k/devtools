@@ -34,26 +34,28 @@ description: ガード / バリデータ / 違反検知機構 / リグレッシ�
 
 ## 具体例: 陰性対照と陽性対照を別 test に分ける
 
-CSP 違反検知ゲートを例にした最小形。**陰性対照だけでは「検知が空回りしていても green」になる** ので、故意に違反を起こす陽性対照を別 test として併設する。
+CSP 違反検知ゲートを例にした最小形。**陰性対照だけでは「検知が空回りしていても green」になる** ので、故意に違反を起こす陽性対照を別 test として併設する。下記はパターンを示す擬似コードで、実ヘルパは `tests/e2e/helpers.ts` の `applyProductionCsp(page)`（戻り値 `guard.violations` に違反が溜まる）を使う。
 
 ```ts
 // 陰性対照: 正常系では違反ゼロ。これ単体では検知能力を証明できない。
-it("正規 script のみなら CSP 違反は発生しない", async () => {
-  const violations = collectCspViolations();
-  await renderWithProductionCsp();
-  expect(violations).toHaveLength(0);
+test("正規 script のみなら CSP 違反は発生しない", async ({ page }) => {
+  const guard = await applyProductionCsp(page);
+  await page.goto("/");
+  expect(guard.violations).toHaveLength(0);
 });
 
 // 陽性対照（別 test に分離）: 故意の違反を必ず捕捉する。
 // → 検知が空回りしている旧実装に当てると fail する = 検知能力そのものの証明。
-it("外部 origin の script 注入を CSP 違反として検知する", async () => {
-  const violations = collectCspViolations();
-  injectExternalScript("https://evil.example.com/x.js"); // 意図的な違反
-  await waitFor(() => expect(violations.length).toBeGreaterThan(0));
+test("外部 origin の script 注入を CSP 違反として検知する", async ({ page }) => {
+  const guard = await applyProductionCsp(page);
+  await injectExternalScript(page, "https://evil.example.com/x.js"); // 意図的な違反
+  await expect.poll(() => guard.violations.length).toBeGreaterThan(0);
 });
 ```
 
-観測しているのは内部 state ではなく `violations` という **観測可能な振る舞い**（鉄則 3）であり、2 つを別 test に分けることで陽性側だけ消えても気付ける（鉄則 2）。リポジトリ内の実例は `src/utils/__tests__/headers.test.ts`（`'unsafe-inline'` 不在を陽性 assert）や `tests/e2e/csp-and-evaluation.spec.ts` を参照。
+観測しているのは内部 state ではなく `guard.violations` という **観測可能な振る舞い**（鉄則 3）であり、2 つを別 test に分けることで陽性側だけ消えても気付ける（鉄則 2）。
+
+リポジトリ内の実例 `tests/e2e/csp-and-evaluation.spec.ts` は `<meta>` CSP を剥がすと inline script が実行されることを `expect.poll` で捕捉する **違反注入型の陽性対照**。なお `src/utils/__tests__/headers.test.ts` の `'unsafe-inline'` 不在 assert は **静的出力のリグレッションガード** であり、注入型の陽性対照とは性質が異なる（混同しないこと）。
 
 ## チェックリスト (ガード追加 / 修正 PR で必ず触る)
 
