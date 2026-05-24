@@ -1,8 +1,7 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ToolIcon from '@/components/ui/ToolIcon.astro';
 import PageContainer from '@/components/ui/PageContainer.astro';
-import CategoryBadge from '@/components/ui/CategoryBadge.astro';
+import ToolCard from '@/components/ui/ToolCard.astro';
 import { tools, categoryLabel, categories } from '@/data/tools';
 
 const allCategories = ['all', ...categories] as const;
@@ -37,6 +36,78 @@ const jsonLd = {
   <!-- ツール一覧 -->
   <main id="main-content">
     <PageContainer class="py-8">
+      <!-- 検索 -->
+      <div class="mb-6">
+        <div class="relative">
+          <span
+            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-icon"
+            aria-hidden="true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input
+            type="search"
+            id="tool-search"
+            aria-label="ツールを検索"
+            aria-controls="search-results"
+            autocomplete="off"
+            placeholder="ツール名・用途で検索（例: json / じぇいそん）"
+            class="w-full rounded-lg border border-input bg-default text-default caption py-2.5 pl-10 pr-10"
+          />
+          <button
+            type="button"
+            id="search-clear"
+            aria-label="検索をクリア"
+            class="btn-clear absolute right-2 top-1/2 -translate-y-1/2 rounded-md border-0 p-1.5 text-muted"
+            hidden
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <p
+          id="search-status"
+          role="status"
+          aria-live="polite"
+          class="mt-2 caption text-muted"
+          hidden
+        >
+        </p>
+      </div>
+
+      <!-- 検索結果（横断絞り込み） -->
+      <div id="search-results" hidden>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {tools.map((tool) => <ToolCard tool={tool} />)}
+        </div>
+      </div>
+
       <!-- タブ -->
       <div
         id="tab-bar"
@@ -84,20 +155,7 @@ const jsonLd = {
                 {tools
                   .filter((t) => cat === 'all' || t.category === cat)
                   .map((tool) => (
-                    <a
-                      href={`/tools/${tool.slug}`}
-                      class="tool-card rounded-lg p-6 block transition-shadow hover:shadow-md bg-default border border-default"
-                    >
-                      <div class="mb-4 flex items-start justify-between">
-                        <ToolIcon slug={tool.slug} size={28} class="text-primary" />
-                        <CategoryBadge label={categoryLabel[tool.category]} class="py-0.5" />
-                      </div>
-                      <h2 class="tool-card-title mb-2 font-bold transition-colors section-heading">
-                        {tool.name}
-                      </h2>
-                      <p class="mb-4 caption text-muted">{tool.description}</p>
-                      <span class="text-link-color caption">開く &rsaquo;</span>
-                    </a>
+                    <ToolCard tool={tool} />
                   ))}
               </div>
             </div>
@@ -137,9 +195,16 @@ const jsonLd = {
   .tool-card:hover .tool-card-title {
     color: var(--color-primary);
   }
+
+  /* type="search" のブラウザ既定クリアボタンは独自の #search-clear と二重になるため隠す */
+  #tool-search::-webkit-search-cancel-button {
+    display: none;
+  }
 </style>
 
 <script>
+  import { normalizeQuery } from '@/utils/tool-search';
+
   const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab-btn'));
   const panels = document.getElementById('panels')!;
 
@@ -163,5 +228,48 @@ const jsonLd = {
   panels.addEventListener('scrollend', () => {
     const i = Math.round(panels.scrollLeft / panels.clientWidth);
     activateTab(i);
+  });
+
+  // ── 検索: 入力中はタブ/パネルを隠し、全ツール横断の結果グリッドへ切り替える ──
+  const tabBar = document.getElementById('tab-bar')!;
+  const searchInput = document.getElementById('tool-search') as HTMLInputElement;
+  const searchClear = document.getElementById('search-clear')!;
+  const searchResults = document.getElementById('search-results')!;
+  const searchStatus = document.getElementById('search-status')!;
+  const resultCards = Array.from(searchResults.querySelectorAll<HTMLElement>('[data-search]'));
+
+  // 表示制御は `hidden` 属性で行う（global.css の `[hidden]{display:none!important}`
+  // が Tailwind の `.flex` / `.block` に勝つ）。inline style / CSSOM mutation を
+  // 避けることで CSP style-src を侵さない。
+  function applySearch() {
+    const q = normalizeQuery(searchInput.value);
+    const searching = q.length > 0;
+
+    searchClear.hidden = !searching;
+    tabBar.hidden = searching;
+    panels.hidden = searching;
+    searchResults.hidden = !searching;
+    searchStatus.hidden = !searching;
+
+    if (!searching) {
+      searchStatus.textContent = '';
+      return;
+    }
+
+    let count = 0;
+    for (const card of resultCards) {
+      const hit = (card.dataset.search ?? '').includes(q);
+      card.hidden = !hit;
+      if (hit) count++;
+    }
+    searchStatus.textContent =
+      count > 0 ? `${count} 件のツールが見つかりました` : '該当するツールがありません';
+  }
+
+  searchInput.addEventListener('input', applySearch);
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    applySearch();
+    searchInput.focus();
   });
 </script>

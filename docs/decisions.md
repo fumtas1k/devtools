@@ -3329,3 +3329,34 @@ descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「co
 - ✅ QR/バーコード系が 1 カテゴリに集約され横断的に探せる。各セクションの件数が均され（4/5/3/5）スキャンしやすい。
 - ✅ 型 union 化で全ツールの `category` 値はコンパイル時検証される（不正値は `astro check` で検出）。
 - ⚠️ index タブバー・全ツールページの Sidebar 見出し・移動ツールのパンくずラベルが変わるため VRT baseline 差分が出る。CI `Update Visual Regression Baseline` workflow を `workflow_dispatch` で再生成する（ローカル生成不可 / CLAUDE.md 6.8）。
+
+---
+
+## [086] 2026-05-24 — トップページにツール横断検索を追加
+
+**2026-05-24 | ステータス: 採用**
+
+### 背景
+
+トップページ (`src/pages/index.astro`) はカテゴリタブ + スワイプパネルでの一覧表示のみで、名前や用途で直接ツールを探す手段がなかった。ツール数（17）は増加傾向にあり、カテゴリタブだけでは目的のツールへの到達コストが上がっていく。
+
+### 決断
+
+トップページのタブバー上部に検索ボックスを追加する。入力があるとタブ/パネルを隠し、全ツールを横断で絞り込んだ結果を 1 つのグリッドに表示する（空にすると元のタブ UI に復帰）。
+
+- **実装方式**: トップページは React 非依存の Astro + Vanilla JS 構成のため、検索もこれに合わせ新たな React 依存を持ち込まない。マッチ判定ロジックのみ純粋関数 `src/utils/tool-search.ts`（`normalizeQuery` / `buildSearchText` / `kataToHira`）に切り出し、Vitest で陽性/陰性対照付きの単体テスト（`src/utils/__tests__/tool-search.test.ts`）を書く。Astro `<script>` から `normalizeQuery` を import し、ビルド時に `ToolCard.astro` が `buildSearchText` で算出した `data-search` 属性を実行時に `includes()` で照合する。
+- **検索対象**: ツール名・説明文・slug・読み仮名(`yomi`)・カテゴリ名。`buildSearchText` で小文字化 + カタカナ→ひらがな正規化を適用するため、`json`・`JSON`・`じぇいそん`・`ジェイソン` がすべて同一視される。
+- **カード markup の共通化**: パネルと検索結果グリッドの 2 箇所で同一カードを使うため `src/components/ui/ToolCard.astro` を新設し、index.astro のインライン markup を移設。
+- **表示制御**: CSP style-src を侵さないよう inline style / CSSOM mutation を使わず、`el.hidden` 属性トグルで実装。Tailwind の `.flex` / `.block` に UA 既定 `[hidden]{display:none}` が詳細度で負ける問題は、`global.css` に `[hidden]{display:none!important}` を 1 箇所追加して解消した。
+
+### 却下した選択肢
+
+- **React コンポーネント化**: `useDebouncedValue` 等の既存フックは流用できるが、現状 React island ゼロのトップページに hydration コストと CSP/VRT の考慮を増やす。Vanilla JS で十分軽量に実現できるため不採用。
+- **inline style / `el.style.display` での表示制御**: `inline-style-migration.test.ts`（#176 / [067]）が Astro の inline `style=` を禁止しており、CSSOM mutation も CSP style-src 違反になる。`hidden` 属性 + global `[hidden]` ルールで回避した。
+- **外部あいまい検索ライブラリ（Fuse.js 等）**: 17 ツール規模では `includes` による部分一致 + yomi 正規化で十分。依存追加・bundle 増を避けて不採用。
+
+### 結果・トレードオフ
+
+- ✅ 名前・用途・読み（ひらがな/カタカナ）・カテゴリのいずれからでも全ツールを横断検索でき、カテゴリ分断を越えて到達できる（例: 「json」で別カテゴリの設定ファイル変換もヒット）。
+- ✅ マッチ判定が純粋関数として単体テスト可能になり、陽性/陰性対照で検知能力を担保。
+- ⚠️ トップページ (`/`) のレイアウトが変わるため VRT baseline 差分が出る。CI `Update Visual Regression Baseline` workflow を `workflow_dispatch` で再生成する（ローカル生成不可 / CLAUDE.md 6.8）。
