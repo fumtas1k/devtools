@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { Select } from '@/components/ui/Select';
 import { InputField } from '@/components/ui/InputField';
@@ -28,6 +28,7 @@ import {
   type DetectionResult,
   type NewlineMode,
 } from '@/utils/encoding';
+import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
 
 type Mode = 'detect' | 'convert';
 type InputMethod = 'text' | 'file';
@@ -61,6 +62,64 @@ function hexPreview(bytes: Uint8Array, limit = 32): string {
   return parts.join(' ') + (bytes.length > limit ? ' ...' : '');
 }
 
+// ──────────────────────────────────────────────
+// タスク 2-B: pure function 抽出（モジュールスコープ）
+//
+// EncodingConverter.tsx のモジュールスコープに置くことで、
+// テストの vi.mock('@/utils/encoding', ...) による
+// detectEncoding / convertBytes の mock が正常に効く。
+// （utils/encoding 内部に置くと intra-module call となり mock が無効になる）
+// ──────────────────────────────────────────────
+
+interface DetectResult {
+  detection: DetectionResult | null;
+  decodedPreview: string;
+}
+
+interface ConvertResult {
+  outputBytes: Uint8Array | null;
+  outputPreview: string;
+}
+
+/** detectEncoding + デコードプレビュー生成の純粋変換。throw はそのまま伝播させ hook の catch で拾う。 */
+function detectFromBytes(bytes: Uint8Array): DetectResult {
+  const result = detectEncoding(bytes);
+  let decodedPreview = '';
+  if (result.encoding !== 'UNKNOWN') {
+    const preview = decodeToText(bytes, result.encoding);
+    decodedPreview = preview.slice(0, 500);
+  }
+  return { detection: result, decodedPreview };
+}
+
+/** convertBytes + 改行正規化 + プレビュー生成の純粋変換。throw はそのまま伝播させ hook の catch で拾う。 */
+function convertFromBytes(
+  bytes: Uint8Array,
+  sourceEnc: SourceEncoding,
+  targetEnc: EncodingName,
+  withBom: boolean,
+  newlineMode: NewlineMode
+): ConvertResult {
+  const converted = convertBytes(bytes, sourceEnc, targetEnc, withBom);
+  const effectiveMode: NewlineMode = UTF16_ENCODINGS.has(targetEnc) ? 'keep' : newlineMode;
+  const normalized = normalizeNewlines(converted, effectiveMode);
+  // プレビューは変換後バイトを UTF-8 デコード (SJIS/EUC-JP → UNICODE 経由)
+  let outputPreview: string;
+  if (targetEnc === 'UTF8') {
+    outputPreview = new TextDecoder('utf-8').decode(normalized).slice(0, 500);
+  } else {
+    const preview = decodeToText(normalized, targetEnc);
+    outputPreview = preview.slice(0, 500);
+  }
+  return { outputBytes: normalized, outputPreview };
+}
+
+// ──────────────────────────────────────────────
+// emptyResult 定数（安定参照。useDebouncedTransform の要件）
+// ──────────────────────────────────────────────
+const EMPTY_DETECT: DetectResult = { detection: null, decodedPreview: '' };
+const EMPTY_CONVERT: ConvertResult = { outputBytes: null, outputPreview: '' };
+
 export function EncodingConverterTool() {
   const [mode, setMode] = useState<Mode>('detect');
   const [inputMethod, setInputMethod] = useState<InputMethod>('text');
@@ -68,17 +127,13 @@ export function EncodingConverterTool() {
   const [fileBytes, setFileBytes] = useState<Uint8Array | null>(null);
   const [fileName, setFileName] = useState('');
 
-  const [detection, setDetection] = useState<DetectionResult | null>(null);
-  const [decodedPreview, setDecodedPreview] = useState('');
-
   const [sourceEnc, setSourceEnc] = useState<SourceEncoding>('AUTO');
   const [targetEnc, setTargetEnc] = useState<EncodingName>('UTF8');
   const [withBom, setWithBom] = useState(false);
   const [newlineMode, setNewlineMode] = useState<NewlineMode>('keep');
 
-  const [outputBytes, setOutputBytes] = useState<Uint8Array | null>(null);
-  const [outputPreview, setOutputPreview] = useState('');
-  const [error, setError] = useState('');
+  // file I/O 用エラー（handleFileChange の validation 失敗 / arrayBuffer reject で使用）
+  const [fileError, setFileError] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,77 +145,26 @@ export function EncodingConverterTool() {
     return null;
   }, [inputMethod, fileBytes, textInput]);
 
-  // 判定処理
-  // activeBytes は useMemo で参照が安定化済みのため、依存配列にそのまま含めて
-  // react-hooks/exhaustive-deps の保護を残す。
-  useEffect(() => {
-    if (!activeBytes) {
-      setDetection(null);
-      setDecodedPreview('');
-      setError('');
-      return;
-    }
-    if (inputMethod === 'file') {
-      runDetect(activeBytes);
-      return;
-    }
-    const timer = setTimeout(() => runDetect(activeBytes), 300);
-    return () => clearTimeout(timer);
-  }, [activeBytes, inputMethod]);
+  // 判定処理（file 入力は即時、text 入力は 300ms debounce）
+  const { result: detectResult, error: detectError } = useDebouncedTransform(
+    activeBytes,
+    detectFromBytes,
+    EMPTY_DETECT,
+    [],
+    { immediate: inputMethod === 'file' }
+  );
 
-  function runDetect(bytes: Uint8Array) {
-    try {
-      const result = detectEncoding(bytes);
-      setDetection(result);
-      setError('');
-      if (result.encoding !== 'UNKNOWN') {
-        const preview = decodeToText(bytes, result.encoding);
-        setDecodedPreview(preview.slice(0, 500));
-      } else {
-        setDecodedPreview('');
-      }
-    } catch (e) {
-      setDetection(null);
-      setDecodedPreview('');
-      setError(getErrorMessage(e, '判定に失敗しました'));
-    }
-  }
+  // 変換処理（convert モード以外は source を null にして結果をクリア）
+  const { result: convertResult, error: convertError } = useDebouncedTransform(
+    mode === 'convert' ? activeBytes : null,
+    (b) => convertFromBytes(b, sourceEnc, targetEnc, withBom, newlineMode),
+    EMPTY_CONVERT,
+    [mode, sourceEnc, targetEnc, withBom, newlineMode],
+    { immediate: inputMethod === 'file' }
+  );
 
-  // 変換処理
-  useEffect(() => {
-    if (mode !== 'convert' || !activeBytes) {
-      setOutputBytes(null);
-      setOutputPreview('');
-      return;
-    }
-    if (inputMethod === 'file') {
-      runConvert(activeBytes);
-      return;
-    }
-    const timer = setTimeout(() => runConvert(activeBytes), 300);
-    return () => clearTimeout(timer);
-  }, [activeBytes, inputMethod, mode, sourceEnc, targetEnc, withBom, newlineMode]);
-
-  function runConvert(bytes: Uint8Array) {
-    try {
-      const converted = convertBytes(bytes, sourceEnc, targetEnc, withBom);
-      const effectiveMode: NewlineMode = UTF16_ENCODINGS.has(targetEnc) ? 'keep' : newlineMode;
-      const normalized = normalizeNewlines(converted, effectiveMode);
-      setOutputBytes(normalized);
-      setError('');
-      // プレビューは変換後バイトを UTF-8 デコード (SJIS/EUC-JP → UNICODE 経由)
-      if (targetEnc === 'UTF8') {
-        setOutputPreview(new TextDecoder('utf-8').decode(normalized).slice(0, 500));
-      } else {
-        const preview = decodeToText(normalized, targetEnc);
-        setOutputPreview(preview.slice(0, 500));
-      }
-    } catch (e) {
-      setOutputBytes(null);
-      setOutputPreview('');
-      setError(getErrorMessage(e, '変換に失敗しました'));
-    }
-  }
+  // エラーの合流: file I/O を最優先、次に detect、convert の順
+  const error = fileError || detectError || convertError;
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -173,7 +177,7 @@ export function EncodingConverterTool() {
       acceptExtensions: ACCEPTED_EXTENSIONS,
     });
     if (!validation.ok) {
-      setError(validation.message);
+      setFileError(validation.message);
       return;
     }
 
@@ -181,11 +185,9 @@ export function EncodingConverterTool() {
       const buf = await file.arrayBuffer();
       setFileBytes(new Uint8Array(buf));
       setFileName(file.name);
-      setError('');
-      setOutputBytes(null);
-      setOutputPreview('');
+      setFileError('');
     } catch (e) {
-      setError(getErrorMessage(e, 'ファイルの読み込みに失敗しました'));
+      setFileError(getErrorMessage(e, 'ファイルの読み込みに失敗しました'));
     }
   }
 
@@ -193,18 +195,15 @@ export function EncodingConverterTool() {
     setTextInput('');
     setFileBytes(null);
     setFileName('');
-    setDetection(null);
-    setDecodedPreview('');
-    setOutputBytes(null);
-    setOutputPreview('');
-    setError('');
+    setFileError('');
+    // hook が管理する detection/decodedPreview/outputBytes/outputPreview は
+    // source が null になることで自動リセットされる
   }
 
   function handleModeChange(next: Mode) {
     setMode(next);
-    setOutputBytes(null);
-    setOutputPreview('');
-    setError('');
+    // hook が管理する outputBytes/outputPreview は mode === 'convert' ? activeBytes : null
+    // という source 制御により自動リセットされる
   }
 
   function handleInputMethodChange(next: InputMethod) {
@@ -213,7 +212,7 @@ export function EncodingConverterTool() {
   }
 
   function handleDownload() {
-    if (!outputBytes) return;
+    if (!convertResult.outputBytes) return;
     // OS 由来のファイル名は信頼できないため、許可拡張子のホワイトリストで
     // サニタイズする。拡張子が不正・欠落した場合は txt にフォールバック。
     const safeSource = sanitizeFilename(fileName || 'converted.txt', ACCEPTED_EXTENSIONS);
@@ -222,7 +221,7 @@ export function EncodingConverterTool() {
     const baseName = safeSource.replace(/\.[^.]+$/, '');
     const composed = `${baseName}_${targetEnc.toLowerCase()}.${ext}`;
     // 念のため再度サニタイズ（baseName 末尾連結の安全保証）
-    downloadBytes(outputBytes, sanitizeFilename(composed, ACCEPTED_EXTENSIONS));
+    downloadBytes(convertResult.outputBytes, sanitizeFilename(composed, ACCEPTED_EXTENSIONS));
   }
 
   const bomActive = BOM_ENCODINGS.has(targetEnc);
@@ -317,7 +316,7 @@ export function EncodingConverterTool() {
       {error && <ErrorMessage message={error} />}
 
       {/* 判定結果カード */}
-      {detection && (
+      {detectResult.detection && (
         <div
           data-testid="detection-result"
           className="rounded-lg px-4 py-3 space-y-1 border border-default bg-subtle"
@@ -325,18 +324,26 @@ export function EncodingConverterTool() {
           <div className="flex flex-wrap gap-x-6 gap-y-1">
             <span data-testid="detection-encoding" className="caption text-muted">
               文字コード:{' '}
-              <strong className="text-default">{ENCODING_LABELS[detection.encoding]}</strong>
+              <strong className="text-default">
+                {ENCODING_LABELS[detectResult.detection.encoding]}
+              </strong>
             </span>
             <span data-testid="detection-bom" className="caption text-muted">
-              BOM: <strong className="text-default">{detection.hasBom ? 'あり' : 'なし'}</strong>
+              BOM:{' '}
+              <strong className="text-default">
+                {detectResult.detection.hasBom ? 'あり' : 'なし'}
+              </strong>
             </span>
             <span className="caption text-muted">
-              サイズ: <strong className="text-default">{formatBytes(detection.byteLength)}</strong>
+              サイズ:{' '}
+              <strong className="text-default">
+                {formatBytes(detectResult.detection.byteLength)}
+              </strong>
             </span>
           </div>
-          {decodedPreview && (
+          {detectResult.decodedPreview && (
             <div className="mt-2 font-mono rounded px-2 py-1.5 overflow-auto caption text-default bg-default border border-default max-h-24 whitespace-pre-wrap break-all">
-              {decodedPreview}
+              {detectResult.decodedPreview}
             </div>
           )}
         </div>
@@ -405,7 +412,7 @@ export function EncodingConverterTool() {
           <OutputField
             id="enc-output"
             label="変換結果プレビュー"
-            value={outputPreview}
+            value={convertResult.outputPreview}
             rows={8}
             // クリップボードは Unicode テキストのみ保持できるため UTF-8 変換時のみ表示
             showCopy={targetEnc === 'UTF8'}
@@ -418,9 +425,10 @@ export function EncodingConverterTool() {
               />
             }
           />
-          {outputBytes && (
+          {convertResult.outputBytes && (
             <div data-testid="output-hex-preview" className="caption text-muted mt-1">
-              {formatBytes(outputBytes.length)}　先頭: {hexPreview(outputBytes, 16)}
+              {formatBytes(convertResult.outputBytes.length)}　先頭:{' '}
+              {hexPreview(convertResult.outputBytes, 16)}
             </div>
           )}
         </div>
