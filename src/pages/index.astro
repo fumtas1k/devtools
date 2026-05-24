@@ -147,6 +147,8 @@ const jsonLd = {
     tabs.forEach((t, i) => {
       t.setAttribute('aria-selected', String(i === index));
     });
+    // タブが溢れるスマホ幅でスワイプ時に active タブがタブバー外へ隠れないよう追従させる
+    tabs[index]?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
 
   // タブクリックでパネルにスクロール
