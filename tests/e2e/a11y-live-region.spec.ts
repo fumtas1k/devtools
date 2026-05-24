@@ -95,23 +95,75 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
     });
   });
 
-  test('ConfigConverter: 変換警告が role="status" aria-live="polite" で SR 通知可能（CSP 違反なし、issue #479）', async ({
+  test('ConfigConverter: 変換警告が常設 sr-only live region で SR 通知可能（CSP 違反なし、issue #483）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/config-converter', async (page) => {
-      // 変換先を .env にすると「値はすべて文字列に変換されます」警告が出る
+      const announcer = page.getByTestId('config-converter-warning-announcement');
+      // 常設: 警告が無い初期状態でも live region 要素は DOM に存在する（条件付きマウントへの逆戻り検知）
+      await expect(announcer).toBeAttached();
+      await expect(announcer).toHaveRole('status');
+      await expect(announcer).toHaveAttribute('aria-live', 'polite');
+
+      // 変換先を .env にすると warning が立ち、常設アナウンサに要約文言が入る
       await page
         .getByRole('group', { name: '変換先フォーマット' })
         .getByRole('button', { name: '.env' })
         .click();
       await page.locator('#config-converter-input').fill('{"KEY":"val"}');
+      await expect(announcer).toContainText('変換に関する警告が');
+    });
+  });
 
-      // OutputField も常時 role="status" を持つため、警告テキストで絞り込む（陽性対照の肝）
-      const warningStatus = page
-        .getByRole('status')
-        .filter({ hasText: '値はすべて文字列に変換されます' });
-      await expect(warningStatus).toBeVisible();
-      await expect(warningStatus).toHaveAttribute('aria-live', 'polite');
+  test('ConfigConverter: スキーマ検証エラーが常設 sr-only live region で assertive 通知可能（CSP 違反なし、issue #483）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/config-converter', async (page) => {
+      const announcer = page.getByTestId('config-converter-validation-announcement');
+      // 常設: 検証前でも live region は存在し、初期は polite
+      await expect(announcer).toBeAttached();
+      await expect(announcer).toHaveRole('status');
+      await expect(announcer).toHaveAttribute('aria-live', 'polite');
+
+      // from=to=JSON にして JSON 出力にし、スキーマ違反データで検証する
+      await page
+        .getByRole('group', { name: '変換先フォーマット' })
+        .getByRole('button', { name: 'JSON' })
+        .click();
+      await page.getByLabel('JSON (整形)').fill('{"age":"not-a-number"}');
+      await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
+      await page
+        .getByLabel('JSON Schema (貼り付け)')
+        .fill('{"type":"object","properties":{"age":{"type":"number"}}}');
+      await page.getByRole('button', { name: '検証する', exact: true }).click();
+
+      // 検証エラー時はアナウンサに要約文言が入り aria-live が assertive に切替わる
+      await expect(announcer).toContainText('エラーが見つかりました');
+      await expect(announcer).toHaveAttribute('aria-live', 'assertive');
+    });
+  });
+
+  test('ConfigConverter: スキーマ検証成功が常設 sr-only live region で polite 通知可能（CSP 違反なし、issue #483）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/config-converter', async (page) => {
+      const announcer = page.getByTestId('config-converter-validation-announcement');
+
+      // from=to=JSON にして JSON 出力にし、スキーマに適合するデータで検証する
+      await page
+        .getByRole('group', { name: '変換先フォーマット' })
+        .getByRole('button', { name: 'JSON' })
+        .click();
+      await page.getByLabel('JSON (整形)').fill('{"age":30}');
+      await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
+      await page
+        .getByLabel('JSON Schema (貼り付け)')
+        .fill('{"type":"object","properties":{"age":{"type":"number"}}}');
+      await page.getByRole('button', { name: '検証する', exact: true }).click();
+
+      // 検証成功時はアナウンサに成功文言が入り aria-live は polite を維持する
+      await expect(announcer).toContainText('スキーマ検証に成功しました');
+      await expect(announcer).toHaveAttribute('aria-live', 'polite');
     });
   });
 });
