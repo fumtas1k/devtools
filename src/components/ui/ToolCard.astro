@@ -27,3 +27,14 @@ const searchText = buildSearchText(tool, categoryLabel);
   <p class="mb-4 caption text-muted">{tool.description}</p>
   <span class="text-link-color caption">開く &rsaquo;</span>
 </a>
+
+<style>
+  /* カードタイトルの通常色とホバー色。markup と同一コンポーネントに置くことで
+     Astro の scoped style (data-astro-cid) がカード要素に確実に適用される。 */
+  .tool-card-title {
+    color: var(--color-text);
+  }
+  .tool-card:hover .tool-card-title {
+    color: var(--color-primary);
+  }
+</style>
