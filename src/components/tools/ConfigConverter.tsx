@@ -199,7 +199,11 @@ export function ConfigConverterTool() {
       </div>
 
       {warnings.length > 0 && (
-        <div className="rounded-lg p-3 border border-warning bg-warning-tint">
+        <div
+          className="rounded-lg p-3 border border-warning bg-warning-tint"
+          role="status"
+          aria-live="polite"
+        >
           <ul className="caption text-default m-0 pl-5">
             {warnings.map((w, i) => (
               <li key={i}>{w}</li>
