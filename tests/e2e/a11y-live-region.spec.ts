@@ -94,6 +94,26 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
       await expect(statusEl.locator('textarea')).toHaveValue(/id,name/);
     });
   });
+
+  test('ConfigConverter: 変換警告が role="status" aria-live="polite" で SR 通知可能（CSP 違反なし、issue #479）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/config-converter', async (page) => {
+      // 変換先を .env にすると「値はすべて文字列に変換されます」警告が出る
+      await page
+        .getByRole('group', { name: '変換先フォーマット' })
+        .getByRole('button', { name: '.env' })
+        .click();
+      await page.locator('#config-converter-input').fill('{"KEY":"val"}');
+
+      // OutputField も常時 role="status" を持つため、警告テキストで絞り込む（陽性対照の肝）
+      const warningStatus = page
+        .getByRole('status')
+        .filter({ hasText: '値はすべて文字列に変換されます' });
+      await expect(warningStatus).toBeVisible();
+      await expect(warningStatus).toHaveAttribute('aria-live', 'polite');
+    });
+  });
 });
 
 test.describe('a11y aria-expanded (issue #163, production CSP 適用)', () => {
