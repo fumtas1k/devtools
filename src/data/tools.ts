@@ -1,4 +1,4 @@
-export type ToolCategory = 'generate' | 'convert';
+export type ToolCategory = 'generate' | 'code' | 'encode' | 'convert';
 
 export interface Tool {
   slug: string;
@@ -15,14 +15,14 @@ const toolEntries: Tool[] = [
     slug: 'url-encode',
     name: 'URLエンコード/デコード',
     description: 'テキストとURLエンコード形式を相互変換します',
-    category: 'convert',
+    category: 'encode',
     yomi: 'ゆーあーるえるえんこーど',
   },
   {
     slug: 'jwt-decoder',
     name: 'JWTデコーダー',
     description: 'JWTトークンのHeader・Payload・署名を分解表示します',
-    category: 'convert',
+    category: 'encode',
     yomi: 'じょっとでこーだー',
   },
   {
@@ -50,28 +50,28 @@ const toolEntries: Tool[] = [
     slug: 'qr-code',
     name: 'QRコード生成',
     description: 'テキスト/URLからQRコード画像を生成します',
-    category: 'generate',
+    category: 'code',
     yomi: 'きゅーあーるこーどせいせい',
   },
   {
     slug: 'jan-code',
     name: 'JANコード生成',
     description: '12桁からチェックディジットを計算してバーコードを生成します',
-    category: 'generate',
+    category: 'code',
     yomi: 'じゃんこーどせいせい',
   },
   {
     slug: 'gs1-databar',
     name: 'GS1 DataBar 生成',
     description: 'GTIN-14からGS1 DataBar Limited合成シンボルを生成します',
-    category: 'generate',
+    category: 'code',
     yomi: 'じーえすわんでーたばーせいせい',
   },
   {
     slug: 'base64',
     name: 'Base64 エンコード/デコード',
     description: 'テキストと Base64 を相互変換します。標準・URL-safe 両形式に対応',
-    category: 'convert',
+    category: 'encode',
     yomi: 'べーすろくじゅうよんえんこーど',
   },
   {
@@ -100,7 +100,7 @@ const toolEntries: Tool[] = [
     slug: 'qr-ticket',
     name: 'QRチケット',
     description: 'ECDSA署名付きQRチケットを生成し、公開鍵でオフライン検証します',
-    category: 'generate',
+    category: 'code',
     yomi: 'きゅーあーるちけっと',
   },
   {
@@ -114,7 +114,7 @@ const toolEntries: Tool[] = [
     slug: 'qr-reader',
     name: 'QRリーダー',
     description: 'カメラまたは画像ファイルからQRコードを読み取り、テキストを表示します',
-    category: 'convert',
+    category: 'code',
     yomi: 'きゅーあーるりーだー',
   },
   {
@@ -140,7 +140,9 @@ export const tools: Tool[] = [...toolEntries].sort((a, b) => a.yomi.localeCompar
 
 export const categoryLabel: Record<ToolCategory, string> = {
   generate: '生成',
+  code: 'コード・バーコード',
+  encode: 'エンコード・デコード',
   convert: '変換・解析',
 };
 
-export const categories: ToolCategory[] = ['generate', 'convert'];
+export const categories: ToolCategory[] = ['generate', 'code', 'encode', 'convert'];

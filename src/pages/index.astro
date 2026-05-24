@@ -3,9 +3,8 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import ToolIcon from '@/components/ui/ToolIcon.astro';
 import PageContainer from '@/components/ui/PageContainer.astro';
 import CategoryBadge from '@/components/ui/CategoryBadge.astro';
-import { tools, categoryLabel, type ToolCategory } from '@/data/tools';
+import { tools, categoryLabel, categories } from '@/data/tools';
 
-const categories: ToolCategory[] = ['generate', 'convert'];
 const allCategories = ['all', ...categories] as const;
 
 const jsonLd = {
@@ -43,7 +42,7 @@ const jsonLd = {
         id="tab-bar"
         role="tablist"
         aria-label="カテゴリ絞り込み"
-        class="mb-6 flex gap-1 border-b border-default"
+        class="mb-6 flex gap-1 border-b border-default overflow-x-auto"
       >
         <button
           role="tab"
@@ -51,7 +50,7 @@ const jsonLd = {
           aria-selected="true"
           aria-controls="panel-0"
           data-index="0"
-          class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
+          class="tab-btn shrink-0 whitespace-nowrap px-4 py-2 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
         >
           すべて
         </button>
@@ -63,7 +62,7 @@ const jsonLd = {
               aria-selected="false"
               aria-controls={`panel-${i + 1}`}
               data-index={i + 1}
-              class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
+              class="tab-btn shrink-0 whitespace-nowrap px-4 py-2 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
             >
               {categoryLabel[cat]}
             </button>
@@ -113,6 +112,12 @@ const jsonLd = {
   #panels::-webkit-scrollbar {
     display: none;
   }
+  #tab-bar {
+    scrollbar-width: none;
+  }
+  #tab-bar::-webkit-scrollbar {
+    display: none;
+  }
   .tab-btn[aria-selected='true'] {
     color: var(--color-primary);
     border-color: var(--color-primary);
@@ -142,6 +147,8 @@ const jsonLd = {
     tabs.forEach((t, i) => {
       t.setAttribute('aria-selected', String(i === index));
     });
+    // タブが溢れるスマホ幅でスワイプ時に active タブがタブバー外へ隠れないよう追従させる
+    tabs[index]?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
 
   // タブクリックでパネルにスクロール
