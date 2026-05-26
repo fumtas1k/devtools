@@ -133,6 +133,14 @@ const toolEntries: Tool[] = [
     category: 'generate',
     yomi: 'てぃーおーてぃーぴーじぇねれーた',
   },
+  {
+    slug: 'sql-formatter',
+    name: 'SQL整形',
+    description:
+      '汚いSQLを方言別に整形（インデント）します。MySQL / PostgreSQL / SQLite / SQL Server 対応',
+    category: 'convert',
+    yomi: 'えすきゅーえるせいけい',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる

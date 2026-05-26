@@ -16,7 +16,7 @@ const DIALECT_OPTIONS: { value: SqlDialect; label: string }[] = [
 const SAMPLE =
   "select u.id, u.name, u.email from users u join orders o on o.user_id = u.id where u.status = 'active' and o.created_at > '2024-01-01' order by o.created_at desc limit 10";
 
-export function SqlFormatter() {
+export function SqlFormatterTool() {
   const [dialect, setDialect] = useState<SqlDialect>('mysql');
   const { input, setInput, output, error, reset } = useCodec(
     (text) => formatSql(text, dialect),
