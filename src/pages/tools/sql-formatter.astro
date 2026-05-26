@@ -1,0 +1,27 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { SqlFormatterTool } from '@/components/tools/SqlFormatter';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'sql-formatter')!;
+---
+
+<ToolLayout tool={tool}>
+  <SqlFormatterTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      汚い SQL を方言（MySQL / PostgreSQL / SQLite / SQL
+      Server）に合わせて整形（インデント）します。 キーワードは大文字に統一し、2
+      スペースインデントで読みやすく揃えます。すべてブラウザ内で処理され、SQL
+      は外部に送信されません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>1 行に潰れた SQL を読みやすく整形したい</li>
+      <li>レビューや共有の前にフォーマットを揃えたい</li>
+      <li>方言ごとの構文に合わせて整形したい</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>

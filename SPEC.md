@@ -57,29 +57,30 @@
 
 ### 2.3 主要ライブラリ（MVP で使用）
 
-| ライブラリ                 | 用途                                                             | ツール               |
-| -------------------------- | ---------------------------------------------------------------- | -------------------- |
-| `ulidx`                    | ULID生成                                                         | ULID生成             |
-| `uuid`                     | UUID v7 生成（`v7()` 関数）                                      | UUID v7 生成         |
-| 手動デコード（Base64URL）  | JWTデコード・署名検証                                            | JWTデコーダー        |
-| `qrcode-generator`         | QRコード生成                                                     | QRコード生成         |
-| `JsBarcode`                | バーコード描画                                                   | JANコード生成        |
-| `bwip-js`                  | GS1バーコード描画（SVG）                                         | GS1 DataBar生成      |
-| `jszip`                    | 複数バーコードのZIPパッケージング                                | GS1 DataBar生成      |
-| `fast-xml-parser`          | JSON⇔XML 相互変換                                                | JSON/XML変換         |
-| `papaparse`                | JSON⇔CSV 相互変換・パース                                        | JSON/CSV変換         |
-| `jsqr`                     | QRコードデコード（カメラ・画像）                                 | QRチケット           |
-| `@fontsource/noto-sans-jp` | フォントセルフホスト                                             | 全ページ共通         |
-| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency）                     | 開発ツール共通       |
-| `typescript`               | TypeScript コンパイラ（devDependency）                           | 開発ツール共通       |
-| `@playwright/test`         | E2Eリグレッションテスト（devDependency）                         | 開発ツール共通       |
-| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                            | 開発ツール共通       |
-| `lint-staged`              | コミット時の自動フォーマット (devDependency)                     | 開発ツール共通       |
-| `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）         | 文字コード判定・変換 |
-| `yaml`                     | YAML パース/シリアライズ。コメント保持（Document API）           | 設定ファイル相互変換 |
-| `smol-toml`                | TOML パース/シリアライズ（軽量、コメント保持なし）               | 設定ファイル相互変換 |
-| `ajv`                      | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード | 設定ファイル相互変換 |
-| `ajv-formats`              | ajv の format キーワード拡張（date-time 等）                     | 設定ファイル相互変換 |
+| ライブラリ                 | 用途                                                               | ツール               |
+| -------------------------- | ------------------------------------------------------------------ | -------------------- |
+| `ulidx`                    | ULID生成                                                           | ULID生成             |
+| `uuid`                     | UUID v7 生成（`v7()` 関数）                                        | UUID v7 生成         |
+| 手動デコード（Base64URL）  | JWTデコード・署名検証                                              | JWTデコーダー        |
+| `qrcode-generator`         | QRコード生成                                                       | QRコード生成         |
+| `JsBarcode`                | バーコード描画                                                     | JANコード生成        |
+| `bwip-js`                  | GS1バーコード描画（SVG）                                           | GS1 DataBar生成      |
+| `jszip`                    | 複数バーコードのZIPパッケージング                                  | GS1 DataBar生成      |
+| `fast-xml-parser`          | JSON⇔XML 相互変換                                                  | JSON/XML変換         |
+| `papaparse`                | JSON⇔CSV 相互変換・パース                                          | JSON/CSV変換         |
+| `jsqr`                     | QRコードデコード（カメラ・画像）                                   | QRチケット           |
+| `@fontsource/noto-sans-jp` | フォントセルフホスト                                               | 全ページ共通         |
+| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency）                       | 開発ツール共通       |
+| `typescript`               | TypeScript コンパイラ（devDependency）                             | 開発ツール共通       |
+| `@playwright/test`         | E2Eリグレッションテスト（devDependency）                           | 開発ツール共通       |
+| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                              | 開発ツール共通       |
+| `lint-staged`              | コミット時の自動フォーマット (devDependency)                       | 開発ツール共通       |
+| `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）           | 文字コード判定・変換 |
+| `yaml`                     | YAML パース/シリアライズ。コメント保持（Document API）             | 設定ファイル相互変換 |
+| `smol-toml`                | TOML パース/シリアライズ（軽量、コメント保持なし）                 | 設定ファイル相互変換 |
+| `ajv`                      | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード   | 設定ファイル相互変換 |
+| `ajv-formats`              | ajv の format キーワード拡張（date-time 等）                       | 設定ファイル相互変換 |
+| `sql-formatter`            | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0 | SQL整形              |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -138,7 +139,8 @@ devtools/
     │       ├── QrReader.tsx
     │       ├── JanCode.tsx
     │       ├── Gs1Databar.tsx
-    │       └── EncodingConverter.tsx
+    │       ├── EncodingConverter.tsx
+    │       └── SqlFormatter.tsx
     ├── layouts/
     │   ├── BaseLayout.astro
     │   └── ToolLayout.astro
@@ -158,7 +160,8 @@ devtools/
     │       ├── jan-code.astro
     │       ├── gs1-databar.astro
     │       ├── encoding-converter.astro
-    │       └── config-converter.astro
+    │       ├── config-converter.astro
+    │       └── sql-formatter.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -177,6 +180,7 @@ devtools/
         ├── gs1-databar.ts      # GTIN-14計算・GS1 AIビルダー
         ├── encoding.ts         # 文字コード判定・変換ラッパー（encoding-japanese）
         ├── config-converter/   # 設定ファイル相互変換（json.ts / yaml.ts / toml.ts / dotenv.ts / schema-validator.ts）
+        ├── sql/                # SQL 整形ユーティリティ（format.ts / index.ts）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
         ├── qr-reader.ts
         ├── qr-ticket.ts
@@ -192,6 +196,7 @@ devtools/
             ├── json-csv.test.ts
             ├── json-xml.test.ts
             ├── config-converter/   # json/yaml/toml/dotenv/schema-validator/convert テスト
+            ├── sql/                # SQL 整形テスト（format.test.ts）
             ├── jwt.test.ts
             ├── qr-reader.test.ts
             ├── qr-ticket.test.ts
@@ -243,7 +248,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全17ツール）
+## 4. ツール一覧（全18ツール）
 
 ### カテゴリ A: 生成ツール（`generate`）
 
@@ -281,6 +286,7 @@ devtools/
 | 15  | 文字コード判定・変換 | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                     |
 | 16  | 設定ファイル相互変換 | `config-converter`   | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート） |
 | 17  | 文字カウント         | `char-count`         | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応                        |
+| 18  | SQL整形              | `sql-formatter`      | 汚れた SQL をインデント・キーワード大文字化で整形。MySQL / PostgreSQL / SQLite / SQL Server 方言対応                     |
 
 ---
 
@@ -911,6 +917,48 @@ eventId|ticketId|timestamp|name|category|signature
 - `crypto.subtle` が利用可能な HTTPS または localhost 環境必須
 - Base32 アルファベット外の文字（`!` 等）は入力時点でエラー表示
 
+### 5.15 SQL整形（`sql-formatter`）
+
+**入力:**
+
+- SQL テキスト（複数行対応テキストエリア）
+- 方言セレクト: [MySQL] / [PostgreSQL] / [SQLite] / [SQL Server]（デフォルト: MySQL）
+- [サンプル] ボタン
+
+**処理:**
+
+- `sql-formatter`（v15.8.0）の `format()` を使用
+- キーワードを大文字化（`keywordCase: "upper"`）
+- インデント 2 スペース（`tabWidth: 2`）
+- 入力変更・方言変更をトリガーにデバウンス整形（300ms）
+
+**出力:**
+
+- 整形済み SQL テキストエリア（読み取り専用）
+- [コピー] ボタン
+
+**UI:**
+
+```
+┌───────────────────────────────────────┐
+│  SQL整形                               │
+├───────────────────────────────────────┤
+│  SQL入力                               │
+│  [  テキストエリア（複数行）           ]│
+│  [サンプル]                            │
+├───────────────────────────────────────┤
+│  方言: [MySQL ▼]                       │
+├───────────────────────────────────────┤
+│  整形済み SQL                          │
+│  [  テキストエリア（読み取り専用）     ]│
+│                              [コピー]  │
+└───────────────────────────────────────┘
+```
+
+**制約:**
+
+- パラメータ埋め込み（バインド変数展開）は対象外（将来 PR で対応予定）
+
 ---
 
 ## 6. 各ツール共通仕様
@@ -1068,6 +1116,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] 設定ファイル相互変換（`config-converter`）
   - [x] QRリーダー（`qr-reader`）
   - [x] TOTP/HOTP ジェネレータ（`totp-hotp`）
+  - [x] SQL整形（`sql-formatter`）
   - [ ] JSON整形、Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）

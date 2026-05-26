@@ -45,6 +45,7 @@
 | 文字コード判定・変換 | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換              |
 | 設定ファイル相互変換 | YAML・JSON・TOML・.env を相互変換。コメント保持・JSON Schema 検証対応                             |
 | 文字カウント         | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応 |
+| SQL整形              | 汚いSQLを方言別に整形（インデント）。MySQL / PostgreSQL / SQLite / SQL Server 対応                |
 
 ## 技術スタック
 
