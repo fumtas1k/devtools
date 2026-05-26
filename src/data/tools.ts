@@ -135,9 +135,9 @@ const toolEntries: Tool[] = [
   },
   {
     slug: 'sql-formatter',
-    name: 'SQL整形',
+    name: 'SQL整形・パラメータ埋め込み',
     description:
-      '汚いSQLを方言別に整形（インデント）します。MySQL / PostgreSQL / SQLite / SQL Server 対応',
+      '汚いSQLを方言別に整形し、プレースホルダ（? / $n / :name）にJSONパラメータを埋め込みます。MySQL / PostgreSQL / SQLite / SQL Server 対応',
     category: 'convert',
     yomi: 'えすきゅーえるせいけい',
   },
