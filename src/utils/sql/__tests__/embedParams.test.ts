@@ -122,3 +122,23 @@ describe('embedParams（検知 / 陽性対照）', () => {
     );
   });
 });
+
+// 現状の挙動を固定するテスト（既知の制約。decisions.md [087] に記録）。
+// 将来の改善時にここが赤くなれば「制約を解消した」シグナルになる。
+describe('embedParams（既知の制約 / 現状固定）', () => {
+  it("バックスラッシュエスケープ \\' は解釈せず無変換で返す（MySQL 既定の \\' は未対応）", () => {
+    // 'can\'t' の \' を閉じクォートと誤認 → 後続が文字列扱いになり ? が飲み込まれ 0 件検出。
+    expect(embedParams("WHERE note = 'can\\'t' AND id = ?", '[5]', 'mysql')).toBe(
+      "WHERE note = 'can\\'t' AND id = ?"
+    );
+  });
+
+  it('識別子内の $ 直後の数字を番号プレースホルダと誤検出する（col$1）', () => {
+    // col$1 の $1 を番号指定と誤認 → ? と混在しエラーになる。
+    expect(() => embedParams('SELECT col$1 FROM t WHERE id = ?', '[1]', 'mysql')).toThrow('混在');
+  });
+
+  it('パラメータ空欄は JSON 不正でなく未入力エラーにする', () => {
+    expect(() => embedParams('WHERE id = ?', '', 'mysql')).toThrow('入力してください');
+  });
+});

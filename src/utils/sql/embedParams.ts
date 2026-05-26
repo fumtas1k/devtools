@@ -1,4 +1,4 @@
-import { type SqlDialect } from './format';
+import type { SqlDialect } from './format';
 
 type ParamStyle = 'positional' | 'numbered' | 'named';
 
@@ -17,7 +17,11 @@ const IDENT_CHAR = /[A-Za-z0-9_]/;
  * SQL を走査し、文字列リテラル（'...'）・識別子クォート（"..." / `...`）・
  * コメント（-- 行 / 区間）を読み飛ばした「外側」のプレースホルダのみ収集する。
  * これにより 'why?' の ? を誤検出しない。
- * 制約: PostgreSQL の dollar-quoted string（$tag$...$tag$）は未対応（$ + 数字のみ番号指定として扱う）。
+ * 既知の制約（decisions.md [087] に記録）:
+ * - 文字列内のエスケープは標準 SQL の `''`（クォート二重化）のみ対応。MySQL 既定の
+ *   バックスラッシュエスケープ（`'can\'t'` の `\'`）は未解釈（標準 SQL / PostgreSQL では正しい挙動）。
+ * - PostgreSQL の dollar-quoted string（$tag$...$tag$）は未対応（$ + 数字のみ番号指定として扱う）。
+ * - 識別子内の `$`（MySQL の `col$1` 等）は番号プレースホルダと誤検出しうる。
  */
 function scanPlaceholders(sql: string): Placeholder[] {
   const result: Placeholder[] = [];
@@ -116,6 +120,11 @@ export function embedParams(sql: string, paramsJson: string, dialect: SqlDialect
     );
   }
   const style = placeholders[0].style;
+
+  // プレースホルダはあるがパラメータ未入力のとき、「JSON 不正」より分かりやすい案内にする。
+  if (paramsJson.trim() === '') {
+    throw new Error('パラメータ（JSON）を入力してください');
+  }
 
   let parsed: unknown;
   try {
