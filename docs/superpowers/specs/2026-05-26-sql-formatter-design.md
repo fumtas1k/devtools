@@ -42,7 +42,7 @@
 - 入力 SQL と方言を受け取り `sql-formatter` の `format()` に委譲する。
 - 方言マッピング: MySQL → `mysql` / PostgreSQL → `postgresql` / SQLite → `sqlite` / SQL Server → `transactsql`。
 - 整形オプション既定: `keywordCase: 'upper'`、`tabWidth: 2`、`indentStyle: 'standard'`。
-- `sql-formatter` が例外を投げた場合はそのまま伝播させ、`useDebouncedTransform` 側でエラー表示に変換する。
+- `sql-formatter` が例外を投げた場合は `format.ts` 内で catch し、日本語メッセージの `Error`（`SQL を整形できませんでした。構文を確認してください`）に変換して再 throw する（他 util の `json-xml.ts` と同方針）。`useCodec`／`useDebouncedTransform` がその message をエラー表示に反映する。
 
 ## 7. 埋め込みロジック（`embedParams.ts`）
 
