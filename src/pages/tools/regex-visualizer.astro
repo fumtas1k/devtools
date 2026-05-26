@@ -1,0 +1,29 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { RegexVisualizer as RegexVisualizerTool } from '@/components/tools/RegexVisualizer';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'regex-visualizer')!;
+---
+
+<ToolLayout tool={tool}>
+  <RegexVisualizerTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      正規表現を入力すると、構造を AST ツリーで可視化し、ReDoS（壊滅的バックトラッキング）
+      脆弱性の有無を判定します。脆弱な場合は攻撃文字列と計算量の種類を表示します。 対象は
+      JavaScript（ECMAScript）の正規表現です。すべてブラウザ内で処理され、外部に送信されません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>複雑な正規表現の構造を把握したい</li>
+      <li>入力検証の正規表現が ReDoS に対して安全か確認したい</li>
+      <li>
+        危険なネスト量指定子（例 <code class="rounded px-1 font-mono bg-subtle text-sm">(a+)+</code
+        >）を見つけたい
+      </li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>
