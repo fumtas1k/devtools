@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { DependencyList } from 'react';
-import { getErrorMessage } from '@/utils/errors';
+import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
 
+/** core: useDebouncedTransform に委譲 */
 interface UseCodecOptions {
   /** デバウンス（ms）。既定 300。 */
   debounceMs?: number;
@@ -12,7 +13,10 @@ interface UseCodecOptions {
 /**
  * 入力 → デバウンス → 変換 → 出力 ＋ エラー状態 をひとまとめにするフック。
  *
- * 入力が空のときは output / error を即時クリアする。
+ * core: useDebouncedTransform に委譲。debounce / clearTimeout / isPending / throw 処理は
+ * useDebouncedTransform 側で一元管理。side-channel 不要。
+ *
+ * 入力が空のときは output / error を即時クリアする（PR #149 保護は core 側）。
  * `transform` が throw した場合、Error.message（無ければ fallbackError）を error にセットし
  * output は空文字列にリセットする。
  *
@@ -27,43 +31,49 @@ export function useCodec(
   deps: DependencyList,
   options: UseCodecOptions = {}
 ) {
-  const { debounceMs = 300, fallbackError = '変換に失敗しました' } = options;
+  const { input, setInput, output, error, isPending, reset } = useCodecWithMeta(
+    (text) => ({ output: transform(text), meta: undefined }),
+    undefined,
+    deps,
+    options
+  );
+  return { input, setInput, output, error, isPending, reset };
+}
+
+/**
+ * useCodec の拡張版。変換結果に加えてメタデータ（warnings 等）を同時に反映するフック。
+ *
+ * core: useDebouncedTransform に委譲。side-channel 不要。
+ * output と meta は同一 state オブジェクト内で同時に反映されるため、
+ * 将来の React batching/deferral にも安全。
+ *
+ * 既存 useCodec と同じ debounce 挙動を厳守（PR #149 保護は core 側）:
+ * ①空入力で debounce を待たず即時クリア（source=null → core が即時クリア）
+ * ②debounce 中の再入力で前回 schedule をキャンセル（cleanup の clearTimeout）
+ * ③`isPending` は input/deps 変化〜debounce 完了まで true
+ *
+ * `initialMeta` は安定参照（module 定数等）を推奨。可変参照でも最新値にリセットされるが、
+ * 安定参照なら emptyResult が再生成されず core の bailout が効いて余計な再描画が出ない。
+ */
+export function useCodecWithMeta<M>(
+  transform: (input: string) => { output: string; meta: M },
+  initialMeta: M,
+  deps: DependencyList,
+  options: UseCodecOptions = {}
+) {
   const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [error, setError] = useState('');
-  const [isPending, setIsPending] = useState(false);
-
-  useEffect(() => {
-    if (!input) {
-      setOutput('');
-      setError('');
-      setIsPending(false);
-      return;
-    }
-    // deps 変化直後からデバウンス完了まで pending 状態にする
-    setIsPending(true);
-    const timer = setTimeout(() => {
-      try {
-        setOutput(transform(input));
-        setError('');
-      } catch (e) {
-        setOutput('');
-        setError(getErrorMessage(e, fallbackError));
-      } finally {
-        setIsPending(false);
-      }
-    }, debounceMs);
-    return () => clearTimeout(timer);
-    // transform は deps を介して追跡する設計（exhaustive-deps を意図的に無効化）
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, debounceMs, fallbackError, ...deps]);
-
-  const reset = () => {
-    setInput('');
-    setOutput('');
-    setError('');
-    setIsPending(false);
-  };
-
-  return { input, setInput, output, setOutput, error, setError, isPending, reset };
+  // core は emptyResult の安定参照を要求するため useMemo で安定化。
+  // initialMeta を deps に含めることで、可変参照が渡された場合も空入力 / error / reset 時に
+  // 最新の initialMeta へリセットされる（旧 useCodecWithMeta の実行時参照と等価）。
+  // 安定参照（module 定数等）を渡せば再 memo されず core 初回の bailout も効く。
+  const emptyResult = useMemo(() => ({ output: '', meta: initialMeta }), [initialMeta]);
+  const { result, error, isPending } = useDebouncedTransform(
+    input === '' ? null : input, // 空入力は source=null で即時クリア（PR #149 の挙動を core 側で再現）
+    transform,
+    emptyResult,
+    deps,
+    options
+  );
+  const reset = useCallback(() => setInput(''), []);
+  return { input, setInput, output: result.output, error, isPending, reset, meta: result.meta };
 }

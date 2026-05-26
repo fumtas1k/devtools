@@ -1,9 +1,3 @@
-> ⚠️ **移行中**: issue [#176](https://github.com/fumtas1k/devtools/issues/176) B 案で `colors.* + style={{}}` パターン → `@layer components` semantic class へ移行中。
->
-> - **新規 component**: class-based パターン（`src/styles/global.css` に semantic class を追加 + className で参照）を使う
-> - **既存 component**: PR 番号順に migration（progress: PR 1 = `ui/*` simple 11、PR 1.5 = `ResultTable` + `InputField`、PR 2 = `qr-ticket/*`、PR 3-5 = tools、PR 6 = CSP flip + `colors.*` 撤去）
-> - 本 SKILL.md / references/components.md の inline-style 例は **移行中の暫定パターン**。PR 6 で全例を class-based に rewrite 予定
-
 # コンポーネント実装リファレンス
 
 デジタル庁デザインシステム（DADS）のコンポーネント実装パターン集。
@@ -532,35 +526,25 @@ npm install @digital-go-jp/design-system-example-components-react
 - `@digital-go-jp/tailwind-theme-plugin` が必要（Tailwind前提）
 - コンポーネント一覧・使い方はSKILL.mdのSection 10を参照
 
-### 方針2: CSS変数 + インラインスタイル（Tailwindなし）
+### 方針2: CSS class で実装する
 
-`src/utils/styles.ts` の `colors.*` を使い、インラインスタイルで色を指定する。  
-このファイルのCSSパターンを参考に独自コンポーネントを実装する。
+このファイルの CSS をプロジェクトのスタイルシート（例: `@layer components`）に取り込み、`className` で参照する。色は CSS 変数（`var(--color-*)`）経由で指定し、**HTML 属性の inline `style` は避ける**（`style-src` を strict 化した環境では適用されず CSP 違反になる）。
 
 ```tsx
-// 例: このファイルのボタンCSSを参考にReactコンポーネント化
-import { colors, caption } from '../../utils/styles';
-
+// このファイルの .btn / .btn-primary CSS をスタイルシートに定義し、className で参照
 const Button = ({ children, variant = 'primary', onClick }: Props) => (
   <button
     onClick={onClick}
-    style={{
-      background: variant === 'primary' ? colors.primary : 'transparent',
-      color: variant === 'primary' ? '#fff' : colors.primary,
-      border: `2px solid ${variant === 'primary' ? 'transparent' : colors.primary}`,
-      padding: '12px 24px',
-      fontWeight: 700,
-      borderRadius: '4px',
-      cursor: 'pointer',
-    }}
+    className={`btn ${variant === 'primary' ? 'btn-primary' : 'btn-outline'}`}
   >
     {children}
   </button>
 );
 ```
 
-**フォーカスリング（DADS標準）**: `outline: 4px solid #000; box-shadow: 0 0 0 2px #FDE047`  
-**このプロジェクトの実装**: `onFocusRing` / `onBlurRing`（SKILL.md Section 11参照）
+**フォーカスリング（DADS標準）**: `outline: 4px solid #000; box-shadow: 0 0 0 2px #FDE047`（CSS の `:focus-visible` に適用する）
+
+> このリポジトリ（devtools）で実装する場合のスタイリング規約・共通コンポーネント・focus 実装は、SKILL.md「11. このプロジェクト（devtools）で実装する場合」を参照（正本は `CLAUDE.md` §7 / `docs/ui-conventions.md`）。
 
 ---
 

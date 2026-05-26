@@ -32,6 +32,7 @@ export const PAGES = [
   '/tools/config-converter',
   '/tools/char-count',
   '/tools/totp-hotp',
+  '/tools/sql-formatter',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy']);

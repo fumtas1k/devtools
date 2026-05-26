@@ -32,7 +32,34 @@ description: ガード / バリデータ / 違反検知機構 / リグレッシ�
 3. 内部実装ではなく **観測可能な振る舞い** (UI 表示 / 戻り値 / log / state) を assert
 4. fixture / mock 経路は production code path を **確実に通る** こと (mock しすぎて gate を bypass してないか確認)
 
+## 具体例: 陰性対照と陽性対照を別 test に分ける
+
+CSP 違反検知ゲートを例にした最小形。**陰性対照だけでは「検知が空回りしていても green」になる** ので、故意に違反を起こす陽性対照を別 test として併設する。下記はパターンを示す擬似コードで、実ヘルパは `tests/e2e/helpers.ts` の `applyProductionCsp(page)`（戻り値 `guard.violations` に違反が溜まる）を使う。
+
+```ts
+// 陰性対照: 正常系では違反ゼロ。これ単体では検知能力を証明できない。
+test("正規 script のみなら CSP 違反は発生しない", async ({ page }) => {
+  const guard = await applyProductionCsp(page);
+  await page.goto("/");
+  expect(guard.violations).toHaveLength(0);
+});
+
+// 陽性対照（別 test に分離）: 故意の違反を必ず捕捉する。
+// → 検知が空回りしている旧実装に当てると fail する = 検知能力そのものの証明。
+test("外部 origin の script 注入を CSP 違反として検知する", async ({ page }) => {
+  const guard = await applyProductionCsp(page);
+  await injectExternalScript(page, "https://evil.example.com/x.js"); // 意図的な違反
+  await expect.poll(() => guard.violations.length).toBeGreaterThan(0);
+});
+```
+
+観測しているのは内部 state ではなく `guard.violations` という **観測可能な振る舞い**（鉄則 3）であり、2 つを別 test に分けることで陽性側だけ消えても気付ける（鉄則 2）。
+
+リポジトリ内の実例 `tests/e2e/csp-and-evaluation.spec.ts` は `<meta>` CSP を剥がすと inline script が実行されることを `expect.poll` で捕捉する **違反注入型の陽性対照**。なお `src/utils/__tests__/headers.test.ts` の `'unsafe-inline'` 不在 assert は **静的出力のリグレッションガード** であり、注入型の陽性対照とは性質が異なる（混同しないこと）。
+
 ## チェックリスト (ガード追加 / 修正 PR で必ず触る)
+
+設計の鉄則を「PR 提出前に手で確認する項目」へ落とし込んだもの。TodoWrite 化して 1 項目ずつ潰す。
 
 - [ ] 陽性対照テストを **同じ PR に** 含めたか
 - [ ] そのテストは **fix 前 (旧実装) に当てると fail** することをローカルで実機確認したか
@@ -43,5 +70,5 @@ description: ガード / バリデータ / 違反検知機構 / リグレッシ�
 ## 参考
 
 - 個人 memory: `feedback_positive_control_for_gates.md`
-- 過去判断ログ: `docs/decisions.md` の「陽性対照」検索 (4 箇所)
+- 過去判断ログ: `docs/decisions.md` を「陽性対照」で検索
 - 過去事故: PR #233 (`applyProductionCsp` 空回り事故)

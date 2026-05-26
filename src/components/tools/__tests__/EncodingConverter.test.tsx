@@ -209,3 +209,44 @@ describe('EncodingConverterTool — 変換モードでも debounce で convert �
     expect(vi.mocked(convertBytes)).toHaveBeenCalledTimes(1);
   });
 });
+
+// ────────────────────────────────────────────
+// error 合流の優先順位（#394: 旧実装の error 相互上書き解消の回帰ガード）
+//
+// 旧実装は detect / convert effect が単一 error state を実行順で上書きしており、
+// convert モードで detect が throw しても convert 成功が error を空に握り潰し得た。
+// 新実装は error = fileError || detectError || convertError で合流し detect を優先する。
+// 本テストは detect だけ throw・convert 成功という構成で detect error が表示される
+// ことを assert する。error を convertError 優先（または detect を落とす）に戻すと
+// fail する = 陽性対照。
+// ────────────────────────────────────────────
+describe('EncodingConverterTool — convert モードで detect error が convert 成功に握り潰されない', () => {
+  it('detect throw・convert 成功時に detect の error が表示される（陽性対照）', () => {
+    const { container } = render(<EncodingConverterTool />);
+
+    // 変換モードに切替
+    act(() => {
+      screen.getByRole('button', { name: '変換' }).click();
+    });
+
+    // detect だけ throw させる（convert は actual 実装で成功する）
+    vi.mocked(detectEncoding).mockImplementationOnce(() => {
+      throw new Error('判定失敗テスト');
+    });
+
+    const textarea = container.querySelector(
+      'textarea#enc-text-input'
+    ) as HTMLTextAreaElement | null;
+    expect(textarea).not.toBeNull();
+
+    act(() => {
+      fireEvent.change(textarea!, { target: { value: 'hello' } });
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    // 合流 error に detectError が出る（convert 成功で握り潰されない）
+    expect(screen.queryByText('判定失敗テスト')).not.toBeNull();
+  });
+});
