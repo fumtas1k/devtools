@@ -103,4 +103,22 @@ describe('embedParams（検知 / 陽性対照）', () => {
   it(':name 記法に配列を渡すとエラー', () => {
     expect(() => embedParams('WHERE a = :a', '[1]', 'mysql')).toThrow('オブジェクト');
   });
+
+  it('ブロックコメント内の ? を置換しない', () => {
+    expect(embedParams('SELECT /* ? */ FROM t WHERE id = ?', '[7]', 'mysql')).toBe(
+      'SELECT /* ? */ FROM t WHERE id = 7'
+    );
+  });
+
+  it('ダブルクォート識別子内の ? を置換しない', () => {
+    expect(embedParams('WHERE "why?" = 1 AND id = ?', '[7]', 'mysql')).toBe(
+      'WHERE "why?" = 1 AND id = 7'
+    );
+  });
+
+  it('バッククォート識別子内の ? を置換しない', () => {
+    expect(embedParams('WHERE `col?` = 1 AND id = ?', '[7]', 'mysql')).toBe(
+      'WHERE `col?` = 1 AND id = 7'
+    );
+  });
 });
