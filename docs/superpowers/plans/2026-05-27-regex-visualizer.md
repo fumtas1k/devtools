@@ -1,221 +1,95 @@
-# 正規表現ビジュアライザ＆ReDoS検出 実装計画（PR0 spike + PR1）
+# 正規表現ビジュアライザ＆ReDoS検出 実装計画（PR1）
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 正規表現を AST ツリーで可視化し、ReDoS 脆弱性を検出するブラウザ完結型ツール（slug `regex-visualizer`）を追加する。
 
-**Architecture:** `regexp-tree` で regex を AST へパースして描画用ツリーへ正規化（同期）。`recheck` の browser ビルドで ReDoS を判定（非同期）。React コンポーネントが両者を統括し、parse は `useDebouncedTransform`、ReDoS は debounce + cancel フラグの async effect で駆動する。ReDoS 判定は `安全 / 脆弱 / 不明` の 3 状態を厳密に区別し、「不明」を「安全」と表示しない。
+**Architecture:** `regexp-tree` で regex を AST へパースして描画用ツリーへ正規化。`recheck` の **同期 API `checkSync`**（browser ビルド）で ReDoS を判定する。parse と ReDoS はどちらも同期処理なので、1 つの `useDebouncedTransform` でまとめて駆動する（async effect は不要）。ReDoS 判定は `安全 / 脆弱 / 不明` の 3 状態を厳密に区別し、「不明」を「安全」と表示しない。
 
-**Tech Stack:** Astro + React (TSX) / `regexp-tree@0.1.27`（パース・pure JS）/ `recheck@4.5.0`（ReDoS・`browser` フィールドあり・install script なし）/ Vitest（unit）/ Playwright（E2E）
+**Tech Stack:** Astro + React (TSX) / `regexp-tree@0.1.27`（パース・pure JS・型同梱）/ `recheck@4.5.0`（ReDoS・`browser` フィールド・型同梱・install script なし）/ Vitest（unit）/ Playwright（E2E）
 
 **設計スペック:** `docs/superpowers/specs/2026-05-27-regex-visualizer-design.md`
 
-**本計画の範囲:** PR0（spike）+ PR1（AST ツリー + ReDoS 検出）。鉄道図 SVG レンダラ（PR2）は spike/PR1 完了後に別計画を作成する。
+**本計画の範囲:** PR1（AST ツリー + ReDoS 検出）。鉄道図 SVG レンダラ（PR2）は PR1 完了後に別計画を作成する。Phase 0（spike）は実施済み（下記の確定事項を参照）。
+
+---
+
+## Phase 0（spike）確定事項 — 実施済み
+
+実機検証の結果、以下が確定している。**本計画はこの結論を前提に書かれている。**
+
+- ✅ `recheck@4.5.0` / `regexp-tree@0.1.27` をインストール済み（`package.json` / `package-lock.json` は変更済み・PR1 の最初のコミットに含める）。
+- ✅ **recheck はブラウザで動作する**。ただし **async `check()` は使用不可**：内部で `blob:` Worker を生成し、本番 CSP（`script-src 'self'`、`worker-src` 未設定）に弾かれて永久に解決しない。**同期 API `checkSync()` を使う**（Worker を作らないため CSP 下で動作）。CSP の変更は不要。
+- ✅ `checkSync(source, flags, { timeout: 1000 })` で実行。同期=メインスレッド占有のため **timeout（ms）を必ず渡す**（病的入力での UI フリーズ防止）。timeout 時は `status: 'unknown'`（→「判定不能」表示）。
+- ✅ 両ライブラリとも TS 型を同梱 → **型 shim 不要**。
+- ✅ バンドル: recheck チャンク 2.7MB raw / 674KB gzip / 334KB brotli。`client:load` でこのツールページのみ遅延ロード（他ページ無影響）。**この採用はユーザー承認済み。**
+- ⚠️ **E2E は本番 CSP 下で実行必須**（`withProductionCsp`）。これがないと async `check` への回帰が node テストを通過し本番のみ壊れる（prod-parity gate）。
+
+### recheck Diagnostics の確定 shape（`node_modules/recheck/index.d.ts`）
+
+```ts
+type Diagnostics = SafeDiagnostics | VulnerableDiagnostics | UnknownDiagnostics;
+// safe:       { status: 'safe'; complexity: { type: 'constant'|'linear'|'safe'; ... } }
+// vulnerable: { status: 'vulnerable'; attack: { string: string; pattern: string; ... };
+//               complexity: { type: 'polynomial'; degree: number } | { type: 'exponential' };
+//               hotspot: { start: number; end: number; temperature: 'heat'|'normal' }[] }
+// unknown:    { status: 'unknown'; error: { kind: 'timeout'|'cancel'|'unsupported'|'invalid'|'unexpected' } }
+```
+
+### regexp-tree AST の確定 shape
+
+- `parse(re, { captureLocations: true })` が `AstRegExp`（`{ type:'RegExp', body, flags }`）を返す（型同梱）。
+- **`loc` は `{ source, start:{line,column,offset}, end:{line,column,offset} }`**（offset は数値）。
+- **offset は `/pattern/` リテラル基準**（先頭 `/` 込み）。recheck hotspot は raw pattern 基準。→ ハイライト用に **`offset - 1`** で揃える（`/` を含む正規表現では best-effort、コア判定は影響なし）。
 
 ---
 
 ## 前提知識（実装者向け）
 
-- **依存ポリシー**: `.npmrc` に `ignore-scripts=true` / `min-release-age=7` / `save-exact=true`。`recheck` は install script を持たず browser フィールド（`lib/browser.js`）を持つため Vite が自動で browser ビルドを選ぶ。platform binary は optionalDependencies（install bloat になるが browser バンドルには含まれない）。
-- **recheck API（grounded）**: `import { check } from 'recheck';` → `const d = await check(pattern: string, flags: string)`。`d.status` は `'safe' | 'vulnerable' | 'unknown'`。
-  - `vulnerable`: `d.attack.string`（攻撃文字列）, `d.complexity.type`（`'exponential' | 'polynomial'`）, `d.complexity.degree`（polynomial の次数）, `d.hotspot`（`{ start, end, temperature }[]` の source オフセット範囲）
-  - `unknown`: `d.error.kind`（`'timeout' | 'unsupported' | ...`）
-  - **実際の version での shape は PR0 spike で確認すること。**
-- **regexp-tree API**: `import { parse } from 'regexp-tree';` → `parse(re, { captureLocations: true })` が `{ type:'RegExp', body, flags }` を返す。`captureLocations` で各ノードに `loc:{ source, start, end }` が付く（recheck の hotspot オフセットと突き合わせて危険箇所をハイライトするため）。型定義を同梱しないため型 shim が要る場合がある（spike で確認）。
-- **既存パターン**: 共通 UI は `src/components/ui/`（`InputField` / `OutputField` / `ToggleGroup` / `CopyButton` / `ClearButton` / `ErrorMessage`）。同期変換フックは `useDebouncedTransform`（`src/hooks/`）。色は Tailwind primitive 直書き禁止、`@layer components` の意味クラス（`alert-success` / `bg-warning-tint` / `text-warning` 等）を使う（`docs/shared-agent-rules.md` 7 章）。
+- **依存ポリシー**: `.npmrc` に `ignore-scripts=true` / `min-release-age=7` / `save-exact=true`。deps は導入済み。
+- **既存パターン**: 共通 UI は `src/components/ui/`（`InputField` / `CopyButton` / `ClearButton` / `ErrorMessage`）。同期変換フックは `useDebouncedTransform`（`src/hooks/useDebouncedTransform.ts`）— `source` が `null` のとき即時クリア、`transform` が throw すると error をセットし result は emptyResult に戻す。返り値は `{ result, error, isPending }`。
+- **色**: Tailwind primitive 直書き禁止。`@layer components` の意味クラス（`bg-subtle` / `bg-warning-tint` / `text-warning` / `alert-success` 等）を使う。`@layer components` 手書きクラスに `hover:` 等の variant prefix を付けない（CSS rule が生成されない・`docs/shared-agent-rules.md` 7.1）。CSS 変数名は `src/styles/global.css` で確認する。
 - **ツール追加手順**: component → page → `src/data/tools.ts` 登録 → `tests/e2e/visual-regression-pages.ts` の `PAGES` 追加 → README/SPEC/decisions 更新（`docs/shared-agent-rules.md` 5 章）。
+- **テストロケータ**: `getByRole` / `getByText` / `getByLabel` を使う。`locator('[role="X"]')` は禁止。
 
 ---
 
 ## File Structure
 
-| ファイル                                                  | 責務                                                                                           |
-| :-------------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
-| `src/types/regexp-tree.d.ts`（必要時）                    | regexp-tree の最小型 shim（`parse` と AST ノード）                                             |
-| `src/utils/regex-visualizer/parse.ts`                     | pattern+flags → 描画用 AST（`RegexAstNode`）。native `new RegExp` で検証、regexp-tree でパース |
-| `src/utils/regex-visualizer/redos.ts`                     | pattern+flags → `RedosResult`（async）。recheck の Diagnostics を 3 状態へ正規化               |
-| `src/utils/regex-visualizer/index.ts`                     | barrel export                                                                                  |
-| `src/utils/regex-visualizer/__tests__/parse.test.ts`      | parse.ts の unit テスト                                                                        |
-| `src/utils/regex-visualizer/__tests__/redos.test.ts`      | redos.ts の unit テスト（陽性対照含む）                                                        |
-| `src/components/tools/RegexAstTree.tsx`                   | `RegexAstNode` を再帰描画するプレゼンテーションコンポーネント                                  |
-| `src/components/tools/RegexVisualizer.tsx`                | メイン。入力・flags・parse・ReDoS パネルを統括                                                 |
-| `src/components/tools/__tests__/RegexVisualizer.test.tsx` | コンポーネントの unit テスト                                                                   |
-| `src/pages/tools/regex-visualizer.astro`                  | ページ（`client:load` マウント）                                                               |
-| `tests/e2e/regex-visualizer.spec.ts`                      | E2E                                                                                            |
-| `src/data/tools.ts`                                       | ツール登録                                                                                     |
-| `tests/e2e/visual-regression-pages.ts`                    | VRT 対象に `/tools/regex-visualizer` 追加                                                      |
-| `README.md` / `SPEC.md` / `docs/decisions.md`             | ドキュメント更新                                                                               |
-
----
-
-## Phase 0: Spike（PR0 — go/no-go 検証）
-
-目的: `recheck` の browser ビルドが Vite で動くか、`regexp-tree` の型/出力が想定どおりかを **本実装前に** 確認する。失敗時は ReDoS エンジンを自前静的解析へフォールバックする判断材料を得る。spike 用の probe は使い捨て（最後に削除）し、結論を `docs/decisions.md` に記録する。
-
-### Task S1: 依存をインストール
-
-**Files:** `package.json` / `package-lock.json`
-
-- [ ] **Step 1: 依存追加（min-release-age / save-exact は .npmrc 準拠）**
-
-```bash
-npm install regexp-tree recheck --cache "$TMPDIR/npm-cache" --no-audit --no-fund
-```
-
-Expected: `package.json` の dependencies に `regexp-tree`（exact 版）と `recheck`（exact 版）が追加される。`package-lock.json` も更新される。`min-release-age=7` で弾かれた場合はバージョン指定（例 `recheck@4.5.0`）で再実行。
-
-- [ ] **Step 2: optionalDependencies の install bloat を確認**
-
-Run: `ls node_modules | grep -i recheck`
-Expected: `recheck` 本体 + platform binary（例 `recheck-darwin-arm64`）+ `recheck-jar` 等。これらは browser バンドルには含まれない（後続ビルドで確認）。
-
-### Task S2: recheck の node 実行を確認（vitest 環境）
-
-**Files:** `src/utils/regex-visualizer/__probe__.test.ts`（使い捨て）
-
-- [ ] **Step 1: probe テストを書く**
-
-```ts
-import { describe, it, expect } from 'vitest';
-import { check } from 'recheck';
-
-describe('recheck probe (throwaway)', () => {
-  it('flags a known ReDoS pattern as vulnerable', async () => {
-    const d = await check('(a+)+$', '');
-    // shape を観察: status / attack / complexity / hotspot
-    console.log(JSON.stringify(d, null, 2));
-    expect(d.status).toBe('vulnerable');
-  });
-
-  it('marks a safe pattern as safe', async () => {
-    const d = await check('^[a-z]+$', '');
-    expect(d.status).toBe('safe');
-  });
-});
-```
-
-- [ ] **Step 2: 実行して shape を記録**
-
-Run: `npx vitest run src/utils/regex-visualizer/__probe__.test.ts`
-Expected: 2 件 PASS。console 出力から `attack.string` / `complexity.type` / `complexity.degree` / `hotspot` の実フィールド名を控える（PR1 の redos.ts はこの実 shape に合わせる）。
-
-> **判定不能を返す場合**: node 環境で `check` が `unknown`（backend 未解決）を返すなら `checkSync` を試す。両方失敗するなら ReDoS エンジンをフォールバック（自前静的解析）に切替える判断を S4 で行う。
-
-### Task S3: regexp-tree のパースと loc を確認
-
-**Files:** `src/utils/regex-visualizer/__probe__.test.ts`（同上・使い捨て）
-
-- [ ] **Step 1: probe を追記**
-
-```ts
-import { parse } from 'regexp-tree';
-
-it('parses with locations', () => {
-  const re = new RegExp('(a+)+$', '');
-  const ast = parse(re, { captureLocations: true }) as any;
-  console.log(JSON.stringify(ast, null, 2));
-  expect(ast.type).toBe('RegExp');
-  expect(ast.body).toBeTruthy();
-});
-```
-
-- [ ] **Step 2: 実行して AST 形状・loc を記録**
-
-Run: `npx vitest run src/utils/regex-visualizer/__probe__.test.ts`
-Expected: PASS。ノードの `type`（`Repetition` / `Group` / `Alternative` / `Char` / `CharacterClass` / `Assertion` / `Disjunction` / `Backreference`）と `loc.start/end` の有無を確認。TS で型エラーが出る場合は型 shim 要（Task 1 で対応）。
-
-### Task S4: ブラウザビルドと go/no-go 記録
-
-**Files:** `docs/decisions.md`（追記）、probe 削除
-
-- [ ] **Step 1: ビルドが recheck browser ビルドを取り込めるか確認する一時 probe ページ**
-
-`src/pages/__probe__.astro` を作成:
-
-```astro
----
-
----
-
-<html>
-  <body
-    ><div id="r">checking…</div><script>
-      import { check } from 'recheck';
-      check('(a+)+$', '').then((d) => {
-        document.getElementById('r')!.textContent = 'status=' + d.status;
-      });
-    </script></body
-  >
-</html>
-```
-
-- [ ] **Step 2: ビルド実行**
-
-Run: `npm run build`
-Expected: ビルド成功（recheck の browser エントリがバンドルされ、node 専用 API でコケない）。失敗時はエラーを記録し、フォールバック判断へ。
-
-- [ ] **Step 3: dev で実ブラウザ実行を確認（Playwright MCP もしくは手動）**
-
-Run: `npm run dev` → `http://localhost:4321/__probe__` を開く
-Expected: `status=vulnerable` が表示される（browser ランタイムで recheck が動く）。
-
-- [ ] **Step 4: 結論を decisions.md に記録し probe を削除**
-
-```bash
-rm src/utils/regex-visualizer/__probe__.test.ts src/pages/__probe__.astro
-```
-
-`docs/decisions.md` に「recheck browser ビルドは Vite で動作（or 動作せずフォールバック採用）」「recheck Diagnostics の実 shape」「regexp-tree 型 shim 要否」を追記。
-
-> **GO**: recheck browser 動作 → Phase 1 を recheck で進める。
-> **NO-GO**: 動作せず → Phase 1 の redos.ts を自前静的解析（ネスト量指定子 `(x+)+`・重複選択肢検出）へ差し替え、本計画の redos.ts タスクを再設計する（別途）。
+| ファイル                                                  | 責務                                                                                            |
+| :-------------------------------------------------------- | :---------------------------------------------------------------------------------------------- |
+| `src/utils/regex-visualizer/parse.ts`                     | pattern+flags → 描画用 AST（`RegexAstNode`）。native `new RegExp` で検証、regexp-tree でパース  |
+| `src/utils/regex-visualizer/redos.ts`                     | pattern+flags → `RedosResult`（**同期**）。recheck `checkSync` の Diagnostics を 3 状態へ正規化 |
+| `src/utils/regex-visualizer/index.ts`                     | barrel export                                                                                   |
+| `src/utils/regex-visualizer/__tests__/parse.test.ts`      | parse.ts の unit テスト                                                                         |
+| `src/utils/regex-visualizer/__tests__/redos.test.ts`      | redos.ts の unit テスト（陽性対照含む）                                                         |
+| `src/components/tools/RegexAstTree.tsx`                   | `RegexAstNode` を再帰描画するプレゼンテーションコンポーネント                                   |
+| `src/components/tools/RegexVisualizer.tsx`                | メイン。入力・flags・parse・ReDoS パネルを統括                                                  |
+| `src/components/tools/__tests__/RegexVisualizer.test.tsx` | コンポーネントの unit テスト                                                                    |
+| `src/pages/tools/regex-visualizer.astro`                  | ページ（`client:load` マウント）                                                                |
+| `tests/e2e/regex-visualizer.spec.ts`                      | E2E（本番 CSP 下）                                                                              |
+| `src/data/tools.ts`                                       | ツール登録                                                                                      |
+| `tests/e2e/visual-regression-pages.ts`                    | VRT 対象に `/tools/regex-visualizer` 追加                                                       |
+| `README.md` / `SPEC.md` / `docs/decisions.md`             | ドキュメント更新                                                                                |
 
 ---
 
 ## Phase 1: PR1（AST ツリー + ReDoS 検出）
 
-以降は **GO 前提**。Phase 0 で確認した recheck の実 shape に合わせて微調整すること。
+### Task 1: deps コミット
 
-### Task 1: regexp-tree 型 shim（spike で必要と判明した場合のみ）
+**Files:** `package.json` / `package-lock.json`（変更済み）
 
-**Files:** Create `src/types/regexp-tree.d.ts`
+- [ ] **Step 1: 差分確認**
 
-- [ ] **Step 1: 最小型を宣言**
+Run: `git diff --stat package.json package-lock.json`
+Expected: `recheck@4.5.0` / `regexp-tree@0.1.27` が dependencies に追加されている。
 
-```ts
-declare module 'regexp-tree' {
-  export interface RegExpTreeLoc {
-    source: string;
-    start: number;
-    end: number;
-  }
-  export interface RegExpTreeNode {
-    type: string;
-    loc?: RegExpTreeLoc;
-    [key: string]: unknown;
-  }
-  export interface RegExpTreeAst extends RegExpTreeNode {
-    type: 'RegExp';
-    body: RegExpTreeNode;
-    flags: string;
-  }
-  export function parse(
-    re: RegExp | string,
-    options?: { captureLocations?: boolean }
-  ): RegExpTreeAst;
-}
-```
-
-- [ ] **Step 2: 型チェック**
-
-Run: `node_modules/.bin/astro check`
-Expected: regexp-tree 由来の型エラーが消える。
-
-- [ ] **Step 3: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
-git add src/types/regexp-tree.d.ts
-git commit -m "build: regexp-tree の型 shim を追加"
+git add package.json package-lock.json
+git commit -m "build: 正規表現ビジュアライザ用に regexp-tree と recheck を追加"
 ```
 
 ### Task 2: parse.ts — pattern+flags を描画用 AST へ
@@ -252,8 +126,9 @@ describe('parseRegex', () => {
     expect(root.children[0].children).toHaveLength(2);
   });
 
-  it('各ノードに loc を持つ', () => {
+  it('各ノードに pattern 基準の loc（offset-1 補正済み）を持つ', () => {
     const root = parseRegex('a+', '');
+    // '/a+/' の Repetition 'a+' は offset 1..3 → pattern 基準 0..2
     expect(root.children[0].loc).toEqual({ start: 0, end: 2 });
   });
 
@@ -278,17 +153,23 @@ Expected: FAIL（`parseRegex` 未定義）
 import { parse as parseRegExpTree } from 'regexp-tree';
 
 export interface RegexAstNode {
-  /** regexp-tree のノード種別（'Char' | 'Repetition' | 'Group' | 'Disjunction' | 'Alternative' | 'CharacterClass' | 'Assertion' | 'Backreference' 等） */
+  /** regexp-tree のノード種別（'Char' | 'Repetition' | 'Group' | 'Disjunction' | 'Alternative' | 'CharacterClass' | 'Assertion' | 'Backreference' | 'Root' 等） */
   type: string;
   /** 日本語の表示ラベル */
   label: string;
-  /** source 内の位置（recheck hotspot との突き合わせ用） */
+  /** pattern 文字列基準の位置（recheck hotspot との突き合わせ用、offset-1 補正済み） */
   loc?: { start: number; end: number };
   children: RegexAstNode[];
 }
 
+interface RegExpTreeNode {
+  type: string;
+  loc?: { start: { offset: number }; end: { offset: number } };
+  [key: string]: unknown;
+}
+
 function quantifierLabel(q: {
-  kind: string;
+  kind?: string;
   from?: number;
   to?: number;
   greedy?: boolean;
@@ -301,14 +182,10 @@ function quantifierLabel(q: {
       return `0 回以上の繰り返し${lazy}`;
     case '?':
       return `0 回または 1 回${lazy}`;
-    case 'Range': {
-      const to = q.to == null ? '' : q.to === q.from ? '' : `〜${q.to} 回`;
-      return q.to == null
-        ? `${q.from} 回以上の繰り返し${lazy}`
-        : q.to === q.from
-          ? `ちょうど ${q.from} 回${lazy}`
-          : `${q.from}${to} の繰り返し${lazy}`;
-    }
+    case 'Range':
+      if (q.to == null) return `${q.from} 回以上の繰り返し${lazy}`;
+      if (q.to === q.from) return `ちょうど ${q.from} 回${lazy}`;
+      return `${q.from}〜${q.to} 回の繰り返し${lazy}`;
     default:
       return `繰り返し${lazy}`;
   }
@@ -344,7 +221,7 @@ function labelFor(node: Record<string, any>): string {
 }
 
 /** regexp-tree ノードの子を一様に取り出す */
-function childrenOf(node: Record<string, any>): Record<string, any>[] {
+function childrenOf(node: Record<string, any>): RegExpTreeNode[] {
   if (node.type === 'Alternative') return node.expressions ?? [];
   if (node.type === 'Disjunction') return [node.left, node.right].filter(Boolean);
   if (node.type === 'Group' || node.type === 'Repetition' || node.type === 'Assertion') {
@@ -354,11 +231,12 @@ function childrenOf(node: Record<string, any>): Record<string, any>[] {
   return [];
 }
 
-function toRenderNode(node: Record<string, any>): RegexAstNode {
+function toRenderNode(node: RegExpTreeNode): RegexAstNode {
   return {
     type: node.type,
     label: labelFor(node),
-    loc: node.loc ? { start: node.loc.start, end: node.loc.end } : undefined,
+    // offset-1: regexp-tree は /pattern/ リテラル基準なので先頭 '/' 分を引き pattern 基準へ
+    loc: node.loc ? { start: node.loc.start.offset - 1, end: node.loc.end.offset - 1 } : undefined,
     children: childrenOf(node).map(toRenderNode),
   };
 }
@@ -366,24 +244,25 @@ function toRenderNode(node: Record<string, any>): RegexAstNode {
 /**
  * pattern + flags を描画用 AST へ変換する。
  * native `new RegExp` で構文・フラグを検証（不正なら SyntaxError を投げる）し、
- * regexp-tree で位置情報付き AST を得る。ルートは body を「連結」ノードに正規化して返す。
+ * regexp-tree で位置情報付き AST を得る。ルートは body を Root ノードに包んで返す。
  */
 export function parseRegex(pattern: string, flags: string): RegexAstNode {
   const re = new RegExp(pattern, flags); // 不正な pattern / flags はここで throw
   const ast = parseRegExpTree(re, { captureLocations: true });
-  const body = ast.body as Record<string, any>;
-  const root = toRenderNode(body);
-  // ルートが Alternative でない単一ノードでもツリー表示できるよう children 配列に包む
-  return root.type === 'Alternative'
-    ? { type: 'Root', label: '正規表現', loc: undefined, children: root.children }
-    : { type: 'Root', label: '正規表現', loc: undefined, children: [root] };
+  const body = ast.body as unknown as RegExpTreeNode;
+  const rendered = toRenderNode(body);
+  return {
+    type: 'Root',
+    label: '正規表現',
+    children: rendered.type === 'Alternative' ? rendered.children : [rendered],
+  };
 }
 ```
 
 - [ ] **Step 4: 実行して PASS を確認**
 
 Run: `npx vitest run src/utils/regex-visualizer/__tests__/parse.test.ts`
-Expected: 全 PASS。loc 期待値（`a+` の `{start:0,end:2}`）が実際とズレたら Phase 0 の観察値に合わせて修正。
+Expected: 全 PASS。
 
 - [ ] **Step 5: 型チェック & Commit**
 
@@ -393,14 +272,15 @@ git add src/utils/regex-visualizer/parse.ts src/utils/regex-visualizer/__tests__
 git commit -m "feat: 正規表現を描画用 AST へ変換する parse を追加"
 ```
 
-### Task 3: redos.ts — recheck を 3 状態へ正規化（test-gates）
+### Task 3: redos.ts — recheck checkSync を 3 状態へ正規化（test-gates）
 
 **Files:**
 
 - Create: `src/utils/regex-visualizer/redos.ts`
+- Create: `src/utils/regex-visualizer/index.ts`
 - Test: `src/utils/regex-visualizer/__tests__/redos.test.ts`
 
-> **このタスクは「検知機構」の実装。`Skill` tool で `test-gates` skill を呼んでから着手すること。** 陽性対照（既知の脆弱 regex を必ず `vulnerable` と判定）を必須とする。
+> **このタスクは「検知機構」の実装。着手前に `Skill` tool で `test-gates` skill を呼ぶこと。** 陽性対照（既知の脆弱 regex を必ず `vulnerable` と判定）を必須とする。
 
 - [ ] **Step 1: 失敗するテストを書く（陽性対照 + 陰性対照）**
 
@@ -410,8 +290,8 @@ import { analyzeRedos } from '../redos';
 
 describe('analyzeRedos', () => {
   // 陽性対照: 既知の脆弱パターンを必ず vulnerable と判定できること
-  it('陽性対照: (a+)+$ を vulnerable と判定し攻撃文字列を返す', async () => {
-    const r = await analyzeRedos('(a+)+$', '');
+  it('陽性対照: (a+)+$ を vulnerable と判定し攻撃文字列を返す', () => {
+    const r = analyzeRedos('(a+)+$', '');
     expect(r.status).toBe('vulnerable');
     expect(typeof r.attackString).toBe('string');
     expect(r.attackString!.length).toBeGreaterThan(0);
@@ -419,14 +299,14 @@ describe('analyzeRedos', () => {
   });
 
   // 陰性対照: 安全なパターンを safe と判定すること
-  it('陰性対照: ^[a-z]+$ を safe と判定する', async () => {
-    const r = await analyzeRedos('^[a-z]+$', '');
+  it('陰性対照: ^[a-z]+$ を safe と判定する', () => {
+    const r = analyzeRedos('^[a-z]+$', '');
     expect(r.status).toBe('safe');
     expect(r.attackString).toBeUndefined();
   });
 
-  it('hotspot を source オフセット範囲として返す', async () => {
-    const r = await analyzeRedos('(a+)+$', '');
+  it('vulnerable のとき hotspot を返す', () => {
+    const r = analyzeRedos('(a+)+$', '');
     expect(Array.isArray(r.hotspot)).toBe(true);
   });
 });
@@ -437,10 +317,10 @@ describe('analyzeRedos', () => {
 Run: `npx vitest run src/utils/regex-visualizer/__tests__/redos.test.ts`
 Expected: FAIL（`analyzeRedos` 未定義）
 
-- [ ] **Step 3: redos.ts を実装（Phase 0 の実 shape に合わせる）**
+- [ ] **Step 3: redos.ts を実装（同期 checkSync・timeout 必須）**
 
 ```ts
-import { check } from 'recheck';
+import { checkSync } from 'recheck';
 
 export type RedosStatus = 'safe' | 'vulnerable' | 'unknown';
 
@@ -450,40 +330,38 @@ export interface RedosResult {
   attackString?: string;
   /** vulnerable のとき: 複雑度の日本語表記 */
   complexity?: string;
-  /** vulnerable のとき: source 内の危険箇所オフセット範囲 */
+  /** vulnerable のとき: pattern 内の危険箇所オフセット範囲 */
   hotspot?: { start: number; end: number }[];
   /** unknown のとき: 理由（timeout 等） */
   reason?: string;
 }
 
-function complexityLabel(c: { type?: string; degree?: number } | undefined): string {
-  if (!c) return '不明';
+function complexityLabel(c: { type: string; degree?: number }): string {
   if (c.type === 'exponential') return '指数時間（exponential）';
   if (c.type === 'polynomial') return `多項式時間（${c.degree ?? '?'} 次）`;
-  return c.type ?? '不明';
+  return c.type;
 }
 
 /**
- * pattern + flags の ReDoS 脆弱性を判定する。
- * recheck の Diagnostics を 安全 / 脆弱 / 不明 の 3 状態へ正規化する。
+ * pattern + flags の ReDoS 脆弱性を判定する（同期）。
+ * recheck checkSync の Diagnostics を 安全 / 脆弱 / 不明 の 3 状態へ正規化する。
+ * timeout（メインスレッド占有の上限）を渡し、timeout 時は unknown とする。
  * 「不明」を「安全」と混同しないこと（呼び出し側 UI も区別表示する）。
  */
-export async function analyzeRedos(pattern: string, flags: string): Promise<RedosResult> {
-  const d: any = await check(pattern, flags);
+export function analyzeRedos(pattern: string, flags: string): RedosResult {
+  const d = checkSync(pattern, flags, { timeout: 1000 });
   switch (d.status) {
     case 'vulnerable':
       return {
         status: 'vulnerable',
-        attackString: d.attack?.string,
+        attackString: d.attack.string,
         complexity: complexityLabel(d.complexity),
-        hotspot: Array.isArray(d.hotspot)
-          ? d.hotspot.map((h: any) => ({ start: h.start, end: h.end }))
-          : [],
+        hotspot: d.hotspot.map((h) => ({ start: h.start, end: h.end })),
       };
     case 'safe':
       return { status: 'safe' };
     default:
-      return { status: 'unknown', reason: d.error?.kind ?? 'unknown' };
+      return { status: 'unknown', reason: d.error.kind };
   }
 }
 ```
@@ -491,7 +369,7 @@ export async function analyzeRedos(pattern: string, flags: string): Promise<Redo
 - [ ] **Step 4: 実行して PASS を確認**
 
 Run: `npx vitest run src/utils/regex-visualizer/__tests__/redos.test.ts`
-Expected: 全 PASS。フィールド名（`attack.string` 等）が Phase 0 観察値と違えば修正。
+Expected: 全 PASS。
 
 - [ ] **Step 5: barrel export を追加**
 
@@ -512,7 +390,7 @@ git commit -m "feat: recheck で ReDoS を判定する analyzeRedos を追加"
 
 ### Task 4: RegexAstTree.tsx — AST を再帰描画
 
-**Files:** Create `src/components/tools/RegexAstTree.tsx`
+**Files:** Create `src/components/tools/RegexAstTree.tsx`、Modify `src/styles/global.css`
 
 - [ ] **Step 1: コンポーネントを実装**
 
@@ -521,7 +399,7 @@ import type { RegexAstNode } from '@/utils/regex-visualizer';
 
 interface Props {
   node: RegexAstNode;
-  /** 危険箇所の source オフセット範囲（ReDoS hotspot）。重なるノードを強調する。 */
+  /** 危険箇所の pattern オフセット範囲（ReDoS hotspot）。重なるノードを強調する。 */
   hotspot?: { start: number; end: number }[];
 }
 
@@ -548,9 +426,9 @@ export function RegexAstTree({ node, hotspot }: Props) {
 }
 ```
 
-- [ ] **Step 2: 意味クラスを global.css に追加**
+- [ ] **Step 2: 意味クラスを global.css の `@layer components` に追加**
 
-`src/styles/global.css` の `@layer components` に追記（primitive 直書き禁止のため意味クラスで定義）:
+`src/styles/global.css` で既存の `--color-*` 変数名を確認し、`@layer components` に追記:
 
 ```css
 .regex-ast-tree {
@@ -572,12 +450,12 @@ export function RegexAstTree({ node, hotspot }: Props) {
 }
 ```
 
-> 既存の `--color-*` 変数名は `src/styles/global.css` で確認し、無ければ既存意味クラス（`bg-subtle` / `bg-warning-tint` / `text-warning`）に合わせて命名する。`hover:` 等 variant は手書きクラスに付けない（`docs/shared-agent-rules.md` 7.1）。
+> 変数名（`--color-border` / `--color-subtle` / `--color-warning-tint` / `--color-warning`）は `global.css` の実定義に合わせる。variant prefix（`hover:` 等）はこれら手書きクラスに付けない。
 
 - [ ] **Step 3: 型チェック & ビルドで CSS 生成を確認**
 
 Run: `node_modules/.bin/astro check && npm run build`
-Expected: 成功。`dist/_astro/*.css` に `.regex-ast-node-hot` ルールが生成される。
+Expected: 成功。`grep -r "regex-ast-node-hot" dist/_astro/*.css` でルールが生成されている。
 
 - [ ] **Step 4: Commit**
 
@@ -586,7 +464,7 @@ git add src/components/tools/RegexAstTree.tsx src/styles/global.css
 git commit -m "feat: 正規表現 AST ツリー描画コンポーネントを追加"
 ```
 
-### Task 5: RegexVisualizer.tsx — メインコンポーネント
+### Task 5: RegexVisualizer.tsx — メインコンポーネント（parse + ReDoS を同期 transform で統括）
 
 **Files:**
 
@@ -604,23 +482,26 @@ import { RegexVisualizer } from '../RegexVisualizer';
 describe('RegexVisualizer', () => {
   it('有効な正規表現を入力すると AST ラベルが表示される', async () => {
     render(<RegexVisualizer />);
-    const input = screen.getByLabelText('正規表現');
-    await userEvent.type(input, 'a+');
+    await userEvent.type(screen.getByLabelText('正規表現'), 'a+');
     await waitFor(() => expect(screen.getByText(/1 回以上の繰り返し/)).toBeInTheDocument());
   });
 
   it('不正な正規表現でエラーを表示する', async () => {
     render(<RegexVisualizer />);
-    const input = screen.getByLabelText('正規表現');
-    await userEvent.type(input, '(');
+    await userEvent.type(screen.getByLabelText('正規表現'), '(');
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
   });
 
   it('脆弱な正規表現で危険判定を表示する', async () => {
     render(<RegexVisualizer />);
-    const input = screen.getByLabelText('正規表現');
-    await userEvent.type(input, '(a+)+$');
-    await waitFor(() => expect(screen.getByText(/脆弱/)).toBeInTheDocument(), { timeout: 5000 });
+    await userEvent.type(screen.getByLabelText('正規表現'), '(a+)+$');
+    await waitFor(() => expect(screen.getByText(/脆弱/)).toBeInTheDocument());
+  });
+
+  it('安全な正規表現で安全判定を表示する', async () => {
+    render(<RegexVisualizer />);
+    await userEvent.type(screen.getByLabelText('正規表現'), '^[a-z]+$');
+    await waitFor(() => expect(screen.getByText(/安全/)).toBeInTheDocument());
   });
 });
 ```
@@ -633,13 +514,12 @@ Expected: FAIL（`RegexVisualizer` 未定義）
 - [ ] **Step 3: RegexVisualizer.tsx を実装**
 
 ```tsx
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import {
   parseRegex,
   analyzeRedos,
@@ -650,55 +530,32 @@ import { RegexAstTree } from './RegexAstTree';
 
 const FLAGS = ['g', 'i', 'm', 's', 'u', 'y', 'd'] as const;
 const SAMPLE = '(a+)+$';
-const EMPTY_AST: RegexAstNode | null = null;
+
+interface Analysis {
+  ast: RegexAstNode;
+  redos: RedosResult;
+}
+
+const EMPTY: Analysis | null = null;
 
 export function RegexVisualizer() {
   const [pattern, setPattern] = useState('');
   const [flags, setFlags] = useState('');
 
-  // parse（同期・debounce）
-  const parsed = useDebouncedTransform<{ pattern: string; flags: string }, RegexAstNode | null>(
+  // parse（同期・throw でエラー表示）と ReDoS（同期 checkSync）を 1 つの debounce 変換で駆動
+  const analysis = useDebouncedTransform<{ pattern: string; flags: string }, Analysis | null>(
     pattern.trim() ? { pattern, flags } : null,
-    ({ pattern, flags }) => parseRegex(pattern, flags),
-    EMPTY_AST,
+    ({ pattern, flags }) => ({
+      ast: parseRegex(pattern, flags), // 不正なら throw → error 表示
+      redos: analyzeRedos(pattern, flags),
+    }),
+    EMPTY,
     [],
     { fallbackError: '正規表現が不正です' }
   );
 
-  // ReDoS（非同期・debounce + cancel）
-  const dPattern = useDebouncedValue(pattern, 400);
-  const dFlags = useDebouncedValue(flags, 400);
-  const [redos, setRedos] = useState<RedosResult | null>(null);
-  const [redosPending, setRedosPending] = useState(false);
-
-  useEffect(() => {
-    if (!dPattern.trim()) {
-      setRedos(null);
-      return;
-    }
-    // 無効な regex では recheck を呼ばない（parse エラー側で表示済み）
-    try {
-      new RegExp(dPattern, dFlags);
-    } catch {
-      setRedos(null);
-      return;
-    }
-    let cancelled = false;
-    setRedosPending(true);
-    analyzeRedos(dPattern, dFlags)
-      .then((r) => {
-        if (!cancelled) setRedos(r);
-      })
-      .catch(() => {
-        if (!cancelled) setRedos({ status: 'unknown', reason: 'error' });
-      })
-      .finally(() => {
-        if (!cancelled) setRedosPending(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dPattern, dFlags]);
+  const ast = analysis.result?.ast ?? null;
+  const redos = analysis.result?.redos ?? null;
 
   const toggleFlag = (f: string) =>
     setFlags((prev) => (prev.includes(f) ? prev.replace(f, '') : prev + f));
@@ -706,7 +563,6 @@ export function RegexVisualizer() {
   const handleClear = () => {
     setPattern('');
     setFlags('');
-    setRedos(null);
   };
 
   return (
@@ -718,7 +574,7 @@ export function RegexVisualizer() {
           value={pattern}
           onChange={setPattern}
           placeholder="(a+)+$"
-          error={parsed.error || undefined}
+          error={analysis.error || undefined}
           onSampleClick={() => setPattern(SAMPLE)}
           mono
         />
@@ -747,11 +603,11 @@ export function RegexVisualizer() {
         className="rounded-lg border border-default p-4"
       >
         <h2 className="body-emphasis text-default mb-2">ReDoS 判定</h2>
-        {redosPending && <p className="caption text-subtle">判定中…</p>}
-        {!redosPending && redos?.status === 'safe' && (
+        {analysis.isPending && <p className="caption text-subtle">判定中…</p>}
+        {!analysis.isPending && redos?.status === 'safe' && (
           <p className="alert-success">安全：壊滅的バックトラッキングは検出されませんでした。</p>
         )}
-        {!redosPending && redos?.status === 'vulnerable' && (
+        {!analysis.isPending && redos?.status === 'vulnerable' && (
           <div className="space-y-2">
             <p className="text-warning body-emphasis">
               ⚠ 脆弱：ReDoS のリスクがあります（{redos.complexity}）。
@@ -766,10 +622,10 @@ export function RegexVisualizer() {
             )}
           </div>
         )}
-        {!redosPending && redos?.status === 'unknown' && (
+        {!analysis.isPending && redos?.status === 'unknown' && (
           <p className="text-subtle">判定不能（{redos.reason}）：安全とは限りません。</p>
         )}
-        {!redosPending && !redos && (
+        {!analysis.isPending && !redos && (
           <p className="caption text-subtle">正規表現を入力してください。</p>
         )}
       </section>
@@ -777,10 +633,10 @@ export function RegexVisualizer() {
       {/* AST ツリー */}
       <section aria-label="構造ツリー">
         <h2 className="body-emphasis text-default mb-2">構造ツリー</h2>
-        {parsed.error ? (
-          <ErrorMessage message={parsed.error} variant="block" />
-        ) : parsed.result ? (
-          <RegexAstTree node={parsed.result} hotspot={redos?.hotspot} />
+        {analysis.error ? (
+          <ErrorMessage message={analysis.error} variant="block" />
+        ) : ast ? (
+          <RegexAstTree node={ast} hotspot={redos?.hotspot} />
         ) : (
           <p className="caption text-subtle">正規表現を入力すると構造が表示されます。</p>
         )}
@@ -794,9 +650,7 @@ export function RegexVisualizer() {
 }
 ```
 
-- [ ] **Step 4: flag-toggle 意味クラスを global.css に追加**
-
-`@layer components` に:
+- [ ] **Step 4: flag-toggle 意味クラスを global.css の `@layer components` に追加**
 
 ```css
 .flag-toggle {
@@ -812,12 +666,12 @@ export function RegexVisualizer() {
 }
 ```
 
-> 変数名は既存 `global.css` で確認。`InputField` / `CopyButton` / `ClearButton` / `ErrorMessage` の props は各コンポーネント定義を読んで合わせる（`onSampleClick` / `mono` / `variant` 等の有無）。
+> `InputField` / `CopyButton` / `ClearButton` / `ErrorMessage` の props（`onSampleClick` / `mono` / `text` / `ariaLabel` / `variant` 等）は各コンポーネント定義を読んで実際の API に合わせる。`SqlFormatter.tsx` が同じ顔ぶれの使用例。
 
 - [ ] **Step 5: 実行して PASS を確認**
 
 Run: `npx vitest run src/components/tools/__tests__/RegexVisualizer.test.tsx`
-Expected: 全 PASS。recheck 呼び出しが node 環境で遅い/失敗する場合は 3 つ目のテストの timeout を調整、それでも不安定なら redos をモックして「vulnerable 表示の描画」だけを検証し、エンジン正当性は redos.test.ts（Task 3）の陽性対照に委ねる。
+Expected: 全 PASS。`checkSync` は同期なので jsdom でも追加 backend 不要で動く。
 
 - [ ] **Step 6: 型チェック & Commit**
 
@@ -834,15 +688,14 @@ git commit -m "feat: 正規表現ビジュアライザのメインコンポー�
 - Create: `src/pages/tools/regex-visualizer.astro`
 - Modify: `src/data/tools.ts`
 
-- [ ] **Step 1: tools.ts にエントリ追加**
-
-`toolEntries` 配列に追加:
+- [ ] **Step 1: tools.ts の `toolEntries` 配列にエントリ追加**
 
 ```ts
   {
     slug: 'regex-visualizer',
     name: '正規表現ビジュアライザ＆ReDoS検出',
-    description: '正規表現を構造ツリーで可視化し、ReDoS（壊滅的バックトラッキング）脆弱性を検出します',
+    description:
+      '正規表現を構造ツリーで可視化し、ReDoS（壊滅的バックトラッキング）脆弱性を検出します',
     category: 'convert',
     yomi: 'せいきひょうげんびじゅあらいざ',
   },
@@ -885,7 +738,7 @@ const tool = tools.find((t) => t.slug === 'regex-visualizer')!;
 - [ ] **Step 3: dev で表示確認**
 
 Run: `npm run dev` → `http://localhost:4321/tools/regex-visualizer`
-Expected: ページが表示され、`(a+)+$` で「脆弱」、`^[a-z]+$` で「安全」、`(` でエラーが出る。
+Expected: `(a+)+$` で「脆弱」、`^[a-z]+$` で「安全」、`(` でエラー。
 
 - [ ] **Step 4: 型チェック & Commit**
 
@@ -899,14 +752,14 @@ git commit -m "feat: 正規表現ビジュアライザのページとツール�
 
 **Files:** Modify `tests/e2e/visual-regression-pages.ts`
 
-- [ ] **Step 1: PAGES に追加**
+- [ ] **Step 1: PAGES 配列末尾に追加**
 
-`PAGES` 配列末尾に `'/tools/regex-visualizer',` を追加。
+`'/tools/regex-visualizer',` を `PAGES` 配列末尾に追加。
 
 - [ ] **Step 2: meta テストで漏れがないことを確認**
 
 Run: `npx vitest run tests/meta/vrt-pages-coverage.test.ts`
-Expected: PASS（全 slug が PAGES に存在）。
+Expected: PASS。
 
 - [ ] **Step 3: Commit**
 
@@ -915,39 +768,48 @@ git add tests/e2e/visual-regression-pages.ts
 git commit -m "test: 正規表現ビジュアライザを VRT 対象に追加"
 ```
 
-### Task 8: E2E
+### Task 8: E2E（本番 CSP 下・prod-parity gate）
 
 **Files:** Create `tests/e2e/regex-visualizer.spec.ts`
 
-- [ ] **Step 1: E2E を書く（既存 spec の構造に合わせる）**
+> **本番 CSP 下で実行すること。** `withProductionCsp` は末尾で `guard.assertNoViolations()` を呼ぶため、将来 `checkSync`→async `check` に戻すと blob Worker の CSP 違反でこのテストが落ちる（回帰検知ゲート）。`tests/e2e/config-converter.spec.ts` が `withProductionCsp` の使用例。
+
+- [ ] **Step 1: E2E を書く**
 
 ```ts
 import { test, expect } from '@playwright/test';
+import { withProductionCsp } from './helpers';
 
 test.describe('正規表現ビジュアライザ', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/tools/regex-visualizer');
+  test('有効な正規表現で構造ツリーが表示される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('(ab)+');
+      await expect(page.getByText(/1 回以上の繰り返し/)).toBeVisible();
+    });
   });
 
-  test('有効な正規表現で構造ツリーが表示される', async ({ page }) => {
-    await page.getByLabel('正規表現').fill('(ab)+');
-    await expect(page.getByText(/1 回以上の繰り返し/)).toBeVisible();
+  test('脆弱な正規表現で危険判定と攻撃文字列が出る（CSP 下で checkSync 動作）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('(a+)+$');
+      await expect(page.getByText(/脆弱/)).toBeVisible();
+      await expect(page.getByRole('button', { name: '攻撃文字列をコピー' })).toBeVisible();
+    });
   });
 
-  test('脆弱な正規表現で危険判定と攻撃文字列が出る', async ({ page }) => {
-    await page.getByLabel('正規表現').fill('(a+)+$');
-    await expect(page.getByText(/脆弱/)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: '攻撃文字列をコピー' })).toBeVisible();
+  test('安全な正規表現で安全判定が出る', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('^[a-z]+$');
+      await expect(page.getByText(/安全/)).toBeVisible();
+    });
   });
 
-  test('安全な正規表現で安全判定が出る', async ({ page }) => {
-    await page.getByLabel('正規表現').fill('^[a-z]+$');
-    await expect(page.getByText(/安全/)).toBeVisible({ timeout: 10000 });
-  });
-
-  test('不正な正規表現でエラーが出る', async ({ page }) => {
-    await page.getByLabel('正規表現').fill('(');
-    await expect(page.getByText(/不正/)).toBeVisible();
+  test('不正な正規表現でエラーが出る', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('(');
+      await expect(page.getByText(/不正/)).toBeVisible();
+    });
   });
 });
 ```
@@ -955,30 +817,28 @@ test.describe('正規表現ビジュアライザ', () => {
 - [ ] **Step 2: E2E 実行（preview 経由）**
 
 Run: `npm run test:e2e -- regex-visualizer`
-Expected: 全 PASS。ロケータは `getByLabel` / `getByText` / `getByRole`（`locator('[role=...]')` 禁止・memory 参照）。
+Expected: 全 PASS。CSP 違反 0（`assertNoViolations`）。
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add tests/e2e/regex-visualizer.spec.ts
-git commit -m "test: 正規表現ビジュアライザの E2E を追加"
+git commit -m "test: 正規表現ビジュアライザの E2E を本番 CSP 下で追加"
 ```
 
 ### Task 9: ドキュメント更新
 
 **Files:** Modify `README.md` / `SPEC.md` / `docs/decisions.md`
 
-- [ ] **Step 1: README のツール一覧に追加**
+- [ ] **Step 1: README のツール一覧に追加**（既存記法に合わせる）
 
-`README.md` のツール一覧へ「正規表現ビジュアライザ＆ReDoS検出」を追記（既存の記法に合わせる）。
+- [ ] **Step 2: SPEC.md を更新**：2.3（`regexp-tree` / `recheck`）、2.4（`src/utils/regex-visualizer/`）、4・5（ツール一覧）、9（チェックリスト）
 
-- [ ] **Step 2: SPEC.md を更新**
-
-  2.3（ライブラリ: `regexp-tree` / `recheck`）、2.4（`src/utils/regex-visualizer/`）、4・5（ツール一覧）、9（チェックリスト）を更新。
-
-- [ ] **Step 3: decisions.md に選定理由を記録**
-
-`regexp-tree` 採用理由（手書きパーサ回避）、`recheck` 採用理由（browser フィールド・install script なし・min-release-age 適合）、`safe-regex` 不採用理由、ReDoS 3 状態の誠実さ方針、（Phase 0 で記録済みでなければ）browser ビルド検証結果。
+- [ ] **Step 3: decisions.md に追記**
+  - `regexp-tree` 採用（手書きパーサ回避）/ `recheck` 採用（browser フィールド・install script なし・min-release-age 適合）/ `safe-regex` 不採用
+  - **recheck は async `check` が CSP の blob Worker 制約で不可 → `checkSync` を採用**（CSP 不変更）
+  - バンドル 2.7MB raw / 334KB brotli を遅延ロードで許容（ユーザー承認済み）
+  - ReDoS 3 状態の誠実さ方針／E2E は本番 CSP 下で実行（prod-parity gate）
 
 - [ ] **Step 4: 整形 & Commit**
 
@@ -1007,22 +867,21 @@ Expected: 全 PASS。
 
 - [ ] **Step 4: UI 目視（PC 1280x800 / スマホ 390x844）**
 
-Playwright MCP で `(a+)+$` を入力した状態のスクショを撮り、3 状態（安全/脆弱/不明）の表示・ハイライト・レスポンシブを目視確認（`docs/shared-agent-rules.md` 7 章）。
+Playwright MCP で `(a+)+$`（脆弱）/ `^[a-z]+$`（安全）/ `(`（エラー）を入力した状態のスクショを撮り、3 状態表示・hotspot ハイライト・レスポンシブを目視確認（`docs/shared-agent-rules.md` 7 章）。
 
-> push / PR 作成は `develop` ベース。`gh pr create --base develop`。VRT baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を（承認を得てから）dispatch して生成する。
+> push / PR は `develop` ベース（`gh pr create --base develop`）。VRT baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を**承認を得てから** dispatch して生成する。
 
 ---
 
 ## Self-Review（計画 vs スペック）
 
-- **スペック 2 柱**: 可視化 = Task 4/5（AST ツリー）✅ ／ ReDoS 検出 = Task 3/5 ✅（鉄道図は PR2 で別計画）
-- **依存（spec 2 章）**: regexp-tree / recheck = Task S1・Phase 0 で検証 ✅
+- **スペック 2 柱**: 可視化 = Task 4/5（AST ツリー）✅ ／ ReDoS 検出 = Task 3/5 ✅（鉄道図は PR2）
+- **依存（spec 2 章）**: regexp-tree / recheck = Task 1（spike 検証済み）✅
 - **3 状態の誠実さ（spec 5 章）**: redos.ts の `unknown` 正規化 + コンポーネントで 3 状態区別表示 ✅／「不明」を「安全」と出さない ✅
 - **test-gates / 陽性対照（spec 5・7 章）**: Task 3 で陽性対照（`(a+)+$`→vulnerable）必須・test-gates skill 呼び出し明記 ✅
-- **エラーハンドリング（spec 6 章）**: 不正 regex = parse throw → ErrorMessage（Task 5）✅／timeout/unknown = 判定不能表示 ✅／WASM ロード失敗 = catch → unknown 表示（Task 5 effect の catch）✅
-- **テスト（spec 7 章）**: unit（parse/redos）・E2E・VRT 登録・meta カバレッジ = Task 2/3/7/8 ✅
+- **エラーハンドリング（spec 6 章）**: 不正 regex = parse throw → ErrorMessage（Task 5）✅／timeout/unknown = 判定不能表示 ✅／checkSync 採用で Worker/CSP 起因の失敗を回避 ✅
+- **テスト（spec 7 章）**: unit（parse/redos）・E2E（本番 CSP 下）・VRT 登録・meta カバレッジ = Task 2/3/7/8 ✅
 - **ドキュメント（spec 8 章）**: README/SPEC/decisions = Task 9 ✅
 - **placeholder スキャン**: TODO/TBD なし。各コード step に実コードあり ✅
-- **型整合**: `RegexAstNode`（parse.ts 定義）を RegexAstTree/コンポーネントで一貫使用、`RedosResult` の `hotspot` 型が RegexAstTree の `hotspot` prop と一致 ✅
-
-> **未確定リスク**: recheck の Diagnostics 実フィールド名・browser バンドル可否・vitest(node) での `check` 動作は Phase 0 spike で確定する。NO-GO 時は redos.ts を自前静的解析へ差し替え、Task 3 と関連テストを再設計する。
+- **型整合**: `RegexAstNode`（parse.ts）/ `RedosResult`（redos.ts）を RegexAstTree・RegexVisualizer で一貫使用。`hotspot: {start,end}[]` が parse の loc（offset-1 補正）と同一座標系 ✅
+- **spike 由来の修正反映**: checkSync（同期）✅ / 型 shim 削除 ✅ / loc offset-1 ✅ / E2E 本番 CSP ✅
