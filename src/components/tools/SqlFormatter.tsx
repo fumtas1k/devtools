@@ -30,13 +30,7 @@ export function SqlFormatterTool() {
         <label htmlFor="sql-dialect" className="body-emphasis text-default block mb-2">
           SQL 方言
         </label>
-        <Select
-          id="sql-dialect"
-          options={DIALECT_OPTIONS}
-          value={dialect}
-          onChange={setDialect}
-          ariaLabel="SQL 方言"
-        />
+        <Select id="sql-dialect" options={DIALECT_OPTIONS} value={dialect} onChange={setDialect} />
       </div>
 
       {/* 入力・出力（横並び） */}
