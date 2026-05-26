@@ -57,30 +57,30 @@
 
 ### 2.3 主要ライブラリ（MVP で使用）
 
-| ライブラリ                 | 用途                                                               | ツール               |
-| -------------------------- | ------------------------------------------------------------------ | -------------------- |
-| `ulidx`                    | ULID生成                                                           | ULID生成             |
-| `uuid`                     | UUID v7 生成（`v7()` 関数）                                        | UUID v7 生成         |
-| 手動デコード（Base64URL）  | JWTデコード・署名検証                                              | JWTデコーダー        |
-| `qrcode-generator`         | QRコード生成                                                       | QRコード生成         |
-| `JsBarcode`                | バーコード描画                                                     | JANコード生成        |
-| `bwip-js`                  | GS1バーコード描画（SVG）                                           | GS1 DataBar生成      |
-| `jszip`                    | 複数バーコードのZIPパッケージング                                  | GS1 DataBar生成      |
-| `fast-xml-parser`          | JSON⇔XML 相互変換                                                  | JSON/XML変換         |
-| `papaparse`                | JSON⇔CSV 相互変換・パース                                          | JSON/CSV変換         |
-| `jsqr`                     | QRコードデコード（カメラ・画像）                                   | QRチケット           |
-| `@fontsource/noto-sans-jp` | フォントセルフホスト                                               | 全ページ共通         |
-| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency）                       | 開発ツール共通       |
-| `typescript`               | TypeScript コンパイラ（devDependency）                             | 開発ツール共通       |
-| `@playwright/test`         | E2Eリグレッションテスト（devDependency）                           | 開発ツール共通       |
-| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                              | 開発ツール共通       |
-| `lint-staged`              | コミット時の自動フォーマット (devDependency)                       | 開発ツール共通       |
-| `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）           | 文字コード判定・変換 |
-| `yaml`                     | YAML パース/シリアライズ。コメント保持（Document API）             | 設定ファイル相互変換 |
-| `smol-toml`                | TOML パース/シリアライズ（軽量、コメント保持なし）                 | 設定ファイル相互変換 |
-| `ajv`                      | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード   | 設定ファイル相互変換 |
-| `ajv-formats`              | ajv の format キーワード拡張（date-time 等）                       | 設定ファイル相互変換 |
-| `sql-formatter`            | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0 | SQL整形              |
+| ライブラリ                 | 用途                                                               | ツール                      |
+| -------------------------- | ------------------------------------------------------------------ | --------------------------- |
+| `ulidx`                    | ULID生成                                                           | ULID生成                    |
+| `uuid`                     | UUID v7 生成（`v7()` 関数）                                        | UUID v7 生成                |
+| 手動デコード（Base64URL）  | JWTデコード・署名検証                                              | JWTデコーダー               |
+| `qrcode-generator`         | QRコード生成                                                       | QRコード生成                |
+| `JsBarcode`                | バーコード描画                                                     | JANコード生成               |
+| `bwip-js`                  | GS1バーコード描画（SVG）                                           | GS1 DataBar生成             |
+| `jszip`                    | 複数バーコードのZIPパッケージング                                  | GS1 DataBar生成             |
+| `fast-xml-parser`          | JSON⇔XML 相互変換                                                  | JSON/XML変換                |
+| `papaparse`                | JSON⇔CSV 相互変換・パース                                          | JSON/CSV変換                |
+| `jsqr`                     | QRコードデコード（カメラ・画像）                                   | QRチケット                  |
+| `@fontsource/noto-sans-jp` | フォントセルフホスト                                               | 全ページ共通                |
+| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency）                       | 開発ツール共通              |
+| `typescript`               | TypeScript コンパイラ（devDependency）                             | 開発ツール共通              |
+| `@playwright/test`         | E2Eリグレッションテスト（devDependency）                           | 開発ツール共通              |
+| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                              | 開発ツール共通              |
+| `lint-staged`              | コミット時の自動フォーマット (devDependency)                       | 開発ツール共通              |
+| `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）           | 文字コード判定・変換        |
+| `yaml`                     | YAML パース/シリアライズ。コメント保持（Document API）             | 設定ファイル相互変換        |
+| `smol-toml`                | TOML パース/シリアライズ（軽量、コメント保持なし）                 | 設定ファイル相互変換        |
+| `ajv`                      | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード   | 設定ファイル相互変換        |
+| `ajv-formats`              | ajv の format キーワード拡張（date-time 等）                       | 設定ファイル相互変換        |
+| `sql-formatter`            | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0 | SQL整形・パラメータ埋め込み |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -180,7 +180,7 @@ devtools/
         ├── gs1-databar.ts      # GTIN-14計算・GS1 AIビルダー
         ├── encoding.ts         # 文字コード判定・変換ラッパー（encoding-japanese）
         ├── config-converter/   # 設定ファイル相互変換（json.ts / yaml.ts / toml.ts / dotenv.ts / schema-validator.ts）
-        ├── sql/                # SQL 整形ユーティリティ（format.ts / index.ts）
+        ├── sql/                # SQL 整形・埋め込みユーティリティ（format.ts / embedParams.ts / index.ts）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
         ├── qr-reader.ts
         ├── qr-ticket.ts
@@ -196,7 +196,7 @@ devtools/
             ├── json-csv.test.ts
             ├── json-xml.test.ts
             ├── config-converter/   # json/yaml/toml/dotenv/schema-validator/convert テスト
-            ├── sql/                # SQL 整形テスト（format.test.ts）
+            ├── sql/                # SQL 整形・埋め込みテスト（format.test.ts / embedParams.test.ts）
             ├── jwt.test.ts
             ├── qr-reader.test.ts
             ├── qr-ticket.test.ts
@@ -279,14 +279,14 @@ devtools/
 
 ### カテゴリ D: 変換・解析ツール（`convert`）
 
-| #   | ツール名             | slug                 | 概要                                                                                                                     |
-| --- | -------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 13  | JSON / XML 変換      | `json-xml`           | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式                                           |
-| 14  | JSON / CSV 変換      | `json-csv`           | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                                                            |
-| 15  | 文字コード判定・変換 | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                     |
-| 16  | 設定ファイル相互変換 | `config-converter`   | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート） |
-| 17  | 文字カウント         | `char-count`         | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応                        |
-| 18  | SQL整形              | `sql-formatter`      | 汚れた SQL をインデント・キーワード大文字化で整形。MySQL / PostgreSQL / SQLite / SQL Server 方言対応                     |
+| #   | ツール名                    | slug                 | 概要                                                                                                                                                               |
+| --- | --------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 13  | JSON / XML 変換             | `json-xml`           | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式                                                                                     |
+| 14  | JSON / CSV 変換             | `json-csv`           | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                                                                                                      |
+| 15  | 文字コード判定・変換        | `encoding-converter` | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                                                               |
+| 16  | 設定ファイル相互変換        | `config-converter`   | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート）                                           |
+| 17  | 文字カウント                | `char-count`         | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応                                                                  |
+| 18  | SQL整形・パラメータ埋め込み | `sql-formatter`      | 汚れた SQL をインデント・キーワード大文字化で整形し、プレースホルダ（? / $n / :name）にJSONパラメータを埋め込む。MySQL / PostgreSQL / SQLite / SQL Server 方言対応 |
 
 ---
 
@@ -917,7 +917,11 @@ eventId|ticketId|timestamp|name|category|signature
 - `crypto.subtle` が利用可能な HTTPS または localhost 環境必須
 - Base32 アルファベット外の文字（`!` 等）は入力時点でエラー表示
 
-### 5.15 SQL整形（`sql-formatter`）
+### 5.15 SQL整形・パラメータ埋め込み（`sql-formatter`）
+
+ツールは **整形** タブと **パラメータ埋め込み** タブの 2 タブ構成。
+
+#### 5.15.1 整形タブ
 
 **入力:**
 
@@ -941,7 +945,8 @@ eventId|ticketId|timestamp|name|category|signature
 
 ```
 ┌───────────────────────────────────────┐
-│  SQL整形                               │
+│  SQL整形・パラメータ埋め込み           │
+│  [整形] [パラメータ埋め込み]           │
 ├───────────────────────────────────────┤
 │  SQL入力                               │
 │  [  テキストエリア（複数行）           ]│
@@ -955,9 +960,63 @@ eventId|ticketId|timestamp|name|category|signature
 └───────────────────────────────────────┘
 ```
 
-**制約:**
+#### 5.15.2 パラメータ埋め込みタブ
 
-- パラメータ埋め込み（バインド変数展開）は対象外（将来 PR で対応予定）
+SQL のプレースホルダにJSON形式のパラメータを埋め込み、人間が読みやすい形で表示する。**実行用SQLではなくデバッグ表示専用。**
+
+**入力:**
+
+- SQL テキスト（プレースホルダを含む複数行対応テキストエリア）
+- パラメータ（JSON）テキストエリア
+  - `?` / `$n` 形式: JSON 配列（例: `["value1", 42, null]`）
+  - `:name` 形式: JSON オブジェクト（例: `{"id": 1, "name": "山田"}`）
+- 方言セレクト: [MySQL] / [PostgreSQL] / [SQLite] / [SQL Server]（デフォルト: MySQL）
+
+**処理（プレースホルダスキャナ）:**
+
+- 軽量スキャナにより、文字列リテラル（シングル/ダブルクォート）・ラインコメント（`--`）・ブロックコメント（`/* */`）・クォート済み識別子（`` ` `` / `"..."` / `[...]`）内の `?` / `$n` / `:name` を誤検出しない
+  - 例: `WHERE note = 'why?'` の `?` はプレースホルダとして扱わない
+- 既知制約: PostgreSQL ドル引用符文字列（`$tag$...$tag$`）はスキャナ未対応
+
+**値レンダリング（方言別）:**
+
+| 値の型             | MySQL / SQLite / SQL Server                | PostgreSQL       |
+| ------------------ | ------------------------------------------ | ---------------- |
+| 文字列             | シングルクォートで囲み `'`→`''` エスケープ | 同左             |
+| 数値               | そのまま                                   | 同左             |
+| null               | `NULL`                                     | `NULL`           |
+| boolean            | `1` / `0`                                  | `TRUE` / `FALSE` |
+| 配列・オブジェクト | エラー（未対応）                           | 同左             |
+
+**出力:**
+
+- プレースホルダを値に置換した SQL テキスト（読み取り専用テキストエリア）
+- [コピー] ボタン
+- 常時表示の警告バナー「⚠ この出力は実行禁止・デバッグ表示用です」
+- 失敗時は日本語エラーメッセージ
+
+**UI（パラメータ埋め込みタブ）:**
+
+```
+┌───────────────────────────────────────┐
+│  SQL整形・パラメータ埋め込み           │
+│  [整形] [パラメータ埋め込み ●]        │
+├───────────────────────────────────────┤
+│  ⚠ この出力は実行禁止・デバッグ表示用です │
+├───────────────────────────────────────┤
+│  SQL入力                               │
+│  [  テキストエリア（複数行）           ]│
+├───────────────────────────────────────┤
+│  パラメータ (JSON)                     │
+│  [  テキストエリア                     ]│
+├───────────────────────────────────────┤
+│  方言: [MySQL ▼]                       │
+├───────────────────────────────────────┤
+│  埋め込み済み SQL                      │
+│  [  テキストエリア（読み取り専用）     ]│
+│                              [コピー]  │
+└───────────────────────────────────────┘
+```
 
 ---
 
@@ -1116,7 +1175,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] 設定ファイル相互変換（`config-converter`）
   - [x] QRリーダー（`qr-reader`）
   - [x] TOTP/HOTP ジェネレータ（`totp-hotp`）
-  - [x] SQL整形（`sql-formatter`）
+  - [x] SQL整形・パラメータ埋め込み（`sql-formatter`）
   - [ ] JSON整形、Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
