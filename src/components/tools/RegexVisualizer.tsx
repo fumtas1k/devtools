@@ -3,9 +3,11 @@ import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
-import type { RegexAstNode, RedosResult } from '@/utils/regex-visualizer';
+import type { RegexAstNode, RedosResult, RailNode } from '@/utils/regex-visualizer';
 import { RegexAstTree } from './RegexAstTree';
+import { RegexRailroad } from './RegexRailroad';
 
 const FLAGS = ['g', 'i', 'm', 's', 'u', 'y', 'd'] as const;
 const SAMPLE = '(a+)+$';
@@ -15,6 +17,7 @@ type RegexModule = typeof import('@/utils/regex-visualizer');
 interface Analysis {
   ast: RegexAstNode;
   redos: RedosResult;
+  rail: RailNode;
 }
 
 // 安定参照（useDebouncedTransform の要件）
@@ -23,6 +26,8 @@ const EMPTY: Analysis | null = null;
 export function RegexVisualizer() {
   const [pattern, setPattern] = useState('');
   const [flags, setFlags] = useState('');
+  // 可視化タブ状態（デフォルトは構造ツリー）
+  const [view, setView] = useState<'tree' | 'railroad'>('tree');
 
   // regexp-tree / recheck は CJS かつ client 専用ライブラリ。静的 import すると Astro の
   // SSR module graph に載り、dev SSR で CJS が ESM 評価され `module is not defined` になる。
@@ -44,13 +49,15 @@ export function RegexVisualizer() {
     };
   }, []);
 
-  // parse（同期・throw でエラー表示）と ReDoS（同期 checkSync）を 1 つの debounce 変換で駆動。
+  // parse（同期・throw でエラー表示）と ReDoS（同期 checkSync）と鉄道図を 1 つの debounce 変換で駆動。
   // mod 読み込み前 / pattern 空 は source=null（解析しない）。flags と mod を deps で追跡。
+  // buildRailroad は CJS 依存のため mod（動的 import 済み）経由で呼ぶ（SSR 安全を維持）。
   const analysis = useDebouncedTransform<string, Analysis | null>(
     mod && pattern.trim() ? pattern : null,
     (p) => ({
       ast: mod!.parseRegex(p, flags), // 不正なら throw → error 表示
       redos: mod!.analyzeRedos(p, flags),
+      rail: mod!.buildRailroad(p, flags),
     }),
     EMPTY,
     [mod, flags],
@@ -59,6 +66,7 @@ export function RegexVisualizer() {
 
   const ast = analysis.result?.ast ?? null;
   const redos = analysis.result?.redos ?? null;
+  const rail = analysis.result?.rail ?? null;
 
   const toggleFlag = (f: string) =>
     setFlags((prev) => (prev.includes(f) ? prev.replace(f, '') : prev + f));
@@ -140,15 +148,31 @@ export function RegexVisualizer() {
         )}
       </section>
 
-      {/* AST ツリー */}
-      <section aria-label="構造ツリー">
-        <h2 className="body-emphasis text-default mb-2">構造ツリー</h2>
+      {/* 可視化パネル：構造ツリー / 鉄道図 を ToggleGroup で切替 */}
+      <section aria-label="可視化">
+        <div className="mb-3">
+          <ToggleGroup
+            options={[
+              { value: 'tree', label: '構造ツリー' },
+              { value: 'railroad', label: '鉄道図' },
+            ]}
+            value={view}
+            onChange={(v) => setView(v as 'tree' | 'railroad')}
+            ariaLabel="表示形式"
+          />
+        </div>
         {analysis.error ? (
           <ErrorMessage message={analysis.error} variant="block" />
-        ) : ast ? (
-          <RegexAstTree node={ast} hotspot={redos?.hotspot} />
+        ) : view === 'tree' ? (
+          ast ? (
+            <RegexAstTree node={ast} hotspot={redos?.hotspot} />
+          ) : (
+            <p className="caption text-subtle">正規表現を入力すると構造が表示されます。</p>
+          )
+        ) : rail ? (
+          <RegexRailroad node={rail} />
         ) : (
-          <p className="caption text-subtle">正規表現を入力すると構造が表示されます。</p>
+          <p className="caption text-subtle">正規表現を入力すると鉄道図が表示されます。</p>
         )}
       </section>
 

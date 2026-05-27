@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseRegex } from '../parse';
+import { parseRegex, parseToRegExpTree } from '../parse';
 
 describe('parseRegex', () => {
   it('単一文字を Char ノードにする', () => {
@@ -34,5 +34,19 @@ describe('parseRegex', () => {
 
   it('不正なフラグで例外を投げる', () => {
     expect(() => parseRegex('a', 'Z')).toThrow();
+  });
+});
+
+describe('parseToRegExpTree', () => {
+  it('captureLocations 付きの生 AST を返す', () => {
+    const ast = parseToRegExpTree('a+', '');
+    expect(ast.type).toBe('RegExp');
+    expect(ast.body).toBeTruthy();
+    // loc.start.offset が付く（/a+/ の body は offset 1..3）
+    expect((ast.body as { loc: { start: { offset: number } } }).loc.start.offset).toBe(1);
+  });
+
+  it('不正な正規表現で例外を投げる', () => {
+    expect(() => parseToRegExpTree('(', '')).toThrow();
   });
 });

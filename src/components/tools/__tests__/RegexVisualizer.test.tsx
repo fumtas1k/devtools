@@ -41,4 +41,14 @@ describe('RegexVisualizer', () => {
     setPattern('^[a-z]+$');
     expect(await screen.findByText(/安全/, undefined, FIND)).toBeTruthy();
   });
+
+  it('鉄道図タブに切り替えると SVG が表示される', async () => {
+    render(<RegexVisualizer />);
+    setPattern('abc');
+    // まず構造ツリーに結果が出るのを待つ（動的 import + debounce 完了の目印）
+    await screen.findByText(/連結|文字 "a"/, undefined, FIND);
+    fireEvent.click(screen.getByRole('button', { name: '鉄道図' }));
+    const svg = await screen.findByRole('img', { name: '正規表現の鉄道図' }, FIND);
+    expect(svg).toBeTruthy();
+  });
 });

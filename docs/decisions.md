@@ -3465,3 +3465,56 @@ async `check` への将来的な回帰（`checkSync` → `check`）を CI で検
 - ✅ prod-parity E2E gate により async `check` への回帰を CI で自動検知
 - ⚠️ 334KB brotli の追加バンドル（ユーザー承認済み。遅延ロードで他ページ無影響）
 - ⚠️ `checkSync` はメインスレッドを占有する同期処理（timeout: 1000ms で上限設定）
+
+---
+
+## [089] 2026-05-27 — 正規表現鉄道図レンダラの採用（PR2a: 基盤＋連結/終端/グループ＋タブ）
+
+**2026-05-27 | ステータス: 採用**
+
+### 背景
+
+正規表現ビジュアライザに AST ツリー表示に加えて鉄道図（railroad diagram）を追加することで、正規表現の構造をより直感的に可視化できるようにする。
+
+### 決断
+
+#### 自前 React SVG を採用（railroad-diagrams / regexper 却下）
+
+サードパーティライブラリを評価した結果、**自前の React `<svg>` 要素で描画する**方式を採用した。
+
+- **`railroad-diagrams` 却下理由**: SVG 文字列を直接生成する API で、`dangerouslySetInnerHTML` なしに React tree に組み込めない。`dangerouslySetInnerHTML` は XSS リスクがあり本プロジェクトのポリシーに反する。また CJS パッケージで SSR 制約（[088]）にも抵触する。
+- **`regexper` 却下理由**: 独自パーサを持つ重厚なライブラリ。既に `regexp-tree` を採用済みであり、二重パーサを抱えるコストが過大。ライセンス（AGPL-3.0）も本プロジェクトの MIT 方針と整合しない。
+- **自前実装の優位性**: `RailNode` という純粋な値ツリーを組んで React で描画するアーキテクチャにより、XSS なし・SSR 安全・テスト容易性を全て満たせる。
+
+#### アーキテクチャ: pure layout 分離 + builder は動的 import 経由
+
+SSR 安全性を維持するために以下の 2 層に分離した:
+
+- **`railroad-layout.ts`（SSR 安全・静的 import 可）**: `RailNode` 型・レイアウト定数・`measure*` 関数のみ。CJS モジュールへの依存ゼロ。`RegexRailroad.tsx` から静的 import してよい。
+- **`railroad.ts`（client 専用）**: `regexp-tree`（CJS）を使って AST → `RailNode` を組む `buildRailroad`。既存の動的 import 経路（`RegexVisualizer` の `useEffect` 内 `import('@/utils/regex-visualizer')`）経由でのみ呼び出す。静的 import すると dev SSR で `module is not defined` になる（[088] 参照）。
+
+#### PR2a/2b/2c への分割方針
+
+実装を段階的に PR 分割する:
+
+- **PR2a（本 PR）**: 基盤（`railroad-layout.ts` / `railroad.ts`）＋終端（Char / CharacterClass）・連結（Alternative）・グループ（Group）の描画＋タブ切替 UI。未対応構文（Disjunction / Repetition / Assertion / Backreference）はフォールバック破線枠で継続描画。
+- **PR2b（予定）**: 選択肢（Disjunction）＋アサーション（Assertion）の本実装。
+- **PR2c（予定）**: 量指定子（Repetition）＋後方参照（Backreference）＋hotspot ハイライト（`loc` 情報を活用した ReDoS 危険箇所の強調）。
+
+#### フォールバック戦略
+
+PR2a 未対応の構文ノードは `measureFallback` で破線枠として描画し、**エラーを出さず継続描画する**設計にした。実際の正規表現（`a+` など量指定子を含む）を入力しても鉄道図タブがクラッシュしない。
+
+### 却下した選択肢
+
+- **`railroad-diagrams`**: `dangerouslySetInnerHTML` が必要・CJS・XSS リスク。
+- **`regexper`**: AGPL-3.0・二重パーサ・重量。
+- **builder を静的 import**: dev SSR の `module is not defined` エラー再発（[088] の教訓に反する）。
+
+### 結果・トレードオフ
+
+- ✅ XSS なし（`dangerouslySetInnerHTML` 不使用、React 要素として描画）
+- ✅ SSR 安全（`railroad-layout.ts` は静的 import 可、`railroad.ts` は動的 import 経由）
+- ✅ 段階的 PR 分割により各 PR のレビュー負荷を低減
+- ✅ フォールバック枠で未対応構文でも継続描画
+- ⚠️ PR2a 時点では量指定子・選択肢が破線枠表示（PR2b/2c で本実装予定）
