@@ -1,7 +1,7 @@
 // 鉄道図のレイアウト計算（pure / CJS 非依存 / SSR 安全 / 静的 import 可）。
 // pixel-perfect は狙わず、固定幅フォント前提の概算で寸法を出す。描画は RegexRailroad.tsx。
 
-export type RailKind = 'terminal' | 'sequence' | 'group' | 'fallback';
+export type RailKind = 'terminal' | 'sequence' | 'group' | 'fallback' | 'choice' | 'assertion';
 
 export interface RailNode {
   kind: RailKind;
@@ -30,6 +30,8 @@ export const H_GAP = 22; // sequence 要素間の接続線長
 export const GROUP_PAD_X = 12;
 export const GROUP_PAD_TOP = 22; // タイトル領域
 export const GROUP_PAD_BOTTOM = 10;
+export const V_GAP = 14; // choice の分岐間の縦間隔
+export const CHOICE_LEAD = 22; // choice の split/merge 用の左右リード長
 
 type Loc = { start: number; end: number } | undefined;
 
@@ -59,4 +61,23 @@ export function measureGroup(inner: RailNode, title: string, loc: Loc): RailNode
   const height = inner.height + GROUP_PAD_TOP + GROUP_PAD_BOTTOM;
   const connectY = GROUP_PAD_TOP + inner.connectY;
   return { kind: 'group', width, height, connectY, title, children: [inner], loc };
+}
+
+/**
+ * 選択肢（a|b|c）。分岐を縦に積み、先頭分岐を本線（connectY）に乗せる。
+ * width = 最大分岐幅 + リード*2、height = 分岐高さ合計 + 分岐間 V_GAP。
+ */
+export function measureChoice(branches: RailNode[], loc: Loc): RailNode {
+  if (branches.length === 0) return measureFallback('（空）', loc);
+  if (branches.length === 1) return branches[0];
+  const maxBW = Math.max(...branches.map((b) => b.width));
+  const width = maxBW + CHOICE_LEAD * 2;
+  const height = branches.reduce((s, b) => s + b.height, 0) + V_GAP * (branches.length - 1);
+  return { kind: 'choice', width, height, connectY: branches[0].connectY, children: branches, loc };
+}
+
+/** アサーション（^ $ \b \B 等のアンカー）。ゼロ幅マーカーをラベル付き pill で示す。 */
+export function measureAssertion(label: string, loc: Loc): RailNode {
+  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  return { kind: 'assertion', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
 }
