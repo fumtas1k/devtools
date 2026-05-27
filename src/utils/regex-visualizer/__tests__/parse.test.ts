@@ -8,6 +8,21 @@ describe('parseRegex', () => {
     expect(root.children[0].label).toContain('a');
   });
 
+  // 回帰防止: 先読み/後読みの内部式は node.assertion にあり、childrenOf がこれを参照しないと
+  // 構造ツリーで lookaround が childless になる（PR #492 レビュー指摘・鉄道図との不整合）。
+  it('先読み (?=foo) の内部式が子として展開される', () => {
+    const root = parseRegex('(?=foo)', '');
+    const assertion = root.children[0];
+    expect(assertion.type).toBe('Assertion');
+    expect(assertion.children.length).toBeGreaterThan(0);
+  });
+
+  it('単純アンカー ^ は子を持たない', () => {
+    const root = parseRegex('^a', '');
+    expect(root.children[0].type).toBe('Assertion');
+    expect(root.children[0].children).toHaveLength(0);
+  });
+
   it('量指定子付きグループを Repetition > Group で表現する', () => {
     const root = parseRegex('(ab)+', '');
     const rep = root.children[0];

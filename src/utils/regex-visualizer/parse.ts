@@ -72,8 +72,12 @@ function labelFor(node: Record<string, any>): string {
 function childrenOf(node: Record<string, any>): RegExpTreeNode[] {
   if (node.type === 'Alternative') return node.expressions ?? [];
   if (node.type === 'Disjunction') return [node.left, node.right].filter(Boolean);
-  if (node.type === 'Group' || node.type === 'Repetition' || node.type === 'Assertion') {
+  if (node.type === 'Group' || node.type === 'Repetition') {
     return node.expression ? [node.expression] : [];
+  }
+  if (node.type === 'Assertion') {
+    // 先読み/後読みの内部式は node.assertion（node.expression ではない）。単純アンカー（^ $ \b \B）は子なし。
+    return node.assertion ? [node.assertion] : [];
   }
   if (node.type === 'CharacterClass') return node.expressions ?? [];
   return [];
