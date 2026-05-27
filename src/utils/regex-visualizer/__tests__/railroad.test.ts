@@ -39,4 +39,18 @@ describe('buildRailroad', () => {
     const root = buildRailroad('ab', '');
     expect(root.children[0].loc).toEqual({ start: 0, end: 1 });
   });
+
+  // 回帰防止: regexp-tree は空グループの expression を null で返す。
+  // null ガードが無いと build(null) で throw する（PR #491 レビュー指摘）。
+  it('空キャプチャグループ () で throw せず group ノードになる', () => {
+    expect(() => buildRailroad('()', '')).not.toThrow();
+    const root = buildRailroad('()', '');
+    expect(root.kind).toBe('group');
+    expect(root.children[0].kind).toBe('fallback'); // 空式は「（空）」フォールバック枠
+  });
+
+  it('空非キャプチャグループ (?:) で throw しない', () => {
+    expect(() => buildRailroad('(?:)', '')).not.toThrow();
+    expect(buildRailroad('(?:)', '').kind).toBe('group');
+  });
 });

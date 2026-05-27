@@ -41,8 +41,12 @@ function build(node: TreeNode, pattern: string): RailNode {
         locOf(node)
       );
     case 'Group':
+      // regexp-tree は空グループ () / (?:) の expression を null で返すため null ガードする。
+      // 空式は measureSequence([]) の「（空）」フォールバック枠へ流す（クラッシュ回避）。
       return measureGroup(
-        build(node.expression as TreeNode, pattern),
+        node.expression
+          ? build(node.expression as TreeNode, pattern)
+          : measureSequence([], locOf(node)),
         groupTitle(node),
         locOf(node)
       );
