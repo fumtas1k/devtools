@@ -28,11 +28,10 @@ describe('buildRailroad', () => {
     expect(root.title).toBe('(?:)');
   });
 
-  it('未対応構文（量指定子）はフォールバック枠', () => {
+  it('量指定子 a+ は repetition ノードになる（PR2c で本実装済み）', () => {
     const root = buildRailroad('a+', '');
-    // a+ は Repetition（PR2a 未対応）→ fallback。ラベルは source 'a+'
-    expect(root.kind).toBe('fallback');
-    expect(root.label).toBe('a+');
+    expect(root.kind).toBe('repetition');
+    expect(root.label).toBe('+');
   });
 
   it('各ノードに pattern 基準 loc（offset-1）が付く', () => {
@@ -52,6 +51,47 @@ describe('buildRailroad', () => {
   it('空非キャプチャグループ (?:) で throw しない', () => {
     expect(() => buildRailroad('(?:)', '')).not.toThrow();
     expect(buildRailroad('(?:)', '').kind).toBe('group');
+  });
+});
+
+describe('buildRailroad（量指定子・後方参照）', () => {
+  it('a+ は loop あり skip なしの repetition', () => {
+    const r = buildRailroad('a+', '');
+    expect(r.kind).toBe('repetition');
+    expect(r.loop).toBe(true);
+    expect(r.skip).toBe(false);
+    expect(r.label).toBe('+');
+    expect(r.children[0].kind).toBe('terminal');
+  });
+
+  it('a* は skip も loop もある', () => {
+    const r = buildRailroad('a*', '');
+    expect(r.skip).toBe(true);
+    expect(r.loop).toBe(true);
+  });
+
+  it('a? は skip のみ', () => {
+    const r = buildRailroad('a?', '');
+    expect(r.skip).toBe(true);
+    expect(r.loop).toBe(false);
+  });
+
+  it('lazy a*? はラベルに ? が付く', () => {
+    const r = buildRailroad('a*?', '');
+    expect(r.label).toBe('*?');
+  });
+
+  it('a{2,5} は Range ラベル', () => {
+    const r = buildRailroad('a{2,5}', '');
+    expect(r.kind).toBe('repetition');
+    expect(r.label).toBe('{2,5}');
+  });
+
+  it('後方参照 (a)\\1 の \\1 は backreference', () => {
+    const r = buildRailroad('(a)\\1', '');
+    expect(r.kind).toBe('sequence');
+    expect(r.children[1].kind).toBe('backreference');
+    expect(r.children[1].label).toBe('\\1');
   });
 });
 
