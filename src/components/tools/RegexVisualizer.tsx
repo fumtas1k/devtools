@@ -14,7 +14,7 @@ const FLAGS: { value: string; desc: string; short: string }[] = [
   { value: 'g', desc: '全マッチ（グローバル）', short: '全マッチ' },
   { value: 'i', desc: '大文字小文字を区別しない', short: '大小区別なし' },
   { value: 'm', desc: '複数行（^ $ が各行頭・行末にマッチ）', short: '複数行' },
-  { value: 's', desc: '. が改行にもマッチ（dotAll）', short: '. が改行マッチ' },
+  { value: 's', desc: '. が改行にもマッチ（dotAll）', short: '. が改行もマッチ' },
   { value: 'u', desc: 'Unicode モード', short: 'Unicode' },
   { value: 'y', desc: '直前の位置からのみマッチ（sticky）', short: '直前位置のみ' },
   { value: 'd', desc: 'マッチ位置（インデックス）を取得', short: 'マッチ位置取得' },
