@@ -144,7 +144,8 @@ devtools/
     │       ├── EncodingConverter.tsx
     │       ├── SqlFormatter.tsx
     │       ├── RegexVisualizer.tsx
-    │       └── RegexAstTree.tsx
+    │       ├── RegexAstTree.tsx
+    │       └── RegexRailroad.tsx          # 鉄道図 SVG レンダラ（RailNode → React svg 要素・CJS 非依存）
     ├── layouts/
     │   ├── BaseLayout.astro
     │   └── ToolLayout.astro
@@ -186,7 +187,7 @@ devtools/
         ├── encoding.ts         # 文字コード判定・変換ラッパー（encoding-japanese）
         ├── config-converter/   # 設定ファイル相互変換（json.ts / yaml.ts / toml.ts / dotenv.ts / schema-validator.ts）
         ├── sql/                # SQL 整形・埋め込みユーティリティ（format.ts / embedParams.ts / index.ts）
-        ├── regex-visualizer/   # 正規表現 AST 変換・ReDoS 判定（parse.ts / redos.ts / index.ts）
+        ├── regex-visualizer/   # 正規表現 AST 変換・ReDoS 判定・鉄道図レイアウト（parse.ts / redos.ts / railroad-layout.ts / railroad.ts / index.ts）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
         ├── qr-reader.ts
         ├── qr-ticket.ts
