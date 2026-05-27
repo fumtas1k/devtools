@@ -90,13 +90,21 @@ function toRenderNode(node: RegExpTreeNode): RegexAstNode {
 }
 
 /**
+ * railroad など他モジュールと regexp-tree parse を共有するためのヘルパー。
+ * native `new RegExp` で構文・フラグを検証（不正なら throw）し、captureLocations 付き AST を返す。
+ */
+export function parseToRegExpTree(pattern: string, flags: string) {
+  const re = new RegExp(pattern, flags);
+  return parseRegExpTree(re, { captureLocations: true });
+}
+
+/**
  * pattern + flags を描画用 AST へ変換する。
  * native `new RegExp` で構文・フラグを検証（不正なら SyntaxError を投げる）し、
  * regexp-tree で位置情報付き AST を得る。ルートは body を Root ノードに包んで返す。
  */
 export function parseRegex(pattern: string, flags: string): RegexAstNode {
-  const re = new RegExp(pattern, flags); // 不正な pattern / flags はここで throw
-  const ast = parseRegExpTree(re, { captureLocations: true });
+  const ast = parseToRegExpTree(pattern, flags);
   const body = ast.body as unknown as RegExpTreeNode;
   const rendered = toRenderNode(body);
   return {
