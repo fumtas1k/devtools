@@ -4,7 +4,7 @@ import { withProductionCsp } from './helpers';
 test.describe('正規表現ビジュアライザ', () => {
   test('フラグの凡例が表示される', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
-      await expect(page.getByText('大文字小文字を区別しない')).toBeVisible();
+      await expect(page.getByText('大小区別なし')).toBeVisible();
     });
   });
 

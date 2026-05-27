@@ -9,14 +9,15 @@ import type { RegexAstNode, RedosResult, RailNode } from '@/utils/regex-visualiz
 import { RegexAstTree } from './RegexAstTree';
 import { RegexRailroad } from './RegexRailroad';
 
-const FLAGS: { value: string; desc: string }[] = [
-  { value: 'g', desc: '全マッチ（グローバル）' },
-  { value: 'i', desc: '大文字小文字を区別しない' },
-  { value: 'm', desc: '複数行（^ $ が各行頭・行末にマッチ）' },
-  { value: 's', desc: '. が改行にもマッチ（dotAll）' },
-  { value: 'u', desc: 'Unicode モード' },
-  { value: 'y', desc: '直前の位置からのみマッチ（sticky）' },
-  { value: 'd', desc: 'マッチ位置（インデックス）を取得' },
+// desc: ボタンの title / aria-label 用（詳細）。short: 画面下の凡例用（コンパクト）。
+const FLAGS: { value: string; desc: string; short: string }[] = [
+  { value: 'g', desc: '全マッチ（グローバル）', short: '全マッチ' },
+  { value: 'i', desc: '大文字小文字を区別しない', short: '大小区別なし' },
+  { value: 'm', desc: '複数行（^ $ が各行頭・行末にマッチ）', short: '複数行' },
+  { value: 's', desc: '. が改行にもマッチ（dotAll）', short: '. が改行マッチ' },
+  { value: 'u', desc: 'Unicode モード', short: 'Unicode' },
+  { value: 'y', desc: '直前の位置からのみマッチ（sticky）', short: '直前位置のみ' },
+  { value: 'd', desc: 'マッチ位置（インデックス）を取得', short: 'マッチ位置取得' },
 ];
 const SAMPLE = '(a+)+$';
 
@@ -115,13 +116,14 @@ export function RegexVisualizer() {
             );
           })}
         </div>
-        <ul className="caption text-subtle space-y-0.5">
-          {FLAGS.map((f) => (
-            <li key={f.value}>
-              <code className="font-mono text-default">{f.value}</code> … {f.desc}
-            </li>
+        <p className="caption text-subtle">
+          {FLAGS.map((f, i) => (
+            <span key={f.value}>
+              {i > 0 && ' / '}
+              <code className="font-mono text-default">{f.value}</code> {f.short}
+            </span>
           ))}
-        </ul>
+        </p>
       </div>
 
       {loadError && (
