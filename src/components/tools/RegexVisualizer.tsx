@@ -116,14 +116,15 @@ export function RegexVisualizer() {
             );
           })}
         </div>
-        <p className="caption text-subtle">
+        {/* 凡例は視覚補助。各ボタンの aria-label で SR には意味が伝わるため aria-hidden で二重読み上げを防ぐ */}
+        <ul className="caption text-subtle list-none" aria-hidden="true">
           {FLAGS.map((f, i) => (
-            <span key={f.value}>
+            <li key={f.value} className="inline">
               {i > 0 && ' / '}
               <code className="font-mono text-default">{f.value}</code> {f.short}
-            </span>
+            </li>
           ))}
-        </p>
+        </ul>
       </div>
 
       {loadError && (
