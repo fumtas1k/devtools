@@ -52,4 +52,15 @@ describe('RegexRailroad', () => {
     expect(container.querySelector('rect')).toBeTruthy();
     expect(container.textContent).toContain('^');
   });
+
+  // 補強（PR #492 レビュー指摘）: 幅違い分岐は狭い側に出口までの水平延長 <line> を描く
+  it('幅の異なる分岐では狭い分岐に延長 line を描く', () => {
+    const node = measureChoice(
+      [measureTerminal('a', undefined), measureTerminal('bbbb', undefined)],
+      undefined
+    );
+    const { container } = render(<RegexRailroad node={node} />);
+    // choice 内の <line> は狭い分岐の延長のみ（split/merge は <path>）
+    expect(container.querySelectorAll('line').length).toBeGreaterThanOrEqual(1);
+  });
 });

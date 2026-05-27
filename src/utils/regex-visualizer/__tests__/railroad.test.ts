@@ -89,4 +89,17 @@ describe('buildRailroad（選択肢・アサーション）', () => {
     expect(root.kind).toBe('group');
     expect(root.title).toBe('(?<!)');
   });
+
+  // 補強（PR #492 レビュー指摘）: 境界ケースで throw せず期待構造になること
+  it('空 alternative a| は choice の片側を（空）fallback にする', () => {
+    const root = buildRailroad('a|', '');
+    expect(root.kind).toBe('choice');
+    expect(root.children).toHaveLength(2);
+    expect(root.children.some((c) => c.kind === 'fallback')).toBe(true);
+  });
+
+  it('空先読み (?=) で throw せず group になる', () => {
+    expect(() => buildRailroad('(?=)', '')).not.toThrow();
+    expect(buildRailroad('(?=)', '').kind).toBe('group');
+  });
 });
