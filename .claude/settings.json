@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f package-lock.json ]; then H=$(sha256sum package-lock.json | cut -d' ' -f1); if [ ! -d node_modules ] || [ \"$(cat node_modules/.lockhash 2>/dev/null)\" != \"$H\" ]; then npm ci && echo \"$H\" > node_modules/.lockhash; fi; fi"
+            "command": "if [ -f package-lock.json ]; then H=$({ sha256sum package-lock.json 2>/dev/null || shasum -a 256 package-lock.json; } | cut -d' ' -f1); if [ ! -d node_modules ] || [ \"$(cat node_modules/.lockhash 2>/dev/null)\" != \"$H\" ]; then npm ci && echo \"$H\" > node_modules/.lockhash; fi; fi"
           }
         ]
       }

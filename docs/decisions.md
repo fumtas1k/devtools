@@ -3538,7 +3538,7 @@ PR2a 未対応の構文ノードは `measureFallback` で破線枠として描�
 
 ```bash
 if [ -f package-lock.json ]; then
-  H=$(sha256sum package-lock.json | cut -d' ' -f1)
+  H=$({ sha256sum package-lock.json 2>/dev/null || shasum -a 256 package-lock.json; } | cut -d' ' -f1)
   if [ ! -d node_modules ] || [ "$(cat node_modules/.lockhash 2>/dev/null)" != "$H" ]; then
     npm ci && echo "$H" > node_modules/.lockhash
   fi
@@ -3546,6 +3546,8 @@ fi
 ```
 
 `node_modules/.lockhash` に前回 install 時の lock ハッシュを記録し、現在の lock と一致する場合のみ `npm ci` を skip する。`npm ci` は `node_modules` を全消去してから再構築するため、スタンプは clean install 後に書き直され自然に同期する。
+
+ハッシュ取得は `sha256sum`（GNU coreutils、CI の Linux runner にある）を優先し、無い環境（macOS は既定で `sha256sum` を持たず `shasum` のみ）では `shasum -a 256` に fallback する。`2>/dev/null` で `command not found` の stderr ノイズも抑制する。これが無いと mac のローカル開発で `H` が空になり lock 変更検知が無言で no-op 化する（PR #495 レビュー指摘）。
 
 ### 却下した選択肢
 
@@ -3558,4 +3560,5 @@ fi
 - ✅ lock 不変時は skip しコンテナキャッシュの起動高速化を維持
 - ✅ `develop` から依存が変わったブランチに切り替えたとき `npm ci` が再実行され古い依存を解消
 - ⚠️ セッション途中の `git checkout` / `git worktree add` は `SessionStart` を発火させないため依然フック対象外（従来どおり手動 `npm ci` が必要。CLAUDE.md §6.2.1）
-- ⚠️ ハッシュ判定ぶんフック文字列がやや複雑化
+- ✅ `sha256sum`→`shasum -a 256` fallback で mac ローカル開発でも lock 変更検知が機能
+- ⚠️ ハッシュ判定ぶんフック文字列がやや複雑化（将来 `.claude/scripts/` への抽出余地あり）
