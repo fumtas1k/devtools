@@ -3498,7 +3498,7 @@ SSR 安全性を維持するために以下の 2 層に分離した:
 実装を段階的に PR 分割する:
 
 - **PR2a（本 PR）**: 基盤（`railroad-layout.ts` / `railroad.ts`）＋終端（Char / CharacterClass）・連結（Alternative）・グループ（Group）の描画＋タブ切替 UI。未対応構文（Disjunction / Repetition / Assertion / Backreference）はフォールバック破線枠で継続描画。
-- **PR2b（予定）**: 選択肢（Disjunction）＋アサーション（Assertion）の本実装。
+- **PR2b（完了）**: 選択肢（Disjunction）＋アサーション（Assertion）の本実装。Disjunction は左ネスト二分木を `flattenDisjunction` で平坦化し縦分岐（split/merge S字 bezier path）として描画。単純アンカー（`^` `$` `\b` `\B`）は pill（両端半円 rect）で表示。先読み/後読み（`(?=)` `(?!)` `(?<=)` `(?<!)` ）は `measureGroup` を再利用して内部式を内包するコンテナとして描画。CSS は `.rr-assertion`（`@layer components` 手書き class）を追加。
 - **PR2c（予定）**: 量指定子（Repetition）＋後方参照（Backreference）＋hotspot ハイライト（`loc` 情報を活用した ReDoS 危険箇所の強調）。
 
 #### フォールバック戦略
@@ -3517,4 +3517,5 @@ PR2a 未対応の構文ノードは `measureFallback` で破線枠として描�
 - ✅ SSR 安全（`railroad-layout.ts` は静的 import 可、`railroad.ts` は動的 import 経由）
 - ✅ 段階的 PR 分割により各 PR のレビュー負荷を低減
 - ✅ フォールバック枠で未対応構文でも継続描画
-- ⚠️ PR2a 時点では量指定子・選択肢が破線枠表示（PR2b/2c で本実装予定）
+- ✅ PR2b 完了: 選択肢（縦分岐 split/merge）・アサーション（pill / lookaround group）を本実装
+- ⚠️ PR2b 時点では量指定子・後方参照が破線枠表示（PR2c で本実装予定）
