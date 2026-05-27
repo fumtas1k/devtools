@@ -3403,3 +3403,65 @@ descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「co
   - 識別子内の `$`（MySQL の `col$1` 等）は番号プレースホルダ（`$1`）と誤検出しうる。
   - 数値は `JSON.parse` 由来のため 2^53 を超える整数は精度が落ちる（`10000000000000000001` → `10000000000000000000`）。デバッグ用途では許容。
   - パラメータ未入力（空欄）はプレースホルダがある場合に「パラメータ（JSON）を入力してください」と案内する（「JSON 不正」の誤解防止）。
+
+---
+
+## [088] 2026-05-27 — 正規表現ビジュアライザ＆ReDoS検出ツールの追加
+
+**2026-05-27 | ステータス: 採用**
+
+### 背景
+
+入力バリデーション用の正規表現が ReDoS（壊滅的バックトラッキング）に対して安全かどうかを、ブラウザ完結でインストール不要に確認できるツールへの需要があった。あわせて複雑な正規表現の構造を AST ツリーで可視化する機能も提供する。
+
+### 決断
+
+#### `regexp-tree@0.1.27` の採用（AST パーサ）
+
+`regexp-tree` は ECMAScript 正規表現を位置情報付き AST へパースする純粋 JS ライブラリ（MIT）。手書きパーサの実装コストを避け、`loc` 情報（offset）を利用して ReDoS hotspot とのオフセット座標系を揃える（offset-1 補正: `regexp-tree` は `/pattern/` リテラル基準のため先頭 `/` 分を引く）。型定義を同梱しており型 shim 不要。
+
+#### `recheck@4.5.0` の採用（ReDoS 検出）
+
+- **ブラウザフィールド採用**: `recheck` は `browser` フィールドに `lib/browser.js` を持ち、Worker・`synckit`・ネイティブバイナリへの依存がない pure JS 実装を提供する。クライアントビルドは Vite が `browser` フィールドを自動選択。
+- **async `check` 不採用理由（CSP 制約）**: `recheck` の async `check()` は内部で `blob:` Worker を生成する。本番 CSP は `script-src 'self'` かつ `worker-src` 未設定のため `blob:` Worker が永久ブロックされ、Promise が resolve しない。**CSP を変更せず**、同期 API `checkSync(source, flags, { timeout: 1000 })` を採用した。`timeout` は必須（同期=メインスレッド占有のため病的入力での UI フリーズ防止）。
+- **`safe-regex` 不採用**: 静的解析のみで false negative が多く、攻撃文字列・計算量種別の情報も得られない。
+- **install script**: `recheck` のオプショナル依存（ネイティブバイナリ）は `.npmrc` の `ignore-scripts=true` で skip される。`lib/browser.js` のみ使用するため問題なし。`min-release-age=7` にも適合（v4.5.0 は適合済み）。
+
+#### バンドルコストの許容
+
+`recheck` の browser チャンク（2.7MB raw / 334KB brotli）は大きい。`client:load` 遅延ロードにより正規表現ビジュアライザページのみに影響し、トップページの初期ロードには無影響。ユーザー承認済み。
+
+#### CJS 依存（recheck / regexp-tree）を SSR graph から外す（動的 import）
+
+`recheck` / `regexp-tree` は CJS のみのパッケージ。これらを React コンポーネントで静的 import すると、`client:load` の SSR レンダリング時に Astro の SSR module graph へ載り、**dev SSR で CJS（`module.exports`）が ESM として評価され `module is not defined` → 500 / hydration mismatch（React #418）** になる（PR #490 の CI cold cache で発覚）。
+
+当初 `vite.resolve.alias` + `vite.ssr.noExternal` + カスタム environment プラグインで CJS→ESM 変換を試みたが、Astro 6 の dev SSR は `vite.ssr.noExternal` を honor せず解決できなかった。
+
+採用した解法: 解析ユーティリティ（`parseRegex` / `analyzeRedos`）は **client 専用**（解析は debounce effect 内でのみ実行）なので、`RegexVisualizer` から **動的 import**（`import('@/utils/regex-visualizer')`、型は `import type` で別途）して SSR graph から外す。これにより:
+
+- SSR は recheck/regexp-tree を一切ロードしない（dev SSR エラー解消、bundle も client 専用 chunk に分離）。
+- `astro.config.mjs` は SSR 向け alias / noExternal / プラグインを撤去でき、**dev client 用の `optimizeDeps.include: ['recheck', 'regexp-tree']` のみ**に簡素化（client build は Vite が recheck の `browser` フィールド = `lib/browser.js` を自動選択）。
+
+unit テストは `vitest.config.ts` の alias で `recheck` を `lib/browser.js` に解決し、陽性対照が出荷 client と同じ browser ビルドを守るようにしている。
+
+#### ReDoS 3 状態の誠実さ方針
+
+`checkSync` の返値は `safe` / `vulnerable` / `unknown` の 3 状態。`timeout` 超過時は `unknown`（判定不能）となる。**「不明」を「安全」と表示しない**設計とし、UI でも 3 状態を厳密に区別する。
+
+#### prod-parity E2E gate
+
+async `check` への将来的な回帰（`checkSync` → `check`）を CI で検知するため、E2E を `withProductionCsp` 下で実行する。`blob:` Worker を使う `check` に戻すと CSP 違反が発生し `assertNoViolations()` が fail する。`tests/e2e/regex-visualizer.spec.ts` の「脆弱な正規表現で危険判定…（CSP 下で checkSync 動作）」テストが prod-parity regression gate として機能する。
+
+### 却下した選択肢
+
+- **async `check` + CSP 変更**: `worker-src blob:` を追加すれば動作するが、CSP を弱化することになり不採用。
+- **`safe-regex`**: 静的解析のみで false negative が多く、攻撃文字列・計算量種別が得られない。
+- **手製 ReDoS 検出**: 正確な多項式/指数時間判定を実装する工数が過大。
+
+### 結果・トレードオフ
+
+- ✅ ブラウザ完結・CSP 変更不要で ReDoS 検出が動作する
+- ✅ 3 状態誠実表示で「不明を安全」と誤認しない
+- ✅ prod-parity E2E gate により async `check` への回帰を CI で自動検知
+- ⚠️ 334KB brotli の追加バンドル（ユーザー承認済み。遅延ロードで他ページ無影響）
+- ⚠️ `checkSync` はメインスレッドを占有する同期処理（timeout: 1000ms で上限設定）
