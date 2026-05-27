@@ -3549,6 +3549,8 @@ fi
 
 ハッシュ取得は `sha256sum`（GNU coreutils、CI の Linux runner にある）を優先し、無い環境（macOS は既定で `sha256sum` を持たず `shasum` のみ）では `shasum -a 256` に fallback する。`2>/dev/null` で `command not found` の stderr ノイズも抑制する。これが無いと mac のローカル開発で `H` が空になり lock 変更検知が無言で no-op 化する（PR #495 レビュー指摘）。
 
+ロジックは `settings.json` インラインではなく **`.claude/scripts/session-install.sh`** に外出しし、フックは `bash .claude/scripts/session-install.sh` で呼ぶ（既存 `PreToolUse` の `test-edit-context.sh` と同方式）。これにより JSON の `\"` エスケープ脆さを解消し、コメントで意図を残せ、shell テストで回帰検知できる。ガードである以上 **陽性対照**が必須（test-gates skill）なため、`tests/meta/session-install.test.ts` で「lock 変更 → `npm ci` 再実行」を検知するテストを併設した。旧実装（`node_modules` 有無のみのガード）に当てると node_modules 常在で再実行されず fail する設計で、検知能力を証明している。
+
 ### 却下した選択肢
 
 - **`npm install` へ変更**: 起動レイテンシは下がるが lockfile 改変・別バージョン解決のサプライチェーンリスクを負う。セキュリティ要件と相反するため却下。
@@ -3561,4 +3563,4 @@ fi
 - ✅ `develop` から依存が変わったブランチに切り替えたとき `npm ci` が再実行され古い依存を解消
 - ⚠️ セッション途中の `git checkout` / `git worktree add` は `SessionStart` を発火させないため依然フック対象外（従来どおり手動 `npm ci` が必要。CLAUDE.md §6.2.1）
 - ✅ `sha256sum`→`shasum -a 256` fallback で mac ローカル開発でも lock 変更検知が機能
-- ⚠️ ハッシュ判定ぶんフック文字列がやや複雑化（将来 `.claude/scripts/` への抽出余地あり）
+- ✅ ロジックを `.claude/scripts/session-install.sh` に外出しし、`tests/meta/session-install.test.ts` の陽性対照で回帰検知可能にした（JSON エスケープ脆さも解消）
