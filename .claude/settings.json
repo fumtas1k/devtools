@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ ! -d node_modules ] && [ -f package-lock.json ]; then npm ci; fi"
+            "command": "bash .claude/scripts/session-install.sh"
           }
         ]
       }

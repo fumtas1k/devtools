@@ -3519,3 +3519,48 @@ PR2a 未対応の構文ノードは `measureFallback` で破線枠として描�
 - ✅ フォールバック枠で未対応構文でも継続描画
 - ✅ PR2b 完了: 選択肢（縦分岐 split/merge）・アサーション（pill / lookaround group）を本実装
 - ✅ PR2c 完了（鉄道図シリーズ完了）: 量指定子（skip/loop 弧）・後方参照（破線枠）・hotspot ハイライト（最深ノードに警告色 `.rr-box-hot`）を本実装
+
+---
+
+## [090] 2026-05-27 — SessionStart フックの依存インストールを lockfile ハッシュガードに変更
+
+**2026-05-27 | ステータス: 採用**
+
+### 背景
+
+`.claude/settings.json` の `SessionStart` フックは `if [ ! -d node_modules ]` を条件に `npm ci` を実行していた。Claude Code on the web はフック完了後にコンテナ状態（`node_modules` を含む）をスナップショット・キャッシュするため、初回スナップショット以降は `node_modules` が常に存在し、ガード条件が常に false になって `npm ci` が二度と再実行されない。結果、`develop` から依存が変わったブランチに切り替えても古い依存のまま作業してしまうギャップがあった。
+
+`session-start-hook` skill はこのキャッシュ特性を理由に `npm ci` より `npm install`（冪等・増分）を推奨しているが、`npm install` は lockfile を書き換え得る／semver 範囲で別バージョンを解決し得るため、**レビュー済み lockfile から外れた版を引くサプライチェーンリスク**がある。
+
+### 決断
+
+`npm ci`（lockfile を唯一の真実源とし、lock を書き換えない・不整合なら fail する）を維持したまま、ガード条件を `node_modules` の有無ではなく **`package-lock.json` のハッシュ**に変更した。
+
+```bash
+if [ -f package-lock.json ]; then
+  H=$({ sha256sum package-lock.json 2>/dev/null || shasum -a 256 package-lock.json; } | cut -d' ' -f1)
+  if [ ! -d node_modules ] || [ "$(cat node_modules/.lockhash 2>/dev/null)" != "$H" ]; then
+    npm ci && echo "$H" > node_modules/.lockhash
+  fi
+fi
+```
+
+`node_modules/.lockhash` に前回 install 時の lock ハッシュを記録し、現在の lock と一致する場合のみ `npm ci` を skip する。`npm ci` は `node_modules` を全消去してから再構築するため、スタンプは clean install 後に書き直され自然に同期する。
+
+ハッシュ取得は `sha256sum`（GNU coreutils、CI の Linux runner にある）を優先し、無い環境（macOS は既定で `sha256sum` を持たず `shasum` のみ）では `shasum -a 256` に fallback する。`2>/dev/null` で `command not found` の stderr ノイズも抑制する。これが無いと mac のローカル開発で `H` が空になり lock 変更検知が無言で no-op 化する（PR #495 レビュー指摘）。
+
+ロジックは `settings.json` インラインではなく **`.claude/scripts/session-install.sh`** に外出しし、フックは `bash .claude/scripts/session-install.sh` で呼ぶ（既存 `PreToolUse` の `test-edit-context.sh` と同方式）。これにより JSON の `\"` エスケープ脆さを解消し、コメントで意図を残せ、shell テストで回帰検知できる。ガードである以上 **陽性対照**が必須（test-gates skill）なため、`tests/meta/session-install.test.ts` で「lock 変更 → `npm ci` 再実行」を検知するテストを併設した。旧実装（`node_modules` 有無のみのガード）に当てると node_modules 常在で再実行されず fail する設計で、検知能力を証明している。
+
+### 却下した選択肢
+
+- **`npm install` へ変更**: 起動レイテンシは下がるが lockfile 改変・別バージョン解決のサプライチェーンリスクを負う。セキュリティ要件と相反するため却下。
+- **ガードを外して毎回 `npm ci`**: 最も確実だが起動のたびに clean install が走り遅い。キャッシュの利点を捨てるため却下（必要なら async モードで隠す案は残す）。
+
+### 結果・トレードオフ
+
+- ✅ `npm ci` のサプライチェーン特性（lock 厳密・lock 不変・不整合 fail）を維持
+- ✅ lock 不変時は skip しコンテナキャッシュの起動高速化を維持
+- ✅ `develop` から依存が変わったブランチに切り替えたとき `npm ci` が再実行され古い依存を解消
+- ⚠️ セッション途中の `git checkout` / `git worktree add` は `SessionStart` を発火させないため依然フック対象外（従来どおり手動 `npm ci` が必要。CLAUDE.md §6.2.1）
+- ✅ `sha256sum`→`shasum -a 256` fallback で mac ローカル開発でも lock 変更検知が機能
+- ✅ ロジックを `.claude/scripts/session-install.sh` に外出しし、`tests/meta/session-install.test.ts` の陽性対照で回帰検知可能にした（JSON エスケープ脆さも解消）
