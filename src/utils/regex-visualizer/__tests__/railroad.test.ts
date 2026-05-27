@@ -54,3 +54,52 @@ describe('buildRailroad', () => {
     expect(buildRailroad('(?:)', '').kind).toBe('group');
   });
 });
+
+describe('buildRailroad（選択肢・アサーション）', () => {
+  it('a|b|c を平坦化して 3 分岐の choice にする', () => {
+    const root = buildRailroad('a|b|c', '');
+    expect(root.kind).toBe('choice');
+    expect(root.children.map((c) => c.label)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('^ $ は assertion ノードになる', () => {
+    const root = buildRailroad('^a$', ''); // Alternative[^, a, $]
+    expect(root.kind).toBe('sequence');
+    expect(root.children[0].kind).toBe('assertion');
+    expect(root.children[0].label).toBe('^');
+    expect(root.children[2].kind).toBe('assertion');
+    expect(root.children[2].label).toBe('$');
+  });
+
+  it('\\b は assertion ノードになる', () => {
+    const root = buildRailroad('\\bx', '');
+    expect(root.children[0].kind).toBe('assertion');
+    expect(root.children[0].label).toBe('\\b');
+  });
+
+  it('先読み (?=foo) は group としてタイトル (?=) で内部式を内包', () => {
+    const root = buildRailroad('(?=foo)', '');
+    expect(root.kind).toBe('group');
+    expect(root.title).toBe('(?=)');
+    expect(root.children[0].kind).toBe('sequence'); // foo
+  });
+
+  it('否定後読み (?<!bar) は group タイトル (?<!)', () => {
+    const root = buildRailroad('(?<!bar)', '');
+    expect(root.kind).toBe('group');
+    expect(root.title).toBe('(?<!)');
+  });
+
+  // 補強（PR #492 レビュー指摘）: 境界ケースで throw せず期待構造になること
+  it('空 alternative a| は choice の片側を（空）fallback にする', () => {
+    const root = buildRailroad('a|', '');
+    expect(root.kind).toBe('choice');
+    expect(root.children).toHaveLength(2);
+    expect(root.children.some((c) => c.kind === 'fallback')).toBe(true);
+  });
+
+  it('空先読み (?=) で throw せず group になる', () => {
+    expect(() => buildRailroad('(?=)', '')).not.toThrow();
+    expect(buildRailroad('(?=)', '').kind).toBe('group');
+  });
+});

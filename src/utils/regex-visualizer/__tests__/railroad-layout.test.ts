@@ -4,9 +4,13 @@ import {
   measureSequence,
   measureGroup,
   measureFallback,
+  measureChoice,
+  measureAssertion,
   CHAR_W,
   BOX_H,
   H_GAP,
+  V_GAP,
+  CHOICE_LEAD,
 } from '../railroad-layout';
 
 describe('railroad-layout measure', () => {
@@ -48,5 +52,36 @@ describe('railroad-layout measure', () => {
     const f = measureFallback('(?=x)', undefined);
     expect(f.kind).toBe('fallback');
     expect(f.label).toBe('(?=x)');
+  });
+});
+
+describe('measureChoice', () => {
+  it('分岐の最大幅 + lead*2 を幅とし、高さは分岐高さ合計 + V_GAP', () => {
+    const a = measureTerminal('a', undefined);
+    const bb = measureTerminal('bbbb', undefined);
+    const c = measureChoice([a, bb], undefined);
+    expect(c.kind).toBe('choice');
+    expect(c.width).toBe(bb.width + CHOICE_LEAD * 2);
+    expect(c.height).toBe(a.height + bb.height + V_GAP);
+    expect(c.connectY).toBe(a.connectY); // 先頭分岐を本線に乗せる
+    expect(c.children).toHaveLength(2);
+  });
+
+  it('分岐が 1 つなら分岐表現せずその子をそのまま返す', () => {
+    const a = measureTerminal('a', undefined);
+    expect(measureChoice([a], undefined)).toBe(a);
+  });
+
+  it('分岐が空なら fallback', () => {
+    expect(measureChoice([], undefined).kind).toBe('fallback');
+  });
+});
+
+describe('measureAssertion', () => {
+  it('ラベル付きの assertion ノードを返す', () => {
+    const node = measureAssertion('^', { start: 0, end: 1 });
+    expect(node.kind).toBe('assertion');
+    expect(node.label).toBe('^');
+    expect(node.connectY).toBe(node.height / 2);
   });
 });

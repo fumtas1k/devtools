@@ -48,4 +48,13 @@ test.describe('正規表現ビジュアライザ', () => {
       await expect(page.getByRole('img', { name: '正規表現の鉄道図' })).toBeVisible();
     });
   });
+
+  test('選択肢 a|b|c が鉄道図で分岐表示される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('a|b|c');
+      await expect(page.getByText('選択肢 (|)').first()).toBeVisible(); // 構造ツリー側で解析完了を待つ（a|b|c は Disjunction が2段ネストするため複数要素に解決される）
+      await page.getByRole('button', { name: '鉄道図' }).click();
+      await expect(page.getByRole('img', { name: '正規表現の鉄道図' })).toBeVisible();
+    });
+  });
 });
