@@ -70,6 +70,26 @@ describe('ToolIcon orphan 検出', () => {
   });
 });
 
+// 同一 slug の `slug === '...'` ブロックが 2 つあると両 `&&` が truthy になり <svg> が
+// 二重描画される実バグだが、missing / orphan 検知は Set で重複を吸収するため見逃す。
+// 姉妹の vrt-pages-coverage.test.ts の「重複登録検出」と parity を取る (issue #498 レビュー提案)。
+describe('ToolIcon 重複定義検出', () => {
+  it('ToolIcon.astro に同一 slug のアイコン定義が重複していない', () => {
+    expect(new Set(iconSlugs).size).toBe(iconSlugs.length);
+  });
+});
+
+// 陽性対照: 重複検知機構が空回りしていないことを保証 (test-gates skill 準拠)。
+// 同一 slug を重複させた fixture を production の抽出経路 (extractIconSlugs) に通し、
+// 重複が array に残り Set サイズが配列長を下回ることを assert する。
+describe('[陽性対照] 重複検出機構', () => {
+  it('同一 slug を重複させた fixture では Set サイズが配列長より小さくなる', () => {
+    const dup = extractIconSlugs(`{ slug === 'dup-a' } { slug === 'dup-b' } { slug === 'dup-a' }`);
+    expect(dup).toEqual(['dup-a', 'dup-b', 'dup-a']);
+    expect(new Set(dup).size).toBeLessThan(dup.length);
+  });
+});
+
 // 陽性対照: 抽出器が空回りしていないことを保証 (test-gates skill 準拠)。
 // fixture 文字列を注入し、抽出が「常に空」「常に全部」ではなく実際に拾うことを証明する。
 describe('[陽性対照] extractIconSlugs 抽出機構', () => {
