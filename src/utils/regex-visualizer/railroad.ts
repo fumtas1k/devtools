@@ -4,6 +4,8 @@ import {
   measureSequence,
   measureGroup,
   measureFallback,
+  measureChoice,
+  measureAssertion,
   type RailNode,
 } from './railroad-layout';
 
@@ -30,6 +32,28 @@ function groupTitle(node: TreeNode): string {
   return `#${node.number}`;
 }
 
+/** Disjunction は二分木・左ネスト。a|b|c を [a,b,c] へ平坦化（空 alternative は null）。 */
+function flattenDisjunction(node: TreeNode): (TreeNode | null)[] {
+  const out: (TreeNode | null)[] = [];
+  const walk = (n: TreeNode | null) => {
+    if (n && n.type === 'Disjunction') {
+      walk((n.left as TreeNode | null) ?? null);
+      walk((n.right as TreeNode | null) ?? null);
+    } else {
+      out.push(n);
+    }
+  };
+  walk(node);
+  return out;
+}
+
+/** 先読み/後読みのタイトル文字列。 */
+function lookaroundTitle(node: TreeNode): string {
+  const neg = node.negative === true;
+  if (node.kind === 'Lookahead') return neg ? '(?!)' : '(?=)';
+  return neg ? '(?<!)' : '(?<=)'; // Lookbehind
+}
+
 function build(node: TreeNode, pattern: string): RailNode {
   switch (node.type) {
     case 'Char':
@@ -50,8 +74,30 @@ function build(node: TreeNode, pattern: string): RailNode {
         groupTitle(node),
         locOf(node)
       );
+    case 'Disjunction':
+      return measureChoice(
+        flattenDisjunction(node).map((n) =>
+          n ? build(n, pattern) : measureSequence([], undefined)
+        ),
+        locOf(node)
+      );
+    case 'Assertion': {
+      const kind = node.kind as string;
+      if (kind === 'Lookahead' || kind === 'Lookbehind') {
+        // 先読み/後読みは内部式を持つ → group 風コンテナで内包（空式は null ガード）。
+        return measureGroup(
+          node.assertion
+            ? build(node.assertion as TreeNode, pattern)
+            : measureSequence([], locOf(node)),
+          lookaroundTitle(node),
+          locOf(node)
+        );
+      }
+      // 単純アンカー ^ $ \b \B
+      return measureAssertion(sliceLabel(node, pattern), locOf(node));
+    }
     default:
-      // Disjunction / Repetition / Assertion / Backreference は PR2b/2c で本実装。
+      // Repetition / Backreference は PR2c で本実装。
       // それまでは source 文字列のフォールバック枠で壊さず描画。
       return measureFallback(sliceLabel(node, pattern), locOf(node));
   }
