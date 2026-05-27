@@ -27,7 +27,14 @@ function complexityLabel(c: { type: string; degree?: number }): string {
  * 「不明」を「安全」と混同しないこと（呼び出し側 UI も区別表示する）。
  */
 export function analyzeRedos(pattern: string, flags: string): RedosResult {
-  const d = checkSync(pattern, flags, { timeout: 1000 });
+  // checkSync が想定外に throw した場合も「不明」に倒す（呼び出し側で parse エラーと
+  // 取り違えて「正規表現が不正」と誤表示しないため）。「不明」を「安全」と混同しないこと。
+  let d;
+  try {
+    d = checkSync(pattern, flags, { timeout: 1000 });
+  } catch {
+    return { status: 'unknown', reason: 'error' };
+  }
   switch (d.status) {
     case 'vulnerable':
       return {

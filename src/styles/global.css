@@ -789,6 +789,18 @@
     color: var(--color-text-on-primary);
     border-color: var(--color-primary);
   }
+
+  /* hover/focus フィードバック。@layer components 手書きクラスは Tailwind の variant prefix
+     （hover: 等）に非対応のため擬似クラスごと定義する（§7.1）。hover はオフ状態のみ（オン状態は
+     プライマリ塗りを維持）、focus-visible は両状態に付与。 */
+  .flag-toggle:not(.flag-toggle-on):hover {
+    background: var(--color-bg-subtle);
+    border-color: var(--color-border-input);
+  }
+  .flag-toggle:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
 }
 
 /* 前庭障害ユーザー向けに transition / animation を抑止する。
