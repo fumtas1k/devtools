@@ -10,6 +10,7 @@ import {
   measureBackreference,
   REP_LEAD,
   ARC_H,
+  LABEL_H,
   CHAR_W,
   BOX_H,
   H_GAP,
@@ -107,6 +108,14 @@ describe('measureRepetition', () => {
     const rep = measureRepetition(inner, { skip: true, loop: true, label: '*' }, undefined);
     expect(rep.height).toBe(inner.height + ARC_H * 2); // skip 上 + loop 下
     expect(rep.connectY).toBe(ARC_H + inner.connectY);
+  });
+
+  // loop が無い（skip のみ / 弧なし）量指定子はラベル用の下バンド LABEL_H を確保する
+  // （PR #493 再レビューの cosmetic 指摘: ラベルが inner ボックス下端に重ならないように）。
+  it('loop なし（? 等）は下にラベル用バンド LABEL_H を確保する', () => {
+    const inner = measureTerminal('a', undefined);
+    const rep = measureRepetition(inner, { skip: true, loop: false, label: '?' }, undefined);
+    expect(rep.height).toBe(inner.height + ARC_H + LABEL_H); // skip 上 + label 下
   });
 });
 

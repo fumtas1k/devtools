@@ -45,6 +45,7 @@ export const V_GAP = 14; // choice の分岐間の縦間隔
 export const CHOICE_LEAD = 22; // choice の split/merge 用の左右リード長
 export const REP_LEAD = 18; // repetition の弧が左右へ膨らむリード
 export const ARC_H = 16; // skip/loop 弧の高さ
+export const LABEL_H = 12; // 量指定子ラベル用の下バンド（loop が無いとき inner と重ならないよう確保）
 
 type Loc = { start: number; end: number } | undefined;
 
@@ -105,7 +106,9 @@ export function measureRepetition(
   loc: Loc
 ): RailNode {
   const top = opts.skip ? ARC_H : 0;
-  const bottom = opts.loop ? ARC_H : 0;
+  // loop があればその弧バンド内にラベルを置ける。無い場合はラベル用バンドを確保し
+  // ラベルが inner ボックス下端に重ならないようにする（PR #493 再レビューの cosmetic 指摘）。
+  const bottom = opts.loop ? ARC_H : LABEL_H;
   return {
     kind: 'repetition',
     width: inner.width + REP_LEAD * 2,
