@@ -1,19 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
-import {
-  parseRegex,
-  analyzeRedos,
-  type RegexAstNode,
-  type RedosResult,
-} from '@/utils/regex-visualizer';
+import type { RegexAstNode, RedosResult } from '@/utils/regex-visualizer';
 import { RegexAstTree } from './RegexAstTree';
 
 const FLAGS = ['g', 'i', 'm', 's', 'u', 'y', 'd'] as const;
 const SAMPLE = '(a+)+$';
+
+type RegexModule = typeof import('@/utils/regex-visualizer');
 
 interface Analysis {
   ast: RegexAstNode;
@@ -27,17 +24,30 @@ export function RegexVisualizer() {
   const [pattern, setPattern] = useState('');
   const [flags, setFlags] = useState('');
 
+  // regexp-tree / recheck は CJS かつ client 専用ライブラリ。静的 import すると Astro の
+  // SSR module graph に載り、dev SSR で CJS が ESM 評価され `module is not defined` になる。
+  // client mount 後に動的 import して SSR graph から外す（型は import type で別途・実行時に消える）。
+  const [mod, setMod] = useState<RegexModule | null>(null);
+  useEffect(() => {
+    let active = true;
+    void import('@/utils/regex-visualizer').then((m) => {
+      if (active) setMod(m);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // parse（同期・throw でエラー表示）と ReDoS（同期 checkSync）を 1 つの debounce 変換で駆動。
-  // source にオブジェクトを渡すと毎レンダーで参照が変わり無限ループするため、
-  // pattern 文字列を source とし flags を deps 配列で追跡する。
+  // mod 読み込み前 / pattern 空 は source=null（解析しない）。flags と mod を deps で追跡。
   const analysis = useDebouncedTransform<string, Analysis | null>(
-    pattern.trim() ? pattern : null,
+    mod && pattern.trim() ? pattern : null,
     (p) => ({
-      ast: parseRegex(p, flags), // 不正なら throw → error 表示
-      redos: analyzeRedos(p, flags),
+      ast: mod!.parseRegex(p, flags), // 不正なら throw → error 表示
+      redos: mod!.analyzeRedos(p, flags),
     }),
     EMPTY,
-    [flags],
+    [mod, flags],
     { fallbackError: '正規表現が不正です' }
   );
 

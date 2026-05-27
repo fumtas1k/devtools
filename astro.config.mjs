@@ -3,7 +3,6 @@ import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import sitemap from '@astrojs/sitemap';
 import { injectSwBuildId } from './astro/integrations/inject-sw-build-id';
-import { resolve } from 'node:path';
 
 export default defineConfig({
   site: 'https://devtools-d9w.pages.dev',
@@ -18,37 +17,14 @@ export default defineConfig({
     },
   },
   vite: {
-    plugins: [
-      tailwindcss(),
-      // regexp-tree / recheck は CJS のみのパッケージ。prerender（SSR）環境で Node ESM ローダー経由の
-      // named import が失敗するため、Vite の Environment API で prerender/ssr 環境に対して
-      // noExternal（Vite が CJS→ESM 変換）を適用する。
-      // NOTE: Astro 6 の Environment API では vite.ssr.noExternal はグローバル設定だが
-      // astro:environment プラグインが環境ごとに resolve.noExternal を上書きするため、
-      // このプラグインで直接 prerender 環境の設定を拡張する必要がある。
-      {
-        name: 'devtools:cjs-noexternal',
-        enforce: 'pre',
-        configEnvironment(name, options) {
-          if (name === 'prerender' || name === 'ssr') {
-            const existing = Array.isArray(options.resolve?.noExternal)
-              ? options.resolve.noExternal
-              : [];
-            return {
-              resolve: {
-                noExternal: [...existing, 'regexp-tree', 'recheck', 'synckit', '@pkgr/core'],
-              },
-            };
-          }
-        },
-      },
-    ],
-    resolve: {
-      // prerender/SSR 時は recheck の browser エントリ（lib/browser.js）を使用。
-      // browser.js は synckit を使わない "pure" 実装で、Worker / synckit / @pkgr-core 依存がなく
-      // Node.js SSR コンテキストでも安全に動作する（ブラウザでは Vite が自動的に browser フィールドを
-      // 選択するため重複は無害）。
-      alias: [{ find: 'recheck', replacement: resolve('node_modules/recheck/lib/browser.js') }],
+    plugins: [tailwindcss()],
+    // 正規表現ビジュアライザの recheck / regexp-tree は CJS パッケージ。
+    // client 専用 chunk（RegexVisualizer が動的 import）でのみ使うため SSR graph には載らないが、
+    // dev の client では CJS（`module.exports`）が未変換だと `module is not defined` になるため
+    // optimizeDeps で CJS→ESM へ pre-bundle する。client build では Vite が recheck の `browser`
+    // フィールド（synckit/Worker 非依存の lib/browser.js）を自動選択する。
+    optimizeDeps: {
+      include: ['recheck', 'regexp-tree'],
     },
     build: {
       // #246: Vite デフォルト 4KB 未満の asset を data: URI として CSS にインライン化
