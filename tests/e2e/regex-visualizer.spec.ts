@@ -57,4 +57,13 @@ test.describe('正規表現ビジュアライザ', () => {
       await expect(page.getByRole('img', { name: '正規表現の鉄道図' })).toBeVisible();
     });
   });
+
+  test('量指定子 a+ が鉄道図で表示される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('a+b');
+      await expect(page.getByText(/1 回以上の繰り返し/)).toBeVisible(); // 構造ツリーで解析完了待ち
+      await page.getByRole('button', { name: '鉄道図' }).click();
+      await expect(page.getByRole('img', { name: '正規表現の鉄道図' })).toBeVisible();
+    });
+  });
 });

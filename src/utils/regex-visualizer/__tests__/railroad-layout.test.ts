@@ -6,6 +6,11 @@ import {
   measureFallback,
   measureChoice,
   measureAssertion,
+  measureRepetition,
+  measureBackreference,
+  REP_LEAD,
+  ARC_H,
+  LABEL_H,
   CHAR_W,
   BOX_H,
   H_GAP,
@@ -83,5 +88,42 @@ describe('measureAssertion', () => {
     expect(node.kind).toBe('assertion');
     expect(node.label).toBe('^');
     expect(node.connectY).toBe(node.height / 2);
+  });
+});
+
+describe('measureRepetition', () => {
+  it('loop ありで下に ARC_H 分高くなり connectY は inner 基準', () => {
+    const inner = measureTerminal('a', undefined);
+    const rep = measureRepetition(inner, { skip: false, loop: true, label: '+' }, undefined);
+    expect(rep.kind).toBe('repetition');
+    expect(rep.width).toBe(inner.width + REP_LEAD * 2);
+    expect(rep.height).toBe(inner.height + ARC_H); // loop 下のみ
+    expect(rep.connectY).toBe(inner.connectY); // skip 無 → 上余白なし
+    expect(rep.children[0]).toBe(inner);
+    expect(rep.label).toBe('+');
+  });
+
+  it('skip ありで上に ARC_H 分の余白ができ connectY が下がる', () => {
+    const inner = measureTerminal('a', undefined);
+    const rep = measureRepetition(inner, { skip: true, loop: true, label: '*' }, undefined);
+    expect(rep.height).toBe(inner.height + ARC_H * 2); // skip 上 + loop 下
+    expect(rep.connectY).toBe(ARC_H + inner.connectY);
+  });
+
+  // loop が無い（skip のみ / 弧なし）量指定子はラベル用の下バンド LABEL_H を確保する
+  // （PR #493 再レビューの cosmetic 指摘: ラベルが inner ボックス下端に重ならないように）。
+  it('loop なし（? 等）は下にラベル用バンド LABEL_H を確保する', () => {
+    const inner = measureTerminal('a', undefined);
+    const rep = measureRepetition(inner, { skip: true, loop: false, label: '?' }, undefined);
+    expect(rep.height).toBe(inner.height + ARC_H + LABEL_H); // skip 上 + label 下
+  });
+});
+
+describe('measureBackreference', () => {
+  it('ラベル付き backreference ノードを返す', () => {
+    const n = measureBackreference('\\1', { start: 3, end: 5 });
+    expect(n.kind).toBe('backreference');
+    expect(n.label).toBe('\\1');
+    expect(n.connectY).toBe(n.height / 2);
   });
 });

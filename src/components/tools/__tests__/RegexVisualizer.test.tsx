@@ -51,4 +51,13 @@ describe('RegexVisualizer', () => {
     const svg = await screen.findByRole('img', { name: '正規表現の鉄道図' }, FIND);
     expect(svg).toBeTruthy();
   });
+
+  it('鉄道図タブで脆弱パターンの hotspot が強調される', async () => {
+    render(<RegexVisualizer />);
+    setPattern('(a+)+$');
+    await screen.findByText(/脆弱/, undefined, FIND);
+    fireEvent.click(screen.getByRole('button', { name: '鉄道図' }));
+    const svg = await screen.findByRole('img', { name: '正規表現の鉄道図' }, FIND);
+    expect(svg.querySelector('.rr-box-hot')).toBeTruthy();
+  });
 });

@@ -6,6 +6,8 @@ import {
   measureFallback,
   measureChoice,
   measureAssertion,
+  measureRepetition,
+  measureBackreference,
   type RailNode,
 } from './railroad-layout';
 
@@ -54,6 +56,51 @@ function lookaroundTitle(node: TreeNode): string {
   return neg ? '(?<!)' : '(?<=)'; // Lookbehind
 }
 
+interface Quantifier {
+  kind: string;
+  from?: number;
+  to?: number;
+  greedy?: boolean;
+}
+
+/** 量指定子の表示ラベル（'+' '*?' '{2,5}' 等）。lazy は末尾に ? を付ける。 */
+function quantifierLabel(q: Quantifier): string {
+  let base: string;
+  switch (q.kind) {
+    case '+':
+    case '*':
+    case '?':
+      base = q.kind;
+      break;
+    case 'Range':
+      base =
+        q.to == null ? `{${q.from},}` : q.to === q.from ? `{${q.from}}` : `{${q.from},${q.to}}`;
+      break;
+    default:
+      base = '';
+  }
+  return q.greedy === false ? `${base}?` : base;
+}
+
+/** スキップ弧（0 回可）・ループ弧（2 回以上可）の有無を量指定子から判定。 */
+function quantifierFlags(q: Quantifier): { skip: boolean; loop: boolean } {
+  switch (q.kind) {
+    case '?':
+      return { skip: true, loop: false };
+    case '*':
+      return { skip: true, loop: true };
+    case '+':
+      return { skip: false, loop: true };
+    case 'Range': {
+      const skip = q.from === 0;
+      const loop = q.to == null || q.to > 1;
+      return { skip, loop };
+    }
+    default:
+      return { skip: false, loop: false };
+  }
+}
+
 function build(node: TreeNode, pattern: string): RailNode {
   switch (node.type) {
     case 'Char':
@@ -96,9 +143,18 @@ function build(node: TreeNode, pattern: string): RailNode {
       // 単純アンカー ^ $ \b \B
       return measureAssertion(sliceLabel(node, pattern), locOf(node));
     }
+    case 'Repetition': {
+      const q = (node.quantifier as Quantifier) ?? { kind: '' };
+      const flags = quantifierFlags(q);
+      return measureRepetition(
+        build(node.expression as TreeNode, pattern),
+        { ...flags, label: quantifierLabel(q) },
+        locOf(node)
+      );
+    }
+    case 'Backreference':
+      return measureBackreference(sliceLabel(node, pattern), locOf(node));
     default:
-      // Repetition / Backreference は PR2c で本実装。
-      // それまでは source 文字列のフォールバック枠で壊さず描画。
       return measureFallback(sliceLabel(node, pattern), locOf(node));
   }
 }
