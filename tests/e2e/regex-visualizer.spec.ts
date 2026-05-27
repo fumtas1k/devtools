@@ -2,6 +2,22 @@ import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
 test.describe('正規表現ビジュアライザ', () => {
+  test('フラグの凡例が表示される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await expect(page.getByText('大小区別なし')).toBeVisible();
+    });
+  });
+
+  // a11y 回帰ガード: フラグボタンの aria-label / title（説明）付与を検証。
+  // 属性が外れる（旧実装相当）と name 解決・属性 assert が fail する陽性対照を兼ねる。
+  test('フラグボタンに説明の aria-label / title が付与される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      const iFlag = page.getByRole('button', { name: 'i: 大文字小文字を区別しない' });
+      await expect(iFlag).toBeVisible();
+      await expect(iFlag).toHaveAttribute('title', '大文字小文字を区別しない');
+    });
+  });
+
   test('有効な正規表現で構造ツリーが表示される', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
       await page.getByLabel('正規表現').fill('(ab)+');

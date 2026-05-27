@@ -9,7 +9,16 @@ import type { RegexAstNode, RedosResult, RailNode } from '@/utils/regex-visualiz
 import { RegexAstTree } from './RegexAstTree';
 import { RegexRailroad } from './RegexRailroad';
 
-const FLAGS = ['g', 'i', 'm', 's', 'u', 'y', 'd'] as const;
+// desc: ボタンの title / aria-label 用（詳細）。short: 画面下の凡例用（コンパクト）。
+const FLAGS: { value: string; desc: string; short: string }[] = [
+  { value: 'g', desc: '全マッチ（グローバル）', short: '全マッチ' },
+  { value: 'i', desc: '大文字小文字を区別しない', short: '大小区別なし' },
+  { value: 'm', desc: '複数行（^ $ が各行頭・行末にマッチ）', short: '複数行' },
+  { value: 's', desc: '. が改行にもマッチ（dotAll）', short: '. が改行もマッチ' },
+  { value: 'u', desc: 'Unicode モード', short: 'Unicode' },
+  { value: 'y', desc: '直前の位置からのみマッチ（sticky）', short: '直前位置のみ' },
+  { value: 'd', desc: 'マッチ位置（インデックス）を取得', short: 'マッチ位置取得' },
+];
 const SAMPLE = '(a+)+$';
 
 type RegexModule = typeof import('@/utils/regex-visualizer');
@@ -91,20 +100,31 @@ export function RegexVisualizer() {
         />
         <div className="flex flex-wrap gap-2" role="group" aria-label="フラグ">
           {FLAGS.map((f) => {
-            const on = flags.includes(f);
+            const on = flags.includes(f.value);
             return (
               <button
-                key={f}
+                key={f.value}
                 type="button"
                 aria-pressed={on}
-                onClick={() => toggleFlag(f)}
+                aria-label={`${f.value}: ${f.desc}`}
+                title={f.desc}
+                onClick={() => toggleFlag(f.value)}
                 className={on ? 'flag-toggle flag-toggle-on' : 'flag-toggle'}
               >
-                {f}
+                {f.value}
               </button>
             );
           })}
         </div>
+        {/* 凡例は視覚補助。各ボタンの aria-label で SR には意味が伝わるため aria-hidden で二重読み上げを防ぐ */}
+        <ul className="caption text-subtle list-none" aria-hidden="true">
+          {FLAGS.map((f, i) => (
+            <li key={f.value} className="inline">
+              {i > 0 && ' / '}
+              <code className="font-mono text-default">{f.value}</code> {f.short}
+            </li>
+          ))}
+        </ul>
       </div>
 
       {loadError && (
