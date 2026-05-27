@@ -2,6 +2,12 @@ import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
 test.describe('正規表現ビジュアライザ', () => {
+  test('フラグの凡例が表示される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await expect(page.getByText('大文字小文字を区別しない')).toBeVisible();
+    });
+  });
+
   test('有効な正規表現で構造ツリーが表示される', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
       await page.getByLabel('正規表現').fill('(ab)+');

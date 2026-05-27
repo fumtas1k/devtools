@@ -9,7 +9,15 @@ import type { RegexAstNode, RedosResult, RailNode } from '@/utils/regex-visualiz
 import { RegexAstTree } from './RegexAstTree';
 import { RegexRailroad } from './RegexRailroad';
 
-const FLAGS = ['g', 'i', 'm', 's', 'u', 'y', 'd'] as const;
+const FLAGS: { value: string; desc: string }[] = [
+  { value: 'g', desc: '全マッチ（グローバル）' },
+  { value: 'i', desc: '大文字小文字を区別しない' },
+  { value: 'm', desc: '複数行（^ $ が各行頭・行末にマッチ）' },
+  { value: 's', desc: '. が改行にもマッチ（dotAll）' },
+  { value: 'u', desc: 'Unicode モード' },
+  { value: 'y', desc: '直前の位置からのみマッチ（sticky）' },
+  { value: 'd', desc: 'マッチ位置（インデックス）を取得' },
+];
 const SAMPLE = '(a+)+$';
 
 type RegexModule = typeof import('@/utils/regex-visualizer');
@@ -91,20 +99,29 @@ export function RegexVisualizer() {
         />
         <div className="flex flex-wrap gap-2" role="group" aria-label="フラグ">
           {FLAGS.map((f) => {
-            const on = flags.includes(f);
+            const on = flags.includes(f.value);
             return (
               <button
-                key={f}
+                key={f.value}
                 type="button"
                 aria-pressed={on}
-                onClick={() => toggleFlag(f)}
+                aria-label={`${f.value}: ${f.desc}`}
+                title={f.desc}
+                onClick={() => toggleFlag(f.value)}
                 className={on ? 'flag-toggle flag-toggle-on' : 'flag-toggle'}
               >
-                {f}
+                {f.value}
               </button>
             );
           })}
         </div>
+        <ul className="caption text-subtle space-y-0.5">
+          {FLAGS.map((f) => (
+            <li key={f.value}>
+              <code className="font-mono text-default">{f.value}</code> … {f.desc}
+            </li>
+          ))}
+        </ul>
       </div>
 
       {loadError && (
