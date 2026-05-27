@@ -801,6 +801,44 @@
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
+
+  /* === 鉄道図（RegexRailroad）用意味クラス === */
+  /* variant prefix（hover: 等）は Tailwind v4 @layer components 手書き class では
+     CSS rule 生成されないため付けない（§7.1）。 */
+  .rr-svg {
+    max-width: 100%;
+  }
+  .rr-rail {
+    stroke: var(--color-border-input);
+    stroke-width: 1.5;
+    fill: none;
+  }
+  .rr-marker {
+    fill: var(--color-border-input);
+  }
+  .rr-box {
+    fill: var(--color-bg-subtle);
+    stroke: var(--color-border-input);
+    stroke-width: 1;
+  }
+  .rr-box-fallback {
+    stroke-dasharray: 4 3;
+  }
+  .rr-text {
+    fill: var(--color-text);
+    font-family: var(--font-mono, monospace);
+    font-size: 13px;
+  }
+  .rr-group {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+  }
+  .rr-group-title {
+    fill: var(--color-muted);
+    font-size: 11px;
+  }
 }
 
 /* 前庭障害ユーザー向けに transition / animation を抑止する。
