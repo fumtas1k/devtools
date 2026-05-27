@@ -849,6 +849,26 @@
     stroke: var(--color-border-input);
     stroke-width: 1;
   }
+  /* .rr-box-hot は .rr-box より後に置き fill/stroke を上書きする（PR2c: hotspot ハイライト）。 */
+  .rr-box-hot {
+    fill: var(--color-warning-bg);
+    stroke: var(--color-warning);
+    stroke-width: 1.5;
+  }
+  /* 後方参照（\1 / \k<name>）: 破線枠でリテラルと視覚的に区別する。 */
+  .rr-backref {
+    stroke-dasharray: 3 2;
+  }
+  /* 量指定子ラベル（+ * ? {n,m}）: rail 下に小さく表示する。 */
+  .rr-quant {
+    fill: var(--color-muted);
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+  }
+  /* ループ弧の矢印マーカーは SVG marker で実装しないため marker-end を明示的に none にする。 */
+  .rr-arrow {
+    marker-end: none;
+  }
 }
 
 /* 前庭障害ユーザー向けに transition / animation を抑止する。

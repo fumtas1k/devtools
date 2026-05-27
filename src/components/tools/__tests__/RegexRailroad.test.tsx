@@ -8,6 +8,8 @@ import {
   measureGroup,
   measureChoice,
   measureAssertion,
+  measureRepetition,
+  measureBackreference,
 } from '@/utils/regex-visualizer/railroad-layout';
 
 afterEach(() => cleanup());
@@ -62,5 +64,50 @@ describe('RegexRailroad', () => {
     const { container } = render(<RegexRailroad node={node} />);
     // choice 内の <line> は狭い分岐の延長のみ（split/merge は <path>）
     expect(container.querySelectorAll('line').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('repetition は inner の rect と弧 path を描画する', () => {
+    const inner = measureTerminal('a', { start: 0, end: 1 });
+    const node = measureRepetition(
+      inner,
+      { skip: true, loop: true, label: '*' },
+      { start: 0, end: 2 }
+    );
+    const { container } = render(<RegexRailroad node={node} />);
+    expect(container.querySelector('rect')).toBeTruthy();
+    expect(container.querySelectorAll('path').length).toBeGreaterThanOrEqual(2); // skip + loop
+    expect(container.textContent).toContain('*');
+  });
+
+  it('backreference は rect + ラベルを描画する', () => {
+    const node = measureBackreference('\\1', { start: 0, end: 2 });
+    const { container } = render(<RegexRailroad node={node} />);
+    expect(container.textContent).toContain('\\1');
+  });
+
+  // hotspot ハイライト（陽性対照）: 重なる最深ノードに hot class が付く
+  it('hotspot に重なる最深ノードに hot class が付く', () => {
+    const inner = measureTerminal('a', { start: 1, end: 2 });
+    const node = measureRepetition(
+      inner,
+      { skip: false, loop: true, label: '+' },
+      { start: 0, end: 3 }
+    );
+    // hotspot {1,2} は inner(terminal) に重なる。inner が最深なので inner の rect が hot。
+    const { container } = render(<RegexRailroad node={node} hotspot={[{ start: 1, end: 2 }]} />);
+    expect(container.querySelector('.rr-box-hot')).toBeTruthy();
+  });
+
+  // hotspot ハイライト（陰性対照）: 重ならないノードには hot class が付かない
+  it('hotspot と重ならないノードには hot class が付かない', () => {
+    const inner = measureTerminal('a', { start: 1, end: 2 });
+    const node = measureRepetition(
+      inner,
+      { skip: false, loop: true, label: '+' },
+      { start: 0, end: 3 }
+    );
+    // hotspot {5,9} は全ノードと重ならない
+    const { container } = render(<RegexRailroad node={node} hotspot={[{ start: 5, end: 9 }]} />);
+    expect(container.querySelector('.rr-box-hot')).toBeNull();
   });
 });
