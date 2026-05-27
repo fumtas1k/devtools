@@ -842,8 +842,10 @@
     fill: var(--color-muted);
     font-size: 11px;
   }
+  /* アサーション（ゼロ幅アンカー）は塗りなしの輪郭 pill にして、塗りつぶしの terminal
+     リテラルと視覚的に区別する（PR #492 レビュー指摘: rr-box と rx 以外同一だった）。 */
   .rr-assertion {
-    fill: var(--color-bg-subtle);
+    fill: none;
     stroke: var(--color-border-input);
     stroke-width: 1;
   }
