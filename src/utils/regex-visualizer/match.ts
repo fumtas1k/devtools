@@ -8,10 +8,13 @@ export interface CaptureGroup {
 }
 
 export interface RegexMatch {
+  /** マッチした文字列全体 */
   value: string;
+  /** マッチ開始位置（inclusive） */
   start: number;
   /** 終了位置（exclusive） */
   end: number;
+  /** キャプチャグループ（1 始まり） */
   groups: CaptureGroup[];
 }
 

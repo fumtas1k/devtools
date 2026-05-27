@@ -51,10 +51,11 @@ describe('runMatch', () => {
     expect(r.matches).toEqual([]);
   });
 
-  it('空マッチでも無限ループせず有限件数を返す', () => {
+  it('空マッチでも無限ループせず厳密な件数を返す', () => {
+    // V8 (Node v22) では 'a'@0 / ''@1 / 'a'@2 / ''@3 の 4 件
+    // （空マッチ guard で lastIndex を 1 進めるため重複しない）
     const r = runMatch('a*', 'g', 'aXa');
-    expect(r.matches.length).toBeGreaterThan(0);
-    expect(r.matches.length).toBeLessThan(20);
+    expect(r.matches.length).toBe(4);
   });
 
   it('maxLength で input を切り詰め truncated を立てる', () => {
@@ -66,5 +67,11 @@ describe('runMatch', () => {
   it('maxLength 未指定なら truncated は false', () => {
     const r = runMatch('.', 'g', 'abc');
     expect(r.truncated).toBe(false);
+  });
+
+  it('maxLength === input.length のとき truncated は false', () => {
+    const r = runMatch('.', 'g', 'abc', 3);
+    expect(r.truncated).toBe(false);
+    expect(r.matches).toHaveLength(3);
   });
 });
