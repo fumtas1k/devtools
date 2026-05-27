@@ -170,7 +170,7 @@ export function RegexVisualizer() {
             <p className="caption text-subtle">正規表現を入力すると構造が表示されます。</p>
           )
         ) : rail ? (
-          <RegexRailroad node={rail} />
+          <RegexRailroad node={rail} hotspot={redos?.hotspot} />
         ) : (
           <p className="caption text-subtle">正規表現を入力すると鉄道図が表示されます。</p>
         )}
