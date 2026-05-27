@@ -28,11 +28,17 @@ export function RegexVisualizer() {
   // SSR module graph に載り、dev SSR で CJS が ESM 評価され `module is not defined` になる。
   // client mount 後に動的 import して SSR graph から外す（型は import type で別途・実行時に消える）。
   const [mod, setMod] = useState<RegexModule | null>(null);
+  const [loadError, setLoadError] = useState(false);
   useEffect(() => {
     let active = true;
-    void import('@/utils/regex-visualizer').then((m) => {
-      if (active) setMod(m);
-    });
+    import('@/utils/regex-visualizer')
+      .then((m) => {
+        if (active) setMod(m);
+      })
+      .catch(() => {
+        // chunk ロード失敗時は無反応にせずユーザーへ伝える。
+        if (active) setLoadError(true);
+      });
     return () => {
       active = false;
     };
@@ -92,6 +98,13 @@ export function RegexVisualizer() {
           })}
         </div>
       </div>
+
+      {loadError && (
+        <ErrorMessage
+          message="解析エンジンの読み込みに失敗しました。ページを再読み込みしてください。"
+          variant="block"
+        />
+      )}
 
       {/* ReDoS 判定パネル（3 状態を区別） */}
       <section
