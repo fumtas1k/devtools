@@ -3431,12 +3431,18 @@ descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「co
 
 `recheck` の browser チャンク（2.7MB raw / 334KB brotli）は大きい。`client:load` 遅延ロードにより正規表現ビジュアライザページのみに影響し、トップページの初期ロードには無影響。ユーザー承認済み。
 
-#### Vite ビルド設定（CJS→ESM 変換）
+#### CJS 依存（recheck / regexp-tree）を SSR graph から外す（動的 import）
 
-`regexp-tree` は CJS のみのパッケージで、Astro 6 の prerender（SSR）環境でネイティブ ESM ローダー経由の named import が失敗する。対策として:
+`recheck` / `regexp-tree` は CJS のみのパッケージ。これらを React コンポーネントで静的 import すると、`client:load` の SSR レンダリング時に Astro の SSR module graph へ載り、**dev SSR で CJS（`module.exports`）が ESM として評価され `module is not defined` → 500 / hydration mismatch（React #418）** になる（PR #490 の CI cold cache で発覚）。
 
-1. `vite.resolve.alias` で `recheck` を `lib/browser.js` へ差し替え（Node.js SSR コンテキストで `browser` フィールドが自動選択されないため）
-2. カスタム Vite プラグイン（`devtools:cjs-noexternal`）で prerender/ssr 環境の `resolve.noExternal` に `regexp-tree` を追加し CJS→ESM バンドリングを有効化
+当初 `vite.resolve.alias` + `vite.ssr.noExternal` + カスタム environment プラグインで CJS→ESM 変換を試みたが、Astro 6 の dev SSR は `vite.ssr.noExternal` を honor せず解決できなかった。
+
+採用した解法: 解析ユーティリティ（`parseRegex` / `analyzeRedos`）は **client 専用**（解析は debounce effect 内でのみ実行）なので、`RegexVisualizer` から **動的 import**（`import('@/utils/regex-visualizer')`、型は `import type` で別途）して SSR graph から外す。これにより:
+
+- SSR は recheck/regexp-tree を一切ロードしない（dev SSR エラー解消、bundle も client 専用 chunk に分離）。
+- `astro.config.mjs` は SSR 向け alias / noExternal / プラグインを撤去でき、**dev client 用の `optimizeDeps.include: ['recheck', 'regexp-tree']` のみ**に簡素化（client build は Vite が recheck の `browser` フィールド = `lib/browser.js` を自動選択）。
+
+unit テストは `vitest.config.ts` の alias で `recheck` を `lib/browser.js` に解決し、陽性対照が出荷 client と同じ browser ビルドを守るようにしている。
 
 #### ReDoS 3 状態の誠実さ方針
 
