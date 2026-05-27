@@ -160,7 +160,9 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
           )}
 
           {!match.isPending && result && (
-            <div className="space-y-2" aria-live="polite">
+            // aria-live は領域全体ではなく簡潔な結果ステータス（件数 / no-match）にのみ付ける。
+            // ハイライト本文・表まで live にすると入力のたびに全体が再読み上げされ冗長になるため。
+            <div className="space-y-2">
               {result.truncated && (
                 <p className="caption text-warning">
                   入力が長いため先頭 {UNKNOWN_CAP} 文字だけで実行しました。
@@ -170,13 +172,15 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
                 {matches.length > 0 ? (
                   highlight(shownText, matches, selectedIndex, setSelected)
                 ) : (
-                  <span className="text-subtle">マッチしませんでした。</span>
+                  <span className="text-subtle" aria-live="polite">
+                    マッチしませんでした。
+                  </span>
                 )}
               </div>
 
               {matches.length > 0 && (
                 <>
-                  <p className="caption text-subtle">
+                  <p className="caption text-subtle" aria-live="polite">
                     {matches.length} 件マッチ
                     {!flags.includes('g') && '（g フラグを付けると全マッチを表示します）'}
                   </p>

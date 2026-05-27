@@ -74,4 +74,12 @@ describe('runMatch', () => {
     expect(r.truncated).toBe(false);
     expect(r.matches).toHaveLength(3);
   });
+
+  it('u フラグの空マッチ guard はサロゲートペアを分割しない', () => {
+    // 'a*' を gu で '😀a'（😀 は index 0-1 のサロゲートペア、a は index 2）に適用。
+    // 空マッチ位置でコードポイント単位に進めるため、mid-surrogate(index 1)からのマッチは発生しない。
+    const r = runMatch('a*', 'gu', '😀a');
+    expect(r.matches.map((m) => m.start)).not.toContain(1); // mid-surrogate 開始がないこと
+    expect(r.matches.some((m) => m.value === 'a')).toBe(true);
+  });
 });

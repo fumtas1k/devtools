@@ -95,10 +95,16 @@ export function runMatch(
     return { matches, truncated };
   }
 
+  const unicode = flags.includes('u');
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     matches.push(toMatch(m, names));
-    if (m.index === re.lastIndex) re.lastIndex++; // 空マッチ guard
+    if (m.index === re.lastIndex) {
+      // 空マッチ guard: lastIndex を進めて無限ループを防ぐ。u フラグ時はコードポイント単位で
+      // 進め、サロゲートペア（絵文字等）を分割して以降の位置がずれるのを防ぐ。
+      const cp = unicode ? text.codePointAt(re.lastIndex) : undefined;
+      re.lastIndex += cp !== undefined && cp > 0xffff ? 2 : 1;
+    }
   }
   return { matches, truncated };
 }
