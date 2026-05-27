@@ -58,10 +58,17 @@ export interface MatchResult {
  * pattern + flags を input に対してマッチ実行する（native RegExp）。
  * g なしは最初の 1 件のみ。g ありは全マッチ。
  * 空マッチ時は lastIndex を 1 進めて無限ループを防ぐ。
+ * maxLength を渡すと input を先頭 maxLength 文字に切り詰めて実行し truncated=true を返す
+ *   （unknown verdict の force 実行で凍結時間の上限を下げるため）。
  * pattern / flags が不正な場合は呼び出し側で parse 済みエラーを表示しているため、
  * ここでは throw を許容（呼び出し側で gate する）。
  */
-export function runMatch(pattern: string, flags: string, input: string): MatchResult;
+export function runMatch(
+  pattern: string,
+  flags: string,
+  input: string,
+  maxLength?: number
+): MatchResult;
 ```
 
 `src/utils/regex-visualizer/index.ts` に `runMatch` と型を re-export する。
@@ -101,7 +108,7 @@ Clear
 1. **テスト文字列入力**: `textarea`。`maxLength` で粗い上限を設定する。safe は線形マッチなので寛容な上限（例 10000 文字）でよい。unknown の force 実行時はさらに小さい上限を適用する（6 章）。
 2. **ハイライト結果**: テスト文字列を「非マッチ部分テキスト + マッチ span」の React 要素配列に分割して描画する。**`dangerouslySetInnerHTML` は使わない**（XSS 規約 9.5）。隣接マッチを区別するためマッチ span は交互色（`.match-highlight-a` / `.match-highlight-b`）。
 3. **キャプチャグループ表**: 行 = マッチ。列 = マッチ全体 / 位置（start–end）/ 各グループ（名前付きはラベル付き、未マッチは「(なし)」）。マッチ数を見出しに表示。
-4. **相互強調**: `hoveredMatchIndex` state を持ち、ハイライト span と表行を hover で相互に強調する。hover は React state によるクラス付替えで実現し、`@layer components` 手書きクラスへの `:hover` variant は使わない（Tailwind v4 制約・規約 7.1）。
+4. **相互強調**: `selectedMatch` state を持ち、ハイライト span または表行を**クリック**すると当該マッチを選択し、span と表行を相互に強調する。`ResultTable` は `selectedIndex` / `onRowClick` とキーボード操作（Enter/Space）を内蔵しているのでそれを使う（hover のみだとキーボード非対応のため、クリック選択を一次手段にして a11y を確保）。強調は React state によるクラス付替えで実現し、`@layer components` 手書きクラスへの `:hover` variant は使わない（Tailwind v4 制約・規約 7.1）。
 
 ### スタイル
 
@@ -121,7 +128,7 @@ native `RegExp` のマッチはメインスレッド同期実行で、走り出�
 - `shouldRun` の前提として **regex が有効**であること（parse エラーなし）を必須とする。不正な regex のときは verdict に関わらず実行しない。
 - `shouldRun` = 有効 && (`safe` なら常に true / `unknown` は force ボタン押下後 true / `vulnerable` は常に false)。
 - vulnerable で無効化する理由: Worker なしでは vulnerable な正規表現を安全に実行する手段が無い。キャップを付けても指数パターンでは保護にならないため、「短い入力で試す」よりも確実な凍結回避を優先する（誠実さ優先）。
-- unknown の force 実行時は、textarea の通常上限（例 10000 文字）より小さい上限（例 1000 文字）まで input を切り詰めてから実行し、`MatchResult.truncated` で切り詰めをユーザーに通知する。
+- unknown の force 実行時は `runMatch(..., maxLength=1000)` を渡し、textarea の通常上限（例 10000 文字）より小さい上限まで input を切り詰めて実行する。`MatchResult.truncated` が true なら切り詰めをユーザーに通知する。
 
 この「vulnerable は実行不可」というゲート挙動自体が安全機構であり、テストで保証する（7 章）。
 
