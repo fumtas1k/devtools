@@ -110,4 +110,15 @@ describe('RegexRailroad', () => {
     const { container } = render(<RegexRailroad node={node} hotspot={[{ start: 5, end: 9 }]} />);
     expect(container.querySelector('.rr-box-hot')).toBeNull();
   });
+
+  // 回帰防止（PR #493 レビュー指摘）: tall inner（group/choice）でも量指定子ラベルが
+  // svg 高さ（=node.height）内に収まる（terminal の connectY=height/2 前提に依存しない）。
+  it('量指定子付きグループ（tall inner）でラベルがノード高内に収まる', () => {
+    const inner = measureGroup(measureTerminal('abc', undefined), '#1', undefined);
+    const node = measureRepetition(inner, { skip: false, loop: true, label: '+' }, undefined);
+    const { container } = render(<RegexRailroad node={node} />);
+    const label = container.querySelector('.rr-quant');
+    expect(label).toBeTruthy();
+    expect(Number(label!.getAttribute('y'))).toBeLessThanOrEqual(node.height);
+  });
 });

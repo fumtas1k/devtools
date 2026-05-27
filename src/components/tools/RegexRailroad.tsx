@@ -213,32 +213,38 @@ function renderNode(
         <line key="lr" x1={innerRight} y1={railY} x2={exitX} y2={railY} className="rr-rail" />
       );
       els.push(renderNode(inner, innerX, innerY, `${key}-r`, hotspot));
-      // ループ弧（下）: 出口→入口へ戻る
+      // 弧・ラベルは inner の実下端/上端基準で配置する。terminal の connectY===height/2 を
+      // 暗黙前提にすると group/choice 等の tall inner でラベルが svg 外にクリップされ、
+      // ループ弧が枠を貫通する（PR #493 レビュー指摘）。
+      const r = 6;
+      const loopY = innerY + inner.height + ARC_H / 2; // inner の下（bottom band）
+      const skipY = innerY - ARC_H / 2; // inner の上（top band）
+      // ループ弧（下）: ノード両端から inner の下を回って入口へ戻る（rounded U）
       if (node.loop) {
         els.push(
           <path
             key="loop"
-            d={`M ${innerRight} ${railY} C ${innerRight + REP_LEAD} ${railY + ARC_H}, ${innerX - REP_LEAD} ${railY + ARC_H}, ${innerX} ${railY}`}
-            className="rr-rail rr-arrow"
-          />
-        );
-      }
-      // スキップ弧（上）: 入口→出口をバイパス
-      if (node.skip) {
-        els.push(
-          <path
-            key="skip"
-            d={`M ${x} ${railY} C ${innerX} ${railY - ARC_H}, ${innerRight} ${railY - ARC_H}, ${exitX} ${railY}`}
+            d={`M ${exitX} ${railY} L ${exitX} ${loopY - r} Q ${exitX} ${loopY} ${exitX - r} ${loopY} L ${x + r} ${loopY} Q ${x} ${loopY} ${x} ${loopY - r} L ${x} ${railY}`}
             className="rr-rail"
           />
         );
       }
-      // 量指定子ラベル
+      // スキップ弧（上）: ノード両端から inner の上をバイパス（rounded）
+      if (node.skip) {
+        els.push(
+          <path
+            key="skip"
+            d={`M ${x} ${railY} L ${x} ${skipY + r} Q ${x} ${skipY} ${x + r} ${skipY} L ${exitX - r} ${skipY} Q ${exitX} ${skipY} ${exitX} ${skipY + r} L ${exitX} ${railY}`}
+            className="rr-rail"
+          />
+        );
+      }
+      // 量指定子ラベル（ノード下端・常に svg 内に収まる）
       els.push(
         <text
           key="ql"
           x={x + node.width / 2}
-          y={railY + inner.height / 2 + ARC_H - 2}
+          y={y + node.height - 2}
           textAnchor="middle"
           className="rr-quant"
         >

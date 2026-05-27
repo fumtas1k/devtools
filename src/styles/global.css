@@ -865,10 +865,6 @@
     font-size: 11px;
     font-family: var(--font-mono, monospace);
   }
-  /* ループ弧の矢印マーカーは SVG marker で実装しないため marker-end を明示的に none にする。 */
-  .rr-arrow {
-    marker-end: none;
-  }
 }
 
 /* 前庭障害ユーザー向けに transition / animation を抑止する。
