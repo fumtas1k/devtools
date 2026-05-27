@@ -4,12 +4,13 @@ import { InputField } from '@/components/ui/InputField';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { ResultTable, type TableColumn } from '@/components/ui/ResultTable';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
-import {
-  runMatch,
-  type MatchResult,
-  type RegexMatch,
-  type RedosStatus,
-} from '@/utils/regex-visualizer';
+// runMatch は match.ts から直接 import する（barrel 経由にしない）。barrel(index.ts) は
+// parse.ts/redos.ts も re-export しており、それらは CJS（regexp-tree / recheck）依存。
+// barrel から値を静的 import すると CJS が SSR グラフに載り dev SSR が `module is not defined`
+// で落ちる（PR1 で動的 import 回避した問題）。match.ts は native RegExp のみで CJS 非依存。
+import { runMatch, type MatchResult, type RegexMatch } from '@/utils/regex-visualizer/match';
+// RedosStatus は型のみ（import type は実行時に完全消去されるので redos.ts の CJS は載らない）。
+import type { RedosStatus } from '@/utils/regex-visualizer/redos';
 
 interface Props {
   pattern: string;
