@@ -865,6 +865,27 @@
     font-size: 11px;
     font-family: var(--font-mono, monospace);
   }
+
+  /* === マッチテスト: マッチ箇所ハイライト（PR3） === */
+  .match-highlight {
+    border-radius: var(--radius-sm);
+    padding: 0 1px;
+    cursor: pointer;
+  }
+  .match-highlight-a {
+    background: var(--color-blue-100);
+  }
+  .match-highlight-b {
+    background: var(--color-blue-300);
+  }
+  .match-highlight-active {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+  /* 空マッチ（幅ゼロ）の位置を示す細いマーカー */
+  .match-highlight-empty {
+    border-left: 2px solid var(--color-primary);
+  }
 }
 
 /* 前庭障害ユーザー向けに transition / animation を抑止する。
