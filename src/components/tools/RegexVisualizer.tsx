@@ -8,6 +8,7 @@ import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
 import type { RegexAstNode, RedosResult, RailNode } from '@/utils/regex-visualizer';
 import { RegexAstTree } from './RegexAstTree';
 import { RegexRailroad } from './RegexRailroad';
+import { RegexMatchTester } from './RegexMatchTester';
 
 // desc: ボタンの title / aria-label 用（詳細）。short: 画面下の凡例用（コンパクト）。
 const FLAGS: { value: string; desc: string; short: string }[] = [
@@ -37,6 +38,8 @@ export function RegexVisualizer() {
   const [flags, setFlags] = useState('');
   // 可視化タブ状態（デフォルトは構造ツリー）
   const [view, setView] = useState<'tree' | 'railroad'>('tree');
+  // Clear 時に RegexMatchTester を remount してテスト文字列等の内部 state をリセットするための nonce
+  const [clearNonce, setClearNonce] = useState(0);
 
   // regexp-tree / recheck は CJS かつ client 専用ライブラリ。静的 import すると Astro の
   // SSR module graph に載り、dev SSR で CJS が ESM 評価され `module is not defined` になる。
@@ -83,6 +86,7 @@ export function RegexVisualizer() {
   const handleClear = () => {
     setPattern('');
     setFlags('');
+    setClearNonce((n) => n + 1);
   };
 
   return (
@@ -167,6 +171,15 @@ export function RegexVisualizer() {
           <p className="caption text-subtle">正規表現を入力してください。</p>
         )}
       </section>
+
+      {/* マッチテスト（ReDoS の直下・独立セクション） */}
+      <RegexMatchTester
+        key={clearNonce}
+        pattern={pattern}
+        flags={flags}
+        redosStatus={redos?.status}
+        regexValid={!analysis.error && !!ast}
+      />
 
       {/* 可視化パネル：構造ツリー / 鉄道図 を ToggleGroup で切替 */}
       <section aria-label="可視化">
