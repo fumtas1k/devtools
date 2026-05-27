@@ -1,7 +1,15 @@
 // 鉄道図のレイアウト計算（pure / CJS 非依存 / SSR 安全 / 静的 import 可）。
 // pixel-perfect は狙わず、固定幅フォント前提の概算で寸法を出す。描画は RegexRailroad.tsx。
 
-export type RailKind = 'terminal' | 'sequence' | 'group' | 'fallback' | 'choice' | 'assertion';
+export type RailKind =
+  | 'terminal'
+  | 'sequence'
+  | 'group'
+  | 'fallback'
+  | 'choice'
+  | 'assertion'
+  | 'repetition'
+  | 'backreference';
 
 export interface RailNode {
   kind: RailKind;
@@ -19,6 +27,9 @@ export interface RailNode {
   children: RailNode[];
   /** pattern 基準の位置（hotspot 突き合わせ用・PR2c で使用） */
   loc?: { start: number; end: number };
+  /** repetition のときの弧の有無（skip=スキップ弧/上, loop=ループ弧/下） */
+  skip?: boolean;
+  loop?: boolean;
 }
 
 // レイアウト定数（RegexRailroad.tsx と共有するため必ずここから import すること）
@@ -32,6 +43,8 @@ export const GROUP_PAD_TOP = 22; // タイトル領域
 export const GROUP_PAD_BOTTOM = 10;
 export const V_GAP = 14; // choice の分岐間の縦間隔
 export const CHOICE_LEAD = 22; // choice の split/merge 用の左右リード長
+export const REP_LEAD = 18; // repetition の弧が左右へ膨らむリード
+export const ARC_H = 16; // skip/loop 弧の高さ
 
 type Loc = { start: number; end: number } | undefined;
 
@@ -80,4 +93,42 @@ export function measureChoice(branches: RailNode[], loc: Loc): RailNode {
 export function measureAssertion(label: string, loc: Loc): RailNode {
   const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
   return { kind: 'assertion', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
+}
+
+/**
+ * 量指定子（+ * ? {n,m}）。inner を本線に通し、skip=上のスキップ弧 / loop=下のループ弧を付ける。
+ * label は量指定子の表示（'+' '*?' '{2,5}' 等）。
+ */
+export function measureRepetition(
+  inner: RailNode,
+  opts: { skip: boolean; loop: boolean; label: string },
+  loc: Loc
+): RailNode {
+  const top = opts.skip ? ARC_H : 0;
+  const bottom = opts.loop ? ARC_H : 0;
+  return {
+    kind: 'repetition',
+    width: inner.width + REP_LEAD * 2,
+    height: inner.height + top + bottom,
+    connectY: top + inner.connectY,
+    label: opts.label,
+    skip: opts.skip,
+    loop: opts.loop,
+    children: [inner],
+    loc,
+  };
+}
+
+/** 後方参照（\1 / \k<name>）。ラベル付きノード。 */
+export function measureBackreference(label: string, loc: Loc): RailNode {
+  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  return {
+    kind: 'backreference',
+    width,
+    height: BOX_H,
+    connectY: BOX_H / 2,
+    label,
+    children: [],
+    loc,
+  };
 }
