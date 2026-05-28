@@ -66,4 +66,60 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await expect(tree.getByText('"name"')).toBeVisible();
     });
   });
+
+  test('クエリ抽出: ナビゲーションで値を取り出す（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await page.getByLabel('クエリ (JMESPath)').fill('location.lat');
+      await expect(page.getByRole('textbox', { name: '整形結果' })).toHaveValue('35.6586');
+    });
+  });
+
+  // 陽性対照（CSP）: フィルタ式（式評価を伴う）を実行しても CSP 違反が出ないこと。
+  // eval/Function を使うエンジンに差し替えると withProductionCsp の guard が違反を検知して fail する。
+  test('クエリ抽出: フィルタ式が production CSP 下で動く（eval 非使用の証明）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page
+        .getByLabel('入力')
+        .fill('{"items":[{"name":"A","price":5},{"name":"B","price":20}]}');
+      await page.getByLabel('クエリ (JMESPath)').fill('items[?price > `10`].name');
+      await expect(page.getByRole('textbox', { name: '整形結果' })).toHaveValue(/"B"/);
+      // withProductionCsp が fn 終了後に guard.assertNoViolations() を実行する。
+    });
+  });
+
+  test('クエリ抽出: 不正式はクエリ欄下にエラー表示（入力エラーと分離・CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByLabel('入力').fill('{"a":1}');
+      await page.getByLabel('クエリ (JMESPath)').fill('items[?(');
+      await expect(page.getByRole('alert')).toContainText('クエリ式が不正です');
+    });
+  });
+
+  test('クエリ抽出: クエリを空にすると全体表示に戻る（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      const query = page.getByLabel('クエリ (JMESPath)');
+      await query.fill('location.lat');
+      await expect(page.getByRole('textbox', { name: '整形結果' })).toHaveValue('35.6586');
+      await query.fill('');
+      await expect(page.getByRole('textbox', { name: '整形結果' })).toHaveValue(
+        /"name": "東京タワー"/
+      );
+    });
+  });
+
+  test('クエリ抽出: 入力 JSON が不正な間はクエリ欄で修正を案内（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByLabel('入力').fill('{ broken');
+      await page.getByLabel('クエリ (JMESPath)').fill('location.lat');
+      await expect(page.getByText('入力 JSON を修正するとクエリを実行できます')).toBeVisible();
+    });
+  });
 });

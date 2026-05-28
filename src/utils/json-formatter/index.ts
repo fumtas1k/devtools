@@ -2,11 +2,13 @@ export * from './errors';
 export * from './parse';
 export * from './format';
 export * from './tree';
+export * from './query';
 
 import { parseJson } from './parse';
 import { formatJson, minifyJson, type IndentStyle } from './format';
 import { buildTree, type TreeNode } from './tree';
 import { formatErrorLabel } from './errors';
+import { getNodeValue } from 'jsonc-parser';
 
 export interface ProcessOptions {
   mode: 'format' | 'minify';
@@ -16,6 +18,7 @@ export interface ProcessOptions {
 export interface ProcessResult {
   output: string;
   tree: TreeNode;
+  value: unknown;
 }
 
 /**
@@ -33,7 +36,7 @@ export function processJson(text: string, opts: ProcessOptions): ProcessResult {
       opts.mode === 'minify'
         ? minifyJson(text, result.root)
         : formatJson(text, result.root, opts.indent);
-    return { output, tree: buildTree(result.root, text) };
+    return { output, tree: buildTree(result.root, text), value: getNodeValue(result.root) };
   } catch (e) {
     // 整形・ツリー構築は再帰実装のため、極端に深いネストで RangeError
     // （Maximum call stack size exceeded）になる。生の英語メッセージを出さず
