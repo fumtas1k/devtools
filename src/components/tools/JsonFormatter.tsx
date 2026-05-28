@@ -184,8 +184,7 @@ export function JsonFormatter() {
         onChange={setQuery}
         placeholder="例: location.lat ／ items[?price > `1000`].name"
         error={queryError || undefined}
-        hint="空にすると全体を表示。JMESPath 構文（フィルタ・射影対応）。"
-        onSampleClick={() => setQuery('items[?price > `1000`].name')}
+        hint="空にすると全体を表示。JMESPath 構文（フィルタ・射影対応）。例: location.lat / items[?price > `1000`].name"
         mono
       />
 
