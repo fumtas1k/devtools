@@ -149,6 +149,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'せいきひょうげんびじゅあらいざ',
   },
+  {
+    slug: 'json-formatter',
+    name: 'JSON整形・ビューア',
+    description:
+      'JSONを整形・最小化し、折りたたみツリーで閲覧します。構文エラーは行・列付きで表示。大きな数値の精度も保持し、データはブラウザ外に送信しません',
+    category: 'convert',
+    yomi: 'じぇいそんせいけい',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる

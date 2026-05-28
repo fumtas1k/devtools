@@ -1,0 +1,40 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { JsonFormatter as JsonFormatterTool } from '@/components/tools/JsonFormatter';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'json-formatter')!;
+---
+
+<ToolLayout tool={tool}>
+  <JsonFormatterTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      JSONを読みやすく整形（インデント 2 / 4 / タブ）したり、空白を除去して最小化します。
+      構文エラーは <strong>行・列と日本語メッセージ</strong> で表示するため、どこが壊れているかすぐ分かります。
+      整形結果は「テキスト」と「折りたたみツリー」の2通りで確認でき、ツリーでは各値の パスや値をワンクリックでコピーできます。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">特長</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>
+        大きな整数（例:
+        <code class="rounded px-1 font-mono bg-subtle text-sm">1234567890123456789</code>）や
+        <code class="rounded px-1 font-mono bg-subtle text-sm">1.0</code> などの数値表記を欠落させずに保持します
+      </li>
+      <li>すべてブラウザ内で処理し、入力した JSON を外部に送信しません</li>
+      <li>
+        ツリー表示で深い階層のパス（例: <code class="rounded px-1 font-mono bg-subtle text-sm"
+          >$.location.lat</code
+        >）をコピーできます
+      </li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>APIレスポンスやログ中の圧縮された JSON を読みやすく整形したい</li>
+      <li>構文エラーの箇所（行・列）を素早く特定したい</li>
+      <li>機密を含む本番データを安全に（外部送信せず）整形・確認したい</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>

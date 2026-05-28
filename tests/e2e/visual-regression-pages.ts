@@ -34,6 +34,7 @@ export const PAGES = [
   '/tools/totp-hotp',
   '/tools/sql-formatter',
   '/tools/regex-visualizer',
+  '/tools/json-formatter',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy']);
