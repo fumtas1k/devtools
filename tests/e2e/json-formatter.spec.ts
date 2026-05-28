@@ -112,4 +112,14 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       );
     });
   });
+
+  test('クエリ抽出: 入力 JSON が不正な間はクエリ欄で修正を案内（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByLabel('入力').fill('{ broken');
+      await page.getByLabel('クエリ (JMESPath)').fill('location.lat');
+      await expect(page.getByText('入力 JSON を修正するとクエリを実行できます')).toBeVisible();
+    });
+  });
 });

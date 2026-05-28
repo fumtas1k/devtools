@@ -78,6 +78,13 @@ export function JsonFormatter() {
   const displayOutput = queryActive ? (queryEval?.output ?? '') : output;
   const displayTree = queryActive ? (queryEval?.tree ?? null) : meta.tree;
 
+  // 入力 JSON が不正な間（error あり）にクエリが入っていると評価できないため、
+  // 結果欄を無言でブランクにせずクエリ欄で修正を案内する。それ以外は構文ヒント。
+  const queryHint =
+    error && queryActive
+      ? '入力 JSON を修正するとクエリを実行できます。'
+      : '空にすると全体を表示。JMESPath 構文（フィルタ・射影対応）。例: location.lat / items[?price > `1000`].name';
+
   const hasResult = displayOutput !== '';
 
   const handleClear = () => {
@@ -184,7 +191,7 @@ export function JsonFormatter() {
         onChange={setQuery}
         placeholder="例: location.lat ／ items[?price > `1000`].name"
         error={queryError || undefined}
-        hint="空にすると全体を表示。JMESPath 構文（フィルタ・射影対応）。例: location.lat / items[?price > `1000`].name"
+        hint={queryHint}
         mono
       />
 
