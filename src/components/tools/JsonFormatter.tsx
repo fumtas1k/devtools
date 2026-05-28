@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { InputField } from '@/components/ui/InputField';
+import { OutputField } from '@/components/ui/OutputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -69,9 +70,21 @@ export function JsonFormatter() {
     setTreeKey((k) => k + 1);
   };
 
+  // 入力欄（InputField）と結果欄（OutputField / ツリー）はどちらも min-h-8 + mb-3 の
+  // 単一行ヘッダを持たせ、入力前後で上端がずれない（がたつかない）ようにする。
+  // 表示切替・全展開/全折りたたみはヘッダではなく上部のオプション行に置く。
+  const downloadButton = (
+    <DownloadButton
+      onClick={handleDownload}
+      label="ダウンロード"
+      variant="secondary"
+      disabled={isPending || !output}
+    />
+  );
+
   return (
     <div className="space-y-6">
-      {/* オプション行 */}
+      {/* オプション行（上端配置。表示切替・ツリー操作もここに集約してヘッダ高さを固定する） */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex items-center gap-2">
           <span className="caption text-muted">インデント</span>
@@ -99,6 +112,38 @@ export function JsonFormatter() {
           size="sm"
           layout="wrap"
         />
+        <div className="flex items-center gap-2">
+          <span className="caption text-muted">表示</span>
+          <ToggleGroup
+            options={[
+              { value: 'text', label: 'テキスト' },
+              { value: 'tree', label: 'ツリー' },
+            ]}
+            value={view}
+            onChange={setView}
+            ariaLabel="表示形式"
+            size="sm"
+            layout="wrap"
+          />
+        </div>
+        {view === 'tree' && hasResult && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="caption text-link-color btn-link-plain"
+              onClick={expandAll}
+            >
+              全展開
+            </button>
+            <button
+              type="button"
+              className="caption text-link-color btn-link-plain"
+              onClick={collapseAll}
+            >
+              全折りたたみ
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 入力・結果（PC 横並び・モバイル縦並び） */}
@@ -120,65 +165,26 @@ export function JsonFormatter() {
         </div>
 
         <div className="w-full md:flex-1 min-w-0">
-          <div className="w-full">
-            <div className="flex items-center justify-between mb-3 min-h-8 gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
+          {view === 'text' ? (
+            <OutputField
+              id="json-formatter-output"
+              label="結果"
+              value={output}
+              rows={18}
+              ariaLabel="整形結果"
+              rightSlot={downloadButton}
+            />
+          ) : (
+            <div className="w-full">
+              <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
                 <span className="body-emphasis text-default">結果</span>
-                <ToggleGroup
-                  options={[
-                    { value: 'text', label: 'テキスト' },
-                    { value: 'tree', label: 'ツリー' },
-                  ]}
-                  value={view}
-                  onChange={setView}
-                  ariaLabel="表示形式"
-                  size="sm"
-                  layout="wrap"
-                />
+                {hasResult && (
+                  <div className="flex items-center gap-2">
+                    {downloadButton}
+                    <CopyButton text={output} ariaLabel="整形結果をコピー" />
+                  </div>
+                )}
               </div>
-              {hasResult && (
-                <div className="flex items-center gap-2">
-                  {view === 'tree' && (
-                    <>
-                      <button
-                        type="button"
-                        className="caption text-link-color btn-link-plain"
-                        onClick={expandAll}
-                      >
-                        全展開
-                      </button>
-                      <button
-                        type="button"
-                        className="caption text-link-color btn-link-plain"
-                        onClick={collapseAll}
-                      >
-                        全折りたたみ
-                      </button>
-                    </>
-                  )}
-                  <DownloadButton
-                    onClick={handleDownload}
-                    label="ダウンロード"
-                    variant="secondary"
-                    disabled={isPending || !output}
-                  />
-                  <CopyButton text={output} ariaLabel="整形結果をコピー" />
-                </div>
-              )}
-            </div>
-
-            {view === 'text' ? (
-              <div role="status" aria-live="polite" aria-atomic="false">
-                <textarea
-                  id="json-formatter-output"
-                  readOnly
-                  value={output}
-                  rows={18}
-                  aria-label="整形結果"
-                  className="caption font-mono resize-y w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide"
-                />
-              </div>
-            ) : (
               <div className="json-tree-box rounded-lg border border-default bg-subtle px-3 py-2">
                 {meta.tree ? (
                   <JsonTreeView key={treeKey} node={meta.tree} defaultOpen={treeOpen} />
@@ -188,8 +194,8 @@ export function JsonFormatter() {
                   </p>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
