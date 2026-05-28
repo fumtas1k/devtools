@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
@@ -6,7 +6,8 @@ import { ClearButton } from '@/components/ui/ClearButton';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { JsonTreeView } from '@/components/tools/JsonTreeView';
-import { processJson, type IndentStyle, type TreeNode } from '@/utils/json-formatter';
+import { processJson, runQuery, type IndentStyle, type TreeNode } from '@/utils/json-formatter';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { downloadText } from '@/utils/download';
 import { useCodecWithMeta } from '@/hooks/useCodec';
 
@@ -15,10 +16,11 @@ type View = 'text' | 'tree';
 
 interface Meta {
   tree: TreeNode | null;
+  value: unknown;
 }
 
 // useCodecWithMeta は安定参照を推奨（空入力 / error 時にこの参照へリセットされる）。
-const INITIAL_META: Meta = { tree: null };
+const INITIAL_META: Meta = { tree: null, value: undefined };
 
 const SAMPLE = `{
   "name": "東京タワー",
@@ -43,22 +45,50 @@ export function JsonFormatter() {
   const { input, setInput, output, error, isPending, reset, meta } = useCodecWithMeta<Meta>(
     (text) => {
       const result = processJson(text, { mode, indent });
-      return { output: result.output, meta: { tree: result.tree } };
+      return { output: result.output, meta: { tree: result.tree, value: result.value } };
     },
     INITIAL_META,
     [mode, indent]
   );
 
-  const hasResult = output !== '';
+  const [query, setQuery] = useState('');
+  const debouncedQuery = useDebouncedValue(query, 200);
+  const queryActive = debouncedQuery.trim() !== '';
+
+  // クエリは codec の外で評価（入力の debounce とは独立）。
+  // 結果は JSON 文字列化して既存 processJson に通し、整形/ツリー経路を再利用する。
+  const queryEval = useMemo(() => {
+    if (!queryActive || meta.value === undefined) return null;
+    const qr = runQuery(meta.value, debouncedQuery);
+    if (!qr.ok) return { error: qr.error, output: '', tree: null as TreeNode | null };
+    try {
+      const resultText = JSON.stringify(qr.result) ?? 'null';
+      const processed = processJson(resultText, { mode, indent });
+      return { error: null as string | null, output: processed.output, tree: processed.tree };
+    } catch (e) {
+      return {
+        error: e instanceof Error ? e.message : 'クエリ結果の整形に失敗しました',
+        output: '',
+        tree: null as TreeNode | null,
+      };
+    }
+  }, [queryActive, meta.value, debouncedQuery, mode, indent]);
+
+  const queryError = queryEval?.error ?? null;
+  const displayOutput = queryActive ? (queryEval?.output ?? '') : output;
+  const displayTree = queryActive ? (queryEval?.tree ?? null) : meta.tree;
+
+  const hasResult = displayOutput !== '';
 
   const handleClear = () => {
     reset();
+    setQuery('');
     setView('text');
   };
 
   const handleDownload = () => {
-    if (!output) return;
-    downloadText(output, 'data.json', 'application/json');
+    if (!displayOutput) return;
+    downloadText(displayOutput, 'data.json', 'application/json');
   };
 
   const expandAll = () => {
@@ -78,7 +108,7 @@ export function JsonFormatter() {
       onClick={handleDownload}
       label="ダウンロード"
       variant="secondary"
-      disabled={isPending || !output}
+      disabled={isPending || !displayOutput}
     />
   );
 
@@ -146,6 +176,19 @@ export function JsonFormatter() {
         )}
       </div>
 
+      {/* クエリ欄（JMESPath） */}
+      <InputField
+        id="json-formatter-query"
+        label="クエリ (JMESPath)"
+        value={query}
+        onChange={setQuery}
+        placeholder="例: location.lat ／ items[?price > `1000`].name"
+        error={queryError || undefined}
+        hint="空にすると全体を表示。JMESPath 構文（フィルタ・射影対応）。"
+        onSampleClick={() => setQuery('items[?price > `1000`].name')}
+        mono
+      />
+
       {/* 入力・結果（PC 横並び・モバイル縦並び） */}
       <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="w-full md:flex-1 min-w-0">
@@ -169,7 +212,7 @@ export function JsonFormatter() {
             <OutputField
               id="json-formatter-output"
               label="結果"
-              value={output}
+              value={displayOutput}
               rows={18}
               ariaLabel="整形結果"
               rightSlot={downloadButton}
@@ -181,13 +224,13 @@ export function JsonFormatter() {
                 {hasResult && (
                   <div className="flex items-center gap-2">
                     {downloadButton}
-                    <CopyButton text={output} ariaLabel="整形結果をコピー" />
+                    <CopyButton text={displayOutput} ariaLabel="整形結果をコピー" />
                   </div>
                 )}
               </div>
               <div className="json-tree-box rounded-lg border border-default bg-subtle px-3 py-2">
-                {meta.tree ? (
-                  <JsonTreeView key={treeKey} node={meta.tree} defaultOpen={treeOpen} />
+                {displayTree ? (
+                  <JsonTreeView key={treeKey} node={displayTree} defaultOpen={treeOpen} />
                 ) : (
                   <p className="caption text-muted">
                     有効な JSON を入力するとツリーが表示されます。
