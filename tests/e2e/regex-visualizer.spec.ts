@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
+import { ATTACK_STRING_DISPLAY_MAX } from '../../src/utils/regex-visualizer/format';
 
 test.describe('正規表現ビジュアライザ', () => {
   test('フラグの凡例が表示される', async ({ browser }) => {
@@ -34,6 +35,27 @@ test.describe('正規表現ビジュアライザ', () => {
       await expect(
         page.getByRole('region', { name: 'ReDoS 判定' }).getByText(/脆弱：ReDoS/)
       ).toBeVisible();
+      await expect(page.getByRole('button', { name: '攻撃文字列をコピー' })).toBeVisible();
+    });
+  });
+
+  // issue #500 の回帰ガード（陽性対照）: 多項式時間で長大な pump 攻撃文字列を返すパターンで、
+  // 表示が ATTACK_STRING_DISPLAY_MAX 文字 + 省略記号へ truncate されること。
+  // truncate を外した旧実装では textContent が数千文字になりこの上限 assert が fail する。
+  test('長大な攻撃文字列は表示が truncate される（#500）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('(\\w+)@(\\w+)');
+      const region = page.getByRole('region', { name: 'ReDoS 判定' });
+      // 多項式時間で脆弱判定されるまで待つ
+      await expect(region.getByText(/脆弱：ReDoS/)).toBeVisible();
+      // 表示用 <code> の文字数が上限近傍（先頭 N 文字 + 省略記号「…」の 1 文字）に収まる
+      const code = region.locator('code');
+      await expect
+        .poll(async () => ((await code.textContent()) ?? '').length)
+        .toBeLessThanOrEqual(ATTACK_STRING_DISPLAY_MAX + 1);
+      // truncate 発生時の文字数キャプションが表示される
+      await expect(region.getByText(/全 \d+ 文字/)).toBeVisible();
+      // 全文取得用のコピーボタンは従来どおり存在する
       await expect(page.getByRole('button', { name: '攻撃文字列をコピー' })).toBeVisible();
     });
   });
