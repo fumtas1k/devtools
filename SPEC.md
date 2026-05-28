@@ -83,6 +83,7 @@
 | `sql-formatter`            | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0                                                 | SQL整形・パラメータ埋め込み |
 | `regexp-tree`              | 正規表現を位置情報付き AST へパース（CJS・純 JS・型同梱）                                                          | 正規表現ビジュアライザ      |
 | `recheck`                  | ReDoS 脆弱性検出。browser エントリ（`lib/browser.js`）を使用し `checkSync` で同期判定。型同梱・install script なし | 正規表現ビジュアライザ      |
+| `jsonc-parser`             | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア          |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -167,7 +168,8 @@ devtools/
     │       ├── encoding-converter.astro
     │       ├── config-converter.astro
     │       ├── sql-formatter.astro
-    │       └── regex-visualizer.astro
+    │       ├── regex-visualizer.astro
+    │       └── json-formatter.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -188,6 +190,7 @@ devtools/
         ├── config-converter/   # 設定ファイル相互変換（json.ts / yaml.ts / toml.ts / dotenv.ts / schema-validator.ts）
         ├── sql/                # SQL 整形・埋め込みユーティリティ（format.ts / embedParams.ts / index.ts）
         ├── regex-visualizer/   # 正規表現 AST 変換・ReDoS 判定・鉄道図レイアウト・マッチ実行（parse.ts / redos.ts / railroad-layout.ts / railroad.ts / match.ts / index.ts）
+        ├── json-formatter/     # JSON 整形・最小化・検証・ツリー構築（parse.ts / format.ts / tree.ts / errors.ts / index.ts、__tests__ colocated）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
         ├── qr-reader.ts
         ├── qr-ticket.ts
@@ -255,7 +258,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全19ツール）
+## 4. ツール一覧（全20ツール）
 
 ### カテゴリ A: 生成ツール（`generate`）
 
@@ -295,6 +298,7 @@ devtools/
 | 17  | 文字カウント                      | `char-count`         | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応                                                                     |
 | 18  | SQL整形・パラメータ埋め込み       | `sql-formatter`      | 汚れた SQL をインデント・キーワード大文字化で整形し、プレースホルダ（? / $n / :name）にJSONパラメータを埋め込む。MySQL / PostgreSQL / SQLite / SQL Server 方言対応    |
 | 19  | 正規表現ビジュアライザ＆ReDoS検出 | `regex-visualizer`   | 正規表現を AST ツリー・鉄道図で可視化し、ReDoS 脆弱性を検出。テスト文字列に対するマッチハイライトとキャプチャグループ表示に対応。JavaScript（ECMAScript）正規表現対応 |
+| 20  | JSON整形・ビューア                | `json-formatter`     | JSON を整形（2/4/タブ）・最小化し、折りたたみツリーで閲覧。構文エラーは行・列付きで表示。数値リテラル・大きな整数の精度を保持し、全処理をブラウザ内で完結             |
 
 ---
 
@@ -1185,7 +1189,8 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] TOTP/HOTP ジェネレータ（`totp-hotp`）
   - [x] SQL整形・パラメータ埋め込み（`sql-formatter`）
   - [x] 正規表現ビジュアライザ＆ReDoS検出（`regex-visualizer`）
-  - [ ] JSON整形、Diff、パスワード生成、ハッシュ等
+  - [x] JSON整形・ビューア（`json-formatter`）
+  - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
 - [ ] OGP画像自動生成
