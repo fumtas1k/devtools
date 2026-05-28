@@ -3617,3 +3617,32 @@ regex-visualizer は PR1（AST + ReDoS）/ PR2（鉄道図）で構造可視化�
 - ✅ `jsonc-parser` は v3.3.1 が 2024-06-24 公開で `.npmrc` の `min-release-age=7` を満たし、`save-exact=true` によりバージョン固定で導入。
 - ⚠️ v1 はツリー仮想化なし。大容量 JSON のツリー描画パフォーマンスは後続「機密データ保護」PR で Web Worker + 仮想スクロールとして対応予定。
 - 検証（不正 JSON 検知）は検知機構のため陽性対照を併設（`parse.test.ts` / `index.test.ts` / E2E）。
+
+---
+
+## [093] 2026-05-29 — json-formatter に JMESPath クエリ抽出を追加（PR2）
+
+**2026-05-29 | ステータス: 採用**
+
+### 背景
+
+json-formatter（PR #506, v1）の段階リリース第 2 段として、貼った JSON から値を抽出するクエリ機能を追加する（フィルタ条件を含む抽出が要件）。
+
+### 決断
+
+クエリエンジンに **`jmespath`**（v0.16.0、固定）を採用。本番 CSP は `script-src 'self' 'unsafe-inline'`（`unsafe-eval` 無し、`src/utils/csp.ts`）のため、フィルタ式を `eval`/`Function` で評価するエンジンは使えない。jmespath は独自パーサ/インタプリタで eval 非使用＝CSP 安全、約 81KB と軽量、フィルタ・射影・関数に対応する。
+
+- クエリ評価は `src/utils/json-formatter/query.ts` の `runQuery` でラップし、不正式は日本語メッセージに変換。
+- クエリは codec の外で `useMemo`＋軽い debounce で評価し、抽出結果は `JSON.stringify(result)` を既存 `processJson` に通して整形/ツリー経路を再利用する。
+- エラーは入力 JSON 不正（入力欄下）とクエリ式不正（クエリ欄下）の 2 系統に分離。
+
+### 却下した選択肢
+
+- **`jsonpath-plus`**: JSONPath 構文だが約 644KB と重く、フィルタ評価の safe モードが strict CSP 下で無違反かの実機検証リスクが残る。
+- **自作 JSONPath + フィルタ評価器**: 構文・依存ゼロ・CSP 安全を満たすが、式評価器の実装・テスト量が PR2 単体には過大。
+
+### 結果・トレードオフ
+
+- ✅ CSP 安全がエンジン選定時点で確定。E2E（production CSP）でフィルタ式実行時の **CSP 違反ゼロを陽性対照**として検証し、eval 非使用を実機で証明。
+- ⚠️ クエリ結果は計算値のため lossless（元ソース slice）対象外で、JSON 数値表現に準拠する（大きな整数は精度欠落しうる）。全体表示（クエリ空）は v1 の lossless 経路を維持。
+- 構文は JMESPath（JSONPath とは別）。プレースホルダ・ヒントで例示して吸収する。
