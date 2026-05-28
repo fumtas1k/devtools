@@ -27,4 +27,9 @@ describe('processJson', () => {
     const deep = '['.repeat(depth) + ']'.repeat(depth);
     expect(() => processJson(deep, { mode: 'format', indent: '2' })).toThrow(/ネストが深すぎ/);
   });
+
+  it('パース済み JS 値（value）も返す（クエリ入力用）', () => {
+    const r = processJson('{"a":[1,2]}', { mode: 'format', indent: '2' });
+    expect(r.value).toEqual({ a: [1, 2] });
+  });
 });
