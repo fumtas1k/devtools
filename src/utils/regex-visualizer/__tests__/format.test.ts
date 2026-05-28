@@ -24,4 +24,21 @@ describe('truncateAttackString', () => {
     expect(truncateAttackString('abcde', 5)).toEqual({ display: 'abcde', truncated: false });
     expect(truncateAttackString('abcdef', 5)).toEqual({ display: 'abcde', truncated: true });
   });
+
+  // 陽性対照: 切り出し位置が代理対を割る場合、孤立サロゲート（U+FFFD 表示）を残さない。
+  // '😀' は 2 コード単位（index 1=上位 / index 2=下位）。max=2 だと境界が😀の前半で割れる。
+  // 旧実装（無条件 slice(0, max)）に当てると display 末尾が上位サロゲート単独になり fail する。
+  it('陽性対照: 代理対を割る位置では孤立サロゲートを残さない', () => {
+    const r = truncateAttackString('a😀b', 2); // slice(0,2) は 'a' + 😀 の前半で割れる
+    expect(r.truncated).toBe(true);
+    expect(r.display).toBe('a'); // 割れる😀は丸ごと除外
+    // 末尾が孤立した上位サロゲートでないこと
+    const last = r.display.charCodeAt(r.display.length - 1);
+    expect(last >= 0xd800 && last <= 0xdbff).toBe(false);
+  });
+
+  it('代理対が境界内に収まる場合はそのまま含める', () => {
+    const r = truncateAttackString('😀b', 2); // '😀'(2) がちょうど max=2 に収まる
+    expect(r.display).toBe('😀');
+  });
 });
