@@ -1,5 +1,6 @@
 export { parseRegex, type RegexAstNode } from './parse';
 export { analyzeRedos, type RedosResult, type RedosStatus } from './redos';
+export { truncateAttackString, ATTACK_STRING_DISPLAY_MAX } from './format';
 export { buildRailroad } from './railroad';
 export type { RailNode } from './railroad-layout';
 // 注意: この barrel は parse.ts / redos.ts（CJS の regexp-tree / recheck 依存）も re-export する。

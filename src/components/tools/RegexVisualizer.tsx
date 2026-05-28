@@ -6,6 +6,9 @@ import { ClearButton } from '@/components/ui/ClearButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
 import type { RegexAstNode, RedosResult, RailNode } from '@/utils/regex-visualizer';
+// 純粋関数のみの module を直接 import（barrel 経由だと recheck/regexp-tree の CJS が
+// SSR graph に載るため。barrel の SSR 注意書き参照）。
+import { truncateAttackString, ATTACK_STRING_DISPLAY_MAX } from '@/utils/regex-visualizer/format';
 import { RegexAstTree } from './RegexAstTree';
 import { RegexRailroad } from './RegexRailroad';
 import { RegexMatchTester } from './RegexMatchTester';
@@ -79,6 +82,8 @@ export function RegexVisualizer() {
   const ast = analysis.result?.ast ?? null;
   const redos = analysis.result?.redos ?? null;
   const rail = analysis.result?.rail ?? null;
+  // 攻撃文字列は pump で数千文字になりうるため表示用に truncate（全文はコピーで取得）。
+  const attack = redos?.attackString ? truncateAttackString(redos.attackString) : null;
 
   const toggleFlag = (f: string) =>
     setFlags((prev) => (prev.includes(f) ? prev.replace(f, '') : prev + f));
@@ -154,12 +159,21 @@ export function RegexVisualizer() {
             <p className="text-warning body-emphasis">
               ⚠ 脆弱：ReDoS のリスクがあります（{redos.complexity}）。
             </p>
-            {redos.attackString && (
-              <div className="flex items-center gap-2">
-                <code className="bg-subtle rounded px-2 py-1 font-mono break-all">
-                  {redos.attackString}
-                </code>
-                <CopyButton text={redos.attackString} label="攻撃文字列をコピー" />
+            {redos.attackString && attack && (
+              <div className="space-y-1">
+                <div className="flex items-start gap-2">
+                  <code className="bg-subtle rounded px-2 py-1 font-mono break-all">
+                    {attack.display}
+                    {attack.truncated && '…'}
+                  </code>
+                  <CopyButton text={redos.attackString} label="攻撃文字列をコピー" />
+                </div>
+                {attack.truncated && (
+                  <p className="caption text-subtle">
+                    全 {redos.attackString.length} 文字（先頭 {ATTACK_STRING_DISPLAY_MAX}{' '}
+                    文字を表示・全文はコピーで取得）
+                  </p>
+                )}
               </div>
             )}
           </div>
