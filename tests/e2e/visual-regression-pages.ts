@@ -33,6 +33,7 @@ export const PAGES = [
   '/tools/char-count',
   '/tools/totp-hotp',
   '/tools/sql-formatter',
+  '/tools/regex-visualizer',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy']);

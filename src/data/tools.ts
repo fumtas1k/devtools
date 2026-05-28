@@ -141,6 +141,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'えすきゅーえるせいけい',
   },
+  {
+    slug: 'regex-visualizer',
+    name: '正規表現ビジュアライザ＆ReDoS検出',
+    description:
+      '正規表現を構造ツリー・鉄道図で可視化し、ReDoS 脆弱性を検出。テスト文字列に対するマッチ箇所のハイライトとキャプチャグループ表示も行います',
+    category: 'convert',
+    yomi: 'せいきひょうげんびじゅあらいざ',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる

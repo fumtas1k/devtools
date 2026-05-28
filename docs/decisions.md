@@ -3403,3 +3403,188 @@ descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「co
   - 識別子内の `$`（MySQL の `col$1` 等）は番号プレースホルダ（`$1`）と誤検出しうる。
   - 数値は `JSON.parse` 由来のため 2^53 を超える整数は精度が落ちる（`10000000000000000001` → `10000000000000000000`）。デバッグ用途では許容。
   - パラメータ未入力（空欄）はプレースホルダがある場合に「パラメータ（JSON）を入力してください」と案内する（「JSON 不正」の誤解防止）。
+
+---
+
+## [088] 2026-05-27 — 正規表現ビジュアライザ＆ReDoS検出ツールの追加
+
+**2026-05-27 | ステータス: 採用**
+
+### 背景
+
+入力バリデーション用の正規表現が ReDoS（壊滅的バックトラッキング）に対して安全かどうかを、ブラウザ完結でインストール不要に確認できるツールへの需要があった。あわせて複雑な正規表現の構造を AST ツリーで可視化する機能も提供する。
+
+### 決断
+
+#### `regexp-tree@0.1.27` の採用（AST パーサ）
+
+`regexp-tree` は ECMAScript 正規表現を位置情報付き AST へパースする純粋 JS ライブラリ（MIT）。手書きパーサの実装コストを避け、`loc` 情報（offset）を利用して ReDoS hotspot とのオフセット座標系を揃える（offset-1 補正: `regexp-tree` は `/pattern/` リテラル基準のため先頭 `/` 分を引く）。型定義を同梱しており型 shim 不要。
+
+#### `recheck@4.5.0` の採用（ReDoS 検出）
+
+- **ブラウザフィールド採用**: `recheck` は `browser` フィールドに `lib/browser.js` を持ち、Worker・`synckit`・ネイティブバイナリへの依存がない pure JS 実装を提供する。クライアントビルドは Vite が `browser` フィールドを自動選択。
+- **async `check` 不採用理由（CSP 制約）**: `recheck` の async `check()` は内部で `blob:` Worker を生成する。本番 CSP は `script-src 'self'` かつ `worker-src` 未設定のため `blob:` Worker が永久ブロックされ、Promise が resolve しない。**CSP を変更せず**、同期 API `checkSync(source, flags, { timeout: 1000 })` を採用した。`timeout` は必須（同期=メインスレッド占有のため病的入力での UI フリーズ防止）。
+- **`safe-regex` 不採用**: 静的解析のみで false negative が多く、攻撃文字列・計算量種別の情報も得られない。
+- **install script**: `recheck` のオプショナル依存（ネイティブバイナリ）は `.npmrc` の `ignore-scripts=true` で skip される。`lib/browser.js` のみ使用するため問題なし。`min-release-age=7` にも適合（v4.5.0 は適合済み）。
+
+#### バンドルコストの許容
+
+`recheck` の browser チャンク（2.7MB raw / 334KB brotli）は大きい。`client:load` 遅延ロードにより正規表現ビジュアライザページのみに影響し、トップページの初期ロードには無影響。ユーザー承認済み。
+
+#### CJS 依存（recheck / regexp-tree）を SSR graph から外す（動的 import）
+
+`recheck` / `regexp-tree` は CJS のみのパッケージ。これらを React コンポーネントで静的 import すると、`client:load` の SSR レンダリング時に Astro の SSR module graph へ載り、**dev SSR で CJS（`module.exports`）が ESM として評価され `module is not defined` → 500 / hydration mismatch（React #418）** になる（PR #490 の CI cold cache で発覚）。
+
+当初 `vite.resolve.alias` + `vite.ssr.noExternal` + カスタム environment プラグインで CJS→ESM 変換を試みたが、Astro 6 の dev SSR は `vite.ssr.noExternal` を honor せず解決できなかった。
+
+採用した解法: 解析ユーティリティ（`parseRegex` / `analyzeRedos`）は **client 専用**（解析は debounce effect 内でのみ実行）なので、`RegexVisualizer` から **動的 import**（`import('@/utils/regex-visualizer')`、型は `import type` で別途）して SSR graph から外す。これにより:
+
+- SSR は recheck/regexp-tree を一切ロードしない（dev SSR エラー解消、bundle も client 専用 chunk に分離）。
+- `astro.config.mjs` は SSR 向け alias / noExternal / プラグインを撤去でき、**dev client 用の `optimizeDeps.include: ['recheck', 'regexp-tree']` のみ**に簡素化（client build は Vite が recheck の `browser` フィールド = `lib/browser.js` を自動選択）。
+
+unit テストは `vitest.config.ts` の alias で `recheck` を `lib/browser.js` に解決し、陽性対照が出荷 client と同じ browser ビルドを守るようにしている。
+
+#### ReDoS 3 状態の誠実さ方針
+
+`checkSync` の返値は `safe` / `vulnerable` / `unknown` の 3 状態。`timeout` 超過時は `unknown`（判定不能）となる。**「不明」を「安全」と表示しない**設計とし、UI でも 3 状態を厳密に区別する。
+
+#### prod-parity E2E gate
+
+async `check` への将来的な回帰（`checkSync` → `check`）を CI で検知するため、E2E を `withProductionCsp` 下で実行する。`blob:` Worker を使う `check` に戻すと CSP 違反が発生し `assertNoViolations()` が fail する。`tests/e2e/regex-visualizer.spec.ts` の「脆弱な正規表現で危険判定…（CSP 下で checkSync 動作）」テストが prod-parity regression gate として機能する。
+
+### 却下した選択肢
+
+- **async `check` + CSP 変更**: `worker-src blob:` を追加すれば動作するが、CSP を弱化することになり不採用。
+- **`safe-regex`**: 静的解析のみで false negative が多く、攻撃文字列・計算量種別が得られない。
+- **手製 ReDoS 検出**: 正確な多項式/指数時間判定を実装する工数が過大。
+
+### 結果・トレードオフ
+
+- ✅ ブラウザ完結・CSP 変更不要で ReDoS 検出が動作する
+- ✅ 3 状態誠実表示で「不明を安全」と誤認しない
+- ✅ prod-parity E2E gate により async `check` への回帰を CI で自動検知
+- ⚠️ 334KB brotli の追加バンドル（ユーザー承認済み。遅延ロードで他ページ無影響）
+- ⚠️ `checkSync` はメインスレッドを占有する同期処理（timeout: 1000ms で上限設定）
+
+---
+
+## [089] 2026-05-27 — 正規表現鉄道図レンダラの採用（PR2a: 基盤＋連結/終端/グループ＋タブ）
+
+**2026-05-27 | ステータス: 採用**
+
+### 背景
+
+正規表現ビジュアライザに AST ツリー表示に加えて鉄道図（railroad diagram）を追加することで、正規表現の構造をより直感的に可視化できるようにする。
+
+### 決断
+
+#### 自前 React SVG を採用（railroad-diagrams / regexper 却下）
+
+サードパーティライブラリを評価した結果、**自前の React `<svg>` 要素で描画する**方式を採用した。
+
+- **`railroad-diagrams` 却下理由**: SVG 文字列を直接生成する API で、`dangerouslySetInnerHTML` なしに React tree に組み込めない。`dangerouslySetInnerHTML` は XSS リスクがあり本プロジェクトのポリシーに反する。また CJS パッケージで SSR 制約（[088]）にも抵触する。
+- **`regexper` 却下理由**: 独自パーサを持つ重厚なライブラリ。既に `regexp-tree` を採用済みであり、二重パーサを抱えるコストが過大。ライセンス（AGPL-3.0）も本プロジェクトの MIT 方針と整合しない。
+- **自前実装の優位性**: `RailNode` という純粋な値ツリーを組んで React で描画するアーキテクチャにより、XSS なし・SSR 安全・テスト容易性を全て満たせる。
+
+#### アーキテクチャ: pure layout 分離 + builder は動的 import 経由
+
+SSR 安全性を維持するために以下の 2 層に分離した:
+
+- **`railroad-layout.ts`（SSR 安全・静的 import 可）**: `RailNode` 型・レイアウト定数・`measure*` 関数のみ。CJS モジュールへの依存ゼロ。`RegexRailroad.tsx` から静的 import してよい。
+- **`railroad.ts`（client 専用）**: `regexp-tree`（CJS）を使って AST → `RailNode` を組む `buildRailroad`。既存の動的 import 経路（`RegexVisualizer` の `useEffect` 内 `import('@/utils/regex-visualizer')`）経由でのみ呼び出す。静的 import すると dev SSR で `module is not defined` になる（[088] 参照）。
+
+#### PR2a/2b/2c への分割方針
+
+実装を段階的に PR 分割する:
+
+- **PR2a（本 PR）**: 基盤（`railroad-layout.ts` / `railroad.ts`）＋終端（Char / CharacterClass）・連結（Alternative）・グループ（Group）の描画＋タブ切替 UI。未対応構文（Disjunction / Repetition / Assertion / Backreference）はフォールバック破線枠で継続描画。
+- **PR2b（完了）**: 選択肢（Disjunction）＋アサーション（Assertion）の本実装。Disjunction は左ネスト二分木を `flattenDisjunction` で平坦化し縦分岐（split/merge S字 bezier path）として描画。単純アンカー（`^` `$` `\b` `\B`）は pill（両端半円 rect）で表示。先読み/後読み（`(?=)` `(?!)` `(?<=)` `(?<!)` ）は `measureGroup` を再利用して内部式を内包するコンテナとして描画。CSS は `.rr-assertion`（`@layer components` 手書き class）を追加。
+- **PR2c（完了）**: 量指定子（Repetition）＋後方参照（Backreference）＋hotspot ハイライト（`loc` 情報を活用した ReDoS 危険箇所の強調）。量指定子は skip 弧（上/0 回バイパス）と loop 弧（下/繰り返し）を SVG path で描画。後方参照は破線枠（`.rr-backref`）で視覚的に区別。hotspot は「自身が重なり かつ どの子も重ならない最深ノード」に `.rr-box-hot`（警告色）を適用。鉄道図シリーズ（PR2a/2b/2c）完了。
+
+#### フォールバック戦略
+
+PR2a 未対応の構文ノードは `measureFallback` で破線枠として描画し、**エラーを出さず継続描画する**設計にした。実際の正規表現（`a+` など量指定子を含む）を入力しても鉄道図タブがクラッシュしない。
+
+### 却下した選択肢
+
+- **`railroad-diagrams`**: `dangerouslySetInnerHTML` が必要・CJS・XSS リスク。
+- **`regexper`**: AGPL-3.0・二重パーサ・重量。
+- **builder を静的 import**: dev SSR の `module is not defined` エラー再発（[088] の教訓に反する）。
+
+### 結果・トレードオフ
+
+- ✅ XSS なし（`dangerouslySetInnerHTML` 不使用、React 要素として描画）
+- ✅ SSR 安全（`railroad-layout.ts` は静的 import 可、`railroad.ts` は動的 import 経由）
+- ✅ 段階的 PR 分割により各 PR のレビュー負荷を低減
+- ✅ フォールバック枠で未対応構文でも継続描画
+- ✅ PR2b 完了: 選択肢（縦分岐 split/merge）・アサーション（pill / lookaround group）を本実装
+- ✅ PR2c 完了（鉄道図シリーズ完了）: 量指定子（skip/loop 弧）・後方参照（破線枠）・hotspot ハイライト（最深ノードに警告色 `.rr-box-hot`）を本実装
+
+---
+
+## [090] 2026-05-27 — SessionStart フックの依存インストールを lockfile ハッシュガードに変更
+
+**2026-05-27 | ステータス: 採用**
+
+### 背景
+
+`.claude/settings.json` の `SessionStart` フックは `if [ ! -d node_modules ]` を条件に `npm ci` を実行していた。Claude Code on the web はフック完了後にコンテナ状態（`node_modules` を含む）をスナップショット・キャッシュするため、初回スナップショット以降は `node_modules` が常に存在し、ガード条件が常に false になって `npm ci` が二度と再実行されない。結果、`develop` から依存が変わったブランチに切り替えても古い依存のまま作業してしまうギャップがあった。
+
+`session-start-hook` skill はこのキャッシュ特性を理由に `npm ci` より `npm install`（冪等・増分）を推奨しているが、`npm install` は lockfile を書き換え得る／semver 範囲で別バージョンを解決し得るため、**レビュー済み lockfile から外れた版を引くサプライチェーンリスク**がある。
+
+### 決断
+
+`npm ci`（lockfile を唯一の真実源とし、lock を書き換えない・不整合なら fail する）を維持したまま、ガード条件を `node_modules` の有無ではなく **`package-lock.json` のハッシュ**に変更した。
+
+```bash
+if [ -f package-lock.json ]; then
+  H=$({ sha256sum package-lock.json 2>/dev/null || shasum -a 256 package-lock.json; } | cut -d' ' -f1)
+  if [ ! -d node_modules ] || [ "$(cat node_modules/.lockhash 2>/dev/null)" != "$H" ]; then
+    npm ci && echo "$H" > node_modules/.lockhash
+  fi
+fi
+```
+
+`node_modules/.lockhash` に前回 install 時の lock ハッシュを記録し、現在の lock と一致する場合のみ `npm ci` を skip する。`npm ci` は `node_modules` を全消去してから再構築するため、スタンプは clean install 後に書き直され自然に同期する。
+
+ハッシュ取得は `sha256sum`（GNU coreutils、CI の Linux runner にある）を優先し、無い環境（macOS は既定で `sha256sum` を持たず `shasum` のみ）では `shasum -a 256` に fallback する。`2>/dev/null` で `command not found` の stderr ノイズも抑制する。これが無いと mac のローカル開発で `H` が空になり lock 変更検知が無言で no-op 化する（PR #495 レビュー指摘）。
+
+ロジックは `settings.json` インラインではなく **`.claude/scripts/session-install.sh`** に外出しし、フックは `bash .claude/scripts/session-install.sh` で呼ぶ（既存 `PreToolUse` の `test-edit-context.sh` と同方式）。これにより JSON の `\"` エスケープ脆さを解消し、コメントで意図を残せ、shell テストで回帰検知できる。ガードである以上 **陽性対照**が必須（test-gates skill）なため、`tests/meta/session-install.test.ts` で「lock 変更 → `npm ci` 再実行」を検知するテストを併設した。旧実装（`node_modules` 有無のみのガード）に当てると node_modules 常在で再実行されず fail する設計で、検知能力を証明している。
+
+### 却下した選択肢
+
+- **`npm install` へ変更**: 起動レイテンシは下がるが lockfile 改変・別バージョン解決のサプライチェーンリスクを負う。セキュリティ要件と相反するため却下。
+- **ガードを外して毎回 `npm ci`**: 最も確実だが起動のたびに clean install が走り遅い。キャッシュの利点を捨てるため却下（必要なら async モードで隠す案は残す）。
+
+### 結果・トレードオフ
+
+- ✅ `npm ci` のサプライチェーン特性（lock 厳密・lock 不変・不整合 fail）を維持
+- ✅ lock 不変時は skip しコンテナキャッシュの起動高速化を維持
+- ✅ `develop` から依存が変わったブランチに切り替えたとき `npm ci` が再実行され古い依存を解消
+- ⚠️ セッション途中の `git checkout` / `git worktree add` は `SessionStart` を発火させないため依然フック対象外（従来どおり手動 `npm ci` が必要。CLAUDE.md §6.2.1）
+- ✅ `sha256sum`→`shasum -a 256` fallback で mac ローカル開発でも lock 変更検知が機能
+- ✅ ロジックを `.claude/scripts/session-install.sh` に外出しし、`tests/meta/session-install.test.ts` の陽性対照で回帰検知可能にした（JSON エスケープ脆さも解消）
+
+## [091] 2026-05-28 — 正規表現ビジュアライザにマッチテスト機能を追加（PR3）
+
+### 背景
+
+regex-visualizer は PR1（AST + ReDoS）/ PR2（鉄道図）で構造可視化と脆弱性検出を提供してきた。設計時にスコープ外（将来 PR3 候補）としていたマッチテスト（regex101 風のテスト文字列マッチ・キャプチャグループ表示）を追加する。
+
+### 決断
+
+- **マッチ実行は native `RegExp`**: regexp-tree / recheck（CJS・動的 import 必須）と異なり、マッチは native `RegExp` で実行できる。CJS 非依存のため `match.ts` を import ゼロの純粋モジュールとして静的 import する（SSR 安全を維持）。
+- **ReDoS 判定でマッチ実行をゲート**: native `RegExp` はメインスレッド同期実行で中断不可。Worker は導入しない（PR1 が CSP の blob Worker 制約で checkSync を選んだ経緯と整合）。判定が **safe=自動ライブマッチ / unknown=明示ボタン + 入力長キャップ（先頭 1000 文字）/ vulnerable=ライブマッチ無効化** とする。入力長キャップは指数時間バックトラッキングを防げない（数十文字でも凍る）ため、vulnerable は実行手段を提供しないのが唯一確実な凍結回避という判断。
+- **g フラグ忠実**: g なし=最初の1件のみ、g あり=全マッチ。学習・可視化ツールとして実際の挙動をそのまま見せる（regex101 の「常に全マッチ」とは異なる）。g なし時は「g で全マッチ」のヒントを表示。
+- **相互強調はクリック選択**: ハイライト span / 表行クリックで選択し相互強調。ResultTable 内蔵のキーボード操作（Enter/Space）を活かし、hover のみのキーボード非対応を避けた。
+
+### 却下した選択肢
+
+- **Web Worker + タイムアウト**: vulnerable を確実に中断できるが、static worker ファイル + Astro バンドル + 本番 CSP 下 E2E 検証のコストが PR の本筋に対して過大。
+- **入力長キャップのみ（常時自動実行）**: 指数時間バックトラッキングは入力長に対し指数的で、長さ制限だけでは凍結を防げない。
+- **置換プレビュー（substitution）**: 今回スコープ外（YAGNI）。将来候補。
+
+### 結果・トレードオフ
+
+- vulnerable な正規表現は「短い安全な入力で試す」ことができない（マッチ実行自体を無効化）。誠実な凍結回避を優先したトレードオフ。攻撃文字列は ReDoS パネルに表示済みのためそちらを案内する。
+- グループ名解決は pattern を自前走査する `groupNames`（エスケープ・文字クラス・非キャプチャ・先読み/後読みを考慮）で行い、regexp-tree への依存を避けた。

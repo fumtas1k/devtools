@@ -18,6 +18,14 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    // 正規表現ビジュアライザの recheck / regexp-tree は CJS パッケージ。
+    // client 専用 chunk（RegexVisualizer が動的 import）でのみ使うため SSR graph には載らないが、
+    // dev の client では CJS（`module.exports`）が未変換だと `module is not defined` になるため
+    // optimizeDeps で CJS→ESM へ pre-bundle する。client build では Vite が recheck の `browser`
+    // フィールド（synckit/Worker 非依存の lib/browser.js）を自動選択する。
+    optimizeDeps: {
+      include: ['recheck', 'regexp-tree'],
+    },
     build: {
       // #246: Vite デフォルト 4KB 未満の asset を data: URI として CSS にインライン化
       // するが、`public/_headers` の CSP は `font-src` を明示しておらず default-src 'self'
