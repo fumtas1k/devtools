@@ -3564,3 +3564,27 @@ fi
 - ⚠️ セッション途中の `git checkout` / `git worktree add` は `SessionStart` を発火させないため依然フック対象外（従来どおり手動 `npm ci` が必要。CLAUDE.md §6.2.1）
 - ✅ `sha256sum`→`shasum -a 256` fallback で mac ローカル開発でも lock 変更検知が機能
 - ✅ ロジックを `.claude/scripts/session-install.sh` に外出しし、`tests/meta/session-install.test.ts` の陽性対照で回帰検知可能にした（JSON エスケープ脆さも解消）
+
+## [091] 2026-05-28 — 正規表現ビジュアライザにマッチテスト機能を追加（PR3）
+
+### 背景
+
+regex-visualizer は PR1（AST + ReDoS）/ PR2（鉄道図）で構造可視化と脆弱性検出を提供してきた。設計時にスコープ外（将来 PR3 候補）としていたマッチテスト（regex101 風のテスト文字列マッチ・キャプチャグループ表示）を追加する。
+
+### 決断
+
+- **マッチ実行は native `RegExp`**: regexp-tree / recheck（CJS・動的 import 必須）と異なり、マッチは native `RegExp` で実行できる。CJS 非依存のため `match.ts` を import ゼロの純粋モジュールとして静的 import する（SSR 安全を維持）。
+- **ReDoS 判定でマッチ実行をゲート**: native `RegExp` はメインスレッド同期実行で中断不可。Worker は導入しない（PR1 が CSP の blob Worker 制約で checkSync を選んだ経緯と整合）。判定が **safe=自動ライブマッチ / unknown=明示ボタン + 入力長キャップ（先頭 1000 文字）/ vulnerable=ライブマッチ無効化** とする。入力長キャップは指数時間バックトラッキングを防げない（数十文字でも凍る）ため、vulnerable は実行手段を提供しないのが唯一確実な凍結回避という判断。
+- **g フラグ忠実**: g なし=最初の1件のみ、g あり=全マッチ。学習・可視化ツールとして実際の挙動をそのまま見せる（regex101 の「常に全マッチ」とは異なる）。g なし時は「g で全マッチ」のヒントを表示。
+- **相互強調はクリック選択**: ハイライト span / 表行クリックで選択し相互強調。ResultTable 内蔵のキーボード操作（Enter/Space）を活かし、hover のみのキーボード非対応を避けた。
+
+### 却下した選択肢
+
+- **Web Worker + タイムアウト**: vulnerable を確実に中断できるが、static worker ファイル + Astro バンドル + 本番 CSP 下 E2E 検証のコストが PR の本筋に対して過大。
+- **入力長キャップのみ（常時自動実行）**: 指数時間バックトラッキングは入力長に対し指数的で、長さ制限だけでは凍結を防げない。
+- **置換プレビュー（substitution）**: 今回スコープ外（YAGNI）。将来候補。
+
+### 結果・トレードオフ
+
+- vulnerable な正規表現は「短い安全な入力で試す」ことができない（マッチ実行自体を無効化）。誠実な凍結回避を優先したトレードオフ。攻撃文字列は ReDoS パネルに表示済みのためそちらを案内する。
+- グループ名解決は pattern を自前走査する `groupNames`（エスケープ・文字クラス・非キャプチャ・先読み/後読みを考慮）で行い、regexp-tree への依存を避けた。

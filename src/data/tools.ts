@@ -145,7 +145,7 @@ const toolEntries: Tool[] = [
     slug: 'regex-visualizer',
     name: '正規表現ビジュアライザ＆ReDoS検出',
     description:
-      '正規表現を構造ツリーで可視化し、ReDoS（壊滅的バックトラッキング）脆弱性を検出します',
+      '正規表現を構造ツリー・鉄道図で可視化し、ReDoS 脆弱性を検出。テスト文字列に対するマッチ箇所のハイライトとキャプチャグループ表示も行います',
     category: 'convert',
     yomi: 'せいきひょうげんびじゅあらいざ',
   },

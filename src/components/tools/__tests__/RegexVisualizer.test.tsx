@@ -60,4 +60,20 @@ describe('RegexVisualizer', () => {
     const svg = await screen.findByRole('img', { name: '正規表現の鉄道図' }, FIND);
     expect(svg.querySelector('.rr-box-hot')).toBeTruthy();
   });
+
+  it('安全な正規表現でテスト文字列を入力するとマッチが集計される', async () => {
+    render(<RegexVisualizer />);
+    setPattern('\\d+');
+    // safe 判定の確定を待つ（動的 import + debounce 完了の目印）
+    await screen.findByText(/安全/, undefined, FIND);
+    fireEvent.change(screen.getByLabelText('テスト文字列'), { target: { value: 'a1 b2' } });
+    expect(await screen.findByText(/件マッチ/, undefined, FIND)).toBeTruthy();
+  });
+
+  it('脆弱な正規表現ではマッチ実行が無効化される', async () => {
+    render(<RegexVisualizer />);
+    setPattern('(a+)+$');
+    await screen.findByText(/脆弱/, undefined, FIND);
+    expect(await screen.findByText(/マッチ実行を無効化/, undefined, FIND)).toBeTruthy();
+  });
 });

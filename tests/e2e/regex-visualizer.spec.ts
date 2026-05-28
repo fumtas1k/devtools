@@ -82,4 +82,31 @@ test.describe('正規表現ビジュアライザ', () => {
       await expect(page.getByRole('img', { name: '正規表現の鉄道図' })).toBeVisible();
     });
   });
+
+  test('safe な正規表現でマッチが集計される（g なし=1件 + ヒント）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('\\d+');
+      await page.getByLabel('テスト文字列').fill('a1 b22 c333');
+      await expect(page.getByText(/1 件マッチ/)).toBeVisible();
+      await expect(page.getByText(/g フラグを付けると/)).toBeVisible();
+    });
+  });
+
+  test('g フラグありで全マッチが集計される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('\\d+');
+      await page.getByRole('button', { name: 'g: 全マッチ（グローバル）' }).click();
+      await page.getByLabel('テスト文字列').fill('a1 b22 c333');
+      await expect(page.getByText(/3 件マッチ/)).toBeVisible();
+    });
+  });
+
+  // ReDoS ゲートの陽性対照（本番 CSP 下・実 recheck 経路）: 既知の脆弱パターンで
+  // マッチ実行が無効化されることを確認する。ゲートが空回りすると入力欄が出てこの assert が落ちる。
+  test('vulnerable な正規表現ではマッチ実行が無効化される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('(a+)+$');
+      await expect(page.getByText(/マッチ実行を無効化/)).toBeVisible();
+    });
+  });
 });
