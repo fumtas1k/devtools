@@ -35,7 +35,9 @@ test.describe('正規表現ビジュアライザ', () => {
       await expect(
         page.getByRole('region', { name: 'ReDoS 判定' }).getByText(/脆弱：ReDoS/)
       ).toBeVisible();
-      await expect(page.getByRole('button', { name: '攻撃文字列をコピー' })).toBeVisible();
+      await expect(
+        page.getByRole('region', { name: 'ReDoS 判定' }).getByRole('button', { name: 'コピー' })
+      ).toBeVisible();
     });
   });
 
@@ -56,7 +58,7 @@ test.describe('正規表現ビジュアライザ', () => {
       // truncate 発生時の文字数キャプションが表示される
       await expect(region.getByText(/全 \d+ 文字/)).toBeVisible();
       // 全文取得用のコピーボタンは従来どおり存在する
-      await expect(page.getByRole('button', { name: '攻撃文字列をコピー' })).toBeVisible();
+      await expect(region.getByRole('button', { name: 'コピー' })).toBeVisible();
     });
   });
 
