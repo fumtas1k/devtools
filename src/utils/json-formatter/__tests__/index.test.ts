@@ -19,4 +19,12 @@ describe('processJson', () => {
   it('不正 JSON は行・列付きラベルで throw する', () => {
     expect(() => processJson('{"a":}', { mode: 'format', indent: '2' })).toThrow(/行.*列:/);
   });
+
+  // 極端に深いネストは再帰上限を超えて RangeError になるため、
+  // 生の英語メッセージではなく日本語の説明に変換して throw する。
+  it('ネストが深すぎる JSON は日本語メッセージで弾く', () => {
+    const depth = 100000;
+    const deep = '['.repeat(depth) + ']'.repeat(depth);
+    expect(() => processJson(deep, { mode: 'format', indent: '2' })).toThrow(/ネストが深すぎ/);
+  });
 });

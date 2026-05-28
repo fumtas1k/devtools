@@ -24,13 +24,23 @@ export interface ProcessResult {
  * （useCodecWithMeta が message を error 表示に反映する）。
  */
 export function processJson(text: string, opts: ProcessOptions): ProcessResult {
-  const result = parseJson(text);
-  if (!result.ok) {
-    throw new Error(formatErrorLabel(result.error));
+  try {
+    const result = parseJson(text);
+    if (!result.ok) {
+      throw new Error(formatErrorLabel(result.error));
+    }
+    const output =
+      opts.mode === 'minify'
+        ? minifyJson(text, result.root)
+        : formatJson(text, result.root, opts.indent);
+    return { output, tree: buildTree(result.root, text) };
+  } catch (e) {
+    // 整形・ツリー構築は再帰実装のため、極端に深いネストで RangeError
+    // （Maximum call stack size exceeded）になる。生の英語メッセージを出さず
+    // 日本語の説明に変換する。構文エラー等の通常 Error はそのまま再 throw。
+    if (e instanceof RangeError) {
+      throw new Error('JSON のネストが深すぎて処理できません（再帰の上限を超過しました）');
+    }
+    throw e;
   }
-  const output =
-    opts.mode === 'minify'
-      ? minifyJson(text, result.root)
-      : formatJson(text, result.root, opts.indent);
-  return { output, tree: buildTree(result.root, text) };
 }
