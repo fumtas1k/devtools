@@ -101,13 +101,14 @@ export function InputField({
         />
       )}
 
-      {error ? (
-        <ErrorMessage id={errorId} message={error} />
-      ) : hint ? (
+      {/* error と hint は併存表示する（error 時に hint=構文ヒント等が消えないように）。
+         error を上、hint をその下に薄く出す。aria-describedby は両 id を参照（#510）。 */}
+      {error && <ErrorMessage id={errorId} message={error} />}
+      {hint && (
         <p id={hintId} className="caption text-muted mt-1">
           {hint}
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -97,6 +97,10 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await page.getByLabel('入力').fill('{"a":1}');
       await page.getByLabel('クエリ (JMESPath)').fill('items[?(');
       await expect(page.getByRole('alert')).toContainText('クエリ式が不正です');
+      // #510: クエリ式エラー表示中も構文ヒントが消えず併存する
+      await expect(
+        page.getByText('JMESPath 構文（フィルタ・射影対応）', { exact: false })
+      ).toBeVisible();
     });
   });
 
