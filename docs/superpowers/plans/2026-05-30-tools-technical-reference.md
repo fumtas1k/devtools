@@ -25,7 +25,7 @@
 | コード・バーコード   | qr-code            | QRコード生成                      | （枠のみ）                                                                            |
 | コード・バーコード   | jan-code           | JANコード生成                     | （枠のみ）                                                                            |
 | コード・バーコード   | gs1-databar        | GS1 DataBar 生成                  | （枠のみ）                                                                            |
-| コード・バーコード   | qr-ticket          | QRチケット                        | `src/components/tools/QrTicket.tsx`, `src/utils/qr-ticket/`（**本文**）               |
+| コード・バーコード   | qr-ticket          | QRチケット                        | `src/components/tools/QrTicket.tsx`, `src/utils/qr-ticket.ts`（**本文**）             |
 | コード・バーコード   | qr-reader          | QRリーダー                        | （枠のみ）                                                                            |
 | エンコード・デコード | url-encode         | URLエンコード/デコード            | （枠のみ）                                                                            |
 | エンコード・デコード | base64             | Base64 エンコード/デコード        | （枠のみ）                                                                            |
@@ -156,7 +156,8 @@ git commit -m "docs: 正規表現ビジュアライザの技術解説を追加"
 
 - [ ] **Step 1: ソースを読む**
 
-- `src/utils/qr-ticket/index.ts`, `types.ts`, `constants.ts` — チケットのデータ構造・定数
+- `src/utils/qr-ticket.ts` — 署名・検証・QR 生成・鍵操作のコアロジック（ECDSA P-256）
+- `src/components/tools/qr-ticket/index.ts`, `types.ts`, `constants.ts` — UI 層の型・定数
 - `src/components/tools/qr-ticket/useTicketKeyPair.ts` — 鍵ペア生成・管理
 - `src/components/tools/qr-ticket/useTicketGeneration.ts` — 署名付与フロー
 - `src/components/tools/qr-ticket/useTicketVerification.ts` — 検証フロー

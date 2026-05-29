@@ -33,7 +33,7 @@ UUID v7 の生成は `uuid` パッケージの `v7()` に委譲する。生成�
 
 タイムスタンプ表示は、UUID 先頭 12 桁の 16 進（= 48 bit の `unix_ts_ms`）を数値に変換し、ISO 8601 形式に整形して得る。先頭にタイムスタンプを持つため、UUID v7 は文字列としてソートするとおおむね生成時刻順に並ぶ。
 
-#### 準拠仕様
+#### 準拠仕様・RFC
 
 - [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562)（UUID v7 を定義。RFC 4122 を更新）。
 - ランダムビットは `uuid` パッケージ経由で `crypto.getRandomValues`（CSPRNG）から供給される。
@@ -59,7 +59,7 @@ UUID v7 の生成は `uuid` パッケージの `v7()` に委譲する。生成�
 4. **検証**: 現在カウンタの前後 ±window（既定 ±1）を走査して一致を探す。比較は定数時間（`timingSafeEqual`）で行い、早期 return せず window 全件を走査する（タイミング攻撃耐性）。
 5. **`otpauth://` URI**: 認証アプリ取り込み用の URI を組み立てる（issuer に `:` を含むと throw、secret は defensive に URL エンコード）。
 
-#### 準拠仕様
+#### 準拠仕様・RFC
 
 - [RFC 4226](https://www.rfc-editor.org/rfc/rfc4226)（HOTP）/ [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238)（TOTP）。
 - Base32 は [RFC 4648](https://www.rfc-editor.org/rfc/rfc4648) §6。padding 除去後の長さ `mod 8` が 0/2/4/5/7 のみ有効（1/3/6 は末尾ビットが中途半端で無効）。
@@ -96,7 +96,7 @@ ECDSA 署名付きチケットを生成し、公開鍵でオフライン検証�
 3. **QR 文字列**: `payload|signature` の形式で連結し、`qrcode-generator`（誤り訂正レベル M）で SVG を生成する。
 4. **検証**: 読み取った文字列を `lastIndexOf('|')` で payload と signature に分離する（signature は Base64URL のため文字集合に `|` を含まず境界が一意に定まる）。同じ payload 文字列を再構築して `crypto.subtle.verify` で署名を照合し、さらに `timestamp` を現在時刻と比較して有効期限切れを判定する。公開鍵 JWK さえあればサーバー無しで検証できる。
 
-#### 準拠仕様
+#### 準拠仕様・RFC
 
 - **署名方式**: ECDSA（曲線 P-256 / secp256r1）+ SHA-256。
 - **鍵フォーマット**: JWK（JSON Web Key）。
@@ -166,7 +166,7 @@ ECDSA 署名付きチケットを生成し、公開鍵でオフライン検証�
 
 テスト文字列に対するマッチ機能は `runMatch` が担い、マッチ範囲のハイライトとキャプチャグループを表示する。
 
-#### 準拠仕様
+#### 準拠仕様・RFC
 
 - 解析対象は JavaScript の `RegExp` 構文（native `new RegExp` での検証を前提とするため、JS エンジンが受理するパターン・フラグに準拠）。
 - 特定の RFC に準拠する仕様ではない。
