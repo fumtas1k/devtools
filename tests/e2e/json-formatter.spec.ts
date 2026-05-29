@@ -169,6 +169,22 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
     });
   });
 
+  // PC（md:flex-row）でマスクモードの入力欄と結果欄の textarea 上端が揃うことの回帰ガード。
+  // 操作部が結果カラム内に積まれると上端がずれる（本 PR で修正した不具合）。
+  test('マスク: PC で入力と結果の textarea 上端が揃う（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await page.getByRole('button', { name: 'マスク' }).click();
+
+      const inputBox = await page.getByLabel('入力').boundingBox();
+      const resultBox = await page.getByRole('textbox', { name: 'マスク済み結果' }).boundingBox();
+      expect(inputBox).not.toBeNull();
+      expect(resultBox).not.toBeNull();
+      expect(Math.abs(inputBox!.y - resultBox!.y)).toBeLessThan(2);
+    });
+  });
+
   test('型生成: サンプルから TypeScript interface を生成する（CSP 違反なし）', async ({
     browser,
   }) => {
