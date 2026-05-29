@@ -125,6 +125,14 @@ function walk(value: unknown, options: MaskOptions, counts: Record<MaskCategory,
   if (typeof value === 'string') {
     return maskString(value, options, counts);
   }
+  // 数値で格納された機密（カード番号等）も検出する。文字列値と同じパターンを
+  // String(value) に適用し、置換が起きた場合のみプレースホルダー文字列にする
+  // （非機密の数値は型を変えずそのまま返す）。レビュー #513-🔴 の false-negative 対策。
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const asText = String(value);
+    const masked = maskString(asText, options, counts);
+    return masked === asText ? value : masked;
+  }
   return value;
 }
 

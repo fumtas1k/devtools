@@ -26,6 +26,12 @@ describe('maskValue 陰性対照（非機密は不変）', () => {
     expect(masked).toEqual({ x: '1234567812345678' });
     expect(counts.CREDIT_CARD).toBe(0);
   });
+
+  it('octet が 255 超の数列は IP として検出しない（isValidIpv4 ガード）', () => {
+    const { masked, counts } = maskValue({ x: '999.999.999.999' }, { enabled: ALL_ON });
+    expect(masked).toEqual({ x: '999.999.999.999' });
+    expect(counts.IP).toBe(0);
+  });
 });
 
 // 陽性対照（別 describe・最重要）: 原値が出力に一切残らない。
@@ -64,6 +70,18 @@ describe('maskValue 陽性対照（機密を検出してマスク）', () => {
     const { masked, counts } = maskValue({ card: '4111111111111111' }, { enabled: ALL_ON });
     expect(masked).toEqual({ card: '[REDACTED:CREDIT_CARD]' });
     expect(counts.CREDIT_CARD).toBe(1);
+  });
+
+  it('数値で格納されたカード番号もマスクする（平文残存を防ぐ・レビュー#513-🔴）', () => {
+    const { masked, counts } = maskValue({ card: 4111111111111111 }, { enabled: ALL_ON });
+    expect(masked).toEqual({ card: '[REDACTED:CREDIT_CARD]' });
+    expect(JSON.stringify(masked)).not.toContain('4111111111111111');
+    expect(counts.CREDIT_CARD).toBe(1);
+  });
+
+  it('機密でない数値は数値のまま保持する（型を変えない）', () => {
+    const { masked } = maskValue({ year: 2024, count: 12345 }, { enabled: ALL_ON });
+    expect(masked).toEqual({ year: 2024, count: 12345 });
   });
 
   it('文字列の部分一致も置換し前後を保持する', () => {
