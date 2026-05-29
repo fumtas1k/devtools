@@ -14,12 +14,24 @@ interface Props {
   defaultOpen: boolean;
   /** ラベル右に並べる要素（ダウンロードボタン）。 */
   rightSlot: ReactNode;
+  /** 大入力ガード発動中（ツリーを自動構築せず案内を出す）。 */
+  tooLarge?: boolean;
+  /** 「ツリーを表示」押下時（ガードを解除して構築させる）。 */
+  onForceRender?: () => void;
 }
 
 /**
  * ツリーモードの結果パネル。ヘッダ（ラベル＋DL＋コピー）＋折りたたみツリーを描画する。
  */
-export function JsonTreeResult({ tree, output, treeKey, defaultOpen, rightSlot }: Props) {
+export function JsonTreeResult({
+  tree,
+  output,
+  treeKey,
+  defaultOpen,
+  rightSlot,
+  tooLarge,
+  onForceRender,
+}: Props) {
   const hasResult = output !== '';
   return (
     <div className="w-full">
@@ -33,7 +45,20 @@ export function JsonTreeResult({ tree, output, treeKey, defaultOpen, rightSlot }
         )}
       </div>
       <div className="json-tree-box rounded-lg border border-default bg-subtle px-3 py-2">
-        {tree ? (
+        {tooLarge ? (
+          <div className="space-y-2">
+            <p className="caption text-muted">
+              JSON が大きいため、ツリー描画を保留しています（重い処理を避けるため）。
+            </p>
+            <button
+              type="button"
+              className="caption text-link-color btn-link-plain"
+              onClick={onForceRender}
+            >
+              ツリーを表示
+            </button>
+          </div>
+        ) : tree ? (
           <JsonTreeView key={treeKey} node={tree} defaultOpen={defaultOpen} />
         ) : (
           <p className="caption text-muted">有効な JSON を入力するとツリーが表示されます。</p>

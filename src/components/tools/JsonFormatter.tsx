@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
@@ -23,12 +23,12 @@ type Mode = 'format' | 'minify';
 type View = 'text' | 'tree' | 'mask' | 'type';
 
 interface Meta {
-  tree: TreeNode | null;
+  makeTree: (() => TreeNode) | null;
   value: unknown;
 }
 
 // useCodecWithMeta は安定参照を推奨（空入力 / error 時にこの参照へリセットされる）。
-const INITIAL_META: Meta = { tree: null, value: undefined };
+const INITIAL_META: Meta = { makeTree: null, value: undefined };
 
 const SAMPLE = `{
   "name": "東京タワー",
@@ -40,6 +40,9 @@ const SAMPLE = `{
   "contact": { "email": "info@tokyo-tower.jp", "tel": "03-3433-5111" },
   "renovated": null
 }`;
+
+// 整形済みテキストがこの長さ（文字数）を超えたら、ツリーの自動構築を保留する。
+const TREE_GUARD_THRESHOLD = 500_000;
 
 const ALL_CATEGORIES_ON: Record<MaskCategory, boolean> = {
   SECRET: true,
@@ -63,7 +66,7 @@ export function JsonFormatter() {
   const { input, setInput, output, error, isPending, reset, meta } = useCodecWithMeta<Meta>(
     (text) => {
       const result = processJson(text, { mode, indent });
-      return { output: result.output, meta: { tree: result.tree, value: result.value } };
+      return { output: result.output, meta: { makeTree: result.makeTree, value: result.value } };
     },
     INITIAL_META,
     [mode, indent]
@@ -82,7 +85,7 @@ export function JsonFormatter() {
       return {
         error: qr.error,
         output: '',
-        tree: null as TreeNode | null,
+        makeTree: null as (() => TreeNode) | null,
         resultValue: undefined as unknown,
       };
     try {
@@ -91,14 +94,14 @@ export function JsonFormatter() {
       return {
         error: null as string | null,
         output: processed.output,
-        tree: processed.tree,
+        makeTree: processed.makeTree as (() => TreeNode) | null,
         resultValue: qr.result as unknown,
       };
     } catch (e) {
       return {
         error: e instanceof Error ? e.message : 'クエリ結果の整形に失敗しました',
         output: '',
-        tree: null as TreeNode | null,
+        makeTree: null as (() => TreeNode) | null,
         resultValue: undefined as unknown,
       };
     }
@@ -106,7 +109,25 @@ export function JsonFormatter() {
 
   const queryError = queryEval?.error ?? null;
   const displayOutput = queryActive ? (queryEval?.output ?? '') : output;
-  const displayTree = queryActive ? (queryEval?.tree ?? null) : meta.tree;
+
+  const displayMakeTree = queryActive ? (queryEval?.makeTree ?? null) : meta.makeTree;
+
+  // 大入力ガード: 整形済みテキストが閾値超のときは自動構築せず保留する。
+  const [treeForced, setTreeForced] = useState(false);
+  useEffect(() => {
+    setTreeForced(false); // 入力が変わったら force を持ち越さない
+  }, [displayOutput]);
+  const treeTooLarge = displayOutput.length > TREE_GUARD_THRESHOLD && !treeForced;
+
+  // ツリーは view==='tree' のときだけ構築（遅延）。深いネスト等は null フォールバック。
+  const displayTree = useMemo<TreeNode | null>(() => {
+    if (view !== 'tree' || treeTooLarge || !displayMakeTree) return null;
+    try {
+      return displayMakeTree();
+    } catch {
+      return null;
+    }
+  }, [view, treeTooLarge, displayMakeTree]);
 
   // 入力 JSON が不正な間（error あり）にクエリが入っていると評価できないため、
   // 結果欄を無言でブランクにせずクエリ欄で修正を案内する。それ以外は構文ヒント。
@@ -328,6 +349,8 @@ export function JsonFormatter() {
               treeKey={treeKey}
               defaultOpen={treeOpen}
               rightSlot={downloadButton}
+              tooLarge={treeTooLarge}
+              onForceRender={() => setTreeForced(true)}
             />
           )}
         </div>
