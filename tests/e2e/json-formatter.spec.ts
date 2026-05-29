@@ -184,7 +184,9 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
     await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
       await page.getByRole('button', { name: 'サンプルを入力' }).click();
       await page.getByRole('button', { name: '型', exact: true }).click();
-      await expect(page.getByRole('textbox', { name: '生成された型' })).toHaveValue(/interface Root/);
+      await expect(page.getByRole('textbox', { name: '生成された型' })).toHaveValue(
+        /interface Root/
+      );
 
       // 型モードの DL は types.ts（JSON/マスクモードの data.json と区別）
       const downloadPromise = page.waitForEvent('download');
