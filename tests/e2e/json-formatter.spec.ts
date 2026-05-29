@@ -265,4 +265,41 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await context.close();
     }
   });
+
+  test('ツリー: テキスト→ツリー切替で遅延構築されたツリーが表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      // テキスト表示の時点ではツリー group は構築されていない（遅延）
+      await expect(page.getByRole('group', { name: 'JSON ツリー' })).toHaveCount(0);
+      await page.getByRole('button', { name: 'ツリー' }).click();
+      const tree = page.getByRole('group', { name: 'JSON ツリー' });
+      await expect(tree).toBeVisible();
+      await expect(tree.getByText('"name"')).toBeVisible();
+    });
+  });
+
+  test('ツリー: 大入力はツリーを保留し、明示ボタンで表示する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      // 整形済み長 > 500KB になる大きな（しかし構造は単純な）JSON
+      const big = '{"x":"' + 'a'.repeat(520000) + '"}';
+      await page.getByLabel('入力').fill(big);
+      await page.getByRole('button', { name: 'ツリー' }).click();
+
+      // 自動構築は保留され、案内＋ボタンが出る
+      await expect(page.getByText('ツリー描画を保留しています', { exact: false })).toBeVisible();
+      await expect(page.getByRole('group', { name: 'JSON ツリー' })).toHaveCount(0);
+      // 保留中は未構築のため全展開/全折りたたみは出さない（レビュー#521-1）
+      await expect(page.getByRole('button', { name: '全展開' })).toHaveCount(0);
+
+      // 「ツリーを表示」で構築される
+      await page.getByRole('button', { name: 'ツリーを表示' }).click();
+      const tree = page.getByRole('group', { name: 'JSON ツリー' });
+      await expect(tree).toBeVisible();
+      await expect(tree.getByText('"x"')).toBeVisible();
+    });
+  });
 });

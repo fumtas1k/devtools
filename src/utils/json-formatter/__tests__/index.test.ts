@@ -2,11 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { processJson } from '../index';
 
 describe('processJson', () => {
-  it('整形モードで出力とツリーを返す', () => {
+  it('整形モードで出力と makeTree（遅延ツリー）を返す', () => {
     const r = processJson('{"a":1}', { mode: 'format', indent: '2' });
     expect(r.output).toBe('{\n  "a": 1\n}');
-    expect(r.tree.type).toBe('object');
-    expect(r.tree.children?.[0].key).toBe('a');
+    const tree = r.makeTree();
+    expect(tree.type).toBe('object');
+    expect(tree.children?.[0].key).toBe('a');
   });
 
   it('最小化モードで空白を除去する', () => {
