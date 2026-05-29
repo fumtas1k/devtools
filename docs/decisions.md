@@ -3678,3 +3678,30 @@ json-formatter 段階リリース第 3 段。ブラウザ内完結を活かし�
   - **値パターンはキー名ではなく値のみ対象**。`{"taro@example.com": "online"}` のようにキー自体が PII の場合は残る（キー名規則は機密キーの「値」を隠す用途）。
   - **IP は IPv4 のみ**。IPv6（`2001:db8::1` 等）は未対応。
   - 検出種別の拡張・カスタム正規表現・大容量対応（issue #512）は後続課題。
+
+---
+
+## [095] 2026-05-29 — json-formatter に TypeScript 型生成を追加（PR4）
+
+**2026-05-29 | ステータス: 採用**
+
+### 背景
+
+json-formatter 段階リリースの最終段（クエリ・マスク・型生成の 3 軸の最後）。実 API レスポンスを貼って TypeScript 型を起こす機能を、ブラウザ内完結で提供する。
+
+### 決断
+
+- **エンジンは自作エミッター**（`src/utils/json-formatter/type-gen.ts`、依存ゼロ・CSP 影響なし・小バンドル）。`inferType` で全要素マージ推論（欠けキー→optional、型違い→union、空配列→`unknown[]`）、`generateTypeScript` でネスト object を別 interface に切り出して命名（PascalCase・衝突サフィックス・配列要素 +Item）。
+- **スコープは TypeScript のみ**。Go struct / Zod は推論コアを再利用して後続で追加可能。
+- 基準値はクエリ有効なら抽出結果、無ければ入力全体（mask と共有）。マスクは適用せず実構造から型を起こす。
+
+### 却下した選択肢
+
+- **`quicktype-core`**: 多言語対応だが unpacked 2.3 MB と重く、TS-only の v1 にはオーバーキル。
+- **`json-to-ts`**: TS 専用だが 2017 年製で `es7-shim` 等 3 依存を持ち込み、将来 Zod に使い回せない。
+
+### 結果・トレードオフ
+
+- ✅ 依存ゼロ・CSP 安全・小バンドル。推論コアと emitter を分離し将来の Go/Zod 追加に再利用可能。
+- ⚠️ 推論は構造ベースで、リテラル型・enum・日付等の意味推論は行わない。
+- `JsonFormatter.tsx` が 4 モード（text/tree/mask/type）＋クエリで肥大化。モード切り出し refactor は別 issue に分離。
