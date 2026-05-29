@@ -276,16 +276,7 @@ export function JsonFormatter() {
         <div className="w-full md:flex-1 min-w-0">
           {view === 'mask' ? (
             <div className="w-full">
-              <div className="flex items-center justify-between mb-3 min-h-8 gap-2 flex-wrap">
-                <span className="body-emphasis text-default">結果（マスク済み）</span>
-                {hasResult && (
-                  <div className="flex items-center gap-2">
-                    {downloadButton}
-                    <CopyButton text={effectiveOutput} ariaLabel="マスク済み結果をコピー" />
-                  </div>
-                )}
-              </div>
-
+              {/* マスク対象の種別トグル */}
               <fieldset className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
                 <legend className="caption text-muted">マスク対象</legend>
                 {MASK_CATEGORIES.map((cat) => (
@@ -301,6 +292,7 @@ export function JsonFormatter() {
                 ))}
               </fieldset>
 
+              {/* 検出内訳バッジ */}
               {maskEval && (
                 <p className="caption text-muted mb-2" role="status" aria-live="polite">
                   {MASK_CATEGORIES.filter((c) => maskEval.counts[c] > 0).length === 0
@@ -312,13 +304,14 @@ export function JsonFormatter() {
                 </p>
               )}
 
-              <textarea
+              {/* 出力は共通 OutputField を再利用（aria-live ラップ・コピー内蔵）。CLAUDE.md §5 */}
+              <OutputField
                 id="json-formatter-mask-output"
-                readOnly
+                label="結果（マスク済み）"
                 value={effectiveOutput}
                 rows={16}
-                aria-label="マスク済み結果"
-                className="caption font-mono resize-y w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide"
+                ariaLabel="マスク済み結果"
+                rightSlot={downloadButton}
               />
             </div>
           ) : view === 'text' ? (
