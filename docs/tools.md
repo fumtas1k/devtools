@@ -315,7 +315,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 #### 仕組み・アルゴリズム
 
-YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間表現（JS の値）にパースし、目的フォーマットへ直列化する（`parseFrom` → `stringifyTo`）。ライブラリは YAML = `yaml`、TOML = `smol-toml`、JSON = `jsonc-parser`。
+YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間表現（JS の値）にパースし、目的フォーマットへ直列化する（`parseFrom` → `stringifyTo`）。ライブラリは YAML = `yaml`、TOML = `smol-toml`、JSON = ネイティブ `JSON.parse` / `JSON.stringify`。
 
 - **同一フォーマットの整形**: YAML は `parseDocument` ベースの整形でコメントを保持する。
 - **フォーマット検出**: 入力テキストからヒューリスティックに判定する（`[section]` → TOML、`{`/`[` → JSON、`---` や `key:` → YAML、`KEY=VALUE` → dotenv）。
