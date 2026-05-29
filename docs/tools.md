@@ -206,15 +206,57 @@ ECDSA 署名付きチケットを生成し、公開鍵でオフライン検証�
 
 ### URLエンコード/デコード
 
-（後続 PR で記述）
+#### 仕組み・アルゴリズム
+
+JavaScript 標準の `encodeURIComponent` / `decodeURIComponent` でテキストとパーセントエンコード形式を相互変換する。デコードは不正なエスケープシーケンスで例外になるため、デコードモードでは事前に `decodeURIComponent` を試行してバリデーション（不正なら「不正なURLエンコード文字列です」）する。
+
+#### 準拠仕様・RFC
+
+- パーセントエンコーディング（RFC 3986）。`encodeURIComponent` は英数字と `- _ . ! ~ * ' ( )` 以外をエスケープする（JavaScript の仕様に準拠）。
+
+#### 制限・エッジケース
+
+- 不正な `%` シーケンス（例: `%ZZ`、孤立した `%`）はデコードに失敗する。
+- 文字列の相互変換のみで、URL 全体の構造（スキーム・クエリ等）の解析はしない。
 
 ### Base64 エンコード/デコード
 
-（後続 PR で記述）
+#### 仕組み・アルゴリズム
+
+ブラウザ組み込みの `btoa` / `atob` を使う。これらはバイナリ文字列しか扱えないため、UTF-8 のマルチバイト文字を正しく往復させるよう `TextEncoder` / `TextDecoder` を挟む。
+
+- **エンコード**: テキスト → `TextEncoder`（UTF-8 バイト列）→ バイナリ文字列 → `btoa`。URL-safe 指定時は `+`→`-`、`/`→`_` に置換し末尾パディング `=` を除去する。
+- **デコード**: URL-safe 入力は標準 Base64 に正規化（`-`→`+`、`_`→`/`、パディング補完）してから `atob` → `Uint8Array` → `TextDecoder('utf-8', { fatal: true })`。`fatal` により UTF-8 として不正なバイト列を検出する。
+
+#### 準拠仕様・RFC
+
+- Base64 / base64url（RFC 4648 §4・§5）。
+
+#### 制限・エッジケース
+
+- Base64 として不正な文字列は「有効なBase64文字列ではありません」、デコード結果が UTF-8 テキストにならない場合は「テキストとして表示できないデータです」とエラーになる（テキスト変換が前提でバイナリファイルは扱わない）。
 
 ### JWTデコーダー
 
-（後続 PR で記述）
+#### 仕組み・アルゴリズム
+
+JWT を `.` で 3 分割し、Header・Payload を base64url デコードして JSON パースする（`parseJwt`）。Payload に `exp`（数値）があれば現在時刻と比較し、有効 / 期限切れ / exp なし を判定し、有効な場合は残り時間を表示する。
+
+署名検証は任意で、Web Crypto API（`crypto.subtle.verify`）で行う。署名入力は `rawHeader.rawPayload`。対応アルゴリズム:
+
+- **HS256 / HS384 / HS512**: HMAC。共有シークレット文字列を鍵としてインポート。
+- **RS256 / RS384 / RS512**: RSASSA-PKCS1-v1_5。公開鍵 PEM（SPKI）を使用。
+- **ES256 / ES384 / ES512**: ECDSA（P-256 / P-384 / P-521）。公開鍵 PEM（SPKI）を使用。
+
+#### 準拠仕様・RFC
+
+- JWT（[RFC 7519](https://www.rfc-editor.org/rfc/rfc7519)）/ JWS（[RFC 7515](https://www.rfc-editor.org/rfc/rfc7515)）/ JWA（[RFC 7518](https://www.rfc-editor.org/rfc/rfc7518)、`alg` の定義）。
+
+#### 制限・エッジケース
+
+- 上記マップにないアルゴリズム（`none` / EdDSA / PS\* 等）は「unsupported」となり検証できない。
+- デコード（Header/Payload の表示）は署名検証なしでも行える。**改竄の検出には署名検証が必要**で、検証せずに Payload を信用してはならない。
+- RS\* / ES\* の検証には対応する公開鍵 PEM（`-----BEGIN PUBLIC KEY-----`）が必要。
 
 ## 変換・解析
 
