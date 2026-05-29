@@ -93,7 +93,26 @@
 
 ### 正規表現ビジュアライザ＆ReDoS検出
 
-（後続 PR で記述）
+#### 仕組み・アルゴリズム
+
+入力された正規表現パターンとフラグを 3 系統で処理する。
+
+1. **構文解析（AST）**: まず native `new RegExp(pattern, flags)` で構文・フラグを検証し（不正なら `SyntaxError`）、[regexp-tree](https://github.com/DmitrySoshnikov/regexp-tree) で位置情報付き AST を得る。各ノードを日本語ラベル（「キャプチャグループ #1」「1 回以上の繰り返し」「選択肢 (\|)」等）に変換して構造ツリーとして描画する。regexp-tree は `/pattern/` リテラル基準で位置を返すため、先頭 `/` の分だけオフセットを −1 補正して pattern 文字列基準に揃える。
+2. **鉄道図（railroad diagram）**: 同じ AST から `buildRailroad` でレイアウトを構築し、SVG の鉄道図として可視化する。
+3. **ReDoS 検出**: [recheck](https://github.com/makenowjust-labs/recheck) の `checkSync(pattern, flags, { timeout: 1000 })` で壊滅的バックトラッキングを静的解析する。結果は **安全 / 脆弱 / 不明** の 3 状態に正規化する。脆弱と判定された場合は攻撃文字列・複雑度（指数時間 / 多項式時間の次数）・パターン内の危険箇所（hotspot のオフセット範囲）を提示する。
+
+テスト文字列に対するマッチ機能は `runMatch` が担い、マッチ範囲のハイライトとキャプチャグループを表示する。
+
+#### 準拠仕様
+
+- 解析対象は JavaScript の `RegExp` 構文（native `new RegExp` での検証を前提とするため、JS エンジンが受理するパターン・フラグに準拠）。
+- 特定の RFC に準拠する仕様ではない。
+
+#### 制限・エッジケース
+
+- **ReDoS 検出は静的解析であり完全ではない**。1000ms の timeout を超えると判定は「不明（unknown）」になり、recheck が想定外に throw した場合も「不明」に倒す。**「不明」は「安全」ではない**ため UI 上も区別して表示する。
+- ReDoS 解析はメインスレッドを占有するため timeout の上限を 1000ms に設定している。
+- 実装上の制約として、ReDoS / AST 解析モジュール（`regexp-tree` / `recheck`）は CommonJS 依存のため、マッチ機能 `runMatch` を barrel 経由で値として import すると兄弟モジュールの CJS が SSR グラフに巻き込まれ dev SSR が落ちる。クライアントコンポーネントからは `match.ts` を直接 import している。
 
 ### JSON整形・ビューア
 
