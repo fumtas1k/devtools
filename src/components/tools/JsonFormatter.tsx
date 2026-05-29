@@ -308,9 +308,11 @@ export function JsonFormatter() {
               rightSlot={downloadButton}
             />
           ) : (
+            // tree モードでは effectiveOutput === displayOutput。両結果パネルに
+            // 一貫して effectiveOutput を渡し、prop の取り違えを防ぐ（レビュー #517）。
             <JsonTreeResult
               tree={displayTree}
-              output={displayOutput}
+              output={effectiveOutput}
               treeKey={treeKey}
               defaultOpen={treeOpen}
               rightSlot={downloadButton}

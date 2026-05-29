@@ -12,7 +12,7 @@ const CATEGORY_LABEL: Record<MaskCategory, string> = {
 };
 
 interface Props {
-  /** マスク済み JSON 文字列 */
+  /** このモードの実効出力（マスク済み JSON 文字列）。 */
   output: string;
   /** 種別別の検出件数。未評価（入力空/不正）のときは null。 */
   counts: Record<MaskCategory, number> | null;

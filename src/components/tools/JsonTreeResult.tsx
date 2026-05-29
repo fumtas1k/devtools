@@ -6,7 +6,7 @@ import type { TreeNode } from '@/utils/json-formatter';
 interface Props {
   /** 表示するツリー。null のときは案内文を出す。 */
   tree: TreeNode | null;
-  /** コピー対象の整形テキスト（ヘッダのコピーボタン用）。 */
+  /** このモードの実効出力（整形テキスト）。コピー対象・結果有無判定に使う。 */
   output: string;
   /** key を変えて全行の開閉状態をリセットするための再マウントキー。 */
   treeKey: number;
