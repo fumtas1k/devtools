@@ -3,3 +3,6 @@ node_modules/
 .astro/
 .claude/
 package-lock.json
+
+# vendored skill（skills-lock.json で hash 管理。upstream 整形を保持するため除外）
+.agents/skills/vercel-react-best-practices/
