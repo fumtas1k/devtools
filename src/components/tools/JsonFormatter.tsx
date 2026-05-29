@@ -1,26 +1,34 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { CopyButton } from '@/components/ui/CopyButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
-import { JsonTreeView } from '@/components/tools/JsonTreeView';
-import { processJson, runQuery, type IndentStyle, type TreeNode } from '@/utils/json-formatter';
+import { JsonMaskControls } from '@/components/tools/JsonMaskControls';
+import { JsonTreeResult } from '@/components/tools/JsonTreeResult';
+import {
+  processJson,
+  runQuery,
+  maskValue,
+  generateTypeScript,
+  type IndentStyle,
+  type TreeNode,
+  type MaskCategory,
+} from '@/utils/json-formatter';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { downloadText } from '@/utils/download';
 import { useCodecWithMeta } from '@/hooks/useCodec';
 
 type Mode = 'format' | 'minify';
-type View = 'text' | 'tree';
+type View = 'text' | 'tree' | 'mask' | 'type';
 
 interface Meta {
-  tree: TreeNode | null;
+  makeTree: (() => TreeNode) | null;
   value: unknown;
 }
 
 // useCodecWithMeta は安定参照を推奨（空入力 / error 時にこの参照へリセットされる）。
-const INITIAL_META: Meta = { tree: null, value: undefined };
+const INITIAL_META: Meta = { makeTree: null, value: undefined };
 
 const SAMPLE = `{
   "name": "東京タワー",
@@ -29,8 +37,21 @@ const SAMPLE = `{
   "id": 1234567890123456789,
   "tags": ["観光", "電波塔"],
   "location": { "lat": 35.6586, "lng": 139.7454 },
+  "contact": { "email": "info@tokyo-tower.jp", "tel": "03-3433-5111" },
   "renovated": null
 }`;
+
+// 整形済みテキストがこの長さ（文字数）を超えたら、ツリーの自動構築を保留する。
+const TREE_GUARD_THRESHOLD = 500_000;
+
+const ALL_CATEGORIES_ON: Record<MaskCategory, boolean> = {
+  SECRET: true,
+  EMAIL: true,
+  JWT: true,
+  IP: true,
+  CREDIT_CARD: true,
+  PHONE_JP: true,
+};
 
 export function JsonFormatter() {
   const [indent, setIndent] = useState<IndentStyle>('2');
@@ -45,7 +66,7 @@ export function JsonFormatter() {
   const { input, setInput, output, error, isPending, reset, meta } = useCodecWithMeta<Meta>(
     (text) => {
       const result = processJson(text, { mode, indent });
-      return { output: result.output, meta: { tree: result.tree, value: result.value } };
+      return { output: result.output, meta: { makeTree: result.makeTree, value: result.value } };
     },
     INITIAL_META,
     [mode, indent]
@@ -60,23 +81,53 @@ export function JsonFormatter() {
   const queryEval = useMemo(() => {
     if (!queryActive || meta.value === undefined) return null;
     const qr = runQuery(meta.value, debouncedQuery);
-    if (!qr.ok) return { error: qr.error, output: '', tree: null as TreeNode | null };
+    if (!qr.ok)
+      return {
+        error: qr.error,
+        output: '',
+        makeTree: null as (() => TreeNode) | null,
+        resultValue: undefined as unknown,
+      };
     try {
       const resultText = JSON.stringify(qr.result) ?? 'null';
       const processed = processJson(resultText, { mode, indent });
-      return { error: null as string | null, output: processed.output, tree: processed.tree };
+      return {
+        error: null as string | null,
+        output: processed.output,
+        makeTree: processed.makeTree as (() => TreeNode) | null,
+        resultValue: qr.result as unknown,
+      };
     } catch (e) {
       return {
         error: e instanceof Error ? e.message : 'クエリ結果の整形に失敗しました',
         output: '',
-        tree: null as TreeNode | null,
+        makeTree: null as (() => TreeNode) | null,
+        resultValue: undefined as unknown,
       };
     }
   }, [queryActive, meta.value, debouncedQuery, mode, indent]);
 
   const queryError = queryEval?.error ?? null;
   const displayOutput = queryActive ? (queryEval?.output ?? '') : output;
-  const displayTree = queryActive ? (queryEval?.tree ?? null) : meta.tree;
+
+  const displayMakeTree = queryActive ? (queryEval?.makeTree ?? null) : meta.makeTree;
+
+  // 大入力ガード: 整形済みテキストが閾値超のときは自動構築せず保留する。
+  const [treeForced, setTreeForced] = useState(false);
+  useEffect(() => {
+    setTreeForced(false); // 入力が変わったら force を持ち越さない
+  }, [displayOutput]);
+  const treeTooLarge = displayOutput.length > TREE_GUARD_THRESHOLD && !treeForced;
+
+  // ツリーは view==='tree' のときだけ構築（遅延）。深いネスト等は null フォールバック。
+  const displayTree = useMemo<TreeNode | null>(() => {
+    if (view !== 'tree' || treeTooLarge || !displayMakeTree) return null;
+    try {
+      return displayMakeTree();
+    } catch {
+      return null;
+    }
+  }, [view, treeTooLarge, displayMakeTree]);
 
   // 入力 JSON が不正な間（error あり）にクエリが入っていると評価できないため、
   // 結果欄を無言でブランクにせずクエリ欄で修正を案内する。それ以外は構文ヒント。
@@ -85,7 +136,39 @@ export function JsonFormatter() {
       ? '入力 JSON を修正するとクエリを実行できます。'
       : '空にすると全体を表示。JMESPath 構文（フィルタ・射影対応）。例: location.lat / items[?price > `1000`].name';
 
-  const hasResult = displayOutput !== '';
+  const [maskEnabled, setMaskEnabled] = useState<Record<MaskCategory, boolean>>(ALL_CATEGORIES_ON);
+
+  // マスク / 型生成の元値: クエリ有効なら抽出結果、無効なら入力全体。
+  const baseValue = queryActive ? queryEval?.resultValue : meta.value;
+
+  const maskEval = useMemo(() => {
+    if (view !== 'mask' || baseValue === undefined) return null;
+    const { masked, counts } = maskValue(baseValue, { enabled: maskEnabled });
+    try {
+      const processed = processJson(JSON.stringify(masked) ?? 'null', { mode, indent });
+      return { output: processed.output, counts };
+    } catch {
+      return { output: '', counts };
+    }
+  }, [view, baseValue, maskEnabled, mode, indent]);
+
+  const toggleCategory = (cat: MaskCategory) =>
+    setMaskEnabled((prev) => ({ ...prev, [cat]: !prev[cat] }));
+
+  const maskOutput = maskEval?.output ?? '';
+
+  const typeOutput = useMemo(() => {
+    if (view !== 'type' || baseValue === undefined) return '';
+    try {
+      return generateTypeScript(baseValue);
+    } catch {
+      return '';
+    }
+  }, [view, baseValue]);
+
+  const effectiveOutput =
+    view === 'type' ? typeOutput : view === 'mask' ? maskOutput : displayOutput;
+  const hasResult = effectiveOutput !== '';
 
   const handleClear = () => {
     reset();
@@ -94,8 +177,12 @@ export function JsonFormatter() {
   };
 
   const handleDownload = () => {
-    if (!displayOutput) return;
-    downloadText(displayOutput, 'data.json', 'application/json');
+    if (!effectiveOutput) return;
+    if (view === 'type') {
+      downloadText(effectiveOutput, 'types.ts', 'text/plain');
+    } else {
+      downloadText(effectiveOutput, 'data.json', 'application/json');
+    }
   };
 
   const expandAll = () => {
@@ -115,7 +202,7 @@ export function JsonFormatter() {
       onClick={handleDownload}
       label="ダウンロード"
       variant="secondary"
-      disabled={isPending || !displayOutput}
+      disabled={isPending || !effectiveOutput}
     />
   );
 
@@ -155,6 +242,8 @@ export function JsonFormatter() {
             options={[
               { value: 'text', label: 'テキスト' },
               { value: 'tree', label: 'ツリー' },
+              { value: 'mask', label: 'マスク' },
+              { value: 'type', label: '型' },
             ]}
             value={view}
             onChange={setView}
@@ -163,7 +252,7 @@ export function JsonFormatter() {
             layout="wrap"
           />
         </div>
-        {view === 'tree' && hasResult && (
+        {view === 'tree' && hasResult && !treeTooLarge && (
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -195,6 +284,16 @@ export function JsonFormatter() {
         mono
       />
 
+      {/* マスク操作部（全幅）。結果カラム内に置くと入力欄と上端がずれるため、
+          入力/結果行の上に出して両カラムの textarea 上端を揃える。 */}
+      {view === 'mask' && (
+        <JsonMaskControls
+          counts={maskEval?.counts ?? null}
+          enabled={maskEnabled}
+          onToggle={toggleCategory}
+        />
+      )}
+
       {/* 入力・結果（PC 横並び・モバイル縦並び） */}
       <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="w-full md:flex-1 min-w-0">
@@ -214,7 +313,25 @@ export function JsonFormatter() {
         </div>
 
         <div className="w-full md:flex-1 min-w-0">
-          {view === 'text' ? (
+          {view === 'mask' ? (
+            <OutputField
+              id="json-formatter-mask-output"
+              label="結果（マスク済み）"
+              value={effectiveOutput}
+              rows={18}
+              ariaLabel="マスク済み結果"
+              rightSlot={downloadButton}
+            />
+          ) : view === 'type' ? (
+            <OutputField
+              id="json-formatter-type-output"
+              label="結果（TypeScript）"
+              value={effectiveOutput}
+              rows={18}
+              ariaLabel="生成された型"
+              rightSlot={downloadButton}
+            />
+          ) : view === 'text' ? (
             <OutputField
               id="json-formatter-output"
               label="結果"
@@ -224,26 +341,17 @@ export function JsonFormatter() {
               rightSlot={downloadButton}
             />
           ) : (
-            <div className="w-full">
-              <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
-                <span className="body-emphasis text-default">結果</span>
-                {hasResult && (
-                  <div className="flex items-center gap-2">
-                    {downloadButton}
-                    <CopyButton text={displayOutput} ariaLabel="整形結果をコピー" />
-                  </div>
-                )}
-              </div>
-              <div className="json-tree-box rounded-lg border border-default bg-subtle px-3 py-2">
-                {displayTree ? (
-                  <JsonTreeView key={treeKey} node={displayTree} defaultOpen={treeOpen} />
-                ) : (
-                  <p className="caption text-muted">
-                    有効な JSON を入力するとツリーが表示されます。
-                  </p>
-                )}
-              </div>
-            </div>
+            // tree モードでは effectiveOutput === displayOutput。両結果パネルに
+            // 一貫して effectiveOutput を渡し、prop の取り違えを防ぐ（レビュー #517）。
+            <JsonTreeResult
+              tree={displayTree}
+              output={effectiveOutput}
+              treeKey={treeKey}
+              defaultOpen={treeOpen}
+              rightSlot={downloadButton}
+              tooLarge={treeTooLarge}
+              onForceRender={() => setTreeForced(true)}
+            />
           )}
         </div>
       </div>
