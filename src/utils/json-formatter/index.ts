@@ -4,6 +4,7 @@ export * from './format';
 export * from './tree';
 export * from './query';
 export * from './mask';
+export * from './type-gen';
 
 import { parseJson } from './parse';
 import { formatJson, minifyJson, type IndentStyle } from './format';

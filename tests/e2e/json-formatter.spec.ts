@@ -152,4 +152,47 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await expect(out).toHaveValue(/taro@example\.com/);
     });
   });
+
+  test('型生成: サンプルから TypeScript interface を生成する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await page.getByRole('button', { name: '型', exact: true }).click();
+
+      const out = page.getByRole('textbox', { name: '生成された型' });
+      await expect(out).toHaveValue(/interface Root \{/);
+      await expect(out).toHaveValue(/name: string;/);
+      await expect(out).toHaveValue(/open: boolean;/);
+      // ネスト location が別 interface に切り出される
+      await expect(out).toHaveValue(/interface Location \{/);
+    });
+  });
+
+  test('型生成: クエリ抽出結果から型を生成する（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByLabel('入力').fill('{"items":[{"id":1,"name":"A"}]}');
+      await page.getByLabel('クエリ (JMESPath)').fill('items');
+      await page.getByRole('button', { name: '型', exact: true }).click();
+      const out = page.getByRole('textbox', { name: '生成された型' });
+      await expect(out).toHaveValue(/type Root = RootItem\[\];/);
+      await expect(out).toHaveValue(/id: number;/);
+    });
+  });
+
+  test('型生成: ダウンロードファイル名が types.ts（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await page.getByRole('button', { name: '型', exact: true }).click();
+      await expect(page.getByRole('textbox', { name: '生成された型' })).toHaveValue(
+        /interface Root/
+      );
+
+      // 型モードの DL は types.ts（JSON/マスクモードの data.json と区別）
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'ダウンロード' }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe('types.ts');
+    });
+  });
 });

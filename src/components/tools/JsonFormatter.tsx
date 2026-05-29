@@ -11,6 +11,7 @@ import {
   runQuery,
   maskValue,
   MASK_CATEGORIES,
+  generateTypeScript,
   type IndentStyle,
   type TreeNode,
   type MaskCategory,
@@ -20,7 +21,7 @@ import { downloadText } from '@/utils/download';
 import { useCodecWithMeta } from '@/hooks/useCodec';
 
 type Mode = 'format' | 'minify';
-type View = 'text' | 'tree' | 'mask';
+type View = 'text' | 'tree' | 'mask' | 'type';
 
 interface Meta {
   tree: TreeNode | null;
@@ -125,25 +126,36 @@ export function JsonFormatter() {
 
   const [maskEnabled, setMaskEnabled] = useState<Record<MaskCategory, boolean>>(ALL_CATEGORIES_ON);
 
-  // マスク対象の元値: クエリ有効なら抽出結果、無効なら入力全体。
-  const maskBaseValue = queryActive ? queryEval?.resultValue : meta.value;
+  // マスク / 型生成の元値: クエリ有効なら抽出結果、無効なら入力全体。
+  const baseValue = queryActive ? queryEval?.resultValue : meta.value;
 
   const maskEval = useMemo(() => {
-    if (view !== 'mask' || maskBaseValue === undefined) return null;
-    const { masked, counts } = maskValue(maskBaseValue, { enabled: maskEnabled });
+    if (view !== 'mask' || baseValue === undefined) return null;
+    const { masked, counts } = maskValue(baseValue, { enabled: maskEnabled });
     try {
       const processed = processJson(JSON.stringify(masked) ?? 'null', { mode, indent });
       return { output: processed.output, counts };
     } catch {
       return { output: '', counts };
     }
-  }, [view, maskBaseValue, maskEnabled, mode, indent]);
+  }, [view, baseValue, maskEnabled, mode, indent]);
 
   const toggleCategory = (cat: MaskCategory) =>
     setMaskEnabled((prev) => ({ ...prev, [cat]: !prev[cat] }));
 
   const maskOutput = maskEval?.output ?? '';
-  const effectiveOutput = view === 'mask' ? maskOutput : displayOutput;
+
+  const typeOutput = useMemo(() => {
+    if (view !== 'type' || baseValue === undefined) return '';
+    try {
+      return generateTypeScript(baseValue);
+    } catch {
+      return '';
+    }
+  }, [view, baseValue]);
+
+  const effectiveOutput =
+    view === 'type' ? typeOutput : view === 'mask' ? maskOutput : displayOutput;
   const hasResult = effectiveOutput !== '';
 
   const handleClear = () => {
@@ -154,7 +166,11 @@ export function JsonFormatter() {
 
   const handleDownload = () => {
     if (!effectiveOutput) return;
-    downloadText(effectiveOutput, 'data.json', 'application/json');
+    if (view === 'type') {
+      downloadText(effectiveOutput, 'types.ts', 'text/plain');
+    } else {
+      downloadText(effectiveOutput, 'data.json', 'application/json');
+    }
   };
 
   const expandAll = () => {
@@ -215,6 +231,7 @@ export function JsonFormatter() {
               { value: 'text', label: 'テキスト' },
               { value: 'tree', label: 'ツリー' },
               { value: 'mask', label: 'マスク' },
+              { value: 'type', label: '型' },
             ]}
             value={view}
             onChange={setView}
@@ -314,6 +331,15 @@ export function JsonFormatter() {
                 rightSlot={downloadButton}
               />
             </div>
+          ) : view === 'type' ? (
+            <OutputField
+              id="json-formatter-type-output"
+              label="結果（TypeScript）"
+              value={effectiveOutput}
+              rows={18}
+              ariaLabel="生成された型"
+              rightSlot={downloadButton}
+            />
           ) : view === 'text' ? (
             <OutputField
               id="json-formatter-output"
