@@ -886,6 +886,114 @@
   .match-highlight-empty {
     border-left: 2px solid var(--color-primary);
   }
+
+  /* === JsonFormatter: ツリービュー === */
+  .json-tree-box {
+    min-height: 22rem;
+    max-height: 34rem;
+    overflow: auto;
+  }
+  .json-tree-root {
+    line-height: 1.6;
+    white-space: nowrap;
+    width: max-content;
+    min-width: 100%;
+  }
+  .json-tree {
+    list-style: none;
+    margin: 0;
+    padding-left: 1.1rem;
+    border-left: 1px solid var(--color-border);
+  }
+  .json-tree--root {
+    padding-left: 0;
+    border-left: none;
+  }
+  .json-row {
+    list-style: none;
+  }
+  .json-line {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    border-radius: 0.25rem;
+    padding: 0.0625rem 0.25rem;
+  }
+  .json-line:hover {
+    background: var(--color-bg-active);
+  }
+  .json-toggle {
+    width: 1.1rem;
+    flex: none;
+    color: var(--color-muted);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-align: center;
+  }
+  .json-toggle:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+    border-radius: 0.25rem;
+  }
+  .json-toggle-spacer {
+    width: 1.1rem;
+    flex: none;
+  }
+  .json-key {
+    color: var(--color-link);
+  }
+  .json-index,
+  .json-punct {
+    color: var(--color-muted);
+  }
+  /* JSON 値の構文色（UI トークンではないローカル色。jwt-json-* と同方針） */
+  .json-string {
+    color: #15803d; /* green-700 */
+  }
+  .json-number {
+    color: #b45309; /* amber-700 */
+  }
+  .json-boolean {
+    color: #7c3aed; /* violet-600 */
+  }
+  .json-null {
+    color: var(--color-muted);
+  }
+  .json-collapsed {
+    color: var(--color-muted);
+    padding: 0 0.25rem;
+  }
+  .json-count {
+    color: var(--color-muted);
+    font-size: 0.7rem;
+    margin-left: 0.375rem;
+  }
+  /* 行アクション（パス/値コピー）。当該行 hover/focus 時のみ表示。
+     絶対配置で通常フローから外し、非表示時に行の高さ・幅を押し広げないようにする
+     （コピーボタンの min-h/min-w 32px が各行に予約されて行間が間延びするのを防ぐ）。
+     @layer components 手書き class は variant prefix 非対応のため擬似クラスで定義（§7.1）。 */
+  .json-row-actions {
+    position: absolute;
+    right: 0.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding-left: 0.5rem;
+    border-radius: 0.375rem;
+    background: var(--color-bg-active);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s;
+  }
+  .json-line:hover .json-row-actions,
+  .json-line:focus-within .json-row-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 /* 前庭障害ユーザー向けに transition / animation を抑止する。

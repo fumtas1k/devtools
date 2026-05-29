@@ -166,7 +166,11 @@ export function RegexVisualizer() {
                     {attack.display}
                     {attack.truncated && '…'}
                   </code>
-                  <CopyButton text={redos.attackString} label="攻撃文字列をコピー" />
+                  <CopyButton
+                    text={redos.attackString}
+                    label="コピー"
+                    ariaLabel="攻撃文字列をコピー"
+                  />
                 </div>
                 {attack.truncated && (
                   <p className="caption text-subtle">

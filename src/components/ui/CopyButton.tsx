@@ -50,6 +50,12 @@ function CopyAnnounce({ copied }: { copied: boolean }) {
 interface Props {
   text: string;
   label?: string;
+  /**
+   * スクリーンリーダー向けのアクセシブル名。可視テキスト（label）を短くしつつ
+   * 文脈を残したい場合に指定する。未指定時は label をそのまま使う。
+   * WCAG 2.5.3 (Label in Name) のため label が ariaLabel に内包される値にすること。
+   */
+  ariaLabel?: string;
   className?: string;
   /** テーブル行など狭い場所向けのコンパクト表示 */
   compact?: boolean;
@@ -61,7 +67,14 @@ interface Props {
  * style: global.css `@layer components` の `.btn-copy` / `.btn-copy.is-copied` /
  * `.btn-copy.is-compact` を参照。状態は `is-copied` / `is-compact` className で切替。
  */
-export function CopyButton({ text, label = 'コピー', className = '', compact = false }: Props) {
+export function CopyButton({
+  text,
+  label = 'コピー',
+  ariaLabel,
+  className = '',
+  compact = false,
+}: Props) {
+  const accessibleName = ariaLabel ?? label;
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -87,7 +100,7 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
       <button
         type="button"
         onClick={handleClick}
-        aria-label={label}
+        aria-label={accessibleName}
         className={`btn-copy is-compact ${stateClass} rounded-md inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap`.trim()}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
@@ -100,7 +113,7 @@ export function CopyButton({ text, label = 'コピー', className = '', compact 
     <button
       type="button"
       onClick={handleClick}
-      aria-label={label}
+      aria-label={accessibleName}
       className={`btn-copy ${stateClass} caption font-bold inline-flex items-center gap-1.5 rounded px-3 py-2 leading-none tracking-wide whitespace-nowrap ${className}`.trim()}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}
