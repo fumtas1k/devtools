@@ -67,4 +67,15 @@ describe('generateTypeScript', () => {
   it('空 object は interface Root {}', () => {
     expect(generateTypeScript({})).toBe('interface Root {}');
   });
+
+  it('ネスト配列は余分な括弧を付けない（union のときのみ括弧）', () => {
+    // 要素が配列 → 括弧不要（レビュー#516-🟡1）
+    expect(generateTypeScript({ grid: [[1], [2, 3]] })).toBe(
+      'interface Root {\n  grid: number[][];\n}'
+    );
+    // 要素が union → 括弧必要
+    expect(generateTypeScript({ grid: [[1], [2, 'x']] })).toBe(
+      'interface Root {\n  grid: (number | string)[][];\n}'
+    );
+  });
 });

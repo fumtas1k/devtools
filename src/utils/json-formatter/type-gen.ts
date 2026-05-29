@@ -107,7 +107,8 @@ export function generateTypeScript(value: unknown, rootName = 'Root'): string {
         return node.members.map((m) => ref(m, suggested)).join(' | ');
       case 'array': {
         const elem = ref(node.element, `${suggested}Item`);
-        return /[ |]/.test(elem) ? `(${elem})[]` : `${elem}[]`;
+        // union 要素のみ括弧が必要（`(a | b)[]`）。配列やオブジェクト参照は括弧不要。
+        return node.element.kind === 'union' ? `(${elem})[]` : `${elem}[]`;
       }
       case 'object': {
         const name = uniqueName(suggested);

@@ -179,4 +179,18 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await expect(out).toHaveValue(/id: number;/);
     });
   });
+
+  test('型生成: ダウンロードファイル名が types.ts（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await page.getByRole('button', { name: '型', exact: true }).click();
+      await expect(page.getByRole('textbox', { name: '生成された型' })).toHaveValue(/interface Root/);
+
+      // 型モードの DL は types.ts（JSON/マスクモードの data.json と区別）
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'ダウンロード' }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe('types.ts');
+    });
+  });
 });
