@@ -49,7 +49,27 @@ UUID v7 の生成は `uuid` パッケージの `v7()` に委譲する。生成�
 
 ### TOTP/HOTP ジェネレータ
 
-（後続 PR で記述）
+#### 仕組み・アルゴリズム
+
+ワンタイムパスワードの生成・検証を Web Crypto API（`crypto.subtle` の HMAC）で行う。シークレット鍵はブラウザ外に送信しない。
+
+1. **シークレット**: Base32 文字列として扱う。ランダム生成時は `crypto.getRandomValues` で 160 bit（20 バイト）を生成し、Base32（32 文字・パディングなし）で表現する。
+2. **HOTP**: シークレットを HMAC 鍵としてインポートし、8 バイトのビッグエンディアンのカウンタに対して HMAC を計算する。MAC の末尾 nibble をオフセットとして 4 バイトを動的に切り出し（dynamic truncation）、最上位ビットをマスクした 31 bit 値を `10^digits` で剰余して指定桁数のコードにする。
+3. **TOTP**: カウンタを `floor(現在時刻ms / (period × 1000))` として算出し、あとは HOTP と同じ。
+4. **検証**: 現在カウンタの前後 ±window（既定 ±1）を走査して一致を探す。比較は定数時間（`timingSafeEqual`）で行い、早期 return せず window 全件を走査する（タイミング攻撃耐性）。
+5. **`otpauth://` URI**: 認証アプリ取り込み用の URI を組み立てる（issuer に `:` を含むと throw、secret は defensive に URL エンコード）。
+
+#### 準拠仕様
+
+- [RFC 4226](https://www.rfc-editor.org/rfc/rfc4226)（HOTP）/ [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238)（TOTP）。
+- Base32 は [RFC 4648](https://www.rfc-editor.org/rfc/rfc4648) §6。padding 除去後の長さ `mod 8` が 0/2/4/5/7 のみ有効（1/3/6 は末尾ビットが中途半端で無効）。
+- ハッシュは SHA-1 / SHA-256 / SHA-512、桁数は 6 / 7 / 8、周期は 30 / 60 秒から選択。
+
+#### 制限・エッジケース
+
+- 検証の時刻ずれ許容は前後 ±1 ステップ（既定）。大きな時計ずれは検証に失敗する。
+- 不正な Base32 文字・長さはデコード時に throw する。
+- HMAC・乱数生成は Web Crypto API に依存するため、`crypto.subtle` が利用可能なセキュアコンテキスト（HTTPS / localhost）が前提。
 
 ## コード・バーコード
 
