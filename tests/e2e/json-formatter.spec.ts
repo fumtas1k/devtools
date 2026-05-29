@@ -292,6 +292,8 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       // 自動構築は保留され、案内＋ボタンが出る
       await expect(page.getByText('ツリー描画を保留しています', { exact: false })).toBeVisible();
       await expect(page.getByRole('group', { name: 'JSON ツリー' })).toHaveCount(0);
+      // 保留中は未構築のため全展開/全折りたたみは出さない（レビュー#521-1）
+      await expect(page.getByRole('button', { name: '全展開' })).toHaveCount(0);
 
       // 「ツリーを表示」で構築される
       await page.getByRole('button', { name: 'ツリーを表示' }).click();

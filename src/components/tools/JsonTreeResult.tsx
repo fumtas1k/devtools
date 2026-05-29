@@ -46,7 +46,7 @@ export function JsonTreeResult({
       </div>
       <div className="json-tree-box rounded-lg border border-default bg-subtle px-3 py-2">
         {tooLarge ? (
-          <div className="space-y-2">
+          <div className="space-y-2" role="status" aria-live="polite">
             <p className="caption text-muted">
               JSON が大きいため、ツリー描画を保留しています（重い処理を避けるため）。
             </p>
