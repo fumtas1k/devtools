@@ -6,13 +6,21 @@ import { ClearButton } from '@/components/ui/ClearButton';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { JsonTreeView } from '@/components/tools/JsonTreeView';
-import { processJson, runQuery, type IndentStyle, type TreeNode } from '@/utils/json-formatter';
+import {
+  processJson,
+  runQuery,
+  maskValue,
+  MASK_CATEGORIES,
+  type IndentStyle,
+  type TreeNode,
+  type MaskCategory,
+} from '@/utils/json-formatter';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { downloadText } from '@/utils/download';
 import { useCodecWithMeta } from '@/hooks/useCodec';
 
 type Mode = 'format' | 'minify';
-type View = 'text' | 'tree';
+type View = 'text' | 'tree' | 'mask';
 
 interface Meta {
   tree: TreeNode | null;
@@ -31,6 +39,24 @@ const SAMPLE = `{
   "location": { "lat": 35.6586, "lng": 139.7454 },
   "renovated": null
 }`;
+
+const CATEGORY_LABEL: Record<MaskCategory, string> = {
+  SECRET: 'キー名',
+  EMAIL: 'メール',
+  JWT: 'JWT',
+  IP: 'IP',
+  CREDIT_CARD: 'カード番号',
+  PHONE_JP: '電話番号',
+};
+
+const ALL_CATEGORIES_ON: Record<MaskCategory, boolean> = {
+  SECRET: true,
+  EMAIL: true,
+  JWT: true,
+  IP: true,
+  CREDIT_CARD: true,
+  PHONE_JP: true,
+};
 
 export function JsonFormatter() {
   const [indent, setIndent] = useState<IndentStyle>('2');
@@ -60,16 +86,28 @@ export function JsonFormatter() {
   const queryEval = useMemo(() => {
     if (!queryActive || meta.value === undefined) return null;
     const qr = runQuery(meta.value, debouncedQuery);
-    if (!qr.ok) return { error: qr.error, output: '', tree: null as TreeNode | null };
+    if (!qr.ok)
+      return {
+        error: qr.error,
+        output: '',
+        tree: null as TreeNode | null,
+        resultValue: undefined as unknown,
+      };
     try {
       const resultText = JSON.stringify(qr.result) ?? 'null';
       const processed = processJson(resultText, { mode, indent });
-      return { error: null as string | null, output: processed.output, tree: processed.tree };
+      return {
+        error: null as string | null,
+        output: processed.output,
+        tree: processed.tree,
+        resultValue: qr.result as unknown,
+      };
     } catch (e) {
       return {
         error: e instanceof Error ? e.message : 'クエリ結果の整形に失敗しました',
         output: '',
         tree: null as TreeNode | null,
+        resultValue: undefined as unknown,
       };
     }
   }, [queryActive, meta.value, debouncedQuery, mode, indent]);
@@ -85,7 +123,28 @@ export function JsonFormatter() {
       ? '入力 JSON を修正するとクエリを実行できます。'
       : '空にすると全体を表示。JMESPath 構文（フィルタ・射影対応）。例: location.lat / items[?price > `1000`].name';
 
-  const hasResult = displayOutput !== '';
+  const [maskEnabled, setMaskEnabled] = useState<Record<MaskCategory, boolean>>(ALL_CATEGORIES_ON);
+
+  // マスク対象の元値: クエリ有効なら抽出結果、無効なら入力全体。
+  const maskBaseValue = queryActive ? queryEval?.resultValue : meta.value;
+
+  const maskEval = useMemo(() => {
+    if (view !== 'mask' || maskBaseValue === undefined) return null;
+    const { masked, counts } = maskValue(maskBaseValue, { enabled: maskEnabled });
+    try {
+      const processed = processJson(JSON.stringify(masked) ?? 'null', { mode, indent });
+      return { output: processed.output, counts };
+    } catch {
+      return { output: '', counts };
+    }
+  }, [view, maskBaseValue, maskEnabled, mode, indent]);
+
+  const toggleCategory = (cat: MaskCategory) =>
+    setMaskEnabled((prev) => ({ ...prev, [cat]: !prev[cat] }));
+
+  const maskOutput = maskEval?.output ?? '';
+  const effectiveOutput = view === 'mask' ? maskOutput : displayOutput;
+  const hasResult = effectiveOutput !== '';
 
   const handleClear = () => {
     reset();
@@ -94,8 +153,8 @@ export function JsonFormatter() {
   };
 
   const handleDownload = () => {
-    if (!displayOutput) return;
-    downloadText(displayOutput, 'data.json', 'application/json');
+    if (!effectiveOutput) return;
+    downloadText(effectiveOutput, 'data.json', 'application/json');
   };
 
   const expandAll = () => {
@@ -115,7 +174,7 @@ export function JsonFormatter() {
       onClick={handleDownload}
       label="ダウンロード"
       variant="secondary"
-      disabled={isPending || !displayOutput}
+      disabled={isPending || !effectiveOutput}
     />
   );
 
@@ -155,6 +214,7 @@ export function JsonFormatter() {
             options={[
               { value: 'text', label: 'テキスト' },
               { value: 'tree', label: 'ツリー' },
+              { value: 'mask', label: 'マスク' },
             ]}
             value={view}
             onChange={setView}
@@ -214,7 +274,47 @@ export function JsonFormatter() {
         </div>
 
         <div className="w-full md:flex-1 min-w-0">
-          {view === 'text' ? (
+          {view === 'mask' ? (
+            <div className="w-full">
+              {/* マスク対象の種別トグル */}
+              <fieldset className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <legend className="caption text-muted">マスク対象</legend>
+                {MASK_CATEGORIES.map((cat) => (
+                  <label key={cat} className="caption inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      className="accent-link"
+                      checked={maskEnabled[cat]}
+                      onChange={() => toggleCategory(cat)}
+                    />
+                    {CATEGORY_LABEL[cat]}
+                  </label>
+                ))}
+              </fieldset>
+
+              {/* 検出内訳バッジ */}
+              {maskEval && (
+                <p className="caption text-muted mb-2" role="status" aria-live="polite">
+                  {MASK_CATEGORIES.filter((c) => maskEval.counts[c] > 0).length === 0
+                    ? '検出された機密データはありません。'
+                    : '検出: ' +
+                      MASK_CATEGORIES.filter((c) => maskEval.counts[c] > 0)
+                        .map((c) => `${CATEGORY_LABEL[c]} ${maskEval.counts[c]}`)
+                        .join(' ・ ')}
+                </p>
+              )}
+
+              {/* 出力は共通 OutputField を再利用（aria-live ラップ・コピー内蔵）。CLAUDE.md §5 */}
+              <OutputField
+                id="json-formatter-mask-output"
+                label="結果（マスク済み）"
+                value={effectiveOutput}
+                rows={16}
+                ariaLabel="マスク済み結果"
+                rightSlot={downloadButton}
+              />
+            </div>
+          ) : view === 'text' ? (
             <OutputField
               id="json-formatter-output"
               label="結果"
