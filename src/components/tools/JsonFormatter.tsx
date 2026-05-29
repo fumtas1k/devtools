@@ -3,14 +3,13 @@ import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { CopyButton } from '@/components/ui/CopyButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
-import { JsonTreeView } from '@/components/tools/JsonTreeView';
+import { JsonMaskResult } from '@/components/tools/JsonMaskResult';
+import { JsonTreeResult } from '@/components/tools/JsonTreeResult';
 import {
   processJson,
   runQuery,
   maskValue,
-  MASK_CATEGORIES,
   generateTypeScript,
   type IndentStyle,
   type TreeNode,
@@ -40,15 +39,6 @@ const SAMPLE = `{
   "location": { "lat": 35.6586, "lng": 139.7454 },
   "renovated": null
 }`;
-
-const CATEGORY_LABEL: Record<MaskCategory, string> = {
-  SECRET: 'キー名',
-  EMAIL: 'メール',
-  JWT: 'JWT',
-  IP: 'IP',
-  CREDIT_CARD: 'カード番号',
-  PHONE_JP: '電話番号',
-};
 
 const ALL_CATEGORIES_ON: Record<MaskCategory, boolean> = {
   SECRET: true,
@@ -292,45 +282,13 @@ export function JsonFormatter() {
 
         <div className="w-full md:flex-1 min-w-0">
           {view === 'mask' ? (
-            <div className="w-full">
-              {/* マスク対象の種別トグル */}
-              <fieldset className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-                <legend className="caption text-muted">マスク対象</legend>
-                {MASK_CATEGORIES.map((cat) => (
-                  <label key={cat} className="caption inline-flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      className="accent-link"
-                      checked={maskEnabled[cat]}
-                      onChange={() => toggleCategory(cat)}
-                    />
-                    {CATEGORY_LABEL[cat]}
-                  </label>
-                ))}
-              </fieldset>
-
-              {/* 検出内訳バッジ */}
-              {maskEval && (
-                <p className="caption text-muted mb-2" role="status" aria-live="polite">
-                  {MASK_CATEGORIES.filter((c) => maskEval.counts[c] > 0).length === 0
-                    ? '検出された機密データはありません。'
-                    : '検出: ' +
-                      MASK_CATEGORIES.filter((c) => maskEval.counts[c] > 0)
-                        .map((c) => `${CATEGORY_LABEL[c]} ${maskEval.counts[c]}`)
-                        .join(' ・ ')}
-                </p>
-              )}
-
-              {/* 出力は共通 OutputField を再利用（aria-live ラップ・コピー内蔵）。CLAUDE.md §5 */}
-              <OutputField
-                id="json-formatter-mask-output"
-                label="結果（マスク済み）"
-                value={effectiveOutput}
-                rows={16}
-                ariaLabel="マスク済み結果"
-                rightSlot={downloadButton}
-              />
-            </div>
+            <JsonMaskResult
+              output={effectiveOutput}
+              counts={maskEval?.counts ?? null}
+              enabled={maskEnabled}
+              onToggle={toggleCategory}
+              rightSlot={downloadButton}
+            />
           ) : view === 'type' ? (
             <OutputField
               id="json-formatter-type-output"
@@ -350,26 +308,13 @@ export function JsonFormatter() {
               rightSlot={downloadButton}
             />
           ) : (
-            <div className="w-full">
-              <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
-                <span className="body-emphasis text-default">結果</span>
-                {hasResult && (
-                  <div className="flex items-center gap-2">
-                    {downloadButton}
-                    <CopyButton text={displayOutput} ariaLabel="整形結果をコピー" />
-                  </div>
-                )}
-              </div>
-              <div className="json-tree-box rounded-lg border border-default bg-subtle px-3 py-2">
-                {displayTree ? (
-                  <JsonTreeView key={treeKey} node={displayTree} defaultOpen={treeOpen} />
-                ) : (
-                  <p className="caption text-muted">
-                    有効な JSON を入力するとツリーが表示されます。
-                  </p>
-                )}
-              </div>
-            </div>
+            <JsonTreeResult
+              tree={displayTree}
+              output={displayOutput}
+              treeKey={treeKey}
+              defaultOpen={treeOpen}
+              rightSlot={downloadButton}
+            />
           )}
         </div>
       </div>
