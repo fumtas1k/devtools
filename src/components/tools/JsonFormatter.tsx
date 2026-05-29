@@ -4,7 +4,7 @@ import { OutputField } from '@/components/ui/OutputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
-import { JsonMaskResult } from '@/components/tools/JsonMaskResult';
+import { JsonMaskControls } from '@/components/tools/JsonMaskControls';
 import { JsonTreeResult } from '@/components/tools/JsonTreeResult';
 import {
   processJson,
@@ -37,6 +37,7 @@ const SAMPLE = `{
   "id": 1234567890123456789,
   "tags": ["観光", "電波塔"],
   "location": { "lat": 35.6586, "lng": 139.7454 },
+  "contact": { "email": "info@tokyo-tower.jp", "tel": "03-3433-5111" },
   "renovated": null
 }`;
 
@@ -262,6 +263,16 @@ export function JsonFormatter() {
         mono
       />
 
+      {/* マスク操作部（全幅）。結果カラム内に置くと入力欄と上端がずれるため、
+          入力/結果行の上に出して両カラムの textarea 上端を揃える。 */}
+      {view === 'mask' && (
+        <JsonMaskControls
+          counts={maskEval?.counts ?? null}
+          enabled={maskEnabled}
+          onToggle={toggleCategory}
+        />
+      )}
+
       {/* 入力・結果（PC 横並び・モバイル縦並び） */}
       <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="w-full md:flex-1 min-w-0">
@@ -282,11 +293,12 @@ export function JsonFormatter() {
 
         <div className="w-full md:flex-1 min-w-0">
           {view === 'mask' ? (
-            <JsonMaskResult
-              output={effectiveOutput}
-              counts={maskEval?.counts ?? null}
-              enabled={maskEnabled}
-              onToggle={toggleCategory}
+            <OutputField
+              id="json-formatter-mask-output"
+              label="結果（マスク済み）"
+              value={effectiveOutput}
+              rows={18}
+              ariaLabel="マスク済み結果"
               rightSlot={downloadButton}
             />
           ) : view === 'type' ? (
