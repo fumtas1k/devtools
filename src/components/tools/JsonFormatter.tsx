@@ -37,6 +37,7 @@ const SAMPLE = `{
   "id": 1234567890123456789,
   "tags": ["観光", "電波塔"],
   "location": { "lat": 35.6586, "lng": 139.7454 },
+  "contact": { "email": "info@tokyo-tower.jp", "tel": "03-3433-5111" },
   "renovated": null
 }`;
 

@@ -153,6 +153,22 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
     });
   });
 
+  // サンプルはマスクの意義が伝わるよう、検出対象を含む必要がある（役目の回帰ガード）。
+  test('マスク: サンプルは検出対象を含む（メール・電話番号）（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await page.getByRole('button', { name: 'マスク' }).click();
+
+      const out = page.getByRole('textbox', { name: 'マスク済み結果' });
+      await expect(out).toHaveValue(/\[REDACTED:EMAIL\]/);
+      await expect(out).toHaveValue(/\[REDACTED:PHONE_JP\]/);
+      await expect(out).not.toHaveValue(/info@tokyo-tower\.jp/);
+      await expect(page.getByText(/検出:/)).toBeVisible();
+    });
+  });
+
   test('型生成: サンプルから TypeScript interface を生成する（CSP 違反なし）', async ({
     browser,
   }) => {
