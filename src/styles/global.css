@@ -994,6 +994,14 @@
     opacity: 1;
     pointer-events: auto;
   }
+  /* タッチ端末（hover 不可）では hover/focus で出せないため常時表示する（issue #508）。
+     絶対配置のため行高さは増えない。デスクトップは従来どおり hover 表示。 */
+  @media (hover: none) {
+    .json-row-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
 }
 
 /* 前庭障害ユーザー向けに transition / animation を抑止する。

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, devices } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
 test.describe('JSON整形・ビューア（production CSP 適用）', () => {
@@ -226,5 +226,34 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       const download = await downloadPromise;
       expect(download.suggestedFilename()).toBe('types.ts');
     });
+  });
+
+  // タッチ端末（hover 不可）ではツリー行のコピーアクションが hover で出せないため、
+  // @media (hover: none) で常時表示する（issue #508）。モバイル端末を emulate して
+  // .json-row-actions の opacity が 1 であることを確認する。旧 CSS（hover/focus のみ）
+  // では opacity 0 のままで fail する回帰ガード。CSP 非依存のため独自 context で検証。
+  test('ツリー: タッチ端末では行コピーアクションが常時表示される（issue #508）', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ ...devices['Pixel 5'] });
+    try {
+      const page = await context.newPage();
+      await page.goto('/tools/json-formatter');
+      // hover:none が効いていることを前提確認（emulation 健全性）
+      expect(await page.evaluate(() => matchMedia('(hover: none)').matches)).toBe(true);
+
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await page.getByRole('button', { name: 'ツリー' }).click();
+      await expect(page.getByRole('group', { name: 'JSON ツリー' })).toBeVisible();
+
+      // hover していない状態でも行アクションが可視（opacity:1）
+      const opacity = await page
+        .locator('.json-row-actions')
+        .first()
+        .evaluate((el) => getComputedStyle(el).opacity);
+      expect(opacity).toBe('1');
+    } finally {
+      await context.close();
+    }
   });
 });
