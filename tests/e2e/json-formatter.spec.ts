@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
-import { withProductionCsp } from './helpers';
+import { withProductionCsp, waitForReactHydration } from './helpers';
 
 test.describe('JSON整形・ビューア（production CSP 適用）', () => {
   test('サンプルを整形し、大きな整数の精度を保持する（CSP 違反なし）', async ({ browser }) => {
@@ -239,6 +239,7 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
     try {
       const page = await context.newPage();
       await page.goto('/tools/json-formatter');
+      await waitForReactHydration(page); // hydration 前のクリックは no-op になるため待つ
       // hover:none が効いていることを前提確認（emulation 健全性）
       expect(await page.evaluate(() => matchMedia('(hover: none)').matches)).toBe(true);
 
@@ -246,12 +247,16 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await page.getByRole('button', { name: 'ツリー' }).click();
       await expect(page.getByRole('group', { name: 'JSON ツリー' })).toBeVisible();
 
-      // hover していない状態でも行アクションが可視（opacity:1）
-      const opacity = await page
+      // hover していない状態でも行アクションが可視（opacity:1）かつタップ可能（pointer-events:auto）
+      const style = await page
         .locator('.json-row-actions')
         .first()
-        .evaluate((el) => getComputedStyle(el).opacity);
-      expect(opacity).toBe('1');
+        .evaluate((el) => {
+          const s = getComputedStyle(el);
+          return { opacity: s.opacity, pointerEvents: s.pointerEvents };
+        });
+      expect(style.opacity).toBe('1');
+      expect(style.pointerEvents).toBe('auto');
     } finally {
       await context.close();
     }
