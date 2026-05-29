@@ -122,4 +122,34 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await expect(page.getByText('入力 JSON を修正するとクエリを実行できます')).toBeVisible();
     });
   });
+
+  // 陽性対照（最重要）: マスク後に原値が DOM に一切残らないこと。
+  // 検知が空回り（無変換）なら原値が残り fail する。
+  test('マスク: 機密値を伏字化し原値が画面に出ない（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByLabel('入力').fill('{"mail":"taro@example.com","password":"hunter2"}');
+      await page.getByRole('button', { name: 'マスク' }).click();
+
+      const out = page.getByRole('textbox', { name: 'マスク済み結果' });
+      await expect(out).toHaveValue(/\[REDACTED:EMAIL\]/);
+      await expect(out).toHaveValue(/\[REDACTED:SECRET\]/);
+      // 原値が出力に残っていない（検知が空回りなら fail）
+      await expect(out).not.toHaveValue(/taro@example\.com/);
+      await expect(out).not.toHaveValue(/hunter2/);
+      // 検出内訳が出る
+      await expect(page.getByText(/検出:/)).toBeVisible();
+    });
+  });
+
+  test('マスク: 種別 off で該当種別が素通りする（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByLabel('入力').fill('{"mail":"taro@example.com"}');
+      await page.getByRole('button', { name: 'マスク' }).click();
+      const out = page.getByRole('textbox', { name: 'マスク済み結果' });
+      await expect(out).toHaveValue(/\[REDACTED:EMAIL\]/);
+      // メール種別を外すと原値が戻る
+      await page.getByRole('checkbox', { name: 'メール' }).uncheck();
+      await expect(out).toHaveValue(/taro@example\.com/);
+    });
+  });
 });
