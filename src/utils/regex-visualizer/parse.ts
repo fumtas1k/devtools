@@ -123,7 +123,7 @@ function toJapaneseRegexError(e: unknown): Error {
  * 不正時は engine の英語メッセージを日本語見出し付きへ変換して throw する（#489）。
  */
 export function parseRegex(pattern: string, flags: string): RegexAstNode {
-  let ast;
+  let ast: ReturnType<typeof parseToRegExpTree>;
   try {
     ast = parseToRegExpTree(pattern, flags);
   } catch (e) {
