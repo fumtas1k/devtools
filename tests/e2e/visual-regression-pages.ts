@@ -15,6 +15,7 @@ export const PAGES = [
   '/',
   '/about',
   '/privacy',
+  '/404',
   '/tools/ulid-generator',
   '/tools/uuid-v7',
   '/tools/dummy-text',
@@ -37,4 +38,4 @@ export const PAGES = [
   '/tools/json-formatter',
 ] as const;
 
-export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy']);
+export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy', '/404']);

@@ -1,0 +1,49 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { tools } from '@/data/tools';
+
+// 主要ツールへの shortcut。slug が変わっても 404 リンクにならないよう存在チェックする。
+const featuredSlugs = ['base64', 'json-xml', 'qr-code', 'jwt-decoder', 'url-encode'];
+const featured = featuredSlugs
+  .map((slug) => tools.find((tool) => tool.slug === slug))
+  .filter((tool): tool is (typeof tools)[number] => Boolean(tool));
+---
+
+<BaseLayout
+  title="404 - ページが見つかりません"
+  description="お探しのページは見つかりませんでした。"
+>
+  <main class="mx-auto max-w-2xl px-6 py-16" id="main-content">
+    <div class="text-center">
+      <p class="font-bold text-[4rem] leading-none text-primary">404</p>
+      <h1 class="mt-4 mb-3 font-bold text-[1.75rem] leading-[1.4] tracking-[0.02em] text-default">
+        ページが見つかりません
+      </h1>
+      <p class="mb-8 text-body">
+        お探しのページは削除されたか、URL が間違っている可能性があります。
+      </p>
+      <p class="mb-12">
+        <a href="/" class="text-link text-base leading-[1.7] tracking-[0.02em]"> ← ホームに戻る </a>
+      </p>
+    </div>
+
+    <section>
+      <h2 class="mb-4 font-bold section-heading text-default">よく使われるツール</h2>
+      <ul class="space-y-2">
+        {
+          featured.map((tool) => (
+            <li>
+              <a
+                href={`/tools/${tool.slug}`}
+                class="text-link text-base leading-[1.7] tracking-[0.02em]"
+              >
+                {tool.name}
+              </a>
+              <span class="ml-2 caption text-muted">— {tool.description}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+  </main>
+</BaseLayout>
