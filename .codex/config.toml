@@ -1,0 +1,22 @@
+# Project-local Codex settings. Loaded only after this repo is trusted by Codex.
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[features]
+hooks = true
+
+[tui]
+status_line = [
+  "model-with-reasoning",
+  "current-dir",
+  "git-branch",
+  "context-used",
+  "five-hour-limit",
+  "weekly-limit",
+  "pull-request-number"
+]
+terminal_title = ["activity", "project-name", "git-branch"]
+
+[sandbox_workspace_write]
+network_access = false

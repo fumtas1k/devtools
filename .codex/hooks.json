@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .codex/scripts/session-install.sh",
+            "statusMessage": "依存関係を確認中"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .codex/scripts/test-edit-context.sh",
+            "statusMessage": "テスト編集ルールを確認中"
+          }
+        ]
+      }
+    ]
+  }
+}
