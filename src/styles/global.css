@@ -365,6 +365,27 @@
     border-color: var(--color-border);
   }
 
+  /* 入力欄の一時ハイライト (#426)。TOTP シークレットのランダム生成など、マスク状態で
+     値が変わったことを視覚的に伝えるため class 付与中に 1 回 ring を fade させる。
+     prefers-reduced-motion 環境では animation を止め、付与中は static な ring を表示する。 */
+  .input-flash {
+    animation: input-flash-kf 1.2s ease-out;
+  }
+  @keyframes input-flash-kf {
+    from {
+      box-shadow: 0 0 0 3px var(--color-primary);
+    }
+    to {
+      box-shadow: 0 0 0 3px transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .input-flash {
+      animation: none;
+      box-shadow: 0 0 0 3px var(--color-primary);
+    }
+  }
+
   /* ToggleGroup: button 状態切替 + 動的 grid columns 受け口 */
   .toggle-grid {
     display: grid;
