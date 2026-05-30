@@ -1,0 +1,81 @@
+#!/bin/bash
+# Remove temporary files created by Codex, limited to /tmp/codex.
+
+set -u
+
+usage() {
+  echo "Usage: bash .codex/scripts/rm-tmp.sh [-f] [-r|-R] [--] <path>..." >&2
+}
+
+allowed_target() {
+  local target="$1"
+  local parent base resolved_parent resolved_target
+
+  parent=$(dirname -- "$target")
+  base=$(basename -- "$target")
+
+  if ! resolved_parent=$(cd "$parent" 2>/dev/null && pwd -P); then
+    return 1
+  fi
+
+  resolved_target="$resolved_parent/$base"
+
+  case "$resolved_target" in
+    /tmp/codex/* | /private/tmp/codex/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+if [ "$#" -eq 0 ]; then
+  usage
+  exit 2
+fi
+
+options=()
+targets=()
+parsing_options=1
+
+for arg in "$@"; do
+  if [ "$parsing_options" -eq 1 ]; then
+    case "$arg" in
+      --)
+        parsing_options=0
+        ;;
+      -f | -r | -R | -rf | -fr | -Rf | -fR)
+        options+=("$arg")
+        ;;
+      -*)
+        echo "Unsupported rm option: $arg" >&2
+        exit 2
+        ;;
+      *)
+        parsing_options=0
+        targets+=("$arg")
+        ;;
+    esac
+  else
+    targets+=("$arg")
+  fi
+done
+
+if [ "${#targets[@]}" -eq 0 ]; then
+  usage
+  exit 2
+fi
+
+for target in "${targets[@]}"; do
+  if ! allowed_target "$target"; then
+    echo "Refusing to remove outside /tmp/codex: $target" >&2
+    exit 1
+  fi
+done
+
+if [ "${#options[@]}" -eq 0 ]; then
+  rm -- "${targets[@]}"
+else
+  rm "${options[@]}" -- "${targets[@]}"
+fi

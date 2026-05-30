@@ -167,6 +167,14 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["bash", ".codex/scripts/rm-tmp.sh"],
+    decision = "allow",
+    justification = "Repository-provided helper only removes files under /tmp/codex after path validation.",
+    match = ["bash .codex/scripts/rm-tmp.sh /tmp/codex/pr_body.md", "bash .codex/scripts/rm-tmp.sh -f /tmp/codex/comment.md"],
+    not_match = ["rm /tmp/codex/pr_body.md", "bash .codex/scripts/rm-tmp.sh /tmp/claude/comment.md", "bash .codex/scripts/rm-tmp.sh .codex/config.toml"],
+)
+
+prefix_rule(
     pattern = [["curl", "wget"]],
     decision = "prompt",
     justification = "Network fetches require confirmation.",
