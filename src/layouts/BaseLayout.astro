@@ -9,6 +9,8 @@ interface Props {
   description?: string;
   jsonLd?: object;
   currentSlug?: string;
+  /** true のとき <meta name="robots" content="noindex"> を出力（404 等の非インデックス対象ページ用） */
+  noindex?: boolean;
 }
 
 const {
@@ -16,6 +18,7 @@ const {
   description = 'ブラウザで完結する無料の開発者ツール集',
   jsonLd,
   currentSlug,
+  noindex = false,
 } = Astro.props;
 const pageTitle = `${title} | DevTools`;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
@@ -29,6 +32,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <meta name="generator" content={Astro.generator} />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
     <link rel="canonical" href={canonical} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="DevTools" />

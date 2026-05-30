@@ -15,8 +15,11 @@ test.describe('カスタム 404 ページ', () => {
 
     await expect(page.getByRole('heading', { name: 'ページが見つかりません' })).toBeVisible();
     await expect(page.getByRole('link', { name: /ホームに戻る/ })).toBeVisible();
-    // 主要ツールへの shortcut が描画されている
-    await expect(page.getByRole('heading', { name: 'よく使われるツール' })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Base64/ })).toBeVisible();
+
+    // 主要ツールへの shortcut が「よく使われるツール」セクション内に描画されている。
+    // region でスコープを絞り、将来 "Base64" を含む別ツールが他箇所に増えても誤検出しない。
+    const featuredRegion = page.getByRole('region', { name: 'よく使われるツール' });
+    await expect(featuredRegion).toBeVisible();
+    await expect(featuredRegion.getByRole('link', { name: /Base64/ })).toBeVisible();
   });
 });
