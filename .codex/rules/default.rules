@@ -65,13 +65,29 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["bash", ".codex/scripts/git-add-files.sh"],
+    decision = "allow",
+    justification = "Repository-provided helper stages only explicit repository paths and rejects broad git add pathspecs.",
+    match = ["bash .codex/scripts/git-add-files.sh AGENTS.md", "bash .codex/scripts/git-add-files.sh docs/shared-agent-rules.md .codex/rules/default.rules"],
+    not_match = ["git add AGENTS.md", "bash .codex/scripts/git-add-files.sh .", "bash .codex/scripts/git-add-files.sh -A"],
+)
+
+prefix_rule(
+    pattern = ["git", "commit", "-m"],
+    decision = "allow",
+    justification = "Standard commit creation with an explicit message is allowed; bypass and amend forms are handled by prompt rules.",
+    match = ["git commit -m \"docs: ルールを更新\""],
+    not_match = ["git commit --amend", "git commit -am update", "git commit -n -m update"],
+)
+
+prefix_rule(
     pattern = ["git", ["switch", "checkout", "add", "commit", "fetch", "pull", "merge", "rebase", "worktree"]],
     decision = "prompt",
     justification = "Git commands that may mutate the worktree, refs, or network state require confirmation.",
     match = [
         "git switch -c chore/example",
-        "git add AGENTS.md",
-        "git commit -m update",
+        "git add .",
+        "git commit --amend",
         "git fetch origin",
         "git pull --ff-only",
         "git merge --ff-only develop",
