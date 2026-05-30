@@ -73,13 +73,14 @@ git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 
 ```bash
 gh pr create --base develop --title "..." --body-file "$TMPDIR/pr_body.md"
+# Codex:  gh pr create --base develop --title "..." --body-file /tmp/codex/pr_body.md
 # または: gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
 ```
 
 - `--base develop` は **必ず明示**（`gh` のデフォルトは `main`）。
 - 本文は **必ず日本語**。
 - バックティック含有時は `-F` / `--body-file` 経由で投稿（`docs/shared-agent-rules.md` 6.1）。
-- 一時ファイルは `$TMPDIR` か `/tmp/claude/` 配下に置く（`Write(/tmp/claude/**)` は allow、`Write(/tmp/**)` は ask）。
+- 一時ファイルは Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に置く。汎用 fallback として `$TMPDIR` も使用可。
 
 ### 4.1 `decisions.md` の `本 PR:` 行は PR 作成直後に番号置換する
 

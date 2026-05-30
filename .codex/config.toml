@@ -20,3 +20,4 @@ terminal_title = ["activity", "project-name", "git-branch"]
 
 [sandbox_workspace_write]
 network_access = false
+writable_roots = ["/tmp/codex"]

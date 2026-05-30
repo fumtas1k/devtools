@@ -176,7 +176,8 @@
       "Bash(node --version)",
       "Bash(npm --version)",
       "Bash(which *)",
-      "Bash(pwd)"
+      "Bash(pwd)",
+      "Bash(bash .claude/scripts/rm-tmp.sh *)"
     ],
     "ask": [
       "Edit(**/.claude/{*.json,*.sh,hooks/**,agents/**,skills/**,commands/**,plugins/**})",

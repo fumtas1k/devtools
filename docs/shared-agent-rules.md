@@ -77,9 +77,15 @@ post-PR 代行は不要、CI が最終ゲート。
 
 ## 6. AI エージェント操作・Git ワークフロー
 
-### 6.1 `gh` 本文投稿は常に `--body-file` 経由
+### 6.1 GitHub への本文付き投稿・更新は常にファイル経由
 
-`gh pr create` / `gh pr comment` / `gh issue create` / `gh issue comment` の本文は **常に** `-F` / `--body-file` で投稿する。`--body` への直接埋め込みは禁止（MCP / API 経由は不要）。
+GitHub に Markdown 本文を渡す `gh` コマンドでは、本文をコマンドライン引数に直接埋め込まない。対象は `gh pr create/comment/edit/review/merge`、`gh issue create/comment/close/edit`、および `gh api` で `body` 等の Markdown 本文を渡す操作を含む。
+
+- `--body` / `--comment` / `-f body=...` / `--field body=...` への直接埋め込みは禁止
+- `--body-file` / `-F` が使える場合は必ず使う
+- `gh issue close --comment` はファイル指定できないため使わない。closing comment が必要な場合は `gh issue comment --body-file <file>` を先に実行し、その後 `gh issue close --reason <reason>` を実行する
+- `gh api` 等で本文ファイル option がない場合は、JSON 等のリクエストファイルを Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に作成し、`--input <file>` で渡す
+- 一時ファイルは credential / secret 類を含めない
 
 **なぜ条件付きでなく常時か**: PR 本文はほぼ常にコードブロック（バックティック）や複数行を含み、HEREDOC でバックスラッシュ + バックティック（<code>\\&#96;</code>）にエスケープすると literal `\` が GitHub に流れる事故が頻発する。条件分岐ルールは判断負荷が高く形骸化するため、無条件 default にすれば事故クラス自体が消える。
 
@@ -130,9 +136,11 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 ### 6.6 settings.json permissions に整合した振る舞い
 
-`.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
+各エージェント設定で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
 
-- **一時ファイル**: `$TMPDIR` または `/tmp/claude/` 配下に作成する（`/tmp/**` 直下は ask）。credential / secret 類は置かない。
+- **一時ファイル**: Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に作成する。credential / secret 類は置かない。
+- **一時ファイル削除**: Codex では `/tmp/codex/` 配下の削除に `bash .codex/scripts/rm-tmp.sh <path>`、Claude Code では `/tmp/claude/` 配下の削除に `bash .claude/scripts/rm-tmp.sh <path>` を使う。これらの helper は実パス検証で各エージェント専用の一時ディレクトリ配下だけ削除を許可する。
+- **Codex の stage 操作**: Codex では `git add` の代わりに `bash .codex/scripts/git-add-files.sh <path>...` を使う。この helper は `git add .` / `-A` / `--all` 相当の広い pathspec と repo 外参照を拒否する。
 - **PR コメント取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`gh api` は ask 経路のため行単位レビューが本当に必要な場合のみ断ってから使う。
 - **sandbox 制約**: `denyWithinAllow` に含まれるファイルへの操作は Bash (`mkdir` / `rm` / `tee` / `sed -i` 等) 経由では deny されるが、`Edit` / `Write` tool 経由は通る（tool で完結できれば別ターミナル依頼不要）。操作前に必ず `Edit` / `Write` を先に試す。`!` prefix は sandbox bypass にならない（memory 参照）。
 
