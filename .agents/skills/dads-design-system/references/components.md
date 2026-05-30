@@ -27,15 +27,21 @@ SKILL.mdのCSS変数を前提として使用する。
   border: 2px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .btn-primary {
   background: var(--color-primary);
   color: var(--neutral-white);
 }
-.btn-primary:hover { background: var(--blue-800); }
-.btn-primary:active { background: var(--blue-900); }
+.btn-primary:hover {
+  background: var(--blue-800);
+}
+.btn-primary:active {
+  background: var(--blue-900);
+}
 
 /* アウトラインボタン（Secondary） */
 .btn-outline {
@@ -57,7 +63,9 @@ SKILL.mdのCSS変数を前提として使用する。
   border-color: transparent;
   padding: 12px 16px;
 }
-.btn-text:hover { background: var(--blue-50); }
+.btn-text:hover {
+  background: var(--blue-50);
+}
 
 /* 共通フォーカス（DADS標準: 黒アウトライン＋黄色リング） */
 .btn:focus-visible {
@@ -73,8 +81,14 @@ SKILL.mdのCSS変数を前提として使用する。
 }
 
 /* サイズバリエーション */
-.btn-sm { padding: 8px 16px; font-size: 14px; }
-.btn-lg { padding: 16px 32px; font-size: 18px; }
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+.btn-lg {
+  padding: 16px 32px;
+  font-size: 18px;
+}
 ```
 
 ---
@@ -176,19 +190,21 @@ SKILL.mdのCSS変数を前提として使用する。
 ## チェックボックス / ラジオボタン
 
 ```css
-.checkbox-group, .radio-group {
+.checkbox-group,
+.radio-group {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.checkbox-item, .radio-item {
+.checkbox-item,
+.radio-item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   cursor: pointer;
 }
-.checkbox-item input[type="checkbox"],
-.radio-item input[type="radio"] {
+.checkbox-item input[type='checkbox'],
+.radio-item input[type='radio'] {
   width: 24px;
   height: 24px;
   margin-top: 2px;
@@ -318,7 +334,7 @@ SKILL.mdのCSS変数を前提として使用する。
   border-bottom: 2px solid transparent;
 }
 .header-nav a:hover,
-.header-nav a[aria-current="page"] {
+.header-nav a[aria-current='page'] {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
@@ -383,7 +399,7 @@ SKILL.mdのCSS変数を前提として使用する。
   background: var(--blue-50);
   border-color: var(--color-primary);
 }
-.pagination-item[aria-current="page"] {
+.pagination-item[aria-current='page'] {
   background: var(--color-primary);
   color: var(--neutral-white);
   border-color: var(--color-primary);
@@ -453,11 +469,11 @@ SKILL.mdのCSS変数を前提として使用する。
 }
 .chip-label-error {
   background: var(--color-error-bg);
-  color: #991B1B;
+  color: #991b1b;
 }
 .chip-label-warning {
   background: var(--color-warning-bg);
-  color: #92400E;
+  color: #92400e;
 }
 ```
 
