@@ -50,6 +50,29 @@ describe('parseRegex', () => {
   it('不正なフラグで例外を投げる', () => {
     expect(() => parseRegex('a', 'Z')).toThrow();
   });
+
+  // #489: engine の英語 SyntaxError を日本語見出し付きへ変換する
+  it('不正な正規表現のエラーメッセージが日本語見出しで始まる', () => {
+    expect(() => parseRegex('(', '')).toThrow(/^正規表現が不正です: /);
+  });
+
+  it('英語詳細（不正箇所・理由）を見出しの後に保持する', () => {
+    // detail は engine 依存だが、重複する "Invalid regular expression: " 接頭辞は除去される
+    let message = '';
+    try {
+      parseRegex('(', '');
+    } catch (e) {
+      message = e instanceof Error ? e.message : String(e);
+    }
+    expect(message).toMatch(/^正規表現が不正です: /);
+    expect(message).not.toMatch(/Invalid regular expression:/i);
+    // 不正箇所の詳細（"Unterminated group" 等）が残っている
+    expect(message.length).toBeGreaterThan('正規表現が不正です: '.length);
+  });
+
+  it('不正なフラグのエラーも日本語見出しで始まる', () => {
+    expect(() => parseRegex('a', 'Z')).toThrow(/^正規表現が不正です: /);
+  });
 });
 
 describe('parseToRegExpTree', () => {

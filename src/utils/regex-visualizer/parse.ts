@@ -1,4 +1,5 @@
 import { parse as parseRegExpTree } from 'regexp-tree';
+import { getErrorMessage } from '@/utils/errors';
 
 export interface RegexAstNode {
   /** regexp-tree のノード種別（'Char' | 'Repetition' | 'Group' | 'Disjunction' | 'Alternative' | 'CharacterClass' | 'Assertion' | 'Backreference' | 'Root' 等） */
@@ -103,12 +104,31 @@ export function parseToRegExpTree(pattern: string, flags: string) {
 }
 
 /**
+ * engine の英語 SyntaxError を日本語見出し付きのエラーへ整形する。
+ * 例: `Invalid regular expression: /(/: Unterminated group`
+ *   → `正規表現が不正です: /(/: Unterminated group`
+ * V8 系の `Invalid regular expression: ` 接頭辞は日本語見出しと重複するため除去し、
+ * 不正箇所・理由を示す英語詳細は情報量があるため残す（他ツールの ErrorMessage 表示と一貫）。
+ */
+function toJapaneseRegexError(e: unknown): Error {
+  const raw = getErrorMessage(e, '構文を確認してください');
+  const detail = raw.replace(/^Invalid regular expression:\s*/i, '');
+  return new Error(`正規表現が不正です: ${detail}`);
+}
+
+/**
  * pattern + flags を描画用 AST へ変換する。
  * native `new RegExp` で構文・フラグを検証（不正なら SyntaxError を投げる）し、
  * regexp-tree で位置情報付き AST を得る。ルートは body を Root ノードに包んで返す。
+ * 不正時は engine の英語メッセージを日本語見出し付きへ変換して throw する（#489）。
  */
 export function parseRegex(pattern: string, flags: string): RegexAstNode {
-  const ast = parseToRegExpTree(pattern, flags);
+  let ast: ReturnType<typeof parseToRegExpTree>;
+  try {
+    ast = parseToRegExpTree(pattern, flags);
+  } catch (e) {
+    throw toJapaneseRegexError(e);
+  }
   const body = ast.body as unknown as RegExpTreeNode;
   const rendered = toRenderNode(body);
   return {

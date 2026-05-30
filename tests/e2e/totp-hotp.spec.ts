@@ -152,6 +152,23 @@ test.describe('TOTP/HOTP ジェネレータ（production CSP 適用）', () => {
     });
   });
 
+  test('マスク状態でランダム生成すると視覚 / SR フィードバックが出る（#426・CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      const secretInput = page.getByLabel('Base32 シークレット');
+      // 既定は showSecret=false（type="password" のマスク状態）であることを確認
+      await expect(secretInput).toHaveAttribute('type', 'password');
+
+      await page.getByRole('button', { name: /ランダム生成/ }).click();
+
+      // 視覚フィードバック: 入力欄に一時ハイライト class が付く
+      await expect(secretInput).toHaveClass(/input-flash/);
+      // SR フィードバック: aria-live 領域に再生成の announce が出る
+      await expect(page.getByText('シークレットを再生成しました')).toBeVisible();
+    });
+  });
+
   test('HOTP モードでランダム生成すると counter が 0 にリセットされる（CSP 違反なし）', async ({
     browser,
   }) => {
