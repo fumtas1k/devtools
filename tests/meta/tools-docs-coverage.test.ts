@@ -33,6 +33,18 @@ function findOrphanHeadings(toolList: { name: string }[], headings: Set<string>)
   return [...headings].filter((h) => !toolNames.has(h));
 }
 
+/** docs/tools.md 内で複数回出現する ### 見出しを返す（Set 重複除去をすり抜けるバグ検出用）*/
+function findDuplicateH3Headings(content: string): string[] {
+  const all = [...content.matchAll(/^### (.+)$/gm)].map((m) => m[1].trim());
+  const seen = new Set<string>();
+  const dups = new Set<string>();
+  for (const h of all) {
+    if (seen.has(h)) dups.add(h);
+    else seen.add(h);
+  }
+  return [...dups];
+}
+
 // --- 陰性対照: 現状の正常系で pass ---
 
 describe('tools.md ↔ tools.ts カバレッジ', () => {
@@ -112,5 +124,30 @@ describe('[陽性対照] orphan 検出機構', () => {
     const fakeHeadings = extractH3Headings(fakeContent);
     const orphans = findOrphanHeadings([], fakeHeadings);
     expect(orphans.length).toBe(2);
+  });
+});
+
+// --- 重複見出し検出: 同じ ### 見出しが 2 回書かれると Set が dedup して missing/orphan を両方すり抜ける ---
+
+describe('tools.md 重複見出し検出', () => {
+  it('docs/tools.md に重複する ### 見出しがない', () => {
+    const content = readFileSync(toolsMdPath, 'utf-8');
+    const dups = findDuplicateH3Headings(content);
+    expect(dups, `docs/tools.md に重複している ### 見出し: ${dups.join(', ')}`).toEqual([]);
+  });
+});
+
+describe('[陽性対照] 重複見出し検出機構', () => {
+  it('同じ見出しを 2 回含む偽 doc では重複として検出される', () => {
+    const fakeContent =
+      '### URLエンコード/デコード\n### JWTデコーダー\n### URLエンコード/デコード\n';
+    const dups = findDuplicateH3Headings(fakeContent);
+    expect(dups).toEqual(['URLエンコード/デコード']);
+  });
+
+  it('重複なし fixture では何も検出しない（過検知なし）', () => {
+    const fakeContent = '### URLエンコード/デコード\n### JWTデコーダー\n';
+    const dups = findDuplicateH3Headings(fakeContent);
+    expect(dups).toEqual([]);
   });
 });
