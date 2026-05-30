@@ -82,7 +82,11 @@ test.describe('正規表現ビジュアライザ', () => {
     await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
       await page.getByLabel('正規表現').fill('(');
       // ErrorMessage コンポーネントは role="alert" で描画される
-      await expect(page.getByRole('alert').first()).toBeVisible();
+      const alert = page.getByRole('alert').first();
+      await expect(alert).toBeVisible();
+      // #489: engine の英語メッセージそのままではなく日本語見出しで表示される
+      await expect(alert).toContainText('正規表現が不正です');
+      await expect(alert).not.toContainText('Invalid regular expression:');
     });
   });
 
