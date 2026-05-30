@@ -84,7 +84,7 @@ GitHub に Markdown 本文を渡す `gh` コマンドでは、本文をコマン
 - `--body` / `--comment` / `-f body=...` / `--field body=...` への直接埋め込みは禁止
 - `--body-file` / `-F` が使える場合は必ず使う
 - `gh issue close --comment` はファイル指定できないため使わない。closing comment が必要な場合は `gh issue comment --body-file <file>` を先に実行し、その後 `gh issue close --reason <reason>` を実行する
-- `gh api` 等で本文ファイル option がない場合は、JSON 等のリクエストファイルを `$TMPDIR` または `/tmp/claude/` 配下に作成し、`--input <file>` で渡す
+- `gh api` 等で本文ファイル option がない場合は、JSON 等のリクエストファイルを Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に作成し、`--input <file>` で渡す
 - 一時ファイルは credential / secret 類を含めない
 
 **なぜ条件付きでなく常時か**: PR 本文はほぼ常にコードブロック（バックティック）や複数行を含み、HEREDOC でバックスラッシュ + バックティック（<code>\\&#96;</code>）にエスケープすると literal `\` が GitHub に流れる事故が頻発する。条件分岐ルールは判断負荷が高く形骸化するため、無条件 default にすれば事故クラス自体が消える。
@@ -136,9 +136,9 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 ### 6.6 settings.json permissions に整合した振る舞い
 
-`.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
+各エージェント設定で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
 
-- **一時ファイル**: `$TMPDIR` または `/tmp/claude/` 配下に作成する（`/tmp/**` 直下は ask）。credential / secret 類は置かない。
+- **一時ファイル**: Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に作成する。credential / secret 類は置かない。
 - **PR コメント取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`gh api` は ask 経路のため行単位レビューが本当に必要な場合のみ断ってから使う。
 - **sandbox 制約**: `denyWithinAllow` に含まれるファイルへの操作は Bash (`mkdir` / `rm` / `tee` / `sed -i` 等) 経由では deny されるが、`Edit` / `Write` tool 経由は通る（tool で完結できれば別ターミナル依頼不要）。操作前に必ず `Edit` / `Write` を先に試す。`!` prefix は sandbox bypass にならない（memory 参照）。
 
