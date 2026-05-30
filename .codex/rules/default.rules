@@ -1,0 +1,238 @@
+# Project-local Codex command approval rules.
+# Mirrors the intent of .claude/settings.json: common read/check commands are
+# allowed, mutating or network-sensitive actions prompt, and destructive actions
+# are forbidden.
+
+prefix_rule(
+    pattern = ["npm", "run"],
+    decision = "allow",
+    justification = "Project npm scripts are common development and verification commands.",
+    match = ["npm run build", "npm run format:check", "npm run test:e2e"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["test", "ci", "list", "outdated", "view"]],
+    decision = "allow",
+    justification = "Routine npm verification and dependency inspection commands.",
+    match = ["npm test", "npm ci", "npm list", "npm view astro version"],
+)
+
+prefix_rule(
+    pattern = ["npx", ["playwright", "tsc", "vitest", "astro", "prettier"]],
+    decision = "allow",
+    justification = "Project toolchain commands used for tests, builds, and formatting.",
+    match = [
+        "npx playwright test",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npx astro check",
+        "npx prettier --check AGENTS.md",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", ["status", "diff", "log", "show", "branch", "rev-parse"]],
+    decision = "allow",
+    justification = "Read-only git inspection commands.",
+    match = ["git status --short", "git diff", "git log --oneline", "git show HEAD"],
+)
+
+prefix_rule(
+    pattern = ["git", "remote", "-v"],
+    decision = "allow",
+    justification = "Read-only repository remote inspection.",
+    match = ["git remote -v"],
+)
+
+prefix_rule(
+    pattern = ["git", "stash", "list"],
+    decision = "allow",
+    justification = "Read-only stash inspection.",
+    match = ["git stash list"],
+)
+
+prefix_rule(
+    pattern = ["git", "config", "--get"],
+    decision = "allow",
+    justification = "Read-only git configuration lookup.",
+    match = ["git config --get remote.origin.url"],
+)
+
+prefix_rule(
+    pattern = ["git", ["switch", "checkout", "add", "commit", "fetch", "pull", "merge", "rebase", "worktree"]],
+    decision = "prompt",
+    justification = "Git commands that may mutate the worktree, refs, or network state require confirmation.",
+    match = [
+        "git switch -c chore/example",
+        "git add AGENTS.md",
+        "git commit -m update",
+        "git fetch origin",
+        "git pull --ff-only",
+        "git merge --ff-only develop",
+        "git rebase --continue",
+        "git worktree prune",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Pushing changes publishes repository state and requires confirmation.",
+    match = ["git push origin HEAD"],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["list", "view", "status", "diff", "checks"]],
+    decision = "allow",
+    justification = "Read-only GitHub PR inspection commands.",
+    match = ["gh pr view <pr-number>", "gh pr list", "gh pr diff <pr-number>", "gh pr checks <pr-number>"],
+    not_match = ["gh pr merge <pr-number>", "gh pr comment <pr-number>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "issue", ["list", "view", "status"]],
+    decision = "allow",
+    justification = "Read-only GitHub issue inspection commands.",
+    match = ["gh issue view <issue-number>", "gh issue list", "gh issue status"],
+    not_match = ["gh issue comment <issue-number> --body update"],
+)
+
+prefix_rule(
+    pattern = ["gh", ["repo", "run", "workflow"], ["view", "list"]],
+    decision = "allow",
+    justification = "Read-only GitHub repository, workflow, and run inspection commands.",
+    match = ["gh repo view", "gh run list", "gh workflow view test"],
+)
+
+prefix_rule(
+    pattern = ["gh", "run", "view"],
+    decision = "allow",
+    justification = "Read-only GitHub Actions run inspection.",
+    match = ["gh run view <run-id>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "workflow", "view"],
+    decision = "allow",
+    justification = "Read-only GitHub workflow inspection.",
+    match = ["gh workflow view <workflow-file>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["review", "comment", "create", "merge", "close", "edit"]],
+    decision = "prompt",
+    justification = "GitHub PR write operations require confirmation.",
+    match = ["gh pr comment <pr-number> --body update", "gh pr review <pr-number> --comment --body review", "gh pr merge <pr-number> --squash"],
+)
+
+prefix_rule(
+    pattern = ["gh", "issue", ["comment", "create", "delete", "close", "edit"]],
+    decision = "prompt",
+    justification = "GitHub issue write operations require confirmation.",
+    match = ["gh issue comment <issue-number> --body update", "gh issue close <issue-number>"],
+)
+
+prefix_rule(
+    pattern = ["gh", ["release", "api"]],
+    decision = "prompt",
+    justification = "GitHub release and API commands can mutate remote state or access sensitive data.",
+    match = ["gh release list", "gh api repos/fumtas1k/devtools"],
+)
+
+prefix_rule(
+    pattern = ["gh", "workflow", ["run", "disable"]],
+    decision = "prompt",
+    justification = "GitHub workflow mutations require confirmation.",
+    match = ["gh workflow run <workflow-file>", "gh workflow disable <workflow-file>"],
+)
+
+prefix_rule(
+    pattern = [["node", "npm"], "--version"],
+    decision = "allow",
+    justification = "Tool version checks are safe.",
+    match = ["node --version", "npm --version"],
+)
+
+prefix_rule(
+    pattern = [["which", "pwd"]],
+    decision = "allow",
+    justification = "Local environment inspection commands are safe.",
+    match = ["which node", "pwd"],
+)
+
+prefix_rule(
+    pattern = [["curl", "wget"]],
+    decision = "prompt",
+    justification = "Network fetches require confirmation.",
+    match = ["curl https://example.com", "wget https://example.com/file"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["install", "exec"]],
+    decision = "prompt",
+    justification = "Installing or executing packages can change dependencies or run untrusted code.",
+    match = ["npm install astro", "npm exec playwright install"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["publish"]],
+    decision = "forbidden",
+    justification = "Publishing packages is not part of repository maintenance from Codex.",
+    match = ["npm publish"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["install", "i"], ["-g", "--global", "--location=global"]],
+    decision = "forbidden",
+    justification = "Do not install global npm packages from this repository session.",
+    match = ["npm install -g eslint", "npm i --global pnpm", "npm install --location=global eslint"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["install", "i"], "--location", "global"],
+    decision = "forbidden",
+    justification = "Do not install global npm packages from this repository session.",
+    match = ["npm install --location global eslint"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Force-push is blocked; use a non-forced push or ask the user for a manual operation.",
+    match = ["git push --force", "git push -f origin HEAD"],
+)
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Hard reset can discard user work and must not be automated.",
+    match = ["git reset --hard", "git reset --hard HEAD"],
+)
+
+prefix_rule(
+    pattern = ["gh", "repo", ["delete"]],
+    decision = "forbidden",
+    justification = "Repository deletion is blocked.",
+    match = ["gh repo delete <owner/repo>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "secret", ["delete", "remove", "set"]],
+    decision = "forbidden",
+    justification = "Secret mutation is blocked from Codex repository sessions.",
+    match = ["gh secret delete <name>", "gh secret set <name>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "ssh-key", "delete"],
+    decision = "forbidden",
+    justification = "SSH key deletion is blocked.",
+    match = ["gh ssh-key delete <key-id>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "auth", "logout"],
+    decision = "forbidden",
+    justification = "Authentication logout is blocked.",
+    match = ["gh auth logout"],
+)
