@@ -33,7 +33,7 @@ const SIZE_CLASS: Record<Size, string> = {
  * - ローディング中の子要素はそのまま表示するため、呼び出し元でローディング文言に切り替えること
  *   （例: `{loading ? '生成中…' : '生成'}`）
  * - `disabled=true`: variant ごとに disabled 時の bg/border を CSS `:disabled` 擬似で上書き
- *   （primary は border 不可視・secondary は背景透過維持）
+ *   （primary は border 不可視・secondary/danger は中立グレーボーダーに統一）
  * - `aria-*` など ButtonHTMLAttributes のほとんどの属性を渡せる
  *
  * style: global.css `@layer components` の `.btn-action` / `.btn-action--{variant}` を参照。

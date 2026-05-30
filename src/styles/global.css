@@ -357,6 +357,13 @@
     border-color: var(--color-border);
     background: transparent;
   }
+  /* danger も disabled 時は中立グレーに揃える (secondary:disabled と統一)。
+     赤 (--color-error) は「危険・注意喚起」シグナルだが disabled は非アクティブ状態を
+     意味するため、両者は矛盾する。disabled 時は variant 共通で注意を引かない表現にする。
+     issue #259 (起源: #176 / #256 final code review)。 */
+  .btn-action--danger:disabled {
+    border-color: var(--color-border);
+  }
 
   /* ToggleGroup: button 状態切替 + 動的 grid columns 受け口 */
   .toggle-grid {
