@@ -23,10 +23,7 @@ function extractH3Headings(content: string): Set<string> {
 }
 
 /** tools.ts の name に対応する ### 見出しが欠落しているツール名を返す */
-function findMissingToolHeadings(
-  toolList: { name: string }[],
-  headings: Set<string>,
-): string[] {
+function findMissingToolHeadings(toolList: { name: string }[], headings: Set<string>): string[] {
   return toolList.filter((t) => !headings.has(t.name)).map((t) => t.name);
 }
 
@@ -44,10 +41,9 @@ describe('tools.md ↔ tools.ts カバレッジ', () => {
 
   it('src/data/tools.ts の全ツールに対応する ### 見出しが docs/tools.md に存在する', () => {
     const missing = findMissingToolHeadings(tools, headings);
-    expect(
-      missing,
-      `docs/tools.md に見出しが不足しているツール: ${missing.join(', ')}`,
-    ).toEqual([]);
+    expect(missing, `docs/tools.md に見出しが不足しているツール: ${missing.join(', ')}`).toEqual(
+      []
+    );
   });
 });
 
@@ -88,10 +84,9 @@ describe('tools.md orphan 見出し検出', () => {
 
   it('docs/tools.md の ### 見出しはすべて tools.ts のツール名と対応している', () => {
     const orphans = findOrphanHeadings(tools, headings);
-    expect(
-      orphans,
-      `tools.ts に対応するツールがない orphan 見出し: ${orphans.join(', ')}`,
-    ).toEqual([]);
+    expect(orphans, `tools.ts に対応するツールがない orphan 見出し: ${orphans.join(', ')}`).toEqual(
+      []
+    );
   });
 });
 
