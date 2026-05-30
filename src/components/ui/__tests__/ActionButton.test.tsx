@@ -139,6 +139,19 @@ describe('ActionButton', () => {
     expect(btn.className).toContain('btn-action--default');
   });
 
+  it('variant="danger" + disabled は disabled 属性と btn-action--danger クラスを持つ', () => {
+    render(
+      <ActionButton onClick={() => {}} variant="danger" disabled>
+        無効削除
+      </ActionButton>
+    );
+    const btn = screen.getByRole('button') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    // disabled でも variant class は剥がれない（border 中立グレー化は CSS :disabled 擬似で実現、
+    // class が維持されることが前提。スタイル値検証は E2E/VRT に委ねる）。issue #259
+    expect(btn.className).toContain('btn-action--danger');
+  });
+
   it('disabled 時は variant 不問で disabled 属性が付く', () => {
     render(
       <ActionButton onClick={() => {}} variant="primary" disabled>
