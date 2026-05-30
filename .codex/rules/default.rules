@@ -136,7 +136,6 @@ prefix_rule(
     decision = "prompt",
     justification = "GitHub issue write operations require confirmation.",
     match = ["gh issue comment <issue-number> --body-file <body-file>", "gh issue close <issue-number> --reason completed"],
-    not_match = ["gh issue close <issue-number> --comment update"],
 )
 
 prefix_rule(
