@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { InputField } from '@/components/ui/InputField';
@@ -166,6 +166,28 @@ export function TotpHotpGeneratorTool() {
     setVerificationResult(null);
   };
 
+  // ランダム生成時の視覚 / SR フィードバック (#426)。マスク状態 (type="password") では
+  // 値が dots 表示で変化が分かりにくいため、入力欄を一時ハイライトしつつ aria-live で announce する。
+  const [regenFlash, setRegenFlash] = useState(false);
+  const regenTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (regenTimerRef.current !== null) window.clearTimeout(regenTimerRef.current);
+    };
+  }, []);
+
+  const handleRegenerateSecret = () => {
+    replaceSecret(generateRandomBase32Secret());
+    setCounterStr('0');
+    // 連打時もハイライトを再生させるため、一旦解除してから次フレームで再付与する。
+    setRegenFlash(false);
+    if (regenTimerRef.current !== null) window.clearTimeout(regenTimerRef.current);
+    requestAnimationFrame(() => {
+      setRegenFlash(true);
+      regenTimerRef.current = window.setTimeout(() => setRegenFlash(false), 1500);
+    });
+  };
+
   const handleGenerateHotp = async () => {
     if (!secretBytes || counterError) {
       setHotpCode('');
@@ -267,10 +289,7 @@ export function TotpHotpGeneratorTool() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    replaceSecret(generateRandomBase32Secret());
-                    setCounterStr('0');
-                  }}
+                  onClick={handleRegenerateSecret}
                   className="caption text-link-color btn-link-plain"
                   aria-label="ランダム生成（新しいシークレット）"
                 >
@@ -295,8 +314,15 @@ export function TotpHotpGeneratorTool() {
               mono
               aria-label="Base32 シークレット"
               error={!!secretError}
+              className={regenFlash ? 'input-flash' : undefined}
             />
             {secretError && <ErrorMessage message={secretError} />}
+            {/* ランダム生成の SR 通知 (#426)。条件付き mount で連打時も再 announce される。 */}
+            {regenFlash && (
+              <span role="status" aria-live="polite" className="sr-only">
+                シークレットを再生成しました
+              </span>
+            )}
           </div>
 
           <div>
