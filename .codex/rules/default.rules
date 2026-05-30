@@ -2,6 +2,12 @@
 # Mirrors the intent of .claude/settings.json: common read/check commands are
 # allowed, mutating or network-sensitive actions prompt, and destructive actions
 # are forbidden.
+#
+# Matching is driven solely by `pattern` (a prefix match on the parsed argv).
+# The `match` / `not_match` entries are illustrative examples for documentation
+# and self-review only; they are NOT enforcement inputs. Placeholders such as
+# <pr-number> / <issue-number> / <run-id> stand for arbitrary user-supplied
+# arguments and are never matched literally.
 
 prefix_rule(
     pattern = ["npm", "run"],

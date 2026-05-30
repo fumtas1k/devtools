@@ -18,20 +18,28 @@ set -e
 # 入力 JSON 全体を読む
 input=$(cat)
 
-# ファイルパスを抽出 (Edit/Write/MultiEdit すべて tool_input.file_path を持つ)。
-# 不正な JSON のときは空文字 (best-effort: reminder hook なので edit 自体は止めない)。
-file_path=$(printf '%s' "$input" | node -e '
+# JSON のフィールドを node で取り出す (dotted path を argv で受ける)。
+# 不正な JSON のときは空文字を返す (best-effort: reminder hook なので edit 自体は止めない)。
+# .codex/scripts/test-edit-context.sh と同じヘルパーで、今後フィールドを増やしても流用できる。
+json_get() {
+  printf '%s' "$input" | node -e '
+const path = process.argv[1].split(".");
 let d = "";
 process.stdin.on("data", (c) => (d += c));
 process.stdin.on("end", () => {
   try {
-    const j = JSON.parse(d);
-    process.stdout.write(String(j?.tool_input?.file_path ?? ""));
+    let v = JSON.parse(d);
+    for (const k of path) v = v == null ? undefined : v[k];
+    process.stdout.write(v == null ? "" : String(v));
   } catch {
     process.stdout.write("");
   }
 });
-')
+' "$1"
+}
+
+# ファイルパスを抽出 (Edit/Write/MultiEdit すべて tool_input.file_path を持つ)。
+file_path=$(json_get "tool_input.file_path")
 
 # 空ならパスなしで何もしない
 if [ -z "$file_path" ]; then

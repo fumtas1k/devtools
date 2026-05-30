@@ -19,6 +19,8 @@ Node.js は `>=22.12.0` を使います。
 
 初回 clone 後は `git config core.hooksPath .githooks` を 1 回実行して hook を有効化してください。
 
+Codex で作業する場合、`.codex/hooks.json` の SessionStart / PreToolUse hook は初回起動時に trust するかどうかの確認が表示されます。trust しないと依存インストールやテスト編集時のガード注入が働かないため、内容を確認のうえ承認してください。
+
 ## コーディング規約
 
 TypeScript、Astro、React 19、Tailwind CSS v4 を前提にします。整形は Prettier を正とし、Markdown と Astro も対象です。小さな純粋関数は `src/utils`、再利用 UI は `src/components` に分けます。ファイル名は既存に合わせて kebab-case または領域名ベースにします。例: `json-csv.ts`, `uuid-v7.ts`。このサイトはクライアントサイド完結が原則なので、ユーザー入力データを外部送信する処理を追加しないでください。
