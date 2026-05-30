@@ -86,6 +86,47 @@ describe('git-add-files.sh', () => {
     expect(result.stderr).toContain('Refusing broad or unsafe git add pathspec');
   });
 
+  it('陽性対照: glob pathspec は拒否して stage しない', () => {
+    writeFileSync(join(dir, 'one.txt'), 'one');
+    writeFileSync(join(dir, 'two.txt'), 'two');
+
+    const result = runGitAdd(dir, ['*']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Refusing broad or unsafe git add pathspec');
+    expect(stagedFiles(dir)).toEqual([]);
+  });
+
+  it('陽性対照: root magic pathspec は拒否して stage しない', () => {
+    writeFileSync(join(dir, 'one.txt'), 'one');
+
+    const result = runGitAdd(dir, [':/']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Refusing broad or unsafe git add pathspec');
+    expect(stagedFiles(dir)).toEqual([]);
+  });
+
+  it('陽性対照: top magic pathspec は拒否して stage しない', () => {
+    writeFileSync(join(dir, 'one.txt'), 'one');
+
+    const result = runGitAdd(dir, [':(top)']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Refusing broad or unsafe git add pathspec');
+    expect(stagedFiles(dir)).toEqual([]);
+  });
+
+  it('陽性対照: wildcard pathspec は拒否して stage しない', () => {
+    writeFileSync(join(dir, 'a.txt'), 'a');
+
+    const result = runGitAdd(dir, ['?.txt']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Refusing broad or unsafe git add pathspec');
+    expect(stagedFiles(dir)).toEqual([]);
+  });
+
   it('陽性対照: path traversal は拒否する', () => {
     const result = runGitAdd(dir, ['../outside.txt']);
 

@@ -22,7 +22,7 @@ allowed_pathspec() {
   local parent base resolved_parent
 
   case "$pathspec" in
-    "" | "." | "./." | -* | /* | ../* | */../* | */.. | ..)
+    "" | "." | "./." | -* | /* | ../* | */../* | */.. | .. | *'*'* | *'?'* | *'['* | :*)
       return 1
       ;;
   esac
