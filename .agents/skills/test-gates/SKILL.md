@@ -15,15 +15,15 @@ description: ガード / バリデータ / 違反検知機構 / リグレッシ�
 
 ## 実装パターン
 
-| 対象                       | 陽性対照の作り方                                                                       |
-| -------------------------- | -------------------------------------------------------------------------------------- |
-| CSP 違反検知ゲート         | 故意に違反 (外部 origin の `<script src>` 注入等) → `violations.length > 0` を assert |
-| 入力 validator             | 不正入力で `valid: false` 返却とエラー詳細形式を assert                                 |
-| lint ルール                | 違反パターンで warning が出ることを assert                                              |
-| セキュリティヘッダ assert  | 意図的に値を変える / 別 header と入れ替えて fail することを別 spec で assert            |
-| E2E ガード（検知系）       | 故意に検出対象を発生させて test failure に昇格することを別 spec で確認                  |
-| Promise reject ハンドラ    | mock / override で reject を強制 → catch 経路の UI feedback / state 更新を assert       |
-| 静的解析 / regex マッチ    | 違反コード片をテストフィクスチャに含めて gate fail することを assert                    |
+| 対象                      | 陽性対照の作り方                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| CSP 違反検知ゲート        | 故意に違反 (外部 origin の `<script src>` 注入等) → `violations.length > 0` を assert |
+| 入力 validator            | 不正入力で `valid: false` 返却とエラー詳細形式を assert                               |
+| lint ルール               | 違反パターンで warning が出ることを assert                                            |
+| セキュリティヘッダ assert | 意図的に値を変える / 別 header と入れ替えて fail することを別 spec で assert          |
+| E2E ガード（検知系）      | 故意に検出対象を発生させて test failure に昇格することを別 spec で確認                |
+| Promise reject ハンドラ   | mock / override で reject を強制 → catch 経路の UI feedback / state 更新を assert     |
+| 静的解析 / regex マッチ   | 違反コード片をテストフィクスチャに含めて gate fail することを assert                  |
 
 ## 設計の鉄則
 
@@ -38,17 +38,17 @@ CSP 違反検知ゲートを例にした最小形。**陰性対照だけでは�
 
 ```ts
 // 陰性対照: 正常系では違反ゼロ。これ単体では検知能力を証明できない。
-test("正規 script のみなら CSP 違反は発生しない", async ({ page }) => {
+test('正規 script のみなら CSP 違反は発生しない', async ({ page }) => {
   const guard = await applyProductionCsp(page);
-  await page.goto("/");
+  await page.goto('/');
   expect(guard.violations).toHaveLength(0);
 });
 
 // 陽性対照（別 test に分離）: 故意の違反を必ず捕捉する。
 // → 検知が空回りしている旧実装に当てると fail する = 検知能力そのものの証明。
-test("外部 origin の script 注入を CSP 違反として検知する", async ({ page }) => {
+test('外部 origin の script 注入を CSP 違反として検知する', async ({ page }) => {
   const guard = await applyProductionCsp(page);
-  await injectExternalScript(page, "https://evil.example.com/x.js"); // 意図的な違反
+  await injectExternalScript(page, 'https://evil.example.com/x.js'); // 意図的な違反
   await expect.poll(() => guard.violations.length).toBeGreaterThan(0);
 });
 ```
