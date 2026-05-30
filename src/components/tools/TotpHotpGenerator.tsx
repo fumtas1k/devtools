@@ -184,7 +184,10 @@ export function TotpHotpGeneratorTool() {
     if (regenTimerRef.current !== null) window.clearTimeout(regenTimerRef.current);
     requestAnimationFrame(() => {
       setRegenFlash(true);
-      regenTimerRef.current = window.setTimeout(() => setRegenFlash(false), 1500);
+      // flash state の寿命を .input-flash の animation 長 (1.2s) に揃える。
+      // ズレると animation 終了後も class が残り「ring 消失だが付与中」状態や、
+      // reduced-motion 環境での static ring 持続時間がアニメと食い違う。
+      regenTimerRef.current = window.setTimeout(() => setRegenFlash(false), 1200);
     });
   };
 
