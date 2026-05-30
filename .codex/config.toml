@@ -14,9 +14,9 @@ status_line = [
   "context-used",
   "five-hour-limit",
   "weekly-limit",
+  "pull-request-number"
 ]
 terminal_title = ["activity", "project-name", "git-branch"]
 
 [sandbox_workspace_write]
 network_access = false
-
