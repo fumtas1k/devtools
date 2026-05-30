@@ -77,9 +77,15 @@ post-PR 代行は不要、CI が最終ゲート。
 
 ## 6. AI エージェント操作・Git ワークフロー
 
-### 6.1 `gh` 本文投稿は常に `--body-file` 経由
+### 6.1 GitHub への本文付き投稿・更新は常にファイル経由
 
-`gh pr create` / `gh pr comment` / `gh issue create` / `gh issue comment` の本文は **常に** `-F` / `--body-file` で投稿する。`--body` への直接埋め込みは禁止（MCP / API 経由は不要）。
+GitHub に Markdown 本文を渡す `gh` コマンドでは、本文をコマンドライン引数に直接埋め込まない。対象は `gh pr create/comment/edit/review/merge`、`gh issue create/comment/close/edit`、および `gh api` で `body` 等の Markdown 本文を渡す操作を含む。
+
+- `--body` / `--comment` / `-f body=...` / `--field body=...` への直接埋め込みは禁止
+- `--body-file` / `-F` が使える場合は必ず使う
+- `gh issue close --comment` はファイル指定できないため使わない。closing comment が必要な場合は `gh issue comment --body-file <file>` を先に実行し、その後 `gh issue close --reason <reason>` を実行する
+- `gh api` 等で本文ファイル option がない場合は、JSON 等のリクエストファイルを `$TMPDIR` または `/tmp/claude/` 配下に作成し、`--input <file>` で渡す
+- 一時ファイルは credential / secret 類を含めない
 
 **なぜ条件付きでなく常時か**: PR 本文はほぼ常にコードブロック（バックティック）や複数行を含み、HEREDOC でバックスラッシュ + バックティック（<code>\\&#96;</code>）にエスケープすると literal `\` が GitHub に流れる事故が頻発する。条件分岐ルールは判断負荷が高く形骸化するため、無条件 default にすれば事故クラス自体が消える。
 

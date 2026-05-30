@@ -92,7 +92,7 @@ prefix_rule(
     decision = "allow",
     justification = "Read-only GitHub PR inspection commands.",
     match = ["gh pr view <pr-number>", "gh pr list", "gh pr diff <pr-number>", "gh pr checks <pr-number>"],
-    not_match = ["gh pr merge <pr-number>", "gh pr comment <pr-number>"],
+    not_match = ["gh pr merge <pr-number>", "gh pr comment <pr-number> --body-file <body-file>"],
 )
 
 prefix_rule(
@@ -100,7 +100,7 @@ prefix_rule(
     decision = "allow",
     justification = "Read-only GitHub issue inspection commands.",
     match = ["gh issue view <issue-number>", "gh issue list", "gh issue status"],
-    not_match = ["gh issue comment <issue-number> --body update"],
+    not_match = ["gh issue comment <issue-number> --body-file <body-file>"],
 )
 
 prefix_rule(
@@ -128,21 +128,22 @@ prefix_rule(
     pattern = ["gh", "pr", ["review", "comment", "create", "merge", "close", "edit"]],
     decision = "prompt",
     justification = "GitHub PR write operations require confirmation.",
-    match = ["gh pr comment <pr-number> --body update", "gh pr review <pr-number> --comment --body review", "gh pr merge <pr-number> --squash"],
+    match = ["gh pr comment <pr-number> --body-file <body-file>", "gh pr review <pr-number> --comment --body-file <body-file>", "gh pr merge <pr-number> --squash"],
 )
 
 prefix_rule(
     pattern = ["gh", "issue", ["comment", "create", "delete", "close", "edit"]],
     decision = "prompt",
     justification = "GitHub issue write operations require confirmation.",
-    match = ["gh issue comment <issue-number> --body update", "gh issue close <issue-number>"],
+    match = ["gh issue comment <issue-number> --body-file <body-file>", "gh issue close <issue-number> --reason completed"],
+    not_match = ["gh issue close <issue-number> --comment update"],
 )
 
 prefix_rule(
     pattern = ["gh", ["release", "api"]],
     decision = "prompt",
     justification = "GitHub release and API commands can mutate remote state or access sensitive data.",
-    match = ["gh release list", "gh api repos/fumtas1k/devtools"],
+    match = ["gh release list", "gh api repos/<owner>/<repo>/issues/comments/<comment-id> --input <request-json>"],
 )
 
 prefix_rule(
