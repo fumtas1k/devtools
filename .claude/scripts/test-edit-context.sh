@@ -8,14 +8,30 @@
 # 出力: stdout に hookSpecificOutput JSON を出すと additionalContext として
 #       Claude のコンテキストに注入される (Claude Code Hook 仕様)。
 #       マッチしないときは何も出さない (silent pass)。
+#
+# JSON parse は jq ではなく node を使う: このリポジトリは Node 22 前提で node は
+# 必ず存在するが、jq は暗黙の外部依存になり、欠落環境では `|| true` で hook が
+# 黙って no-op になり「テスト編集を検知できないまま green」になる (PR #542 レビュー指摘)。
 
 set -e
 
 # 入力 JSON 全体を読む
 input=$(cat)
 
-# ファイルパスを抽出 (Edit/Write/MultiEdit すべて tool_input.file_path を持つ)
-file_path=$(echo "$input" | jq -r '.tool_input.file_path // ""' 2>/dev/null || true)
+# ファイルパスを抽出 (Edit/Write/MultiEdit すべて tool_input.file_path を持つ)。
+# 不正な JSON のときは空文字 (best-effort: reminder hook なので edit 自体は止めない)。
+file_path=$(printf '%s' "$input" | node -e '
+let d = "";
+process.stdin.on("data", (c) => (d += c));
+process.stdin.on("end", () => {
+  try {
+    const j = JSON.parse(d);
+    process.stdout.write(String(j?.tool_input?.file_path ?? ""));
+  } catch {
+    process.stdout.write("");
+  }
+});
+')
 
 # 空ならパスなしで何もしない
 if [ -z "$file_path" ]; then

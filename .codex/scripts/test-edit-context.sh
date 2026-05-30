@@ -1,13 +1,36 @@
 #!/bin/bash
 # Codex PreToolUse hook: テスト編集時に test-gates 参照を model-visible context として注入する。
+#
+# JSON parse は jq ではなく node を使う (理由は .claude/scripts/test-edit-context.sh と同じ):
+# このリポジトリは Node 22 前提で node は必ず存在するが、jq は暗黙の外部依存になり、
+# 欠落環境では `|| true` で hook が黙って no-op になり検知漏れを招く (PR #542 レビュー指摘)。
 
 set -e
 
 input=$(cat)
 
-tool_name=$(echo "$input" | jq -r '.tool_name // ""' 2>/dev/null || true)
-file_path=$(echo "$input" | jq -r '.tool_input.file_path // ""' 2>/dev/null || true)
-command=$(echo "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || true)
+# JSON のフィールドを node で取り出す (dotted path を argv で受ける)。
+# 不正な JSON のときは空文字を返す (best-effort)。
+json_get() {
+  printf '%s' "$input" | node -e '
+const path = process.argv[1].split(".");
+let d = "";
+process.stdin.on("data", (c) => (d += c));
+process.stdin.on("end", () => {
+  try {
+    let v = JSON.parse(d);
+    for (const k of path) v = v == null ? undefined : v[k];
+    process.stdout.write(v == null ? "" : String(v));
+  } catch {
+    process.stdout.write("");
+  }
+});
+' "$1"
+}
+
+tool_name=$(json_get "tool_name")
+file_path=$(json_get "tool_input.file_path")
+command=$(json_get "tool_input.command")
 
 matches_test_path() {
   case "$1" in
@@ -35,4 +58,3 @@ cat <<'JSON'
 JSON
 
 exit 0
-
