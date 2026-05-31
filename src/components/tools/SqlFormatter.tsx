@@ -134,7 +134,7 @@ export function SqlFormatterTool() {
               {embed.error && <ErrorMessage message={embed.error} variant="block" />}
             </div>
             <div
-              className="w-full md:flex-1 min-w-0 flex md:self-stretch"
+              className="w-full md:flex-1 min-w-0 md:flex md:self-stretch"
               data-testid="embed-output-column"
             >
               <OutputField
