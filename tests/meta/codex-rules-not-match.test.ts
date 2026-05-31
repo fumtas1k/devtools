@@ -7,76 +7,13 @@ import { describe, expect, it } from 'vitest';
 // プレフィックスに「一致しない」ことを検証する。一致する例を書くと codex が
 // `.codex/rules/default.rules` の読み込みに失敗する(過去に rm-tmp ルールで発生)。
 // vitest からは codex の Rust loader を起動できないため、同じプレフィックス照合の
-// semantics を再現し、設定ファイルの整合性を CI(npm run test)で守る。
+// semantics を JS で再現してメタテストとして CI で守る。
+// プレフィックス照合の fidelity リスクについては helpers/codexRules.ts の冒頭コメントを参照。
+
+import { commandMatchesPrefix, matchViolations, notMatchViolations } from './helpers/codexRules.js';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const codexRules = resolve(repoRoot, '.codex/rules/default.rules');
-
-type PatternToken = string | string[];
-
-function prefixRuleBlocks(source: string): string[] {
-  return source.match(/prefix_rule\(\n[\s\S]*?\n\)/g) ?? [];
-}
-
-// `key = [ ... ]` の配列リテラルをネストした括弧ごと取り出す(非貪欲 regex では
-// ネスト配列で途中の `]` に引っかかるため、括弧の深さを数えて取り出す)。
-function extractBracket(block: string, key: string): string | null {
-  const keyIdx = block.indexOf(`${key} = [`);
-  if (keyIdx === -1) return null;
-  const start = block.indexOf('[', keyIdx);
-  let depth = 0;
-  for (let i = start; i < block.length; i++) {
-    const char = block[i];
-    if (char === '[') depth++;
-    else if (char === ']') {
-      depth--;
-      if (depth === 0) return block.slice(start, i + 1);
-    }
-  }
-  return null;
-}
-
-// pattern / not_match は JSON 互換の配列リテラル(二重引用符・ネスト配列)なので
-// JSON.parse で構造化できる。
-function parsePattern(block: string): PatternToken[] | null {
-  const raw = extractBracket(block, 'pattern');
-  return raw ? (JSON.parse(raw) as PatternToken[]) : null;
-}
-
-function parseNotMatch(block: string): string[] | null {
-  const raw = extractBracket(block, 'not_match');
-  return raw ? (JSON.parse(raw) as string[]) : null;
-}
-
-// codex のプレフィックス照合: command を argv に分割し、pattern の各位置を
-// 先頭から順に検証する。pattern[i] が配列なら token がそのいずれかに一致すれば可。
-function commandMatchesPrefix(command: string, pattern: PatternToken[]): boolean {
-  const tokens = command.split(/\s+/).filter(Boolean);
-  if (tokens.length < pattern.length) return false;
-  return pattern.every((token, index) =>
-    Array.isArray(token) ? token.includes(tokens[index]) : tokens[index] === token
-  );
-}
-
-interface Violation {
-  pattern: PatternToken[];
-  command: string;
-}
-
-function notMatchViolations(source: string): Violation[] {
-  const violations: Violation[] = [];
-  for (const block of prefixRuleBlocks(source)) {
-    const pattern = parsePattern(block);
-    const notMatch = parseNotMatch(block);
-    if (!pattern || !notMatch) continue;
-    for (const command of notMatch) {
-      if (commandMatchesPrefix(command, pattern)) {
-        violations.push({ pattern, command });
-      }
-    }
-  }
-  return violations;
-}
 
 describe('Codex rules not_match prefix validation', () => {
   it('陰性対照: 実ファイルの not_match 例は自身の pattern に一致しない', () => {
@@ -118,5 +55,48 @@ describe('Codex rules not_match prefix validation', () => {
 
     expect(violations).toHaveLength(1);
     expect(violations[0].command).toBe('gh pr view <pr-number>');
+  });
+});
+
+describe('Codex rules match prefix validation', () => {
+  it('陰性対照: 実ファイルの match 例は自身の pattern に一致する', () => {
+    const rules = readFileSync(codexRules, 'utf8');
+    expect(matchViolations(rules)).toEqual([]);
+  });
+
+  it('陽性対照: pattern に一致しない match 例を含む fixture を渡すと違反を 1 件検知する', () => {
+    // `match` 例が自身の pattern とは異なるプレフィックスを持つ不正例。
+    // matchViolations が常に [] を返す実装（空回り）だとこの it は必ず fail する。
+    const broken = [
+      'prefix_rule(',
+      '    pattern = ["npm", "run"],',
+      '    decision = "allow",',
+      '    justification = "example.",',
+      '    match = ["npx vitest run"],',
+      ')',
+    ].join('\n');
+
+    const violations = matchViolations(broken);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].command).toBe('npx vitest run');
+  });
+});
+
+describe('commandMatchesPrefix unit tests', () => {
+  it('完全一致プレフィックスを検知する', () => {
+    expect(commandMatchesPrefix('git status', ['git', 'status'])).toBe(true);
+  });
+
+  it('プレフィックスより短いコマンドは不一致', () => {
+    expect(commandMatchesPrefix('git', ['git', 'status'])).toBe(false);
+  });
+
+  it('alternation pattern のいずれかに一致する', () => {
+    expect(commandMatchesPrefix('gh pr view', ['gh', 'pr', ['list', 'view']])).toBe(true);
+  });
+
+  it('alternation pattern のいずれにも一致しない場合は false', () => {
+    expect(commandMatchesPrefix('gh pr merge', ['gh', 'pr', ['list', 'view']])).toBe(false);
   });
 });

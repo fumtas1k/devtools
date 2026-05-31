@@ -5,13 +5,11 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { prefixRuleBlocks } from './helpers/codexRules.js';
+
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const script = resolve(repoRoot, '.codex/scripts/git-add-files.sh');
 const codexRules = resolve(repoRoot, '.codex/rules/default.rules');
-
-function prefixRuleBlocks(source: string): string[] {
-  return source.match(/prefix_rule\(\n[\s\S]*?\n\)/g) ?? [];
-}
 
 function runGitAdd(cwd: string, args: string[]) {
   return spawnSync('bash', [script, ...args], {
@@ -154,6 +152,7 @@ describe('git-add-files.sh', () => {
     const rules = readFileSync(codexRules, 'utf8');
     const blocks = prefixRuleBlocks(rules);
 
+    // helper を allow する prefix_rule が存在する（振る舞いレベルの assertion）
     expect(
       blocks.some(
         (block) =>
@@ -162,18 +161,12 @@ describe('git-add-files.sh', () => {
       )
     ).toBe(true);
 
+    // `pattern = ["git", "add"]` を allow する rule は存在しない（振る舞いレベルの assertion）
     expect(
       blocks.some(
         (block) =>
           block.includes('pattern = ["git", "add"]') && block.includes('decision = "allow"')
       )
     ).toBe(false);
-
-    expect(rules).toContain('Command rules are prefix-only');
-    expect(rules).toContain('broad pathspecs such as `git add .` and `git add -A`');
-    expect(rules).toContain('`not_match` examples must not match the rule');
-    expect(rules).not.toContain(
-      'not_match = ["git add AGENTS.md", "bash .codex/scripts/git-add-files.sh .'
-    );
   });
 });
