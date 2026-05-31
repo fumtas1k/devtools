@@ -9,12 +9,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: write # gh-pages push 用
-  pull-requests: write # PR comment 投稿用
-
 jobs:
   visual-regression:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     # #291: Playwright 公式 image でブラウザバイナリ + OS deps を preinstalled 化し、
     # `npx playwright install --with-deps chromium` の 7 分超を撤廃。
@@ -23,6 +21,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.59.1-noble
       options: --user 1001
+    outputs:
+      vrt-outcome: ${{ steps.vrt-status.outputs.outcome }}
+      slider-generated: ${{ steps.slider-status.outputs.generated }}
     steps:
       - uses: actions/checkout@v6
 
@@ -49,12 +50,20 @@ jobs:
           set -o pipefail
           npm run test:vrt -- --workers=1 2>&1 | tee vrt-output.log
 
+      - name: VRT outcome を出力
+        if: ${{ !cancelled() }}
+        id: vrt-status
+        shell: bash
+        run: echo "outcome=${{ steps.vrt.outcome }}" >> "$GITHUB_OUTPUT"
+
       - name: テストレポートを artifact upload（pass/fail 問わず）
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: visual-regression-report-pr-${{ github.event.pull_request.number }}
-          path: playwright-report/
+          path: |
+            playwright-report/
+            vrt-output.log
           retention-days: 14
 
       - name: スライダーレポートを生成
@@ -63,14 +72,51 @@ jobs:
         shell: bash
         run: |
           node scripts/generate-vrt-slider.mjs
+
+      - name: スライダーレポート生成状態を出力
+        if: ${{ !cancelled() }}
+        id: slider-status
+        shell: bash
+        run: |
           if [ -f vrt-slider-report/index.html ]; then
             echo "generated=true" >> "$GITHUB_OUTPUT"
           else
             echo "generated=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: スライダーレポートを artifact upload
+        if: ${{ !cancelled() && steps.slider-status.outputs.generated == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-regression-slider-pr-${{ github.event.pull_request.number }}
+          path: vrt-slider-report/
+          retention-days: 14
+
+  visual-regression-report:
+    needs: visual-regression
+    if: ${{ always() && !cancelled() && github.event.pull_request.number }}
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: テストレポート artifact を download
+        uses: actions/download-artifact@v7
+        with:
+          name: visual-regression-report-pr-${{ github.event.pull_request.number }}
+          path: playwright-report/
+
+      - name: スライダーレポート artifact を download
+        if: ${{ needs.visual-regression.outputs.slider-generated == 'true' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: visual-regression-slider-pr-${{ github.event.pull_request.number }}
+          path: vrt-slider-report/
+
       - name: スライダーレポートを GitHub Pages へ deploy
-        if: ${{ !cancelled() && steps.gen-slider.outputs.generated == 'true' && github.event.pull_request.number }}
+        if: ${{ needs.visual-regression.outputs.slider-generated == 'true' }}
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -127,7 +173,7 @@ jobs:
           done
 
       - name: 既存の VRT comment を検索（dedup 用）
-        if: ${{ !cancelled() && github.event.pull_request.number }}
+        if: ${{ github.event.pull_request.number }}
         id: find-vrt-comment
         uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
         with:
@@ -136,19 +182,21 @@ jobs:
           body-includes: '## 🖼️ Visual Regression Test 結果'
 
       - name: PR comment 本文を組み立て（失敗 spec 名込み）
-        if: ${{ !cancelled() && github.event.pull_request.number }}
+        if: ${{ github.event.pull_request.number }}
         id: build-body
         shell: bash
         run: |
+          LOG_FILE="playwright-report/vrt-output.log"
+
           {
             echo "body<<MARKDOWN_EOF"
             echo "## 🖼️ Visual Regression Test 結果"
             echo ""
-            if [ "${{ steps.vrt.outcome }}" = "success" ]; then
+            if [ "${{ needs.visual-regression.outputs.vrt-outcome }}" = "success" ]; then
               # vrt-output.log の playwright 集計行 "N passed" から件数を動的抽出。
               # PAGES × VIEWPORTS 数を hardcode していると新規ページ追加時に
               # 文言と実態が乖離するため (issue #355 の派生対応)。
-              PASS_COUNT=$(grep -oE '[0-9]+ passed' vrt-output.log 2>/dev/null | tail -1 | grep -oE '^[0-9]+' || echo "")
+              PASS_COUNT=$(grep -oE '[0-9]+ passed' "$LOG_FILE" 2>/dev/null | tail -1 | grep -oE '^[0-9]+' || echo "")
               if [ -n "$PASS_COUNT" ]; then
                 echo "- **Status**: ✅ 全 ${PASS_COUNT} 件 pass"
               else
@@ -159,12 +207,12 @@ jobs:
             fi
             echo "- **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             echo "- **Artifact (diff 画像 / playwright-report)**: 上記 workflow run の \`Artifacts\` セクションから download"
-            if [ "${{ steps.gen-slider.outputs.generated }}" = "true" ]; then
+            if [ "${{ needs.visual-regression.outputs.slider-generated }}" = "true" ]; then
               PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/vrt/pr-${{ github.event.pull_request.number }}/"
               echo "- **🖼️ スライダー比較レポート**: [差分をブラウザで確認]($PAGES_URL)（deploy 完了まで 1〜2 分）"
             fi
 
-            if [ "${{ steps.vrt.outcome }}" = "failure" ] && [ -f vrt-output.log ]; then
+            if [ "${{ needs.visual-regression.outputs.vrt-outcome }}" = "failure" ] && [ -f "$LOG_FILE" ]; then
               echo ""
               echo "### 失敗した spec"
               echo ""
@@ -173,7 +221,7 @@ jobs:
               # pipeline 全体を `( ... ) || true` で包む: 最初の grep だけでなく後段の `grep -v`
               # も入力 0 行のとき exit 1 を返すため (grep 仕様)、subshell 全体で救わないと
               # `set -e -o pipefail` で heredoc が中断する。
-              ( grep -E '^[[:space:]]+✘' vrt-output.log \
+              ( grep -E '^[[:space:]]+✘' "$LOG_FILE" \
                 | grep -v '(retry' \
                 | awk -F'›' '{
                     n = NF
@@ -197,7 +245,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: 結果を PR comment で報告
-        if: ${{ !cancelled() && github.event.pull_request.number }}
+        if: ${{ github.event.pull_request.number }}
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
