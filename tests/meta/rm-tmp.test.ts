@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -49,6 +50,26 @@ describe('scripts/rm-tmp.sh', () => {
     expect(result.status).toBe(0);
     expect(existsSync(file)).toBe(false);
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('陽性対照: 許可領域内 symlink + 末尾スラッシュで許可領域外を削除できない', () => {
+    const linkHost = '/tmp/claude/rm-tmp-link-test';
+    const outsideDir = join(tmpdir(), 'rm-tmp-symlink-outside');
+    const keepFile = join(outsideDir, 'keep.txt');
+
+    rmSync(linkHost, { recursive: true, force: true });
+    rmSync(outsideDir, { recursive: true, force: true });
+    mkdirSync(linkHost, { recursive: true });
+    mkdirSync(outsideDir, { recursive: true });
+    writeFileSync(keepFile, 'keep');
+    symlinkSync(outsideDir, join(linkHost, 'link'));
+
+    runRmTmp(['-r', `${linkHost}/link/`]);
+
+    expect(existsSync(keepFile)).toBe(true);
+
+    rmSync(linkHost, { recursive: true, force: true });
+    rmSync(outsideDir, { recursive: true, force: true });
   });
 
   it('陽性対照: /tmp/claude 外への traversal は拒否する', () => {

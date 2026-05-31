@@ -68,7 +68,17 @@ if [ "${#targets[@]}" -eq 0 ]; then
   exit 2
 fi
 
+# 末尾スラッシュを除去する（rm -r + symlink + 末尾スラッシュによる許可領域外削除を防ぐ）
+normalized_targets=()
 for target in "${targets[@]}"; do
+  normalized="${target}"
+  while [[ "$normalized" == */ ]]; do
+    normalized="${normalized%/}"
+  done
+  normalized_targets+=("$normalized")
+done
+
+for target in "${normalized_targets[@]}"; do
   if ! allowed_target "$target"; then
     echo "Refusing to remove outside /tmp/claude or /tmp/codex: $target" >&2
     exit 1
@@ -76,7 +86,7 @@ for target in "${targets[@]}"; do
 done
 
 if [ "${#options[@]}" -eq 0 ]; then
-  rm -- "${targets[@]}"
+  rm -- "${normalized_targets[@]}"
 else
-  rm "${options[@]}" -- "${targets[@]}"
+  rm "${options[@]}" -- "${normalized_targets[@]}"
 fi
