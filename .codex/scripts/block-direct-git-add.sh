@@ -22,39 +22,100 @@ process.stdin.on("end", () => {
 
 command=$(json_get_command)
 
-python3 - "$command" <<'PY'
-import re
-import shlex
-import sys
+node - "$command" <<'NODE'
+const command = process.argv[2] ?? '';
+const helperPattern = /^\s*bash\s+\.codex\/scripts\/git-add-files\.sh(?:\s+[^;&|<>`$()\\]+)*\s*$/;
+const denyMessage = 'Use bash .codex/scripts/git-add-files.sh instead of direct git add.';
 
-command = sys.argv[1]
-helper_pattern = re.compile(
-    r'^\s*bash\s+\.codex/scripts/git-add-files\.sh(?:\s+[^;&|<>`$()\\]+)*\s*$'
-)
-deny_message = 'Use bash .codex/scripts/git-add-files.sh instead of direct git add.'
+function tokenize(input) {
+  const tokens = [];
+  let current = '';
+  let state = 'unquoted';
 
-if helper_pattern.fullmatch(command):
-    raise SystemExit(0)
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input[i];
 
-if re.search(r'[;&|<>`$()\n]', command):
-    print(deny_message, file=sys.stderr)
-    raise SystemExit(1)
+    if (state === 'unquoted') {
+      if (/\s/.test(ch)) {
+        if (current) {
+          tokens.push(current);
+          current = '';
+        }
+        continue;
+      }
+      if (ch === "'") {
+        state = 'single';
+        continue;
+      }
+      if (ch === '"') {
+        state = 'double';
+        continue;
+      }
+      if (ch === '\\') {
+        i += 1;
+        if (i < input.length) current += input[i];
+        continue;
+      }
+      current += ch;
+      continue;
+    }
 
-try:
-    tokens = shlex.split(command, posix=True)
-except ValueError:
-    print(deny_message, file=sys.stderr)
-    raise SystemExit(1)
+    if (state === 'single') {
+      if (ch === "'") {
+        state = 'unquoted';
+      } else {
+        current += ch;
+      }
+      continue;
+    }
 
+    if (ch === '"') {
+      state = 'unquoted';
+      continue;
+    }
+    if (ch === '\\') {
+      i += 1;
+      if (i < input.length) current += input[i];
+      continue;
+    }
+    current += ch;
+  }
 
-def is_git_command(token: str) -> bool:
-    return token == 'git' or token.endswith('/git')
+  if (current) tokens.push(current);
+  return tokens;
+}
 
+function isGitToken(token) {
+  return token === 'git' || token.endsWith('/git');
+}
 
-for index, token in enumerate(tokens):
-    if is_git_command(token) and any(later == 'add' for later in tokens[index + 1 :]):
-        print(deny_message, file=sys.stderr)
-        raise SystemExit(1)
+function hasDirectGitAdd(input, seen = new Set()) {
+  if (helperPattern.test(input)) return false;
+  if (seen.has(input)) return false;
+  seen.add(input);
 
-raise SystemExit(0)
-PY
+  const tokens = tokenize(input);
+
+  for (const token of tokens) {
+    if (/\s/.test(token) && hasDirectGitAdd(token, seen)) {
+      return true;
+    }
+  }
+
+  for (let i = 0; i < tokens.length; i += 1) {
+    if (!isGitToken(tokens[i])) continue;
+    for (let j = i + 1; j < tokens.length; j += 1) {
+      if (tokens[j] === 'add') return true;
+    }
+  }
+
+  return false;
+}
+
+if (hasDirectGitAdd(command)) {
+  console.error(denyMessage);
+  process.exit(1);
+}
+
+process.exit(0);
+NODE
