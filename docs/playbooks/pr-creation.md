@@ -2,7 +2,7 @@
 
 **いつ読むか**: PR 作成タスクを開始する直前 / 親セッションが PR を作る直前 / レビュー対応をまとめる時。
 
-基本ルールは `docs/shared-agent-rules.md` の 6.3 章（PR ベースブランチ）/ 6.4 章（先送り issue 化）も併読すること。
+基本ルールは `.agents/rules/common.md` の 6.3 章（PR ベースブランチ）/ 6.4 章（先送り issue 化）も併読すること。
 
 ---
 
@@ -73,13 +73,14 @@ git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 
 ```bash
 gh pr create --base develop --title "..." --body-file "$TMPDIR/pr_body.md"
+# Codex:  gh pr create --base develop --title "..." --body-file /tmp/codex/pr_body.md
 # または: gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
 ```
 
 - `--base develop` は **必ず明示**（`gh` のデフォルトは `main`）。
 - 本文は **必ず日本語**。
-- バックティック含有時は `-F` / `--body-file` 経由で投稿（`docs/shared-agent-rules.md` 6.1）。
-- 一時ファイルは `$TMPDIR` か `/tmp/claude/` 配下に置く（`Write(/tmp/claude/**)` は allow、`Write(/tmp/**)` は ask）。
+- バックティック含有時は `-F` / `--body-file` 経由で投稿（`.agents/rules/common.md` 6.1）。
+- 一時ファイルは Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に置く。汎用 fallback として `$TMPDIR` も使用可。
 
 ### 4.1 `decisions.md` の `本 PR:` 行は PR 作成直後に番号置換する
 
@@ -118,10 +119,52 @@ gh api "repos/<owner>/<repo>/pulls/<n>/reviews" --jq '.[].body'
 
 > 関連: issue #193（E2E web-first assertions のテスト記述ガイドライン）
 
-> 補足: `Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う（`docs/shared-agent-rules.md` 6.6）。
+> 補足: `Bash(gh pr view*)` は allow、`Bash(gh api *)` は ask。行単位のレビューコメントが本当に必要な場合のみユーザーに断ってから `gh api` を使う（`.agents/rules/common.md` 6.6）。
 
 ---
 
-## 6. マージ後の worktree 後始末
+## 6. squash マージ時のコミットメッセージ
+
+`gh pr merge --squash`（および GitHub UI の "Squash and merge"）で develop に乗る squash コミットは、**件名・本文の両方を整える**。squash 後の develop は「1 PR = 1 コミット」になり、後から `git log` で経緯を追う際はこのコミットだけが手がかりになるため。
+
+### 件名
+
+- 通常のコミットと同じ規約に従う（`.agents/rules/common.md` 1 章）: **日本語必須** かつ **Conventional Commits 形式必須**（`feat:` / `fix:` / `docs:` / `chore:` / `refactor:` / `test:` / `style:` / `perf:` / `build:` / `ci:` / `revert:` の 11 種）
+- 末尾に PR 番号を付ける: `chore: Codex 用リポジトリ設定を追加 (#542)`
+
+**注意（事故が起きている箇所）**: GitHub の squash は件名の **デフォルトが PR タイトル**。PR タイトルに prefix が無いと prefix なしコミットがそのまま develop に入る。さらに **ローカル `.githooks/commit-msg` は GitHub 上の squash には効かない**（フックはローカル commit 時のみ）ため規約違反が検知されず通る。対策は次のどちらか:
+
+1. PR タイトル自体を Conventional Commits 形式の日本語で書く（squash 件名がそのまま規約準拠になる）
+2. squash マージ実行時に件名を手で `<prefix>: <日本語要約> (#<PR番号>)` に直す
+
+### 本文
+
+GitHub の squash はデフォルトで **ブランチ内の全コミットメッセージを箇条書きで丸ごと連結** する（`* feat: ...` / `* refactor: レビュー対応` / `---------` / 重複した `Co-authored-by` が並ぶ）。レビュー往復の途中経過まで永久に残るノイズなので、**この自動連結は消して PR 概要を 1〜5 行に要約** したものに置き換える:
+
+- PR 説明文（概要セクション）を数行に要約する。検証コマンドや scratch なやり取りは含めない
+- `---------` 区切りや重複した `Co-authored-by` 行は残さない（必要なら `Co-authored-by` は 1 つに集約）
+- ❌ 避ける: コミット列の機械連結をそのまま残す / PR 説明文を全文貼り付ける
+
+### 実行例
+
+```bash
+gh pr merge <PR> --squash --delete-branch \
+  --subject "chore: Codex 用リポジトリ設定を追加 (#<PR>)" \
+  --body-file /tmp/claude/squash_body.md
+```
+
+`--body-file` を使うのは、本文がほぼ常に複数行になるため（理由は `.agents/rules/common.md` 6.1 と同じ）。
+
+### リリース PR のマージ（develop → main）
+
+release PR（develop → main）は **`--merge`** を使う（squash しない）。develop に積み上げた squash コミット群をそのまま main に引き継ぐため。
+
+```bash
+gh pr merge <PR> --merge --delete-branch
+```
+
+squash merge と異なり `--subject` / `--body-file` の指定は不要（merge commit のメッセージは GitHub が自動生成する `Merge pull request #N ...` で十分）。
+
+## 7. マージ後の worktree 後始末
 
 `gh pr merge --delete-branch` を打つ前に worktree を unlock + remove する。`worktree-agent-<id>` の内部 branch も別途 `git branch -D` で削除（記憶: feedback_worktree_merge_order）。

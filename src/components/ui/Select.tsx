@@ -10,9 +10,17 @@ interface Props<T extends string> {
   onChange: (value: T) => void;
   ariaLabel?: string;
   id?: string;
+  autoComplete?: string;
 }
 
-export function Select<T extends string>({ options, value, onChange, ariaLabel, id }: Props<T>) {
+export function Select<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  id,
+  autoComplete,
+}: Props<T>) {
   return (
     <div className="relative">
       <select
@@ -20,6 +28,7 @@ export function Select<T extends string>({ options, value, onChange, ariaLabel, 
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
         aria-label={ariaLabel}
+        autoComplete={autoComplete}
         className="caption w-full rounded-lg border border-input bg-default text-default appearance-none pl-3 pr-10 py-2"
       >
         {options.map((opt) => (

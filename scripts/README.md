@@ -44,5 +44,36 @@ bash tests/scripts/check-followup-refs.test.sh
 
 ### 関連
 
-- `docs/shared-agent-rules.md` 6.4 章（先送り時は issue 化必須）
+- `.agents/rules/common.md` 6.4 章（先送り時は issue 化必須）
 - `feedback_commander_checklist.md` F 章（メモリ）
+
+---
+
+## rm-tmp.sh
+
+Claude・Codex エージェントが作成した一時ファイルを安全に削除するヘルパー。`/tmp/claude/` および `/tmp/codex/` 配下のみ削除を許可し、それ以外のパス（traversal 含む）は拒否する。
+
+### 使い方
+
+```bash
+bash scripts/rm-tmp.sh <path>
+bash scripts/rm-tmp.sh -f <path>
+bash scripts/rm-tmp.sh -r /tmp/claude/somedir/
+```
+
+### 終了コード
+
+- `0`: 削除成功
+- `1`: 許可外パスへのアクセスを拒否
+- `2`: 引数エラー（未サポートオプション・引数なし）
+
+### テスト
+
+```bash
+npm run test -- tests/meta/rm-tmp.test.ts
+```
+
+### 関連
+
+- `.claude/rules/git-and-fs.md`（Claude Code での使用方法）
+- `.codex/rules/default.rules`（Codex での allow ルール）

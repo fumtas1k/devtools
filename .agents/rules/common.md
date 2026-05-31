@@ -11,6 +11,8 @@
   - `perf:` 性能改善 / `build:` ビルド設定 / `ci:` CI 設定 / `revert:` 取り消し
   - 例: ✅ `feat: 新しいツールを追加` / ❌ `feat: Add new tool`（英語） / ❌ `update: ...`（プレフィックス不正）
   - `Merge`, `Revert`, `fixup!`, `squash!` で始まるコミットはチェックをスキップ
+  - **squash マージで develop に乗るコミット件名も同じ規約に従う**。GitHub の squash は件名のデフォルトが PR タイトルで、`.githooks/commit-msg` は GitHub 上の squash には効かない（prefix なしコミットが素通りする事故あり）。手順・対策 → `docs/playbooks/pr-creation.md` 6 章
+
 - **コード内コメント**: 日本語を基本とする。
 
 ---
@@ -70,15 +72,21 @@ post-PR 代行は不要、CI が最終ゲート。
 4. `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列に `/tools/<slug>` を追加（VRT 対象に登録）。baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を `workflow_dispatch` trigger して生成（mac との font 描画差を回避するためローカル生成は不可）。**漏れた場合は `tests/meta/vrt-pages-coverage.test.ts` が `npm run test` で fail させる**ため CI で必ず検知される（issue #355 で導入）。
 5. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
 
-新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `docs/ui-conventions.md` を参照。
+新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `.agents/rules/ui-conventions.md` を参照。
 
 ---
 
 ## 6. AI エージェント操作・Git ワークフロー
 
-### 6.1 `gh` 本文投稿は常に `--body-file` 経由
+### 6.1 GitHub への本文付き投稿・更新は常にファイル経由
 
-`gh pr create` / `gh pr comment` / `gh issue create` / `gh issue comment` の本文は **常に** `-F` / `--body-file` で投稿する。`--body` への直接埋め込みは禁止（MCP / API 経由は不要）。
+GitHub に Markdown 本文を渡す `gh` コマンドでは、本文をコマンドライン引数に直接埋め込まない。対象は `gh pr create/comment/edit/review/merge`、`gh issue create/comment/close/edit`、および `gh api` で `body` 等の Markdown 本文を渡す操作を含む。
+
+- `--body` / `--comment` / `-f body=...` / `--field body=...` への直接埋め込みは禁止
+- `--body-file` / `-F` が使える場合は必ず使う
+- `gh issue close --comment` はファイル指定できないため使わない。closing comment が必要な場合は `gh issue comment --body-file <file>` を先に実行し、その後 `gh issue close --reason <reason>` を実行する
+- `gh api` 等で本文ファイル option がない場合は、JSON 等のリクエストファイルを各エージェント専用の一時ディレクトリ（§6.6 参照）に作成し、`--input <file>` で渡す
+- 一時ファイルは credential / secret 類を含めない
 
 **なぜ条件付きでなく常時か**: PR 本文はほぼ常にコードブロック（バックティック）や複数行を含み、HEREDOC でバックスラッシュ + バックティック（<code>\\&#96;</code>）にエスケープすると literal `\` が GitHub に流れる事故が頻発する。条件分岐ルールは判断負荷が高く形骸化するため、無条件 default にすれば事故クラス自体が消える。
 
@@ -105,12 +113,19 @@ post-PR 代行は不要、CI が最終ゲート。
 `gh pr create` は **`--base develop`** を必ず指定する（デフォルトは `main`）:
 
 ```bash
-gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
+gh pr create --base develop --title "..." --body-file <tmpdir>/pr_body.md   # <tmpdir> は各エージェント専用の一時ディレクトリ（§6.6）
 ```
 
 **`main` 向けはリリース PR のみ**。通常の機能追加・バグ修正・refactor・docs は全て develop ベース。リリース時は別途 `develop → main` の release PR を切る運用 (release-only branch policy)。
 
 PR 作成・親 push 前チェックリスト・親向けレビュー取得手順 → **`docs/playbooks/pr-creation.md` 3〜5 章**
+
+### 6.3.1 マージ方法の使い分け
+
+> ⚠️ **PR 作成・編集・マージ時は必ず `docs/playbooks/pr-creation.md` を参照すること。**
+
+- **feature PR（→ develop）**: `--squash`
+- **release PR（develop → main）**: `--merge`
 
 ### 6.4 先送り（deferral）時は必ず issue 化する
 
@@ -127,13 +142,13 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 `scripts/` と `.claude/scripts/` の使い分けは `scripts/README.md` を参照。
 
-### 6.6 settings.json permissions に整合した振る舞い
+### 6.6 一時ファイル・ステージング・権限経路（共通原則）
 
-`.claude/settings.json` で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
+各エージェントは自分の設定で allow された経路を優先し、ask 該当経路を避けて権限プロンプトを減らす。**具体パス・helper・tool は各エージェント固有ルールに従う**（Claude → `.claude/rules/`、Codex → `.codex/rules/`、Gemini → `docs/setup/gemini-policy.md`）。
 
-- **一時ファイル**: `$TMPDIR` または `/tmp/claude/` 配下に作成する（`/tmp/**` 直下は ask）。credential / secret 類は置かない。
-- **PR コメント取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`gh api` は ask 経路のため行単位レビューが本当に必要な場合のみ断ってから使う。
-- **sandbox 制約**: `denyWithinAllow` に含まれるファイルへの操作は Bash (`mkdir` / `rm` / `tee` / `sed -i` 等) 経由では deny されるが、`Edit` / `Write` tool 経由は通る（tool で完結できれば別ターミナル依頼不要）。操作前に必ず `Edit` / `Write` を先に試す。`!` prefix は sandbox bypass にならない（memory 参照）。
+- **一時ファイル**: 各エージェント専用の一時ディレクトリ配下にのみ作成し、credential / secret は置かない。削除は専用 helper を使う。
+- **ステージング**: 明示 pathspec のみを stage する。`git add .` / `-A` / `--all` 相当の広域 pathspec は使わない。
+- **レビュー取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を優先する。`gh api` は多くの設定で ask 経路。
 
 ### 6.7 solo dev 体制での branch protection 提案禁止
 
@@ -165,7 +180,7 @@ Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50`
 ※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は使用可。
 
 UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影して目視確認すること。
-共通コンポーネント・ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否・Playwright 撮影手順・目視確認チェックリスト等の詳細 → **`docs/ui-conventions.md`**
+共通コンポーネント・ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否・Playwright 撮影手順・目視確認チェックリスト等の詳細 → **`.agents/rules/ui-conventions.md`**
 
 ### 7.1 Tailwind v4 `@layer components` の variant 非対応
 
@@ -193,9 +208,9 @@ Tailwind v4 vite plugin は `docs/` 配下の markdown も content scan 対象�
 - `src/hooks/`: 共通フック
 - `src/pages/tools/`: Astro ページ (ルーティング)
 - `src/utils/`: ロジック・ヘルパー・スタイル定義
+- `.agents/rules/common.md`: 本ドキュメント（全エージェント共通規約・正本）
 - `docs/decisions.md`: 設計上の意思決定記録
-- `docs/shared-agent-rules.md`: 本ドキュメント（常時遵守する共通規約）
-- `docs/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
+- `.agents/rules/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
 - `docs/agent-lessons.md`: 教訓バッファ（共通ルール化前の蓄積場所）
 - `docs/playbooks/`: タスク開始時に読む手順書（PR 作成 / E2E 検証 等）
 - `docs/setup/`: 環境セットアップ手順（プラグイン install / Gemini policy 等）
@@ -227,7 +242,7 @@ Tailwind v4 vite plugin は `docs/` 配下の markdown も content scan 対象�
 
 ```bash
 node_modules/.bin/astro check       # 全体
-npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
+npx astro check --filter <file>     # 特定ファイルのみ
 ```
 
 ### 9.5 SVG / `dangerouslySetInnerHTML` の XSS 対策

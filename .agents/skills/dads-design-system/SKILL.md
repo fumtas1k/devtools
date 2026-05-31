@@ -28,51 +28,51 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 ```css
 :root {
   /* === キーカラー（Blue） === */
-  --color-primary:       #1A56DB;  /* プライマリー: CTA、ヘッダー、主要UI */
-  --color-secondary:     #3B82F6;  /* セカンダリー: 副次UI、選択肢ボタン */
-  --color-tertiary:      #0E3293;  /* ターシャリー: 濃い強調、ダークUI */
-  --color-background:    #EFF6FF;  /* バックグラウンド: セクション背景 */
+  --color-primary: #1a56db; /* プライマリー: CTA、ヘッダー、主要UI */
+  --color-secondary: #3b82f6; /* セカンダリー: 副次UI、選択肢ボタン */
+  --color-tertiary: #0e3293; /* ターシャリー: 濃い強調、ダークUI */
+  --color-background: #eff6ff; /* バックグラウンド: セクション背景 */
 
   /* === プリミティブカラー Blue 13階調 === */
-  --blue-50:  #EFF6FF;
-  --blue-100: #DBEAFE;
-  --blue-200: #BFDBFE;
-  --blue-300: #93C5FD;
-  --blue-400: #60A5FA;
-  --blue-500: #3B82F6;
-  --blue-600: #2563EB;
-  --blue-700: #1D4ED8;
-  --blue-800: #1E40AF;
-  --blue-900: #1E3A8A;
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --blue-800: #1e40af;
+  --blue-900: #1e3a8a;
   --blue-950: #172554;
 
   /* === ニュートラルカラー（共通カラー） === */
-  --neutral-white:   #FFFFFF;
-  --neutral-gray-50: #F9FAFB;
-  --neutral-gray-100:#F3F4F6;
-  --neutral-gray-200:#E5E7EB;
-  --neutral-gray-300:#D1D5DB;
-  --neutral-gray-400:#9CA3AF;  /* 白背景で非テキスト3:1確保 */
-  --neutral-gray-500:#6B7280;  /* 白背景でテキスト4.5:1確保 */
-  --neutral-gray-600:#4B5563;
-  --neutral-gray-700:#374151;
-  --neutral-gray-800:#1F2937;
-  --neutral-gray-900:#111827;
-  --neutral-black:   #000000;
+  --neutral-white: #ffffff;
+  --neutral-gray-50: #f9fafb;
+  --neutral-gray-100: #f3f4f6;
+  --neutral-gray-200: #e5e7eb;
+  --neutral-gray-300: #d1d5db;
+  --neutral-gray-400: #9ca3af; /* 白背景で非テキスト3:1確保 */
+  --neutral-gray-500: #6b7280; /* 白背景でテキスト4.5:1確保 */
+  --neutral-gray-600: #4b5563;
+  --neutral-gray-700: #374151;
+  --neutral-gray-800: #1f2937;
+  --neutral-gray-900: #111827;
+  --neutral-black: #000000;
 
   /* === セマンティックカラー === */
-  --color-success:     #16A34A;  /* サクセス（緑） */
-  --color-success-bg:  #F0FDF4;
-  --color-error:       #DC2626;  /* エラー（赤） */
-  --color-error-bg:    #FEF2F2;
-  --color-warning:     #854D0E;  /* 警告テキスト（amber-800）※ amber-600 は白背景で3.3:1しか出ず WCAG AA 不合格のため暗くする */
-  --color-warning-bg:  #FEF3C7; /* 警告背景（amber-100） */
+  --color-success: #16a34a; /* サクセス（緑） */
+  --color-success-bg: #f0fdf4;
+  --color-error: #dc2626; /* エラー（赤） */
+  --color-error-bg: #fef2f2;
+  --color-warning: #854d0e; /* 警告テキスト（amber-800）※ amber-600 は白背景で3.3:1しか出ず WCAG AA 不合格のため暗くする */
+  --color-warning-bg: #fef3c7; /* 警告背景（amber-100） */
 
   /* === 機能カラー === */
-  --color-link:        #2563EB;  /* リンクテキスト（青） */
-  --color-link-visited:#7C3AED;  /* 訪問済みリンク（紫、赤み追加で青と区別） */
-  --color-focus-outline: #000000;  /* フォーカスリング: アウトライン（黒） */
-  --color-focus-ring:    #FFD43D;  /* フォーカスリング: リング（DADS yellow-300） */
+  --color-link: #2563eb; /* リンクテキスト（青） */
+  --color-link-visited: #7c3aed; /* 訪問済みリンク（紫、赤み追加で青と区別） */
+  --color-focus-outline: #000000; /* フォーカスリング: アウトライン（黒） */
+  --color-focus-ring: #ffd43d; /* フォーカスリング: リング（DADS yellow-300） */
 }
 ```
 
@@ -91,10 +91,10 @@ description: このプロジェクト（devtools）のフロントエンド UI �
   color: var(--neutral-white);
 }
 .btn-primary:hover {
-  background: var(--blue-800);  /* やや暗い */
+  background: var(--blue-800); /* やや暗い */
 }
 .btn-primary:active {
-  background: var(--blue-900);  /* さらに暗い */
+  background: var(--blue-900); /* さらに暗い */
 }
 .btn-primary:focus-visible {
   outline: 4px solid var(--color-focus-outline);
@@ -111,25 +111,34 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 ```css
 body {
-  font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    'Noto Sans JP',
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
-code, pre {
+code,
+pre {
   font-family: 'Noto Sans Mono', monospace;
 }
 ```
 
 **CDN読み込み例**:
+
 ```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+Mono:wght@400;700&display=swap"
+  rel="stylesheet"
+/>
 ```
 
 ### 太さレベル
 
-| レベル | font-weight | 用途 |
-|--------|------------|------|
-| N (Normal) | 400 | 本文、通常テキスト |
-| B (Bold)   | 700 | 見出し、強調 |
+| レベル     | font-weight | 用途               |
+| ---------- | ----------- | ------------------ |
+| N (Normal) | 400         | 本文、通常テキスト |
+| B (Bold)   | 700         | 見出し、強調       |
 
 ### テキストスタイル体系
 
@@ -137,38 +146,38 @@ code, pre {
 
 #### Standard (Std) — 最も多用するスタイル
 
-| 用途 | サイズ | 太さ | 行高 | letter-spacing |
-|------|--------|------|------|----------------|
-| 大見出し | 45px | B | 140% | 0 |
-| 見出しH1 | 32px | B | 150% | 0.01em |
-| 見出しH2 | 26px | B | 150% | 0.02em |
-| 見出しH3 | 22px | B | 150% | 0.02em |
-| 見出しH4 | 18px | B | 160% | 0.02em |
-| 本文 | 16–17px | N | 170% | 0.02em |
+| 用途     | サイズ  | 太さ | 行高 | letter-spacing |
+| -------- | ------- | ---- | ---- | -------------- |
+| 大見出し | 45px    | B    | 140% | 0              |
+| 見出しH1 | 32px    | B    | 150% | 0.01em         |
+| 見出しH2 | 26px    | B    | 150% | 0.02em         |
+| 見出しH3 | 22px    | B    | 150% | 0.02em         |
+| 見出しH4 | 18px    | B    | 160% | 0.02em         |
+| 本文     | 16–17px | N    | 170% | 0.02em         |
 
 #### Display (Dsp) — ヒーロー・キービジュアル
 
 | サイズ | 太さ | 行高 | letter-spacing |
-|--------|------|------|----------------|
-| 64px | B/N | 140% | 0 |
-| 57px | B/N | 140% | 0 |
-| 48px | B/N | 140% | 0 |
+| ------ | ---- | ---- | -------------- |
+| 64px   | B/N  | 140% | 0              |
+| 57px   | B/N  | 140% | 0              |
+| 48px   | B/N  | 140% | 0              |
 
 #### Dense (Dns) — 管理画面・データテーブル
 
-| サイズ | 太さ | 行高 | letter-spacing |
-|--------|------|------|----------------|
-| 17px | B/N | 120–130% | 0 |
-| 16px | B/N | 120–130% | 0 |
-| 14px | B/N | 120–130% | 0 |
+| サイズ | 太さ | 行高     | letter-spacing |
+| ------ | ---- | -------- | -------------- |
+| 17px   | B/N  | 120–130% | 0              |
+| 16px   | B/N  | 120–130% | 0              |
+| 14px   | B/N  | 120–130% | 0              |
 
 #### Oneline (Oln) — UIパーツ内テキスト
 
 | サイズ | 太さ | 行高 | letter-spacing |
-|--------|------|------|----------------|
-| 17px | B/N | 100% | 0.02em |
-| 16px | B/N | 100% | 0.02em |
-| 14px | B/N | 100% | 0.02em |
+| ------ | ---- | ---- | -------------- |
+| 17px   | B/N  | 100% | 0.02em         |
+| 16px   | B/N  | 100% | 0.02em         |
+| 14px   | B/N  | 100% | 0.02em         |
 
 ### フォントサイズの原則
 
@@ -186,15 +195,15 @@ code, pre {
 
 ```css
 :root {
-  --space-1:  4px;   /* 0.5倍: 微小余白 */
-  --space-2:  8px;   /* 1倍: 基準 */
-  --space-3:  12px;  /* 1.5倍 */
-  --space-4:  16px;  /* 2倍 */
-  --space-5:  24px;  /* 3倍: セクション内区切り */
-  --space-6:  32px;  /* 4倍 */
-  --space-7:  48px;  /* 6倍 */
-  --space-8:  64px;  /* 8倍: セクション間 */
-  --space-9:  96px;  /* 12倍 */
+  --space-1: 4px; /* 0.5倍: 微小余白 */
+  --space-2: 8px; /* 1倍: 基準 */
+  --space-3: 12px; /* 1.5倍 */
+  --space-4: 16px; /* 2倍 */
+  --space-5: 24px; /* 3倍: セクション内区切り */
+  --space-6: 32px; /* 4倍 */
+  --space-7: 48px; /* 6倍 */
+  --space-8: 64px; /* 8倍: セクション間 */
+  --space-9: 96px; /* 12倍 */
   --space-10: 128px; /* 16倍: ページセクション間 */
 }
 ```
@@ -214,11 +223,11 @@ code, pre {
 
 ```css
 :root {
-  --radius-none:   0px;    /* 角丸なし */
-  --radius-sm:     4px;    /* スモール: インプット、チップ */
-  --radius-md:     8px;    /* ミディアム: カード、パネル */
-  --radius-lg:     16px;   /* ラージ: モーダル、大型カード */
-  --radius-full:   9999px; /* フル: アバター、ピル型ボタン */
+  --radius-none: 0px; /* 角丸なし */
+  --radius-sm: 4px; /* スモール: インプット、チップ */
+  --radius-md: 8px; /* ミディアム: カード、パネル */
+  --radius-lg: 16px; /* ラージ: モーダル、大型カード */
+  --radius-full: 9999px; /* フル: アバター、ピル型ボタン */
 }
 ```
 
@@ -314,21 +323,24 @@ a:focus-visible {
 ```html
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ページタイトル</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-</head>
-<body>
-  <header><!-- ヘッダーコンテナ --></header>
-  <nav aria-label="パンくずリスト"><!-- パンくず --></nav>
-  <main>
-    <h1>ページ見出し</h1>
-    <!-- コンテンツ -->
-  </main>
-  <footer><!-- フッター --></footer>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ページタイトル</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header><!-- ヘッダーコンテナ --></header>
+    <nav aria-label="パンくずリスト"><!-- パンくず --></nav>
+    <main>
+      <h1>ページ見出し</h1>
+      <!-- コンテンツ -->
+    </main>
+    <footer><!-- フッター --></footer>
+  </body>
 </html>
 ```
 
@@ -350,7 +362,7 @@ DADS標準のフォーカスリングは **黒アウトライン4px＋黄色リ�
 :focus-visible {
   outline: 4px solid #000000;
   outline-offset: 0.125rem;
-  box-shadow: 0 0 0 0.125rem #FFD43D; /* DADS yellow-300 */
+  box-shadow: 0 0 0 0.125rem #ffd43d; /* DADS yellow-300 */
 }
 ```
 
@@ -388,19 +400,19 @@ module.exports = {
 
 ### 利用可能なコンポーネント（35種）
 
-| カテゴリ | コンポーネント |
-|---|---|
-| フォーム | Input, Textarea, Label, Checkbox, Radio, Select, FileUpload |
-| フォームヘルパー | ErrorText, SupportText, RequirementBadge, Legend |
-| ボタン | Button（solid-fill / outline / text × lg/md/sm/xs） |
-| ナビゲーション | Breadcrumbs, HamburgerMenuButton, LanguageSelector |
-| バッジ・ラベル | StatusBadge, ChipLabel |
-| 通知 | NotificationBanner, EmergencyBanner |
-| レイアウト | Divider, Dl, List, Blockquote, Table |
-| コンテンツ | Accordion, Disclosure, Drawer, Carousel |
-| 日付 | Calendar, DatePicker, SeparatedDatePicker |
-| テキスト | Heading, Link, UtilityLink |
-| ユーティリティ | Slot（asChild パターン） |
+| カテゴリ         | コンポーネント                                              |
+| ---------------- | ----------------------------------------------------------- |
+| フォーム         | Input, Textarea, Label, Checkbox, Radio, Select, FileUpload |
+| フォームヘルパー | ErrorText, SupportText, RequirementBadge, Legend            |
+| ボタン           | Button（solid-fill / outline / text × lg/md/sm/xs）         |
+| ナビゲーション   | Breadcrumbs, HamburgerMenuButton, LanguageSelector          |
+| バッジ・ラベル   | StatusBadge, ChipLabel                                      |
+| 通知             | NotificationBanner, EmergencyBanner                         |
+| レイアウト       | Divider, Dl, List, Blockquote, Table                        |
+| コンテンツ       | Accordion, Disclosure, Drawer, Carousel                     |
+| 日付             | Calendar, DatePicker, SeparatedDatePicker                   |
+| テキスト         | Heading, Link, UtilityLink                                  |
+| ユーティリティ   | Slot（asChild パターン）                                    |
 
 Calendar・DatePicker・Carousel 等の複雑なインタラクションは内部で `react-aria-components` を使用。
 
@@ -427,6 +439,7 @@ import {
 ### 未実装コンポーネントへの対応
 
 このライブラリにないコンポーネントは:
+
 1. `react-aria-components` を使って実装（アクセシビリティを保証）
 2. [ARIA Authoring Practices Guide (APG)](https://www.w3.org/WAI/ARIA/apg/patterns/) を参考にスクラッチ実装
 
@@ -436,16 +449,16 @@ import {
 
 DADS の汎用仕様（1〜10章）に加えて devtools 固有のスタイリング規約があるが、**本スキルでは重複管理しない**。以前はここに旧実装（`src/utils/styles.ts` の `colors.*` + inline `style`）を記載していたが、issue #176 B 案で全廃され `styles.ts` も削除されたのに記述が残って陳腐化した。正本を一本化してドリフトを防ぐため、以下を直接参照すること:
 
-| 知りたいこと | 正本 |
-|---|---|
-| 色・スタイリング規約（`@layer components` semantic class 経由、primitive scale 直書き禁止、HTML inline `style` 禁止） | `CLAUDE.md` §7 |
-| 共通 UI コンポーネント（`InputField` / `CopyButton` / `DownloadButtonGroup` / `ToggleGroup` / `ErrorMessage` 等） | `docs/ui-conventions.md` §1、`CLAUDE.md` §5・§8 |
-| ツール追加の実装フロー | `CLAUDE.md` §5 |
-| `style-src` strict 化（`unsafe-inline` 撤去）の経緯と CSP 制約 | `docs/projects/issue-176-b-plan-progress.md`、`docs/decisions.md [064][067][068]` |
+| 知りたいこと                                                                                                          | 正本                                                                              |
+| --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 色・スタイリング規約（`@layer components` semantic class 経由、primitive scale 直書き禁止、HTML inline `style` 禁止） | `CLAUDE.md` §7                                                                    |
+| 共通 UI コンポーネント（`InputField` / `CopyButton` / `DownloadButtonGroup` / `ToggleGroup` / `ErrorMessage` 等）     | `.agents/rules/ui-conventions.md` §1、`CLAUDE.md` §5・§8                          |
+| ツール追加の実装フロー                                                                                                | `CLAUDE.md` §5                                                                    |
+| `style-src` strict 化（`unsafe-inline` 撤去）の経緯と CSP 制約                                                        | `docs/projects/issue-176-b-plan-progress.md`、`docs/decisions.md [064][067][068]` |
 
 > ⚠️ **使ってはいけない旧パターン**:
+>
 > - `import { colors, onFocusRing, onBlurRing } from '../../utils/styles'` — `styles.ts` は削除済みでビルドエラーになる。
 > - `style={{ color: ... }}` 等の HTML inline `style` — `style-src` が strict（`public/_headers`）なため**適用されず CSP 違反**になる。
 >
 > 色は `global.css` の semantic class（`text-muted` / `alert-error` / `bg-subtle` 等）か `@theme` auto-utility（`text-primary` 等）で指定する。focus は `:focus-visible` に CSS 一括適用済み（`var(--focus-ring)`）で JS ハンドラ不要。
-

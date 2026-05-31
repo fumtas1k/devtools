@@ -1,0 +1,313 @@
+# Project-local Codex command approval rules.
+# Mirrors the intent of .claude/settings.json: common read/check commands are
+# allowed, mutating or network-sensitive actions prompt, and destructive actions
+# are forbidden.
+#
+# Matching is driven solely by `pattern` (a prefix match on the parsed argv).
+# The `match` / `not_match` entries are loader-validated examples for
+# documentation and self-review; they are not fine-grained enforcement inputs.
+# `not_match` examples must not match the rule's prefix at all. Placeholders
+# such as <pr-number> / <issue-number> / <run-id> stand for arbitrary
+# user-supplied arguments and are never matched literally.
+
+prefix_rule(
+    pattern = ["npm", "run"],
+    decision = "allow",
+    justification = "Project npm scripts are common development and verification commands.",
+    match = ["npm run build", "npm run format:check", "npm run test:e2e"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["test", "ci", "list", "outdated", "view"]],
+    decision = "allow",
+    justification = "Routine npm verification and dependency inspection commands.",
+    match = ["npm test", "npm ci", "npm list", "npm view astro version"],
+)
+
+prefix_rule(
+    pattern = ["npx", ["playwright", "tsc", "vitest", "astro", "prettier"]],
+    decision = "allow",
+    justification = "Project toolchain commands used for tests, builds, and formatting.",
+    match = [
+        "npx playwright test",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npx astro check",
+        "npx prettier --check AGENTS.md",
+    ],
+)
+
+prefix_rule(
+    pattern = ["node_modules/.bin/astro", "check"],
+    decision = "allow",
+    justification = "Direct Astro binary check is a read-only project verification command.",
+    match = ["node_modules/.bin/astro check", "node_modules/.bin/astro check --watch=false"],
+)
+
+prefix_rule(
+    pattern = ["git", ["status", "diff", "log", "show", "branch", "rev-parse"]],
+    decision = "allow",
+    justification = "Read-only git inspection commands.",
+    match = ["git status --short", "git diff", "git log --oneline", "git show HEAD"],
+)
+
+prefix_rule(
+    pattern = ["git", "remote", "-v"],
+    decision = "allow",
+    justification = "Read-only repository remote inspection.",
+    match = ["git remote -v"],
+)
+
+prefix_rule(
+    pattern = ["git", "stash", "list"],
+    decision = "allow",
+    justification = "Read-only stash inspection.",
+    match = ["git stash list"],
+)
+
+prefix_rule(
+    pattern = ["git", "config", "--get"],
+    decision = "allow",
+    justification = "Read-only git configuration lookup.",
+    match = ["git config --get remote.origin.url"],
+)
+
+# Intentionally allow the staging helper instead of direct `git add <path>`.
+# Direct `git add` is forbidden below so the helper is the only staging path.
+# The helper validates pathspecs first, then runs `git add -- <path>...`.
+prefix_rule(
+    pattern = ["bash", ".codex/scripts/git-add-files.sh"],
+    decision = "allow",
+    justification = "Repository-provided helper stages only explicit repository paths and rejects broad git add pathspecs.",
+    match = ["bash .codex/scripts/git-add-files.sh AGENTS.md", "bash .codex/scripts/git-add-files.sh .agents/rules/common.md .codex/rules/default.rules"],
+)
+
+prefix_rule(
+    pattern = ["git", "add"],
+    decision = "forbidden",
+    justification = "Stage changes only through .codex/scripts/git-add-files.sh so explicit path validation is always enforced.",
+    match = ["git add AGENTS.md", "git add .", "git add -A"],
+)
+
+prefix_rule(
+    pattern = ["git", "commit", "-m"],
+    decision = "allow",
+    justification = "Standard commit creation with an explicit message is allowed; bypass and amend forms are handled by prompt rules.",
+    match = ["git commit -m \"docs: ルールを更新\""],
+    not_match = ["git commit --amend", "git commit -am update", "git commit -n -m update"],
+)
+
+prefix_rule(
+    pattern = ["git", ["switch", "checkout", "commit", "fetch", "pull", "merge", "rebase", "worktree"]],
+    decision = "prompt",
+    justification = "Git commands that may mutate the worktree, refs, or network state require confirmation.",
+    match = [
+        "git switch -c chore/example",
+        "git commit --amend",
+        "git fetch origin",
+        "git pull --ff-only",
+        "git merge --ff-only develop",
+        "git rebase --continue",
+        "git worktree prune",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Pushing changes publishes repository state and requires confirmation.",
+    match = ["git push origin HEAD"],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["list", "view", "status", "diff", "checks"]],
+    decision = "allow",
+    justification = "Read-only GitHub PR inspection commands.",
+    match = ["gh pr view <pr-number>", "gh pr list", "gh pr diff <pr-number>", "gh pr checks <pr-number>"],
+    not_match = ["gh pr merge <pr-number>", "gh pr comment <pr-number> --body-file <body-file>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "issue", ["list", "view", "status"]],
+    decision = "allow",
+    justification = "Read-only GitHub issue inspection commands.",
+    match = ["gh issue view <issue-number>", "gh issue list", "gh issue status"],
+    not_match = ["gh issue comment <issue-number> --body-file <body-file>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "label", "list"],
+    decision = "allow",
+    justification = "Read-only GitHub label inspection command.",
+    match = ["gh label list", "gh label list --repo <owner/repo>"],
+)
+
+prefix_rule(
+    pattern = ["gh", ["repo", "run", "workflow"], ["view", "list"]],
+    decision = "allow",
+    justification = "Read-only GitHub repository, workflow, and run inspection commands.",
+    match = ["gh repo view", "gh run list", "gh workflow view test"],
+)
+
+prefix_rule(
+    pattern = ["gh", "run", "view"],
+    decision = "allow",
+    justification = "Read-only GitHub Actions run inspection.",
+    match = ["gh run view <run-id>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "run", "watch"],
+    decision = "allow",
+    justification = "GitHub Actions run watching is a read-only status monitoring command.",
+    match = ["gh run watch <run-id>", "gh run watch <run-id> --exit-status"],
+)
+
+prefix_rule(
+    pattern = ["gh", "workflow", "view"],
+    decision = "allow",
+    justification = "Read-only GitHub workflow inspection.",
+    match = ["gh workflow view <workflow-file>"],
+)
+
+# `pattern` は prefix-only なので、merge 方法の強制はできない。
+# そのため、この block では「develop なら --squash / main なら --merge」を明示する。
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "prompt",
+    justification = "Do not rely on the default merge method. Use --squash for develop-bound PRs and --merge for release PRs to main.",
+    match = ["gh pr merge <pr-number> --squash --delete-branch --subject \"<prefix>: <日本語要約> (#<pr-number>)\" --body-file /tmp/codex/squash_body.md", "gh pr merge <pr-number> --merge --delete-branch"],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["review", "comment", "create", "close", "edit"]],
+    decision = "prompt",
+    justification = "GitHub PR write operations require confirmation.",
+    match = ["gh pr comment <pr-number> --body-file <body-file>", "gh pr review <pr-number> --comment --body-file <body-file>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "issue", ["comment", "create", "delete", "close", "edit"]],
+    decision = "prompt",
+    justification = "GitHub issue write operations require confirmation.",
+    match = ["gh issue comment <issue-number> --body-file <body-file>", "gh issue close <issue-number> --reason completed"],
+)
+
+prefix_rule(
+    pattern = ["gh", ["release", "api"]],
+    decision = "prompt",
+    justification = "GitHub release and API commands can mutate remote state or access sensitive data.",
+    match = ["gh release list", "gh api repos/<owner>/<repo>/issues/comments/<comment-id> --input <request-json>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "workflow", ["run", "disable"]],
+    decision = "prompt",
+    justification = "GitHub workflow mutations require confirmation.",
+    match = ["gh workflow run <workflow-file>", "gh workflow disable <workflow-file>"],
+)
+
+prefix_rule(
+    pattern = [["node", "npm"], "--version"],
+    decision = "allow",
+    justification = "Tool version checks are safe.",
+    match = ["node --version", "npm --version"],
+)
+
+prefix_rule(
+    pattern = [["which", "pwd"]],
+    decision = "allow",
+    justification = "Local environment inspection commands are safe.",
+    match = ["which node", "pwd"],
+)
+
+# Intentionally allow the cleanup helper instead of direct `rm`. As with the
+# staging helper above, command rules are prefix-only: a path argument such as
+# /tmp/claude/... or .codex/config.toml still matches this prefix, so it cannot
+# be expressed via `not_match`. The helper validates the path at runtime and
+# only removes files under /tmp/claude or /tmp/codex. `not_match` therefore
+# lists only a genuinely different command prefix (direct `rm`).
+prefix_rule(
+    pattern = ["bash", "scripts/rm-tmp.sh"],
+    decision = "allow",
+    justification = "Repository-provided helper only removes files under /tmp/claude or /tmp/codex after path validation.",
+    match = ["bash scripts/rm-tmp.sh /tmp/codex/pr_body.md", "bash scripts/rm-tmp.sh -f /tmp/claude/comment.md"],
+    not_match = ["rm /tmp/codex/pr_body.md"],
+)
+
+prefix_rule(
+    pattern = [["curl", "wget"]],
+    decision = "prompt",
+    justification = "Network fetches require confirmation.",
+    match = ["curl https://example.com", "wget https://example.com/file"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["install", "exec"]],
+    decision = "prompt",
+    justification = "Installing or executing packages can change dependencies or run untrusted code.",
+    match = ["npm install astro", "npm exec playwright install"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["publish"]],
+    decision = "forbidden",
+    justification = "Publishing packages is not part of repository maintenance from Codex.",
+    match = ["npm publish"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["install", "i"], ["-g", "--global", "--location=global"]],
+    decision = "forbidden",
+    justification = "Do not install global npm packages from this repository session.",
+    match = ["npm install -g eslint", "npm i --global pnpm", "npm install --location=global eslint"],
+)
+
+prefix_rule(
+    pattern = ["npm", ["install", "i"], "--location", "global"],
+    decision = "forbidden",
+    justification = "Do not install global npm packages from this repository session.",
+    match = ["npm install --location global eslint"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Force-push is blocked; use a non-forced push or ask the user for a manual operation.",
+    match = ["git push --force", "git push -f origin HEAD"],
+)
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Hard reset can discard user work and must not be automated.",
+    match = ["git reset --hard", "git reset --hard HEAD"],
+)
+
+prefix_rule(
+    pattern = ["gh", "repo", ["delete"]],
+    decision = "forbidden",
+    justification = "Repository deletion is blocked.",
+    match = ["gh repo delete <owner/repo>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "secret", ["delete", "remove", "set"]],
+    decision = "forbidden",
+    justification = "Secret mutation is blocked from Codex repository sessions.",
+    match = ["gh secret delete <name>", "gh secret set <name>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "ssh-key", "delete"],
+    decision = "forbidden",
+    justification = "SSH key deletion is blocked.",
+    match = ["gh ssh-key delete <key-id>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "auth", "logout"],
+    decision = "forbidden",
+    justification = "Authentication logout is blocked.",
+    match = ["gh auth logout"],
+)

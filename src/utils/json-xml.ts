@@ -5,6 +5,7 @@ const PARSER_OPTIONS = {
   attributeNamePrefix: '@_',
   textNodeName: '#text',
   parseAttributeValue: true,
+  processEntities: false,
 };
 
 const BUILDER_OPTIONS = {
@@ -14,6 +15,58 @@ const BUILDER_OPTIONS = {
   format: true,
   indentBy: '  ',
 };
+
+const PREDEFINED_XML_ENTITIES = new Map([
+  ['amp', '&'],
+  ['lt', '<'],
+  ['gt', '>'],
+  ['quot', '"'],
+  ['apos', "'"],
+]);
+
+function decodeXmlEntity(value: string): string {
+  return value.replace(/&(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);/g, (entity) => {
+    const namedEntity = entity.slice(1, -1);
+
+    if (PREDEFINED_XML_ENTITIES.has(namedEntity)) {
+      return PREDEFINED_XML_ENTITIES.get(namedEntity) ?? entity;
+    }
+
+    if (namedEntity.startsWith('#x')) {
+      const codePoint = Number.parseInt(namedEntity.slice(2), 16);
+      return Number.isNaN(codePoint) || codePoint > 0x10ffff
+        ? entity
+        : String.fromCodePoint(codePoint);
+    }
+
+    if (namedEntity.startsWith('#')) {
+      const codePoint = Number.parseInt(namedEntity.slice(1), 10);
+      return Number.isNaN(codePoint) || codePoint > 0x10ffff
+        ? entity
+        : String.fromCodePoint(codePoint);
+    }
+
+    return entity;
+  });
+}
+
+function restoreXmlEntities(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return decodeXmlEntity(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => restoreXmlEntities(item));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [key, restoreXmlEntities(child)])
+    );
+  }
+
+  return value;
+}
 
 /** JSON文字列 → XML文字列。失敗時は Error を投げる */
 export function jsonToXml(jsonStr: string): string {
@@ -38,5 +91,5 @@ export function xmlToJson(xmlStr: string): string {
   } catch {
     throw new Error('有効なXMLではありません');
   }
-  return JSON.stringify(result, null, 2);
+  return JSON.stringify(restoreXmlEntities(result), null, 2);
 }

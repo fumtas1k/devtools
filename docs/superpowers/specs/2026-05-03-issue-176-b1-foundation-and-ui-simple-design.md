@@ -24,7 +24,7 @@
    - VRT は branch protection の required check に**含まれない**（`docs/decisions.md` [066]）→ fail しても merge 可、reviewer 判断
 5. ローカル必須ゲート: push 前に `npm run test`（vitest）/ `npx astro check` / `npm run test:e2e` 全 green
 6. `src/utils/styles.ts` 自体は **削除しない**（ResultTable / InputField / qr-ticket / tools 側で参照継続。PR 6 で削除）
-7. `docs/ui-conventions.md` Section 2.1（hover ルール）/ 2.2（typography 名）を class-based ルールに更新
+7. `.agents/rules/ui-conventions.md` Section 2.1（hover ルール）/ 2.2（typography 名）を class-based ルールに更新
 8. `.claude/skills/dads-design-system/SKILL.md` および `.claude/skills/dads-design-system/references/components.md` の冒頭に「issue #176 B 案 移行中」のステータスバナーを追記（既存の inline-style 例には「移行中の暫定パターン」と注釈、削除は PR 6 で実施）
 
 非ゴール: ResultTable / InputField の API redesign（PR 1.5）、qr-ticket / tools 側 migration（PR 2-5）、CSP `_headers` flip（PR 6）
@@ -337,7 +337,7 @@ describe('migration detector の陽性対照', () => {
 
 memory `feedback_positive_control_for_gates.md` 準拠。
 
-### 5. `docs/ui-conventions.md` Section 2.1 / 2.2 改訂
+### 5. `.agents/rules/ui-conventions.md` Section 2.1 / 2.2 改訂
 
 **Section 2.1 (hover ルール)**: `onMouseEnter` / `onMouseLeave` で inline style を差し替えるパターンを禁止に変更。`@layer components` の `:hover` 擬似クラスへ移行する例を提示。「Tailwind カラー utility 禁止」は維持しつつ、`@theme` 経由 auto-utility は許容と明記。
 
@@ -422,7 +422,7 @@ memory `feedback_commander_checklist.md` 準拠。PR 作成時に親 Opus が `r
 - `@theme` token 整理 / token rename (別 issue)
 - `DownloadButtonGroup` / `*.astro` (CategoryBadge / PageContainer / ToolIcon / ToolInfoSection): 既に inline style なし or `<style>` block で hash 適用済み → 対象外
 - `dads-design-system` skill の本格 rewrite (PR 6、PR 1 では migration note 追記のみ)
-- `docs/ui-conventions.md` の Section 2.1 / 2.2 以外: 触らない
+- `.agents/rules/ui-conventions.md` の Section 2.1 / 2.2 以外: 触らない
 
 ---
 
@@ -462,7 +462,7 @@ memory `feedback_commander_checklist.md` 準拠。PR 作成時に親 Opus が `r
 11. Section.tsx migration
 12. Select.tsx migration
 13. ToggleGroup.tsx migration（setProperty 経由 CSS 変数注入）
-14. docs/ui-conventions.md Section 2.1 / 2.2 改訂
+14. .agents/rules/ui-conventions.md Section 2.1 / 2.2 改訂
 15. .claude/skills/dads-design-system/SKILL.md + references/components.md に migration banner 追記
 ```
 
