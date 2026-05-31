@@ -56,4 +56,22 @@ describe('block-direct-git-add.sh', () => {
       'Use bash .codex/scripts/git-add-files.sh instead of direct git add.'
     );
   });
+
+  it('陽性対照: quoted command name の git add も拒否する', () => {
+    const result = runHook('"git" add .');
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Use bash .codex/scripts/git-add-files.sh instead of direct git add.'
+    );
+  });
+
+  it('陽性対照: escaped command name の git add も拒否する', () => {
+    const result = runHook('\\git add .');
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Use bash .codex/scripts/git-add-files.sh instead of direct git add.'
+    );
+  });
 });
