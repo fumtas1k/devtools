@@ -91,6 +91,7 @@ function isGitToken(token) {
 
 function hasDirectGitAdd(input, seen = new Set()) {
   if (helperPattern.test(input)) return false;
+  if (/[`$]/.test(input)) return true;
   if (seen.has(input)) return false;
   seen.add(input);
 

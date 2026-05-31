@@ -74,4 +74,22 @@ describe('block-direct-git-add.sh', () => {
       'Use bash .codex/scripts/git-add-files.sh instead of direct git add.'
     );
   });
+
+  it('陽性対照: parameter expansion で git になる command も拒否する', () => {
+    const result = runHook('${GIT:-git} add .');
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Use bash .codex/scripts/git-add-files.sh instead of direct git add.'
+    );
+  });
+
+  it('陽性対照: ANSI-C quoting で git になる command も拒否する', () => {
+    const result = runHook("$'git' add .");
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'Use bash .codex/scripts/git-add-files.sh instead of direct git add.'
+    );
+  });
 });
