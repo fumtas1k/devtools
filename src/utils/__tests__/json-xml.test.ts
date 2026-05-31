@@ -1,3 +1,4 @@
+import { XMLParser } from 'fast-xml-parser';
 import { describe, it, expect } from 'vitest';
 import { jsonToXml, xmlToJson } from '../json-xml';
 
@@ -20,6 +21,17 @@ describe('jsonToXml', () => {
     const result = jsonToXml('{"item":{"@_id":"1","#text":"テスト"}}');
     expect(result).toContain('id="1"');
     expect(result).toContain('テスト');
+  });
+
+  it('特殊文字を含む値は round-trip で保持される', () => {
+    const input = {
+      text: `A & B < C > D "quote" 'apostrophe'`,
+    };
+
+    const xml = jsonToXml(JSON.stringify(input));
+    const result = JSON.parse(xmlToJson(xml));
+
+    expect(result.root.text).toBe(input.text);
   });
 
   it('不正なJSONでエラーを投げる', () => {
@@ -45,5 +57,44 @@ describe('xmlToJson', () => {
     const xml = `<root><key>value</key></root>`;
     const result = xmlToJson(xml);
     expect(result).toContain('\n');
+  });
+
+  it('processEntities を有効にした正の対照では内部実体が展開される', () => {
+    // Positive control: this proves the entity-expansion path exists in fast-xml-parser.
+    // If this test is removed, the security regression check below would no longer
+    // demonstrate that the old behavior expands custom entities.
+    const xml = `<!DOCTYPE note [<!ENTITY greeting "expanded">]><note><value>&greeting;</value></note>`;
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: '@_',
+      textNodeName: '#text',
+      parseAttributeValue: true,
+      processEntities: true,
+    });
+
+    const result = parser.parse(xml);
+
+    expect(result.note.value).toBe('expanded');
+  });
+
+  it('xmlToJson は内部実体を展開しない', () => {
+    const xml = `<!DOCTYPE note [<!ENTITY greeting "expanded">]><note><value>&greeting;</value></note>`;
+    const result = JSON.parse(xmlToJson(xml));
+
+    expect(result.note.value).toBe('&greeting;');
+  });
+
+  it('定義済みXML実体と数値文字参照は復元される', () => {
+    const xml = `<root><value>&amp;&lt;&gt;&quot;&apos;&#65;&#x41;</value></root>`;
+    const result = JSON.parse(xmlToJson(xml));
+
+    expect(result.root.value).toBe(`&<>"'AA`);
+  });
+
+  it('範囲外の数値文字参照は literal のまま保持される', () => {
+    const xml = `<root><value>&#x110000;</value></root>`;
+    const result = JSON.parse(xmlToJson(xml));
+
+    expect(result.root.value).toBe('&#x110000;');
   });
 });
