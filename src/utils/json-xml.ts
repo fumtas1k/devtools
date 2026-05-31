@@ -34,12 +34,16 @@ function decodeXmlEntity(value: string): string {
 
     if (namedEntity.startsWith('#x')) {
       const codePoint = Number.parseInt(namedEntity.slice(2), 16);
-      return Number.isNaN(codePoint) ? entity : String.fromCodePoint(codePoint);
+      return Number.isNaN(codePoint) || codePoint > 0x10ffff
+        ? entity
+        : String.fromCodePoint(codePoint);
     }
 
     if (namedEntity.startsWith('#')) {
       const codePoint = Number.parseInt(namedEntity.slice(1), 10);
-      return Number.isNaN(codePoint) ? entity : String.fromCodePoint(codePoint);
+      return Number.isNaN(codePoint) || codePoint > 0x10ffff
+        ? entity
+        : String.fromCodePoint(codePoint);
     }
 
     return entity;

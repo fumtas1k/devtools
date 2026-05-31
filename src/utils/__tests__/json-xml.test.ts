@@ -90,4 +90,11 @@ describe('xmlToJson', () => {
 
     expect(result.root.value).toBe(`&<>"'AA`);
   });
+
+  it('範囲外の数値文字参照は literal のまま保持される', () => {
+    const xml = `<root><value>&#x110000;</value></root>`;
+    const result = JSON.parse(xmlToJson(xml));
+
+    expect(result.root.value).toBe('&#x110000;');
+  });
 });
