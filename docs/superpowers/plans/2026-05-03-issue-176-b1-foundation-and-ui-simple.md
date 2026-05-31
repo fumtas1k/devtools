@@ -37,7 +37,7 @@
 | Modify | `src/components/ui/Section.tsx`                              | 外枠 / header / body の `style={{}}` 3 箇所を className 化                                                                                         |
 | Modify | `src/components/ui/Select.tsx`                               | wrapper / select / svg の `style={{}}` 3 箇所を className 化                                                                                       |
 | Modify | `src/components/ui/ToggleGroup.tsx`                          | 外枠 / button の `style={{}}` 2 箇所を `.toggle-grid` + `.btn-toggle[aria-pressed="true"]` + `setProperty('--toggle-cols', ...)` に置換            |
-| Modify | `docs/ui-conventions.md`                                     | Section 2.1 (hover ルール) / 2.2 (typography 名) を class-based ルールに更新                                                                       |
+| Modify | `.agents/rules/ui-conventions.md`                            | Section 2.1 (hover ルール) / 2.2 (typography 名) を class-based ルールに更新                                                                       |
 | Modify | `.claude/skills/dads-design-system/SKILL.md`                 | 冒頭に「issue #176 B 案 移行中」status banner 追記                                                                                                 |
 | Modify | `.claude/skills/dads-design-system/references/components.md` | 冒頭に同 status banner 追記                                                                                                                        |
 
@@ -1465,20 +1465,20 @@ Refs: #176"
 
 ---
 
-## Task 14: `docs/ui-conventions.md` Section 2.1 / 2.2 改訂
+## Task 14: `.agents/rules/ui-conventions.md` Section 2.1 / 2.2 改訂
 
 **Files:**
 
-- Modify: `docs/ui-conventions.md`
+- Modify: `.agents/rules/ui-conventions.md`
 
 - [ ] **Step 1: 現状確認**
 
-Run: `sed -n '25,55p' docs/ui-conventions.md`
+Run: `sed -n '25,55p' .agents/rules/ui-conventions.md`
 Expected: Section 2.1 / 2.2 / 2.3 の本文が表示される。
 
 - [ ] **Step 2: Section 2.1 全置換**
 
-Edit `docs/ui-conventions.md`、以下の Section 2.1 ブロック:
+Edit `.agents/rules/ui-conventions.md`、以下の Section 2.1 ブロック:
 
 ````markdown
 ### 2.1 ホバー時の色変化
@@ -1532,7 +1532,7 @@ CSP `style-src 'unsafe-inline'` 撤去（issue #176 B 案）に伴い、JSX の 
 
 - [ ] **Step 3: Section 2.2 を class 参照に更新**
 
-Edit `docs/ui-conventions.md`、Section 2.2 の以下:
+Edit `.agents/rules/ui-conventions.md`、Section 2.2 の以下:
 
 ```markdown
 ### 2.2 ボタン高さの揃え
@@ -1557,12 +1557,12 @@ Edit `docs/ui-conventions.md`、Section 2.2 の以下:
 
 - [ ] **Step 4: prettier で整形**
 
-Run: `npm run format -- docs/ui-conventions.md`
+Run: `npm run format -- .agents/rules/ui-conventions.md`
 
 - [ ] **Step 5: コミット**
 
 ```bash
-git add docs/ui-conventions.md
+git add .agents/rules/ui-conventions.md
 git commit -m "docs(ui-conventions): #176 B 案 PR 1 — Section 2.1 / 2.2 を class-based ルールに更新
 
 - 2.1: onMouseEnter/Leave による inline style 操作を禁止に変更
@@ -1744,7 +1744,7 @@ gh pr create --base develop --title "refactor(ui): #176 B 案 PR 1 — ui/* simp
 - 11 ファイル migration: ActionButton / BareInput / ClearButton / CopyButton / CountInput / DownloadButton / ErrorMessage / OutputField / Section / Select / ToggleGroup
 - ClearButton: `onMouseEnter/Leave` の CSSOM mutation を `.btn-clear:hover` (CSS) に置換
 - ToggleGroup: 動的 `gridTemplateColumns` を `.toggle-grid` + `setProperty('--toggle-cols', N)` (CSSOM API) に置換
-- `docs/ui-conventions.md` Section 2.1 / 2.2 を class-based ルールに更新
+- `.agents/rules/ui-conventions.md` Section 2.1 / 2.2 を class-based ルールに更新
 - `.claude/skills/dads-design-system/SKILL.md` および `references/components.md` 冒頭に「issue #176 B 案 移行中」status banner を追記
 
 ## スコープ外（後続 PR）
@@ -1788,7 +1788,7 @@ Expected: PR URL が出力される。memory `project_b_plan_progress.md` のテ
 - [ ] `inline-style-migration.test.ts` の `MIGRATED_FILES` に 11 ファイル全件登録済み
 - [ ] `src/utils/styles.ts` は **削除されていない**（PR 6 までの中間状態）
 - [ ] `_headers` の CSP は **未変更**（`style-src 'unsafe-inline'` がまだ残る、PR 6 で flip）
-- [ ] `docs/ui-conventions.md` 2.1 / 2.2 が class-based 記述
+- [ ] `.agents/rules/ui-conventions.md` 2.1 / 2.2 が class-based 記述
 - [ ] `.claude/skills/dads-design-system/SKILL.md` および `references/components.md` 冒頭に migration banner
 
 ## 補足: Tailwind utility 換算リファレンス

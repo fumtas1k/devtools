@@ -22,7 +22,7 @@
 7. **VRT 検証**: `visual-regression.yml` で 36/36 baseline 比較。意図的差分があれば PR ブランチ上で `update-visual-baseline.yml` を `workflow_dispatch` trigger して baseline 更新（PR 1 と同フロー）。required check には**含まれない**
 8. ローカル必須ゲート: push 前に `npm run test`（vitest）/ `npx astro check` / `npm run test:e2e` 全 green
 9. `src/utils/styles.ts` 自体は **削除しない**（残存 import: PR 1.5 終了後は qr-ticket / 残り tools が継続参照、PR 6 で削除）
-10. `docs/ui-conventions.md` Section 2.x は PR 1 で改訂済みのため**追加更新は行わない**（必要な原則は出揃っている）
+10. `.agents/rules/ui-conventions.md` Section 2.x は PR 1 で改訂済みのため**追加更新は行わない**（必要な原則は出揃っている）
 
 非ゴール: qr-ticket / tools 側 migration（PR 2-5）、`UuidV7Generator` / `UlidGenerator` の render 関数内 inline style（PR 3 / PR 5）、CSP `_headers` flip（PR 6）、`docs/decisions.md` 新規エントリ（PR 6 [067] で B 案完了として一括記録）
 
@@ -374,7 +374,7 @@ PR は**直列**（前 PR がマージされてから次 PR 着手）。
 - `stripMetaStyleSrc()` 撤去 (PR 6)
 - `src/utils/styles.ts` 削除 (PR 6)
 - `docs/decisions.md` 新規エントリ（PR 6 [067] で B 案完了として一括記録）
-- `docs/ui-conventions.md` 追記（PR 1 で必要な原則は出揃っている）
+- `.agents/rules/ui-conventions.md` 追記（PR 1 で必要な原則は出揃っている）
 - `dads-design-system` skill の本格 rewrite (PR 6)
 
 ---

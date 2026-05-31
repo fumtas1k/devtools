@@ -22,7 +22,7 @@
 5. **VRT 検証**: `visual-regression.yml` で 36/36 baseline 比較。意図的差分があれば PR ブランチ上で `update-visual-baseline.yml` を `workflow_dispatch` trigger して baseline 更新
 6. ローカル必須ゲート: push 前に `npm run test`（vitest）/ `npx astro check` / `npm run test:e2e` 全 green
 7. `src/utils/styles.ts` 自体は **削除しない**（PR 6 で削除）。本 PR では `caption` / `bodyEmphasis` / `colors` の **import を削除**するだけ
-8. `docs/ui-conventions.md` 追加更新は不要（PR 1 で原則出揃い）
+8. `.agents/rules/ui-conventions.md` 追加更新は不要（PR 1 で原則出揃い）
 
 非ゴール:
 
