@@ -12,8 +12,7 @@
   - 例: ✅ `feat: 新しいツールを追加` / ❌ `feat: Add new tool`（英語） / ❌ `update: ...`（プレフィックス不正）
   - `Merge`, `Revert`, `fixup!`, `squash!` で始まるコミットはチェックをスキップ
   - **squash マージで develop に乗るコミット件名も同じ規約に従う**。GitHub の squash は件名のデフォルトが PR タイトルで、`.githooks/commit-msg` は GitHub 上の squash には効かない（prefix なしコミットが素通りする事故あり）。手順・対策 → `docs/playbooks/pr-creation.md` 6 章
-  - **マージ方法**: feature PR（→ develop）は `--squash`、release PR（develop → main）は `--merge`。
-  - **`--squash` 時は `--subject` と `--body-file` を必ず指定**（省略禁止）。例: `gh pr merge <N> --squash --delete-branch --subject "fix: 〇〇 (#N)" --body-file /tmp/claude/squash_body.md`
+
 - **コード内コメント**: 日本語を基本とする。
 
 ---
@@ -120,6 +119,11 @@ gh pr create --base develop --title "..." --body-file <tmpdir>/pr_body.md   # <t
 **`main` 向けはリリース PR のみ**。通常の機能追加・バグ修正・refactor・docs は全て develop ベース。リリース時は別途 `develop → main` の release PR を切る運用 (release-only branch policy)。
 
 PR 作成・親 push 前チェックリスト・親向けレビュー取得手順 → **`docs/playbooks/pr-creation.md` 3〜5 章**
+
+### 6.3.1 マージ方法の使い分け
+
+- **feature PR（→ develop）**: `--squash`。**`--subject` と `--body-file` を必ず指定**（省略すると全コミットが自動連結されノイズになる）。詳細手順 → `docs/playbooks/pr-creation.md` 6 章
+- **release PR（develop → main）**: `--merge`。
 
 ### 6.4 先送り（deferral）時は必ず issue 化する
 
