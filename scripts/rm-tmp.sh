@@ -1,10 +1,11 @@
 #!/bin/bash
-# Remove temporary files created by Codex, limited to /tmp/codex.
+# Claude・Codex エージェント用の一時ファイル削除ヘルパー。
+# /tmp/claude/ および /tmp/codex/ 配下のみ削除を許可する。
 
 set -u
 
 usage() {
-  echo "Usage: bash .codex/scripts/rm-tmp.sh [-f] [-r|-R] [--] <path>..." >&2
+  echo "Usage: bash scripts/rm-tmp.sh [-f] [-r|-R] [--] <path>..." >&2
 }
 
 allowed_target() {
@@ -21,7 +22,7 @@ allowed_target() {
   resolved_target="$resolved_parent/$base"
 
   case "$resolved_target" in
-    /tmp/codex/* | /private/tmp/codex/*)
+    /tmp/claude/* | /private/tmp/claude/* | /tmp/codex/* | /private/tmp/codex/*)
       return 0
       ;;
     *)
@@ -67,15 +68,25 @@ if [ "${#targets[@]}" -eq 0 ]; then
   exit 2
 fi
 
+# 末尾スラッシュを除去する（rm -r + symlink + 末尾スラッシュによる許可領域外削除を防ぐ）
+normalized_targets=()
 for target in "${targets[@]}"; do
+  normalized="${target}"
+  while [[ "$normalized" == */ ]]; do
+    normalized="${normalized%/}"
+  done
+  normalized_targets+=("$normalized")
+done
+
+for target in "${normalized_targets[@]}"; do
   if ! allowed_target "$target"; then
-    echo "Refusing to remove outside /tmp/codex: $target" >&2
+    echo "Refusing to remove outside /tmp/claude or /tmp/codex: $target" >&2
     exit 1
   fi
 done
 
 if [ "${#options[@]}" -eq 0 ]; then
-  rm -- "${targets[@]}"
+  rm -- "${normalized_targets[@]}"
 else
-  rm "${options[@]}" -- "${targets[@]}"
+  rm "${options[@]}" -- "${normalized_targets[@]}"
 fi

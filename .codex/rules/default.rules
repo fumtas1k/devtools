@@ -225,13 +225,13 @@ prefix_rule(
 # staging helper above, command rules are prefix-only: a path argument such as
 # /tmp/claude/... or .codex/config.toml still matches this prefix, so it cannot
 # be expressed via `not_match`. The helper validates the path at runtime and
-# only removes files under /tmp/codex. `not_match` therefore lists only a
-# genuinely different command prefix (direct `rm`).
+# only removes files under /tmp/claude or /tmp/codex. `not_match` therefore
+# lists only a genuinely different command prefix (direct `rm`).
 prefix_rule(
-    pattern = ["bash", ".codex/scripts/rm-tmp.sh"],
+    pattern = ["bash", "scripts/rm-tmp.sh"],
     decision = "allow",
-    justification = "Repository-provided helper only removes files under /tmp/codex after path validation.",
-    match = ["bash .codex/scripts/rm-tmp.sh /tmp/codex/pr_body.md", "bash .codex/scripts/rm-tmp.sh -f /tmp/codex/comment.md"],
+    justification = "Repository-provided helper only removes files under /tmp/claude or /tmp/codex after path validation.",
+    match = ["bash scripts/rm-tmp.sh /tmp/codex/pr_body.md", "bash scripts/rm-tmp.sh -f /tmp/claude/comment.md"],
     not_match = ["rm /tmp/codex/pr_body.md"],
 )
 

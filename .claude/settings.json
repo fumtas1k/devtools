@@ -179,7 +179,7 @@
       "Bash(gh run watch*)",
       "Bash(gh workflow list*)",
       "Bash(gh workflow view*)",
-      "Bash(bash .claude/scripts/rm-tmp.sh *)",
+      "Bash(bash scripts/rm-tmp.sh *)",
       "Bash(node --version)",
       "Bash(pwd)",
       "Bash(which *)",
