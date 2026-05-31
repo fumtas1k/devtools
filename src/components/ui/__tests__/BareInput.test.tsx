@@ -58,4 +58,10 @@ describe('BareInput', () => {
     render(<BareInput value="" onChange={() => {}} aria-label="チケットID 1" />);
     expect(screen.getByRole('textbox', { name: 'チケットID 1' })).toBeTruthy();
   });
+
+  it('autoComplete を input に透過する', () => {
+    render(<BareInput value="" onChange={() => {}} autoComplete="off" aria-label="テスト" />);
+    const input = screen.getByLabelText('テスト') as HTMLInputElement;
+    expect(input.getAttribute('autocomplete')).toBe('off');
+  });
 });

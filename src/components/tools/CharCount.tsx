@@ -235,6 +235,7 @@ export function CharCountTool() {
                   onChange={handleSnsLimitChange}
                   aria-label="任意上限"
                   min="1"
+                  autoComplete="off"
                 />
               </span>
             }

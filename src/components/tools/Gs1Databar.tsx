@@ -301,6 +301,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                       value={field.ai}
                       onChange={(v) => handleAiSelect(i, v)}
                       ariaLabel={`AI コード ${i + 1}`}
+                      autoComplete="off"
                       options={AI_DEFS.map((d) => ({
                         value: d.ai,
                         label: d.label,
@@ -318,6 +319,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                         mono
                         error={!!field.error}
                         aria-label={`AI フィールド値 ${i + 1}`}
+                        autoComplete="off"
                       />
                       {field.error && (
                         <p role="alert" className="caption text-error mt-1">
