@@ -176,7 +176,7 @@ prefix_rule(
     pattern = ["gh", "pr", "merge"],
     decision = "prompt",
     justification = "Do not rely on the default merge method. Use --squash for develop-bound PRs and --merge for release PRs to main.",
-    match = ["gh pr merge <pr-number> --squash --delete-branch", "gh pr merge <pr-number> --merge --delete-branch"],
+    match = ["gh pr merge <pr-number> --squash --delete-branch --subject \"<prefix>: <日本語要約> (#<pr-number>)\" --body-file /tmp/codex/squash_body.md", "gh pr merge <pr-number> --merge --delete-branch"],
 )
 
 prefix_rule(
