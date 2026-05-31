@@ -157,6 +157,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                   rows={4}
                   className="caption font-mono w-full px-3 py-2 rounded-lg border border-input bg-surface text-default resize-none"
                   aria-label="秘密鍵（主催者が保管）"
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -172,6 +173,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                   rows={4}
                   className="caption font-mono w-full px-3 py-2 rounded-lg border border-input bg-surface text-default resize-none"
                   aria-label="公開鍵（検証スタッフへ共有）"
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -246,6 +248,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                       placeholder={generateTicketId(i + 1)}
                       mono
                       aria-label={`チケットID ${i + 1}`}
+                      autoComplete="off"
                     />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -257,6 +260,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                       onChange={(v) => onUpdateTicket(i, 'name', v)}
                       placeholder="山田 太郎"
                       aria-label={`参加者名 ${i + 1}`}
+                      autoComplete="off"
                     />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -268,6 +272,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                       onChange={(v) => onUpdateTicket(i, 'category', v)}
                       placeholder="一般・VIP など"
                       aria-label={`料金区分 ${i + 1}`}
+                      autoComplete="off"
                     />
                   </div>
                   <div className="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
