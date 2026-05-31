@@ -14,6 +14,7 @@ import {
   commandMatchesPrefix,
   matchViolations,
   notMatchViolations,
+  parseMatch,
   prefixRuleBlocks,
 } from './helpers/codexRules.js';
 
@@ -142,6 +143,37 @@ describe('Codex gh pr merge policy', () => {
     expect(mergePolicyViolations(broken)).toContain(
       'merge guidance must mention develop and main targets'
     );
+  });
+});
+
+describe('Codex gh pr merge squash match フォーマット検証', () => {
+  function squashMatchFlags(source: string): string {
+    const block = prefixRuleBlocks(source).find((b) =>
+      b.includes('pattern = ["gh", "pr", "merge"]')
+    );
+    const matches = block ? (parseMatch(block) ?? []) : [];
+    return matches.find((m) => m.includes('--squash')) ?? '';
+  }
+
+  it('陰性対照: squash match 例に --subject と --body-file が含まれる', () => {
+    const rules = readFileSync(codexRules, 'utf8');
+    const squashExample = squashMatchFlags(rules);
+    expect(squashExample).toContain('--subject');
+    expect(squashExample).toContain('--body-file');
+  });
+
+  it('陽性対照: --subject/--body-file を欠く squash match 例の欠落を検知する', () => {
+    const broken = [
+      'prefix_rule(',
+      '    pattern = ["gh", "pr", "merge"],',
+      '    decision = "prompt",',
+      '    justification = "...",',
+      '    match = ["gh pr merge <pr-number> --squash --delete-branch"],',
+      ')',
+    ].join('\n');
+    const squashExample = squashMatchFlags(broken);
+    expect(squashExample).not.toContain('--subject');
+    expect(squashExample).not.toContain('--body-file');
   });
 });
 

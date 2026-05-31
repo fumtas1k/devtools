@@ -155,6 +155,16 @@ gh pr merge <PR> --squash --delete-branch \
 
 `--body-file` を使うのは、本文がほぼ常に複数行になるため（理由は `.agents/rules/common.md` 6.1 と同じ）。
 
+### リリース PR のマージ（develop → main）
+
+release PR（develop → main）は **`--merge`** を使う（squash しない）。develop に積み上げた squash コミット群をそのまま main に引き継ぐため。
+
+```bash
+gh pr merge <PR> --merge --delete-branch
+```
+
+squash merge と異なり `--subject` / `--body-file` の指定は不要（merge commit のメッセージは GitHub が自動生成する `Merge pull request #N ...` で十分）。
+
 ## 7. マージ後の worktree 後始末
 
 `gh pr merge --delete-branch` を打つ前に worktree を unlock + remove する。`worktree-agent-<id>` の内部 branch も別途 `git branch -D` で削除（記憶: feedback_worktree_merge_order）。
