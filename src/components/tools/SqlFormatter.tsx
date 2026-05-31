@@ -103,8 +103,8 @@ export function SqlFormatterTool() {
             </p>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-4 items-start">
-            <div className="w-full md:flex-1 min-w-0 space-y-4">
+          <div className="flex flex-col md:flex-row gap-4 items-stretch">
+            <div className="w-full md:flex-1 min-w-0 space-y-4" data-testid="embed-input-column">
               <InputField
                 id="embed-sql-input"
                 label="プレースホルダ付き SQL"
@@ -133,13 +133,17 @@ export function SqlFormatterTool() {
               />
               {embed.error && <ErrorMessage message={embed.error} variant="block" />}
             </div>
-            <div className="w-full md:flex-1 min-w-0">
+            <div
+              className="w-full md:flex-1 min-w-0 md:flex md:self-stretch"
+              data-testid="embed-output-column"
+            >
               <OutputField
                 id="embed-output"
                 label="埋め込み結果"
                 value={embed.output}
                 rows={16}
                 ariaLabel="埋め込み結果"
+                fill
               />
             </div>
           </div>

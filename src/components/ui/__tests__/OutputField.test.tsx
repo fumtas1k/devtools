@@ -57,3 +57,31 @@ describe('OutputField a11y contract', () => {
     expect(screen.getByRole('button', { name: 'コピー' })).toBeTruthy();
   });
 });
+
+describe('OutputField fill prop', () => {
+  it('fill=true のとき textarea が resize-none クラスを持ち resize-y を持たない', () => {
+    render(<OutputField id="out" label="変換結果" value="Hello" fill />);
+    const textarea = screen.getByLabelText('変換結果');
+    expect(textarea.classList.contains('resize-none')).toBe(true);
+    expect(textarea.classList.contains('resize-y')).toBe(false);
+  });
+
+  it('fill=true のとき textarea が md:h-full クラスを持つ（fill 用クラス付与の確認）', () => {
+    render(<OutputField id="out" label="変換結果" value="Hello" fill />);
+    const textarea = screen.getByLabelText('変換結果');
+    expect(textarea.classList.contains('md:h-full')).toBe(true);
+  });
+
+  it('fill=false（既定）のとき textarea が resize-y クラスを持ち resize-none を持たない（後方互換）', () => {
+    render(<OutputField id="out" label="変換結果" value="Hello" />);
+    const textarea = screen.getByLabelText('変換結果');
+    expect(textarea.classList.contains('resize-y')).toBe(true);
+    expect(textarea.classList.contains('resize-none')).toBe(false);
+  });
+
+  it('fill=false（既定）のとき textarea に md:h-full クラスが付かない（後方互換）', () => {
+    render(<OutputField id="out" label="変換結果" value="Hello" />);
+    const textarea = screen.getByLabelText('変換結果');
+    expect(textarea.classList.contains('md:h-full')).toBe(false);
+  });
+});
