@@ -27,22 +27,22 @@ describe('Codex rules not_match prefix validation', () => {
   });
 
   it('陽性対照: pattern プレフィックスに一致する not_match を検知する', () => {
-    // 旧 rm-tmp ルールと同形の不正例。helper への不正パス引数は prefix では
-    // 表現できず、loader はこの not_match を「一致してしまう」として拒否していた。
+    // rm-tmp ルールと同形の不正例。helper への不正パス引数は prefix では
+    // 表現できず、loader はこの not_match を「一致してしまう」として拒否する。
     const broken = [
       'prefix_rule(',
-      '    pattern = ["bash", ".codex/scripts/rm-tmp.sh"],',
+      '    pattern = ["bash", "scripts/rm-tmp.sh"],',
       '    decision = "allow",',
       '    justification = "helper validates path at runtime.",',
-      '    match = ["bash .codex/scripts/rm-tmp.sh /tmp/codex/pr_body.md"],',
-      '    not_match = ["rm /tmp/codex/pr_body.md", "bash .codex/scripts/rm-tmp.sh /tmp/claude/comment.md"],',
+      '    match = ["bash scripts/rm-tmp.sh /tmp/codex/pr_body.md"],',
+      '    not_match = ["rm /tmp/codex/pr_body.md", "bash scripts/rm-tmp.sh /tmp/claude/comment.md"],',
       ')',
     ].join('\n');
 
     const violations = notMatchViolations(broken);
 
     expect(violations).toHaveLength(1);
-    expect(violations[0].command).toBe('bash .codex/scripts/rm-tmp.sh /tmp/claude/comment.md');
+    expect(violations[0].command).toBe('bash scripts/rm-tmp.sh /tmp/claude/comment.md');
   });
 
   it('陽性対照: alternation pattern に一致する not_match も検知する', () => {

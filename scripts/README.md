@@ -53,7 +53,7 @@ bash tests/scripts/check-followup-refs.test.sh
 
 Claude・Codex エージェントが作成した一時ファイルを安全に削除するヘルパー。`/tmp/claude/` および `/tmp/codex/` 配下のみ削除を許可し、それ以外のパス（traversal 含む）は拒否する。
 
-旧 `.claude/scripts/rm-tmp.sh` と `.codex/scripts/rm-tmp.sh` を統合したもの。
+Claude・Codex エージェント共用のヘルパー。
 
 ### 使い方
 
