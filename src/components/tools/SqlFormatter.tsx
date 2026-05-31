@@ -143,9 +143,7 @@ export function SqlFormatterTool() {
                 value={embed.output}
                 rows={16}
                 ariaLabel="埋め込み結果"
-                className="md:flex md:h-full md:flex-col"
-                statusClassName="md:flex md:flex-1 md:min-h-0"
-                textareaClassName="md:block md:h-full md:min-h-0"
+                fill
               />
             </div>
           </div>

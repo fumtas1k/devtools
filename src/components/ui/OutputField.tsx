@@ -22,12 +22,11 @@ interface OutputFieldProps {
   showCopy?: boolean;
   /** ラベル右側に並べる追加要素（ダウンロードボタンなど） */
   rightSlot?: ReactNode;
-  /** 外側コンテナに追加するクラス */
-  className?: string;
-  /** textarea ラッパーに追加するクラス */
-  statusClassName?: string;
-  /** textarea に追加するクラス */
-  textareaClassName?: string;
+  /**
+   * 親 flex コンテナの高さいっぱいに textarea を伸ばす（左右カラムの高さ揃え用）。既定 false。
+   * fill が true のとき手動リサイズは無効化され、managed height が保証される。
+   */
+  fill?: boolean;
 }
 
 /**
@@ -45,15 +44,17 @@ export function OutputField({
   copyLabel = 'コピー',
   showCopy = true,
   rightSlot,
-  className,
-  statusClassName,
-  textareaClassName,
+  fill = false,
 }: OutputFieldProps) {
   const hasValue = value !== '';
   const monoClass = mono ? 'font-mono' : '';
-  const resizeClass = resize ? 'resize-y' : 'resize-none';
+  // fill 時は managed height を保証するため手動リサイズを強制無効化する
+  const resizeClass = fill || !resize ? 'resize-none' : 'resize-y';
+  const fillContainerClass = fill ? 'md:flex md:h-full md:flex-col' : '';
+  const fillStatusClass = fill ? 'md:flex md:flex-1 md:min-h-0' : '';
+  const fillTextareaClass = fill ? 'md:block md:h-full md:min-h-0' : '';
   return (
-    <div className={`w-full ${className ?? ''}`.trim()}>
+    <div className={`w-full ${fillContainerClass}`.trim()}>
       <div className="flex items-center justify-between mb-3 min-h-8">
         <label htmlFor={id} className="body-emphasis text-default">
           {label}
@@ -65,15 +66,18 @@ export function OutputField({
           </div>
         )}
       </div>
-      <div role="status" aria-live="polite" aria-atomic="false" className={statusClassName}>
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+        className={fillStatusClass || undefined}
+      >
         <textarea
           id={id}
           readOnly
           value={value}
           rows={rows}
-          className={`caption ${monoClass} ${resizeClass} w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide ${
-            textareaClassName ?? ''
-          }`.trim()}
+          className={`caption ${monoClass} ${resizeClass} w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide ${fillTextareaClass}`.trim()}
           aria-label={ariaLabel ?? label}
         />
       </div>

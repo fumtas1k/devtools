@@ -74,11 +74,14 @@ test.describe('SQLパラメータ埋め込み（production CSP 適用）', () =>
       expect(outputBox).not.toBeNull();
 
       expect(outputColumnBox!.x).toBeGreaterThan(inputColumnBox!.x + inputColumnBox!.width - 2);
+      // サブピクセル丸め誤差の許容
       expect(Math.abs(inputColumnBox!.y - outputColumnBox!.y)).toBeLessThanOrEqual(2);
+      // サブピクセル丸め誤差の許容
       expect(Math.abs(sqlInputBox!.y - outputBox!.y)).toBeLessThanOrEqual(2);
 
       const paramsBottom = paramsInputBox!.y + paramsInputBox!.height;
       const outputBottom = outputBox!.y + outputBox!.height;
+      // label 行高さ + サブピクセル差分の許容
       expect(Math.abs(paramsBottom - outputBottom)).toBeLessThanOrEqual(6);
     });
   });
@@ -143,6 +146,32 @@ test.describe('SQLパラメータ埋め込み（production CSP 適用）', () =>
       await page.getByLabel('プレースホルダ付き SQL').fill('WHERE a = ?');
       await page.getByLabel('パラメータ（JSON）').fill('[1, 2]');
       await expect(page.getByRole('alert')).toBeVisible();
+    });
+  });
+
+  test('エラー表示時も入力カラムと出力カラムの高さが揃う（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/sql-formatter', async (page) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.getByRole('button', { name: 'パラメータ埋め込み' }).click();
+
+      // エラーを発生させる（件数不一致: サンプル SQL の ? が 2 つに対してパラメータが 10 個）
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await page.getByLabel('パラメータ（JSON）').fill('[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]');
+
+      // エラーが表示されることを確認してから測定する
+      await expect(page.getByRole('alert')).toBeVisible();
+
+      const inputColumn = page.getByTestId('embed-input-column');
+      const outputColumn = page.getByTestId('embed-output-column');
+
+      const inputColumnBox = await inputColumn.boundingBox();
+      const outputColumnBox = await outputColumn.boundingBox();
+
+      expect(inputColumnBox).not.toBeNull();
+      expect(outputColumnBox).not.toBeNull();
+
+      // items-stretch による高さ揃えを検証（サブピクセル丸め誤差の許容）
+      expect(Math.abs(inputColumnBox!.height - outputColumnBox!.height)).toBeLessThanOrEqual(2);
     });
   });
 });
