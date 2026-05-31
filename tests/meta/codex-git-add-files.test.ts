@@ -171,5 +171,9 @@ describe('git-add-files.sh', () => {
 
     expect(rules).toContain('Command rules are prefix-only');
     expect(rules).toContain('broad pathspecs such as `git add .` and `git add -A`');
+    expect(rules).toContain('`not_match` examples must not match the rule');
+    expect(rules).not.toContain(
+      'not_match = ["git add AGENTS.md", "bash .codex/scripts/git-add-files.sh .'
+    );
   });
 });
