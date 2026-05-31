@@ -2,9 +2,9 @@
 
 このファイルは AI エージェントがセッションで得た教訓を **一時的に蓄積** する場所である。
 
-- 共通ルール化すべき内容は `docs/shared-agent-rules.md` に昇格させ、本ファイルから削除する。
+- 共通ルール化すべき内容は `.agents/rules/common.md` に昇格させ、本ファイルから削除する。
 - セッション開始時に必ず読む必要はない（PR 作成前や定期整理時に見直す）。
-- 詳細な運用ルールは `docs/shared-agent-rules.md` 11 章（教訓の運用）を参照。
+- 詳細な運用ルールは `.agents/rules/common.md` 11 章（教訓の運用）を参照。
 - 「（規約昇格候補）」と注記した項目は、次回 `agent-lessons.md` の整理タイミングで `shared-agent-rules.md` への昇格 / issue 化 / 削除のいずれかを判断する。
 
 ---
@@ -98,7 +98,7 @@ PR #218 (refactor #169) で subagent に項目 1c として `useCodec.test.tsx` 
 ### 関連 PR / 観点
 
 - PR #218 (#169) で発生、SendMessage で漏れ 2 件を再依頼して解消
-- （規約昇格候補）`docs/shared-agent-rules.md` のサブエージェント指示テンプレに「項目別実装ステータス必須」を追加検討
+- （規約昇格候補）`.agents/rules/common.md` のサブエージェント指示テンプレに「項目別実装ステータス必須」を追加検討
 
 ---
 
@@ -197,7 +197,7 @@ VRT が **任意の visual diff で fail** した場合、**baseline 更新す�
 
 `gh run download <run-id> --name visual-regression-report-pr-<n>` で playwright report を取得し、`expected` と `actual` の HTML スナップショット (Astro が生成する HTML) を比較。次の点に regression がないことを確認:
 
-- `aria-*` / `role=` 属性削除なし (`shared-agent-rules.md` 9.6 章 a11y 保護にも該当)
+- `aria-*` / `role=` 属性削除なし (`.agents/rules/common.md` 9.6 章 a11y 保護にも該当)
 - DOM 階層・要素数の差分なし
 - `<img>` `alt` / `<a>` `href` 等の semantic 属性が同一
 
@@ -229,7 +229,7 @@ baseline 更新は「意図した変更」を承認する操作であり、**真
 - PR #299 (本ルール起票のきっかけ): 1px 累積差で baseline 更新成功、commit `d5c5841` (`Update Visual Regression Baseline` workflow による自動 commit)
 - PR 7a spec § VRT (Visual Regression Test): 「意図的差分があれば `update-visual-baseline.yml` workflow で baseline 更新」 (本ルールはこの判断基準を **明示化**)
 - 関連個人 memory (PC ローカル、本 repo 未収録): `feedback_vrt_ci_only.md` (VRT は CI Linux のみで検証)
-- （規約昇格候補）`docs/shared-agent-rules.md` の VRT 関連 sub-section として昇格検討。本 PR review (`#299` 軽微指摘 #3) で reviewer から「次 PR では VRT 差分が出た場合 baseline 更新前に必ず DOM diff / computed style diff を確認する手順を agent-lessons に明記する価値あり」と提案を受けて記録
+- （規約昇格候補）`.agents/rules/common.md` の VRT 関連 sub-section として昇格検討。本 PR review (`#299` 軽微指摘 #3) で reviewer から「次 PR では VRT 差分が出た場合 baseline 更新前に必ず DOM diff / computed style diff を確認する手順を agent-lessons に明記する価値あり」と提案を受けて記録
 
 ---
 

@@ -82,7 +82,7 @@ prefix_rule(
     pattern = ["bash", ".codex/scripts/git-add-files.sh"],
     decision = "allow",
     justification = "Repository-provided helper stages only explicit repository paths and rejects broad git add pathspecs.",
-    match = ["bash .codex/scripts/git-add-files.sh AGENTS.md", "bash .codex/scripts/git-add-files.sh docs/shared-agent-rules.md .codex/rules/default.rules"],
+    match = ["bash .codex/scripts/git-add-files.sh AGENTS.md", "bash .codex/scripts/git-add-files.sh .agents/rules/common.md .codex/rules/default.rules"],
     not_match = ["git add AGENTS.md", "git add .", "git add -A"],
 )
 

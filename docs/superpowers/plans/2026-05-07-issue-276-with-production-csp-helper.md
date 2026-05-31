@@ -319,7 +319,7 @@ git diff origin/develop --name-only
 #   tests/e2e/config-converter.spec.ts
 ```
 
-- [ ] **Step 3**: aria 削除なし確認 (本 PR は test only だが念のため、`docs/shared-agent-rules.md` 9.6)
+- [ ] **Step 3**: aria 削除なし確認 (本 PR は test only だが念のため、`.agents/rules/common.md` 9.6)
 
 ```bash
 git diff origin/develop -- 'src/**' | grep -E '^\-.*aria-' || echo "OK: no aria removal"
@@ -411,7 +411,7 @@ grep -n "#276" docs/projects/issue-176-b-plan-progress.md | head -10
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 1 で subagent A/B が同 commit を打って race                 | `feedback_commander_checklist.md` の禁止指示が prompt に含まれていれば原則発生しない。発生したら親が `git reset --soft origin/develop` で巻き戻し再 stage                                          |
 | Track A 完了報告は green だが親の `git diff` で予想外の改変       | subagent に diff 提示で差し戻し (memory `feedback_subagent_verification_trust.md`)                                                                                                                 |
-| Phase 2 で `npm run test:e2e` 失敗 (`waitForReactHydration` 不足) | 該当 test の fn 冒頭に `await page.getByLabel('xxx').waitFor()` を追加し、新 commit (修正は既存 commit に挟み込まず追加で積む方針、`docs/shared-agent-rules.md` 6.x)                               |
+| Phase 2 で `npm run test:e2e` 失敗 (`waitForReactHydration` 不足) | 該当 test の fn 冒頭に `await page.getByLabel('xxx').waitFor()` を追加し、新 commit (修正は既存 commit に挟み込まず追加で積む方針、`.agents/rules/common.md` 6.x)                                  |
 | 陽性対照メタテスト 2 件が突然 fail                                | `applyProductionCsp` 経路に副作用がないかを確認。本 PR は helper の export 追加のみで既存関数は変えていないため、fail したら helper の `withProductionCsp` 内部で context state を壊している可能性 |
 
 ---

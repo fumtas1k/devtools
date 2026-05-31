@@ -2,7 +2,18 @@
 
 このファイルは、リポジトリ内のコードを扱う際に Claude Code (claude.ai/code) へ指示を提供します。
 
-@docs/shared-agent-rules.md
+@.agents/rules/common.md
+@.claude/rules/git-and-fs.md
+
+---
+
+## Claude 固有の運用ルール
+
+Claude Code 固有の補足は `.claude/rules/` 配下に分割し、上記 `@import` で読み込んでいます。
+
+- `.claude/rules/git-and-fs.md`: 一時ファイル / sandbox 制約 / git 操作
+
+（注: 上記は Claude 固有。Codex は `.codex/rules/`、Gemini CLI は `docs/setup/gemini-policy.md` を参照）
 
 ---
 

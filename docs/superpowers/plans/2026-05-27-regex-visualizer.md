@@ -48,8 +48,8 @@ type Diagnostics = SafeDiagnostics | VulnerableDiagnostics | UnknownDiagnostics;
 
 - **依存ポリシー**: `.npmrc` に `ignore-scripts=true` / `min-release-age=7` / `save-exact=true`。deps は導入済み。
 - **既存パターン**: 共通 UI は `src/components/ui/`（`InputField` / `CopyButton` / `ClearButton` / `ErrorMessage`）。同期変換フックは `useDebouncedTransform`（`src/hooks/useDebouncedTransform.ts`）— `source` が `null` のとき即時クリア、`transform` が throw すると error をセットし result は emptyResult に戻す。返り値は `{ result, error, isPending }`。
-- **色**: Tailwind primitive 直書き禁止。`@layer components` の意味クラス（`bg-subtle` / `bg-warning-tint` / `text-warning` / `alert-success` 等）を使う。`@layer components` 手書きクラスに `hover:` 等の variant prefix を付けない（CSS rule が生成されない・`docs/shared-agent-rules.md` 7.1）。CSS 変数名は `src/styles/global.css` で確認する。
-- **ツール追加手順**: component → page → `src/data/tools.ts` 登録 → `tests/e2e/visual-regression-pages.ts` の `PAGES` 追加 → README/SPEC/decisions 更新（`docs/shared-agent-rules.md` 5 章）。
+- **色**: Tailwind primitive 直書き禁止。`@layer components` の意味クラス（`bg-subtle` / `bg-warning-tint` / `text-warning` / `alert-success` 等）を使う。`@layer components` 手書きクラスに `hover:` 等の variant prefix を付けない（CSS rule が生成されない・`.agents/rules/common.md` 7.1）。CSS 変数名は `src/styles/global.css` で確認する。
+- **ツール追加手順**: component → page → `src/data/tools.ts` 登録 → `tests/e2e/visual-regression-pages.ts` の `PAGES` 追加 → README/SPEC/decisions 更新（`.agents/rules/common.md` 5 章）。
 - **テストロケータ**: `getByRole` / `getByText` / `getByLabel` を使う。`locator('[role="X"]')` は禁止。
 
 ---
@@ -867,7 +867,7 @@ Expected: 全 PASS。
 
 - [ ] **Step 4: UI 目視（PC 1280x800 / スマホ 390x844）**
 
-Playwright MCP で `(a+)+$`（脆弱）/ `^[a-z]+$`（安全）/ `(`（エラー）を入力した状態のスクショを撮り、3 状態表示・hotspot ハイライト・レスポンシブを目視確認（`docs/shared-agent-rules.md` 7 章）。
+Playwright MCP で `(a+)+$`（脆弱）/ `^[a-z]+$`（安全）/ `(`（エラー）を入力した状態のスクショを撮り、3 状態表示・hotspot ハイライト・レスポンシブを目視確認（`.agents/rules/common.md` 7 章）。
 
 > push / PR は `develop` ベース（`gh pr create --base develop`）。VRT baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を**承認を得てから** dispatch して生成する。
 

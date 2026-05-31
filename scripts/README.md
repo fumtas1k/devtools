@@ -44,5 +44,5 @@ bash tests/scripts/check-followup-refs.test.sh
 
 ### 関連
 
-- `docs/shared-agent-rules.md` 6.4 章（先送り時は issue 化必須）
+- `.agents/rules/common.md` 6.4 章（先送り時は issue 化必須）
 - `feedback_commander_checklist.md` F 章（メモリ）

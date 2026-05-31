@@ -98,12 +98,14 @@ devtools/
 ├── GEMINI.md               # Gemini CLI 用プロジェクト指示書
 ├── vitest.config.ts
 ├── playwright.config.ts
+├── .agents/
+│   └── rules/
+│       └── common.md       # AIエージェント用プロジェクト共通開発規約
 ├── .github/
 │   └── workflows/
 │       └── test.yml
 ├── docs/
-│   ├── decisions.md        # 設計・実装の決断ログ
-│   └── shared-agent-rules.md # AIエージェント用プロジェクト共通開発規約
+│   └── decisions.md        # 設計・実装の決断ログ
 ├── tests/
 │   └── e2e/                # Playwright E2E テスト
 ├── public/

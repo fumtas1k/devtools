@@ -1415,7 +1415,7 @@ CI（GitHub Actions）の実行コスト削減と、不要な重複ジョブの�
 
 ### 背景
 
-プロジェクト規約（`docs/shared-agent-rules.md`）では、コミットメッセージを日本語かつ Conventional Commits 形式で書くことが定められていますが、既存の `.githooks/commit-msg` フックでは形式チェック（prefix の有無等）が行われていませんでした。これにより、規約違反のコミットが混入するリスクがありました。
+プロジェクト規約（`.agents/rules/common.md`）では、コミットメッセージを日本語かつ Conventional Commits 形式で書くことが定められていますが、既存の `.githooks/commit-msg` フックでは形式チェック（prefix の有無等）が行われていませんでした。これにより、規約違反のコミットが混入するリスクがありました。
 
 ### 決断
 
@@ -1424,7 +1424,7 @@ CI（GitHub Actions）の実行コスト削減と、不要な重複ジョブの�
 1.  **形式チェック**: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `style`, `perf`, `build`, `ci`, `revert` のいずれかの type で始まり、コロンとスペースが続くことを正規表現で強制します。
 2.  **日本語チェック**: 既存の日本語文字検出ロジックを統合し、本文が日本語であることを保証します。
 3.  **除外設定**: `Merge`, `Revert`, `fixup!`, `squash!` で始まる特殊なコミットはチェックをスキップします。
-4.  **エラーメッセージ改善**: 規約ドキュメント（`docs/shared-agent-rules.md`）への直リンクを含め、修正方法を具体的に提示します。
+4.  **エラーメッセージ改善**: 規約ドキュメント（`.agents/rules/common.md`）への直リンクを含め、修正方法を具体的に提示します。
 
 ### 却下した選択肢
 
@@ -1933,7 +1933,7 @@ worktree 並列実行を採用しているため、複数のサブエージェ�
 
 ### 関連 PR
 
-- PR #192（本 PR、`docs/shared-agent-rules.md` 3 章改訂）
+- PR #192（本 PR、`.agents/rules/common.md` 3 章改訂）
 - PR #181（fix #149: 元の手順では E2E 待ちで時間切れ）
 - PR #188（refactor #168: worktree 並列で E2E が誤 timeout）
 
@@ -1945,7 +1945,7 @@ worktree 並列実行を採用しているため、複数のサブエージェ�
 
 ### 背景
 
-PR レビュー返信や教訓記録に「予定 / 候補 / follow-up / 将来課題」などの先送り表現が含まれているのに、対応する issue 番号 (`#NNN`) が併記されないケースが頻発し、ユーザー指摘を受けて事後起票する事故が複数発生（2026-05-01 の PR #188 → #196、PR #189/#192 → #197/#198）。`docs/shared-agent-rules.md` 6.4 章「先送り時は必ず issue 化する」の規約はあるが、機械的にチェックする手段がなかった。
+PR レビュー返信や教訓記録に「予定 / 候補 / follow-up / 将来課題」などの先送り表現が含まれているのに、対応する issue 番号 (`#NNN`) が併記されないケースが頻発し、ユーザー指摘を受けて事後起票する事故が複数発生（2026-05-01 の PR #188 → #196、PR #189/#192 → #197/#198）。`.agents/rules/common.md` 6.4 章「先送り時は必ず issue 化する」の規約はあるが、機械的にチェックする手段がなかった。
 
 ### 決断
 
@@ -1980,7 +1980,7 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 - PR #196（起票忘れ事例: useQrCamera signal 伝播）
 - PR #197（起票忘れ事例: force-with-lease push 運用ルール）
 - PR #198（起票忘れ事例: permissions precedence 実機確認）
-- `docs/shared-agent-rules.md` 6.4 章「先送り時は issue 化必須」
+- `.agents/rules/common.md` 6.4 章「先送り時は issue 化必須」
 
 ---
 
@@ -2256,7 +2256,7 @@ PR #240（ルールファイル整理）の派生検証で、上記いずれも 
 - `webServer.timeout` は build 時間を含むため 30s → 120s に延長
 - CI（`.github/workflows/test.yml`）の e2e job にも `npm run build` step を明示追加（ログ可読性 + 早期失敗切り分け）
 - `applyProductionCsp` ヘルパは現状ロジック（route 介入で response header に `PRODUCTION_CSP` を上書き）を維持。本 PR 時点では `<meta>` は未生成（`security.csp` 未採用）のため response header のみで評価されるが、後続 [#176](https://github.com/fumtas1k/devtools/issues/176) で `security.csp` が採用されると build 時に `<meta>` が注入され、route 介入の header と AND 評価される構成になる
-- `docs/shared-agent-rules.md` / `docs/playbooks/e2e-validation.md` / `docs/playbooks/pr-creation.md` / `README.md` / `CLAUDE.md` を preview 前提に整合
+- `.agents/rules/common.md` / `docs/playbooks/e2e-validation.md` / `docs/playbooks/pr-creation.md` / `README.md` / `CLAUDE.md` を preview 前提に整合
 
 ### 副次効果（重要）— Vite asset inline 化の構造的修正
 
@@ -2839,7 +2839,7 @@ MySQL utf8mb3 カラムへの INSERT が SMP 文字 (U+10000 以上) で失敗�
 
 **(c) `.drawer-backdrop` を `color-mix()` 化**: `color-mix(in srgb, var(--color-neutral-900) 50%, transparent)` で token 値変更に自動追従。ブラウザ対応 (Chrome 111+ / Firefox 113+ / Safari 16.2+) は十分。
 
-**(d) 「Tailwind カラークラス禁止」rule の精緻化** (`docs/shared-agent-rules.md` 7 章): semantic token (`text-primary` 等) は意味的命名のため auto-utility 使用可、primitive scale (`text-blue-500` / `text-neutral-700` 等) は引き続き禁止。境界基準は「token 名から用途が読み取れる (semantic) か、palette 段階値に過ぎない (primitive) か」。
+**(d) 「Tailwind カラークラス禁止」rule の精緻化** (`.agents/rules/common.md` 7 章): semantic token (`text-primary` 等) は意味的命名のため auto-utility 使用可、primitive scale (`text-blue-500` / `text-neutral-700` 等) は引き続き禁止。境界基準は「token 名から用途が読み取れる (semantic) か、palette 段階値に過ぎない (primitive) か」。
 
 ### 残課題 / 副次効果
 
@@ -2850,7 +2850,7 @@ MySQL utf8mb3 カラムへの INSERT が SMP 文字 (U+10000 以上) で失敗�
 
 - 解消する issue: [#295](https://github.com/fumtas1k/devtools/issues/295)
 - 上位 issue: [#176](https://github.com/fumtas1k/devtools/issues/176) (B 案完了は [068])
-- rule 更新: `docs/shared-agent-rules.md` 7 章
+- rule 更新: `.agents/rules/common.md` 7 章
 
 ---
 

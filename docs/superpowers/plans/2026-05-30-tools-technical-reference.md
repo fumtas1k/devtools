@@ -238,7 +238,7 @@ git commit -m "docs: TOTP/HOTP ジェネレータの技術解説を追加"
 **Files:**
 
 - Modify: `README.md`（`## ツール一覧` 直下）
-- Modify: `docs/shared-agent-rules.md`（4 章「ドキュメント更新ルール」の表）
+- Modify: `.agents/rules/common.md`（4 章「ドキュメント更新ルール」の表）
 
 - [ ] **Step 1: README にリンクを追加**
 
@@ -254,7 +254,7 @@ git commit -m "docs: TOTP/HOTP ジェネレータの技術解説を追加"
 
 - [ ] **Step 3: doc 更新ルールに行を追加**
 
-`docs/shared-agent-rules.md` の 4 章「ドキュメント更新ルール」の表に行を追加:
+`.agents/rules/common.md` の 4 章「ドキュメント更新ルール」の表に行を追加:
 
 ```markdown
 | ツール追加・挙動変更（技術解説に影響） | `docs/tools.md`（該当ツールの仕組み・制限を更新） |
@@ -265,8 +265,8 @@ git commit -m "docs: TOTP/HOTP ジェネレータの技術解説を追加"
 - [ ] **Step 4: prettier + コミット**
 
 ```bash
-node_modules/.bin/prettier --write README.md docs/shared-agent-rules.md
-git add README.md docs/shared-agent-rules.md
+node_modules/.bin/prettier --write README.md .agents/rules/common.md
+git add README.md .agents/rules/common.md
 git commit -m "docs: README から tools.md へのリンクと更新ルールを追加"
 ```
 

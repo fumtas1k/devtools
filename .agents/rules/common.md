@@ -84,7 +84,7 @@ GitHub に Markdown 本文を渡す `gh` コマンドでは、本文をコマン
 - `--body` / `--comment` / `-f body=...` / `--field body=...` への直接埋め込みは禁止
 - `--body-file` / `-F` が使える場合は必ず使う
 - `gh issue close --comment` はファイル指定できないため使わない。closing comment が必要な場合は `gh issue comment --body-file <file>` を先に実行し、その後 `gh issue close --reason <reason>` を実行する
-- `gh api` 等で本文ファイル option がない場合は、JSON 等のリクエストファイルを Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に作成し、`--input <file>` で渡す
+- `gh api` 等で本文ファイル option がない場合は、JSON 等のリクエストファイルを各エージェント専用の一時ディレクトリ（§6.6 参照）に作成し、`--input <file>` で渡す
 - 一時ファイルは credential / secret 類を含めない
 
 **なぜ条件付きでなく常時か**: PR 本文はほぼ常にコードブロック（バックティック）や複数行を含み、HEREDOC でバックスラッシュ + バックティック（<code>\\&#96;</code>）にエスケープすると literal `\` が GitHub に流れる事故が頻発する。条件分岐ルールは判断負荷が高く形骸化するため、無条件 default にすれば事故クラス自体が消える。
@@ -112,7 +112,7 @@ GitHub に Markdown 本文を渡す `gh` コマンドでは、本文をコマン
 `gh pr create` は **`--base develop`** を必ず指定する（デフォルトは `main`）:
 
 ```bash
-gh pr create --base develop --title "..." --body-file /tmp/claude/pr_body.md
+gh pr create --base develop --title "..." --body-file <tmpdir>/pr_body.md   # <tmpdir> は各エージェント専用の一時ディレクトリ（§6.6）
 ```
 
 **`main` 向けはリリース PR のみ**。通常の機能追加・バグ修正・refactor・docs は全て develop ベース。リリース時は別途 `develop → main` の release PR を切る運用 (release-only branch policy)。
@@ -134,15 +134,13 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 `scripts/` と `.claude/scripts/` の使い分けは `scripts/README.md` を参照。
 
-### 6.6 settings.json permissions に整合した振る舞い
+### 6.6 一時ファイル・ステージング・権限経路（共通原則）
 
-各エージェント設定で allow されている経路を優先し、ask に該当する経路を避けて権限プロンプトと待ち時間を減らす。
+各エージェントは自分の設定で allow された経路を優先し、ask 該当経路を避けて権限プロンプトを減らす。**具体パス・helper・tool は各エージェント固有ルールに従う**（Claude → `.claude/rules/`、Codex → `.codex/rules/`、Gemini → `docs/setup/gemini-policy.md`）。
 
-- **一時ファイル**: Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に作成する。credential / secret 類は置かない。
-- **一時ファイル削除**: Codex では `/tmp/codex/` 配下の削除に `bash .codex/scripts/rm-tmp.sh <path>`、Claude Code では `/tmp/claude/` 配下の削除に `bash .claude/scripts/rm-tmp.sh <path>` を使う。これらの helper は実パス検証で各エージェント専用の一時ディレクトリ配下だけ削除を許可する。
-- **Codex の stage 操作**: Codex では `git add` の代わりに `bash .codex/scripts/git-add-files.sh <path>...` を使う。目的は helper 利用そのものではなく、明示 pathspec だけを stage し、`git add .` / `-A` / `--all` 相当の広い pathspec と repo 外参照を拒否すること。Codex の command rule は prefix match のため `git add <path>` だけを安全に allow できず、`git add` を allow すると `git add .` も通る。そのため helper を validator として sandbox 外許可の対象にする。
-- **PR コメント取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`gh api` は ask 経路のため行単位レビューが本当に必要な場合のみ断ってから使う。
-- **sandbox 制約**: `denyWithinAllow` に含まれるファイルへの操作は Bash (`mkdir` / `rm` / `tee` / `sed -i` 等) 経由では deny されるが、`Edit` / `Write` tool 経由は通る（tool で完結できれば別ターミナル依頼不要）。操作前に必ず `Edit` / `Write` を先に試す。`!` prefix は sandbox bypass にならない（memory 参照）。
+- **一時ファイル**: 各エージェント専用の一時ディレクトリ配下にのみ作成し、credential / secret は置かない。削除は専用 helper を使う。
+- **ステージング**: 明示 pathspec のみを stage する。`git add .` / `-A` / `--all` 相当の広域 pathspec は使わない。
+- **レビュー取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を優先する。`gh api` は多くの設定で ask 経路。
 
 ### 6.7 solo dev 体制での branch protection 提案禁止
 
@@ -202,8 +200,8 @@ Tailwind v4 vite plugin は `docs/` 配下の markdown も content scan 対象�
 - `src/hooks/`: 共通フック
 - `src/pages/tools/`: Astro ページ (ルーティング)
 - `src/utils/`: ロジック・ヘルパー・スタイル定義
+- `.agents/rules/common.md`: 本ドキュメント（全エージェント共通規約・正本）
 - `docs/decisions.md`: 設計上の意思決定記録
-- `docs/shared-agent-rules.md`: 本ドキュメント（常時遵守する共通規約）
 - `docs/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
 - `docs/agent-lessons.md`: 教訓バッファ（共通ルール化前の蓄積場所）
 - `docs/playbooks/`: タスク開始時に読む手順書（PR 作成 / E2E 検証 等）
@@ -236,7 +234,7 @@ Tailwind v4 vite plugin は `docs/` 配下の markdown も content scan 対象�
 
 ```bash
 node_modules/.bin/astro check       # 全体
-npx astro check --filter <file>     # 特定ファイル（Gemini CLI 等）
+npx astro check --filter <file>     # 特定ファイルのみ
 ```
 
 ### 9.5 SVG / `dangerouslySetInnerHTML` の XSS 対策
