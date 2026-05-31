@@ -122,8 +122,10 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 ### 6.3.1 マージ方法の使い分け
 
-- **feature PR（→ develop）**: `--squash`。**`--subject` と `--body-file` を必ず指定**（省略すると全コミットが自動連結されノイズになる）。詳細手順 → `docs/playbooks/pr-creation.md` 6 章
-- **release PR（develop → main）**: `--merge`。
+> ⚠️ **PR 作成・編集・マージ時は必ず `docs/playbooks/pr-creation.md` を参照すること。**
+
+- **feature PR（→ develop）**: `--squash`
+- **release PR（develop → main）**: `--merge`
 
 ### 6.4 先送り（deferral）時は必ず issue 化する
 
