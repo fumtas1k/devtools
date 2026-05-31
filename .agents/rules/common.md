@@ -12,6 +12,7 @@
   - 例: ✅ `feat: 新しいツールを追加` / ❌ `feat: Add new tool`（英語） / ❌ `update: ...`（プレフィックス不正）
   - `Merge`, `Revert`, `fixup!`, `squash!` で始まるコミットはチェックをスキップ
   - **squash マージで develop に乗るコミット件名も同じ規約に従う**。GitHub の squash は件名のデフォルトが PR タイトルで、`.githooks/commit-msg` は GitHub 上の squash には効かない（prefix なしコミットが素通りする事故あり）。手順・対策 → `docs/playbooks/pr-creation.md` 6 章
+  - ⚠️ **`gh pr merge --squash` は必ず `--subject` と `--body-file` を同時指定**。省略すると GitHub がブランチ内全コミットを自動連結した本文を生成し、レビュー往復の途中経過が git log に永続残留する。`--subject` なしでの実行は禁止。
 - **コード内コメント**: 日本語を基本とする。
 
 ---
