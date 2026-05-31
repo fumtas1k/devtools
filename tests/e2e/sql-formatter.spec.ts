@@ -45,6 +45,56 @@ test.describe('SQL整形（production CSP 適用）', () => {
 });
 
 test.describe('SQLパラメータ埋め込み（production CSP 適用）', () => {
+  test('入力欄と結果欄の表示領域がデスクトップ幅で揃う（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/sql-formatter', async (page) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.getByRole('button', { name: 'パラメータ埋め込み' }).click();
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+
+      const inputColumn = page.getByTestId('embed-input-column');
+      const outputColumn = page.getByTestId('embed-output-column');
+      const sqlInput = page.getByLabel('プレースホルダ付き SQL');
+      const paramsInput = page.getByLabel('パラメータ（JSON）');
+      const output = page.getByRole('textbox', { name: '埋め込み結果' });
+
+      await expect(inputColumn).toBeVisible();
+      await expect(outputColumn).toBeVisible();
+      await expect(output).toBeVisible();
+
+      const inputColumnBox = await inputColumn.boundingBox();
+      const outputColumnBox = await outputColumn.boundingBox();
+      const sqlInputBox = await sqlInput.boundingBox();
+      const paramsInputBox = await paramsInput.boundingBox();
+      const outputBox = await output.boundingBox();
+
+      expect(inputColumnBox).not.toBeNull();
+      expect(outputColumnBox).not.toBeNull();
+      expect(sqlInputBox).not.toBeNull();
+      expect(paramsInputBox).not.toBeNull();
+      expect(outputBox).not.toBeNull();
+
+      expect(outputColumnBox!.x).toBeGreaterThan(inputColumnBox!.x + inputColumnBox!.width - 2);
+      expect(Math.abs(inputColumnBox!.y - outputColumnBox!.y)).toBeLessThanOrEqual(2);
+      expect(Math.abs(sqlInputBox!.y - outputBox!.y)).toBeLessThanOrEqual(2);
+
+      const paramsBottom = paramsInputBox!.y + paramsInputBox!.height;
+      const outputBottom = outputBox!.y + outputBox!.height;
+      expect(Math.abs(paramsBottom - outputBottom)).toBeLessThanOrEqual(6);
+    });
+  });
+
+  test('埋め込み結果欄はモバイル幅でも複数行の高さを保つ（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/sql-formatter', async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.getByRole('button', { name: 'パラメータ埋め込み' }).click();
+
+      const outputBox = await page.getByRole('textbox', { name: '埋め込み結果' }).boundingBox();
+
+      expect(outputBox).not.toBeNull();
+      expect(outputBox!.height).toBeGreaterThan(300);
+    });
+  });
+
   test('? 位置指定パラメータを埋め込める（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/sql-formatter', async (page) => {
       await page.getByRole('button', { name: 'パラメータ埋め込み' }).click();
