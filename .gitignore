@@ -10,9 +10,13 @@ coverage/
 conductor/
 .claude/tmp/
 .claude/*.bak
+.tmp/
 
 # Superpowers extension (Visual brainstorming artifacts and session info)
 .superpowers/
+
+# Antigravity CLI configuration (Local session and permission info)
+.antigravitycli/
 
 # Active Task Context (Temporary session notes)
 tasks/active_context.md

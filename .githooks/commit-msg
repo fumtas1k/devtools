@@ -42,7 +42,7 @@ if ! echo "$commit_msg" | grep -Eq "$pattern"; then
   printf "  feat: 新しいツールを追加\n" >&2
   printf "  fix(json-csv): 改行コードの扱いを修正\n\n" >&2
   printf "詳細はプロジェクト規約を確認してください:\n" >&2
-  printf "  https://github.com/fumtas1k/devtools/blob/main/docs/shared-agent-rules.md#1-言語出力規約\n\n" >&2
+  printf "  https://github.com/fumtas1k/devtools/blob/main/.agents/rules/common.md#1-言語出力規約\n\n" >&2
   printf "現在のメッセージ: ${YELLOW}%s${NC}\n" "$commit_msg" >&2
   exit 1
 fi

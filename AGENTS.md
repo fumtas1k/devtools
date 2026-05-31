@@ -35,4 +35,4 @@ TypeScript、Astro、React 19、Tailwind CSS v4 を前提にします。整形�
 
 ## セキュリティと設定
 
-`public/_headers` の strict CSP を尊重し、HTML inline `style` は避けて `global.css` の semantic class を使います。UI 変更では `.agents/skills/dads-design-system`、共通ルールでは `docs/shared-agent-rules.md` を参照してください。
+`public/_headers` の strict CSP を尊重し、HTML inline `style` は避けて `global.css` の semantic class を使います。UI 変更では `.agents/skills/dads-design-system`、共通ルールでは `.agents/rules/common.md` を参照してください。

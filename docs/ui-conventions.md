@@ -1,7 +1,7 @@
 # UI 実装・E2E 詳細規約
 
 このドキュメントは、UI コンポーネントを変更する際／Playwright で UI 確認・E2E テストを書く際に参照する詳細パターン集です。
-基本ルール（Tailwind カラー使用制限・PC スマホ両サイズでの目視確認義務）は `docs/shared-agent-rules.md` の 7 章を参照してください。
+基本ルール（Tailwind カラー使用制限・PC スマホ両サイズでの目視確認義務）は `.agents/rules/common.md` の 7 章を参照してください。
 
 ---
 

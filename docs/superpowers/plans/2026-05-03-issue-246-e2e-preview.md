@@ -18,7 +18,7 @@
 | Modify | `package.json`                                            | `pretest:e2e` で port kill に加え、必要なら build 連結方針を反映                     |
 | Modify | `.github/workflows/test.yml`                              | e2e job に `npm run build` step を追加                                               |
 | Verify | `tests/e2e/helpers.ts`                                    | `applyProductionCsp` の動作が preview 上でも変わらないことを確認（コードはそのまま） |
-| Modify | `docs/shared-agent-rules.md`                              | 2 章コマンド表に preview 経由である旨を補足                                          |
+| Modify | `.agents/rules/common.md`                                 | 2 章コマンド表に preview 経由である旨を補足                                          |
 | Modify | `docs/playbooks/e2e-validation.md`                        | 全体を preview 前提に書き直し                                                        |
 | Modify | `docs/playbooks/pr-creation.md`                           | E2E 行に preview 経由を追記                                                          |
 | Modify | `docs/decisions.md`                                       | 新規 [063] エントリ追加、L1867 にクロスリンク追記                                    |
@@ -271,11 +271,11 @@ git commit -m "ci: e2e job に build step を追加し preview 配信に対応 (
 
 **Files:**
 
-- Modify: `docs/shared-agent-rules.md:34-39`
+- Modify: `.agents/rules/common.md:34-39`
 - Modify: `docs/playbooks/e2e-validation.md`（複数箇所）
 - Modify: `docs/playbooks/pr-creation.md:67`
 
-- [ ] **Step 1: `docs/shared-agent-rules.md:34-39` のコマンド表を更新**
+- [ ] **Step 1: `.agents/rules/common.md:34-39` のコマンド表を更新**
 
 L34-39 の表を以下に差し替え（行頭スペース・パイプ位置を保つ）:
 
@@ -351,7 +351,7 @@ npm run test -- tests/docs-references.test.ts
 - [ ] **Step 8: コミット**
 
 ```bash
-git add docs/shared-agent-rules.md docs/playbooks/e2e-validation.md docs/playbooks/pr-creation.md
+git add .agents/rules/common.md docs/playbooks/e2e-validation.md docs/playbooks/pr-creation.md
 git commit -m "docs: E2E を preview 経由で実行する旨を rules / playbooks に反映 (#246)"
 ```
 
@@ -400,7 +400,7 @@ L1867 の「将来課題とする。」を以下に差し替え:
 - `webServer.timeout` は build 時間を含むため 30s → 120s に延長
 - CI（`.github/workflows/test.yml`）の e2e job にも `npm run build` step を明示追加（ログ可読性 + 早期失敗切り分け）
 - `applyProductionCsp` ヘルパは現状ロジック（route 介入で response header に `PRODUCTION_CSP` を上書き）を維持。preview 由来の `<meta>` と AND 評価される構成にする
-- `docs/shared-agent-rules.md` / `docs/playbooks/e2e-validation.md` / `docs/playbooks/pr-creation.md` / `README.md` / `CLAUDE.md` を preview 前提に整合
+- `.agents/rules/common.md` / `docs/playbooks/e2e-validation.md` / `docs/playbooks/pr-creation.md` / `README.md` / `CLAUDE.md` を preview 前提に整合
 
 ### 却下した選択肢
 
@@ -588,6 +588,6 @@ gh pr create --base develop \
 - [ ] `npm run test`（unit）/ `astro check` 全 pass
 - [ ] `tests/docs-references.test.ts` 全 pass
 - [ ] `.github/workflows/test.yml` の e2e job に build step が追加されている
-- [ ] `docs/shared-agent-rules.md` / `docs/playbooks/*.md` / `docs/decisions.md` / `README.md` / `CLAUDE.md` に preview 前提が反映されている
+- [ ] `.agents/rules/common.md` / `docs/playbooks/*.md` / `docs/decisions.md` / `README.md` / `CLAUDE.md` に preview 前提が反映されている
 - [ ] `docs/decisions.md` に新規 [063] エントリと L1865 / L1867 のクロスリンクが入っている
 - [ ] PR が `--base develop` で作成され、CI が green

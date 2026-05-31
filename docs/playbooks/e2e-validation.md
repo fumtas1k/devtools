@@ -2,7 +2,7 @@
 
 **いつ読むか**: バグ修正・UI 挙動変更を実装中 / push 前 / E2E が落ちた時。
 
-基本宣言（E2E は実装と同時に書く・push 前に必ず実行）は `docs/shared-agent-rules.md` 3 章を参照。
+基本宣言（E2E は実装と同時に書く・push 前に必ず実行）は `.agents/rules/common.md` 3 章を参照。
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## 1. E2E 実装の原則
 
-- **E2E テストコードの追加は義務**: バグ修正・UI 挙動変更時は E2E テストコードを **必ず実装と同時に書く**。後回し禁止（`docs/shared-agent-rules.md` 3 章）。
+- **E2E テストコードの追加は義務**: バグ修正・UI 挙動変更時は E2E テストコードを **必ず実装と同時に書く**。後回し禁止（`.agents/rules/common.md` 3 章）。
 - **`npm run test:e2e` は push 前に必ず実行**: subagent worktree か親セッションで通す。post-PR 代行は不要、CI が最終ゲート。
 
 ---

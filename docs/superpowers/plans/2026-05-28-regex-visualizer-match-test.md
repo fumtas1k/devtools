@@ -838,7 +838,7 @@ Expected: 全 PASS。
 
 - [ ] **Step 4: UI 目視（PC 1280x800 / スマホ 390x844）**
 
-Playwright MCP で以下を撮影し目視確認（`docs/shared-agent-rules.md` 7 章）。撮影前に SW unregister + caches.delete + localStorage.clear → リロード（[[playwright-cache-clear]]）。
+Playwright MCP で以下を撮影し目視確認（`.agents/rules/common.md` 7 章）。撮影前に SW unregister + caches.delete + localStorage.clear → リロード（[[playwright-cache-clear]]）。
 
 - safe（例 `(\w+)@(\w+)` × `a@x b@y`、g あり）: 全マッチ交互色ハイライト + グループ表、行/span クリックで相互強調
 - g なし: 1件のみ + g ヒント
