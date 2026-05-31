@@ -22,13 +22,11 @@ process.stdin.on("end", () => {
 
 command=$(json_get_command)
 
-case "$command" in
-  *".codex/scripts/git-add-files.sh"* )
-    exit 0
-    ;;
-esac
+if printf '%s' "$command" | grep -Eq '^[[:space:]]*bash[[:space:]]+\.codex/scripts/git-add-files\.sh([[:space:]]+[^;&|<>`$()\\]+)*[[:space:]]*$'; then
+  exit 0
+fi
 
-if printf '%s' "$command" | grep -Eq '(^|[^[:alnum:]_./-])git[[:space:]]+add([[:space:]]|$)'; then
+if printf '%s' "$command" | grep -Eq '(^|[^[:alnum:]_./-])(([^[:space:];|&()]+/)*git|command[[:space:]]+git)([[:space:]][^;&|()]*)*[[:space:]]+add([[:space:]]|$)'; then
   echo "Use bash .codex/scripts/git-add-files.sh instead of direct git add." >&2
   exit 1
 fi
