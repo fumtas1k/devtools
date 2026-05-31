@@ -71,7 +71,7 @@ post-PR 代行は不要、CI が最終ゲート。
 4. `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列に `/tools/<slug>` を追加（VRT 対象に登録）。baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を `workflow_dispatch` trigger して生成（mac との font 描画差を回避するためローカル生成は不可）。**漏れた場合は `tests/meta/vrt-pages-coverage.test.ts` が `npm run test` で fail させる**ため CI で必ず検知される（issue #355 で導入）。
 5. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
 
-新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `docs/ui-conventions.md` を参照。
+新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `.agents/rules/ui-conventions.md` を参照。
 
 ---
 
@@ -172,7 +172,7 @@ Tailwind のカラークラス（`text-blue-500`, `bg-red-50`, `hover:bg-red-50`
 ※ レイアウト用クラス（`flex`, `gap`, `p-*`, `rounded` 等）は使用可。
 
 UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリーンショットを撮影して目視確認すること。
-共通コンポーネント・ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否・Playwright 撮影手順・目視確認チェックリスト等の詳細 → **`docs/ui-conventions.md`**
+共通コンポーネント・ホバー処理・ボタン高さ揃え・レスポンシブ・ToggleGroup リセット要否・Playwright 撮影手順・目視確認チェックリスト等の詳細 → **`.agents/rules/ui-conventions.md`**
 
 ### 7.1 Tailwind v4 `@layer components` の variant 非対応
 
@@ -202,7 +202,7 @@ Tailwind v4 vite plugin は `docs/` 配下の markdown も content scan 対象�
 - `src/utils/`: ロジック・ヘルパー・スタイル定義
 - `.agents/rules/common.md`: 本ドキュメント（全エージェント共通規約・正本）
 - `docs/decisions.md`: 設計上の意思決定記録
-- `docs/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
+- `.agents/rules/ui-conventions.md`: UI 実装・E2E テストの詳細規約（UI 改修時に参照）
 - `docs/agent-lessons.md`: 教訓バッファ（共通ルール化前の蓄積場所）
 - `docs/playbooks/`: タスク開始時に読む手順書（PR 作成 / E2E 検証 等）
 - `docs/setup/`: 環境セットアップ手順（プラグイン install / Gemini policy 等）

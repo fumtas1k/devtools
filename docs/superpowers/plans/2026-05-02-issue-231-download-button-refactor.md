@@ -366,7 +366,7 @@ export function DownloadButton({
 
 - `className` prop は呼び出し側で誰も使用していないため除去 (issue 記載の「API 互換 (props 不変)」は呼び出し側の互換性を指し、未使用 prop の除去は call-site を壊さない)。
 - `onMouseEnter` / `onMouseLeave` を削除し ActionButton の静的スタイルに統一 (これが本 issue の主目的)。
-- `hover:opacity-90` も削除 (`docs/ui-conventions.md` 2.1 章の `hover:` 禁止方針と整合)。
+- `hover:opacity-90` も削除 (`.agents/rules/ui-conventions.md` 2.1 章の `hover:` 禁止方針と整合)。
 
 ### Step 4: テストを実行して通ることを確認
 
@@ -563,7 +563,7 @@ issue #231 / PR #229 (#162) のフォローアップ。`DownloadButton` を独�
 ### `DownloadButton`
 - `<ActionButton variant={…} loading={…} disabled={…} aria-label={…}>` を内部で利用する薄いラッパーに縮約。
 - 古い `onMouseEnter` / `onMouseLeave` による background 直接操作を削除。
-- `hover:opacity-90` className も削除 (`docs/ui-conventions.md` 2.1 章の `hover:` 禁止方針と整合)。
+- `hover:opacity-90` className も削除 (`.agents/rules/ui-conventions.md` 2.1 章の `hover:` 禁止方針と整合)。
 - `loading` prop を新規追加 (ActionButton 経由で `aria-busy="true"` と disabled 状態を統合享受)。
 - 未使用だった `className` prop は除去 (call-site で誰も使用していなかった)。
 
@@ -605,7 +605,7 @@ EOF
 - [x] **Type consistency:** `Variant` 型は `'default' | 'primary' | 'secondary' | 'danger'` で全タスク統一。`Props.loading` は `boolean` 既定 `false`。`'aria-label'` は `string | undefined`。Map のキーは Variant と完全一致。
 - [x] **既知制約:**
   - `className` prop の除去は型上は破壊的変更だが、call-site grep で使用 0 件を確認済み (Task 0 前の調査)。
-  - hover 時の opacity / bg 変化は意図的に削除 (issue 主目的)。`docs/ui-conventions.md` 2.1 章は別途見直しが望ましいが、本 PR スコープ外。
+  - hover 時の opacity / bg 変化は意図的に削除 (issue 主目的)。`.agents/rules/ui-conventions.md` 2.1 章は別途見直しが望ましいが、本 PR スコープ外。
 
 ---
 

@@ -3,6 +3,7 @@
 このファイルは、リポジトリ内のコードを扱う際に Claude Code (claude.ai/code) へ指示を提供します。
 
 @.agents/rules/common.md
+@.agents/rules/ui-conventions.md
 @.claude/rules/git-and-fs.md
 
 ---

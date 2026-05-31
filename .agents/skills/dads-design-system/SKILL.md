@@ -452,7 +452,7 @@ DADS の汎用仕様（1〜10章）に加えて devtools 固有のスタイリ�
 | 知りたいこと                                                                                                          | 正本                                                                              |
 | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | 色・スタイリング規約（`@layer components` semantic class 経由、primitive scale 直書き禁止、HTML inline `style` 禁止） | `CLAUDE.md` §7                                                                    |
-| 共通 UI コンポーネント（`InputField` / `CopyButton` / `DownloadButtonGroup` / `ToggleGroup` / `ErrorMessage` 等）     | `docs/ui-conventions.md` §1、`CLAUDE.md` §5・§8                                   |
+| 共通 UI コンポーネント（`InputField` / `CopyButton` / `DownloadButtonGroup` / `ToggleGroup` / `ErrorMessage` 等）     | `.agents/rules/ui-conventions.md` §1、`CLAUDE.md` §5・§8                          |
 | ツール追加の実装フロー                                                                                                | `CLAUDE.md` §5                                                                    |
 | `style-src` strict 化（`unsafe-inline` 撤去）の経緯と CSP 制約                                                        | `docs/projects/issue-176-b-plan-progress.md`、`docs/decisions.md [064][067][068]` |
 

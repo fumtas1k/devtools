@@ -560,7 +560,7 @@ const Button = ({ children, variant = 'primary', onClick }: Props) => (
 
 **フォーカスリング（DADS標準）**: `outline: 4px solid #000; box-shadow: 0 0 0 2px #FDE047`（CSS の `:focus-visible` に適用する）
 
-> このリポジトリ（devtools）で実装する場合のスタイリング規約・共通コンポーネント・focus 実装は、SKILL.md「11. このプロジェクト（devtools）で実装する場合」を参照（正本は `CLAUDE.md` §7 / `docs/ui-conventions.md`）。
+> このリポジトリ（devtools）で実装する場合のスタイリング規約・共通コンポーネント・focus 実装は、SKILL.md「11. このプロジェクト（devtools）で実装する場合」を参照（正本は `CLAUDE.md` §7 / `.agents/rules/ui-conventions.md`）。
 
 ---
 
