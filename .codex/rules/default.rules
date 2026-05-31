@@ -73,17 +73,20 @@ prefix_rule(
 )
 
 # Intentionally allow the staging helper instead of direct `git add <path>`.
-# Command rules are prefix-only, so `pattern = ["git", "add"]` would also allow
-# broad pathspecs such as `git add .` and `git add -A`. The helper validates
-# pathspecs first, then runs `git add -- <path>...`. `not_match` can only list
-# genuinely different command prefixes (here, direct `git add`); a bad path
-# argument to the helper still matches this prefix and is rejected at runtime.
+# Direct `git add` is forbidden below so the helper is the only staging path.
+# The helper validates pathspecs first, then runs `git add -- <path>...`.
 prefix_rule(
     pattern = ["bash", ".codex/scripts/git-add-files.sh"],
     decision = "allow",
     justification = "Repository-provided helper stages only explicit repository paths and rejects broad git add pathspecs.",
     match = ["bash .codex/scripts/git-add-files.sh AGENTS.md", "bash .codex/scripts/git-add-files.sh .agents/rules/common.md .codex/rules/default.rules"],
-    not_match = ["git add AGENTS.md", "git add .", "git add -A"],
+)
+
+prefix_rule(
+    pattern = ["git", "add"],
+    decision = "forbidden",
+    justification = "Stage changes only through .codex/scripts/git-add-files.sh so explicit path validation is always enforced.",
+    match = ["git add AGENTS.md", "git add .", "git add -A"],
 )
 
 prefix_rule(
@@ -95,12 +98,11 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["git", ["switch", "checkout", "add", "commit", "fetch", "pull", "merge", "rebase", "worktree"]],
+    pattern = ["git", ["switch", "checkout", "commit", "fetch", "pull", "merge", "rebase", "worktree"]],
     decision = "prompt",
     justification = "Git commands that may mutate the worktree, refs, or network state require confirmation.",
     match = [
         "git switch -c chore/example",
-        "git add .",
         "git commit --amend",
         "git fetch origin",
         "git pull --ff-only",
