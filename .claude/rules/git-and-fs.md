@@ -5,7 +5,7 @@
 ## 一時ファイル
 
 - 作成先は `/tmp/claude/` 配下。credential / secret 類は置かない。
-- 削除は `bash .claude/scripts/rm-tmp.sh <path>` を使う（実パス検証で `/tmp/claude/` 配下のみ削除を許可）。
+- 削除は `bash scripts/rm-tmp.sh <path>` を使う（実パス検証で `/tmp/claude/` 配下のみ削除を許可。`/tmp/codex/` も同ヘルパーで削除可）。
 - `gh api` 等に渡す JSON / body ファイルも `/tmp/claude/` に作成する。
 
 ## sandbox 制約
