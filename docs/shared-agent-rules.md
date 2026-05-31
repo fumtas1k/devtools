@@ -140,7 +140,7 @@ PR 作成・親 push 前チェックリスト・親向けレビュー取得手�
 
 - **一時ファイル**: Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に作成する。credential / secret 類は置かない。
 - **一時ファイル削除**: Codex では `/tmp/codex/` 配下の削除に `bash .codex/scripts/rm-tmp.sh <path>`、Claude Code では `/tmp/claude/` 配下の削除に `bash .claude/scripts/rm-tmp.sh <path>` を使う。これらの helper は実パス検証で各エージェント専用の一時ディレクトリ配下だけ削除を許可する。
-- **Codex の stage 操作**: Codex では `git add` の代わりに `bash .codex/scripts/git-add-files.sh <path>...` を使う。この helper は `git add .` / `-A` / `--all` 相当の広い pathspec と repo 外参照を拒否する。
+- **Codex の stage 操作**: Codex では `git add` の代わりに `bash .codex/scripts/git-add-files.sh <path>...` を使う。目的は helper 利用そのものではなく、明示 pathspec だけを stage し、`git add .` / `-A` / `--all` 相当の広い pathspec と repo 外参照を拒否すること。Codex の command rule は prefix match のため `git add <path>` だけを安全に allow できず、`git add` を allow すると `git add .` も通る。そのため helper を validator として sandbox 外許可の対象にする。
 - **PR コメント取得**: `gh pr view <PR> --comments`（必要なら `--json comments,reviews`）を使う。`gh api` は ask 経路のため行単位レビューが本当に必要な場合のみ断ってから使う。
 - **sandbox 制約**: `denyWithinAllow` に含まれるファイルへの操作は Bash (`mkdir` / `rm` / `tee` / `sed -i` 等) 経由では deny されるが、`Edit` / `Write` tool 経由は通る（tool で完結できれば別ターミナル依頼不要）。操作前に必ず `Edit` / `Write` を先に試す。`!` prefix は sandbox bypass にならない（memory 参照）。
 

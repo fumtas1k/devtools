@@ -4,10 +4,11 @@
 # are forbidden.
 #
 # Matching is driven solely by `pattern` (a prefix match on the parsed argv).
-# The `match` / `not_match` entries are illustrative examples for documentation
-# and self-review only; they are NOT enforcement inputs. Placeholders such as
-# <pr-number> / <issue-number> / <run-id> stand for arbitrary user-supplied
-# arguments and are never matched literally.
+# The `match` / `not_match` entries are loader-validated examples for
+# documentation and self-review; they are not fine-grained enforcement inputs.
+# `not_match` examples must not match the rule's prefix at all. Placeholders
+# such as <pr-number> / <issue-number> / <run-id> stand for arbitrary
+# user-supplied arguments and are never matched literally.
 
 prefix_rule(
     pattern = ["npm", "run"],
@@ -34,6 +35,13 @@ prefix_rule(
         "npx astro check",
         "npx prettier --check AGENTS.md",
     ],
+)
+
+prefix_rule(
+    pattern = ["node_modules/.bin/astro", "check"],
+    decision = "allow",
+    justification = "Direct Astro binary check is a read-only project verification command.",
+    match = ["node_modules/.bin/astro check", "node_modules/.bin/astro check --watch=false"],
 )
 
 prefix_rule(
@@ -64,12 +72,18 @@ prefix_rule(
     match = ["git config --get remote.origin.url"],
 )
 
+# Intentionally allow the staging helper instead of direct `git add <path>`.
+# Command rules are prefix-only, so `pattern = ["git", "add"]` would also allow
+# broad pathspecs such as `git add .` and `git add -A`. The helper validates
+# pathspecs first, then runs `git add -- <path>...`. `not_match` can only list
+# genuinely different command prefixes (here, direct `git add`); a bad path
+# argument to the helper still matches this prefix and is rejected at runtime.
 prefix_rule(
     pattern = ["bash", ".codex/scripts/git-add-files.sh"],
     decision = "allow",
     justification = "Repository-provided helper stages only explicit repository paths and rejects broad git add pathspecs.",
     match = ["bash .codex/scripts/git-add-files.sh AGENTS.md", "bash .codex/scripts/git-add-files.sh docs/shared-agent-rules.md .codex/rules/default.rules"],
-    not_match = ["git add AGENTS.md", "bash .codex/scripts/git-add-files.sh .", "bash .codex/scripts/git-add-files.sh -A"],
+    not_match = ["git add AGENTS.md", "git add .", "git add -A"],
 )
 
 prefix_rule(
@@ -120,6 +134,13 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["gh", "label", "list"],
+    decision = "allow",
+    justification = "Read-only GitHub label inspection command.",
+    match = ["gh label list", "gh label list --repo <owner/repo>"],
+)
+
+prefix_rule(
     pattern = ["gh", ["repo", "run", "workflow"], ["view", "list"]],
     decision = "allow",
     justification = "Read-only GitHub repository, workflow, and run inspection commands.",
@@ -131,6 +152,13 @@ prefix_rule(
     decision = "allow",
     justification = "Read-only GitHub Actions run inspection.",
     match = ["gh run view <run-id>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "run", "watch"],
+    decision = "allow",
+    justification = "GitHub Actions run watching is a read-only status monitoring command.",
+    match = ["gh run watch <run-id>", "gh run watch <run-id> --exit-status"],
 )
 
 prefix_rule(
@@ -182,12 +210,18 @@ prefix_rule(
     match = ["which node", "pwd"],
 )
 
+# Intentionally allow the cleanup helper instead of direct `rm`. As with the
+# staging helper above, command rules are prefix-only: a path argument such as
+# /tmp/claude/... or .codex/config.toml still matches this prefix, so it cannot
+# be expressed via `not_match`. The helper validates the path at runtime and
+# only removes files under /tmp/codex. `not_match` therefore lists only a
+# genuinely different command prefix (direct `rm`).
 prefix_rule(
     pattern = ["bash", ".codex/scripts/rm-tmp.sh"],
     decision = "allow",
     justification = "Repository-provided helper only removes files under /tmp/codex after path validation.",
     match = ["bash .codex/scripts/rm-tmp.sh /tmp/codex/pr_body.md", "bash .codex/scripts/rm-tmp.sh -f /tmp/codex/comment.md"],
-    not_match = ["rm /tmp/codex/pr_body.md", "bash .codex/scripts/rm-tmp.sh /tmp/claude/comment.md", "bash .codex/scripts/rm-tmp.sh .codex/config.toml"],
+    not_match = ["rm /tmp/codex/pr_body.md"],
 )
 
 prefix_rule(
