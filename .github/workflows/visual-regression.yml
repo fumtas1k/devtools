@@ -94,7 +94,7 @@ jobs:
 
   visual-regression-report:
     needs: visual-regression
-    if: ${{ always() && !cancelled() && github.event.pull_request.number }}
+    if: ${{ !cancelled() && github.event.pull_request.number }}
     permissions:
       contents: write
       pull-requests: write
@@ -106,7 +106,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: visual-regression-report-pr-${{ github.event.pull_request.number }}
-          path: playwright-report/
+          path: .
 
       - name: スライダーレポート artifact を download
         if: ${{ needs.visual-regression.outputs.slider-generated == 'true' }}
@@ -186,7 +186,7 @@ jobs:
         id: build-body
         shell: bash
         run: |
-          LOG_FILE="playwright-report/vrt-output.log"
+          LOG_FILE="vrt-output.log"
 
           {
             echo "body<<MARKDOWN_EOF"
