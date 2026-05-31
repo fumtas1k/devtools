@@ -37,6 +37,13 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["node_modules/.bin/astro", "check"],
+    decision = "allow",
+    justification = "Direct Astro binary check is a read-only project verification command.",
+    match = ["node_modules/.bin/astro check", "node_modules/.bin/astro check --watch=false"],
+)
+
+prefix_rule(
     pattern = ["git", ["status", "diff", "log", "show", "branch", "rev-parse"]],
     decision = "allow",
     justification = "Read-only git inspection commands.",
@@ -64,6 +71,10 @@ prefix_rule(
     match = ["git config --get remote.origin.url"],
 )
 
+# Intentionally allow the staging helper instead of direct `git add <path>`.
+# Command rules are prefix-only, so `pattern = ["git", "add"]` would also allow
+# broad pathspecs such as `git add .` and `git add -A`. The helper validates
+# pathspecs first, then runs `git add -- <path>...`.
 prefix_rule(
     pattern = ["bash", ".codex/scripts/git-add-files.sh"],
     decision = "allow",
@@ -120,6 +131,13 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["gh", "label", "list"],
+    decision = "allow",
+    justification = "Read-only GitHub label inspection command.",
+    match = ["gh label list", "gh label list --repo <owner/repo>"],
+)
+
+prefix_rule(
     pattern = ["gh", ["repo", "run", "workflow"], ["view", "list"]],
     decision = "allow",
     justification = "Read-only GitHub repository, workflow, and run inspection commands.",
@@ -131,6 +149,13 @@ prefix_rule(
     decision = "allow",
     justification = "Read-only GitHub Actions run inspection.",
     match = ["gh run view <run-id>"],
+)
+
+prefix_rule(
+    pattern = ["gh", "run", "watch"],
+    decision = "allow",
+    justification = "GitHub Actions run watching is a read-only status monitoring command.",
+    match = ["gh run watch <run-id>", "gh run watch <run-id> --exit-status"],
 )
 
 prefix_rule(

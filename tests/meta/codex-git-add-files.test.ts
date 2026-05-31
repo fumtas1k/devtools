@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const script = resolve(repoRoot, '.codex/scripts/git-add-files.sh');
+const codexRules = resolve(repoRoot, '.codex/rules/default.rules');
+
+function prefixRuleBlocks(source: string): string[] {
+  return source.match(/prefix_rule\(\n[\s\S]*?\n\)/g) ?? [];
+}
 
 function runGitAdd(cwd: string, args: string[]) {
   return spawnSync('bash', [script, ...args], {
@@ -143,5 +148,28 @@ describe('git-add-files.sh', () => {
 
   it('script は bash で実行できる構文を保つ', () => {
     expect(() => execFileSync('bash', ['-n', script], { cwd: repoRoot })).not.toThrow();
+  });
+
+  it('Codex rules は helper を allow し、直接 git add を allow しない', () => {
+    const rules = readFileSync(codexRules, 'utf8');
+    const blocks = prefixRuleBlocks(rules);
+
+    expect(
+      blocks.some(
+        (block) =>
+          block.includes('pattern = ["bash", ".codex/scripts/git-add-files.sh"]') &&
+          block.includes('decision = "allow"')
+      )
+    ).toBe(true);
+
+    expect(
+      blocks.some(
+        (block) =>
+          block.includes('pattern = ["git", "add"]') && block.includes('decision = "allow"')
+      )
+    ).toBe(false);
+
+    expect(rules).toContain('Command rules are prefix-only');
+    expect(rules).toContain('broad pathspecs such as `git add .` and `git add -A`');
   });
 });
