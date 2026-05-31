@@ -5,6 +5,7 @@ const PARSER_OPTIONS = {
   attributeNamePrefix: '@_',
   textNodeName: '#text',
   parseAttributeValue: true,
+  processEntities: false,
 };
 
 const BUILDER_OPTIONS = {

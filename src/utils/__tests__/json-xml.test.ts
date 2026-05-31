@@ -1,3 +1,4 @@
+import { XMLParser } from 'fast-xml-parser';
 import { describe, it, expect } from 'vitest';
 import { jsonToXml, xmlToJson } from '../json-xml';
 
@@ -45,5 +46,30 @@ describe('xmlToJson', () => {
     const xml = `<root><key>value</key></root>`;
     const result = xmlToJson(xml);
     expect(result).toContain('\n');
+  });
+
+  it('processEntities を有効にした正の対照では内部実体が展開される', () => {
+    // Positive control: this proves the entity-expansion path exists in fast-xml-parser.
+    // If this test is removed, the security regression check below would no longer
+    // demonstrate that the old behavior expands custom entities.
+    const xml = `<!DOCTYPE note [<!ENTITY greeting "expanded">]><note><value>&greeting;</value></note>`;
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: '@_',
+      textNodeName: '#text',
+      parseAttributeValue: true,
+      processEntities: true,
+    });
+
+    const result = parser.parse(xml);
+
+    expect(result.note.value).toBe('expanded');
+  });
+
+  it('xmlToJson は内部実体を展開しない', () => {
+    const xml = `<!DOCTYPE note [<!ENTITY greeting "expanded">]><note><value>&greeting;</value></note>`;
+    const result = JSON.parse(xmlToJson(xml));
+
+    expect(result.note.value).toBe('&greeting;');
   });
 });
