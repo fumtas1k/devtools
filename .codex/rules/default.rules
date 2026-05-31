@@ -170,11 +170,20 @@ prefix_rule(
     match = ["gh workflow view <workflow-file>"],
 )
 
+# `pattern` は prefix-only なので、merge 方法の強制はできない。
+# そのため、この block では「develop なら --squash / main なら --merge」を明示する。
 prefix_rule(
-    pattern = ["gh", "pr", ["review", "comment", "create", "merge", "close", "edit"]],
+    pattern = ["gh", "pr", "merge"],
+    decision = "prompt",
+    justification = "Do not rely on the default merge method. Use --squash for develop-bound PRs and --merge for release PRs to main.",
+    match = ["gh pr merge <pr-number> --squash --delete-branch", "gh pr merge <pr-number> --merge --delete-branch"],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["review", "comment", "create", "close", "edit"]],
     decision = "prompt",
     justification = "GitHub PR write operations require confirmation.",
-    match = ["gh pr comment <pr-number> --body-file <body-file>", "gh pr review <pr-number> --comment --body-file <body-file>", "gh pr merge <pr-number> --squash"],
+    match = ["gh pr comment <pr-number> --body-file <body-file>", "gh pr review <pr-number> --comment --body-file <body-file>"],
 )
 
 prefix_rule(

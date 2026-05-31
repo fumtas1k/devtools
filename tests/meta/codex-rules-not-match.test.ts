@@ -10,7 +10,12 @@ import { describe, expect, it } from 'vitest';
 // semantics を JS で再現してメタテストとして CI で守る。
 // プレフィックス照合の fidelity リスクについては helpers/codexRules.ts の冒頭コメントを参照。
 
-import { commandMatchesPrefix, matchViolations, notMatchViolations } from './helpers/codexRules.js';
+import {
+  commandMatchesPrefix,
+  matchViolations,
+  notMatchViolations,
+  prefixRuleBlocks,
+} from './helpers/codexRules.js';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const codexRules = resolve(repoRoot, '.codex/rules/default.rules');
@@ -80,6 +85,63 @@ describe('Codex rules match prefix validation', () => {
 
     expect(violations).toHaveLength(1);
     expect(violations[0].command).toBe('npx vitest run');
+  });
+});
+
+describe('Codex gh pr merge policy', () => {
+  function mergePolicyViolations(source: string): string[] {
+    const blocks = prefixRuleBlocks(source);
+    const mergeIndex = blocks.findIndex((block) =>
+      block.includes('pattern = ["gh", "pr", "merge"],')
+    );
+    const violations: string[] = [];
+
+    if (mergeIndex === -1) {
+      violations.push('missing release-merge allow/prompt rule');
+    } else if (!blocks[mergeIndex].includes('decision = "prompt"')) {
+      violations.push('release-merge rule must prompt');
+    }
+
+    if (!blocks[mergeIndex]?.includes('--squash') || !blocks[mergeIndex]?.includes('--merge')) {
+      violations.push('merge guidance must mention both --squash and --merge');
+    }
+
+    if (
+      mergeIndex === -1 ||
+      !blocks[mergeIndex].includes('develop-bound PRs') ||
+      !blocks[mergeIndex].includes('release PRs to main')
+    ) {
+      violations.push('merge guidance must mention develop and main targets');
+    }
+
+    if (mergeIndex !== -1 && !blocks[mergeIndex].includes('decision = "prompt"')) {
+      violations.push('generic merge guidance rule must prompt');
+    }
+
+    return violations;
+  }
+
+  it('陰性対照: 実ファイルは explicit merge-method guidance を満たす', () => {
+    const rules = readFileSync(codexRules, 'utf8');
+    expect(mergePolicyViolations(rules)).toEqual([]);
+  });
+
+  it('陽性対照: explicit method を欠く旧ポリシーを検知する', () => {
+    const broken = [
+      'prefix_rule(',
+      '    pattern = ["gh", "pr", "merge"],',
+      '    decision = "prompt",',
+      '    justification = "Do not rely on the default merge method.",',
+      '    match = ["gh pr merge <pr-number>"],',
+      ')',
+    ].join('\n');
+
+    expect(mergePolicyViolations(broken)).toContain(
+      'merge guidance must mention both --squash and --merge'
+    );
+    expect(mergePolicyViolations(broken)).toContain(
+      'merge guidance must mention develop and main targets'
+    );
   });
 });
 
