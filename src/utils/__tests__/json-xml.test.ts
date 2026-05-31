@@ -23,6 +23,17 @@ describe('jsonToXml', () => {
     expect(result).toContain('テスト');
   });
 
+  it('特殊文字を含む値は round-trip で保持される', () => {
+    const input = {
+      text: `A & B < C > D "quote" 'apostrophe'`,
+    };
+
+    const xml = jsonToXml(JSON.stringify(input));
+    const result = JSON.parse(xmlToJson(xml));
+
+    expect(result.root.text).toBe(input.text);
+  });
+
   it('不正なJSONでエラーを投げる', () => {
     expect(() => jsonToXml('{invalid}')).toThrow('有効なJSONではありません');
   });
@@ -71,5 +82,12 @@ describe('xmlToJson', () => {
     const result = JSON.parse(xmlToJson(xml));
 
     expect(result.note.value).toBe('&greeting;');
+  });
+
+  it('定義済みXML実体と数値文字参照は復元される', () => {
+    const xml = `<root><value>&amp;&lt;&gt;&quot;&apos;&#65;&#x41;</value></root>`;
+    const result = JSON.parse(xmlToJson(xml));
+
+    expect(result.root.value).toBe(`&<>"'AA`);
   });
 });
