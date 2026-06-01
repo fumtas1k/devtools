@@ -26,7 +26,13 @@ afterEach(() => {
  * COMPACT_BUTTON_SHAPE_CLASSES から各 utility を抽出するヘルパー。
  * 定数から直接 token を取り出すことで、実装との 1:1 対応を保証する。
  */
-function extractCompactTokens(classStr: string): { borderRadius: string; px: string; py: string; leading: string; fontWeight: string } {
+function extractCompactTokens(classStr: string): {
+  borderRadius: string;
+  px: string;
+  py: string;
+  leading: string;
+  fontWeight: string;
+} {
   const classes = classStr.split(' ');
   const borderRadius = classes.find((c) => c.startsWith('rounded')) ?? '';
   const px = classes.find((c) => c.startsWith('px-')) ?? '';
@@ -47,10 +53,10 @@ describe('compact ボタン border-radius drift 検知 (陰性対照)', () => {
     const tokens = extractCompactTokens(COMPACT_BUTTON_SHAPE_CLASSES);
 
     expect(btn.className).toContain(tokens.borderRadius); // 'rounded-lg'
-    expect(btn.className).toContain(tokens.px);           // 'px-3'
-    expect(btn.className).toContain(tokens.py);           // 'py-2'
-    expect(btn.className).toContain(tokens.leading);      // 'leading-none'
-    expect(btn.className).toContain(tokens.fontWeight);   // 'font-bold'
+    expect(btn.className).toContain(tokens.px); // 'px-3'
+    expect(btn.className).toContain(tokens.py); // 'py-2'
+    expect(btn.className).toContain(tokens.leading); // 'leading-none'
+    expect(btn.className).toContain(tokens.fontWeight); // 'font-bold'
   });
 
   it('ActionButton(size="compact") は COMPACT_BUTTON_SHAPE_CLASSES の全 token を含む', () => {
