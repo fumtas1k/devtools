@@ -17,15 +17,13 @@ const featured = FEATURED_404_SLUGS.map((slug) => tools.find((tool) => tool.slug
 >
   <main class="mx-auto max-w-2xl px-6 py-16" id="main-content">
     <div class="text-center">
-      <p class="font-bold text-[4rem] leading-none text-primary">404</p>
-      <h1 class="mt-4 mb-3 font-bold text-[1.75rem] leading-[1.4] tracking-[0.02em] text-default">
-        ページが見つかりません
-      </h1>
+      <p class="font-bold error-code text-primary">404</p>
+      <h1 class="mt-4 mb-3 font-bold page-heading text-default">ページが見つかりません</h1>
       <p class="mb-8 text-body">
         お探しのページは削除されたか、URL が間違っている可能性があります。
       </p>
       <p class="mb-12">
-        <a href="/" class="text-link text-base leading-[1.7] tracking-[0.02em]"> ← ホームに戻る </a>
+        <a href="/" class="text-link link-text"> ← ホームに戻る </a>
       </p>
     </div>
 
@@ -37,10 +35,7 @@ const featured = FEATURED_404_SLUGS.map((slug) => tools.find((tool) => tool.slug
         {
           featured.map((tool) => (
             <li>
-              <a
-                href={`/tools/${tool.slug}`}
-                class="text-link text-base leading-[1.7] tracking-[0.02em]"
-              >
+              <a href={`/tools/${tool.slug}`} class="text-link link-text">
                 {tool.name}
               </a>
               <span class="ml-2 caption text-muted">— {tool.description}</span>
