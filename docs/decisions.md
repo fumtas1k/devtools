@@ -3727,3 +3727,25 @@ json-formatter 段階リリースの最終段（クエリ・マスク・型生�
 - ✅ テキスト/マスク/型表示中はツリーを構築しない。巨大入力でも自動凍結しない。
 - ⚠️ 閾値超のツリーは明示操作後に構築するため、強制表示すると依然重い（仮想化は後続）。閾値は整形済み長の単純指標で、ノード数とは厳密一致しない。
 - ツリー仮想化 / Worker オフロードは #512 残として follow-up。
+
+---
+
+## [097] 2026-06-01 — CopyButton と compact ボタンの角丸を rounded-lg に統一（issue #320 / c案）
+
+**2026-06-01 | ステータス: 採用**
+
+### 背景
+
+PR #318 後も `CopyButton`(default) は `rounded`(0.25rem)、`ActionButton`(size="compact") / `DownloadButton` は `rounded-lg`(0.5rem) で border-radius が不一致だった。class 名 assert ベースの unit test では片方だけ変わる silent drift を検出できない問題があった（issue #320）。
+
+### 決断（c案）
+
+- **rounded-lg に統一**: CopyButton 側を 0.25rem → 0.5rem に上げ、ActionButton compact / DownloadButton に揃える。プロジェクトの主流は rounded-lg。
+- **共有定数化**: `src/components/ui/_compactButton.ts` に `COMPACT_BUTTON_SHAPE_CLASSES = 'rounded-lg font-bold px-3 py-2 leading-none'` を切り出し、`ActionButton`(compact 経路) と `CopyButton`(default 経路) の両方から import して使う。
+- **cross-component drift 検知テスト追加**: `src/components/ui/__tests__/compact-button-radius-drift.test.tsx` で両コンポーネントの compact token 集合が一致することを assert。陽性対照テスト（旧実装 rounded に戻すと fail するテスト）を同ファイル内別 describe に併設（test-gates 準拠）。
+
+### 結果・トレードオフ
+
+- ✅ 両コンポーネントの角丸が共有定数で一元管理され、以降の一方の変更は即座に test fail で検知される。
+- ✅ CopyButton 固有（caption / tracking-wide / gap-1.5 / btn-copy 等）・ActionButton 固有（btn-action / variant class 等）のクラスは各自に残し、共有するのは「compact 高さ + 角丸」部分のみ。
+- ⚠️ CopyButton の見た目（角丸）が変わるため VRT baseline 差分が発生する。CI Linux runner の `Update Visual Regression Baseline` workflow を workflow_dispatch で再生成が必要（ローカル不可）。
