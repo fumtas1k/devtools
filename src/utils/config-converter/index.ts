@@ -65,39 +65,3 @@ export function convert(text: string, from: ConfigFormat, to: ConfigFormat): Con
 
   return { output, warnings };
 }
-
-/** テキストのフォーマットをヒューリスティックに検出する */
-export function detectFormat(text: string): ConfigFormat | null {
-  const trimmed = text.trim();
-
-  if (trimmed === '') {
-    return null;
-  }
-
-  // TOML: [section] パターン — JSON の配列より先にチェック
-  if (/^\[[\w.]+\]/m.test(trimmed)) {
-    return 'toml';
-  }
-
-  // JSON: { または [ で始まる
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    return 'json';
-  }
-
-  // YAML: --- で始まる、または key: value パターンを含む
-  if (trimmed.startsWith('---')) {
-    return 'yaml';
-  }
-
-  // YAML: key: value パターン (TOMLの後にチェック)
-  if (/^[\w-]+\s*:(\s|$)/m.test(trimmed)) {
-    return 'yaml';
-  }
-
-  // dotenv: KEY=VALUE パターン
-  if (/^[A-Z_][A-Z0-9_]*=.*/im.test(trimmed)) {
-    return 'dotenv';
-  }
-
-  return null;
-}
