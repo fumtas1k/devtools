@@ -14,8 +14,9 @@ interface Props extends Omit<
   variant?: Variant;
   loading?: boolean;
   /**
-   * 高さプリセット。
-   * - 'default'（既定）: `font-semibold px-4 py-2`、`caption` の line-height 1.7 を継承
+   * 高さプリセット。角丸（rounded-lg）は両サイズとも SIZE_CLASS 経由で供給し、
+   * base className には持たせない（issue #320: 共有定数を角丸の単一の真実源にするため）。
+   * - 'default'（既定）: `rounded-lg font-semibold px-4 py-2`、`caption` の line-height 1.7 を継承
    * - 'compact': COMPACT_BUTTON_SHAPE_CLASSES（rounded-lg / font-bold / px-3 py-2 / leading-none）、
    *   CopyButton (default) と同じ高さ・角丸（issue #320 で統一）
    */
@@ -23,7 +24,7 @@ interface Props extends Omit<
 }
 
 const SIZE_CLASS: Record<Size, string> = {
-  default: 'font-semibold px-4 py-2',
+  default: 'rounded-lg font-semibold px-4 py-2',
   compact: COMPACT_BUTTON_SHAPE_CLASSES,
 };
 
@@ -57,7 +58,7 @@ export function ActionButton({
       onClick={onClick}
       disabled={isDisabled}
       aria-busy={loading ? 'true' : undefined}
-      className={`caption inline-flex items-center rounded-lg whitespace-nowrap btn-action btn-action--${variant} ${SIZE_CLASS[size]}`}
+      className={`caption inline-flex items-center whitespace-nowrap btn-action btn-action--${variant} ${SIZE_CLASS[size]}`}
       {...rest}
     >
       {children}
