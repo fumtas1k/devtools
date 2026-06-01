@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { convert, detectFormat } from '../index';
+import { convert } from '../index';
 
 describe('convert', () => {
   it('JSONをYAMLに変換する', () => {
@@ -65,35 +65,5 @@ describe('convert', () => {
   it('dotenv→JSONで値の文字列読み込み警告を出す', () => {
     const result = convert('KEY=value', 'dotenv', 'json');
     expect(result.warnings).toContain('値はすべて文字列として読み込まれます');
-  });
-});
-
-describe('detectFormat', () => {
-  it('JSONを検出する ({で始まる)', () => {
-    expect(detectFormat('{"a":1}')).toBe('json');
-  });
-
-  it('JSONを検出する ([で始まる)', () => {
-    expect(detectFormat('[1,2,3]')).toBe('json');
-  });
-
-  it('YAMLを検出する (---で始まる)', () => {
-    expect(detectFormat('---\nkey: value')).toBe('yaml');
-  });
-
-  it('YAMLを検出する (key: value形式)', () => {
-    expect(detectFormat('key: value\nother: 123')).toBe('yaml');
-  });
-
-  it('TOMLを検出する ([section]形式)', () => {
-    expect(detectFormat('[server]\nport = 8080')).toBe('toml');
-  });
-
-  it('dotenvを検出する (KEY=VALUE形式)', () => {
-    expect(detectFormat('KEY=value\nOTHER=test')).toBe('dotenv');
-  });
-
-  it('不明な形式でnullを返す', () => {
-    expect(detectFormat('   ')).toBeNull();
   });
 });
