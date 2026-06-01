@@ -762,6 +762,29 @@
     color: var(--color-neutral-700);
   }
 
+  /* ページ h1 見出し: about/privacy/404 の静的ページ共通 (1.75rem)。
+     .section-heading (h2, 1.125rem) より一段大きい page タイトル用。
+     color は .section-heading と同様 class に含めず consumer 側で text-default を併用 (issue #535)。 */
+  .page-heading {
+    font-size: 1.75rem;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+
+  /* 404 ページの装飾的エラーコード (大型数字 "404")。色は text-primary を併用 (issue #535)。 */
+  .error-code {
+    font-size: 4rem;
+    line-height: 1;
+  }
+
+  /* 静的ページのリンクテキスト typography: about/404 のツール/ホームリンク。
+     色は text-link を併用 (typography のみ定義) (issue #535)。 */
+  .link-text {
+    font-size: 1rem;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+
   /* Horizontal scroll snap container: index hero carousel (1 occurrence、5 prop)
      注: 単発だが property 数が多く、Tailwind arbitrary 6連
      (`overflow-x-scroll snap-x snap-mandatory scroll-smooth
