@@ -116,6 +116,7 @@ const jsonLd = {
         class="mb-6 flex gap-1 border-b border-default overflow-x-auto"
       >
         <button
+          type="button"
           role="tab"
           id="tab-0"
           aria-selected="true"
@@ -128,6 +129,7 @@ const jsonLd = {
         {
           categories.map((cat, i) => (
             <button
+              type="button"
               role="tab"
               id={`tab-${i + 1}`}
               aria-selected="false"
