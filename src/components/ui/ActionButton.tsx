@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { COMPACT_BUTTON_SHAPE_CLASSES } from './_compactButton';
 
 type Variant = 'default' | 'primary' | 'secondary' | 'danger';
 type Size = 'default' | 'compact';
@@ -15,20 +16,21 @@ interface Props extends Omit<
   /**
    * 高さプリセット。
    * - 'default'（既定）: `font-semibold px-4 py-2`、`caption` の line-height 1.7 を継承
-   * - 'compact': `font-bold px-3 py-2 leading-none`、CopyButton (default) と同じ高さ
+   * - 'compact': COMPACT_BUTTON_SHAPE_CLASSES（rounded-lg / font-bold / px-3 py-2 / leading-none）、
+   *   CopyButton (default) と同じ高さ・角丸（issue #320 で統一）
    */
   size?: Size;
 }
 
 const SIZE_CLASS: Record<Size, string> = {
   default: 'font-semibold px-4 py-2',
-  compact: 'font-bold px-3 py-2 leading-none',
+  compact: COMPACT_BUTTON_SHAPE_CLASSES,
 };
 
 /**
  * 汎用アクションボタン。
  * - `variant`: 'default' | 'primary' | 'secondary' | 'danger'
- * - `size`: 'default' | 'compact'（'compact' は CopyButton と同じ高さに揃える）
+ * - `size`: 'default' | 'compact'（'compact' は CopyButton と同じ高さ・角丸に揃える）
  * - `loading`: true のとき `aria-busy="true"` を付与し、disabled 状態にする
  * - ローディング中の子要素はそのまま表示するため、呼び出し元でローディング文言に切り替えること
  *   （例: `{loading ? '生成中…' : '生成'}`）

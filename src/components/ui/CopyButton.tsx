@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { copyToClipboard } from '@/utils/clipboard';
+import { COMPACT_BUTTON_SHAPE_CLASSES } from './_compactButton';
 
 function ClipboardIcon() {
   return (
@@ -66,6 +67,9 @@ interface Props {
  *
  * style: global.css `@layer components` の `.btn-copy` / `.btn-copy.is-copied` /
  * `.btn-copy.is-compact` を参照。状態は `is-copied` / `is-compact` className で切替。
+ *
+ * default 表示の角丸は COMPACT_BUTTON_SHAPE_CLASSES 経由で ActionButton (size="compact") /
+ * DownloadButton と統一（rounded-lg / issue #320）。
  */
 export function CopyButton({
   text,
@@ -114,7 +118,7 @@ export function CopyButton({
       type="button"
       onClick={handleClick}
       aria-label={accessibleName}
-      className={`btn-copy ${stateClass} caption font-bold inline-flex items-center gap-1.5 rounded px-3 py-2 leading-none tracking-wide whitespace-nowrap ${className}`.trim()}
+      className={`btn-copy ${stateClass} caption inline-flex items-center gap-1.5 ${COMPACT_BUTTON_SHAPE_CLASSES} tracking-wide whitespace-nowrap ${className}`.trim()}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}
       {label}
