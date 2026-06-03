@@ -299,7 +299,7 @@ export function EncodingConverterTool() {
               accept={ACCEPT_ATTR}
             />
           </label>
-          <p className="text-xs text-muted mt-1">
+          <p className="hint-xs text-muted mt-1">
             対応形式: テキストファイル（.txt / .csv / .json / .xml / .yaml / .toml 等）・最大 10 MB
           </p>
           {fileBytes && (
