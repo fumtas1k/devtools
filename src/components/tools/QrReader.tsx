@@ -155,7 +155,7 @@ export function QrReaderTool() {
               <FileInputButton accept="image/*" onChange={handleImageUpload} id="qr-image-input">
                 画像を選択
               </FileInputButton>
-              <p className="text-xs text-muted mt-1">
+              <p className="hint-xs text-muted mt-1">
                 対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
               </p>
             </div>

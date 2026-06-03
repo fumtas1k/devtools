@@ -593,6 +593,14 @@
     opacity: 0.7;
   }
 
+  /* 0.75rem の補足テキスト用 semantic class（Tailwind primitive `text-xs` 直書きの代替）。
+     Tailwind v4 の text-xs (font-size 0.75rem / line-height calc(1/0.75)) を完全再現し、
+     VRT を不変に保ちつつ primitive utility 依存を解消する（issue #399 案B）。 */
+  .hint-xs {
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+  }
+
   /* === Gs1Databar: バーコードプレビューの sub-pixel anti-alias 抑止 ===
      bwip-js は bar を <path stroke="#000000" stroke-width="N" d="..."> で描く。
      vector だがブラウザは high-DPR / 非整数 scaling 時に raster cache を介して
