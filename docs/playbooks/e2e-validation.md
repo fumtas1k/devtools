@@ -189,7 +189,7 @@ npm run test:vrt
 ### 7.4 VRT 自体の architecture 変更（rare ops）
 
 - spec は `tests/e2e/visual-regression.spec.ts`
-- mock は `addInitScript` で `Math.random` / `crypto.randomUUID` / `Date.now` を固定（spec 上部参照）
+- mock は `addInitScript` で `Math.random` / `Date.now` を固定（spec 上部参照）
 - 新 page を VRT 対象に追加: spec の `PAGES` 配列に path 追記 → baseline 再生成
 - 新 viewport 追加: `VIEWPORTS` 配列に追記 → baseline 再生成
 - 詳細: `docs/decisions.md` [066]
