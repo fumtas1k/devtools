@@ -94,7 +94,7 @@ export function parseQrString(raw: string): { payload: string; signature: string
   const payload = raw.slice(0, lastPipe);
   const signature = raw.slice(lastPipe + 1);
   if (!signature) return null;
-  // ペイロード部のフィールド数チェック（PAYLOAD_FIELDS.length フィールド分のパイプ区切り）
+  // ペイロードが PAYLOAD_FIELDS.length 個のフィールドに分解できることを確認
   const payloadParts = payload.split('|');
   if (payloadParts.length !== PAYLOAD_FIELDS.length) return null;
   return { payload, signature };
