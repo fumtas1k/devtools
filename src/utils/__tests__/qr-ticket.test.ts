@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildPayload,
   serializeTicket,
   parseQrString,
   generateKeyPair,
@@ -13,7 +12,6 @@ import {
   generateQrSvg,
   generateTicketId,
   estimateTicketByteSize,
-  PAYLOAD_FIELD_COUNT,
   type TicketPayload,
   type SignedTicket,
 } from '@/utils/qr-ticket';
@@ -53,65 +51,32 @@ describe('estimateTicketByteSize', () => {
 });
 
 // ────────────────────────────────────────────
-// buildPayload
+// serializeTicket
 // ────────────────────────────────────────────
-describe('buildPayload', () => {
+describe('serializeTicket', () => {
   const base: TicketPayload = { e: 'event-01', t: 'T-00001', timestamp: 1735689540 }; // 2024-12-31T23:59:00Z
 
   it('必須フィールドのみでパイプ区切りの文字列を返す', () => {
-    const result = buildPayload(base);
-    expect(result).toBe('event-01|T-00001|1735689540||');
+    expect(serializeTicket(base)).toBe('event-01|T-00001|1735689540||');
   });
 
   it('任意フィールド n, p を含む場合も正しくパイプで連結される', () => {
     const payload: TicketPayload = { ...base, n: '山田 太郎', p: 'VIP' };
-    const result = buildPayload(payload);
-    expect(result).toBe('event-01|T-00001|1735689540|山田 太郎|VIP');
+    expect(serializeTicket(payload)).toBe('event-01|T-00001|1735689540|山田 太郎|VIP');
   });
 
   it('フィールド内に | が含まれる場合は throw する', () => {
     const payload: TicketPayload = { ...base, n: '山田|太郎', p: 'VIP|A' };
-    expect(() => buildPayload(payload)).toThrow('|');
+    expect(() => serializeTicket(payload)).toThrow('|');
   });
 
   it('同一入力で常に同一の出力を返す（決定論性）', () => {
-    expect(buildPayload(base)).toBe(buildPayload(base));
+    expect(serializeTicket(base)).toBe(serializeTicket(base));
   });
 
   it('任意フィールドが空文字の場合は空として連結される', () => {
     const payload: TicketPayload = { ...base, n: '', p: '' };
-    const result = buildPayload(payload);
-    expect(result).toBe('event-01|T-00001|1735689540||');
-  });
-});
-
-// ────────────────────────────────────────────
-// PAYLOAD_FIELD_COUNT
-// ────────────────────────────────────────────
-describe('PAYLOAD_FIELD_COUNT', () => {
-  it('6 であること（ペイロード 5 フィールド + 署名 1）', () => {
-    expect(PAYLOAD_FIELD_COUNT).toBe(6);
-  });
-});
-
-// ────────────────────────────────────────────
-// serializeTicket
-// ────────────────────────────────────────────
-describe('serializeTicket', () => {
-  const base: TicketPayload = { e: 'event-01', t: 'T-00001', timestamp: 1735689540 };
-
-  it('buildPayload と同一のパイプ区切り文字列を返す', () => {
-    expect(serializeTicket(base)).toBe(buildPayload(base));
-  });
-
-  it('任意フィールドを含む場合も正しくシリアライズされる', () => {
-    const payload: TicketPayload = { ...base, n: '山田 太郎', p: 'VIP' };
-    expect(serializeTicket(payload)).toBe('event-01|T-00001|1735689540|山田 太郎|VIP');
-  });
-
-  it('フィールドに | が含まれる場合は throw する', () => {
-    const payload: TicketPayload = { ...base, n: 'bad|name' };
-    expect(() => serializeTicket(payload)).toThrow('|');
+    expect(serializeTicket(payload)).toBe('event-01|T-00001|1735689540||');
   });
 });
 
