@@ -655,19 +655,6 @@
     background: var(--color-bg-subtle);
   }
 
-  /* Gs1Databar: カード追加ボタン (hover で --color-bg-active = blue-50 semantic alias)
-     project rule "Tailwind カラークラス禁止" 遵守のため Tailwind primitive
-     カラー hover utility (hover-prefix + bg + blue-50) を本 class に置換。
-     注意: コメント中に Tailwind utility 名のリテラル文字列を書くと
-     v4 の content scanner に拾われて unused utility が build CSS に
-     混入するため、この種の説明は分割して記述する。 */
-  .hover-bg-active {
-    transition: background-color 0.15s;
-  }
-  .hover-bg-active:hover {
-    background: var(--color-bg-active);
-  }
-
   /* === #136: FileInputButton (label 内包 input 構造のファイル選択ボタン) ===
      input を label の子にすることで :focus-within が parent label に効き、
      キーボードフォーカス時に outline ring が可視化される。

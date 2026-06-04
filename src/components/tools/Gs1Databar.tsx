@@ -17,6 +17,7 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { BareInput } from '@/components/ui/BareInput';
 import { Select } from '@/components/ui/Select';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import { CloseIcon } from '@/components/ui/CloseIcon';
@@ -531,13 +532,9 @@ export function Gs1DatabarTool() {
       {/* 操作バー */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
         {cards.length < MAX_CARDS && (
-          <button
-            type="button"
-            onClick={addCard}
-            className="rounded px-4 py-2 caption font-bold border border-primary bg-transparent text-primary hover-bg-active"
-          >
+          <ActionButton variant="secondary" size="compact" onClick={addCard}>
             + バーコードを追加
-          </button>
+          </ActionButton>
         )}
         {cards.length >= MAX_CARDS && (
           <span className="caption text-muted">最大 {MAX_CARDS} 件まで追加できます</span>
@@ -569,13 +566,9 @@ export function Gs1DatabarTool() {
               ariaLabel="サイズ 小/中/大"
               size="sm"
             />
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="rounded px-4 py-2 caption font-bold border border-primary bg-transparent text-primary hover-bg-active"
-            >
+            <ActionButton variant="secondary" size="compact" onClick={() => window.print()}>
               印刷
-            </button>
+            </ActionButton>
             {printXdim === 'large' && (
               <span className="caption text-muted">大サイズは 1〜2 列を推奨</span>
             )}
