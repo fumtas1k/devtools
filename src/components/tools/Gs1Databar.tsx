@@ -532,7 +532,7 @@ export function Gs1DatabarTool() {
       {/* 操作バー */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
         {cards.length < MAX_CARDS && (
-          <ActionButton variant="secondary" onClick={addCard}>
+          <ActionButton variant="secondary" size="compact" onClick={addCard}>
             + バーコードを追加
           </ActionButton>
         )}
@@ -566,7 +566,7 @@ export function Gs1DatabarTool() {
               ariaLabel="サイズ 小/中/大"
               size="sm"
             />
-            <ActionButton variant="secondary" onClick={() => window.print()}>
+            <ActionButton variant="secondary" size="compact" onClick={() => window.print()}>
               印刷
             </ActionButton>
             {printXdim === 'large' && (
