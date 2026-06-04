@@ -152,10 +152,21 @@ GTIN-14 と任意のアプリケーション識別子（AI）から GS1 DataBar 
 - GS1 General Specifications（GS1 DataBar Limited / GS1 Composite Component、アプリケーション識別子）。
 - GTIN-14。
 
+#### A4 印刷機能
+
+有効なバーコード（`svg` と `gtin` が揃ったカード）を A4 用紙に印刷する。
+
+1. **実寸変換**: bwip-js は `scale: 3`（1 モジュール = 3px）で SVG を生成する。印刷時は `setSvgPrintSize(svg, xdimMm)` が `factor = xdimMm / 3` を計算し、SVG ルート要素の `width`/`height` 属性を mm 値に置換する。これにより **X-dimension（モジュール幅）が xdimMm に一致した mm 実寸**で印刷される（プリンタ DPI 非依存）。
+2. **CSP 両立**: `style-src 'unsafe-inline'` を撤去済みのため、SVG の presentation attribute（`width="52.14mm"`）で実寸を指定する。CSS inline style や `el.style.setProperty` は使用しない。詳細は `docs/decisions.md` [098] を参照。
+3. **レイアウト**: 列数（1/2/3、デフォルト 2）と X-dimension プリセット（小=0.330mm / 中=0.495mm / 大=0.660mm、デフォルト 中）を ToggleGroup で切替。`@page { size: A4; margin: 12mm }` + `.print-cell { border: 1px dashed #000 }` で破線カット線付きグリッドを構成する。
+4. **印刷起動**: in-page `window.print()` を呼ぶ。ブラウザ印刷ダイアログから「PDF に保存」も利用可能。
+
 #### 制限・エッジケース
 
 - GS1 DataBar Limited の入力は 13 桁、**先頭桁は 0 または 1 のみ**（仕様上の制約）。
 - PNG ダウンロード時は白背景での描画が必須（透明背景だと一部リーダーでデコードできない）。合成シンボル上の AI テキスト描画の経緯・トレードオフは `docs/decisions.md` [067] / [082] / [083] を参照。
+- **大サイズ × 3 列は A4 印刷可能幅（約 186mm）を超過し得る**。UI にヒント注記を表示するが、ハードな組合せ制限は設けていない。印刷プレビューで確認すること。
+- 印刷用 SVG（`setSvgPrintSize` 出力）は mm 値の width/height を持つため、`svgContentToPngBlob` に渡すと canvas サイズ抽出が失敗する。両者は別経路で使用すること。
 
 ### QRチケット
 

@@ -3749,3 +3749,41 @@ PR #318 後も `CopyButton`(default) は `rounded`(0.25rem)、`ActionButton`(siz
 - ✅ 両コンポーネントの角丸が共有定数で一元管理され、以降の一方の変更は即座に test fail で検知される。
 - ✅ CopyButton 固有（caption / tracking-wide / gap-1.5 / btn-copy 等）・ActionButton 固有（btn-action / variant class 等）のクラスは各自に残し、共有するのは「compact 高さ + 角丸」部分のみ。
 - ⚠️ CopyButton の見た目（角丸）が変わるため VRT baseline 差分が発生する。CI Linux runner の `Update Visual Regression Baseline` workflow を workflow_dispatch で再生成が必要（ローカル不可）。
+
+---
+
+## [098] 2026-06-05 — GS1 DataBar 印刷実寸を SVG 属性で指定（CSP style-src 撤去と両立）
+
+**2026-06-05 | ステータス: 採用**
+
+### 背景
+
+GS1 DataBar 生成ツールに A4 印刷機能を追加するにあたり、バーコードを mm 実寸で印刷する必要がある。プリンタ DPI に依存しない実寸指定が必須だが、本プロジェクトは CSP `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、JSX の `style={{}}` や `el.style.setProperty` による動的サイズ指定は使用できない。
+
+### 決断
+
+- **SVG ルート要素の presentation attribute（`width`/`height` 属性）で mm 値を指定する**（例: `<svg width="52.14mm" height="13.20mm" ...>`）。SVG presentation attribute は CSS inline style ではなく HTML 属性であるため、CSP `style-src` の制約対象外。
+- `setSvgPrintSize(svg, xdimMm, scale=3)` 関数を `src/utils/gs1-databar.ts` に追加。bwip-js の `scale: 3`（1 モジュール = 3px）を基準に `factor = xdimMm / scale` で mm/px 換算し、viewBox の W/H にかけて width/height 属性を mm 値に置換する。
+- 列数（1/2/3）は静的 CSS クラス `.print-grid--cols-1/2/3` を `className` で切替えるだけにし、動的 inline style を一切使用しない。
+
+### X-dimension プリセット根拠（GS1 General Specifications 準拠）
+
+| プリセット | X-dim (mm) | 用途                                     |
+| ---------- | ---------- | ---------------------------------------- |
+| 小         | 0.330      | GS1 DataBar target X-dim（密集配置向け） |
+| 中         | 0.495      | 標準的な流通用途                         |
+| 大         | 0.660      | 一般流通の上限付近（カメラ距離向け）     |
+
+全体を同一 factor で拡大するため、合成シンボルの text/quiet zone を含んでもリニア部のモジュール幅は常に xdimMm に一致する。
+
+### 却下した選択肢
+
+- **CSS custom property (`--print-width: 52.14mm`) を `@layer components` に動的注入**: `useDynamicStyleSheet` 経由で constructable stylesheet に書き込む手法（ToggleGroup の実装と同様）も CSP 準拠だが、印刷用途では SVG 自体が寸法を持つほうがシンプルで外部依存が少ない。
+- **`style={{}}` JSX inline style**: CSP 違反（`style-src 'unsafe-inline'` 不在）のため却下。
+
+### 結果・トレードオフ
+
+- ✅ CSP `style-src 'unsafe-inline'` なしで mm 実寸印刷が実現できる。
+- ✅ `setSvgPrintSize` の出力は画面表示用 SVG とは別物であり、`svgContentToPngBlob`（`width="(\d+)" height="(\d+)"` px 隣接 contract）には渡さない設計を JSDoc で明記。
+- ⚠️ 大サイズ（0.660mm）× 3 列は A4 印刷可能幅（約 186mm）を超過し得る。UI に「大サイズは 1〜2 列を推奨」ヒントを表示するがハードな制限は設けない（MVP）。
+- ⚠️ 操作バーに印刷コントロールが追加されるため VRT baseline の更新が必要。CI Linux runner の `Update Visual Regression Baseline` workflow を明示承認後に dispatch すること（ローカル不可）。

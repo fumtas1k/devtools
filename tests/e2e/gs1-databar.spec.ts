@@ -388,4 +388,120 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       }
     });
   });
+
+  // ─────────────────────────────────────────────
+  // A4 印刷機能
+  // ─────────────────────────────────────────────
+  test.describe('A4 印刷機能', () => {
+    test('有効バーコード 0 件では印刷コントロールが非表示', async ({ browser }) => {
+      await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+        // 初期状態: バーコード未生成。印刷ボタンは表示されない。
+        await expect(page.getByRole('button', { name: '印刷' })).toBeHidden();
+        // 列数・サイズ ToggleGroup も非表示
+        await expect(page.getByRole('group', { name: '列数' })).toBeHidden();
+        await expect(page.getByRole('group', { name: 'サイズ 小/中/大' })).toBeHidden();
+      });
+    });
+
+    test('有効バーコード 1 件以上で印刷コントロールが表示される', async ({ browser }) => {
+      await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+        // GTIN を入力してバーコード生成
+        await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+        await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+        // 印刷コントロールが表示される
+        await expect(page.getByRole('button', { name: '印刷' })).toBeVisible();
+        await expect(page.getByRole('group', { name: '列数' })).toBeVisible();
+        await expect(page.getByRole('group', { name: 'サイズ 小/中/大' })).toBeVisible();
+      });
+    });
+
+    test('列数 ToggleGroup 切替で印刷コンテナの grid クラスが更新される', async ({ browser }) => {
+      await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+        await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+        await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+        // デフォルト 2列
+        const printGrid = page.locator('.print-grid');
+        await expect(printGrid).toHaveClass(/print-grid--cols-2/);
+
+        // 3列に切替
+        await page.getByRole('group', { name: '列数' }).getByText('3列').click();
+        await expect(printGrid).toHaveClass(/print-grid--cols-3/);
+
+        // 1列に切替
+        await page.getByRole('group', { name: '列数' }).getByText('1列').click();
+        await expect(printGrid).toHaveClass(/print-grid--cols-1/);
+      });
+    });
+
+    test('サイズ ToggleGroup 切替で .print-area 内 SVG の width 属性が mm 値で更新される', async ({
+      browser,
+    }) => {
+      await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+        await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+        await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+        // デフォルト「中」: print-area 内 SVG の width が mm 値を持つ
+        const getPrintSvgWidth = () =>
+          page.evaluate(() => {
+            const svg = document.querySelector('.print-area svg');
+            return svg?.getAttribute('width') ?? '';
+          });
+
+        const widthMedium = await getPrintSvgWidth();
+        expect(widthMedium).toMatch(/mm$/);
+
+        // 「大」に切替
+        await page.getByRole('group', { name: 'サイズ 小/中/大' }).getByText('大').click();
+        const widthLarge = await getPrintSvgWidth();
+        expect(widthLarge).toMatch(/mm$/);
+        // 大は中より数値が大きい
+        expect(parseFloat(widthLarge)).toBeGreaterThan(parseFloat(widthMedium));
+
+        // 「小」に切替
+        await page.getByRole('group', { name: 'サイズ 小/中/大' }).getByText('小').click();
+        const widthSmall = await getPrintSvgWidth();
+        expect(widthSmall).toMatch(/mm$/);
+        // 小は中より数値が小さい
+        expect(parseFloat(widthSmall)).toBeLessThan(parseFloat(widthMedium));
+      });
+    });
+
+    test('「印刷」ボタン click で例外が出ない（window.print をスタブ化）', async ({ browser }) => {
+      await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+        await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+        await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+        // window.print をスタブ化してダイアログが開かないようにする
+        await page.evaluate(() => {
+          window.print = () => {};
+        });
+
+        // クリックして例外が出ないことを確認
+        await expect(page.getByRole('button', { name: '印刷' })).toBeVisible();
+        await page.getByRole('button', { name: '印刷' }).click();
+        // エラーメッセージが表示されないことを確認
+        await expect(page.getByRole('alert')).toBeHidden();
+      });
+    });
+
+    test('大サイズ選択時に推奨ヒントが表示される', async ({ browser }) => {
+      await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+        await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+        await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+        // デフォルト「中」ではヒント非表示
+        await expect(page.getByText('大サイズは 1〜2 列を推奨')).toBeHidden();
+
+        // 「大」に切替するとヒント表示
+        await page.getByRole('group', { name: 'サイズ 小/中/大' }).getByText('大').click();
+        await expect(page.getByText('大サイズは 1〜2 列を推奨')).toBeVisible();
+
+        // 「中」に戻すとヒント非表示
+        await page.getByRole('group', { name: 'サイズ 小/中/大' }).getByText('中').click();
+        await expect(page.getByText('大サイズは 1〜2 列を推奨')).toBeHidden();
+      });
+    });
+  });
 });
