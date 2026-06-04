@@ -80,13 +80,13 @@ describe('serializeTicket', () => {
   });
 
   it('timestamp が 0 の場合は "0" として連結される（serializeTicket 自体は検証しない）', () => {
-    const payload: TicketPayload = { e: 'ev', t: 'T-1', timestamp: 0 };
-    expect(serializeTicket(payload)).toBe('ev|T-1|0||');
+    const payload: TicketPayload = { ...base, timestamp: 0 };
+    expect(serializeTicket(payload)).toBe('event-01|T-00001|0||');
   });
 
   it('timestamp が負値の場合も文字列として連結される（検証は verifyTicket に委譲）', () => {
-    const payload: TicketPayload = { e: 'ev', t: 'T-1', timestamp: -3600 };
-    expect(serializeTicket(payload)).toBe('ev|T-1|-3600||');
+    const payload: TicketPayload = { ...base, timestamp: -3600 };
+    expect(serializeTicket(payload)).toBe('event-01|T-00001|-3600||');
   });
 });
 
