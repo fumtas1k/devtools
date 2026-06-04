@@ -19,9 +19,6 @@ export const MAX_QR_BYTE_SIZE = 250;
 /** ペイロードのフィールド名リスト（シリアライズ順） */
 const PAYLOAD_FIELDS = ['e', 't', 'timestamp', 'n', 'p'] as const;
 
-/** QRコードに含まれるパイプ区切りフィールドの数 (eventId|ticketId|timestamp|name|category|signature) */
-export const PAYLOAD_FIELD_COUNT = PAYLOAD_FIELDS.length + 1; // +1 は signature 分
-
 // ─── 型定義 ───────────────────────────────────────────────
 
 export interface TicketPayload {
@@ -63,7 +60,7 @@ function sanitizeField(value: string | undefined): string {
 }
 
 /** 署名対象のペイロード文字列を構築（パイプ区切り形式） */
-export function buildPayload(ticket: TicketPayload): string {
+function buildPayload(ticket: TicketPayload): string {
   const e = sanitizeField(ticket.e);
   const t = sanitizeField(ticket.t);
   const ts = String(ticket.timestamp);
@@ -97,7 +94,7 @@ export function parseQrString(raw: string): { payload: string; signature: string
   const payload = raw.slice(0, lastPipe);
   const signature = raw.slice(lastPipe + 1);
   if (!signature) return null;
-  // ペイロード部のフィールド数チェック（PAYLOAD_FIELD_COUNT - 1 個のパイプ区切り = PAYLOAD_FIELDS.length フィールド）
+  // ペイロードが PAYLOAD_FIELDS.length 個のフィールドに分解できることを確認
   const payloadParts = payload.split('|');
   if (payloadParts.length !== PAYLOAD_FIELDS.length) return null;
   return { payload, signature };
