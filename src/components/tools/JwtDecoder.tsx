@@ -45,7 +45,7 @@ function PayloadValue({ k, v }: { k: string; v: unknown }) {
       <span className="jwt-json-key">"{k}"</span>
       <span className="text-default">: </span>
       <span className="jwt-json-value">{JSON.stringify(v)}</span>
-      {isTs && <span className="ml-2 text-xs text-muted">→ {formatTimestamp(v as number)}</span>}
+      {isTs && <span className="ml-2 hint-xs text-muted">→ {formatTimestamp(v as number)}</span>}
     </span>
   );
 }

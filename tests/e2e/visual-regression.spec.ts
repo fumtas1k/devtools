@@ -7,7 +7,7 @@ import { PAGES, STATIC_PAGES } from './visual-regression-pages';
  *
  * 全 18 ページ × 2 viewport (Desktop 1280×800 / Mobile 390×844) = 36 screenshot を
  * baseline 比較する。production code には一切手を入れず、`addInitScript` で
- * `Math.random` / `crypto.randomUUID` / `Date.now` を deterministic に固定して non-determinism を排除。
+ * `Math.random` / `Date.now` を deterministic に固定して non-determinism を排除。
  *
  * 運用:
  * - baseline は CI Linux runner で生成（mac とのフォントレンダリング差を回避）
@@ -48,17 +48,6 @@ for (const viewport of VIEWPORTS) {
             seed = (seed * 1103515245 + 12345) & 0x7fffffff;
             return seed / 0x7fffffff;
           };
-
-          // Incremental UUID counter: 00000000-0000-0000-0000-NNNNNNNNNNNN 形式に
-          let uuidCounter = 0;
-          if (window.crypto) {
-            const fixedUuid = (): `${string}-${string}-${string}-${string}-${string}` => {
-              uuidCounter++;
-              const n = uuidCounter.toString().padStart(12, '0');
-              return `00000000-0000-0000-0000-${n}` as `${string}-${string}-${string}-${string}-${string}`;
-            };
-            window.crypto.randomUUID = fixedUuid;
-          }
 
           // Fixed Date: 2026-01-01T00:00:00Z で固定
           // Date.now() に加え `new Date()` (引数なし) も FIXED_NOW を返すよう constructor も mock

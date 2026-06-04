@@ -198,6 +198,43 @@ export function addSvgDimensions(svg: string): string {
 }
 
 /**
+ * A4 印刷用に SVG ルート要素の `width`/`height` 属性を mm 実寸に置換する。
+ *
+ * bwip-js は `scale: 3`（1 モジュール = 3px）で生成し、`addSvgDimensions` が
+ * viewBox の W/H から px 整数の width/height 属性を注入済み。本関数はその px 値を
+ * `factor = xdimMm / scale`（mm per px）で mm 値に変換し、X-dimension が xdimMm に
+ * 一致した印刷用 SVG を返す。
+ *
+ * 置換は `injectCompositeText` と同じルート開始タグへの anchor 手法を使用し、
+ * 子要素の width/height 属性を誤置換しない。
+ *
+ * viewBox 属性が見つからない場合は入力 svg をそのまま返す（防御的フォールバック）。
+ *
+ * @param svg - `addSvgDimensions` 済みの SVG 文字列（ルートに viewBox が必要）。
+ * @param xdimMm - 目標 X-dimension（モジュール幅）の mm 値。
+ * @param scale - bwip-js の scale 値（デフォルト 3）。
+ * @returns width/height 属性を mm 値に置換した SVG 文字列。
+ *
+ * @remarks
+ * この出力は PNG 変換経路 `svgContentToPngBlob` に渡さないこと。
+ * `svgContentToPngBlob` は `width="(\d+)" height="(\d+)"` の px 整数隣接 contract に
+ * 依存しており（`utils/download.ts:183-186`）、mm 値を渡すと canvas サイズ抽出が失敗する。
+ */
+export function setSvgPrintSize(svg: string, xdimMm: number, scale = 3): string {
+  const vbMatch = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  if (!vbMatch) return svg;
+  const W = parseFloat(vbMatch[1]);
+  const H = parseFloat(vbMatch[2]);
+  const factor = xdimMm / scale;
+  const wMm = (W * factor).toFixed(2);
+  const hMm = (H * factor).toFixed(2);
+  // ルート <svg ...> 開始タグにのみ anchor して置換（子要素の width/height を誤置換しない）
+  return svg
+    .replace(/(<svg\s[^>]*?)width="[\d.]+"/, `$1width="${wMm}mm"`)
+    .replace(/(<svg\s[^>]*?)height="[\d.]+"/, `$1height="${hMm}mm"`);
+}
+
+/**
  * HTML/XML 特殊文字をエスケープする (`injectCompositeText` の安全な text 注入用)。
  */
 export function escapeHtml(text: string): string {

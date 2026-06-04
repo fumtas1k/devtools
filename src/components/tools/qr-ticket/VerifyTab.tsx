@@ -120,7 +120,7 @@ export function VerifyTab({
                   aria-label="画像を選択"
                 />
               </label>
-              <p className="text-xs text-muted mt-1">
+              <p className="hint-xs text-muted mt-1">
                 対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
               </p>
               {!verifyPubKeyStr.trim() && (

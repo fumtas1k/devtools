@@ -18,9 +18,7 @@ const jsonLd = {
   jsonLd={jsonLd}
 >
   <main class="mx-auto max-w-2xl px-6 py-12" id="main-content">
-    <h1 class="mb-8 font-bold text-[1.75rem] leading-[1.4] tracking-[0.02em] text-default">
-      About
-    </h1>
+    <h1 class="mb-8 font-bold page-heading text-default">About</h1>
 
     <section class="mb-10">
       <h2 class="mb-3 font-bold section-heading text-default">DevTools とは</h2>
@@ -53,10 +51,7 @@ const jsonLd = {
         {
           tools.map((tool) => (
             <li>
-              <a
-                href={`/tools/${tool.slug}`}
-                class="text-link text-base leading-[1.7] tracking-[0.02em]"
-              >
+              <a href={`/tools/${tool.slug}`} class="text-link link-text">
                 {tool.name}
               </a>
               <span class="ml-2 caption text-muted">— {tool.description}</span>

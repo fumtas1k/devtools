@@ -593,6 +593,14 @@
     opacity: 0.7;
   }
 
+  /* 0.75rem の補足テキスト用 semantic class（Tailwind primitive `text-xs` 直書きの代替）。
+     Tailwind v4 の text-xs (font-size 0.75rem / line-height calc(1/0.75)) を完全再現し、
+     VRT を不変に保ちつつ primitive utility 依存を解消する（issue #399 案B）。 */
+  .hint-xs {
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+  }
+
   /* === Gs1Databar: バーコードプレビューの sub-pixel anti-alias 抑止 ===
      bwip-js は bar を <path stroke="#000000" stroke-width="N" d="..."> で描く。
      vector だがブラウザは high-DPR / 非整数 scaling 時に raster cache を介して
@@ -645,19 +653,6 @@
   }
   .hover-bg-subtle:hover {
     background: var(--color-bg-subtle);
-  }
-
-  /* Gs1Databar: カード追加ボタン (hover で --color-bg-active = blue-50 semantic alias)
-     project rule "Tailwind カラークラス禁止" 遵守のため Tailwind primitive
-     カラー hover utility (hover-prefix + bg + blue-50) を本 class に置換。
-     注意: コメント中に Tailwind utility 名のリテラル文字列を書くと
-     v4 の content scanner に拾われて unused utility が build CSS に
-     混入するため、この種の説明は分割して記述する。 */
-  .hover-bg-active {
-    transition: background-color 0.15s;
-  }
-  .hover-bg-active:hover {
-    background: var(--color-bg-active);
   }
 
   /* === #136: FileInputButton (label 内包 input 構造のファイル選択ボタン) ===
@@ -760,6 +755,29 @@
     line-height: 1.8;
     letter-spacing: 0.02em;
     color: var(--color-neutral-700);
+  }
+
+  /* ページ h1 見出し: about/privacy/404 の静的ページ共通 (1.75rem)。
+     .section-heading (h2, 1.125rem) より一段大きい page タイトル用。
+     color は .section-heading と同様 class に含めず consumer 側で text-default を併用 (issue #535)。 */
+  .page-heading {
+    font-size: 1.75rem;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+
+  /* 404 ページの装飾的エラーコード (大型数字 "404")。色は text-primary を併用 (issue #535)。 */
+  .error-code {
+    font-size: 4rem;
+    line-height: 1;
+  }
+
+  /* 静的ページのリンクテキスト typography: about/404 のツール/ホームリンク。
+     色は text-link を併用 (typography のみ定義) (issue #535)。 */
+  .link-text {
+    font-size: 1rem;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
   }
 
   /* Horizontal scroll snap container: index hero carousel (1 occurrence、5 prop)
@@ -1029,6 +1047,58 @@
       opacity: 1;
       pointer-events: auto;
     }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   A4 印刷（GS1 DataBar 生成ツール）
+   画面では非表示。@media print のみ可視化する。
+   印刷コンテナは createPortal で document.body 直下へ出し通常フロー配置にする。
+   position:absolute コンテナは Chrome 等で複数ページがクリップされる既知挙動が
+   あるため、body 直下 chrome を display:none で隠し .print-area を通常フローで
+   ページ送りさせる方式に変更した（docs/decisions.md [098]）。
+   variant prefix（hover: 等）は使わない（Tailwind v4 @layer components 制約）。
+   印刷専用色は #000 固定（黒インクが適切）。
+   ──────────────────────────────────────────────────────────── */
+.print-area {
+  display: none; /* 画面では非表示 */
+}
+
+@media print {
+  /* body 直下の chrome（header/main/footer/script 等）を隠し、portal した
+     .print-area のみ通常フローで表示する。absolute 配置を使わないため
+     複数ページ印刷でもページ送りが正常に機能する。 */
+  body > *:not(.print-area) {
+    display: none !important;
+  }
+  .print-area {
+    display: block;
+    color: #000;
+  }
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  .print-grid {
+    display: grid;
+    gap: 10mm;
+  }
+  .print-grid--cols-1 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+  .print-grid--cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .print-grid--cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .print-cell {
+    border: 1px dashed #000;
+    padding: 4mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    break-inside: avoid;
   }
 }
 
