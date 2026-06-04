@@ -3780,10 +3780,12 @@ GS1 DataBar 生成ツールに A4 印刷機能を追加するにあたり、バ�
 
 - **CSS custom property (`--print-width: 52.14mm`) を `@layer components` に動的注入**: `useDynamicStyleSheet` 経由で constructable stylesheet に書き込む手法（ToggleGroup の実装と同様）も CSP 準拠だが、印刷用途では SVG 自体が寸法を持つほうがシンプルで外部依存が少ない。
 - **`style={{}}` JSX inline style**: CSP 違反（`style-src 'unsafe-inline'` 不在）のため却下。
+- **`position: absolute; inset: 0` + `body * { visibility: hidden }` の単ページ前提パターン**: 印刷の定番パターンだが、絶対配置コンテナは Chrome 等で **2 ページ目以降がクリップされ印刷されない既知挙動**がある。`MAX_CARDS = 10` × 大サイズ（0.66mm）× 1 列だと A4 印刷可能高さ（約 273mm）を超え多ページになるため、10 件バッチ印刷で末尾がサイレントに欠落する。これを避けるため、印刷コンテナを `createPortal` で `document.body` 直下へ出し、`@media print` で `body > *:not(.print-area) { display: none }` により兄弟（ページ chrome）を隠して `.print-area` を**通常フロー配置（position:static）**でページ送りさせる方式に変更した（PR レビュー指摘で修正）。`createPortal` は Astro `client:load` の SSR で `document` 不在で落ちるため、`mounted` フラグで mount 後に限定する。
 
 ### 結果・トレードオフ
 
 - ✅ CSP `style-src 'unsafe-inline'` なしで mm 実寸印刷が実現できる。
 - ✅ `setSvgPrintSize` の出力は画面表示用 SVG とは別物であり、`svgContentToPngBlob`（`width="(\d+)" height="(\d+)"` px 隣接 contract）には渡さない設計を JSDoc で明記。
-- ⚠️ 大サイズ（0.660mm）× 3 列は A4 印刷可能幅（約 186mm）を超過し得る。UI に「大サイズは 1〜2 列を推奨」ヒントを表示するがハードな制限は設けない（MVP）。
+- ✅ 印刷コンテナを `createPortal` で body 直下へ出し通常フロー配置にしたことで、**複数ページ印刷でも 2 ページ目以降がクリップされない**（10 件バッチ印刷の正当利用に対応）。
+- ⚠️ 大サイズ（0.660mm）× 3 列は A4 印刷可能**幅**（約 186mm）を超過し得る。これは幅方向の別問題で portal では解決しない。UI に「大サイズは 1〜2 列を推奨」ヒントを表示するがハードな制限は設けない（MVP）。
 - ⚠️ 操作バーに印刷コントロールが追加されるため VRT baseline の更新が必要。CI Linux runner の `Update Visual Regression Baseline` workflow を明示承認後に dispatch すること（ローカル不可）。

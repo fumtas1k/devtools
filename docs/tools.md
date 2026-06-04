@@ -160,6 +160,7 @@ GTIN-14 と任意のアプリケーション識別子（AI）から GS1 DataBar 
 2. **CSP 両立**: `style-src 'unsafe-inline'` を撤去済みのため、SVG の presentation attribute（`width="52.14mm"`）で実寸を指定する。CSS inline style や `el.style.setProperty` は使用しない。詳細は `docs/decisions.md` [098] を参照。
 3. **レイアウト**: 列数（1/2/3、デフォルト 2）と X-dimension プリセット（小=0.330mm / 中=0.495mm / 大=0.660mm、デフォルト 中）を ToggleGroup で切替。`@page { size: A4; margin: 12mm }` + `.print-cell { border: 1px dashed #000 }` で破線カット線付きグリッドを構成する。
 4. **印刷起動**: in-page `window.print()` を呼ぶ。ブラウザ印刷ダイアログから「PDF に保存」も利用可能。
+5. **複数ページ対応**: 印刷コンテナは `createPortal` で `document.body` 直下へ出し、通常フロー配置で複数ページ印刷に対応する（`position: absolute` 配置は Chrome 等で 2 ページ目以降がクリップされる既知挙動があるため）。10 件 × 大サイズ等で A4 高さを超えてもページ送りされる。詳細は `docs/decisions.md` [098] を参照。
 
 #### 制限・エッジケース
 

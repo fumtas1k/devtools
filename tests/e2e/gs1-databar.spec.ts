@@ -503,5 +503,24 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
         await expect(page.getByText('大サイズは 1〜2 列を推奨')).toBeHidden();
       });
     });
+
+    test('印刷コンテナは createPortal で document.body 直下に配置される', async ({ browser }) => {
+      await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
+        await page.getByLabel('GTIN-14（先頭13桁）').fill('0498700000001');
+        await expect(page.getByLabel(/GS1 DataBar.*のバーコード/)).toBeVisible();
+
+        // .print-area が document.body の直接の子要素として存在することを検証。
+        // createPortal が body 直下へ出すことで @media print の通常フロー配置
+        // （複数ページ印刷でクリップしない）が成立する。
+        // aria-hidden な印刷専用要素のため role/text を持たず、構造検証は evaluate で行う。
+        const isDirectBodyChild = await page.evaluate(() => {
+          const printAreas = Array.from(document.body.children).filter((el) =>
+            el.classList.contains('print-area')
+          );
+          return printAreas.length === 1;
+        });
+        expect(isDirectBodyChild).toBe(true);
+      });
+    });
   });
 });

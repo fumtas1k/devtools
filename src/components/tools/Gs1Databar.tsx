@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useId, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { getErrorMessage } from '@/utils/errors';
 import bwipjs from 'bwip-js';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -435,6 +436,10 @@ export function Gs1DatabarTool() {
   const [zipError, setZipError] = useState('');
   const [printCols, setPrintCols] = useState<PrintColsValue>('2');
   const [printXdim, setPrintXdim] = useState<PrintXdimValue>('medium');
+  // Astro client:load で SSR されるため、document.body 参照 (createPortal) は
+  // mount 後に限定する。SSR 時に createPortal を呼ぶと document 不在で落ちる。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const addCard = () => {
     if (cards.length >= MAX_CARDS) return;
@@ -580,18 +585,25 @@ export function Gs1DatabarTool() {
 
       {zipError && <ErrorMessage message={`ZIP ダウンロードエラー: ${zipError}`} variant="block" />}
 
-      {/* 印刷コンテナ（画面では非表示・@media print で可視化） */}
-      <div className="print-area" aria-hidden="true">
-        <div className={`print-grid print-grid--cols-${printCols}`}>
-          {printEntries.map((e) => (
-            <div
-              key={e.gtin}
-              className="print-cell"
-              dangerouslySetInnerHTML={{ __html: e.printSvg }}
-            />
-          ))}
-        </div>
-      </div>
+      {/* 印刷コンテナ（画面では非表示・@media print で可視化）。
+          createPortal で document.body 直下へ出し通常フロー配置にすることで、
+          複数ページ印刷でも 2 ページ目以降がクリップされない
+          (position:absolute コンテナは Chrome 等で多ページがクリップされる既知挙動)。 */}
+      {mounted &&
+        createPortal(
+          <div className="print-area" aria-hidden="true">
+            <div className={`print-grid print-grid--cols-${printCols}`}>
+              {printEntries.map((e) => (
+                <div
+                  key={e.gtin}
+                  className="print-cell"
+                  dangerouslySetInnerHTML={{ __html: e.printSvg }}
+                />
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

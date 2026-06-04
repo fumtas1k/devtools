@@ -1066,24 +1066,25 @@
 /* ────────────────────────────────────────────────────────────
    A4 印刷（GS1 DataBar 生成ツール）
    画面では非表示。@media print のみ可視化する。
+   印刷コンテナは createPortal で document.body 直下へ出し通常フロー配置にする。
+   position:absolute コンテナは Chrome 等で複数ページがクリップされる既知挙動が
+   あるため、body 直下 chrome を display:none で隠し .print-area を通常フローで
+   ページ送りさせる方式に変更した（docs/decisions.md [098]）。
    variant prefix（hover: 等）は使わない（Tailwind v4 @layer components 制約）。
    印刷専用色は #000 固定（黒インクが適切）。
    ──────────────────────────────────────────────────────────── */
 .print-area {
-  display: none;
+  display: none; /* 画面では非表示 */
 }
 
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .print-area,
-  .print-area * {
-    visibility: visible;
+  /* body 直下の chrome（header/main/footer/script 等）を隠し、portal した
+     .print-area のみ通常フローで表示する。absolute 配置を使わないため
+     複数ページ印刷でもページ送りが正常に機能する。 */
+  body > *:not(.print-area) {
+    display: none !important;
   }
   .print-area {
-    position: absolute;
-    inset: 0;
     display: block;
     color: #000;
   }
