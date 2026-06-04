@@ -6,6 +6,7 @@ import {
   addSvgDimensions,
   escapeHtml,
   injectCompositeText,
+  setSvgPrintSize,
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
@@ -355,5 +356,50 @@ describe('injectCompositeText', () => {
     // svg root には元々 width 属性が無いため anchor 付き regex は no-op (注入もしない)。
     // viewBox は別 regex で更新される (anchor 無関係)。
     expect(out).toMatch(/viewBox="0 0 124\.0 74\.0"/);
+  });
+});
+
+// ────────────────────────────────────────────
+// setSvgPrintSize
+// ────────────────────────────────────────────
+describe('setSvgPrintSize', () => {
+  // viewBox="0 0 237 60"、scale=3、Xdim=0.66 のとき
+  // factor = 0.66 / 3 = 0.22
+  // width = 237 * 0.22 = 52.14 → "52.14mm"
+  // height = 60 * 0.22 = 13.20 → "13.20mm"
+  it('viewBox 0 0 237 60 + Xdim=0.66 → width="52.14mm" height="13.20mm"', () => {
+    const svg =
+      '<svg width="237" height="60" shape-rendering="crispEdges" viewBox="0 0 237 60"><rect/></svg>';
+    const result = setSvgPrintSize(svg, 0.66);
+    expect(result).toMatch(/width="52\.14mm"/);
+    expect(result).toMatch(/height="13\.20mm"/);
+  });
+
+  it('viewBox なし入力はそのまま返す（パススルー）', () => {
+    const svg = '<svg width="237" height="60"><rect/></svg>';
+    const result = setSvgPrintSize(svg, 0.66);
+    expect(result).toBe(svg);
+  });
+
+  it('Xdim を変えると width が変わる（0.33 vs 0.495）', () => {
+    const svg =
+      '<svg width="237" height="60" shape-rendering="crispEdges" viewBox="0 0 237 60"><rect/></svg>';
+    const small = setSvgPrintSize(svg, 0.33);
+    const medium = setSvgPrintSize(svg, 0.495);
+    // factor_small = 0.33/3 = 0.11 → width = 237*0.11 = 26.07mm
+    expect(small).toMatch(/width="26\.07mm"/);
+    // factor_medium = 0.495/3 = 0.165 → width = 237*0.165 = 39.11mm
+    expect(medium).toMatch(/width="39\.11mm"/);
+  });
+
+  it('子要素の width 属性を誤置換しない（ルート anchor 保護）', () => {
+    const svg =
+      '<svg width="237" height="60" shape-rendering="crispEdges" viewBox="0 0 237 60">' +
+      '<rect width="10" height="20"/></svg>';
+    const result = setSvgPrintSize(svg, 0.66);
+    // ルート SVG は mm 値に置換される
+    expect(result).toMatch(/width="52\.14mm"/);
+    // 子 rect の width は変わらない
+    expect(result).toMatch(/<rect width="10" height="20"/);
   });
 });

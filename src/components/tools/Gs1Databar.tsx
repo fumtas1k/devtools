@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useId, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { getErrorMessage } from '@/utils/errors';
 import bwipjs from 'bwip-js';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -8,9 +9,11 @@ import {
   buildBwipText,
   addSvgDimensions,
   injectCompositeText,
+  setSvgPrintSize,
   AI_DEFS,
   type AiCode,
 } from '@/utils/gs1-databar';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { BareInput } from '@/components/ui/BareInput';
 import { Select } from '@/components/ui/Select';
@@ -400,6 +403,28 @@ interface CardSvgState {
   gtin: string;
 }
 
+// X-dimension プリセット（GS1 General Specifications 準拠）
+type PrintColsValue = '1' | '2' | '3';
+type PrintXdimValue = 'small' | 'medium' | 'large';
+
+const PRINT_COLS_OPTIONS: { value: PrintColsValue; label: string }[] = [
+  { value: '1', label: '1列' },
+  { value: '2', label: '2列' },
+  { value: '3', label: '3列' },
+];
+
+const PRINT_XDIM_OPTIONS: { value: PrintXdimValue; label: string }[] = [
+  { value: 'small', label: '小' },
+  { value: 'medium', label: '中' },
+  { value: 'large', label: '大' },
+];
+
+const XDIM_MM: Record<PrintXdimValue, number> = {
+  small: 0.33,
+  medium: 0.495,
+  large: 0.66,
+};
+
 export function Gs1DatabarTool() {
   // useId は SSR/CSR で同じ値を返すため hydration mismatch を避けられる。
   // 複数 card 用に incremental counter で suffix を付与する (crypto.randomUUID() は SSR/CSR で値が割れるため不可)。
@@ -409,6 +434,12 @@ export function Gs1DatabarTool() {
   const [cardSvgs, setCardSvgs] = useState<Record<string, CardSvgState>>({});
   const [isZipping, setIsZipping] = useState(false);
   const [zipError, setZipError] = useState('');
+  const [printCols, setPrintCols] = useState<PrintColsValue>('2');
+  const [printXdim, setPrintXdim] = useState<PrintXdimValue>('medium');
+  // Astro client:load で SSR されるため、document.body 参照 (createPortal) は
+  // mount 後に限定する。SSR 時に createPortal を呼ぶと document 不在で落ちる。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const addCard = () => {
     if (cards.length >= MAX_CARDS) return;
@@ -431,6 +462,21 @@ export function Gs1DatabarTool() {
 
   const validEntries = Object.entries(cardSvgs).filter(([, v]) => v.svg && v.gtin);
   const canDownloadAll = validEntries.length >= 2;
+  const canPrint = validEntries.length >= 1;
+
+  // 印刷用 SVG: 各エントリを setSvgPrintSize で mm 実寸に変換。
+  // 画面表示用の cardSvgs（px 寸法）とは別物。svgContentToPngBlob には渡さない。
+  const printEntries = useMemo(
+    () =>
+      validEntries.map(([, { svg, gtin }]) => ({
+        gtin,
+        printSvg: setSvgPrintSize(svg, XDIM_MM[printXdim]),
+      })),
+    // cardSvgs が変わるたびに validEntries も変わるため cardSvgs を依存に含める。
+    // printXdim が変わると factor が変わるため明示。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cardSvgs, printXdim]
+  );
 
   // svgContentToPngBlob / downloadZip は reject 可能。旧実装は try/finally のみで
   // unhandled promise rejection を発生させていた (issue #338)。catch を追加し
@@ -505,9 +551,59 @@ export function Gs1DatabarTool() {
             variant="primary"
           />
         )}
+
+        {/* 印刷コントロール（有効バーコードが 1 件以上のとき表示） */}
+        {canPrint && (
+          <>
+            <ToggleGroup<PrintColsValue>
+              options={PRINT_COLS_OPTIONS}
+              value={printCols}
+              onChange={setPrintCols}
+              ariaLabel="列数"
+              size="sm"
+            />
+            <ToggleGroup<PrintXdimValue>
+              options={PRINT_XDIM_OPTIONS}
+              value={printXdim}
+              onChange={setPrintXdim}
+              ariaLabel="サイズ 小/中/大"
+              size="sm"
+            />
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded px-4 py-2 caption font-bold border border-primary bg-transparent text-primary hover-bg-active"
+            >
+              印刷
+            </button>
+            {printXdim === 'large' && (
+              <span className="caption text-muted">大サイズは 1〜2 列を推奨</span>
+            )}
+          </>
+        )}
       </div>
 
       {zipError && <ErrorMessage message={`ZIP ダウンロードエラー: ${zipError}`} variant="block" />}
+
+      {/* 印刷コンテナ（画面では非表示・@media print で可視化）。
+          createPortal で document.body 直下へ出し通常フロー配置にすることで、
+          複数ページ印刷でも 2 ページ目以降がクリップされない
+          (position:absolute コンテナは Chrome 等で多ページがクリップされる既知挙動)。 */}
+      {mounted &&
+        createPortal(
+          <div className="print-area" aria-hidden="true">
+            <div className={`print-grid print-grid--cols-${printCols}`}>
+              {printEntries.map((e) => (
+                <div
+                  key={e.gtin}
+                  className="print-cell"
+                  dangerouslySetInnerHTML={{ __html: e.printSvg }}
+                />
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
