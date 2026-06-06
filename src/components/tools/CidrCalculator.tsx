@@ -1,8 +1,9 @@
 /**
- * CIDR/サブネット計算機（PR2: info モード + 分割モード）
+ * CIDR/サブネット計算機（PR3: info モード + 分割モード + 重複検出モード）
  *
  * - 計算モード: CIDR のネットワーク情報を一覧表示（PR1 から継続）
  * - 分割モード: 指定 prefix 長でサブネットを等分割してテーブル表示（PR2 で追加）
+ * - 重複検出モード: 複数 CIDR の重複ペアを検出（PR3 で追加）
  */
 
 import { useState, useMemo, useRef } from 'react';
@@ -11,16 +12,17 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ResultTable } from '@/components/ui/ResultTable';
-import { parseCidr, splitSubnet } from '@/utils/cidr-calculator';
-import type { CidrInfo } from '@/utils/cidr-calculator';
+import { parseCidr, splitSubnet, detectOverlaps } from '@/utils/cidr-calculator';
+import type { CidrInfo, OverlapPair } from '@/utils/cidr-calculator';
 import type { TableColumn } from '@/components/ui/ResultTable';
 
 /** モード種別 */
-type Mode = 'info' | 'split';
+type Mode = 'info' | 'split' | 'overlap';
 
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: 'info', label: '計算' },
   { value: 'split', label: '分割' },
+  { value: 'overlap', label: '重複検出' },
 ];
 
 /** サンプル CIDR 一覧 */
@@ -183,10 +185,55 @@ function buildSplitRows(subnets: CidrInfo[]): SplitRowData[] {
   }));
 }
 
+/** 重複テーブルの行データ */
+interface OverlapRowData {
+  key: string;
+  aCidr: string;
+  bCidr: string;
+  relationLabel: string;
+}
+
+const RELATION_LABELS: Record<string, string> = {
+  identical: '完全一致',
+  'a-contains-b': 'A が B を包含',
+  'b-contains-a': 'B が A を包含',
+  partial: '部分重複',
+};
+
+/** 重複テーブルの列定義 */
+const OVERLAP_COLUMNS: TableColumn<OverlapRowData>[] = [
+  {
+    key: 'aCidr',
+    header: 'CIDR A',
+    render: (row) => <span className="font-mono">{row.aCidr}</span>,
+  },
+  {
+    key: 'bCidr',
+    header: 'CIDR B',
+    render: (row) => <span className="font-mono">{row.bCidr}</span>,
+  },
+  {
+    key: 'relationLabel',
+    header: '関係',
+    render: (row) => row.relationLabel,
+  },
+];
+
+/** OverlapPair[] を OverlapRowData[] に変換 */
+function buildOverlapRows(pairs: OverlapPair[]): OverlapRowData[] {
+  return pairs.map((p) => ({
+    key: `${p.aIndex}-${p.bIndex}`,
+    aCidr: p.aCidr,
+    bCidr: p.bCidr,
+    relationLabel: RELATION_LABELS[p.relation] ?? p.relation,
+  }));
+}
+
 export function CidrCalculatorTool() {
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<Mode>('info');
   const [newPrefixStr, setNewPrefixStr] = useState('');
+  const [overlapInput, setOverlapInput] = useState('');
   const sampleIdxRef = useRef(0);
 
   const handleSample = () => {
@@ -236,6 +283,20 @@ export function CidrCalculatorTool() {
 
   const splitRows = useMemo(() => (subnets ? buildSplitRows(subnets) : []), [subnets]);
 
+  // 重複検出モードの計算
+  const overlapResult = useMemo(() => {
+    if (mode !== 'overlap') return null;
+    const lines = overlapInput.split('\n');
+    // 全行空ならスキップ
+    if (lines.every((l) => l.trim() === '')) return null;
+    return detectOverlaps(lines);
+  }, [mode, overlapInput]);
+
+  const overlapRows = useMemo(
+    () => (overlapResult ? buildOverlapRows(overlapResult.pairs) : []),
+    [overlapResult]
+  );
+
   // 表示するエラー（info モードと split モードで使い分け）
   const displayError = mode === 'split' ? (infoError ?? splitError) : infoError;
 
@@ -249,17 +310,19 @@ export function CidrCalculatorTool() {
         ariaLabel="表示モード"
       />
 
-      {/* CIDR 入力（両モード共有） */}
-      <InputField
-        id="cidr-input"
-        label="CIDR"
-        value={input}
-        onChange={setInput}
-        placeholder="192.168.1.0/24"
-        hint="例: 192.168.1.0/24 / 10.0.0.0/8 / 2001:db8::/32 / ::1/128"
-        onSampleClick={handleSample}
-        mono
-      />
+      {/* CIDR 入力（計算/分割モード共有） */}
+      {mode !== 'overlap' && (
+        <InputField
+          id="cidr-input"
+          label="CIDR"
+          value={input}
+          onChange={setInput}
+          placeholder="192.168.1.0/24"
+          hint="例: 192.168.1.0/24 / 10.0.0.0/8 / 2001:db8::/32 / ::1/128"
+          onSampleClick={handleSample}
+          mono
+        />
+      )}
 
       {/* 分割モード: 分割先 prefix 入力 */}
       {mode === 'split' && (
@@ -275,8 +338,27 @@ export function CidrCalculatorTool() {
         />
       )}
 
-      {/* エラー表示（空入力時は表示しない） */}
-      {displayError && <ErrorMessage message={displayError} variant="block" />}
+      {/* 重複検出モード: 複数行 CIDR 入力 */}
+      {mode === 'overlap' && (
+        <InputField
+          id="overlap-input"
+          label="CIDR 一覧（1 行 1 CIDR）"
+          value={overlapInput}
+          onChange={setOverlapInput}
+          multiline
+          rows={6}
+          placeholder={'10.0.0.0/8\n10.1.0.0/16\n192.168.0.0/24'}
+          hint="例: 10.0.0.0/8 / 2001:db8::/32。1 行に 1 つずつ入力してください。IPv4/IPv6 混在可。最大 256 件。"
+          maxLength={20000}
+          mono
+          resize
+        />
+      )}
+
+      {/* エラー表示（空入力時は表示しない。overlap モードでは行エラーを別途表示するためスキップ） */}
+      {mode !== 'overlap' && displayError && (
+        <ErrorMessage message={displayError} variant="block" />
+      )}
 
       {/* 計算モード: ネットワーク情報 */}
       {mode === 'info' && info && (
@@ -310,6 +392,65 @@ export function CidrCalculatorTool() {
             getKey={(row) => String(row.index)}
             minWidth="40rem"
           />
+        </section>
+      )}
+
+      {/* 重複検出モード: 結果 */}
+      {mode === 'overlap' && overlapResult && (
+        <section aria-label="重複検出結果" aria-live="polite">
+          {/* 入力件数超過: O(n²) 爆発防止ガード */}
+          {overlapResult.limitExceeded && (
+            <ErrorMessage
+              message={`入力された CIDR が多すぎます（最大 256 件）。件数を減らしてください。現在 ${overlapResult.validCount} 件の有効 CIDR があります。`}
+              variant="block"
+            />
+          )}
+
+          {/* 行エラー一覧 */}
+          {!overlapResult.limitExceeded && overlapResult.errors.length > 0 && (
+            <div className="mb-4">
+              <p className="body-emphasis text-error mb-2">解析エラーがある行:</p>
+              <ul className="flex flex-col gap-1">
+                {overlapResult.errors.map((err) => (
+                  <li key={err.index} className="caption text-error">
+                    <span className="font-mono">
+                      行 {err.index + 1}: {err.input}
+                    </span>
+                    {' — '}
+                    {err.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* 重複ペアが検出された場合 */}
+          {!overlapResult.limitExceeded && overlapResult.pairs.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <h2 className="body-emphasis text-default">重複ペア一覧</h2>
+                <span className="caption text-muted">({overlapResult.pairs.length} ペア)</span>
+              </div>
+              <ResultTable<OverlapRowData>
+                rows={overlapRows}
+                columns={OVERLAP_COLUMNS}
+                getKey={(row) => row.key}
+              />
+              {/* ペア数打ち切り通知 */}
+              {overlapResult.pairsTruncated && (
+                <p className="caption text-muted mt-2">
+                  検出された重複ペアが多いため先頭 1000 件のみ表示しています
+                </p>
+              )}
+            </>
+          )}
+
+          {/* 有効 CIDR が 2 件以上 & 重複ゼロ */}
+          {!overlapResult.limitExceeded &&
+            overlapResult.validCount >= 2 &&
+            overlapResult.pairs.length === 0 && (
+              <p className="caption text-muted">重複は検出されませんでした</p>
+            )}
         </section>
       )}
     </div>

@@ -81,4 +81,61 @@ test.describe('CIDR/サブネット計算機（production CSP 適用）', () => 
       );
     });
   });
+
+  // ─── 重複検出モード ───────────────────────────────────────────────────────
+
+  // 陽性対照: 重複する CIDR を入力したときに重複ペアと関係が表示される
+  test('重複検出モード: 重複する CIDR を入力すると包含関係が表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/cidr-calculator', async (page) => {
+      await page.getByRole('button', { name: '重複検出' }).click();
+
+      // 10.0.0.0/8 は 10.1.0.0/16 を包含する
+      await page.getByLabel('CIDR 一覧（1 行 1 CIDR）').fill('10.0.0.0/8\n10.1.0.0/16');
+
+      await expect(page.getByRole('heading', { name: '重複ペア一覧' })).toBeVisible();
+      // 包含を示す文字列が表示される（テーブルセル内）
+      await expect(page.getByRole('cell', { name: /包含/ })).toBeVisible();
+      // CIDR がテーブルセルに表示される
+      await expect(page.getByRole('cell', { name: '10.0.0.0/8' })).toBeVisible();
+      await expect(page.getByRole('cell', { name: '10.1.0.0/16' })).toBeVisible();
+    });
+  });
+
+  // 陰性対照: 独立する CIDR では「重複なし」メッセージが表示される
+  test('重複検出モード: 独立した CIDR では重複なしメッセージを表示する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/cidr-calculator', async (page) => {
+      await page.getByRole('button', { name: '重複検出' }).click();
+
+      await page.getByLabel('CIDR 一覧（1 行 1 CIDR）').fill('10.0.0.0/8\n192.168.0.0/16');
+
+      await expect(page.getByText('重複は検出されませんでした')).toBeVisible();
+    });
+  });
+
+  // 陽性対照: 有効 CIDR 上限超過時に警告が表示される（O(n²) 爆発防止ガード）
+  // 旧実装（limitExceeded ガードなし）に当てると警告が表示されず fail する設計
+  test('重複検出モード: 上限超過（257 件）で件数超過の警告を表示する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/cidr-calculator', async (page) => {
+      await page.getByRole('button', { name: '重複検出' }).click();
+
+      // 257 件の一意な CIDR（/24）を \n 連結で生成
+      const cidrs = Array.from(
+        { length: 257 },
+        (_, i) => `10.${Math.floor(i / 256)}.${i % 256}.0/24`
+      ).join('\n');
+
+      await page.getByLabel('CIDR 一覧（1 行 1 CIDR）').fill(cidrs);
+
+      // 「多すぎます」を含む警告が表示されること
+      await expect(page.getByText(/多すぎます/)).toBeVisible();
+      // 重複ペア一覧の見出しは表示されないこと（テーブルを出さない）
+      await expect(page.getByRole('heading', { name: '重複ペア一覧' })).not.toBeVisible();
+    });
+  });
 });

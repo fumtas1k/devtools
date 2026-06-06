@@ -160,7 +160,7 @@ const toolEntries: Tool[] = [
   {
     slug: 'cidr-calculator',
     name: 'CIDR/サブネット計算機',
-    description: 'CIDR からネットワーク情報を計算します。IPv4/IPv6 対応',
+    description: 'ネットワーク情報・サブネット分割・重複検出を計算します。IPv4/IPv6 対応',
     category: 'convert',
     yomi: 'しーあいでぃーあーるさぶねっとけいさんき',
   },
