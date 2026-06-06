@@ -1,0 +1,61 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { CidrCalculatorTool } from '@/components/tools/CidrCalculator';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'cidr-calculator')!;
+---
+
+<ToolLayout tool={tool}>
+  <CidrCalculatorTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      CIDR（Classless Inter-Domain Routing）記法でアドレスを入力すると、ネットワークアドレス・
+      ブロードキャストアドレス・ホスト範囲・利用可能ホスト数・サブネットマスクを一括計算します。
+      IPv4・IPv6
+      どちらにも対応しています。計算はすべてブラウザ内で完結し、入力データは外部に送信されません。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">CIDR とは</h3>
+    <p class="tool-info-body">
+      CIDR（RFC 4632）は、IP アドレスをプレフィックス長（"/"
+      の後の数字）で柔軟にサブネット分割する記法です。 例えば <code>192.168.1.0/24</code> は「先頭 24
+      ビットがネットワーク部、残り 8 ビットがホスト部」を意味し、 256 個のアドレス（うち利用可能ホスト
+      254 個）を含むサブネットを表します。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">特殊なサブネット（IPv4）</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>
+        <strong>/32</strong>: ホストルート。1 アドレスのみ（ネットワーク = ホスト =
+        ブロードキャスト）
+      </li>
+      <li>
+        <strong>/31</strong>: RFC 3021 で定義された P2P リンク向け。network/broadcast の控除なしで 2
+        アドレスをホストに使用可能
+      </li>
+      <li>
+        <strong>/30</strong>: 最小の通常サブネット。4 アドレス中 2 アドレスがホストに使用可能
+      </li>
+    </ul>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">IPv4 と IPv6 の違い</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>IPv6 にはブロードキャストの概念がないため、ブロードキャストアドレスは表示されません</li>
+      <li>
+        IPv6 にはサブネットマスク・ワイルドカードマスクの概念がないため、これらも表示されません
+      </li>
+      <li>IPv6 のホスト数は total と同じ（network/broadcast の 2 アドレス控除は行いません）</li>
+      <li>IPv6 アドレスは RFC 5952 準拠の小文字・:: 圧縮形式で表示されます</li>
+    </ul>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">準拠仕様</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li><strong>RFC 4632</strong>: CIDR（Classless Inter-Domain Routing）記法の定義</li>
+      <li><strong>RFC 3021</strong>: /31 サブネットの P2P リンク向け利用</li>
+      <li><strong>RFC 5952</strong>: IPv6 アドレスの文字列表現（:: 圧縮・小文字）</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>

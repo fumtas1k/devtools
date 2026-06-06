@@ -157,6 +157,13 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'じぇいそんせいけい',
   },
+  {
+    slug: 'cidr-calculator',
+    name: 'CIDR/サブネット計算機',
+    description: 'ネットワーク情報・サブネット分割・重複検出を計算します。IPv4/IPv6 対応',
+    category: 'convert',
+    yomi: 'しーあいでぃーあーるさぶねっとけいさんき',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる
