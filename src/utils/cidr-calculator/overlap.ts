@@ -7,6 +7,11 @@ import { parseCidr } from './parse';
 import { parseIpv4 } from './ipv4';
 import { parseIpv6 } from './ipv6';
 
+/** 重複判定する有効 CIDR の上限（O(n²) 爆発防止） */
+export const OVERLAP_MAX_ENTRIES = 256;
+/** 検出ペアの描画上限（テーブル描画 DoS 防止） */
+export const OVERLAP_MAX_PAIRS = 1000;
+
 /** 2 つの CIDR の重複関係 */
 export type OverlapRelation = 'identical' | 'a-contains-b' | 'b-contains-a' | 'partial';
 
@@ -34,6 +39,10 @@ export interface OverlapResult {
   errors: OverlapLineError[];
   /** 解析成功した CIDR 数 */
   validCount: number;
+  /** 有効 CIDR が OVERLAP_MAX_ENTRIES を超過し判定をスキップした */
+  limitExceeded: boolean;
+  /** 検出ペアが OVERLAP_MAX_PAIRS に達して打ち切った */
+  pairsTruncated: boolean;
 }
 
 interface ValidEntry {
@@ -81,8 +90,21 @@ export function detectOverlaps(inputs: string[]): OverlapResult {
     }
   }
 
+  // 有効 CIDR が上限を超える場合は O(n²) ループを実行せず早期 return
+  if (valid.length > OVERLAP_MAX_ENTRIES) {
+    return {
+      pairs: [],
+      errors,
+      validCount: valid.length,
+      limitExceeded: true,
+      pairsTruncated: false,
+    };
+  }
+
+  let pairsTruncated = false;
+
   // 全有効ペア (i < j) を検査
-  for (let i = 0; i < valid.length; i++) {
+  outer: for (let i = 0; i < valid.length; i++) {
     for (let j = i + 1; j < valid.length; j++) {
       const a = valid[i];
       const b = valid[j];
@@ -111,8 +133,14 @@ export function detectOverlaps(inputs: string[]): OverlapResult {
         bCidr: b.cidr,
         relation,
       });
+
+      // ペア数が上限に達したら打ち切り
+      if (pairs.length >= OVERLAP_MAX_PAIRS) {
+        pairsTruncated = true;
+        break outer;
+      }
     }
   }
 
-  return { pairs, errors, validCount: valid.length };
+  return { pairs, errors, validCount: valid.length, limitExceeded: false, pairsTruncated };
 }

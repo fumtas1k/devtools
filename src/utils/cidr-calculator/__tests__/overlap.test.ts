@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectOverlaps } from '@/utils/cidr-calculator';
+import { detectOverlaps, OVERLAP_MAX_ENTRIES, OVERLAP_MAX_PAIRS } from '@/utils/cidr-calculator';
 
 // ─── 独立（重複なし）の陰性対照 ───────────────────────────────────────────────
 
@@ -141,6 +141,65 @@ describe('detectOverlaps - 空行スキップ', () => {
     expect(result.pairs).toHaveLength(0);
     expect(result.errors).toHaveLength(0);
     expect(result.validCount).toBe(0);
+  });
+});
+
+// ─── 上限ガードの陽性対照 ────────────────────────────────────────────────────
+//
+// 旧実装（limitExceeded / pairsTruncated フィールドなし・上限ガードなし）に
+// これらのテストを当てると以下の理由で必ず fail する:
+//   - limitExceeded: 旧実装では O(n²) ループを回して大量 pairs を生成するため
+//     limitExceeded === true にならず、かつ pairs.length === 0 にもならない
+//   - pairsTruncated: 旧実装ではフィールド自体が存在しないため
+//     `result.pairsTruncated` が undefined となり `=== true` が fail する
+
+describe('上限ガードの陽性対照', () => {
+  it('OVERLAP_MAX_ENTRIES + 1 件の有効 CIDR では limitExceeded が true で pairs が空になる', () => {
+    // 257 件の一意な CIDR を生成（各 /16 なので重複なし）
+    const inputs = Array.from(
+      { length: OVERLAP_MAX_ENTRIES + 1 },
+      (_, i) => `10.${Math.floor(i / 256)}.${i % 256}.0/24`
+    );
+    const result = detectOverlaps(inputs);
+
+    // 上限超過ガードが発動していることを assert
+    expect(result.limitExceeded).toBe(true);
+    // ガード発動時は O(n²) ループを実行しないため pairs は空
+    expect(result.pairs).toHaveLength(0);
+    // validCount は実際の有効数を返す
+    expect(result.validCount).toBe(OVERLAP_MAX_ENTRIES + 1);
+    // limitExceeded の場合は pairsTruncated は false
+    expect(result.pairsTruncated).toBe(false);
+  });
+
+  it('同一 CIDR を 60 件入力するとペアが OVERLAP_MAX_PAIRS に達し pairsTruncated が true になる', () => {
+    // 60 件の 10.0.0.0/8 → 全ペア = 60 * 59 / 2 = 1770 > OVERLAP_MAX_PAIRS(1000)
+    const inputs = Array.from({ length: 60 }, () => '10.0.0.0/8');
+    const result = detectOverlaps(inputs);
+
+    // ペア打ち切りガードが発動していることを assert
+    expect(result.pairsTruncated).toBe(true);
+    // 打ち切り後の pairs 数は上限値ちょうど
+    expect(result.pairs).toHaveLength(OVERLAP_MAX_PAIRS);
+    // limitExceeded は false（60 件 < 256 件）
+    expect(result.limitExceeded).toBe(false);
+  });
+});
+
+// ─── 陰性対照: 上限内では limitExceeded / pairsTruncated が false ──────────
+
+describe('detectOverlaps - 上限内での陰性対照', () => {
+  it('少数の正常入力では limitExceeded === false かつ pairsTruncated === false', () => {
+    const result = detectOverlaps(['10.0.0.0/8', '192.168.0.0/16']);
+    expect(result.limitExceeded).toBe(false);
+    expect(result.pairsTruncated).toBe(false);
+  });
+
+  it('重複ありの少数入力でも pairsTruncated === false', () => {
+    const result = detectOverlaps(['10.0.0.0/8', '10.1.0.0/16', '10.2.0.0/16']);
+    expect(result.limitExceeded).toBe(false);
+    expect(result.pairsTruncated).toBe(false);
+    expect(result.pairs.length).toBeGreaterThan(0);
   });
 });
 

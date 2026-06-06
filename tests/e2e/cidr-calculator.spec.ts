@@ -116,4 +116,27 @@ test.describe('CIDR/サブネット計算機（production CSP 適用）', () => 
       await expect(page.getByRole('status')).toContainText('重複は検出されませんでした');
     });
   });
+
+  // 陽性対照: 有効 CIDR 上限超過時に警告が表示される（O(n²) 爆発防止ガード）
+  // 旧実装（limitExceeded ガードなし）に当てると警告が表示されず fail する設計
+  test('重複検出モード: 上限超過（257 件）で件数超過の警告を表示する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/cidr-calculator', async (page) => {
+      await page.getByRole('button', { name: '重複検出' }).click();
+
+      // 257 件の一意な CIDR（/24）を \n 連結で生成
+      const cidrs = Array.from(
+        { length: 257 },
+        (_, i) => `10.${Math.floor(i / 256)}.${i % 256}.0/24`
+      ).join('\n');
+
+      await page.getByLabel('CIDR 一覧（1 行 1 CIDR）').fill(cidrs);
+
+      // 「多すぎます」を含む警告が表示されること
+      await expect(page.getByText(/多すぎます/)).toBeVisible();
+      // 重複ペア一覧の見出しは表示されないこと（テーブルを出さない）
+      await expect(page.getByRole('heading', { name: '重複ペア一覧' })).not.toBeVisible();
+    });
+  });
 });

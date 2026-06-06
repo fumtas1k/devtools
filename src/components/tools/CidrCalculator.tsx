@@ -348,7 +348,8 @@ export function CidrCalculatorTool() {
           multiline
           rows={6}
           placeholder={'10.0.0.0/8\n10.1.0.0/16\n192.168.0.0/24'}
-          hint="例: 10.0.0.0/8 / 2001:db8::/32。1 行に 1 つずつ入力してください。IPv4/IPv6 混在可。"
+          hint="例: 10.0.0.0/8 / 2001:db8::/32。1 行に 1 つずつ入力してください。IPv4/IPv6 混在可。最大 256 件。"
+          maxLength={20000}
           mono
           resize
         />
@@ -397,8 +398,16 @@ export function CidrCalculatorTool() {
       {/* 重複検出モード: 結果 */}
       {mode === 'overlap' && overlapResult && (
         <section aria-label="重複検出結果" aria-live="polite">
+          {/* 入力件数超過: O(n²) 爆発防止ガード */}
+          {overlapResult.limitExceeded && (
+            <ErrorMessage
+              message={`入力された CIDR が多すぎます（最大 256 件）。件数を減らしてください。現在 ${overlapResult.validCount} 件の有効 CIDR があります。`}
+              variant="block"
+            />
+          )}
+
           {/* 行エラー一覧 */}
-          {overlapResult.errors.length > 0 && (
+          {!overlapResult.limitExceeded && overlapResult.errors.length > 0 && (
             <div className="mb-4">
               <p className="body-emphasis text-error mb-2">解析エラーがある行:</p>
               <ul className="flex flex-col gap-1">
@@ -416,7 +425,7 @@ export function CidrCalculatorTool() {
           )}
 
           {/* 重複ペアが検出された場合 */}
-          {overlapResult.pairs.length > 0 && (
+          {!overlapResult.limitExceeded && overlapResult.pairs.length > 0 && (
             <>
               <div className="flex items-center gap-2 mb-3">
                 <h2 className="body-emphasis text-default">重複ペア一覧</h2>
@@ -427,15 +436,23 @@ export function CidrCalculatorTool() {
                 columns={OVERLAP_COLUMNS}
                 getKey={(row) => row.key}
               />
+              {/* ペア数打ち切り通知 */}
+              {overlapResult.pairsTruncated && (
+                <p className="caption text-muted mt-2">
+                  検出された重複ペアが多いため先頭 1000 件のみ表示しています
+                </p>
+              )}
             </>
           )}
 
           {/* 有効 CIDR が 2 件以上 & 重複ゼロ */}
-          {overlapResult.validCount >= 2 && overlapResult.pairs.length === 0 && (
-            <p role="status" className="caption text-muted">
-              重複は検出されませんでした
-            </p>
-          )}
+          {!overlapResult.limitExceeded &&
+            overlapResult.validCount >= 2 &&
+            overlapResult.pairs.length === 0 && (
+              <p role="status" className="caption text-muted">
+                重複は検出されませんでした
+              </p>
+            )}
         </section>
       )}
     </div>
