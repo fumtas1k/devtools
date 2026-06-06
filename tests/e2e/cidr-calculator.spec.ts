@@ -62,6 +62,23 @@ test.describe('CIDR/サブネット計算機（production CSP 適用）', () => 
       await page.getByLabel('CIDR').fill('10.0.0.0/8');
       await page.getByLabel('分割先 prefix 長').fill('24');
       await expect(page.getByRole('alert')).toBeVisible();
+      await expect(page.getByRole('alert')).toContainText('分割数が多すぎます');
+    });
+  });
+
+  // 陽性対照: 旧実装（parseInt('26abc',10) → 26 として通過）に当てると fail する
+  // 修正後は /^\d+$/ バリデーションで弾かれ alert が表示される
+  test('分割モード: 不正な prefix 文字列でバリデーションエラーを表示する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/cidr-calculator', async (page) => {
+      await page.getByRole('button', { name: '分割' }).click();
+      await page.getByLabel('CIDR').fill('192.168.1.0/24');
+      await page.getByLabel('分割先 prefix 長').fill('26abc');
+      await expect(page.getByRole('alert')).toBeVisible();
+      await expect(page.getByRole('alert')).toContainText(
+        '分割先 prefix は 0 以上の整数で入力してください'
+      );
     });
   });
 });

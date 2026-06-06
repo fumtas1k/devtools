@@ -217,10 +217,16 @@ export function CidrCalculatorTool() {
   }>(() => {
     if (mode !== 'split') return { subnets: null, splitError: null };
     const trimmed = input.trim();
-    if (!trimmed || !newPrefixStr.trim()) return { subnets: null, splitError: null };
-    const newPrefix = parseInt(newPrefixStr, 10);
-    if (isNaN(newPrefix))
-      return { subnets: null, splitError: '分割先 prefix を整数で入力してください' };
+    const prefixTrimmed = newPrefixStr.trim();
+    if (!trimmed || !prefixTrimmed) return { subnets: null, splitError: null };
+    // 整数文字列以外（"26abc" や "26.9" など）を早期に弾く
+    if (!/^\d+$/.test(prefixTrimmed)) {
+      return {
+        subnets: null,
+        splitError: '分割先 prefix は 0 以上の整数で入力してください',
+      };
+    }
+    const newPrefix = parseInt(prefixTrimmed, 10);
     try {
       return { subnets: splitSubnet(trimmed, newPrefix), splitError: null };
     } catch (e) {
@@ -274,7 +280,7 @@ export function CidrCalculatorTool() {
 
       {/* 計算モード: ネットワーク情報 */}
       {mode === 'info' && info && (
-        <section aria-label="計算結果">
+        <section aria-label="計算結果" aria-live="polite">
           {/* ヘッダ */}
           <div className="flex items-center gap-2 mb-3">
             <h2 className="body-emphasis text-default">ネットワーク情報</h2>
@@ -292,7 +298,7 @@ export function CidrCalculatorTool() {
 
       {/* 分割モード: サブネット一覧テーブル */}
       {mode === 'split' && subnets && subnets.length > 0 && (
-        <section aria-label="分割結果">
+        <section aria-label="分割結果" aria-live="polite">
           <div className="flex items-center gap-2 mb-3">
             <h2 className="body-emphasis text-default">サブネット一覧</h2>
             {info && <IpVersionBadge version={info.version} />}
