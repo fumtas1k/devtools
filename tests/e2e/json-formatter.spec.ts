@@ -145,6 +145,23 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
     });
   });
 
+  // 陽性対照（aria-live 退行ガード）: 検出件数が SR live region に読み上げられる。
+  // aria-live を削除 / sr-only を消す / announcement を空文字に固定すると必ず fail する。
+  // 旧実装（検出ありはチップ内バッジのみ・live region なし）に当てると fail する設計。
+  test('マスク: 検出件数が SR live region で読み上げられる（aria-live 退行ガード）（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByLabel('入力').fill('{"mail":"taro@example.com","password":"hunter2"}');
+      await page.getByRole('button', { name: 'マスク' }).click();
+
+      // status role の live region に件数サマリが流れる（旧実装では live region 自体が存在しないか空のまま fail）
+      const liveRegion = page.getByRole('status').filter({ hasText: '検出しました' });
+      await expect(liveRegion).toContainText('メール');
+      await expect(liveRegion).toContainText('件を検出しました');
+    });
+  });
+
   test('マスク: 種別 off で該当種別が素通りする（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
       await page.getByLabel('入力').fill('{"mail":"taro@example.com"}');
