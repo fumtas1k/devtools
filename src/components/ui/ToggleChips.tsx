@@ -15,8 +15,10 @@ export interface ChipOption<T> {
 }
 
 interface Props<T> {
-  /** グループ見出し（「フラグ」「マスク対象」） */
+  /** グループ見出し（「マスク対象」等）。SR 向けのグループ名としても使う。 */
   legend: string;
+  /** 見出しを視覚表示するか。false でも a11y ツリーには残す（sr-only）。既定 true。 */
+  legendVisible?: boolean;
   options: ChipOption<T>[];
   /** ON 判定（多選択なので関数） */
   selected: (value: T) => boolean;
@@ -27,10 +29,16 @@ interface Props<T> {
  * 多選択トグルチップ群。ToggleGroup（排他選択）とは異なり、各チップを独立にオン/オフできる。
  * `<fieldset>`/`<legend>` で意味付け。各チップは `<button type="button" aria-pressed>`。
  */
-export function ToggleChips<T>({ legend, options, selected, onToggle }: Props<T>) {
+export function ToggleChips<T>({
+  legend,
+  legendVisible = true,
+  options,
+  selected,
+  onToggle,
+}: Props<T>) {
   return (
     <fieldset className="flex flex-wrap items-center gap-x-2 gap-y-2">
-      <legend className="caption text-muted">{legend}</legend>
+      <legend className={legendVisible ? 'caption text-muted' : 'sr-only'}>{legend}</legend>
       {options.map((opt, i) => {
         const on = selected(opt.value);
         const countVal = opt.count ?? 0;

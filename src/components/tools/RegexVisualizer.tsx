@@ -109,7 +109,8 @@ export function RegexVisualizer() {
           mono
         />
         <ToggleChips
-          legend="フラグ"
+          legend="正規表現フラグ"
+          legendVisible={false}
           options={FLAGS.map((f) => ({
             value: f.value,
             token: f.value,
