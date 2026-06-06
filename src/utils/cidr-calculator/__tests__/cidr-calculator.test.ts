@@ -67,6 +67,14 @@ describe('parseCidr - 不正入力バリデーション（陽性対照）', () =
   it('IPv6: ":::" (空グループ) で throw する', () => {
     expect(() => parseCidr(':::1/128')).toThrow();
   });
+
+  it('IPv4: prefix に先頭ゼロ ("032") で throw する', () => {
+    expect(() => parseCidr('1.2.3.4/032')).toThrow();
+  });
+
+  it('IPv6: prefix に先頭ゼロ ("0128") で throw する', () => {
+    expect(() => parseCidr('::/0128')).toThrow();
+  });
 });
 
 // ─── IPv4 正常系 ────────────────────────────────────────────────────────────

@@ -44,6 +44,9 @@ export function parseCidr(input: string): CidrInfo {
     if (!/^\d+$/.test(prefixStr)) {
       throw new Error(`不正な prefix 長: 数字以外の文字 ("${prefixStr}")`);
     }
+    if (prefixStr.length > 1 && prefixStr[0] === '0') {
+      throw new Error(`不正な prefix 長: 先頭ゼロは許可されない ("${prefixStr}")`);
+    }
     prefixLength = parseInt(prefixStr, 10);
   }
 

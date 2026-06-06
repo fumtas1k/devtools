@@ -5,7 +5,7 @@
  * ToggleGroup による mode 切替は PR2 で導入する。
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -14,18 +14,17 @@ import type { CidrInfo } from '@/utils/cidr-calculator';
 
 /** サンプル CIDR 一覧 */
 const SAMPLES = ['192.168.1.0/24', '10.0.0.0/8', '172.16.0.0/12', '2001:db8::/32'];
-let sampleIdx = 0;
 
 /** IPv4 結果の各行定義 */
-interface ResultRow {
+interface ResultRowData {
   label: string;
   value: string;
   /** CopyButton に渡すラベル用アクセシブル名 */
   copyLabel: string;
 }
 
-function buildRows(info: CidrInfo): ResultRow[] {
-  const rows: ResultRow[] = [
+export function buildRows(info: CidrInfo): ResultRowData[] {
+  const rows: ResultRowData[] = [
     {
       label: 'ネットワークアドレス',
       value: `${info.networkAddress}/${info.prefixLength}`,
@@ -89,7 +88,7 @@ function buildRows(info: CidrInfo): ResultRow[] {
 }
 
 /** 結果テーブル行コンポーネント */
-function ResultRow({ label, value, copyLabel }: ResultRow) {
+function ResultRow({ label, value, copyLabel }: ResultRowData) {
   // モバイル: ラベルを上・値を下に縦積み（狭い横並びによるラベル折返しを回避）
   // デスクトップ (md~): ラベル左・値右の横並び
   return (
@@ -114,10 +113,11 @@ function IpVersionBadge({ version }: { version: 4 | 6 }) {
 
 export function CidrCalculatorTool() {
   const [input, setInput] = useState('');
+  const sampleIdxRef = useRef(0);
 
   const handleSample = () => {
-    setInput(SAMPLES[sampleIdx % SAMPLES.length]);
-    sampleIdx++;
+    setInput(SAMPLES[sampleIdxRef.current % SAMPLES.length]);
+    sampleIdxRef.current++;
   };
 
   // parseCidr の結果をメモ化。入力が空の場合はエラーを表示しない。
