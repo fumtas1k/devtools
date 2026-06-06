@@ -112,23 +112,15 @@ export function RegexVisualizer() {
           legend="フラグ"
           options={FLAGS.map((f) => ({
             value: f.value,
-            label: f.value,
-            ariaLabel: `${f.value}: ${f.desc}`,
+            token: f.value,
+            label: f.short,
+            // 可視テキスト（short）と一致させて WCAG 2.5.3 を満たす。長い説明は title に残す。
+            ariaLabel: `${f.value}: ${f.short}`,
             title: f.desc,
           }))}
           selected={(v) => flags.includes(v)}
           onToggle={toggleFlag}
-          mono
         />
-        {/* 凡例は視覚補助。各ボタンの aria-label で SR には意味が伝わるため aria-hidden で二重読み上げを防ぐ */}
-        <ul className="caption text-muted list-none" aria-hidden="true">
-          {FLAGS.map((f, i) => (
-            <li key={f.value} className="inline">
-              {i > 0 && ' / '}
-              <code className="font-mono text-default">{f.value}</code> {f.short}
-            </li>
-          ))}
-        </ul>
       </div>
 
       {loadError && (
