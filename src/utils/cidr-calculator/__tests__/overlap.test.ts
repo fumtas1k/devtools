@@ -75,7 +75,7 @@ describe('detectOverlaps - 陽性対照（重複検出）', () => {
     });
   });
 
-  describe('partial（部分重複 — 人工範囲で検証）', () => {
+  describe('複数 CIDR の重複ペア検出（partial は正規化 CIDR では発生しないため代替検証）', () => {
     // 通常の CIDR は境界整合上 partial が発生しにくいため、
     // overlap.ts のロジックを人工的なケースで網羅する。
     // ロジック検証: aStart<=bEnd && bStart<=aEnd かつ identical/contains に当たらない場合

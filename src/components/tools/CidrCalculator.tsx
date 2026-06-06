@@ -449,9 +449,7 @@ export function CidrCalculatorTool() {
           {!overlapResult.limitExceeded &&
             overlapResult.validCount >= 2 &&
             overlapResult.pairs.length === 0 && (
-              <p role="status" className="caption text-muted">
-                重複は検出されませんでした
-              </p>
+              <p className="caption text-muted">重複は検出されませんでした</p>
             )}
         </section>
       )}

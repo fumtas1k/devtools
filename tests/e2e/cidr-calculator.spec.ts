@@ -112,8 +112,7 @@ test.describe('CIDR/サブネット計算機（production CSP 適用）', () => 
 
       await page.getByLabel('CIDR 一覧（1 行 1 CIDR）').fill('10.0.0.0/8\n192.168.0.0/16');
 
-      await expect(page.getByRole('status')).toBeVisible();
-      await expect(page.getByRole('status')).toContainText('重複は検出されませんでした');
+      await expect(page.getByText('重複は検出されませんでした')).toBeVisible();
     });
   });
 
