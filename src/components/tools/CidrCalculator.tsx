@@ -105,9 +105,9 @@ function ResultRow({ label, value, copyLabel }: ResultRowData) {
   // モバイル: ラベルを上・値を下に縦積み（狭い横並びによるラベル折返しを回避）
   // デスクトップ (md~): ラベル左・値右の横並び
   return (
-    <div className="flex flex-col gap-1 py-2 border-b border-default last:border-b-0 md:flex-row md:items-start md:justify-between md:gap-3">
+    <div className="flex flex-col gap-1 py-2 border-b border-default last:border-b-0 md:flex-row md:items-center md:justify-between md:gap-3">
       <dt className="caption text-muted md:w-44 md:shrink-0">{label}</dt>
-      <dd className="flex items-start gap-2 min-w-0 md:flex-1 md:justify-end">
+      <dd className="flex items-center gap-2 min-w-0 md:flex-1 md:justify-end">
         <span className="caption font-mono text-default break-all md:text-right">{value}</span>
         <CopyButton text={value} ariaLabel={copyLabel} compact />
       </dd>
