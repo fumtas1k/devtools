@@ -140,8 +140,25 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       // 原値が出力に残っていない（検知が空回りなら fail）
       await expect(out).not.toHaveValue(/taro@example\.com/);
       await expect(out).not.toHaveValue(/hunter2/);
-      // 検出内訳が出る
-      await expect(page.getByText(/検出:/)).toBeVisible();
+      // 検出内訳がチップ内バッジに出る（検知能力の陽性対照: バッジが消えると fail）
+      await expect(page.getByRole('button', { name: /メール（検出/ })).toBeVisible();
+    });
+  });
+
+  // 陽性対照（aria-live 退行ガード）: 検出件数が SR live region に読み上げられる。
+  // aria-live を削除 / sr-only を消す / announcement を空文字に固定すると必ず fail する。
+  // 旧実装（検出ありはチップ内バッジのみ・live region なし）に当てると fail する設計。
+  test('マスク: 検出件数が SR live region で読み上げられる（aria-live 退行ガード）（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+      await page.getByLabel('入力').fill('{"mail":"taro@example.com","password":"hunter2"}');
+      await page.getByRole('button', { name: 'マスク' }).click();
+
+      // status role の live region に件数サマリが流れる（旧実装では live region 自体が存在しないか空のまま fail）
+      const liveRegion = page.getByRole('status').filter({ hasText: '検出しました' });
+      await expect(liveRegion).toContainText('メール');
+      await expect(liveRegion).toContainText('件を検出しました');
     });
   });
 
@@ -151,8 +168,8 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await page.getByRole('button', { name: 'マスク' }).click();
       const out = page.getByRole('textbox', { name: 'マスク済み結果' });
       await expect(out).toHaveValue(/\[REDACTED:EMAIL\]/);
-      // メール種別を外すと原値が戻る
-      await page.getByRole('checkbox', { name: 'メール' }).uncheck();
+      // メール種別を外すと原値が戻る（チップはボタン）
+      await page.getByRole('button', { name: /^メール/ }).click();
       await expect(out).toHaveValue(/taro@example\.com/);
     });
   });
@@ -169,7 +186,8 @@ test.describe('JSON整形・ビューア（production CSP 適用）', () => {
       await expect(out).toHaveValue(/\[REDACTED:EMAIL\]/);
       await expect(out).toHaveValue(/\[REDACTED:PHONE_JP\]/);
       await expect(out).not.toHaveValue(/info@tokyo-tower\.jp/);
-      await expect(page.getByText(/検出:/)).toBeVisible();
+      // 検出内訳がチップ内バッジに出る（検知能力の陽性対照: バッジが消えると fail）
+      await expect(page.getByRole('button', { name: /メール（検出/ })).toBeVisible();
     });
   });
 

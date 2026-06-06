@@ -4,6 +4,7 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { ToggleChips } from '@/components/ui/ToggleChips';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
 import type { RegexAstNode, RedosResult, RailNode } from '@/utils/regex-visualizer';
 // 純粋関数のみの module を直接 import（barrel 経由だと recheck/regexp-tree の CJS が
@@ -13,7 +14,7 @@ import { RegexAstTree } from './RegexAstTree';
 import { RegexRailroad } from './RegexRailroad';
 import { RegexMatchTester } from './RegexMatchTester';
 
-// desc: ボタンの title / aria-label 用（詳細）。short: 画面下の凡例用（コンパクト）。
+// desc: ボタンの title / aria-label 用（詳細）。short: チップの可視ラベル用（コンパクト）。
 const FLAGS: { value: string; desc: string; short: string }[] = [
   { value: 'g', desc: '全マッチ（グローバル）', short: '全マッチ' },
   { value: 'i', desc: '大文字小文字を区別しない', short: '大小区別なし' },
@@ -107,33 +108,20 @@ export function RegexVisualizer() {
           onSampleClick={() => setPattern(SAMPLE)}
           mono
         />
-        <div className="flex flex-wrap gap-2" role="group" aria-label="フラグ">
-          {FLAGS.map((f) => {
-            const on = flags.includes(f.value);
-            return (
-              <button
-                key={f.value}
-                type="button"
-                aria-pressed={on}
-                aria-label={`${f.value}: ${f.desc}`}
-                title={f.desc}
-                onClick={() => toggleFlag(f.value)}
-                className={on ? 'flag-toggle flag-toggle-on' : 'flag-toggle'}
-              >
-                {f.value}
-              </button>
-            );
-          })}
-        </div>
-        {/* 凡例は視覚補助。各ボタンの aria-label で SR には意味が伝わるため aria-hidden で二重読み上げを防ぐ */}
-        <ul className="caption text-subtle list-none" aria-hidden="true">
-          {FLAGS.map((f, i) => (
-            <li key={f.value} className="inline">
-              {i > 0 && ' / '}
-              <code className="font-mono text-default">{f.value}</code> {f.short}
-            </li>
-          ))}
-        </ul>
+        <ToggleChips
+          legend="正規表現フラグ"
+          legendVisible={false}
+          options={FLAGS.map((f) => ({
+            value: f.value,
+            token: f.value,
+            label: f.short,
+            // 可視テキスト（short）と一致させて WCAG 2.5.3 を満たす。長い説明は title に残す。
+            ariaLabel: `${f.value}: ${f.short}`,
+            title: f.desc,
+          }))}
+          selected={(v) => flags.includes(v)}
+          onToggle={toggleFlag}
+        />
       </div>
 
       {loadError && (
@@ -150,7 +138,7 @@ export function RegexVisualizer() {
         className="rounded-lg border border-default p-4"
       >
         <h2 className="body-emphasis text-default mb-2">ReDoS 判定</h2>
-        {analysis.isPending && <p className="caption text-subtle">判定中…</p>}
+        {analysis.isPending && <p className="caption text-muted">判定中…</p>}
         {!analysis.isPending && redos?.status === 'safe' && (
           <p className="alert-success">安全：壊滅的バックトラッキングは検出されませんでした。</p>
         )}
@@ -166,14 +154,10 @@ export function RegexVisualizer() {
                     {attack.display}
                     {attack.truncated && '…'}
                   </code>
-                  <CopyButton
-                    text={redos.attackString}
-                    label="コピー"
-                    ariaLabel="攻撃文字列をコピー"
-                  />
+                  <CopyButton text={redos.attackString} ariaLabel="攻撃文字列をコピー" compact />
                 </div>
                 {attack.truncated && (
-                  <p className="caption text-subtle">
+                  <p className="caption text-muted">
                     全 {redos.attackString.length} 文字（先頭 {ATTACK_STRING_DISPLAY_MAX}{' '}
                     文字を表示・全文はコピーで取得）
                   </p>
@@ -183,10 +167,10 @@ export function RegexVisualizer() {
           </div>
         )}
         {!analysis.isPending && redos?.status === 'unknown' && (
-          <p className="text-subtle">判定不能（{redos.reason}）：安全とは限りません。</p>
+          <p className="text-muted">判定不能（{redos.reason}）：安全とは限りません。</p>
         )}
         {!analysis.isPending && !redos && (
-          <p className="caption text-subtle">正規表現を入力してください。</p>
+          <p className="caption text-muted">正規表現を入力してください。</p>
         )}
       </section>
 
@@ -218,12 +202,12 @@ export function RegexVisualizer() {
           ast ? (
             <RegexAstTree node={ast} hotspot={redos?.hotspot} />
           ) : (
-            <p className="caption text-subtle">正規表現を入力すると構造が表示されます。</p>
+            <p className="caption text-muted">正規表現を入力すると構造が表示されます。</p>
           )
         ) : rail ? (
           <RegexRailroad node={rail} hotspot={redos?.hotspot} />
         ) : (
-          <p className="caption text-subtle">正規表現を入力すると鉄道図が表示されます。</p>
+          <p className="caption text-muted">正規表現を入力すると鉄道図が表示されます。</p>
         )}
       </section>
 

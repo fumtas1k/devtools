@@ -120,7 +120,7 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
       <h2 className="body-emphasis text-default">マッチテスト</h2>
 
       {!regexValid ? (
-        <p className="caption text-subtle">有効な正規表現を入力するとマッチを試せます。</p>
+        <p className="caption text-muted">有効な正規表現を入力するとマッチを試せます。</p>
       ) : redosStatus === 'vulnerable' ? (
         <p className="text-warning caption">
           この正規表現は ReDoS のリスクがあるため、マッチ実行を無効化しています。上の ReDoS
@@ -151,12 +151,12 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
             </ActionButton>
           )}
 
-          {match.isPending && <p className="caption text-subtle">マッチ実行中…</p>}
+          {match.isPending && <p className="caption text-muted">マッチ実行中…</p>}
 
           {match.error && <p className="caption text-warning">{match.error}</p>}
 
           {!match.isPending && !match.error && !result && testString === '' && (
-            <p className="caption text-subtle">テスト文字列を入力してください。</p>
+            <p className="caption text-muted">テスト文字列を入力してください。</p>
           )}
 
           {!match.isPending && result && (
@@ -172,7 +172,7 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
                 {matches.length > 0 ? (
                   highlight(shownText, matches, selectedIndex, setSelected)
                 ) : (
-                  <span className="text-subtle" aria-live="polite">
+                  <span className="text-muted" aria-live="polite">
                     マッチしませんでした。
                   </span>
                 )}
@@ -180,7 +180,7 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
 
               {matches.length > 0 && (
                 <>
-                  <p className="caption text-subtle" aria-live="polite">
+                  <p className="caption text-muted" aria-live="polite">
                     {matches.length} 件マッチ
                     {!flags.includes('g') && '（g フラグを付けると全マッチを表示します）'}
                   </p>

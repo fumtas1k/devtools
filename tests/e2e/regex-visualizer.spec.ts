@@ -13,7 +13,7 @@ test.describe('正規表現ビジュアライザ', () => {
   // 属性が外れる（旧実装相当）と name 解決・属性 assert が fail する陽性対照を兼ねる。
   test('フラグボタンに説明の aria-label / title が付与される', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
-      const iFlag = page.getByRole('button', { name: 'i: 大文字小文字を区別しない' });
+      const iFlag = page.getByRole('button', { name: 'i: 大小区別なし' });
       await expect(iFlag).toBeVisible();
       await expect(iFlag).toHaveAttribute('title', '大文字小文字を区別しない');
     });
@@ -35,13 +35,13 @@ test.describe('正規表現ビジュアライザ', () => {
       await expect(
         page.getByRole('region', { name: 'ReDoS 判定' }).getByText(/脆弱：ReDoS/)
       ).toBeVisible();
-      // ボタンのアクセシブル名は説明的な「攻撃文字列をコピー」（aria-label）のまま、
-      // 可視テキストはスマホ向けに「コピー」へ短縮されていること（label/ariaLabel 分離の陽性対照）
+      // ボタンはアイコンのみ（可視テキストなし）で、アクセシブル名は説明的な
+      // 「攻撃文字列をコピー」（aria-label）のまま保持されること（icon-only + aria-label の陽性対照）
       const copyBtn = page
         .getByRole('region', { name: 'ReDoS 判定' })
         .getByRole('button', { name: '攻撃文字列をコピー', exact: true });
       await expect(copyBtn).toBeVisible();
-      await expect(copyBtn).toHaveText('コピー');
+      await expect(copyBtn).toHaveText('');
     });
   });
 
@@ -61,10 +61,10 @@ test.describe('正規表現ビジュアライザ', () => {
         .toBeLessThanOrEqual(ATTACK_STRING_DISPLAY_MAX + 1);
       // truncate 発生時の文字数キャプションが表示される
       await expect(region.getByText(/全 \d+ 文字/)).toBeVisible();
-      // 全文取得用のコピーボタンは従来どおり存在する（アクセシブル名は説明的・可視は短縮）
+      // 全文取得用のコピーボタンは従来どおり存在する（アイコンのみ・アクセシブル名は説明的）
       const copyBtn = region.getByRole('button', { name: '攻撃文字列をコピー', exact: true });
       await expect(copyBtn).toBeVisible();
-      await expect(copyBtn).toHaveText('コピー');
+      await expect(copyBtn).toHaveText('');
     });
   });
 
@@ -129,7 +129,7 @@ test.describe('正規表現ビジュアライザ', () => {
   test('g フラグありで全マッチが集計される', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
       await page.getByLabel('正規表現').fill('\\d+');
-      await page.getByRole('button', { name: 'g: 全マッチ（グローバル）' }).click();
+      await page.getByRole('button', { name: 'g: 全マッチ' }).click();
       await page.getByLabel('テスト文字列').fill('a1 b22 c333');
       await expect(page.getByText(/3 件マッチ/)).toBeVisible();
     });
