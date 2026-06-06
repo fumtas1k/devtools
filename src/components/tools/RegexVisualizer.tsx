@@ -14,7 +14,7 @@ import { RegexAstTree } from './RegexAstTree';
 import { RegexRailroad } from './RegexRailroad';
 import { RegexMatchTester } from './RegexMatchTester';
 
-// desc: ボタンの title / aria-label 用（詳細）。short: 画面下の凡例用（コンパクト）。
+// desc: ボタンの title / aria-label 用（詳細）。short: チップの可視ラベル用（コンパクト）。
 const FLAGS: { value: string; desc: string; short: string }[] = [
   { value: 'g', desc: '全マッチ（グローバル）', short: '全マッチ' },
   { value: 'i', desc: '大文字小文字を区別しない', short: '大小区別なし' },
