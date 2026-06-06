@@ -2,4 +2,6 @@
 
 export { parseCidr } from './parse';
 export { splitSubnet } from './subnet';
+export { detectOverlaps } from './overlap';
 export type { CidrInfo, IpVersion } from './types';
+export type { OverlapRelation, OverlapPair, OverlapLineError, OverlapResult } from './overlap';
