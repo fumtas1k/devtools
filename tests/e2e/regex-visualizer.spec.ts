@@ -35,13 +35,13 @@ test.describe('正規表現ビジュアライザ', () => {
       await expect(
         page.getByRole('region', { name: 'ReDoS 判定' }).getByText(/脆弱：ReDoS/)
       ).toBeVisible();
-      // ボタンのアクセシブル名は説明的な「攻撃文字列をコピー」（aria-label）のまま、
-      // 可視テキストはスマホ向けに「コピー」へ短縮されていること（label/ariaLabel 分離の陽性対照）
+      // ボタンはアイコンのみ（可視テキストなし）で、アクセシブル名は説明的な
+      // 「攻撃文字列をコピー」（aria-label）のまま保持されること（icon-only + aria-label の陽性対照）
       const copyBtn = page
         .getByRole('region', { name: 'ReDoS 判定' })
         .getByRole('button', { name: '攻撃文字列をコピー', exact: true });
       await expect(copyBtn).toBeVisible();
-      await expect(copyBtn).toHaveText('コピー');
+      await expect(copyBtn).toHaveText('');
     });
   });
 
@@ -61,10 +61,10 @@ test.describe('正規表現ビジュアライザ', () => {
         .toBeLessThanOrEqual(ATTACK_STRING_DISPLAY_MAX + 1);
       // truncate 発生時の文字数キャプションが表示される
       await expect(region.getByText(/全 \d+ 文字/)).toBeVisible();
-      // 全文取得用のコピーボタンは従来どおり存在する（アクセシブル名は説明的・可視は短縮）
+      // 全文取得用のコピーボタンは従来どおり存在する（アイコンのみ・アクセシブル名は説明的）
       const copyBtn = region.getByRole('button', { name: '攻撃文字列をコピー', exact: true });
       await expect(copyBtn).toBeVisible();
-      await expect(copyBtn).toHaveText('コピー');
+      await expect(copyBtn).toHaveText('');
     });
   });
 
