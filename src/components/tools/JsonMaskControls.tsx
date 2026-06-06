@@ -25,6 +25,15 @@ interface Props {
  */
 export function JsonMaskControls({ counts, enabled, onToggle }: Props) {
   const hasDetected = counts ? MASK_CATEGORIES.some((c) => counts[c] > 0) : false;
+  // SR 向けの検出サマリ。視覚はチップ内バッジで示し、動的件数はこの live region で読み上げる。
+  const announcement =
+    counts == null
+      ? ''
+      : hasDetected
+        ? `${MASK_CATEGORIES.filter((c) => counts[c] > 0)
+            .map((c) => `${CATEGORY_LABEL[c]}${counts[c]}件`)
+            .join('、')}を検出しました。`
+        : '検出された機密データはありません。';
   return (
     <div>
       {/* マスク対象の種別トグルチップ */}
@@ -39,10 +48,14 @@ export function JsonMaskControls({ counts, enabled, onToggle }: Props) {
         onToggle={onToggle}
       />
 
-      {/* 検出ゼロ時のみメッセージを表示。検出ありはチップ内バッジで確認できる。
-          role="status" aria-live="polite" で SR へ状態変化を通知する。 */}
+      {/* 検出状態を SR へ通知する常設 live region。視覚はチップ内バッジ／下のゼロ時メッセージで示すため sr-only。 */}
+      <p className="sr-only" role="status" aria-live="polite" data-testid="mask-announcement">
+        {announcement}
+      </p>
+
+      {/* 検出ゼロ時の可視メッセージ。読み上げは上の live region 済みのため aria-hidden で二重通知を防ぐ。 */}
       {counts && !hasDetected && (
-        <p className="caption text-muted mt-1" role="status" aria-live="polite">
+        <p className="caption text-muted mt-1" aria-hidden="true">
           検出された機密データはありません。
         </p>
       )}
