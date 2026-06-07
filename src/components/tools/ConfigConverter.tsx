@@ -6,6 +6,7 @@ import { DownloadButton } from '@/components/ui/DownloadButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { StatusIcon } from '@/components/ui/StatusIcon';
+import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { useCodecWithMeta } from '@/hooks/useCodec';
 import { convert } from '@/utils/config-converter';
 import type { ConfigFormat } from '@/utils/config-converter';
@@ -199,13 +200,13 @@ export function ConfigConverterTool() {
       </div>
 
       {warnings.length > 0 && (
-        <div className="rounded-lg p-3 border border-warning bg-warning-tint">
-          <ul className="caption text-default m-0 pl-5">
+        <NotificationBanner title="変換に関する警告">
+          <ul className="m-0 pl-5">
             {warnings.map((w, i) => (
               <li key={i}>{w}</li>
             ))}
           </ul>
-        </div>
+        </NotificationBanner>
       )}
 
       <div>

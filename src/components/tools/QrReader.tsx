@@ -4,6 +4,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Section } from '@/components/ui/Section';
 import { FileInputButton } from '@/components/ui/FileInputButton';
+import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { useQrCamera } from '@/hooks/useQrCamera';
 import { useAbortableEffect } from '@/hooks/useAbortableEffect';
 import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
@@ -191,20 +192,20 @@ export function QrReaderTool() {
 
             {/* URLの場合のフィッシング警告 */}
             {content.kind === 'url' && (
-              <div className="rounded-lg p-4 space-y-2 border border-warning bg-warning-tint">
-                <p className="caption text-default">
+              <NotificationBanner title="外部リンクが含まれています">
+                <p className="m-0">
                   <strong className="text-default">{content.hostname}</strong>{' '}
-                  への外部リンクが含まれています。URLをよく確認してから開いてください。
+                  への外部リンクです。URL をよく確認してから開いてください。
                 </p>
                 <a
                   href={content.raw}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="caption font-semibold inline-flex items-center px-3.5 py-1.5 rounded-md border border-warning bg-default text-default no-underline"
+                  className="caption font-semibold inline-flex items-center mt-2 px-3.5 py-1.5 rounded-md border border-warning bg-default text-default no-underline"
                 >
                   URLを開く
                 </a>
-              </div>
+              </NotificationBanner>
             )}
           </div>
         </Section>

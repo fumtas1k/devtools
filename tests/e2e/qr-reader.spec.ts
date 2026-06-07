@@ -151,6 +151,12 @@ test.describe('QRリーダー（production CSP 適用）', () => {
       await expect(page.getByText(url)).toBeVisible({ timeout: 10000 });
       await expect(page.getByRole('link', { name: 'URLを開く' })).toBeVisible();
       await expect(page.getByText('example.com', { exact: true })).toBeVisible();
+
+      // 警告は NotificationBanner (role="note") でラップされている
+      // （素の div へ戻るリグレッションを検知する）
+      const note = page.getByRole('note');
+      await expect(note).toBeVisible();
+      await expect(note.getByRole('link', { name: 'URLを開く' })).toBeVisible();
     });
   });
 
