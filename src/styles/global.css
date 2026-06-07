@@ -483,6 +483,23 @@
     border-color: var(--color-error);
   }
 
+  /* Notification banner (DADS 通知バナー color-chip 型: 全周ボーダー + 左カラーチップ)
+     左帯は inset box-shadow（16px）で表現し、角丸に沿ってクリップされる。 */
+  .notification-banner {
+    border: 2px solid;
+    background: var(--color-bg);
+  }
+  .notification-banner--warning {
+    border-color: var(--color-warning);
+    box-shadow: inset 16px 0 0 0 var(--color-warning);
+    color: var(--color-warning);
+  }
+  .notification-banner--error {
+    border-color: var(--color-error);
+    box-shadow: inset 16px 0 0 0 var(--color-error);
+    color: var(--color-error);
+  }
+
   /* File picker label (VerifyTab upload mode) */
   .qr-file-picker-label {
     background: var(--color-bg-surface);

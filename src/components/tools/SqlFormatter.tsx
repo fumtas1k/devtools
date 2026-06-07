@@ -5,6 +5,7 @@ import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { formatSql, embedParams, type SqlDialect } from '@/utils/sql';
 import { useCodec } from '@/hooks/useCodec';
 
@@ -95,13 +96,10 @@ export function SqlFormatterTool() {
         </>
       ) : (
         <>
-          <div role="note" className="border border-warning bg-warning-tint rounded-lg p-4">
-            <p className="caption text-warning">
-              ⚠️ この出力はデバッグで内容を確認するための表示用です。文字列連結による値の埋め込みは
-              SQL インジェクションの形そのものであり、生成された SQL をそのまま DB
-              で実行しないでください。
-            </p>
-          </div>
+          <NotificationBanner title="生成された SQL はそのまま実行しないでください">
+            この出力はデバッグで内容を確認するための表示用です。文字列連結による値の埋め込みは SQL
+            インジェクションそのものの形です。
+          </NotificationBanner>
 
           <div className="flex flex-col md:flex-row gap-4 items-stretch">
             <div className="w-full md:flex-1 min-w-0 space-y-4" data-testid="embed-input-column">
