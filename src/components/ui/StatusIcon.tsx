@@ -55,25 +55,10 @@ export function StatusIcon({ variant, size = 16, className = '', filled = false 
       );
     }
 
+    // 警告: 三角形に「!」を抜いた塗りつぶし（DADS 公式パス）
     return (
-      <svg
-        {...filledCommon}
-        fill="currentColor"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinejoin="round"
-      >
-        <path d="M12 4 L21 19 L3 19 Z" />
-        <line
-          x1="12"
-          y1="9.5"
-          x2="12"
-          y2="13.5"
-          stroke="#fff"
-          strokeWidth={2}
-          strokeLinecap="round"
-        />
-        <circle cx="12" cy="16.5" r="1.15" fill="#fff" stroke="none" />
+      <svg {...filledCommon} fill="currentColor">
+        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
       </svg>
     );
   }
