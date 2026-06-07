@@ -22,7 +22,12 @@ export function NotificationBanner({ variant = 'warning', title, children, role 
       className={`notification-banner notification-banner--${variant} rounded-lg p-4`}
     >
       <div className="flex items-center gap-2">
-        <StatusIcon variant={variant} size={20} className={`${ICON_COLOR[variant]} shrink-0`} />
+        <StatusIcon
+          variant={variant}
+          size={20}
+          filled
+          className={`${ICON_COLOR[variant]} shrink-0`}
+        />
         <p className="body-emphasis text-default">{title}</p>
       </div>
       <p className="caption text-default mt-2">{children}</p>

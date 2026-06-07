@@ -483,17 +483,17 @@
     border-color: var(--color-error);
   }
 
-  /* Notification banner (DADS 通知バナー: 左帯 + 白背景 + 薄い外枠) */
+  /* Notification banner (DADS 通知バナー: 左帯 + 白背景 + 全周ボーダー) */
   .notification-banner {
     border: 1px solid var(--color-border);
-    border-left-width: 4px;
+    border-left-width: 6px;
     background: var(--color-bg);
   }
   .notification-banner--warning {
-    border-left-color: var(--color-warning);
+    border-color: var(--color-warning);
   }
   .notification-banner--error {
-    border-left-color: var(--color-error);
+    border-color: var(--color-error);
   }
 
   /* File picker label (VerifyTab upload mode) */
