@@ -58,4 +58,40 @@ describe('StatusIcon', () => {
     expect(cls).toContain('align-middle');
     expect(cls).toContain('custom-cls');
   });
+
+  describe('filled variants', () => {
+    it('warning filled: <path> を持つ塗りつぶし三角形を描画し aria-hidden="true"', () => {
+      const { container } = render(<StatusIcon variant="warning" filled />);
+      const svg = container.querySelector('svg');
+      expect(svg).toBeTruthy();
+      expect(svg?.getAttribute('aria-hidden')).toBe('true');
+      expect(svg?.getAttribute('fill')).toBe('currentColor');
+      // 塗りつぶし三角はルートに stroke="currentColor" を持たない
+      expect(svg?.getAttribute('stroke')).toBeNull();
+      expect(svg?.querySelector('path')).toBeTruthy();
+    });
+
+    it('error filled: <circle> と 2 本の <line> を持つ塗りつぶし円を描画し aria-hidden="true"', () => {
+      const { container } = render(<StatusIcon variant="error" filled />);
+      const svg = container.querySelector('svg');
+      expect(svg).toBeTruthy();
+      expect(svg?.getAttribute('aria-hidden')).toBe('true');
+      expect(svg?.getAttribute('fill')).toBe('currentColor');
+      // 塗りつぶし円はルートに stroke="currentColor" を持たない
+      expect(svg?.getAttribute('stroke')).toBeNull();
+      expect(svg?.querySelector('circle')).toBeTruthy();
+      expect(svg?.querySelectorAll('line').length).toBe(2);
+    });
+
+    it('success filled: filled ガードをスルーし outline success (polyline) にフォールスルーする', () => {
+      const { container } = render(<StatusIcon variant="success" filled />);
+      const svg = container.querySelector('svg');
+      expect(svg).toBeTruthy();
+      // アウトライン success は stroke="currentColor" を持つ
+      expect(svg?.getAttribute('stroke')).toBe('currentColor');
+      expect(svg?.querySelector('polyline')).toBeTruthy();
+      // 塗りつぶし円はない
+      expect(svg?.querySelector('circle')).toBeFalsy();
+    });
+  });
 });

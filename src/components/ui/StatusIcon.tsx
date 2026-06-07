@@ -7,43 +7,25 @@ interface Props {
 }
 
 export function StatusIcon({ variant, size = 16, className = '', filled = false }: Props) {
-  const common = {
+  const base = {
     width: size,
     height: size,
     viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
     'aria-hidden': true,
     className: `inline-block align-middle${className ? ` ${className}` : ''}`,
   };
 
-  if (filled) {
-    // 地色（currentColor）で塗りつぶし、シンボルを白抜きで描画する
-    const filledCommon = {
-      width: size,
-      height: size,
-      viewBox: '0 0 24 24',
-      'aria-hidden': true,
-      className: `inline-block align-middle${className ? ` ${className}` : ''}`,
-    };
+  const common = {
+    ...base,
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
 
-    if (variant === 'success') {
-      return (
-        <svg {...filledCommon} fill="currentColor">
-          <circle cx="12" cy="12" r="10" />
-          <polyline
-            points="17 9 10.5 15.5 7 12"
-            fill="none"
-            stroke="#fff"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      );
-    }
+  if (filled && variant !== 'success') {
+    // 地色（currentColor）で塗りつぶし、シンボルを白抜きで描画する
+    const filledCommon = { ...base };
 
     if (variant === 'error') {
       return (
