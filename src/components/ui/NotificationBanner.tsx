@@ -20,7 +20,7 @@ export function NotificationBanner({ variant = 'warning', title, children, role 
         <StatusIcon variant={variant} size={24} filled className="shrink-0" />
         <p className="body-emphasis text-default">{title}</p>
       </div>
-      <p className="caption text-default mt-2">{children}</p>
+      <div className="caption text-default mt-2">{children}</div>
     </div>
   );
 }
