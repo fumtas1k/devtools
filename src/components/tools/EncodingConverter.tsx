@@ -352,28 +352,30 @@ export function EncodingConverterTool() {
       {/* 変換設定 */}
       {mode === 'convert' && (
         <div className="space-y-3">
-          <div>
-            <label htmlFor="enc-source" className="caption text-muted mb-2 block">
-              元の文字コード:
-            </label>
-            <Select
-              id="enc-source"
-              options={SOURCE_ENCODINGS}
-              value={sourceEnc}
-              onChange={(v) => setSourceEnc(v as SourceEncoding)}
-            />
-          </div>
+          <div className="flex flex-col md:flex-row gap-4 items-start">
+            <div className="w-full md:flex-1 min-w-0">
+              <label htmlFor="enc-source" className="caption text-muted mb-2 block">
+                元の文字コード:
+              </label>
+              <Select
+                id="enc-source"
+                options={SOURCE_ENCODINGS}
+                value={sourceEnc}
+                onChange={(v) => setSourceEnc(v as SourceEncoding)}
+              />
+            </div>
 
-          <div>
-            <label htmlFor="enc-target" className="caption text-muted mb-2 block">
-              変換後の文字コード:
-            </label>
-            <Select
-              id="enc-target"
-              options={TARGET_ENCODINGS}
-              value={targetEnc}
-              onChange={(v) => setTargetEnc(v as EncodingName)}
-            />
+            <div className="w-full md:flex-1 min-w-0">
+              <label htmlFor="enc-target" className="caption text-muted mb-2 block">
+                変換後の文字コード:
+              </label>
+              <Select
+                id="enc-target"
+                options={TARGET_ENCODINGS}
+                value={targetEnc}
+                onChange={(v) => setTargetEnc(v as EncodingName)}
+              />
+            </div>
           </div>
 
           {UTF16_ENCODINGS.has(targetEnc) ? (
