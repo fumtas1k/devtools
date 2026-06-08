@@ -25,7 +25,7 @@ export function RegexAstTree({ node, hotspot }: Props) {
         <span className={hot ? 'regex-ast-node regex-ast-node-hot' : 'regex-ast-node'}>
           {node.label}
           {hot && (
-            <ChipLabel color="red" className="ml-2">
+            <ChipLabel tone="error" className="ml-2">
               ⚠ ReDoS 危険箇所
             </ChipLabel>
           )}

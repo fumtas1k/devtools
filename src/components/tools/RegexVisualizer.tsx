@@ -142,13 +142,19 @@ export function RegexVisualizer() {
         <div className="flex items-center gap-2 mb-2">
           <h2 className="body-emphasis text-default">ReDoS 判定</h2>
           {!analysis.isPending && redos?.status === 'vulnerable' && (
-            <StatusBadge tone="error">脆弱</StatusBadge>
+            <StatusBadge tone="error" decorative>
+              脆弱
+            </StatusBadge>
           )}
           {!analysis.isPending && redos?.status === 'safe' && (
-            <StatusBadge tone="success">安全</StatusBadge>
+            <StatusBadge tone="success" decorative>
+              安全
+            </StatusBadge>
           )}
           {!analysis.isPending && redos?.status === 'unknown' && (
-            <StatusBadge tone="warning">判定不能</StatusBadge>
+            <StatusBadge tone="warning" decorative>
+              判定不能
+            </StatusBadge>
           )}
         </div>
         {analysis.isPending && <p className="caption text-muted">判定中…</p>}

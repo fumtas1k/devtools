@@ -45,4 +45,27 @@ describe('StatusBadge', () => {
     );
     expect((container.firstChild as HTMLElement).className).toContain('ml-2');
   });
+
+  it('decorative=true で aria-hidden="true" が付く', () => {
+    const { container } = render(
+      <StatusBadge tone="success" decorative>
+        安全
+      </StatusBadge>
+    );
+    expect((container.firstChild as HTMLElement).getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('decorative 未指定でデフォルト false: aria-hidden が付かない', () => {
+    const { container } = render(<StatusBadge tone="error">脆弱</StatusBadge>);
+    expect((container.firstChild as HTMLElement).getAttribute('aria-hidden')).toBeNull();
+  });
+
+  it('decorative=false 明示でも aria-hidden が付かない', () => {
+    const { container } = render(
+      <StatusBadge tone="info" decorative={false}>
+        情報
+      </StatusBadge>
+    );
+    expect((container.firstChild as HTMLElement).getAttribute('aria-hidden')).toBeNull();
+  });
 });
