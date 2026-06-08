@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { downloadBlob, downloadPngFromSvgElement, svgContentToPngBlob } from '@/utils/download';
+import {
+  downloadBlob,
+  downloadBytes,
+  downloadPngFromSvgElement,
+  svgContentToPngBlob,
+} from '@/utils/download';
+import { normalizeNewlines } from '@/utils/encoding';
 
 /**
  * `src/utils/download.ts` の private const `RETINA_SCALE` の mirror。
@@ -197,6 +203,103 @@ describe('downloadBlob', () => {
   it('生成した ObjectURL は revokeObjectURL で解放される', () => {
     downloadBlob(new Blob(['x']), 'a.txt');
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+  });
+});
+
+/**
+ * downloadBytes: backing buffer 全体を覆わない Uint8Array ビュー（normalizeNewlines の
+ * CRLF モードが返す subarray など）を渡したとき、NUL バイトが混入しないことを検証する。
+ *
+ * 根本原因: normalizeNewlines() の CRLF モードは `new Uint8Array(bytes.length * 2)` を
+ * 確保して `out.subarray(0, w)` というビューを返す。旧実装が `bytes.buffer`（バッファ全体）
+ * を Blob に渡していたため、ビュー範囲外のゼロ詰めバイトが出力に混入し、VS Code が
+ * 「バイナリか、サポートされていないエンコード」と判定する事故が発生した。
+ *
+ * 陽性対照（oversized buffer ケース）と陰性対照（通常ケース）を別 it() に分離。
+ * URL.createObjectURL に渡される Blob を捕捉して Blob.size を assert する。
+ */
+describe('downloadBytes', () => {
+  let createdAnchor: { href: string; download: string; click: ReturnType<typeof vi.fn> };
+  let capturedBlob: Blob | undefined;
+  let createObjectURL: ReturnType<typeof vi.fn>;
+  let revokeObjectURL: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    createdAnchor = { href: '', download: '', click: vi.fn() };
+    capturedBlob = undefined;
+    createObjectURL = vi.fn((blob: Blob) => {
+      capturedBlob = blob;
+      return 'blob:mock-url';
+    });
+    revokeObjectURL = vi.fn();
+
+    vi.stubGlobal('document', {
+      createElement: vi.fn(() => createdAnchor),
+    });
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * 陽性対照: oversized backing buffer の subarray ビューを渡したとき、
+   * Blob.size がビュー長（6）になること。
+   *
+   * 旧実装（`bytes.buffer` 直渡し）に revert すると Blob.size は backing buffer 長（10）
+   * になりこのテストが fail する — これがバグ検知能力の証明（test-gates 鉄則 1）。
+   * normalizeNewlines() の CRLF モードが `bytes.length * 2` のバッファを確保して
+   * `subarray(0, w)` を返すパターンと同じ状況を手動で再現している。
+   */
+  it('陽性対照: oversized buffer の subarray ビューを渡すと Blob.size がビュー長（6）になる', () => {
+    // 10 バイトの backing buffer を作り、先頭 6 バイトだけのビューを作る
+    // (normalizeNewlines CRLF モードの `new Uint8Array(bytes.length * 2)` + `subarray(0, w)` を模倣)
+    const buf = new Uint8Array(10);
+    buf.set([0x83, 0x4a, 0x0d, 0x0a, 0x96, 0xbc]); // SJIS「花」＋CRLF＋SJIS「名」
+    const view = buf.subarray(0, 6); // backing buffer は 10 バイト、ビューは 6 バイト
+
+    downloadBytes(view, 'output.txt');
+
+    expect(capturedBlob).toBeDefined();
+    // 修正版: Blob.size = 6（ビュー長のみ）
+    // 旧実装（bytes.buffer 直渡し）に revert すると size = 10（backing buffer 全体）になり fail
+    expect(capturedBlob!.size).toBe(6);
+  });
+
+  /**
+   * 陰性対照: backing buffer 全体を覆う通常の Uint8Array を渡したとき、
+   * Blob.size が正しくバイト長になること。
+   */
+  it('陰性対照: backing buffer 全体を覆う Uint8Array を渡すと Blob.size がバイト長と一致する', () => {
+    const bytes = new Uint8Array([0x83, 0x4a, 0x0d, 0x0a]); // 4 バイト、buffer 全体をカバー
+
+    downloadBytes(bytes, 'output.txt');
+
+    expect(capturedBlob).toBeDefined();
+    expect(capturedBlob!.size).toBe(4);
+  });
+
+  /**
+   * 陽性対照（実コードパス連結）: normalizeNewlines('crlf') の戻り値（oversized backing
+   * buffer の subarray ビュー）を実際に downloadBytes に流し、Blob.size がビュー長と
+   * 一致することを end-to-end で検証する（#598 レビュー提案 1）。
+   *
+   * 上の手動再構築ケースと違い、normalizeNewlines 側の実装（`new Uint8Array(len*2)` +
+   * `subarray(0, w)`）が将来変わっても本ケースが回帰を直接ガードする。旧 downloadBytes
+   * （`bytes.buffer` 直渡し）に revert すると size がゼロ詰めを含む値になり fail する。
+   */
+  it('陽性対照: normalizeNewlines("crlf") 出力を downloadBytes に流すと Blob.size がビュー長と一致する', () => {
+    // SJIS「花」(83 4a) + LF + SJIS「名」(96 bc): LF を含む現実的なバイト列
+    const input = new Uint8Array([0x83, 0x4a, 0x0a, 0x96, 0xbc]);
+    const crlf = normalizeNewlines(input, 'crlf'); // LF→CRLF で 6 バイトのビュー（裏は 10 バイト）
+    expect(crlf.length).toBe(6);
+    expect(crlf.buffer.byteLength).toBeGreaterThan(crlf.length); // oversized buffer であることを確認
+
+    downloadBytes(crlf, 'output.txt');
+
+    expect(capturedBlob).toBeDefined();
+    expect(capturedBlob!.size).toBe(crlf.length); // ゼロ詰めを含まずビュー長と一致
   });
 });
 

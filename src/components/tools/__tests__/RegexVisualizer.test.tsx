@@ -33,13 +33,17 @@ describe('RegexVisualizer', () => {
   it('脆弱な正規表現で危険判定を表示する', async () => {
     render(<RegexVisualizer />);
     setPattern('(a+)+$');
-    expect(await screen.findByText(/脆弱/, undefined, FIND)).toBeTruthy();
+    // StatusBadge（「脆弱」）と NotificationBanner title（「脆弱：ReDoS…」）の両方が表示される
+    const els = await screen.findAllByText(/脆弱/, undefined, FIND);
+    expect(els.length).toBeGreaterThan(0);
   });
 
   it('安全な正規表現で安全判定を表示する', async () => {
     render(<RegexVisualizer />);
     setPattern('^[a-z]+$');
-    expect(await screen.findByText(/安全/, undefined, FIND)).toBeTruthy();
+    // StatusBadge（「安全」）と NotificationBanner title（「安全：ReDoS…」）の両方が表示される
+    const els = await screen.findAllByText(/安全/, undefined, FIND);
+    expect(els.length).toBeGreaterThan(0);
   });
 
   it('鉄道図タブに切り替えると SVG が表示される', async () => {
@@ -55,7 +59,8 @@ describe('RegexVisualizer', () => {
   it('鉄道図タブで脆弱パターンの hotspot が強調される', async () => {
     render(<RegexVisualizer />);
     setPattern('(a+)+$');
-    await screen.findByText(/脆弱/, undefined, FIND);
+    // StatusBadge + NotificationBanner title の両方にマッチするので findAllByText で待機
+    await screen.findAllByText(/脆弱/, undefined, FIND);
     fireEvent.click(screen.getByRole('button', { name: '鉄道図' }));
     const svg = await screen.findByRole('img', { name: '正規表現の鉄道図' }, FIND);
     expect(svg.querySelector('.rr-box-hot')).toBeTruthy();
@@ -64,8 +69,8 @@ describe('RegexVisualizer', () => {
   it('安全な正規表現でテスト文字列を入力するとマッチが集計される', async () => {
     render(<RegexVisualizer />);
     setPattern('\\d+');
-    // safe 判定の確定を待つ（動的 import + debounce 完了の目印）
-    await screen.findByText(/安全/, undefined, FIND);
+    // safe 判定の確定を待つ（StatusBadge + title の両方にマッチするので findAllByText）
+    await screen.findAllByText(/安全/, undefined, FIND);
     fireEvent.change(screen.getByLabelText('テスト文字列'), { target: { value: 'a1 b2' } });
     expect(await screen.findByText(/件マッチ/, undefined, FIND)).toBeTruthy();
   });
@@ -73,7 +78,8 @@ describe('RegexVisualizer', () => {
   it('脆弱な正規表現ではマッチ実行が無効化される', async () => {
     render(<RegexVisualizer />);
     setPattern('(a+)+$');
-    await screen.findByText(/脆弱/, undefined, FIND);
+    // StatusBadge + NotificationBanner title の両方にマッチするので findAllByText で待機
+    await screen.findAllByText(/脆弱/, undefined, FIND);
     expect(await screen.findByText(/マッチ実行を無効化/, undefined, FIND)).toBeTruthy();
   });
 });

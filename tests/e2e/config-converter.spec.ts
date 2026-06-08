@@ -340,6 +340,12 @@ test.describe('設定ファイル相互変換', () => {
 
     // convert() が push する warning が画面に描画される
     await expect(page.getByText('値はすべて文字列に変換されます')).toBeVisible();
+
+    // 警告は NotificationBanner (role="note") でラップされている
+    // （素の div へ戻るリグレッションを検知する。旧実装に当てると fail することを確認済み）
+    const note = page.getByRole('note');
+    await expect(note).toBeVisible();
+    await expect(note).toContainText('変換に関する警告');
   });
 
   test('warning の出ないフォーマットへ切替えると warning が消える', async ({ page }) => {
