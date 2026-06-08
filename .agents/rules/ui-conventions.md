@@ -19,6 +19,9 @@
 | `ToggleGroup<T>`      | 排他選択トグル（モード切替等）                                                                                                                                                                                                                                                      |
 | `ToggleChips<T>`      | 多選択トグルチップ群。`<fieldset>`/`<legend>` で意味付け、各チップは `aria-pressed` ボタン。`count` prop で件数バッジ表示（マスク検出件数等）、`token` prop で文字トークンを等幅バッジ表示（フラグ g/i/m 等）、`legendVisible={false}` で見出しを sr-only 化（a11y ツリーには残す） |
 | `FileInputButton`     | ファイル選択ボタン。label 内包 input 構造で `:focus-within` によるキーボードフォーカス可視化に対応                                                                                                                                                                                  |
+| `NotificationBanner`  | DADS color-chip 型の通知バナー（variant: warning/error/info/success、title + 本文）                                                                                                                                                                                                 |
+| `StatusBadge`         | 状態を表す filled ピルバッジ（tone: error/success/warning/info）。`decorative` prop で `aria-hidden` を付与し、隣接する通知バナー等が意味を担保する文脈での二重読み上げを抑制できる                                                                                                 |
+| `ChipLabel`           | アウトライン型ラベルチップ（tone: error/info/neutral、任意 icon）                                                                                                                                                                                                                   |
 
 ---
 
