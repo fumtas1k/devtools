@@ -106,60 +106,63 @@ export function DummyTextTool() {
         />
       </div>
 
-      {/* 文字数 */}
-      <div>
-        <label htmlFor="dummy-length" className="body-emphasis text-default block mb-1">
-          文字数
-        </label>
-        <input
-          id="dummy-length"
-          type="number"
-          min={1}
-          max={5000}
-          value={lengthInput}
-          onChange={(e) => handleLengthChange(e.target.value)}
-          onBlur={handleLengthBlur}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleLengthBlur();
-            }
-          }}
-          className="rounded-lg px-3 py-2 caption w-32 border border-input bg-default text-default"
-        />
-        <p className="caption text-muted mt-1">1〜5000文字</p>
-      </div>
-
-      {/* 改行 */}
-      <div>
-        <p className="body-emphasis text-default mb-1">改行</p>
-        <div className="flex items-center gap-3 flex-wrap">
-          <ToggleGroup<'false' | 'true'>
-            options={[
-              { value: 'false', label: 'なし' },
-              { value: 'true', label: 'あり' },
-            ]}
-            value={String(lineBreak) as 'false' | 'true'}
-            onChange={(v) => setLineBreak(v === 'true')}
-            ariaLabel="改行設定"
+      {/* 文字数 & 改行 */}
+      <div className="flex flex-col md:flex-row md:items-start gap-6">
+        {/* 文字数 */}
+        <div>
+          <label htmlFor="dummy-length" className="body-emphasis text-default block mb-1">
+            文字数
+          </label>
+          <input
+            id="dummy-length"
+            type="number"
+            min={1}
+            max={5000}
+            value={lengthInput}
+            onChange={(e) => handleLengthChange(e.target.value)}
+            onBlur={handleLengthBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleLengthBlur();
+              }
+            }}
+            className="rounded-lg px-3 py-2 caption w-32 border border-input bg-default text-default"
           />
-          {lineBreak && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="chunk-size" className="caption text-muted">
-                間隔
-              </label>
-              <input
-                id="chunk-size"
-                type="number"
-                min={1}
-                max={1000}
-                value={chunkInput}
-                onChange={(e) => handleChunkChange(e.target.value)}
-                onBlur={handleChunkBlur}
-                className="rounded-lg px-3 py-2 caption w-20 border border-input bg-default text-default"
-              />
-              <span className="caption text-muted">文字ごと（1〜1000）</span>
-            </div>
-          )}
+          <p className="caption text-muted mt-1">1〜5000文字</p>
+        </div>
+
+        {/* 改行 */}
+        <div>
+          <p className="body-emphasis text-default mb-1">改行</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <ToggleGroup<'false' | 'true'>
+              options={[
+                { value: 'false', label: 'なし' },
+                { value: 'true', label: 'あり' },
+              ]}
+              value={String(lineBreak) as 'false' | 'true'}
+              onChange={(v) => setLineBreak(v === 'true')}
+              ariaLabel="改行設定"
+            />
+            {lineBreak && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="chunk-size" className="caption text-muted">
+                  間隔
+                </label>
+                <input
+                  id="chunk-size"
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={chunkInput}
+                  onChange={(e) => handleChunkChange(e.target.value)}
+                  onBlur={handleChunkBlur}
+                  className="rounded-lg px-3 py-2 caption w-20 border border-input bg-default text-default"
+                />
+                <span className="caption text-muted">文字ごと（1〜1000）</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
