@@ -1015,8 +1015,7 @@
 
   /* === JsonFormatter: ツリービュー === */
   .json-tree-box {
-    min-height: 22rem;
-    max-height: 34rem;
+    height: 28rem;
     overflow: auto;
   }
   .json-tree-root {
