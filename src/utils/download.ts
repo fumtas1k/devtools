@@ -23,12 +23,21 @@ export function downloadText(content: string, filename: string, mimeType = 'text
   downloadBlob(new Blob([content], { type: `${mimeType};charset=utf-8` }), filename);
 }
 
-/** バイナリをファイルとしてダウンロードする */
+/**
+ * バイナリをファイルとしてダウンロードする。
+ *
+ * normalizeNewlines() の CRLF モードは `new Uint8Array(bytes.length * 2)` を確保して
+ * `out.subarray(0, w)` というビューを返す。backing buffer には末尾にゼロ詰めが残るため、
+ * 旧実装のように `bytes.buffer`（バッファ全体）を Blob に渡すと NUL バイトが混入し、
+ * VS Code が「バイナリか、サポートされていないエンコード」と判定する事故が起きていた
+ * （issue: SJIS/CRLF 変換）。
+ *
+ * `bytes.slice()` は byteOffset/byteLength の範囲だけを ArrayBuffer 裏の新しい Uint8Array に
+ * コピーして返すため、ビュー範囲外のゼロ詰めバイトが混入せず、かつ ArrayBufferLike
+ * （SharedArrayBuffer 含む）の型問題も回避できる。
+ */
 export function downloadBytes(bytes: Uint8Array, filename: string): void {
-  downloadBlob(
-    new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }),
-    filename
-  );
+  downloadBlob(new Blob([bytes.slice()], { type: 'application/octet-stream' }), filename);
 }
 
 /** SVG文字列をファイルとしてダウンロードする */
