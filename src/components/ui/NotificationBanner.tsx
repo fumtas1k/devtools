@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { StatusIcon } from '@/components/ui/StatusIcon';
 
-type Variant = 'warning' | 'error';
+type Variant = 'warning' | 'error' | 'info' | 'success';
 
 interface Props {
   variant?: Variant;

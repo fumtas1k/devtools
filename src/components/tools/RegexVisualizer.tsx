@@ -5,6 +5,8 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ToggleChips } from '@/components/ui/ToggleChips';
+import { NotificationBanner } from '@/components/ui/NotificationBanner';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
 import type { RegexAstNode, RedosResult, RailNode } from '@/utils/regex-visualizer';
 // 純粋関数のみの module を直接 import（barrel 経由だと recheck/regexp-tree の CJS が
@@ -137,18 +139,33 @@ export function RegexVisualizer() {
         aria-live="polite"
         className="rounded-lg border border-default p-4"
       >
-        <h2 className="body-emphasis text-default mb-2">ReDoS 判定</h2>
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="body-emphasis text-default">ReDoS 判定</h2>
+          {!analysis.isPending && redos?.status === 'vulnerable' && (
+            <StatusBadge tone="error">脆弱</StatusBadge>
+          )}
+          {!analysis.isPending && redos?.status === 'safe' && (
+            <StatusBadge tone="success">安全</StatusBadge>
+          )}
+          {!analysis.isPending && redos?.status === 'unknown' && (
+            <StatusBadge tone="warning">判定不能</StatusBadge>
+          )}
+        </div>
         {analysis.isPending && <p className="caption text-muted">判定中…</p>}
         {!analysis.isPending && redos?.status === 'safe' && (
-          <p className="alert-success">安全：壊滅的バックトラッキングは検出されませんでした。</p>
+          <NotificationBanner variant="success" title="安全：ReDoS は検出されませんでした">
+            壊滅的バックトラッキングは検出されませんでした。
+          </NotificationBanner>
         )}
         {!analysis.isPending && redos?.status === 'vulnerable' && (
-          <div className="space-y-2">
-            <p className="text-warning body-emphasis">
-              ⚠ 脆弱：ReDoS のリスクがあります（{redos.complexity}）。
-            </p>
+          <div className="space-y-3">
+            <NotificationBanner variant="error" title="脆弱：ReDoS のリスクがあります">
+              入力長に対してマッチ時間が{redos.complexity}
+              に増加します。下の攻撃文字列で再現できます。本番環境では使用しないでください。
+            </NotificationBanner>
             {redos.attackString && attack && (
               <div className="space-y-1">
+                <p className="caption text-muted">攻撃文字列（コピーして検証に使用）</p>
                 <div className="flex items-start gap-2">
                   <code className="bg-subtle rounded px-2 py-1 font-mono break-all">
                     {attack.display}
@@ -167,7 +184,9 @@ export function RegexVisualizer() {
           </div>
         )}
         {!analysis.isPending && redos?.status === 'unknown' && (
-          <p className="text-muted">判定不能（{redos.reason}）：安全とは限りません。</p>
+          <NotificationBanner variant="warning" title="判定不能：安全とは限りません">
+            判定できませんでした（{redos.reason}）。安全とは限らないため注意してください。
+          </NotificationBanner>
         )}
         {!analysis.isPending && !redos && (
           <p className="caption text-muted">正規表現を入力してください。</p>

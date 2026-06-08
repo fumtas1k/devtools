@@ -1,4 +1,5 @@
 import type { RegexAstNode } from '@/utils/regex-visualizer';
+import { ChipLabel } from '@/components/ui/ChipLabel';
 
 interface Props {
   node: RegexAstNode;
@@ -23,7 +24,11 @@ export function RegexAstTree({ node, hotspot }: Props) {
       <li>
         <span className={hot ? 'regex-ast-node regex-ast-node-hot' : 'regex-ast-node'}>
           {node.label}
-          {hot && <span className="caption text-warning"> ⚠ ReDoS 危険箇所</span>}
+          {hot && (
+            <ChipLabel color="red" className="ml-2">
+              ⚠ ReDoS 危険箇所
+            </ChipLabel>
+          )}
         </span>
         {node.children.map((child, i) => (
           <RegexAstTree key={i} node={child} hotspot={hotspot} />

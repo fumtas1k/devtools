@@ -83,15 +83,19 @@ describe('StatusIcon', () => {
       expect(svg?.querySelectorAll('line').length).toBe(2);
     });
 
-    it('success filled: filled ガードをスルーし outline success (polyline) にフォールスルーする', () => {
+    it('success filled: 緑地の円 + 白抜き polyline チェックを描画する', () => {
       const { container } = render(<StatusIcon variant="success" filled />);
       const svg = container.querySelector('svg');
       expect(svg).toBeTruthy();
-      // アウトライン success は stroke="currentColor" を持つ
-      expect(svg?.getAttribute('stroke')).toBe('currentColor');
-      expect(svg?.querySelector('polyline')).toBeTruthy();
-      // 塗りつぶし円はない
-      expect(svg?.querySelector('circle')).toBeFalsy();
+      expect(svg?.getAttribute('aria-hidden')).toBe('true');
+      // 塗りつぶし円は fill="currentColor" を SVG ルートに持つ
+      expect(svg?.getAttribute('fill')).toBe('currentColor');
+      // 白抜きチェック (polyline) が存在する
+      const poly = svg?.querySelector('polyline');
+      expect(poly).toBeTruthy();
+      expect(poly?.getAttribute('stroke')).toBe('#fff');
+      // 背景の円が存在する
+      expect(svg?.querySelector('circle')).toBeTruthy();
     });
   });
 });

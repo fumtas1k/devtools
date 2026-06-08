@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { ResultTable, type TableColumn } from '@/components/ui/ResultTable';
+import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
 // runMatch は match.ts から直接 import する（barrel 経由にしない）。barrel(index.ts) は
 // parse.ts/redos.ts も re-export しており、それらは CJS（regexp-tree / recheck）依存。
@@ -122,10 +123,10 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
       {!regexValid ? (
         <p className="caption text-muted">有効な正規表現を入力するとマッチを試せます。</p>
       ) : redosStatus === 'vulnerable' ? (
-        <p className="text-warning caption">
-          この正規表現は ReDoS のリスクがあるため、マッチ実行を無効化しています。上の ReDoS
-          判定パネルに表示された攻撃文字列を参照してください。
-        </p>
+        <NotificationBanner variant="info" title="マッチ実行を無効化しています">
+          この正規表現は ReDoS
+          のリスクがあるため、安全のため実行をブロックしています。挙動を確認する場合は、上の判定パネルの攻撃文字列を参照してください。
+        </NotificationBanner>
       ) : (
         <>
           <InputField
