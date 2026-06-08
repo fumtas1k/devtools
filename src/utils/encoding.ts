@@ -144,6 +144,11 @@ export const NEWLINE_OPTIONS: Array<{ value: NewlineMode; label: string }> = [
 
 // UTF-8 / SJIS / EUC-JP / JIS / ASCII 向けのバイト単位正規化。
 // UTF-16 は呼び出し元で除外すること（BOM バイトは 0x0A/0x0D を含まないため分離不要）。
+//
+// ⚠️ 返り値は `out.subarray(0, w)` というビューで、backing buffer は実データより大きい
+// （crlf モードは最大 bytes.length * 2 を確保）。末尾にゼロ詰めが残るため、consumer は
+// `.length` / 反復のみを使い、`.buffer` を直接参照してはならない（範囲外バイトが混入する）。
+// 例: downloadBytes は `.buffer` 直渡しでファイル末尾に NUL を混入させる不具合があった（#598）。
 export function normalizeNewlines(bytes: Uint8Array, mode: NewlineMode): Uint8Array {
   if (mode === 'keep' || bytes.length === 0) return bytes;
 

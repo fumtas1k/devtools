@@ -5,6 +5,7 @@ import {
   downloadPngFromSvgElement,
   svgContentToPngBlob,
 } from '@/utils/download';
+import { normalizeNewlines } from '@/utils/encoding';
 
 /**
  * `src/utils/download.ts` の private const `RETINA_SCALE` の mirror。
@@ -277,6 +278,28 @@ describe('downloadBytes', () => {
 
     expect(capturedBlob).toBeDefined();
     expect(capturedBlob!.size).toBe(4);
+  });
+
+  /**
+   * 陽性対照（実コードパス連結）: normalizeNewlines('crlf') の戻り値（oversized backing
+   * buffer の subarray ビュー）を実際に downloadBytes に流し、Blob.size がビュー長と
+   * 一致することを end-to-end で検証する（#598 レビュー提案 1）。
+   *
+   * 上の手動再構築ケースと違い、normalizeNewlines 側の実装（`new Uint8Array(len*2)` +
+   * `subarray(0, w)`）が将来変わっても本ケースが回帰を直接ガードする。旧 downloadBytes
+   * （`bytes.buffer` 直渡し）に revert すると size がゼロ詰めを含む値になり fail する。
+   */
+  it('陽性対照: normalizeNewlines("crlf") 出力を downloadBytes に流すと Blob.size がビュー長と一致する', () => {
+    // SJIS「花」(83 4a) + LF + SJIS「名」(96 bc): LF を含む現実的なバイト列
+    const input = new Uint8Array([0x83, 0x4a, 0x0a, 0x96, 0xbc]);
+    const crlf = normalizeNewlines(input, 'crlf'); // LF→CRLF で 6 バイトのビュー（裏は 10 バイト）
+    expect(crlf.length).toBe(6);
+    expect(crlf.buffer.byteLength).toBeGreaterThan(crlf.length); // oversized buffer であることを確認
+
+    downloadBytes(crlf, 'output.txt');
+
+    expect(capturedBlob).toBeDefined();
+    expect(capturedBlob!.size).toBe(crlf.length); // ゼロ詰めを含まずビュー長と一致
   });
 });
 
