@@ -97,9 +97,9 @@ export function measureChoice(branches: RailNode[], loc: Loc): RailNode {
   return { kind: 'choice', width, height, connectY: branches[0].connectY, children: branches, loc };
 }
 
-/** アサーション（^ $ \b \B 等のアンカー）。ゼロ幅マーカーをラベル付き pill で示す。 */
+/** アサーション（^ $ \b \B のアンカー）。1文字は円、複数文字は横長 pill で示す。 */
 export function measureAssertion(label: string, loc: Loc): RailNode {
-  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  const width = label.length <= 1 ? BOX_H : Math.max(label.length * CHAR_W + BOX_PAD_X * 2, BOX_H);
   return { kind: 'assertion', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
 }
 

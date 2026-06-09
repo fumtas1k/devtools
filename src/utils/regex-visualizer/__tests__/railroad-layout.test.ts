@@ -83,12 +83,17 @@ describe('measureChoice', () => {
   });
 });
 
-describe('measureAssertion', () => {
-  it('ラベル付きの assertion ノードを返す', () => {
-    const node = measureAssertion('^', { start: 0, end: 1 });
+describe('measureAssertion（アンカー: 1文字=円 / 複数文字=pill）', () => {
+  it('1文字 $ は幅=高さの円', () => {
+    const node = measureAssertion('$', { start: 0, end: 1 });
     expect(node.kind).toBe('assertion');
-    expect(node.label).toBe('^');
+    expect(node.label).toBe('$');
+    expect(node.width).toBe(node.height); // 円
     expect(node.connectY).toBe(node.height / 2);
+  });
+  it('複数文字 \\b は横長 pill（幅 > 高さ）', () => {
+    const node = measureAssertion('\\b', { start: 0, end: 2 });
+    expect(node.width).toBeGreaterThan(node.height);
   });
 });
 
