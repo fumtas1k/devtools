@@ -88,3 +88,18 @@ describe('parseToRegExpTree', () => {
     expect(() => parseToRegExpTree('(', '')).toThrow();
   });
 });
+
+// 回帰防止 #609: d フラグ（hasIndices, ES2022）選択時に regexp-tree が "Invalid flags: d" を throw するバグ
+describe('d フラグ（hasIndices）対応', () => {
+  it('d フラグを受理し例外を投げない', () => {
+    expect(() => parseRegex('(a)b', 'd')).not.toThrow();
+  });
+
+  it('d フラグ有無で AST 構造が一致する', () => {
+    expect(parseRegex('(a)b', 'd')).toEqual(parseRegex('(a)b', ''));
+  });
+
+  it('d フラグと他フラグの組み合わせを受理する', () => {
+    expect(() => parseRegex('(a)', 'gid')).not.toThrow();
+  });
+});

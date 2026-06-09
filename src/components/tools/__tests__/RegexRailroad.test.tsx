@@ -10,6 +10,7 @@ import {
   measureAssertion,
   measureRepetition,
   measureBackreference,
+  measureCharClass,
 } from '@/utils/regex-visualizer/railroad-layout';
 
 afterEach(() => cleanup());
@@ -48,11 +49,11 @@ describe('RegexRailroad', () => {
     expect(container.querySelectorAll('path').length).toBeGreaterThanOrEqual(2); // split/merge
   });
 
-  it('assertion は pill（rect）+ ラベルを描画する', () => {
-    const node = measureAssertion('^', { start: 0, end: 1 });
+  it('assertion は rr-anchor（rect）+ ラベルを描画する', () => {
+    const node = measureAssertion('$', { start: 0, end: 1 });
     const { container } = render(<RegexRailroad node={node} />);
-    expect(container.querySelector('rect')).toBeTruthy();
-    expect(container.textContent).toContain('^');
+    expect(container.querySelector('.rr-anchor')).toBeTruthy();
+    expect(container.textContent).toContain('$');
   });
 
   // 補強（PR #492 レビュー指摘）: 幅違い分岐は狭い側に出口までの水平延長 <line> を描く
@@ -70,13 +71,13 @@ describe('RegexRailroad', () => {
     const inner = measureTerminal('a', { start: 0, end: 1 });
     const node = measureRepetition(
       inner,
-      { skip: true, loop: true, label: '*' },
+      { skip: true, loop: true, label: '0回以上' },
       { start: 0, end: 2 }
     );
     const { container } = render(<RegexRailroad node={node} />);
     expect(container.querySelector('rect')).toBeTruthy();
     expect(container.querySelectorAll('path').length).toBeGreaterThanOrEqual(2); // skip + loop
-    expect(container.textContent).toContain('*');
+    expect(container.textContent).toContain('0回以上');
   });
 
   it('backreference は rect + ラベルを描画する', () => {
@@ -115,10 +116,38 @@ describe('RegexRailroad', () => {
   // svg 高さ（=node.height）内に収まる（terminal の connectY=height/2 前提に依存しない）。
   it('量指定子付きグループ（tall inner）でラベルがノード高内に収まる', () => {
     const inner = measureGroup(measureTerminal('abc', undefined), '#1', undefined);
-    const node = measureRepetition(inner, { skip: false, loop: true, label: '+' }, undefined);
+    const node = measureRepetition(inner, { skip: false, loop: true, label: '1回以上' }, undefined);
     const { container } = render(<RegexRailroad node={node} />);
     const label = container.querySelector('.rr-quant');
     expect(label).toBeTruthy();
     expect(Number(label!.getAttribute('y'))).toBeLessThanOrEqual(node.height);
+  });
+
+  it('charclass は rr-charclass class で描画する', () => {
+    const node = measureCharClass('\\s', { start: 0, end: 2 });
+    const { container } = render(<RegexRailroad node={node} />);
+    expect(container.querySelector('.rr-charclass')).toBeTruthy();
+    expect(container.textContent).toContain('\\s');
+  });
+
+  it('loop ありの repetition は矢印 marker を参照する', () => {
+    const inner = measureTerminal('a', undefined);
+    const node = measureRepetition(inner, { skip: false, loop: true, label: '1回以上' }, undefined);
+    const { container } = render(<RegexRailroad node={node} />);
+    expect(container.querySelector('marker#rr-loop-arrow')).toBeTruthy();
+    const loopPath = Array.from(container.querySelectorAll('path')).find(
+      (p) => p.getAttribute('marker-end') === 'url(#rr-loop-arrow)'
+    );
+    expect(loopPath).toBeTruthy();
+  });
+
+  it('凡例の4種を描画する', () => {
+    const node = measureTerminal('a', undefined);
+    const { container } = render(<RegexRailroad node={node} />);
+    expect(container.querySelector('.rr-legend')).toBeTruthy();
+    expect(container.textContent).toContain('文字（リテラル）');
+    expect(container.textContent).toContain('文字クラス・メタ文字');
+    expect(container.textContent).toContain('アンカー（位置）');
+    expect(container.textContent).toContain('量指定子（くり返し・スキップ）');
   });
 });
