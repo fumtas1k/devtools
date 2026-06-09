@@ -288,40 +288,73 @@ export function RegexRailroad({ node, hotspot }: Props) {
   const totalH = node.height;
   const railY = node.connectY;
   return (
-    <div className="overflow-x-auto">
-      <svg
-        width={totalW}
-        height={totalH}
-        viewBox={`0 0 ${totalW} ${totalH}`}
-        role="img"
-        aria-label="正規表現の鉄道図"
-        className="rr-svg"
-      >
-        <defs>
-          <marker
-            id="rr-loop-arrow"
-            viewBox="0 0 10 10"
-            refX="5"
-            refY="5"
-            markerWidth="6"
-            markerHeight="6"
-            orient="auto"
-          >
-            <path d="M 0 0 L 10 5 L 0 10 z" className="rr-arrow-head" />
-          </marker>
-        </defs>
-        <circle cx={MARKER_R + 1} cy={railY} r={MARKER_R} className="rr-marker" />
-        <line x1={MARKER_R + 1} y1={railY} x2={MARKER_LEAD} y2={railY} className="rr-rail" />
-        {renderNode(node, MARKER_LEAD, 0, 'root', hotspot)}
-        <line
-          x1={MARKER_LEAD + node.width}
-          y1={railY}
-          x2={totalW - MARKER_R - 1}
-          y2={railY}
-          className="rr-rail"
-        />
-        <circle cx={totalW - MARKER_R - 1} cy={railY} r={MARKER_R} className="rr-marker" />
-      </svg>
+    <div>
+      <div className="overflow-x-auto">
+        <svg
+          width={totalW}
+          height={totalH}
+          viewBox={`0 0 ${totalW} ${totalH}`}
+          role="img"
+          aria-label="正規表現の鉄道図"
+          className="rr-svg"
+        >
+          <defs>
+            <marker
+              id="rr-loop-arrow"
+              viewBox="0 0 10 10"
+              refX="5"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" className="rr-arrow-head" />
+            </marker>
+          </defs>
+          <circle cx={MARKER_R + 1} cy={railY} r={MARKER_R} className="rr-marker" />
+          <line x1={MARKER_R + 1} y1={railY} x2={MARKER_LEAD} y2={railY} className="rr-rail" />
+          {renderNode(node, MARKER_LEAD, 0, 'root', hotspot)}
+          <line
+            x1={MARKER_LEAD + node.width}
+            y1={railY}
+            x2={totalW - MARKER_R - 1}
+            y2={railY}
+            className="rr-rail"
+          />
+          <circle cx={totalW - MARKER_R - 1} cy={railY} r={MARKER_R} className="rr-marker" />
+        </svg>
+      </div>
+      {/* 凡例: ノード種別の色/形の説明（見本図形は装飾、テキストは読み上げ可） */}
+      <div className="rr-legend caption text-muted">
+        <span className="rr-legend-item">
+          <svg width="28" height="20" aria-hidden="true">
+            <rect x="1" y="2" width="26" height="16" rx="4" className="rr-box" />
+          </svg>
+          文字（リテラル）
+        </span>
+        <span className="rr-legend-item">
+          <svg width="28" height="20" aria-hidden="true">
+            <rect x="1" y="2" width="26" height="16" rx="4" className="rr-charclass" />
+          </svg>
+          文字クラス・メタ文字
+        </span>
+        <span className="rr-legend-item">
+          <svg width="20" height="20" aria-hidden="true">
+            <circle cx="10" cy="10" r="9" className="rr-anchor" />
+          </svg>
+          アンカー（位置）
+        </span>
+        <span className="rr-legend-item">
+          <svg width="28" height="20" aria-hidden="true">
+            <path
+              d="M 2 16 Q 2 4 14 4 Q 26 4 26 16"
+              className="rr-rail"
+              markerEnd="url(#rr-loop-arrow)"
+            />
+          </svg>
+          量指定子（くり返し・スキップ）
+        </span>
+      </div>
     </div>
   );
 }
