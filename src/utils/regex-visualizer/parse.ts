@@ -1,5 +1,6 @@
 import { parse as parseRegExpTree } from 'regexp-tree';
 import { getErrorMessage } from '@/utils/errors';
+import { stripUnsupportedFlags } from './flags';
 
 export interface RegexAstNode {
   /** regexp-tree のノード種別（'Char' | 'Repetition' | 'Group' | 'Disjunction' | 'Alternative' | 'CharacterClass' | 'Assertion' | 'Backreference' | 'Root' 等） */
@@ -99,9 +100,8 @@ function toRenderNode(node: RegExpTreeNode): RegexAstNode {
  * native `new RegExp` で構文・フラグを検証（不正なら throw）し、captureLocations 付き AST を返す。
  */
 export function parseToRegExpTree(pattern: string, flags: string) {
-  // 'd' フラグ（hasIndices）は regexp-tree が未対応のため除外して渡す
-  new RegExp(pattern, flags); // 構文・フラグ検証（d フラグも含む完全フラグで）
-  const re = new RegExp(pattern, flags.replace('d', ''));
+  void new RegExp(pattern, flags); // 構文・フラグ検証（d フラグも含む完全フラグで）
+  const re = new RegExp(pattern, stripUnsupportedFlags(flags));
   return parseRegExpTree(re, { captureLocations: true });
 }
 
