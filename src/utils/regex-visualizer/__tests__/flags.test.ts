@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { stripUnsupportedFlags } from '../flags';
 
 describe('stripUnsupportedFlags', () => {
-  // 陽性対照: d フラグが除去されることを直接確認（旧実装は flags.replace を使わないため fail する）
+  // 陽性対照: d が除去されることを確認（ヘルパーが d を除去しないと fail する）
   it('陽性対照: d フラグを除去する', () => {
     expect(stripUnsupportedFlags('d')).toBe('');
   });
