@@ -65,7 +65,7 @@
   --color-link: #2563eb;
   --color-link-visited: #7c3aed;
   --color-anchor-bg: #ede9fe; /* violet-100 相当: 鉄道図アンカー塗り */
-  --color-anchor: #7c3aed; /* violet-600 相当: 鉄道図アンカー枠/文字（白背景で約4.8:1, AA 合格） */
+  --color-anchor: #7c3aed; /* violet-600 相当: 鉄道図アンカー枠/文字（アンカー塗り #ede9fe 上で約4.8:1, AA 合格） */
   --color-focus: #2563eb;
 
   /* === 角の形状 === */
