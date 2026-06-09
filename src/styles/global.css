@@ -64,6 +64,8 @@
   /* === 機能カラー === */
   --color-link: #2563eb;
   --color-link-visited: #7c3aed;
+  --color-violet-bg: #ede9fe; /* violet-100 相当: 鉄道図アンカー塗り */
+  --color-violet: #7c3aed; /* violet-600 相当: 鉄道図アンカー枠/文字 */
   --color-focus: #2563eb;
 
   /* === 角の形状 === */
@@ -953,26 +955,30 @@
   .rr-box-fallback {
     stroke-dasharray: 4 3;
   }
+  /* 文字クラス・メタ文字（[..] \s \d \w . 等）。青塗りでリテラルと区別する。 */
+  .rr-charclass {
+    fill: var(--color-bg-active);
+    stroke: var(--color-blue-300);
+    stroke-width: 1;
+  }
   .rr-text {
     fill: var(--color-text);
     font-family: var(--font-mono, monospace);
     font-size: 13px;
   }
   .rr-group {
-    fill: none;
+    fill: var(--color-bg-subtle);
     stroke: var(--color-border);
     stroke-width: 1;
-    stroke-dasharray: 2 2;
   }
   .rr-group-title {
     fill: var(--color-muted);
     font-size: 11px;
   }
-  /* アサーション（ゼロ幅アンカー）は塗りなしの輪郭 pill にして、塗りつぶしの terminal
-     リテラルと視覚的に区別する（PR #492 レビュー指摘: rr-box と rx 以外同一だった）。 */
-  .rr-assertion {
-    fill: none;
-    stroke: var(--color-border-input);
+  /* アンカー（ゼロ幅の位置: ^ $ \b \B）。紫塗りの円/pill で位置系を示す。 */
+  .rr-anchor {
+    fill: var(--color-violet-bg);
+    stroke: var(--color-violet);
     stroke-width: 1;
   }
   /* .rr-box-hot は .rr-box より後に置き fill/stroke を上書きする（PR2c: hotspot ハイライト）。 */
@@ -990,6 +996,24 @@
     fill: var(--color-muted);
     font-size: 11px;
     font-family: var(--font-mono, monospace);
+  }
+  /* ループ弧（反復方向）の矢印ヘッド。 */
+  .rr-arrow-head {
+    fill: var(--color-border-input);
+  }
+  /* 鉄道図の凡例。SVG 直下に破線区切りで種別の見本を並べる。 */
+  .rr-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--color-border);
+  }
+  .rr-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   /* === マッチテスト: マッチ箇所ハイライト（PR3） === */
