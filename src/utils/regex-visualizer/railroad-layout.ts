@@ -45,7 +45,7 @@ export const GROUP_PAD_BOTTOM = 10;
 export const V_GAP = 14; // choice の分岐間の縦間隔
 export const CHOICE_LEAD = 22; // choice の split/merge 用の左右リード長
 export const REP_LEAD = 18; // repetition の弧が左右へ膨らむリード
-export const ARC_H = 16; // skip/loop 弧の高さ
+export const ARC_H = 24; // skip/loop 弧の高さ（モックアップに合わせ弧を大きく張り出させる）
 export const LABEL_H = 12; // 量指定子ラベル用の下バンド（loop が無いとき inner と重ならないよう確保）
 
 type Loc = { start: number; end: number } | undefined;
@@ -85,7 +85,7 @@ export function measureGroup(inner: RailNode, title: string, loc: Loc): RailNode
 }
 
 /**
- * 選択肢（a|b|c）。分岐を縦に積み、先頭分岐を本線（connectY）に乗せる。
+ * 選択肢（a|b|c）。分岐を縦に積み、本線（connectY）を縦の中央に通して分岐を上下均等に配置する。
  * width = 最大分岐幅 + リード*2、height = 分岐高さ合計 + 分岐間 V_GAP。
  */
 export function measureChoice(branches: RailNode[], loc: Loc): RailNode {
@@ -94,7 +94,7 @@ export function measureChoice(branches: RailNode[], loc: Loc): RailNode {
   const maxBW = Math.max(...branches.map((b) => b.width));
   const width = maxBW + CHOICE_LEAD * 2;
   const height = branches.reduce((s, b) => s + b.height, 0) + V_GAP * (branches.length - 1);
-  return { kind: 'choice', width, height, connectY: branches[0].connectY, children: branches, loc };
+  return { kind: 'choice', width, height, connectY: height / 2, children: branches, loc };
 }
 
 /** アサーション（^ $ \b \B のアンカー）。1文字は円、複数文字は横長 pill で示す。 */

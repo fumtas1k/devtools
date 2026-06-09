@@ -69,7 +69,7 @@ describe('measureChoice', () => {
     expect(c.kind).toBe('choice');
     expect(c.width).toBe(bb.width + CHOICE_LEAD * 2);
     expect(c.height).toBe(a.height + bb.height + V_GAP);
-    expect(c.connectY).toBe(a.connectY); // 先頭分岐を本線に乗せる
+    expect(c.connectY).toBe(c.height / 2); // 本線を縦中央に通し上下均等に配置する
     expect(c.children).toHaveLength(2);
   });
 

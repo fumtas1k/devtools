@@ -940,12 +940,13 @@
     display: block;
   }
   .rr-rail {
-    stroke: var(--color-border-input);
-    stroke-width: 1.5;
+    stroke: var(--color-neutral-400);
+    stroke-width: 2;
     fill: none;
   }
+  /* 始点・終点マーカー（鉄道図の入口/出口の点）。黒に近い濃色で明示する。 */
   .rr-marker {
-    fill: var(--color-border-input);
+    fill: var(--color-neutral-800);
   }
   .rr-box {
     fill: var(--color-bg-subtle);
@@ -997,9 +998,9 @@
     font-size: 11px;
     font-family: var(--font-mono, monospace);
   }
-  /* ループ弧（反復方向）の矢印ヘッド。 */
+  /* ループ弧（反復方向）の矢印ヘッド。rr-rail と同系の中間グレー。 */
   .rr-arrow-head {
-    fill: var(--color-border-input);
+    fill: var(--color-neutral-400);
   }
   /* 鉄道図の凡例。SVG 直下に破線区切りで種別の見本を並べる。 */
   .rr-legend {
