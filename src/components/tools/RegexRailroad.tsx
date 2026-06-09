@@ -60,6 +60,28 @@ function renderNode(
           </text>
         </g>
       );
+    case 'charclass':
+      return (
+        <g key={key}>
+          <rect
+            x={x}
+            y={y}
+            width={node.width}
+            height={node.height}
+            rx={6}
+            className={boxClass('rr-charclass')}
+          />
+          <text
+            x={x + node.width / 2}
+            y={y + node.height / 2}
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="rr-text"
+          >
+            {node.label}
+          </text>
+        </g>
+      );
     case 'backreference':
       return (
         <g key={key}>
@@ -91,7 +113,7 @@ function renderNode(
             width={node.width}
             height={node.height}
             rx={node.height / 2}
-            className={boxClass('rr-assertion')}
+            className={boxClass('rr-anchor')}
           />
           <text
             x={x + node.width / 2}
@@ -202,10 +224,12 @@ function renderNode(
     case 'repetition': {
       const inner = node.children[0];
       const innerX = x + REP_LEAD;
-      const innerY = node.skip ? y + ARC_H : y;
+      const top = node.loop ? ARC_H : 0;
+      const innerY = y + top;
       const railY = y + node.connectY; // = innerY + inner.connectY
       const exitX = x + node.width;
       const innerRight = innerX + inner.width;
+      const r = 6;
       const els: React.ReactNode[] = [];
       // 本線リード（左右）
       els.push(<line key="ll" x1={x} y1={railY} x2={innerX} y2={railY} className="rr-rail" />);
@@ -213,33 +237,30 @@ function renderNode(
         <line key="lr" x1={innerRight} y1={railY} x2={exitX} y2={railY} className="rr-rail" />
       );
       els.push(renderNode(inner, innerX, innerY, `${key}-r`, hotspot));
-      // 弧・ラベルは inner の実下端/上端基準で配置する。terminal の connectY===height/2 を
-      // 暗黙前提にすると group/choice 等の tall inner でラベルが svg 外にクリップされ、
-      // ループ弧が枠を貫通する（PR #493 レビュー指摘）。
-      const r = 6;
-      const loopY = innerY + inner.height + ARC_H / 2; // inner の下（bottom band）
-      const skipY = innerY - ARC_H / 2; // inner の上（top band）
-      // ループ弧（下）: ノード両端から inner の下を回って入口へ戻る（rounded U）
+      // ループ弧（上・反復方向の矢印付き）: 出口から inner の上を回って入口へ戻り、入口で下向き矢印。
       if (node.loop) {
+        const loopY = innerY - ARC_H / 2;
         els.push(
           <path
             key="loop"
-            d={`M ${exitX} ${railY} L ${exitX} ${loopY - r} Q ${exitX} ${loopY} ${exitX - r} ${loopY} L ${x + r} ${loopY} Q ${x} ${loopY} ${x} ${loopY - r} L ${x} ${railY}`}
+            d={`M ${exitX} ${railY} L ${exitX} ${loopY + r} Q ${exitX} ${loopY} ${exitX - r} ${loopY} L ${x + r} ${loopY} Q ${x} ${loopY} ${x} ${loopY + r} L ${x} ${railY}`}
             className="rr-rail"
+            markerEnd="url(#rr-loop-arrow)"
           />
         );
       }
-      // スキップ弧（上）: ノード両端から inner の上をバイパス（rounded）
+      // スキップ弧（下・矢印なし）: 入口から inner の下を回って出口へ抜ける。
       if (node.skip) {
+        const skipY = innerY + inner.height + ARC_H / 2;
         els.push(
           <path
             key="skip"
-            d={`M ${x} ${railY} L ${x} ${skipY + r} Q ${x} ${skipY} ${x + r} ${skipY} L ${exitX - r} ${skipY} Q ${exitX} ${skipY} ${exitX} ${skipY + r} L ${exitX} ${railY}`}
+            d={`M ${x} ${railY} L ${x} ${skipY - r} Q ${x} ${skipY} ${x + r} ${skipY} L ${exitX - r} ${skipY} Q ${exitX} ${skipY} ${exitX} ${skipY - r} L ${exitX} ${railY}`}
             className="rr-rail"
           />
         );
       }
-      // 量指定子ラベル（ノード下端・常に svg 内に収まる）
+      // 量指定子ラベル（最下のラベル帯・常に svg 内に収まる）
       els.push(
         <text
           key="ql"
@@ -276,6 +297,19 @@ export function RegexRailroad({ node, hotspot }: Props) {
         aria-label="正規表現の鉄道図"
         className="rr-svg"
       >
+        <defs>
+          <marker
+            id="rr-loop-arrow"
+            viewBox="0 0 10 10"
+            refX="5"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" className="rr-arrow-head" />
+          </marker>
+        </defs>
         <circle cx={MARKER_R + 1} cy={railY} r={MARKER_R} className="rr-marker" />
         <line x1={MARKER_R + 1} y1={railY} x2={MARKER_LEAD} y2={railY} className="rr-rail" />
         {renderNode(node, MARKER_LEAD, 0, 'root', hotspot)}
