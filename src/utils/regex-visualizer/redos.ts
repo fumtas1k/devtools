@@ -31,7 +31,7 @@ export function analyzeRedos(pattern: string, flags: string): RedosResult {
   // 取り違えて「正規表現が不正」と誤表示しないため）。「不明」を「安全」と混同しないこと。
   let d;
   try {
-    d = checkSync(pattern, flags, { timeout: 1000 });
+    d = checkSync(pattern, flags.replace('d', ''), { timeout: 1000 });
   } catch {
     return { status: 'unknown', reason: 'error' };
   }
