@@ -949,7 +949,7 @@
     fill: var(--color-neutral-800);
   }
   .rr-box {
-    fill: var(--color-bg-subtle);
+    fill: var(--color-bg);
     stroke: var(--color-border-input);
     stroke-width: 1;
   }
