@@ -104,18 +104,17 @@ export function measureAssertion(label: string, loc: Loc): RailNode {
 }
 
 /**
- * 量指定子（+ * ? {n,m}）。inner を本線に通し、skip=上のスキップ弧 / loop=下のループ弧を付ける。
- * label は量指定子の表示（'+' '*?' '{2,5}' 等）。
+ * 量指定子（+ * ? {n,m}）。inner を本線に通す。
+ * ループ弧を上（反復・矢印付き）、スキップ弧を下（バイパス）に置き、さらに下にラベル帯を確保する。
+ * label は量指定子の日本語表示（'0回以上' 等）。
  */
 export function measureRepetition(
   inner: RailNode,
   opts: { skip: boolean; loop: boolean; label: string },
   loc: Loc
 ): RailNode {
-  const top = opts.skip ? ARC_H : 0;
-  // loop があればその弧バンド内にラベルを置ける。無い場合はラベル用バンドを確保し
-  // ラベルが inner ボックス下端に重ならないようにする（PR #493 再レビューの cosmetic 指摘）。
-  const bottom = opts.loop ? ARC_H : LABEL_H;
+  const top = opts.loop ? ARC_H : 0; // ループ弧（上）
+  const bottom = (opts.skip ? ARC_H : 0) + LABEL_H; // スキップ弧（下）+ ラベル帯
   return {
     kind: 'repetition',
     width: inner.width + REP_LEAD * 2,
