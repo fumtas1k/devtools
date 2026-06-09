@@ -1,6 +1,7 @@
 import { parseToRegExpTree } from './parse';
 import {
   measureTerminal,
+  measureCharClass,
   measureSequence,
   measureGroup,
   measureFallback,
@@ -63,23 +64,27 @@ interface Quantifier {
   greedy?: boolean;
 }
 
-/** 量指定子の表示ラベル（'+' '*?' '{2,5}' 等）。lazy は末尾に ? を付ける。 */
+/** 量指定子の表示ラベル（日本語）。lazy は末尾に「（最短）」を付ける。 */
 function quantifierLabel(q: Quantifier): string {
   let base: string;
   switch (q.kind) {
-    case '+':
     case '*':
+      base = '0回以上';
+      break;
+    case '+':
+      base = '1回以上';
+      break;
     case '?':
-      base = q.kind;
+      base = '0または1回';
       break;
     case 'Range':
       base =
-        q.to == null ? `{${q.from},}` : q.to === q.from ? `{${q.from}}` : `{${q.from},${q.to}}`;
+        q.to == null ? `${q.from}回以上` : q.to === q.from ? `${q.from}回` : `${q.from}〜${q.to}回`;
       break;
     default:
       base = '';
   }
-  return q.greedy === false ? `${base}?` : base;
+  return q.greedy === false ? `${base}（最短）` : base;
 }
 
 /** スキップ弧（0 回可）・ループ弧（2 回以上可）の有無を量指定子から判定。 */
@@ -104,8 +109,12 @@ function quantifierFlags(q: Quantifier): { skip: boolean; loop: boolean } {
 function build(node: TreeNode, pattern: string): RailNode {
   switch (node.type) {
     case 'Char':
+      // regexp-tree では . \d \w \s \n \t 等が kind:'meta'。これらは文字クラス・メタ文字として扱う。
+      return node.kind === 'meta'
+        ? measureCharClass(sliceLabel(node, pattern), locOf(node))
+        : measureTerminal(sliceLabel(node, pattern), locOf(node));
     case 'CharacterClass':
-      return measureTerminal(sliceLabel(node, pattern), locOf(node));
+      return measureCharClass(sliceLabel(node, pattern), locOf(node));
     case 'Alternative':
       return measureSequence(
         ((node.expressions as TreeNode[]) ?? []).map((n) => build(n, pattern)),

@@ -64,6 +64,8 @@
   /* === 機能カラー === */
   --color-link: #2563eb;
   --color-link-visited: #7c3aed;
+  --color-anchor-bg: #ede9fe; /* violet-100 相当: 鉄道図アンカー塗り */
+  --color-anchor: #7c3aed; /* violet-600 相当: 鉄道図アンカー枠/文字（アンカー塗り #ede9fe 上で約4.8:1, AA 合格） */
   --color-focus: #2563eb;
 
   /* === 角の形状 === */
@@ -938,20 +940,27 @@
     display: block;
   }
   .rr-rail {
-    stroke: var(--color-border-input);
-    stroke-width: 1.5;
+    stroke: var(--color-neutral-400);
+    stroke-width: 2;
     fill: none;
   }
+  /* 始点・終点マーカー（鉄道図の入口/出口の点）。黒に近い濃色で明示する。 */
   .rr-marker {
-    fill: var(--color-border-input);
+    fill: var(--color-neutral-800);
   }
   .rr-box {
-    fill: var(--color-bg-subtle);
+    fill: var(--color-bg);
     stroke: var(--color-border-input);
     stroke-width: 1;
   }
   .rr-box-fallback {
     stroke-dasharray: 4 3;
+  }
+  /* 文字クラス・メタ文字（[..] \s \d \w . 等）。青塗りでリテラルと区別する。 */
+  .rr-charclass {
+    fill: var(--color-bg-active);
+    stroke: var(--color-blue-300);
+    stroke-width: 1;
   }
   .rr-text {
     fill: var(--color-text);
@@ -959,21 +968,23 @@
     font-size: 13px;
   }
   .rr-group {
-    fill: none;
+    fill: var(--color-bg-subtle);
     stroke: var(--color-border);
     stroke-width: 1;
-    stroke-dasharray: 2 2;
   }
   .rr-group-title {
     fill: var(--color-muted);
     font-size: 11px;
   }
-  /* アサーション（ゼロ幅アンカー）は塗りなしの輪郭 pill にして、塗りつぶしの terminal
-     リテラルと視覚的に区別する（PR #492 レビュー指摘: rr-box と rx 以外同一だった）。 */
-  .rr-assertion {
-    fill: none;
-    stroke: var(--color-border-input);
+  /* アンカー（ゼロ幅の位置: ^ $ \b \B）。紫塗りの円/pill で位置系を示す。 */
+  .rr-anchor {
+    fill: var(--color-anchor-bg);
+    stroke: var(--color-anchor);
     stroke-width: 1;
+  }
+  /* アンカーのラベル文字。枠・塗りと同系の紫にして種別を強調する。 */
+  .rr-anchor-text {
+    fill: var(--color-anchor);
   }
   /* .rr-box-hot は .rr-box より後に置き fill/stroke を上書きする（PR2c: hotspot ハイライト）。 */
   .rr-box-hot {
@@ -990,6 +1001,24 @@
     fill: var(--color-muted);
     font-size: 11px;
     font-family: var(--font-mono, monospace);
+  }
+  /* ループ弧（反復方向）の矢印ヘッド。rr-rail と同系の中間グレー。 */
+  .rr-arrow-head {
+    fill: var(--color-neutral-400);
+  }
+  /* 鉄道図の凡例。SVG 直下に破線区切りで種別の見本を並べる。 */
+  .rr-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--color-border);
+  }
+  .rr-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   /* === マッチテスト: マッチ箇所ハイライト（PR3） === */

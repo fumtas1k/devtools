@@ -3,6 +3,7 @@
 
 export type RailKind =
   | 'terminal'
+  | 'charclass'
   | 'sequence'
   | 'group'
   | 'fallback'
@@ -44,7 +45,7 @@ export const GROUP_PAD_BOTTOM = 10;
 export const V_GAP = 14; // choice の分岐間の縦間隔
 export const CHOICE_LEAD = 22; // choice の split/merge 用の左右リード長
 export const REP_LEAD = 18; // repetition の弧が左右へ膨らむリード
-export const ARC_H = 16; // skip/loop 弧の高さ
+export const ARC_H = 24; // skip/loop 弧の高さ（モックアップに合わせ弧を大きく張り出させる）
 export const LABEL_H = 12; // 量指定子ラベル用の下バンド（loop が無いとき inner と重ならないよう確保）
 
 type Loc = { start: number; end: number } | undefined;
@@ -52,6 +53,12 @@ type Loc = { start: number; end: number } | undefined;
 export function measureTerminal(label: string, loc: Loc): RailNode {
   const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
   return { kind: 'terminal', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
+}
+
+/** 文字クラス・メタ文字（[..] \s \d \w . 等）。寸法は terminal と同じで種別のみ異なる。 */
+export function measureCharClass(label: string, loc: Loc): RailNode {
+  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  return { kind: 'charclass', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
 }
 
 export function measureFallback(label: string, loc: Loc): RailNode {
@@ -78,7 +85,7 @@ export function measureGroup(inner: RailNode, title: string, loc: Loc): RailNode
 }
 
 /**
- * 選択肢（a|b|c）。分岐を縦に積み、先頭分岐を本線（connectY）に乗せる。
+ * 選択肢（a|b|c）。分岐を縦に積み、本線（connectY）を縦の中央に通して分岐を上下均等に配置する。
  * width = 最大分岐幅 + リード*2、height = 分岐高さ合計 + 分岐間 V_GAP。
  */
 export function measureChoice(branches: RailNode[], loc: Loc): RailNode {
@@ -87,28 +94,27 @@ export function measureChoice(branches: RailNode[], loc: Loc): RailNode {
   const maxBW = Math.max(...branches.map((b) => b.width));
   const width = maxBW + CHOICE_LEAD * 2;
   const height = branches.reduce((s, b) => s + b.height, 0) + V_GAP * (branches.length - 1);
-  return { kind: 'choice', width, height, connectY: branches[0].connectY, children: branches, loc };
+  return { kind: 'choice', width, height, connectY: height / 2, children: branches, loc };
 }
 
-/** アサーション（^ $ \b \B 等のアンカー）。ゼロ幅マーカーをラベル付き pill で示す。 */
+/** アサーション（^ $ \b \B のアンカー）。1文字は円、複数文字は横長 pill で示す。 */
 export function measureAssertion(label: string, loc: Loc): RailNode {
-  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  const width = label.length <= 1 ? BOX_H : Math.max(label.length * CHAR_W + BOX_PAD_X * 2, BOX_H);
   return { kind: 'assertion', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
 }
 
 /**
- * 量指定子（+ * ? {n,m}）。inner を本線に通し、skip=上のスキップ弧 / loop=下のループ弧を付ける。
- * label は量指定子の表示（'+' '*?' '{2,5}' 等）。
+ * 量指定子（+ * ? {n,m}）。inner を本線に通す。
+ * ループ弧を上（反復・矢印付き）、スキップ弧を下（バイパス）に置き、さらに下にラベル帯を確保する。
+ * label は量指定子の日本語表示（'0回以上' 等）。
  */
 export function measureRepetition(
   inner: RailNode,
   opts: { skip: boolean; loop: boolean; label: string },
   loc: Loc
 ): RailNode {
-  const top = opts.skip ? ARC_H : 0;
-  // loop があればその弧バンド内にラベルを置ける。無い場合はラベル用バンドを確保し
-  // ラベルが inner ボックス下端に重ならないようにする（PR #493 再レビューの cosmetic 指摘）。
-  const bottom = opts.loop ? ARC_H : LABEL_H;
+  const top = opts.loop ? ARC_H : 0; // ループ弧（上）
+  const bottom = (opts.skip ? ARC_H : 0) + LABEL_H; // スキップ弧（下）+ ラベル帯
   return {
     kind: 'repetition',
     width: inner.width + REP_LEAD * 2,

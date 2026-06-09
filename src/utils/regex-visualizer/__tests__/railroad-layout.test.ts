@@ -8,6 +8,7 @@ import {
   measureAssertion,
   measureRepetition,
   measureBackreference,
+  measureCharClass,
   REP_LEAD,
   ARC_H,
   LABEL_H,
@@ -68,7 +69,7 @@ describe('measureChoice', () => {
     expect(c.kind).toBe('choice');
     expect(c.width).toBe(bb.width + CHOICE_LEAD * 2);
     expect(c.height).toBe(a.height + bb.height + V_GAP);
-    expect(c.connectY).toBe(a.connectY); // 先頭分岐を本線に乗せる
+    expect(c.connectY).toBe(c.height / 2); // 本線を縦中央に通し上下均等に配置する
     expect(c.children).toHaveLength(2);
   });
 
@@ -82,40 +83,48 @@ describe('measureChoice', () => {
   });
 });
 
-describe('measureAssertion', () => {
-  it('ラベル付きの assertion ノードを返す', () => {
-    const node = measureAssertion('^', { start: 0, end: 1 });
+describe('measureAssertion（アンカー: 1文字=円 / 複数文字=pill）', () => {
+  it('1文字 $ は幅=高さの円', () => {
+    const node = measureAssertion('$', { start: 0, end: 1 });
     expect(node.kind).toBe('assertion');
-    expect(node.label).toBe('^');
+    expect(node.label).toBe('$');
+    expect(node.width).toBe(node.height); // 円
     expect(node.connectY).toBe(node.height / 2);
+  });
+  it('複数文字 \\b は横長 pill（幅 > 高さ）', () => {
+    const node = measureAssertion('\\b', { start: 0, end: 2 });
+    expect(node.width).toBeGreaterThan(node.height);
   });
 });
 
-describe('measureRepetition', () => {
-  it('loop ありで下に ARC_H 分高くなり connectY は inner 基準', () => {
+describe('measureRepetition（ループ=上 / スキップ=下 / ラベル帯）', () => {
+  it('loop ありで上に ARC_H、下にラベル帯 LABEL_H', () => {
     const inner = measureTerminal('a', undefined);
-    const rep = measureRepetition(inner, { skip: false, loop: true, label: '+' }, undefined);
+    const rep = measureRepetition(inner, { skip: false, loop: true, label: '1回以上' }, undefined);
     expect(rep.kind).toBe('repetition');
     expect(rep.width).toBe(inner.width + REP_LEAD * 2);
-    expect(rep.height).toBe(inner.height + ARC_H); // loop 下のみ
-    expect(rep.connectY).toBe(inner.connectY); // skip 無 → 上余白なし
+    expect(rep.height).toBe(inner.height + ARC_H + LABEL_H); // loop 上 + label 下
+    expect(rep.connectY).toBe(ARC_H + inner.connectY); // loop 上 → 上余白あり
     expect(rep.children[0]).toBe(inner);
-    expect(rep.label).toBe('+');
+    expect(rep.label).toBe('1回以上');
   });
 
-  it('skip ありで上に ARC_H 分の余白ができ connectY が下がる', () => {
+  it('skip+loop（*）は 上 ARC_H + 下 ARC_H + ラベル帯', () => {
     const inner = measureTerminal('a', undefined);
-    const rep = measureRepetition(inner, { skip: true, loop: true, label: '*' }, undefined);
-    expect(rep.height).toBe(inner.height + ARC_H * 2); // skip 上 + loop 下
+    const rep = measureRepetition(inner, { skip: true, loop: true, label: '0回以上' }, undefined);
+    expect(rep.height).toBe(inner.height + ARC_H * 2 + LABEL_H); // loop 上 + skip 下 + label 下
     expect(rep.connectY).toBe(ARC_H + inner.connectY);
   });
 
-  // loop が無い（skip のみ / 弧なし）量指定子はラベル用の下バンド LABEL_H を確保する
-  // （PR #493 再レビューの cosmetic 指摘: ラベルが inner ボックス下端に重ならないように）。
-  it('loop なし（? 等）は下にラベル用バンド LABEL_H を確保する', () => {
+  it('loop なし（? = skip のみ）は 上余白なし、下 skip ARC_H + ラベル帯', () => {
     const inner = measureTerminal('a', undefined);
-    const rep = measureRepetition(inner, { skip: true, loop: false, label: '?' }, undefined);
-    expect(rep.height).toBe(inner.height + ARC_H + LABEL_H); // skip 上 + label 下
+    const rep = measureRepetition(
+      inner,
+      { skip: true, loop: false, label: '0または1回' },
+      undefined
+    );
+    expect(rep.height).toBe(inner.height + ARC_H + LABEL_H); // skip 下 + label 下
+    expect(rep.connectY).toBe(inner.connectY); // loop 無 → 上余白なし
   });
 });
 
@@ -125,5 +134,17 @@ describe('measureBackreference', () => {
     expect(n.kind).toBe('backreference');
     expect(n.label).toBe('\\1');
     expect(n.connectY).toBe(n.height / 2);
+  });
+});
+
+describe('measureCharClass', () => {
+  it('terminal と同じ寸法で kind だけ charclass になる', () => {
+    const cc = measureCharClass('\\s', { start: 0, end: 2 });
+    const t = measureTerminal('\\s', { start: 0, end: 2 });
+    expect(cc.kind).toBe('charclass');
+    expect(cc.width).toBe(t.width);
+    expect(cc.height).toBe(t.height);
+    expect(cc.connectY).toBe(t.connectY);
+    expect(cc.label).toBe('\\s');
   });
 });
