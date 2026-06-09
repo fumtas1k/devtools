@@ -31,7 +31,7 @@ describe('buildRailroad', () => {
   it('量指定子 a+ は repetition ノードになる（PR2c で本実装済み）', () => {
     const root = buildRailroad('a+', '');
     expect(root.kind).toBe('repetition');
-    expect(root.label).toBe('+');
+    expect(root.label).toBe('1回以上');
   });
 
   it('各ノードに pattern 基準 loc（offset-1）が付く', () => {
@@ -60,7 +60,7 @@ describe('buildRailroad（量指定子・後方参照）', () => {
     expect(r.kind).toBe('repetition');
     expect(r.loop).toBe(true);
     expect(r.skip).toBe(false);
-    expect(r.label).toBe('+');
+    expect(r.label).toBe('1回以上');
     expect(r.children[0].kind).toBe('terminal');
   });
 
@@ -76,15 +76,15 @@ describe('buildRailroad（量指定子・後方参照）', () => {
     expect(r.loop).toBe(false);
   });
 
-  it('lazy a*? はラベルに ? が付く', () => {
+  it('lazy a*? はラベルに（最短）が付く', () => {
     const r = buildRailroad('a*?', '');
-    expect(r.label).toBe('*?');
+    expect(r.label).toBe('0回以上（最短）');
   });
 
-  it('a{2,5} は Range ラベル', () => {
+  it('a{2,5} は Range ラベル（日本語）', () => {
     const r = buildRailroad('a{2,5}', '');
     expect(r.kind).toBe('repetition');
-    expect(r.label).toBe('{2,5}');
+    expect(r.label).toBe('2〜5回');
   });
 
   it('後方参照 (a)\\1 の \\1 は backreference', () => {
@@ -142,6 +142,17 @@ describe('buildRailroad（選択肢・アサーション）', () => {
     expect(() => buildRailroad('(?=)', '')).not.toThrow();
     expect(buildRailroad('(?=)', '').kind).toBe('group');
   });
+});
+
+describe('量指定子ラベル（日本語）', () => {
+  const labelOf = (p: string) => buildRailroad(p, '').label;
+  it('* は 0回以上', () => expect(labelOf('a*')).toBe('0回以上'));
+  it('+ は 1回以上', () => expect(labelOf('a+')).toBe('1回以上'));
+  it('? は 0または1回', () => expect(labelOf('a?')).toBe('0または1回'));
+  it('{3} は 3回', () => expect(labelOf('a{3}')).toBe('3回'));
+  it('{2,} は 2回以上', () => expect(labelOf('a{2,}')).toBe('2回以上'));
+  it('{2,5} は 2〜5回', () => expect(labelOf('a{2,5}')).toBe('2〜5回'));
+  it('lazy *? は 0回以上（最短）', () => expect(labelOf('a*?')).toBe('0回以上（最短）'));
 });
 
 describe('種別分割（リテラル / 文字クラス・メタ文字）', () => {
