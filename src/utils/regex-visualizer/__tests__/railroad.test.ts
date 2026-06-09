@@ -10,8 +10,8 @@ describe('buildRailroad', () => {
 
   it('文字クラスは source 文字列をラベルにする', () => {
     const root = buildRailroad('[a-z]', '');
-    // 単一要素なので sequence ではなく terminal
-    expect(root.kind).toBe('terminal');
+    // 単一要素なので sequence ではなく charclass
+    expect(root.kind).toBe('charclass');
     expect(root.label).toBe('[a-z]');
   });
 
@@ -141,5 +141,24 @@ describe('buildRailroad（選択肢・アサーション）', () => {
   it('空先読み (?=) で throw せず group になる', () => {
     expect(() => buildRailroad('(?=)', '')).not.toThrow();
     expect(buildRailroad('(?=)', '').kind).toBe('group');
+  });
+});
+
+describe('種別分割（リテラル / 文字クラス・メタ文字）', () => {
+  it('通常リテラル a は terminal', () => {
+    const node = buildRailroad('a', '');
+    expect(node.kind).toBe('terminal');
+  });
+  it('メタ文字 . は charclass', () => {
+    const node = buildRailroad('.', '');
+    expect(node.kind).toBe('charclass');
+  });
+  it('\\s は charclass', () => {
+    const node = buildRailroad('\\s', '');
+    expect(node.kind).toBe('charclass');
+  });
+  it('文字クラス [ab] は charclass', () => {
+    const node = buildRailroad('[ab]', '');
+    expect(node.kind).toBe('charclass');
   });
 });

@@ -8,6 +8,7 @@ import {
   measureAssertion,
   measureRepetition,
   measureBackreference,
+  measureCharClass,
   REP_LEAD,
   ARC_H,
   LABEL_H,
@@ -125,5 +126,17 @@ describe('measureBackreference', () => {
     expect(n.kind).toBe('backreference');
     expect(n.label).toBe('\\1');
     expect(n.connectY).toBe(n.height / 2);
+  });
+});
+
+describe('measureCharClass', () => {
+  it('terminal と同じ寸法で kind だけ charclass になる', () => {
+    const cc = measureCharClass('\\s', { start: 0, end: 2 });
+    const t = measureTerminal('\\s', { start: 0, end: 2 });
+    expect(cc.kind).toBe('charclass');
+    expect(cc.width).toBe(t.width);
+    expect(cc.height).toBe(t.height);
+    expect(cc.connectY).toBe(t.connectY);
+    expect(cc.label).toBe('\\s');
   });
 });

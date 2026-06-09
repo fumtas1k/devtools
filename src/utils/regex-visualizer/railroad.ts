@@ -1,6 +1,7 @@
 import { parseToRegExpTree } from './parse';
 import {
   measureTerminal,
+  measureCharClass,
   measureSequence,
   measureGroup,
   measureFallback,
@@ -104,8 +105,12 @@ function quantifierFlags(q: Quantifier): { skip: boolean; loop: boolean } {
 function build(node: TreeNode, pattern: string): RailNode {
   switch (node.type) {
     case 'Char':
+      // regexp-tree では . \d \w \s \n \t 等が kind:'meta'。これらは文字クラス・メタ文字として扱う。
+      return node.kind === 'meta'
+        ? measureCharClass(sliceLabel(node, pattern), locOf(node))
+        : measureTerminal(sliceLabel(node, pattern), locOf(node));
     case 'CharacterClass':
-      return measureTerminal(sliceLabel(node, pattern), locOf(node));
+      return measureCharClass(sliceLabel(node, pattern), locOf(node));
     case 'Alternative':
       return measureSequence(
         ((node.expressions as TreeNode[]) ?? []).map((n) => build(n, pattern)),

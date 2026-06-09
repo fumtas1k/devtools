@@ -3,6 +3,7 @@
 
 export type RailKind =
   | 'terminal'
+  | 'charclass'
   | 'sequence'
   | 'group'
   | 'fallback'
@@ -52,6 +53,12 @@ type Loc = { start: number; end: number } | undefined;
 export function measureTerminal(label: string, loc: Loc): RailNode {
   const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
   return { kind: 'terminal', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
+}
+
+/** 文字クラス・メタ文字（[..] \s \d \w . 等）。寸法は terminal と同じで種別のみ異なる。 */
+export function measureCharClass(label: string, loc: Loc): RailNode {
+  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  return { kind: 'charclass', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
 }
 
 export function measureFallback(label: string, loc: Loc): RailNode {
