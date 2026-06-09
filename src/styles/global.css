@@ -64,8 +64,8 @@
   /* === 機能カラー === */
   --color-link: #2563eb;
   --color-link-visited: #7c3aed;
-  --color-violet-bg: #ede9fe; /* violet-100 相当: 鉄道図アンカー塗り */
-  --color-violet: #7c3aed; /* violet-600 相当: 鉄道図アンカー枠/文字 */
+  --color-anchor-bg: #ede9fe; /* violet-100 相当: 鉄道図アンカー塗り */
+  --color-anchor: #7c3aed; /* violet-600 相当: 鉄道図アンカー枠/文字（白背景で約4.8:1, AA 合格） */
   --color-focus: #2563eb;
 
   /* === 角の形状 === */
@@ -978,9 +978,13 @@
   }
   /* アンカー（ゼロ幅の位置: ^ $ \b \B）。紫塗りの円/pill で位置系を示す。 */
   .rr-anchor {
-    fill: var(--color-violet-bg);
-    stroke: var(--color-violet);
+    fill: var(--color-anchor-bg);
+    stroke: var(--color-anchor);
     stroke-width: 1;
+  }
+  /* アンカーのラベル文字。枠・塗りと同系の紫にして種別を強調する。 */
+  .rr-anchor-text {
+    fill: var(--color-anchor);
   }
   /* .rr-box-hot は .rr-box より後に置き fill/stroke を上書きする（PR2c: hotspot ハイライト）。 */
   .rr-box-hot {

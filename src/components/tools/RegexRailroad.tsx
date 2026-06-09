@@ -120,7 +120,7 @@ function renderNode(
             y={y + node.height / 2}
             textAnchor="middle"
             dominantBaseline="central"
-            className="rr-text"
+            className="rr-text rr-anchor-text"
           >
             {node.label}
           </text>
