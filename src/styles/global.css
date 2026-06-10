@@ -160,17 +160,17 @@
   color: var(--color-text);
 }
 
-/* リンクの色のみを制御するクラス（下線なし） */
-.text-link-color {
+/* 下線なしのプレーンリンク色クラス */
+.text-link-plain {
   color: var(--color-link);
   transition: color 0.2s;
 }
 
-.text-link-color:hover {
+.text-link-plain:hover {
   color: var(--color-primary);
 }
 
-.text-link-color:visited {
+.text-link-plain:visited {
   color: var(--color-link-visited);
 }
 

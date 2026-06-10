@@ -256,14 +256,14 @@ export function JsonFormatter() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="caption text-link-color btn-link-plain"
+              className="caption text-link-plain btn-link-plain"
               onClick={expandAll}
             >
               全展開
             </button>
             <button
               type="button"
-              className="caption text-link-color btn-link-plain"
+              className="caption text-link-plain btn-link-plain"
               onClick={collapseAll}
             >
               全折りたたみ

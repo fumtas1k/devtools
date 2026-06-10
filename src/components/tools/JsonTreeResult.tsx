@@ -52,7 +52,7 @@ export function JsonTreeResult({
             </p>
             <button
               type="button"
-              className="caption text-link-color btn-link-plain"
+              className="caption text-link-plain btn-link-plain"
               onClick={onForceRender}
             >
               ツリーを表示

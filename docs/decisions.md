@@ -3888,3 +3888,37 @@ Claude Code on the web で Playwright スクリーンショット / E2E を使�
 
 - ✅ web セッションで Playwright スクリーンショット撮影・E2E 実行が再現可能に。
 - ⚠️ 環境側のセットアップスクリプト（`npx -y playwright install chromium`）は不要になるため削除してよい。
+
+---
+
+## [102] リンク用ユーティリティクラスを semantic 命名に統一（.text-link-color → .text-link-plain）（2026-06-10）
+
+### 課題
+
+PR #116 で新設した `.text-link-color` クラスは「色のみを制御する」という **属性ベース命名** であり、クラス名を見ただけでは「下線なし」という利用意図が読み取りにくかった。また、既存の `.text-link`（下線あり汎用リンク）との命名上の対比が不明確だった。
+
+### 決断
+
+`.text-link-color` を **`.text-link-plain`** に改名する。
+
+- `.text-link`（下線あり）と `.text-link-plain`（下線なし）で **用途ベースの一貫したペア** が成立する。
+- BEM modifier 形式（例: `.text-link--no-underline`）ではなく独立クラス名にした理由: 実態として `.text-link` と `.text-link-plain` は**併用されず単独で使われている**。modifier 表記は「base クラスとの併用」を示唆するため、用途を誤解させる可能性がある。
+
+### 変更対象
+
+- `src/styles/global.css`（セレクタ 3 件 + コメント）
+- `src/components/ui/InputField.tsx`
+- `src/components/ui/ToolCard.astro`
+- `src/components/tools/JsonFormatter.tsx`（2 件）
+- `src/components/tools/JsonTreeResult.tsx`
+- `src/components/tools/ConfigConverter.tsx`
+- `src/components/tools/TotpHotpGenerator.tsx`（3 件）
+- `src/components/tools/Gs1Databar.tsx`
+- `src/components/tools/qr-ticket/GenerateTab.tsx`
+- `tests/e2e/link-styles.spec.ts`
+
+### 結果・トレードオフ
+
+- ✅ 命名規則が用途ベースで一貫し、新規実装者が `.text-link` / `.text-link-plain` のどちらを使うべきか直感的に判断できる。
+- ✅ 挙動・見た目は不変（純粋な rename）。
+- ℹ️ `docs/superpowers/plans/` / `docs/superpowers/specs/` 配下の point-in-time 履歴記録は変更対象外（旧名が残るが意図的）。
