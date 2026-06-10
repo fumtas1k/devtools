@@ -213,6 +213,11 @@ export async function applyProductionCsp(page: Page, options?: ApplyCspOptions):
  * `finally` で `context.close()` のみ実行される。元の例外が伝播しテストが
  * 失敗する (inline pattern と等価)。
  *
+ * **ラッパ固有挙動の陽性対照**: `tests/e2e/with-production-csp.gate.spec.ts`
+ * (issue #281) が「throw 時の context.close」「終端 assertNoViolations の集約」
+ * 「元例外の伝播 (隠蔽されない)」を検証する。本ラッパの制御フローを変更したら
+ * 必ず同 spec を実行すること。
+ *
  * **`skipHydration` オプション**: 静的ページ (`/privacy` / `/about` / `/` 等の
  * React island を含まないページ) では `waitForReactHydration` が
  * `__react*` キーを持つ要素を見つけられず timeout する。これらのページに対しては
