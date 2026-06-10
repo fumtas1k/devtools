@@ -1,37 +1,6 @@
 import { useState } from 'react';
-import { CopyButton } from '@/components/ui/CopyButton';
+import { KeyPart, RowActions, VALUE_CLASS } from '@/components/tools/JsonTreeRowParts';
 import type { TreeNode } from '@/utils/json-formatter';
-
-const VALUE_CLASS: Record<string, string> = {
-  string: 'json-string',
-  number: 'json-number',
-  boolean: 'json-boolean',
-  null: 'json-null',
-};
-
-function KeyPart({ node }: { node: TreeNode }) {
-  if (node.key === null) return null;
-  if (typeof node.key === 'number') {
-    return <span className="json-index">{node.key}: </span>;
-  }
-  return (
-    <>
-      <span className="json-key">&quot;{node.key}&quot;</span>
-      <span className="json-punct">: </span>
-    </>
-  );
-}
-
-function RowActions({ node }: { node: TreeNode }) {
-  return (
-    <span className="json-row-actions">
-      <CopyButton compact text={node.path} ariaLabel={`パスをコピー (${node.path})`} />
-      {node.raw !== undefined && (
-        <CopyButton compact text={node.raw} ariaLabel={`値をコピー (${node.path})`} />
-      )}
-    </span>
-  );
-}
 
 function TreeRow({ node, defaultOpen }: { node: TreeNode; defaultOpen: boolean }) {
   const isContainer = node.type === 'object' || node.type === 'array';
