@@ -19,7 +19,9 @@ test.describe('JSON ツリー仮想化（production CSP 適用）', () => {
       await expect(tree.getByText('"id"').first()).toBeVisible();
       const liCount = await tree.locator('li.json-row').count();
       expect(liCount).toBeGreaterThan(0);
-      expect(liCount).toBeLessThan(500); // 総行数 6002 に対し可視範囲 + overscan のみ
+      // 総行数 6002 に対し可視範囲 + overscan のみ（実測 39 行前後）。
+      // 仮想化が空回り（全行 DOM 化）したときだけでなく overscan の異常肥大も検知できる上限。
+      expect(liCount).toBeLessThan(200);
     });
   });
 
