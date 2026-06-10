@@ -96,51 +96,65 @@ describe('dist/*.html の <meta> CSP（Astro security.csp 由来 / #176 A-1 / #2
 });
 
 /**
- * Astro island runtime の inline style hash 整合性検出網 (#176 B 案完了 / [068]).
+ * dist HTML 全ページの inline style hash と `_headers` の完全同期検証 (#316 / #176 B 案完了 / [068]).
  *
- * Astro が各ページに injection する固定 inline style:
- *   <style>astro-island,astro-slot,astro-static-slot{display:contents}</style>
- * の sha256 hash を `_headers` の style-src に hardcoded fingerprint として
- * 取り込む handcoded 戦略 (option α、`docs/decisions.md [068]` 参照)。
+ * ### 設計変更 (#316)
+ * 旧実装は定数 ASTRO_ISLAND_INLINE_CONTENT を hardcode して hash していたため、
+ * Astro が inline style の文字列を変更しても旧 hash を `_headers` に残すと陰性対照で素通りしていた。
  *
- * 本検出網は以下を assert する:
- * 1. dist HTML 内に Astro island inline style literal が含まれること
- * 2. dist HTML inline style content の sha256 が `_headers` の hash 値と一致すること
+ * 新実装は dist HTML から `<style>...</style>` の中身を全件抽出して sha256 を計算し、
+ * **全 hash** が `public/_headers` の style-src に含まれることを 1 段で直接 assert する。
+ * dist と _headers の「直接同期検証」であり、定数の二重管理を排除する。
  *
- * Astro が当該 inline style 文字列を変更すると検出 1 / 2 が連鎖的に fail し、
- * silent regression を防ぐ陽性対照メタテスト。
+ * ### 陽性対照の維持
+ * - dist のどこかに inline style が少なくとも 1 件存在することを assert（抽出 regex が 0 件で
+ *   空回りして全 hash assert が偽 green になるのを防止）。
+ * - 空 `<style></style>` が将来出現した場合、空文字列の hash (47DEQpj...) が _headers に
+ *   無いため自動 fail する（意図しない空 style 追加を能動検知）。
+ *
+ * Astro が inline style 文字列を変更すると新 hash が _headers に存在せず fail → silent regression を防ぐ。
  */
-describe('Astro island runtime style hash 整合性 (#176 B 案完了 / [068])', () => {
+describe('dist HTML 全 inline style hash の _headers 含有検証 (#316 / #176 B 案完了 / [068])', () => {
   if (distPages.length === 0) {
     it.skip("dist/*.html が無い → 'npm run build' 後に再実行", () => {});
     return;
   }
 
-  const ASTRO_ISLAND_INLINE_STYLE =
-    '<style>astro-island,astro-slot,astro-static-slot{display:contents}</style>';
-  const ASTRO_ISLAND_INLINE_CONTENT = 'astro-island,astro-slot,astro-static-slot{display:contents}';
+  // dist 全 HTML から inline style の中身を全件収集（重複含む）
+  const INLINE_STYLE_REGEX = /<style[^>]*>([^<]*)<\/style>/g;
 
-  it('dist HTML 内に Astro island inline style literal が含まれる (React island ありページ)', () => {
-    // Astro は React island を含むページにのみ astro-island inline style を注入する。
-    // about / privacy 等の純 Astro ページには含まれないため、distPages 全体で
-    // 少なくとも 1 ページに含まれることを assert (some パターン)。
-    const hasInlineStyle = distPages.some((page) =>
-      readFileSync(page, 'utf-8').includes(ASTRO_ISLAND_INLINE_STYLE)
-    );
+  // 全ページから inline style content を収集し、distinct set にまとめる
+  const allInlineStyleContents = new Set<string>();
+  for (const page of distPages) {
+    const html = readFileSync(page, 'utf-8');
+    for (const match of html.matchAll(INLINE_STYLE_REGEX)) {
+      allInlineStyleContents.add(match[1]);
+    }
+  }
+
+  it('dist HTML に inline style が少なくとも 1 件存在する（陽性対照の空回り防止）', () => {
+    // Astro は React island を含むページに astro-island inline style を注入する。
+    // 0 件の場合は抽出 regex がマッチしておらず、下記の全 hash assert が偽 green になる。
+    // このチェックで「テスト自体が機能しているか」を保証する（test-gates 陽性対照原則）。
     expect(
-      hasInlineStyle,
-      'dist のどのページにも Astro island inline style literal が見つからない'
-    ).toBe(true);
+      allInlineStyleContents.size,
+      'dist のどのページにも inline style が見つからない。Astro の出力構造が変わった可能性がある'
+    ).toBeGreaterThan(0);
   });
 
-  it('dist HTML inline style の sha256 が _headers の hash と一致する (陽性対照メタテスト)', async () => {
+  it('dist の全 inline style sha256 hash が _headers の style-src に含まれる（dist と _headers の直接同期検証）', async () => {
     const { createHash } = await import('node:crypto');
-    const computedHash = createHash('sha256').update(ASTRO_ISLAND_INLINE_CONTENT).digest('base64');
-    const expectedToken = `'sha256-${computedHash}'`;
-
     const headersPath = path.resolve(process.cwd(), 'public', '_headers');
     const headersContent = readFileSync(headersPath, 'utf-8');
 
-    expect(headersContent).toContain(expectedToken);
+    for (const content of allInlineStyleContents) {
+      const hash = createHash('sha256').update(content).digest('base64');
+      const token = `'sha256-${hash}'`;
+      expect(
+        headersContent,
+        `inline style content の hash ${token} が _headers の style-src に含まれない。\n` +
+          `対象 content (先頭 80 文字): ${content.slice(0, 80)}`
+      ).toContain(token);
+    }
   });
 });
