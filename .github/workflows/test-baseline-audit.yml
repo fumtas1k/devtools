@@ -26,9 +26,9 @@ jobs:
     # audit パターンに検知されるべき命名規則（*_KEY）を持つダミー値。
     env:
       FAKE_API_KEY: sentinel-value-not-a-real-secret
+    # checkout 不要: 両 step とも `env | grep` のみで repo ファイルを一切読まない。
+    # 除去により実行時間と攻撃表面を最小化する（PR #616 review 指摘）。
     steps:
-      - uses: actions/checkout@v6
-
       # -----------------------------------------------------------------------
       # Step 1: 陽性対照 — FAKE_API_KEY が audit pattern に検知されることを確認
       #

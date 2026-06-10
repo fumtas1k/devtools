@@ -104,6 +104,8 @@ describe('dist/*.html の <meta> CSP（Astro security.csp 由来 / #176 A-1 / #2
  *
  * 新実装は dist HTML から `<style>...</style>` の中身を全件抽出して sha256 を計算し、
  * **全 hash** が `public/_headers` の style-src に含まれることを 1 段で直接 assert する。
+ * さらに逆方向（_headers の style-src 内 sha256 token ⊆ dist の hash 集合）も assert し、
+ * 旧 hash の残置（CSP 許可面の不要な広がり）も検知する完全同期検証とする。
  * dist と _headers の「直接同期検証」であり、定数の二重管理を排除する。
  *
  * ### 陽性対照の維持
@@ -120,8 +122,10 @@ describe('dist HTML 全 inline style hash の _headers 含有検証 (#316 / #176
     return;
   }
 
-  // dist 全 HTML から inline style の中身を全件収集（重複含む）
-  const INLINE_STYLE_REGEX = /<style[^>]*>([^<]*)<\/style>/g;
+  // dist 全 HTML から inline style の中身を全件収集（重複含む）。
+  // `[^<]*` ではなく `[\s\S]*?` を使う: CSS が `<` を含む場合（content: "<" 等）に
+  // その <style> が抽出から漏れて hash 未検証のまま素通りするのを防ぐ（PR #616 review 指摘）。
+  const INLINE_STYLE_REGEX = /<style[^>]*>([\s\S]*?)<\/style>/g;
 
   // 全ページから inline style content を収集し、distinct set にまとめる
   const allInlineStyleContents = new Set<string>();
@@ -155,6 +159,45 @@ describe('dist HTML 全 inline style hash の _headers 含有検証 (#316 / #176
         `inline style content の hash ${token} が _headers の style-src に含まれない。\n` +
           `対象 content (先頭 80 文字): ${content.slice(0, 80)}`
       ).toContain(token);
+    }
+  });
+
+  it('_headers の style-src 内 sha256 token がすべて dist の inline style hash に対応する（逆方向同期 / 旧 hash 残置検知）', async () => {
+    // dist → _headers の片方向だけでは、Astro の inline style 変更後に旧 hash が
+    // _headers に残置されても検知できない（CSP 許可面が不要に広いまま残る）。
+    // 逆方向も assert して dist ⇔ _headers の完全同期にする（PR #616 review 指摘）。
+    const { createHash } = await import('node:crypto');
+    const headersPath = path.resolve(process.cwd(), 'public', '_headers');
+    const headersContent = readFileSync(headersPath, 'utf-8');
+
+    // コメント行にも "style-src" の語が出現するため、実ヘッダ行に限定してから抽出する
+    const cspLineMatch = headersContent.match(/^\s*Content-Security-Policy:(.*)$/m);
+    expect(
+      cspLineMatch,
+      '_headers に Content-Security-Policy ヘッダ行が見つからない'
+    ).not.toBeNull();
+    const styleSrcMatch = (cspLineMatch?.[1] ?? '').match(/style-src ([^;]*)/);
+    expect(styleSrcMatch, '_headers に style-src ディレクティブが見つからない').not.toBeNull();
+
+    const headerTokens = [
+      ...(styleSrcMatch?.[1] ?? '').matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g),
+    ].map((m) => m[1]);
+    // _headers 側に hash が 1 件も無い場合は token 抽出の空回りを疑って明示 fail
+    expect(
+      headerTokens.length,
+      '_headers の style-src に sha256 token が 1 件も無い'
+    ).toBeGreaterThan(0);
+
+    const distHashes = new Set(
+      [...allInlineStyleContents].map((content) =>
+        createHash('sha256').update(content).digest('base64')
+      )
+    );
+    for (const token of headerTokens) {
+      expect(
+        distHashes.has(token),
+        `_headers の style-src にある 'sha256-${token}' に対応する inline style が dist に存在しない（旧 hash の残置）`
+      ).toBe(true);
     }
   });
 });

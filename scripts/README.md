@@ -112,6 +112,6 @@ npm run test -- vrt-comment-build-script
 
 ### 関連
 
-- `.github/workflows/visual-regression.yml`（L184-245: 対象 step）
-- `tests/meta/vrt-comment-build-script.test.ts`（CI 組み込みテスト）
+- `.github/workflows/visual-regression.yml`（対象 step: `PR comment 本文を組み立て（失敗 spec 名込み）`）
+- `tests/meta/vrt-comment-build-script.test.ts`（CI 組み込みテスト + workflow との pipeline drift 検知）
 - issue #324

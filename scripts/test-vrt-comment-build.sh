@@ -21,7 +21,8 @@
 # 使い方: bash scripts/test-vrt-comment-build.sh
 # 終了コード: 0=全ケース pass / 1=いずれか fail
 
-set -eo pipefail
+# 複製元 workflow step（set -euo pipefail）と同一オプションに揃え、未定義変数も早期検知する
+set -euo pipefail
 
 # 一時ディレクトリを作成し、終了時に掃除する
 TMPDIR_WORK=$(mktemp -d)
