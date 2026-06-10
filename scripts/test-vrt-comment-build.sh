@@ -24,8 +24,10 @@
 # 複製元 workflow step（set -euo pipefail）と同一オプションに揃え、未定義変数も早期検知する
 set -euo pipefail
 
-# 一時ディレクトリを作成し、終了時に掃除する
-TMPDIR_WORK=$(mktemp -d)
+# 一時ディレクトリを作成し、終了時に掃除する。
+# macOS の mktemp はテンプレート省略時に TMPDIR を無視して /var/folders を使うため、
+# sandbox 環境 (TMPDIR のみ書込可) でも動くようテンプレートで TMPDIR を明示する。
+TMPDIR_WORK=$(mktemp -d "${TMPDIR:-/tmp}/vrt-comment-build.XXXXXXXX")
 trap 'rm -rf "$TMPDIR_WORK"' EXIT
 
 PASS=0
