@@ -62,6 +62,35 @@ describe('flattenTree', () => {
     expect(rows[0].kind).toBe('value');
     expect(rows[0].node.raw).toBe('42');
   });
+
+  // 重複キー JSON は strict パースでも構文エラーにならず path が衝突する（PR #622 レビュー指摘）。
+  // 兄弟の重複は文書順の出現回数サフィックスで一意化し、トグル識別も行キー基準で独立させる。
+  describe('重複キー JSON', () => {
+    const DUP = '{"a": {"x": 1}, "a": {"y": 2}}';
+
+    it('重複キーでも行キーは全行で一意になる', () => {
+      const rows = flattenTree(treeOf(DUP), new Set(), true);
+      const keys = rows.map((r) => r.key);
+      expect(new Set(keys).size).toBe(keys.length);
+    });
+
+    it('重複キーの片方だけを独立に折りたためる', () => {
+      const all = flattenTree(treeOf(DUP), new Set(), true);
+      // 2 つ目の "a" コンテナの行キーを取得（open 行のうち path が $.a の 2 番目）
+      const dupOpens = all.filter((r) => r.kind === 'open' && r.node.path === '$.a');
+      expect(dupOpens).toHaveLength(2);
+      const secondKey = dupOpens[1].key;
+      expect(secondKey).not.toBe(dupOpens[0].key);
+
+      const rows = flattenTree(treeOf(DUP), new Set([secondKey]), true);
+      const opens = rows.filter((r) => r.kind === 'open' && r.node.path === '$.a');
+      expect(opens[0].collapsed).toBe(false); // 1 つ目は開いたまま
+      expect(opens[1].collapsed).toBe(true); // 2 つ目だけ折りたたみ
+      // 1 つ目の子（"x"）は見え、2 つ目の子（"y"）は見えない
+      expect(rows.some((r) => r.node.key === 'x')).toBe(true);
+      expect(rows.some((r) => r.node.key === 'y')).toBe(false);
+    });
+  });
 });
 
 describe('countRows', () => {

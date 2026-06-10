@@ -7,19 +7,22 @@ export interface FlatRow {
   depth: number;
   /** value: プリミティブ行 / open: コンテナ開き行 / close: 閉じ括弧行。 */
   kind: 'value' | 'open' | 'close';
-  /** React key 用の一意キー（close 行は path + ':close'）。 */
+  /**
+   * 行の一意キー（React key 兼トグル識別子）。基本は path。重複キー JSON では
+   * 兄弟の path が衝突するため 2 つ目以降に `#n` を付与する（close 行は ':close' 付き）。
+   */
   key: string;
   /** open 行のみ: 折りたたみ中なら true（`{ … } N 項目` 表記で描画する）。 */
   collapsed?: boolean;
 }
 
 /**
- * 開閉判定。`toggled` は「デフォルト開閉状態から反転された path の集合」（XOR 設計）。
- * defaultOpen=true なら toggled に含まれる path が閉じている。
- * 全折りたたみ時に全 path を列挙せずに済む。
+ * 開閉判定。`toggled` は「デフォルト開閉状態から反転された行キーの集合」（XOR 設計）。
+ * defaultOpen=true なら toggled に含まれるキーが閉じている。
+ * 全折りたたみ時に全キーを列挙せずに済む。
  */
-function isClosed(path: string, toggled: ReadonlySet<string>, defaultOpen: boolean): boolean {
-  return defaultOpen ? toggled.has(path) : !toggled.has(path);
+function isClosed(key: string, toggled: ReadonlySet<string>, defaultOpen: boolean): boolean {
+  return defaultOpen ? toggled.has(key) : !toggled.has(key);
 }
 
 /** ツリーを可視行の平坦配列へ変換する（折りたたみ中コンテナの子孫は出力しない）。 */
@@ -29,16 +32,26 @@ export function flattenTree(
   defaultOpen: boolean
 ): FlatRow[] {
   const rows: FlatRow[] = [];
+  // 重複キー JSON（strict パースでも構文エラーにならない）では兄弟の path が衝突する。
+  // 文書順の出現回数で `#n` を付与して一意化する。重複は同一親の兄弟に限られ、兄弟は
+  // 親の開閉で常に一括表示/非表示になるため、開閉状態が変わっても採番は安定する。
+  const seen = new Map<string, number>();
+  const uniqueKey = (path: string): string => {
+    const n = seen.get(path) ?? 0;
+    seen.set(path, n + 1);
+    return n === 0 ? path : `${path}#${n}`;
+  };
   const visit = (node: TreeNode, depth: number): void => {
+    const key = uniqueKey(node.path);
     if (node.type !== 'object' && node.type !== 'array') {
-      rows.push({ node, depth, kind: 'value', key: node.path });
+      rows.push({ node, depth, kind: 'value', key });
       return;
     }
-    const closed = isClosed(node.path, toggled, defaultOpen);
-    rows.push({ node, depth, kind: 'open', key: node.path, collapsed: closed });
+    const closed = isClosed(key, toggled, defaultOpen);
+    rows.push({ node, depth, kind: 'open', key, collapsed: closed });
     if (closed) return;
     for (const child of node.children ?? []) visit(child, depth + 1);
-    rows.push({ node, depth, kind: 'close', key: `${node.path}:close` });
+    rows.push({ node, depth, kind: 'close', key: `${key}:close` });
   };
   visit(root, 0);
   return rows;

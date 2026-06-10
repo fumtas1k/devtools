@@ -20,7 +20,8 @@ interface Props {
 
 interface RowProps {
   row: FlatRow;
-  onToggle: (path: string) => void;
+  /** open 行のトグル。識別子は path ではなく行キー（重複キー JSON でも一意）。 */
+  onToggle: (key: string) => void;
   /** 行高実測用 callback ref（可視 slice の先頭行のみに付与）。 */
   measureRef?: (el: HTMLLIElement | null) => void;
 }
@@ -73,7 +74,7 @@ function VirtualRow({ row, onToggle, measureRef }: RowProps) {
           className="json-toggle"
           aria-expanded={open}
           aria-label={open ? '折りたたむ' : '展開する'}
-          onClick={() => onToggle(node.path)}
+          onClick={() => onToggle(row.key)}
         >
           <span aria-hidden="true">{open ? '▾' : '▸'}</span>
         </button>
@@ -96,7 +97,8 @@ function VirtualRow({ row, onToggle, measureRef }: RowProps) {
  * 大規模 JSON 用の仮想化ツリービュー（issue #512）。
  * 可視範囲の行だけを DOM 化し、範囲外の高さは上下の spacer で保つ。
  *
- * - 開閉状態は「デフォルトからの反転 path 集合」で集中管理（flattenTree の XOR 設計）。
+ * - 開閉状態は「デフォルトからの反転 行キー集合」で集中管理（flattenTree の XOR 設計。
+ *   行キーは基本 path、重複キー JSON では `#n` 付きで一意）。
  *   全展開 / 全折りたたみは親の key 再マウント + defaultOpen で state ごとリセットされる
  *   （JsonTreeView と同じ流儀）。
  * - spacer の高さは SVG の height 属性（presentation attribute）で表現する。
@@ -141,11 +143,11 @@ export function JsonTreeViewVirtual({ node, defaultOpen, scrollRef }: Props) {
     if (h > 0) setRowH((prev) => (Math.abs(prev - h) > 0.5 ? h : prev));
   }, []);
 
-  const onToggle = useCallback((path: string) => {
+  const onToggle = useCallback((key: string) => {
     setToggled((prev) => {
       const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }, []);
