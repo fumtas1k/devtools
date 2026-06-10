@@ -3922,3 +3922,40 @@ PR #116 で新設した `.text-link-color` クラスは「色のみを制御す�
 - ✅ 命名規則が用途ベースで一貫し、新規実装者が `.text-link` / `.text-link-plain` のどちらを使うべきか直感的に判断できる。
 - ✅ 挙動・見た目は不変（純粋な rename）。
 - ℹ️ `docs/superpowers/plans/` / `docs/superpowers/specs/` 配下の point-in-time 履歴記録は変更対象外（旧名が残るが意図的）。
+
+---
+
+## [103] 2026-06-11 — json-formatter ツリーの行数閾値仮想化（#512 残スコープ①）
+
+**2026-06-11 | ステータス: 採用**
+
+### 背景
+
+decisions [096] のツリー遅延構築 + 500KB ガード後も、ガードを明示解除した巨大ツリーは全ノード再帰 DOM 化で重く、ガード未満（数百 KB）でも数万ノードで描画・操作が重い（issue #512 残スコープ）。
+
+### 計測（measure-first）
+
+5000 要素の配列（全展開換算 約 60,000 行・整形済み 500KB 超）での実測（Playwright MCP / preview ビルド / 2 回計測）:
+
+| 指標                       | before（全行 DOM 化） | after（仮想化） |
+| -------------------------- | --------------------- | --------------- |
+| 強制表示 → ツリー出現 (ms) | 5,307                 | 44              |
+| DOM 行数 (li.json-row)     | 45,001                | 39              |
+| 全折りたたみ応答 (ms)      | 2,666                 | 53              |
+
+（before: Run1 renderMs 5484 / collapseMs 2694、Run2 renderMs 5129 / collapseMs 2638。after: Run1 renderMs 64 / liCount 39 / collapseMs 52、Run2 renderMs 24 / liCount 39 / collapseMs 53）
+
+### 決断
+
+- **行数閾値で仮想化**: 全展開換算の総行数（`countRows`）が `TREE_VIRTUALIZE_THRESHOLD = 2_000` 超のとき `JsonTreeViewVirtual`（自前 windowing）へ切替。以下は従来の再帰ツリーのまま（DOM・見た目・VRT 不変）。
+- **自前 windowing 採用**: 行は等高（1 行固定・nowrap）・固定高コンテナ（28rem）という最も単純なケースで、可視範囲計算は純粋関数 `computeWindow` 1 つ。`@tanstack/react-virtual` は公式パターンが全可視行の inline style（transform/height）前提で CSP `style-src 'unsafe-inline'` 撤去（#176）と衝突し、依存 2 パッケージ追加の割に提供価値が薄いため不採用。
+- **spacer は SVG height 属性**: 範囲外の高さは aria-hidden な li 内の SVG presentation attribute で表現（decisions [098] と同方式・CSP 対象外）。`useDynamicStyleSheet` は `useEffect` 経由で描画より 1 フレーム遅れスクロールジッターが出るため不採用。
+- **開閉状態の XOR 集中管理**: 「デフォルト開閉からの反転 path 集合」で保持し、全折りたたみ時の全 path 列挙を回避。全展開/全折りたたみは既存の key 再マウント方式を踏襲。
+- **500KB ガードは維持**: ツリー構築（makeTree）自体のメインスレッド同期コストは仮想化では解消しない。Worker オフロードと `getNodeValue` 遅延化は #512 残スコープとして継続。
+
+### 結果・トレードオフ
+
+- ✅ 閾値以下の通常入力は DOM・見た目とも完全不変（VRT baseline 更新不要）。
+- ✅ 陽性対照 E2E（DOM 行数 < 総行数）を配線前に実行して fail（liCount 4501）を実機確認済み（test-gates 準拠）。
+- ⚠️ 仮想パスでは入れ子 ul の罫線（インデントガイド）を省略し depth ベースの spacer で代替。
+- ⚠️ 仮想パスは可視行のみ DOM 化するため、ブラウザのページ内検索（Ctrl+F）は画面外の行にヒットしない。
