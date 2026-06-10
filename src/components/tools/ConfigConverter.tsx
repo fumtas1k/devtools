@@ -215,7 +215,7 @@ export function ConfigConverterTool() {
           onClick={() => setSchemaOpen((o) => !o)}
           aria-expanded={schemaOpen}
           aria-controls="config-converter-schema-panel"
-          className="flex items-center gap-1 caption text-link-color btn-link-plain"
+          className="flex items-center gap-1 caption text-link-plain btn-link-plain"
         >
           <span
             aria-hidden="true"

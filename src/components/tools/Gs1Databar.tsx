@@ -289,7 +289,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
               <button
                 type="button"
                 onClick={addAiField}
-                className="caption text-link-color hover:underline"
+                className="caption text-link-plain hover:underline"
               >
                 + フィールド追加
               </button>
