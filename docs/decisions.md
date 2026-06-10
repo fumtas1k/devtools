@@ -3858,3 +3858,33 @@ IPv4（32bit）と IPv6（128bit）のアドレス演算を、安全かつブラ
 - ✅ #324: pipeline の `|| true` 有無の違いをケース C が実証し、regression クラス全体をテストハーネスが検知できることを証明。
 - ✅ #334: 週次 cron と `workflow_dispatch` の両建てで、audit step の silent drift を定期自動確認。meta テストで grep パターンの inline 複製 drift を CI から検知。
 - ⚠️ #334: `test-baseline-audit.yml` の陰性対照（Step 2）は shell の `unset FAKE_API_KEY` で「env に存在しない」状態を再現する。step env で `FAKE_API_KEY: ''` と空文字上書きする案はレビューで却下した — GH Actions は空文字でも env var を set するため `env` 出力に `FAKE_API_KEY=` が残り、detect パターン（`...KEY=` 接尾辞マッチ）に必ずマッチして陰性対照が常時 fail する。
+
+---
+
+## [101] web セッションの Playwright Chromium 確保は SessionStart hook で行う (2026-06-10)
+
+### 課題
+
+Claude Code on the web で Playwright スクリーンショット / E2E を使うため、環境セットアップスクリプトに `npx -y playwright install chromium` を設定したが、セッション開始時点でブラウザ（このリポジトリの Playwright 1.59.1 が要求する build 1217）が `/opt/pw-browsers/` に存在しなかった。ベースイメージ焼き込みの build 1194 はバージョン不一致で使われない。
+
+### 原因分析
+
+環境セットアップスクリプトはコンテナ作成時（SessionStart hook の `npm ci` より前）に走るため、`npx -y playwright` が playwright パッケージ自体の npm registry 取得から始まる。ネットワーク許可構成によってはブラウザダウンロード以前に失敗し、`set -e` でスクリプト全体が異常終了する。どの home の `~/.cache/ms-playwright` にも痕跡がないことから、別パスへのインストールではなく実行自体が完了していないと判定。
+
+### 選定理由
+
+`.claude/scripts/session-install.sh`（SessionStart hook、動作実績あり）の `npm ci` 後に `CLAUDE_CODE_REMOTE=true` ガード付きで `npx playwright install chromium` を追加。
+
+- **npm ci 後**なので lock 固定版 playwright が使われ、必要なネットワークは `cdn.playwright.dev` のみ。
+- **`CLAUDE_CODE_REMOTE` ガード**で web セッション限定。ローカル開発者の playwright cache には触れない。
+- install 済みなら即 no-op（実測 約3秒）。web はフック完了後のコンテナ状態キャッシュにより約 280MB のダウンロードは環境ごとに実質 1 回。
+
+### 却下した選択肢
+
+- **環境セットアップスクリプトの修正続行**: 環境側 UI でしか管理できずリポジトリで再現・レビューできない。registry 許可の追加も環境ごとの手作業になる。
+- **ガードなしで hook に追加**: ローカルセッションでもブラウザダウンロードが走り、開発者のローカル環境を汚染する。
+
+### 結果・トレードオフ
+
+- ✅ web セッションで Playwright スクリーンショット撮影・E2E 実行が再現可能に。
+- ⚠️ 環境側のセットアップスクリプト（`npx -y playwright install chromium`）は不要になるため削除してよい。
