@@ -49,7 +49,7 @@ PR #521（decisions [096]）でツリー遅延構築＋大入力ガード（整�
 - スクロールコンテナは既存の `.json-tree-box`（高さ 28rem / `overflow: auto`）をそのまま利用。コンテナの UX 変更なし。
 - **行高**: 全行等高（1 行固定・`nowrap`）前提。初回描画行を `getBoundingClientRect` で実測し、`ResizeObserver` でズーム・フォント変化に追従。実測前は推定値（`1.6 × caption font-size + padding` 相当の定数）で描画し実測後に補正。
 - **スクロール**: コンテナの scroll イベントを rAF throttle で state 化。
-- **spacer**: 可視 slice の上下に spacer 要素（`<li>`）を置き、高さは `useDynamicStyleSheet`（ToggleGroup / decisions [098] で実績済みの constructable stylesheet 注入）で専用 class に注入する。**JSX `style={{}}` / `style` 属性 / `el.style` mutation は使用しない**（CSP `style-src 'unsafe-inline'` 撤去済み・issue #176 B 案準拠）。
+- **spacer**: 可視 slice の上下に spacer 要素（`aria-hidden` の `<li>`）を置き、高さは **SVG の `height` 属性**（presentation attribute）で表現する。SVG presentation attribute は CSS inline style ではなく HTML 属性のため CSP `style-src` の対象外（decisions [098] の GS1 DataBar 印刷実寸と同方式）。描画と同期して高さが更新されるため、`useDynamicStyleSheet`（`useEffect` 内 `replaceSync` のため描画より 1 フレーム遅れ、スクロール時にジッターが出る）より適する。**JSX `style={{}}` / `style` 属性 / `el.style` mutation は使用しない**（CSP `style-src 'unsafe-inline'` 撤去済み・issue #176 B 案準拠）。
 - **行レンダリング**: 現行 `JsonTreeView` の見た目クラス（`json-line` / `json-key` / `json-string` 等）と行内操作（パスコピー / 値コピー、`aria-expanded` 付きトグル）を踏襲。インデントは depth ベースの padding 用 class で表現する（depth 上限までの静的 class を `global.css` に定義。上限超は最大値に飽和）。
 - **入れ子 ul の罫線（`border-left` インデントガイド）は仮想パスでは省略**。flat 構造で再現コストが高く、仮想パスは巨大入力時限定のため VRT 影響もない。
 - **開閉状態**: `collapsed: Set<string>` を component state で保持。トグルで XOR 更新。全展開 / 全折りたたみは既存の `treeKey` 再マウント＋ `defaultOpen` 反映で state ごとリセット（現行 API と互換）。
@@ -82,7 +82,7 @@ PR #521（decisions [096]）でツリー遅延構築＋大入力ガード（整�
   - 行の開閉トグル・全展開 / 全折りたたみが機能する。
   - **陰性側**: 閾値未満の入力では従来構造（入れ子 ul）のまま。
   - 閾値切替はガード的機構のため、実装時に `test-gates` skill を呼び **陽性対照**（仮想化を壊すと fail するテスト）を設計する。
-- **CSP**: `withProductionCsp` 下で仮想ビュー操作（表示・スクロール・開閉）に violation ゼロを E2E で assert（spacer の動的 stylesheet 経路の検証）。
+- **CSP**: `withProductionCsp` 下で仮想ビュー操作（表示・スクロール・開閉）に violation ゼロを E2E で assert（spacer の SVG `height` 属性経路の検証）。
 - **VRT**: 既存ページは閾値未満入力のため現行パスのまま。baseline 更新不要。
 
 ## ドキュメント / 運用
