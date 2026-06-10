@@ -43,6 +43,8 @@ fi
 #
 # コスト: install 済みなら即 no-op。web はフック完了後のコンテナ状態キャッシュにより
 # ダウンロード（約 280MB）は環境ごとに実質 1 回。
+# install がネットワーク等で失敗した場合に hook が非ゼロ終了するのは意図的
+# （ブラウザ欠落のまま静かに進ませず、次セッションの再試行で self-healing させる）。
 if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -d node_modules ]; then
   npx playwright install chromium
 fi
