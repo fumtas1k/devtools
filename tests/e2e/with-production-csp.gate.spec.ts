@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { withProductionCsp } from './helpers';
+import { withProductionCsp, type CspGuard } from './helpers';
 
 /**
  * 陽性対照: `withProductionCsp` ラッパ固有挙動を検証するメタテスト (issue #281)。
@@ -19,7 +19,7 @@ import { withProductionCsp } from './helpers';
  */
 
 /** fn 内で意図的に CSP 違反 (外部 origin script 注入) を発生させ、guard に記録されるまで待つ */
-async function injectCspViolation(page: Page, guard: { violations: readonly string[] }) {
+async function injectCspViolation(page: Page, guard: CspGuard) {
   await page.evaluate(() => {
     const script = document.createElement('script');
     script.src = 'https://example.com/violates-csp.js';
