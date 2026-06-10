@@ -74,6 +74,24 @@ describe('flattenTree', () => {
       expect(new Set(keys).size).toBe(keys.length);
     });
 
+    it('cousin の path 衝突でも行キーは先行親の開閉に影響されず安定する', () => {
+      // 重複親がそれぞれ同名のコンテナ子を持つと、兄弟でない cousin 同士の path（$.a.b）が衝突する。
+      // 行キーが先行親の開閉でずれると、折りたたみ状態が勝手に解除される（PR #622 再レビュー指摘）。
+      const COUSIN = '{"a": {"b": {"x": 1}}, "a": {"b": {"y": 2}}}';
+
+      const all = flattenTree(treeOf(COUSIN), new Set(), true);
+      const cousinOpens = all.filter((r) => r.kind === 'open' && r.node.path === '$.a.b');
+      expect(cousinOpens).toHaveLength(2);
+      expect(cousinOpens[0].key).not.toBe(cousinOpens[1].key);
+      const secondCousinKey = cousinOpens[1].key;
+
+      // 先行する 1 つ目の $.a を折りたたんでも、2 つ目の cousin の行キーは変わらない
+      const collapsed = flattenTree(treeOf(COUSIN), new Set(['$.a']), true);
+      const visibleCousins = collapsed.filter((r) => r.kind === 'open' && r.node.path === '$.a.b');
+      expect(visibleCousins).toHaveLength(1);
+      expect(visibleCousins[0].key).toBe(secondCousinKey);
+    });
+
     it('重複キーの片方だけを独立に折りたためる', () => {
       const all = flattenTree(treeOf(DUP), new Set(), true);
       // 2 つ目の "a" コンテナの行キーを取得（open 行のうち path が $.a の 2 番目）

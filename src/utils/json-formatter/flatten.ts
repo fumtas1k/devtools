@@ -8,8 +8,9 @@ export interface FlatRow {
   /** value: プリミティブ行 / open: コンテナ開き行 / close: 閉じ括弧行。 */
   kind: 'value' | 'open' | 'close';
   /**
-   * 行の一意キー（React key 兼トグル識別子）。基本は path。重複キー JSON では
-   * 兄弟の path が衝突するため 2 つ目以降に `#n` を付与する（close 行は ':close' 付き）。
+   * 行の一意キー（React key 兼トグル識別子）。「親の行キー + 相対セグメント + 兄弟内
+   * 出現回数 `#n`（2 つ目以降のみ）」で構成し、重複キーがなければ path と一致する。
+   * close 行は ':close' 付き。
    */
   key: string;
   /** open 行のみ: 折りたたみ中なら true（`{ … } N 項目` 表記で描画する）。 */
@@ -32,17 +33,7 @@ export function flattenTree(
   defaultOpen: boolean
 ): FlatRow[] {
   const rows: FlatRow[] = [];
-  // 重複キー JSON（strict パースでも構文エラーにならない）では兄弟の path が衝突する。
-  // 文書順の出現回数で `#n` を付与して一意化する。重複は同一親の兄弟に限られ、兄弟は
-  // 親の開閉で常に一括表示/非表示になるため、開閉状態が変わっても採番は安定する。
-  const seen = new Map<string, number>();
-  const uniqueKey = (path: string): string => {
-    const n = seen.get(path) ?? 0;
-    seen.set(path, n + 1);
-    return n === 0 ? path : `${path}#${n}`;
-  };
-  const visit = (node: TreeNode, depth: number): void => {
-    const key = uniqueKey(node.path);
+  const visit = (node: TreeNode, depth: number, key: string): void => {
     if (node.type !== 'object' && node.type !== 'array') {
       rows.push({ node, depth, kind: 'value', key });
       return;
@@ -50,10 +41,22 @@ export function flattenTree(
     const closed = isClosed(key, toggled, defaultOpen);
     rows.push({ node, depth, kind: 'open', key, collapsed: closed });
     if (closed) return;
-    for (const child of node.children ?? []) visit(child, depth + 1);
+    // 重複キー JSON（strict パースでも構文エラーにならない）では兄弟や cousin の path が
+    // 衝突する。行キーは「親の行キー + 相対セグメント + 兄弟内出現回数 #n」で構成する:
+    // - 兄弟内の採番は親ごとの局所 Map で行うため、他 subtree の開閉に影響されず安定。
+    // - cousin は親の行キー連鎖（例: $.a.b と $.a#1.b）で自動的に区別される。
+    // - `#` は識別子形式のセグメントに現れず、# を含むキー名は $["..."] 形式の path に
+    //   なるため、#n サフィックスが正規の path と衝突することはない。
+    const seen = new Map<string, number>();
+    for (const child of node.children ?? []) {
+      const seg = child.path.slice(node.path.length);
+      const n = seen.get(seg) ?? 0;
+      seen.set(seg, n + 1);
+      visit(child, depth + 1, n === 0 ? `${key}${seg}` : `${key}${seg}#${n}`);
+    }
     rows.push({ node, depth, kind: 'close', key: `${key}:close` });
   };
-  visit(root, 0);
+  visit(root, 0, root.path);
   return rows;
 }
 

@@ -3950,7 +3950,7 @@ decisions [096] のツリー遅延構築 + 500KB ガード後も、ガードを�
 - **行数閾値で仮想化**: 全展開換算の総行数（`countRows`）が `TREE_VIRTUALIZE_THRESHOLD = 2_000` 超のとき `JsonTreeViewVirtual`（自前 windowing）へ切替。以下は従来の再帰ツリーのまま（DOM・見た目・VRT 不変）。
 - **自前 windowing 採用**: 行は等高（1 行固定・nowrap）・固定高コンテナ（28rem）という最も単純なケースで、可視範囲計算は純粋関数 `computeWindow` 1 つ。`@tanstack/react-virtual` は公式パターンが全可視行の inline style（transform/height）前提で CSP `style-src 'unsafe-inline'` 撤去（#176）と衝突し、依存 2 パッケージ追加の割に提供価値が薄いため不採用。
 - **spacer は SVG height 属性**: 範囲外の高さは aria-hidden な li 内の SVG presentation attribute で表現（decisions [098] と同方式・CSP 対象外）。`useDynamicStyleSheet` は `useEffect` 経由で描画より 1 フレーム遅れスクロールジッターが出るため不採用。
-- **開閉状態の XOR 集中管理**: 「デフォルト開閉からの反転 行キー集合」で保持し、全折りたたみ時の全キー列挙を回避。全展開/全折りたたみは既存の key 再マウント方式を踏襲。行キーは基本 path だが、重複キー JSON（strict パースでも構文エラーにならない）では兄弟の path が衝突するため、文書順の出現回数サフィックス `#n` で一意化しトグルも独立させる（PR #622 レビュー指摘で対応）。
+- **開閉状態の XOR 集中管理**: 「デフォルト開閉からの反転 行キー集合」で保持し、全折りたたみ時の全キー列挙を回避。全展開/全折りたたみは既存の key 再マウント方式を踏襲。行キーは「親の行キー + 相対セグメント + 兄弟内出現回数 `#n`」で構成し、重複キーがなければ path と一致する。重複キー JSON（strict パースでも構文エラーにならない）では兄弟の path も、重複親が同名の子を持つ場合の cousin の path も衝突するが、兄弟は親ごとの局所採番・cousin は親キー連鎖（`$.a.b` と `$.a#1.b`）で区別されるため、他 subtree の開閉に影響されず安定する（PR #622 レビュー・再レビュー指摘で対応）。
 - **500KB ガードは維持**: ツリー構築（makeTree）自体のメインスレッド同期コストは仮想化では解消しない。Worker オフロードと `getNodeValue` 遅延化は #512 残スコープとして継続。
 
 ### 結果・トレードオフ
