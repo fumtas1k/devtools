@@ -1,0 +1,78 @@
+name: Test Baseline Secret Audit
+
+# baseline secret env audit step（update-visual-baseline.yml L39-58）の
+# 陽性対照ワークフロー（issue #334 / 案 1 採用）。
+#
+# 目的: audit step の grep パターンが壊れていないかを定期的に自動確認する。
+# 陽性対照: FAKE_API_KEY（sentinel 値）が audit pattern に検知されることを assert。
+# 陰性対照: allow list が GH Actions runtime 由来 env を除外することを assert。
+#
+# 参照: docs/decisions.md [100] / PR #333 / issue #334
+
+on:
+  # 手動 trigger: audit step 修正後などに即時確認できる
+  workflow_dispatch:
+  # 週次自動確認: grep パターンの silent drift を防ぐ
+  schedule:
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  test-baseline-audit:
+    runs-on: ubuntu-latest
+    # sentinel 値を job env に注入。実際の secret ではなく、
+    # audit パターンに検知されるべき命名規則（*_KEY）を持つダミー値。
+    env:
+      FAKE_API_KEY: sentinel-value-not-a-real-secret
+    # checkout 不要: 両 step とも `env | grep` のみで repo ファイルを一切読まない。
+    # 除去により実行時間と攻撃表面を最小化する（PR #616 review 指摘）。
+    steps:
+      # -----------------------------------------------------------------------
+      # Step 1: 陽性対照 — FAKE_API_KEY が audit pattern に検知されることを確認
+      #
+      # update-visual-baseline.yml の audit pipeline（grep パターン 2 本）を
+      # 一字一句同一で inline 複製し、FAKE_API_KEY が SUSPECT 変数に入ることを assert。
+      # FAKE_API_KEY が検知されない場合 → audit step の grep pattern が壊れている可能性。
+      # -----------------------------------------------------------------------
+      - name: 陽性対照 — FAKE_API_KEY が audit step で検知されることを確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          # update-visual-baseline.yml L51 と一字一句同一のパターン（drift は meta テストが検知）
+          SUSPECT=$(env | grep -iE '^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=' | grep -vE '^(GITHUB_TOKEN=|RUNNER_|GITHUB_RUN_|ACTIONS_|GH_|PIP_|PYPI_)' || true)
+          if [ -z "$SUSPECT" ]; then
+            echo "::error::POSITIVE CONTROL FAILED — FAKE_API_KEY が検知されなかった。audit step の grep pattern が壊れている可能性がある。"
+            echo "::error::update-visual-baseline.yml の audit step と本 workflow の grep パターンが一致しているか確認すること。"
+            exit 1
+          fi
+          echo "OK: FAKE_API_KEY が正しく検知された（audit step が機能している）"
+          # 値は redact してキー名のみ表示
+          echo "$SUSPECT" | sed 's/=.*$/=<redacted>/'
+
+      # -----------------------------------------------------------------------
+      # Step 2: 陰性対照 — allow list が GH Actions runtime 由来 env を除外することを確認
+      #
+      # FAKE_API_KEY を shell で unset した状態で同 pipeline を実行。
+      # GH Actions runtime 由来の env（GITHUB_TOKEN / RUNNER_* 等）は allow list で
+      # 除外されるため SUSPECT が空になることを assert（false positive の防止）。
+      # allow list が過剰に絞られている場合は本番 audit が常時 fail する。
+      # -----------------------------------------------------------------------
+      - name: 陰性対照 — allow list が runtime env を除外し false positive がないことを確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          # job env の FAKE_API_KEY を shell から unset し「env に存在しない」状態を再現する。
+          # 注意: step env で `FAKE_API_KEY: ''` と空文字上書きしても env 出力に
+          # `FAKE_API_KEY=` が残って detect パターンにマッチするため、unset が必須。
+          unset FAKE_API_KEY
+          # update-visual-baseline.yml L51 と一字一句同一のパターン
+          SUSPECT=$(env | grep -iE '^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=' | grep -vE '^(GITHUB_TOKEN=|RUNNER_|GITHUB_RUN_|ACTIONS_|GH_|PIP_|PYPI_)' || true)
+          if [ -n "$SUSPECT" ]; then
+            echo "::warning::allow list に含まれない secret-like env var が検出された（false positive の可能性）:"
+            echo "$SUSPECT" | sed 's/=.*$/=<redacted>/'
+            echo "allow list の更新が必要かもしれない。update-visual-baseline.yml の grep -vE パターンを確認すること。"
+            exit 1
+          fi
+          echo "OK: false positive なし（runtime env は allow list で正しく除外された）"

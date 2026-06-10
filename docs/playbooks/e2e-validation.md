@@ -279,6 +279,15 @@ regex `^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=` は接尾辞の�
 
 false positive 増加とのトレードオフで現状は acceptable な ROI 判断。secret naming convention が拡張された際は本 docs を再評価。
 
+**audit step を修正したときの確認手順**:
+
+audit step（`update-visual-baseline.yml` の grep パターン / allow list）を修正した場合は、
+以下の手順で陽性対照が引き続き機能することを確認する:
+
+1. `.github/workflows/test-baseline-audit.yml` を GitHub Actions UI から `workflow_dispatch` で trigger する。
+2. Step 1「陽性対照 — FAKE_API_KEY が audit step で検知されることを確認」が pass することを確認。
+3. `grep -iE` と `grep -vE` の両パターンを `update-visual-baseline.yml` と `test-baseline-audit.yml` の両方で同じ文字列に更新すること（`tests/meta/baseline-audit-positive-control.test.ts` が drift を検知し `npm run test` で fail させる）。
+
 **contributor への注意**:
 
 - spec に `localStorage.setItem(...)` / `sessionStorage.setItem(...)` を追加する場合、
