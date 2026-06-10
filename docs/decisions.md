@@ -3818,3 +3818,43 @@ IPv4（32bit）と IPv6（128bit）のアドレス演算を、安全かつブラ
 - ✅ IPv4/IPv6 を BigInt で統一的に扱い、シンプルなロジックで正確なネットワーク計算を実現。
 - ✅ 外部依存ゼロでブラウザ完結を維持。
 - ⚠️ IPv4-mapped IPv6（`::ffff:x.x.x.x`）は BigInt にパースできるが、フォーマット時に IPv4 形式には戻さない（表示は純 IPv6）。
+
+---
+
+## [100] 2026-06-10 — テスト陽性対照強化 (#316/#324/#334)（issue #533）
+
+### 課題
+
+以下の 3 つのテスト / CI 設定に「検知機構が壊れても green が継続する」陰性対照のみの設計が残っていた:
+
+- **#316**: `meta-csp.test.ts` の Astro island inline style hash 整合性テストが、定数 `ASTRO_ISLAND_INLINE_CONTENT` を hardcode して比較する 2 段構造だったため、Astro が inline style 文字列を変更しても旧 hash を `_headers` に残したまま陰性対照で素通りする危険があった。
+- **#324**: `visual-regression.yml` の「PR comment 本文を組み立て」step は VRT 失敗時のみ通る経路で CI 実証手段がなく、`( ... ) || true` による regression 修正が正しいかを手元で確認する手段がなかった。
+- **#334**: `update-visual-baseline.yml` の secret env audit step は陰性対照のみで、grep パターンが壊れても silent pass するリスクがあった（`FAKE_API_KEY` を注入して検知を確認する陽性対照が欠如）。
+
+### 決断
+
+**#316（dist 直読化）**: `meta-csp.test.ts` の integrity テストを dist HTML から `<style>` 中身を全件抽出して sha256 を計算する 1 段構造に書き換え。dist と `_headers` を直接比較する設計で定数の二重管理を排除。「dist に inline style が少なくとも 1 件存在する」assert を陽性対照として追加し、抽出 regex が 0 件で空回りする偽 green を防止。
+
+**#324（陽性対照スクリプト）**: `scripts/test-vrt-comment-build.sh` を新設し、workflow 内の失敗 spec 抽出 pipeline を bash 環境で再現。陰性対照 2 件（空 log / fixture log）に加え、`|| true` を外した旧実装で空 log を流したとき pipeline が確実に中断することを assert するケース C（陽性対照）を追加。`tests/meta/vrt-comment-build-script.test.ts` で `npm run test` に自動組み込み。
+
+**#334（案 1: 別 workflow + 週次 cron）**: `.github/workflows/test-baseline-audit.yml` を新設し、`FAKE_API_KEY=sentinel-value-not-a-real-secret` を job env に注入した状態で audit pipeline を実行。FAKE_API_KEY が検知されなければ `::error::` で fail させる（陽性対照）。さらに FAKE_API_KEY を除外した step で GH Actions runtime 由来 env が allow list で正しく除外されることを確認（陰性対照）。inline 複製した grep パターンの drift は `tests/meta/baseline-audit-positive-control.test.ts` が `npm run test` で自動検知する。
+
+### 案 2・案 3 を却下した理由（#334）
+
+- **案 2（composite action 化）**: action の抽象化により grep パターンを DRY にできるが、workflow のステップを action でラップすると `env:` コンテキストが変わり sentinel 注入の設計が複雑化する。メンテナンスコストが案 1 を上回ると判断。
+- **案 3（bats 導入）**: bash 専用テストフレームワークを導入すれば表現力が上がるが、npm 管理の vitest と二重管理になる。小規模な検証に対してオーバーエンジニアリング。
+
+### inline 複製を meta テストで drift guard する判断
+
+`test-baseline-audit.yml` は `update-visual-baseline.yml` の grep パターンを「一字一句同一」で inline 複製している。DRY でないことは意図的なトレードオフで、以下の理由から許容する:
+
+- grep パターンは短く変更頻度が低い（audit 対象の secret 命名規則が変わった場合のみ更新）。
+- `tests/meta/baseline-audit-positive-control.test.ts` が両 workflow のパターンを抽出して完全一致を assert するため、drift は `npm run test` で即時検知できる。
+- composite action 化より運用が単純で、CI 設定追加の安全性も高い（`permissions: contents: read` のみ、sentinel は実 secret でない）。
+
+### 結果・トレードオフ
+
+- ✅ #316: dist HTML から直接 hash を計算する設計で定数の二重管理を排除。Astro の inline style 変更を自動検知。
+- ✅ #324: pipeline の `|| true` 有無の違いをケース C が実証し、regression クラス全体をテストハーネスが検知できることを証明。
+- ✅ #334: 週次 cron と `workflow_dispatch` の両建てで、audit step の silent drift を定期自動確認。meta テストで grep パターンの inline 複製 drift を CI から検知。
+- ⚠️ #334: `test-baseline-audit.yml` の陰性対照（Step 2）は `FAKE_API_KEY: ''` で job env を上書きする設計。GH Actions が step env の空文字列で `FAKE_API_KEY=` を env に出すかどうかはランナー実装依存であるため、本番 audit 同様の「env に存在しない」状態と厳密に等価ではない。ただし FAKE_API_KEY のデフォルト検知が Step 1 で保証されているため、Step 2 の陰性対照は false positive の有無を確認する補助的な役割として許容する。
