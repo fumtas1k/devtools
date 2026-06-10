@@ -5,6 +5,7 @@ export * from './tree';
 export * from './query';
 export * from './mask';
 export * from './type-gen';
+export * from './flatten';
 
 import { parseJson } from './parse';
 import { formatJson, minifyJson, type IndentStyle } from './format';
