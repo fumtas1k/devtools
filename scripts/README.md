@@ -77,3 +77,41 @@ npm run test -- tests/meta/rm-tmp.test.ts
 
 - `.claude/rules/git-and-fs.md`（Claude Code での使用方法）
 - `.codex/rules/default.rules`（Codex での allow ルール）
+
+---
+
+## test-vrt-comment-build.sh
+
+VRT の「PR comment 本文を組み立て」step（`.github/workflows/visual-regression.yml`）の
+失敗 spec 抽出 pipeline を bash 環境下で再現し、3 つのケースを検証する。
+
+この step は VRT 失敗時のみ通る経路で CI 実証手段がないため、スクリプトで再現する（issue #324）。
+
+### ケース
+
+- **ケース A（陰性対照）**: ✘ 0 件の空 log を入力 → sentinel 行まで到達し exit 0 することを確認
+- **ケース B（陰性対照）**: ✘ 行 + `(retry` 行を含む fixture log を入力 → 期待形式の行が出力されることを確認
+- **ケース C（陽性対照）**: `|| true` を外した旧実装で空 log → 途中で中断して exit non-zero になることを確認
+
+### 使い方
+
+```bash
+bash scripts/test-vrt-comment-build.sh
+```
+
+### 終了コード
+
+- `0`: 全ケース pass
+- `1`: いずれかのケース fail
+
+### テスト
+
+```bash
+npm run test -- vrt-comment-build-script
+```
+
+### 関連
+
+- `.github/workflows/visual-regression.yml`（L184-245: 対象 step）
+- `tests/meta/vrt-comment-build-script.test.ts`（CI 組み込みテスト）
+- issue #324
