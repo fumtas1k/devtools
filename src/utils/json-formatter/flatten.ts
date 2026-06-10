@@ -55,3 +55,32 @@ export function countRows(root: TreeNode): number {
   for (const child of root.children ?? []) count += countRows(child);
   return count;
 }
+
+/** computeWindow の戻り値。start は inclusive、end は exclusive。 */
+export interface WindowRange {
+  start: number;
+  end: number;
+}
+
+/**
+ * スクロール位置から描画すべき行範囲を計算する（等高行前提の windowing）。
+ * - rowH が未確定（<= 0）の場合は先頭から overscan 行だけ描画して実測を促す。
+ * - 折りたたみで行数が縮んだ直後など、過大な scrollTop でも範囲が破綻しないよう clamp する
+ *   （ブラウザ側の scrollTop 自動 clamp で次のイベントから正常値に戻る）。
+ */
+export function computeWindow(
+  scrollTop: number,
+  viewportH: number,
+  rowH: number,
+  totalRows: number,
+  overscan: number
+): WindowRange {
+  if (totalRows <= 0) return { start: 0, end: 0 };
+  if (rowH <= 0) return { start: 0, end: Math.min(totalRows, Math.max(1, overscan)) };
+  const top = Math.max(0, scrollTop);
+  const rawStart = Math.floor(top / rowH) - overscan;
+  const rawEnd = Math.ceil((top + Math.max(0, viewportH)) / rowH) + overscan;
+  const end = Math.min(totalRows, Math.max(1, rawEnd));
+  const start = Math.min(Math.max(0, rawStart), end - 1);
+  return { start, end };
+}

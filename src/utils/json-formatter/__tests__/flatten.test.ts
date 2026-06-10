@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flattenTree, countRows } from '../flatten';
+import { flattenTree, countRows, computeWindow } from '../flatten';
 import { parseJson } from '../parse';
 import { buildTree } from '../tree';
 import type { TreeNode } from '../tree';
@@ -76,5 +76,39 @@ describe('countRows', () => {
 
   it('空オブジェクトは open + close の 2', () => {
     expect(countRows(treeOf('{}'))).toBe(2);
+  });
+});
+
+describe('computeWindow', () => {
+  it('スクロール位置から可視範囲 + overscan を返す', () => {
+    // 100 行 × 行高 20px、viewport 200px、scrollTop 400 → 可視 20〜30 行目 ± overscan 5
+    expect(computeWindow(400, 200, 20, 100, 5)).toEqual({ start: 15, end: 35 });
+  });
+
+  it('先頭で start を 0 に clamp する', () => {
+    expect(computeWindow(0, 200, 20, 100, 5)).toEqual({ start: 0, end: 15 });
+  });
+
+  it('末尾（実スクロール上限）で end を totalRows に clamp する', () => {
+    // contentH 2000 - viewport 200 = scrollTop 上限 1800
+    expect(computeWindow(1800, 200, 20, 100, 5)).toEqual({ start: 85, end: 100 });
+  });
+
+  it('行数縮小直後の過大な scrollTop でも範囲が破綻しない', () => {
+    const w = computeWindow(10_000, 200, 20, 100, 5);
+    expect(w.start).toBeLessThan(w.end);
+    expect(w.end).toBe(100);
+  });
+
+  it('totalRows=0 は空範囲を返す', () => {
+    expect(computeWindow(0, 200, 20, 0, 5)).toEqual({ start: 0, end: 0 });
+  });
+
+  it('rowH 未確定（<=0）では先頭から overscan ぶんだけ描画する', () => {
+    expect(computeWindow(0, 200, 0, 100, 5)).toEqual({ start: 0, end: 5 });
+  });
+
+  it('負の scrollTop（バウンススクロール）は 0 として扱う', () => {
+    expect(computeWindow(-50, 200, 20, 100, 5)).toEqual({ start: 0, end: 15 });
   });
 });
