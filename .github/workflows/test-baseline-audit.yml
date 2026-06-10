@@ -54,19 +54,19 @@ jobs:
       # -----------------------------------------------------------------------
       # Step 2: 陰性対照 — allow list が GH Actions runtime 由来 env を除外することを確認
       #
-      # FAKE_API_KEY を step env から除外した状態で同 pipeline を実行。
+      # FAKE_API_KEY を shell で unset した状態で同 pipeline を実行。
       # GH Actions runtime 由来の env（GITHUB_TOKEN / RUNNER_* 等）は allow list で
       # 除外されるため SUSPECT が空になることを assert（false positive の防止）。
       # allow list が過剰に絞られている場合は本番 audit が常時 fail する。
       # -----------------------------------------------------------------------
       - name: 陰性対照 — allow list が runtime env を除外し false positive がないことを確認
-        # FAKE_API_KEY を step env に持たない独立 step として実行することで、
-        # FAKE_API_KEY が env に存在しない状態を再現する（job env は step env で上書き可能）。
-        env:
-          FAKE_API_KEY: ''
         shell: bash
         run: |
           set -euo pipefail
+          # job env の FAKE_API_KEY を shell から unset し「env に存在しない」状態を再現する。
+          # 注意: step env で `FAKE_API_KEY: ''` と空文字上書きしても env 出力に
+          # `FAKE_API_KEY=` が残って detect パターンにマッチするため、unset が必須。
+          unset FAKE_API_KEY
           # update-visual-baseline.yml L51 と一字一句同一のパターン
           SUSPECT=$(env | grep -iE '^[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)=' | grep -vE '^(GITHUB_TOKEN=|RUNNER_|GITHUB_RUN_|ACTIONS_|GH_|PIP_|PYPI_)' || true)
           if [ -n "$SUSPECT" ]; then

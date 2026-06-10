@@ -3857,4 +3857,4 @@ IPv4（32bit）と IPv6（128bit）のアドレス演算を、安全かつブラ
 - ✅ #316: dist HTML から直接 hash を計算する設計で定数の二重管理を排除。Astro の inline style 変更を自動検知。
 - ✅ #324: pipeline の `|| true` 有無の違いをケース C が実証し、regression クラス全体をテストハーネスが検知できることを証明。
 - ✅ #334: 週次 cron と `workflow_dispatch` の両建てで、audit step の silent drift を定期自動確認。meta テストで grep パターンの inline 複製 drift を CI から検知。
-- ⚠️ #334: `test-baseline-audit.yml` の陰性対照（Step 2）は `FAKE_API_KEY: ''` で job env を上書きする設計。GH Actions が step env の空文字列で `FAKE_API_KEY=` を env に出すかどうかはランナー実装依存であるため、本番 audit 同様の「env に存在しない」状態と厳密に等価ではない。ただし FAKE_API_KEY のデフォルト検知が Step 1 で保証されているため、Step 2 の陰性対照は false positive の有無を確認する補助的な役割として許容する。
+- ⚠️ #334: `test-baseline-audit.yml` の陰性対照（Step 2）は shell の `unset FAKE_API_KEY` で「env に存在しない」状態を再現する。step env で `FAKE_API_KEY: ''` と空文字上書きする案はレビューで却下した — GH Actions は空文字でも env var を set するため `env` 出力に `FAKE_API_KEY=` が残り、detect パターン（`...KEY=` 接尾辞マッチ）に必ずマッチして陰性対照が常時 fail する。
