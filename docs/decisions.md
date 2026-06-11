@@ -3962,3 +3962,38 @@ decisions [096] のツリー遅延構築 + 500KB ガード後も、ガードを�
 - ⚠️ 仮想パスはフラット ul のため、入れ子 ul が伝えていたリストのネスト（深さ）情報がスクリーンリーダーに伝わらない（表示は depth ベースのインデントのみ）。両ビューとも表示専用で `role="tree"` を付けない方針（RegexAstTree と同じ）の範囲内だが、仮想パス固有の後退として記録。将来 `aria-level` 等の付与を検討する場合は仮想パス側から。
 - ⚠️ キーボード操作中にフォーカス中の行が可視範囲外へスクロールアウトすると行ごと unmount され、フォーカスが body へ落ちる（windowing の既知制限。巨大入力時のみ・対応保留）。
 - ⚠️ spacer の SVG はブラウザの要素高上限（Firefox 約 17.8M px ≒ 行高 24px で約 74 万行）を超えると破綻する理論上限がある。500KB ガード強制解除時のみ到達し得る規模のため現状対応不要だが、Worker オフロード導入でガード緩和を検討する際に再評価する。
+
+## [104] 2026-06-11 — json-formatter 重い処理の Worker オフロードは見送り（#512 残スコープ②・measure-first no-go）
+
+**2026-06-11 | ステータス: 不採用（measure-first により見送り）**
+
+### 背景
+
+issue #512 の残スコープ②として、parse / format / mask / query（+ makeTree / type-gen）の同一オリジン静的 Worker オフロードを検討。メインスレッド同期実行による大入力時フリーズの解消が目的。decisions [096] の方針どおり measure-first で、実装前に「どの処理が実際にフリーズ要因か」「postMessage の structured clone 往復コストを差し引いても Worker 化が得か」を実測した。
+
+### 計測（measure-first）
+
+Node v22 で各純粋関数の CPU 時間（中央値）と `structuredClone` の往復コストを実測。`正味便益 = CPU − (clone_in + clone_out)`。判定基準: 大入力で CPU > 約 50ms（long task / INP 閾値）をフリーズ要因、正味便益が明確に正（目安 2 倍ヘッドルーム）なら Worker 対象。詳細表とフィクスチャ定義は `docs/superpowers/specs/2026-06-11-json-formatter-offload-measurement.md`。
+
+| 処理                | 1.4MB CPU | 14.5MB CPU | 正味便益(14.5MB) | 判定                                                                                         |
+| :------------------ | --------: | ---------: | ---------------: | :------------------------------------------------------------------------------------------- |
+| parseJson           |      30ms |      407ms |         -1,286ms | no-go（返す Node AST の clone が CPU の約 5 倍。jsonc-parser の親参照で循環し clone が爆発） |
+| buildTree           |      15ms |      130ms |           -608ms | no-go（TreeNode の clone_out が CPU を大幅超過）                                             |
+| maskValue           |      12ms |          — |                — | no-go（最大 22ms で 50ms 閾値未達）                                                          |
+| runQuery            |     0.4ms |          — |                — | no-go（CPU < clone_in の 1/20。桁違いにオーバーヘッド負け）                                  |
+| formatJson / minify |      10ms |   103/86ms |        +94/+78ms | ~15MB+ でのみ go（string→string で clone 最小）                                              |
+| generateTypeScript  |      39ms |      293ms |           +159ms | ~15MB+ でのみ条件付き go（clone_in 134ms でヘッドルームぎりぎり）                            |
+
+ブラウザ実測（native JSON 代理・throwaway Playwright）では ~1.4MB〜~3MB で long task 未発生。Blob Worker は本番 CSP（`worker-src 'self'`）で塞がるため往復は `structuredClone` で近似。
+
+### 決断
+
+- **Worker オフロードは実装しない（見送り）**。素直なオフロードは structured clone の往復コストに負けて逆効果。フリーズが実際に起きる大入力（~15MB+）で唯一成立する設計は「parse+format/minify を Worker 内で完結し**文字列だけ返す**」案だが、これは整形/minify のみ救い、ツリー表示・mask・query は救えない（構造を main に戻す時点で clone に負ける）。PR #622 の仮想化後、現実的サイズ（数 MB）では恩恵が限定的で、適用ユーザーも狭いため YAGNI で見送る。
+- **計測レポート + 再現用ベンチを成果物として残す**。`offload.bench.ts`（vitest、`npm run test` の glob 外で CI 非汚染）と `fixtures.ts` をコミットし、将来 ~15MB+ 対応が要件化したときに数値から再判断できるようにする。
+
+### 結果・トレードオフ
+
+- ✅ 空振り実装（複雑な Worker 通信基盤）を回避。measure-first の本来の使い方で対象を数値で除外できた。
+- ✅ ベンチは `.bench.ts` で `npm run test` の include glob（`*.test.{ts,tsx}`）外。CI を汚染しない。実行は `npx vitest bench src/utils/json-formatter/__tests__/offload.bench.ts`。
+- ⚠️ 超大入力（~15MB+）を将来サポートする場合は、本ベンチの数値を起点に「parse+format を Worker 内完結・文字列返し」の狭い設計から再検討する（別 issue/サイクル）。
+- ⚠️ ブラウザ実測は実 `parseJson`(jsonc-parser) でなく native `JSON.parse`/`stringify` を代理に使ったため、実パスの long task 有無は厳密には未検証。ただし同一 V8 エンジンの Node 実関数値で像は確定しており、結論は変わらない。
