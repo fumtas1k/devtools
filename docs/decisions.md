@@ -3997,3 +3997,28 @@ Node v22 で各純粋関数の CPU 時間（中央値）と `structuredClone` �
 - ✅ ベンチは `.bench.ts` で `npm run test` の include glob（`*.test.{ts,tsx}`）外。CI を汚染しない。実行は `npx vitest bench src/utils/json-formatter/__tests__/offload.bench.ts`。
 - ⚠️ 超大入力（~15MB+）を将来サポートする場合は、本ベンチの数値を起点に「parse+format を Worker 内完結・文字列返し」の狭い設計から再検討する（別 issue/サイクル）。
 - ⚠️ ブラウザ実測は実 `parseJson`(jsonc-parser) でなく native `JSON.parse`/`stringify` を代理に使ったため、実パスの long task 有無は厳密には未検証。ただし同一 V8 エンジンの Node 実関数値で像は確定しており、結論は変わらない。
+
+## [105] 2026-06-11 — Web セッションの enabledPlugins 自動 install を SessionStart hook で再導入
+
+**2026-06-11 | ステータス: 採用**
+
+### 背景
+
+`.claude/settings.json` の `enabledPlugins`（superpowers / frontend-design / context7）は Claude Code on the web で silent skip され（trust dialog 非発火、upstream #23737）、superpowers のスキル群が web セッションで使えなかった。PR #204 で hook 自動化を試みた際は `claude plugin install` が `not found in marketplace` で失敗し「手動 install 運用」に確定していた。
+
+### 再検証で判明したこと（2026-06、Claude Code 2.1.173）
+
+- 現行の Claude Code は**セッション開始時に `extraKnownMarketplaces` を `~/.claude/plugins/marketplaces` へ自動 clone する**ようになっており、PR #204 当時の失敗原因（marketplace 未解決）が解消。web コンテナの hook から `claude plugin install` が 3 プラグインとも成功することを実機確認。
+- superpowers は marketplace 同梱でなく外部 repo（`obra/superpowers.git`、sha pin）から clone される external プラグインで、install 実行なしでは実体が取得されない（これが「marketplace clone はあるのにスキルが無い」状態の正体）。
+- `claude plugin install` は冪等（install 済みなら "already installed" で exit 0、再 clone なし）。
+
+### 決断
+
+`.claude/scripts/session-install.sh`（SessionStart hook）に web 限定（`CLAUDE_CODE_REMOTE=true`）の enabledPlugins 自動 install を追加。プラグイン一覧は `.claude/settings.json` から動的に読む（ハードコードによる宣言との drift を防止）。失敗は warn のみで非致命（npm ci / playwright install の結果に影響させない・次セッション再試行で self-healing）。meta テスト（`tests/meta/session-install.test.ts`）に fake claude による陽性対照・陰性対照を併設し、旧実装で fail することを確認済み。
+
+### 結果・トレードオフ
+
+- ✅ 各環境 1 回の手動 `/plugin install` 運用が不要になる（手動コマンドはフォールバックとして docs に残置）。
+- ⚠️ スキルのロードはセッション開始時のため、**新規コンテナの初回セッションでは未反映**。コンテナ状態キャッシュ（`~/.claude/plugins` 含む）により同一環境の次セッション以降で有効。
+- ⚠️ CLI / Desktop は従来どおり trust dialog の自動 prompt に委ね、hook では触らない（開発者ローカルの user scope 状態を hook が暗黙に書き換えない）。
+- ⚠️ context7 の MCP は web では egress 403 の別制約が残る（decisions [059]、リポジトリ側で解消不可）。

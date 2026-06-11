@@ -39,14 +39,49 @@ function setupFakeNpm(dir: string): string {
     '#!/bin/sh\nif [ "$1" = "ci" ]; then mkdir -p node_modules; echo x >>ci-count; fi\n'
   );
   chmodSync(fakeNpm, 0o755);
+  // npx を no-op 化（CLAUDE_CODE_REMOTE=true で実行された場合に実 playwright download へ抜けない）
+  const fakeNpx = join(binDir, 'npx');
+  writeFileSync(fakeNpx, '#!/bin/sh\nexit 0\n');
+  chmodSync(fakeNpx, 0o755);
   return binDir;
 }
 
-/** script を temp dir 内で実行（fake npm を PATH 先頭に） */
-function runHook(cwd: string, binDir: string): void {
+/**
+ * `claude plugin install <name>` の呼び出しを plugin-install-log に記録する fake claude を
+ * fakebin に追加する。exitCode 非 0 で install 失敗を模擬できる。
+ */
+function setupFakeClaude(binDir: string, exitCode = 0): void {
+  const fakeClaude = join(binDir, 'claude');
+  writeFileSync(
+    fakeClaude,
+    `#!/bin/sh\nif [ "$1" = "plugin" ] && [ "$2" = "install" ]; then echo "$3" >>plugin-install-log; fi\nexit ${exitCode}\n`
+  );
+  chmodSync(fakeClaude, 0o755);
+}
+
+/** plugin install が呼ばれたプラグイン名一覧（plugin-install-log の行）を返す */
+function installedPlugins(cwd: string): string[] {
+  const f = join(cwd, 'plugin-install-log');
+  if (!existsSync(f)) return [];
+  return readFileSync(f, 'utf8').split('\n').filter(Boolean);
+}
+
+/** enabledPlugins 宣言入りの .claude/settings.json を temp dir に作る */
+function writeSettings(dir: string, enabledPlugins: Record<string, boolean>): void {
+  mkdirSync(join(dir, '.claude'), { recursive: true });
+  writeFileSync(join(dir, '.claude', 'settings.json'), JSON.stringify({ enabledPlugins }));
+}
+
+/** script を temp dir 内で実行（fake npm を PATH 先頭に）。env で CLAUDE_CODE_REMOTE 等を制御 */
+function runHook(cwd: string, binDir: string, env: Record<string, string> = {}): void {
   execFileSync('bash', [scriptPath], {
     cwd,
-    env: { ...process.env, PATH: `${binDir}:${process.env.PATH ?? ''}` },
+    env: {
+      ...process.env,
+      CLAUDE_CODE_REMOTE: '',
+      ...env,
+      PATH: `${binDir}:${process.env.PATH ?? ''}`,
+    },
   });
 }
 
@@ -103,5 +138,64 @@ describe('session-install.sh: lockfile ハッシュガード', () => {
     rmSync(join(dir, 'package-lock.json'));
     runHook(dir, binDir);
     expect(ciCount(dir)).toBe(0);
+  });
+});
+
+describe('session-install.sh: enabledPlugins 自動 install（web 限定）', () => {
+  let dir: string;
+  let binDir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'session-install-'));
+    binDir = setupFakeNpm(dir);
+    setupFakeClaude(binDir);
+    writeFileSync(join(dir, 'package-lock.json'), '{"v":1}');
+    writeSettings(dir, {
+      'superpowers@claude-plugins-official': true,
+      'context7@claude-plugins-official': true,
+    });
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  // 陽性対照: web セッションでは settings.json の enabledPlugins 全件を install する。
+  // 旧実装（plugin install ブロックなし）に当てると plugin-install-log が生成されず fail する。
+  it('CLAUDE_CODE_REMOTE=true なら enabledPlugins を全件 install する', () => {
+    runHook(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' });
+    expect(installedPlugins(dir)).toEqual([
+      'superpowers@claude-plugins-official',
+      'context7@claude-plugins-official',
+    ]);
+  });
+
+  // 陰性対照: ローカル（CLI / Desktop）では trust dialog の自動 prompt に委ね、hook では触らない
+  it('CLAUDE_CODE_REMOTE が true でなければ install しない', () => {
+    runHook(dir, binDir);
+    expect(installedPlugins(dir)).toEqual([]);
+  });
+
+  // 陰性対照: enabledPlugins で false 宣言されたプラグインは install 対象外
+  it('false 宣言のプラグインは install しない', () => {
+    writeSettings(dir, {
+      'superpowers@claude-plugins-official': true,
+      'frontend-design@claude-plugins-official': false,
+    });
+    runHook(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' });
+    expect(installedPlugins(dir)).toEqual(['superpowers@claude-plugins-official']);
+  });
+
+  // 陰性対照: .claude/settings.json が無いプロジェクト（テスト temp dir 等）では何もしない
+  it('.claude/settings.json が無ければ install しない', () => {
+    rmSync(join(dir, '.claude'), { recursive: true });
+    runHook(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' });
+    expect(installedPlugins(dir)).toEqual([]);
+  });
+
+  // 失敗許容: install 失敗（exit 非 0）でも hook 全体は fail しない（次セッション再試行に委ねる）
+  it('plugin install が失敗しても hook は exit 0 のまま継続する', () => {
+    setupFakeClaude(binDir, 1);
+    expect(() => runHook(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' })).not.toThrow();
   });
 });
