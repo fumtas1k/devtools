@@ -42,3 +42,4 @@ user-invocable: true
 - ロゴはプレースホルダー（公式デジタル庁ワードマークではない）。実用前に差し替えること
 - フォントは Google Fonts から CDN 読み込み。本番では self-host 推奨
 - 値は公式リポジトリ（digital-go-jp/design-tokens の figma/tokens.json 等）からの転記。精度が必要な場合は最新版と照合すること（詳細は readme.md の Sources 参照）
+- 出典の MIT ライセンス帰属表示は `LICENSE.md` を参照（Copyright デジタル庁。本パッケージは非公式・非公認の再現）
