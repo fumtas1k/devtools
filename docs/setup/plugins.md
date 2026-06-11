@@ -24,7 +24,7 @@
 
 公式ドキュメントは「クラウドセッションでも `enabledPlugins` 宣言のプラグインはセッション開始時に install される」と謳っていますが、**実装上は trust dialog イベントに紐づいており、Web / headless / CI ではこのイベントが発火しないため silent に install がスキップされる** Claude Code 本体側の既知制約があります。
 
-**現在は SessionStart hook（`.claude/scripts/session-install.sh`）が web セッションで `enabledPlugins` を自動 install します**（decisions [105]）。注意点:
+**現在は SessionStart hook（`.claude/scripts/session-install.sh`）が web セッションで `enabledPlugins` を自動 install します**（decisions [106]）。注意点:
 
 - スキルはセッション開始時にロードされるため、**新規コンテナの初回セッションでは反映されない**。コンテナ状態キャッシュにより同一環境の次セッション以降で有効になる。
 - install 失敗時は warn のみで継続し、次セッションで自動再試行される（冪等）。
