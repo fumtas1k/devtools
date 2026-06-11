@@ -13,7 +13,12 @@ import { base64UrlToBuffer, bufferToBase64Url } from '@/utils/base64url';
 /** 署名（P-256 Base64URL）の概算バイト数（64バイトのバイナリをBase64URL化したもの。パディングなしで86文字） */
 export const SIGNATURE_BYTE_SIZE = 86;
 
-/** QRコードの最大データサイズ（署名・タイムスタンプ等を含む全データの合計バイト数） */
+/**
+ * QRコードの最大データサイズ（署名・タイムスタンプ等を含む全データの合計バイト数）。
+ * 250B 以下に抑えることで QR バージョンを v9（61 modules）以下に保ち、
+ * 160px 表示でも 1 モジュール ≈ 2.6px を確保して読み取り失敗を防ぐ
+ * （300B だと v10 になり実機で読み取り失敗が発生した）。根本対策の検討は issue #628。
+ */
 export const MAX_QR_BYTE_SIZE = 250;
 
 /** ペイロードのフィールド名リスト（シリアライズ順） */

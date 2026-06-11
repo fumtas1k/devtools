@@ -167,6 +167,7 @@ npm ci
 
 1. PR comment 内の `Workflow run` リンクから diff 画像を確認
 2. **意図的な visual 変更**（design system update / 新 component 追加 / 意図的 layout 調整）の場合:
+   - **baseline 更新前に必ず 7.7 章の 2 段階検証（DOM diff / computed style diff）を実施する**
    - GitHub Actions UI で `Update Visual Regression Baseline` workflow を **本 PR のブランチ** で `workflow_dispatch` trigger
    - bot が baseline を更新して commit back
    - `git pull` で baseline を receive、push（branch protection は feature branch なので問題なし）
@@ -296,3 +297,36 @@ audit step（`update-visual-baseline.yml` の grep パターン / allow list）�
   baseline 生成対象 page を除外するか、screenshot 前に値を masking する。
 - workflow に新規 secret env を追加する場合は spec / job のスコープを最小化し、
   上記 audit step の allow list を更新するときは PR review で焼き付きリスクを再評価。
+
+### 7.7 baseline 更新前の必須検証（DOM diff / computed style diff）
+
+baseline 更新は「意図した変更」を承認する操作であり、**真の regression を silent に baseline へ焼き込むリスク**がある。「rendering nondeterminism は baseline 更新で吸収」を機械的に pattern 化すると regression 見逃しが起きるため、VRT が **任意の visual diff で fail** した場合は baseline 更新前に必ず以下 2 段階を確認する（PR #299 で導入）。
+
+#### 1. DOM 構造 diff
+
+`gh run download <run-id> --name visual-regression-report-pr-<n>` で playwright report を取得し、`expected` と `actual` の HTML スナップショット（Astro が生成する HTML）を比較。次の点に regression がないことを確認:
+
+- `aria-*` / `role=` 属性の削除なし（`.agents/rules/common.md` 9.6 章の a11y 保護にも該当）
+- DOM 階層・要素数の差分なし
+- `<img>` `alt` / `<a>` `href` 等の semantic 属性が同一
+
+#### 2. Computed style diff（Playwright MCP）
+
+local preview server で問題ページを開き、疑わしい element の computed style を `getComputedStyle()` で取得。`fontSize` / `lineHeight` / `borderBottomWidth` / `backgroundColor` 等の semantic property が baseline と一致することを確認:
+
+```js
+// Playwright MCP 経由の例
+const cs = getComputedStyle(document.querySelector('section'));
+return {
+  borderBottomWidth: cs.borderBottomWidth, // "1px"
+  borderBottomColor: cs.borderBottomColor, // "rgb(219, 234, 254)"
+  backgroundColor: cs.backgroundColor, // "rgb(239, 246, 255)"
+};
+```
+
+#### 判定
+
+- **両方が baseline と一致**（= rendering nondeterminism のみ）→ baseline 更新が妥当。実例: PR #299 の inline `style` → CSS class refactor で fractional pixel rendering が累積し page height が 1px 短縮（diff ratio 0.02%）したケース
+- **どちらかが不一致**（= 真の semantic regression）→ baseline 更新前に root cause を fix
+
+なお、検証の結果 baseline 更新が妥当に見えても、エージェントから「微小だから baseline 更新で OK」と recommend しないこと（`.agents/rules/common.md` 6.8 章。最終判断は user の目視確認に委ねる）。
