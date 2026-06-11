@@ -300,7 +300,7 @@ audit step（`update-visual-baseline.yml` の grep パターン / allow list）�
 
 ### 7.7 baseline 更新前の必須検証（DOM diff / computed style diff）
 
-baseline 更新は「意図した変更」を承認する操作であり、**真の regression を silent に baseline へ焼き込むリスク**がある。「rendering nondeterminism は baseline 更新で吸収」を機械的に pattern 化すると regression 見逃しが起きるため、VRT が **任意の visual diff で fail** した場合は baseline 更新前に必ず以下 2 段階を確認する（PR #299 で導入）。
+baseline 更新は「意図した変更」を承認する操作であり、**真の regression を silent に baseline へ焼き込むリスク**がある。「rendering nondeterminism は baseline 更新で吸収」を機械的に pattern 化すると regression 見逃しが起きるため、VRT が **任意の visual diff で fail** した場合は baseline 更新前に必ず以下 2 段階を確認する（PR #299 の事例を起点に明文化）。
 
 #### 1. DOM 構造 diff
 

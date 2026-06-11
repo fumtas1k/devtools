@@ -160,7 +160,7 @@ solo dev 体制（PR 作成者 = レビュアー = merger が同一人物）で�
 
 VRT が小さい pixel diff (例: 0.07%) を検出しても「微小だから baseline 更新で OK」と recommend してはいけない。**pixel 数 ≠ visual design 品質** (design token 由来の意図しない変更でも pixel ratio は小さく見える)。判断は user の目視確認に委ね、エージェントは数値根拠で baseline 更新を勧めない。
 
-また、baseline 更新前には **DOM 構造 diff / computed style diff の 2 段階検証が必須**（真の regression を baseline に焼き込まないための判別 gate、PR #299 で導入）。手順 → `docs/playbooks/e2e-validation.md` 7.7 章
+また、baseline 更新前には **DOM 構造 diff / computed style diff の 2 段階検証が必須**（真の regression を baseline に焼き込まないための判別 gate、PR #299 の事例を起点に明文化）。手順 → `docs/playbooks/e2e-validation.md` 7.7 章
 
 ### 6.9 サブエージェント運用の補足
 
