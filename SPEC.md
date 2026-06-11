@@ -173,7 +173,8 @@ devtools/
     │       ├── sql-formatter.astro
     │       ├── regex-visualizer.astro
     │       ├── json-formatter.astro
-    │       └── cidr-calculator.astro
+    │       ├── cidr-calculator.astro
+    │       └── secret-scrubber.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -196,6 +197,7 @@ devtools/
         ├── regex-visualizer/   # 正規表現 AST 変換・ReDoS 判定・鉄道図レイアウト・マッチ実行（parse.ts / redos.ts / railroad-layout.ts / railroad.ts / match.ts / index.ts）
         ├── json-formatter/     # JSON 整形・最小化・検証・ツリー構築（parse.ts / format.ts / tree.ts / errors.ts / index.ts、__tests__ colocated）
         ├── cidr-calculator/    # CIDR/サブネット計算機（types.ts / ipv4.ts / ipv6.ts / parse.ts / index.ts、__tests__ colocated）
+        ├── secret-scrubber/    # シークレットスクラバー（rules.ts / entropy.ts / scrub.ts / index.ts）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
         ├── qr-reader.ts
         ├── qr-ticket.ts
@@ -216,7 +218,8 @@ devtools/
             ├── qr-reader.test.ts
             ├── qr-ticket.test.ts
             ├── url-encode.test.ts
-            └── uuid-v7.test.ts
+            ├── uuid-v7.test.ts
+            └── secret-scrubber.test.ts
 ```
 
 ---
@@ -263,7 +266,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全20ツール）
+## 4. ツール一覧（全22ツール）
 
 ### カテゴリ A: 生成ツール（`generate`）
 
@@ -305,6 +308,7 @@ devtools/
 | 19  | 正規表現ビジュアライザ＆ReDoS検出 | `regex-visualizer`   | 正規表現を AST ツリー・鉄道図で可視化し、ReDoS 脆弱性を検出。テスト文字列に対するマッチハイライトとキャプチャグループ表示に対応。JavaScript（ECMAScript）正規表現対応                                                                           |
 | 20  | JSON整形・ビューア                | `json-formatter`     | JSON を整形（2/4/タブ）・最小化し、折りたたみツリーで閲覧。構文エラーは行・列付きで表示。数値リテラル・大きな整数の精度を保持し、全処理をブラウザ内で完結。JMESPath クエリで値を抽出可能。PII/シークレットを検出してマスク。TypeScript 型を生成 |
 | 21  | CIDR/サブネット計算機             | `cidr-calculator`    | CIDR 記法でアドレスを入力しネットワーク情報を計算。IPv4/IPv6 対応。ネットワーク・ブロードキャスト・ホスト範囲・サブネットマスク・利用可能ホスト数を表示。BigInt による 128bit 統一処理。外部ライブラリなし                                      |
+| 22  | シークレットスクラバー            | `secret-scrubber`    | ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換。全処理ブラウザ内完結・外部ライブラリなし                                                                                 |
 
 ---
 
@@ -1036,6 +1040,36 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 └───────────────────────────────────────┘
 ```
 
+### 5.22 シークレットスクラバー（`secret-scrubber`）
+
+**入力:**
+
+- テキスト: 複数行テキストエリア（ログ・設定ファイル・コードを貼り付け）
+- マスク対象: カテゴリごとのトグルチップ（APIキー / 秘密鍵 / 認証情報 / JWT / メール / IPアドレス / 電話番号 / カード番号 / 高エントロピー）、全カテゴリ既定 ON
+- [サンプルを入力] ボタン（AWS 例示キー・メール・IP・JWT を含む架空ログ）
+
+**出力:**
+
+- マスク済みテキスト: readonly テキストエリア
+- [コピー] ボタン
+- [クリア] ボタン
+
+**検出ルール:**
+
+- API キー: AWS（`AKIA`/`ASIA`/`ABIA`/`ACCA` + 16 文字）・GitHub・GitLab・Slack・Stripe・Google API・SendGrid・Anthropic・OpenAI・npm
+- 秘密鍵: PEM `-----BEGIN ... PRIVATE KEY-----` 〜 `-----END ... PRIVATE KEY-----` ブロック全体
+- 認証情報（値のみマスク）: `password=` / `token:` 等の代入式・URL 認証情報のパスワード部・Authorization / x-api-key ヘッダのトークン部
+- JWT: `eyJ` で始まる 3 セグメント形式
+- メール: `ユーザー名@ドメイン` 形式
+- IP: IPv4（オクテット 0〜255 検証付き）
+- 電話番号: ハイフン区切り日本形式・+81 国際形式
+- クレジットカード: Luhn チェック付き
+- 高エントロピー: Shannon エントロピー ≥ 4.0（base64 風）または ≥ 3.0（hex 32 文字以上）。UUID は除外
+
+**プレースホルダ形式:**
+
+`[REDACTED:<カテゴリ>_<連番>]`（例: `[REDACTED:EMAIL_1]`）。同一値は常に同一プレースホルダ。
+
 ---
 
 ## 6. 各ツール共通仕様
@@ -1197,6 +1231,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] 正規表現ビジュアライザ＆ReDoS検出（`regex-visualizer`）
   - [x] JSON整形・ビューア（`json-formatter`）
   - [x] CIDR/サブネット計算機（`cidr-calculator`）
+  - [x] シークレットスクラバー（`secret-scrubber`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）

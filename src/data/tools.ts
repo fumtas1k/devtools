@@ -164,6 +164,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'しーあいでぃーあーるさぶねっとけいさんき',
   },
+  {
+    slug: 'secret-scrubber',
+    name: 'シークレットスクラバー',
+    description:
+      'ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換',
+    category: 'convert',
+    yomi: 'しーくれっとすくらばー',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる
