@@ -3997,3 +3997,31 @@ Node v22 で各純粋関数の CPU 時間（中央値）と `structuredClone` �
 - ✅ ベンチは `.bench.ts` で `npm run test` の include glob（`*.test.{ts,tsx}`）外。CI を汚染しない。実行は `npx vitest bench src/utils/json-formatter/__tests__/offload.bench.ts`。
 - ⚠️ 超大入力（~15MB+）を将来サポートする場合は、本ベンチの数値を起点に「parse+format を Worker 内完結・文字列返し」の狭い設計から再検討する（別 issue/サイクル）。
 - ⚠️ ブラウザ実測は実 `parseJson`(jsonc-parser) でなく native `JSON.parse`/`stringify` を代理に使ったため、実パスの long task 有無は厳密には未検証。ただし同一 V8 エンジンの Node 実関数値で像は確定しており、結論は変わらない。
+
+## [105] 2026-06-11 — json-formatter getNodeValue の遅延評価は見送り（#512 残スコープ③・measure-first no-go）
+
+**2026-06-11 | ステータス: 不採用（measure-first により見送り）**
+
+### 背景
+
+issue #512 の任意スコープ③。`processJson` は入力が変わるたび `value: getNodeValue(root)` を eager 評価して `meta.value` に格納するが、`meta.value` を読むのは query 入力時 / mask ビュー / type ビューのみ。デフォルトの text ビューと tree ビューでは一切使われない（text は整形文字列、tree は `buildTree`）。つまり最頻パスで「毎キーストローク計算されるが読まれない無駄仕事」になっており、消費する view のときだけ評価する遅延化（thunk 化）がフリーズ削減に効くかを decisions [096]/[104] と同じ measure-first で実測した。
+
+### 計測（measure-first）
+
+Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と同じ「大入力で CPU > 約 50ms（long task / INP 閾値）」。再現: `npx vitest bench src/utils/json-formatter/__tests__/getnodevalue.bench.ts`。
+
+| サイズ             |   parse | format | getNodeValue | 必須計(parse+format) | 無駄率 | long task |
+| :----------------- | ------: | -----: | -----------: | -------------------: | -----: | :-------- |
+| ~1.4MB (n=5,000)   |  30.6ms |  7.8ms |    **2.2ms** |               38.4ms |   5.8% | no        |
+| ~2.9MB (n=10,000)  |  54.7ms | 16.4ms |    **4.9ms** |               71.0ms |   6.9% | no        |
+| ~14.5MB (n=50,000) | 351.9ms | 89.7ms |   **40.9ms** |              441.6ms |   9.3% | no        |
+
+### 決断
+
+- **getNodeValue の遅延評価は実装しない（見送り）**。無駄仕事であることは確認できたが規模が小さい: 最大 14.5MB でも 40.9ms で long task 閾値 50ms 未達、現実的サイズ（≤3MB）では ≤5ms のノイズレベル。真のボトルネックは parse+format（必須計の 90%+）で、これは整形文字列を常に表示する以上どの view でも遅延できず、getNodeValue 遅延化ではフリーズは消えない。
+- 再現用ベンチ `getnodevalue.bench.ts` を成果物として残す（[104] の `offload.bench.ts` と同じ流儀・`npm run test` の glob 外）。
+
+### 結果・トレードオフ
+
+- ✅ issue #512 の全スコープ（①仮想化=実装 / ②Worker=no-go / ③getNodeValue 遅延化=no-go）が measure-first で決着。
+- ⚠️ `makeTree` は thunk で遅延化済みなのに `value` だけ eager という非対称は残る。整合性のための thunk 化（~15 行）は安価だが、数値上の便益がノイズレベルのため YAGNI で見送り。将来 `processJson` 周りを触る機会があれば ride-along で揃えてよい。
