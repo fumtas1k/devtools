@@ -1,0 +1,210 @@
+/* =============================================================
+   DADS — Component styles
+   Class-based styling for the reusable primitives. The React
+   components in /components apply these classes; consumers who
+   only link styles.css get the same styling for free.
+   Every interactive element carries the DADS dual focus ring.
+   ============================================================= */
+
+/* ---- shared focus ring helper ---- */
+.dads-focus:focus-visible,
+.dads-btn:focus-visible,
+.dads-field:focus,
+.dads-checkbox:focus-visible,
+.dads-radio:focus-visible {
+  outline: 4px solid var(--color-black);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-focus-yellow);
+}
+
+/* =========================== Button =========================== */
+.dads-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius-8);
+  transition: background-color 0.08s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+.dads-btn:focus-visible { border-radius: var(--radius-8); }
+
+/* sizes */
+.dads-btn--lg { min-width: 136px; min-height: 56px; padding: 12px 16px; font-size: 16px; border-radius: var(--radius-8); }
+.dads-btn--md { min-width: 96px;  min-height: 48px; padding: 8px 16px;  font-size: 16px; border-radius: var(--radius-8); }
+.dads-btn--sm { min-width: 80px;  min-height: 36px; padding: 2px 12px;  font-size: 16px; border-radius: var(--radius-6); }
+.dads-btn--xs { min-width: 72px;  min-height: 28px; padding: 2px 8px;   font-size: 14px; border-radius: var(--radius-4); }
+
+/* variant · solid-fill (4px double border is a DADS signature) */
+.dads-btn--solid-fill { background: var(--color-blue-900); color: #fff; border: 4px double transparent; }
+.dads-btn--solid-fill:hover { background: var(--color-blue-1000); text-decoration: underline; }
+.dads-btn--solid-fill:active { background: var(--color-blue-1200); text-decoration: underline; }
+.dads-btn--solid-fill[aria-disabled="true"],
+.dads-btn--solid-fill:disabled { background: var(--color-solid-gray-300); color: var(--color-solid-gray-50); pointer-events: none; }
+
+/* variant · outline */
+.dads-btn--outline { background: #fff; color: var(--color-blue-900); border: 1px solid currentColor; }
+.dads-btn--outline:hover { background: var(--color-blue-200); color: var(--color-blue-1000); text-decoration: underline; }
+.dads-btn--outline:active { background: var(--color-blue-300); color: var(--color-blue-1200); text-decoration: underline; }
+.dads-btn--outline[aria-disabled="true"],
+.dads-btn--outline:disabled { background: #fff; color: var(--color-solid-gray-300); pointer-events: none; }
+
+/* variant · text */
+.dads-btn--text { background: transparent; color: var(--color-blue-900); text-decoration: underline; text-underline-offset: 3px; }
+.dads-btn--text:hover { background: var(--color-blue-50); color: var(--color-blue-1000); text-decoration-thickness: 3px; }
+.dads-btn--text:active { background: var(--color-blue-100); color: var(--color-blue-1200); }
+.dads-btn--text[aria-disabled="true"],
+.dads-btn--text:disabled { background: transparent; color: var(--color-solid-gray-300); pointer-events: none; }
+
+/* =========================== Fields =========================== */
+.dads-field {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-body);
+  background: #fff;
+  border: 1px solid var(--border-field);
+  border-radius: var(--radius-8);
+  padding: 0 16px;
+  max-width: 100%;
+}
+.dads-field::placeholder { color: var(--text-placeholder); }
+.dads-field:hover:read-write { border-color: var(--color-black); }
+.dads-field--lg { height: 56px; }
+.dads-field--md { height: 48px; }
+.dads-field--sm { height: 40px; }
+.dads-field[aria-invalid="true"] { border-color: var(--color-error-1); }
+.dads-field[aria-invalid="true"]:hover:read-write { border-color: var(--color-red-1000); }
+.dads-field:read-only { border-style: dashed; }
+.dads-field[aria-disabled="true"],
+.dads-field:disabled {
+  border-style: solid; border-color: var(--color-solid-gray-300);
+  background: var(--color-solid-gray-50); color: var(--text-disabled);
+  pointer-events: none;
+}
+
+/* textarea variant */
+textarea.dads-field { line-height: 1.7; padding: 12px 16px; height: auto; min-height: 120px; resize: vertical; }
+
+/* select wrapper + chevron */
+.dads-select-wrap { position: relative; display: inline-block; }
+.dads-select-wrap select.dads-field { appearance: none; width: 100%; padding-right: 40px; }
+.dads-select-wrap .dads-select-chevron {
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; color: var(--color-solid-gray-900);
+}
+
+/* =========================== Checkbox / Radio =========================== */
+.dads-choice { display: inline-flex; align-items: flex-start; gap: 8px; width: fit-content; padding: 8px 0; cursor: pointer; }
+.dads-choice__box { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 24px; height: 24px; border-radius: 3px; }
+.dads-choice:hover .dads-choice__box:not(:has(:focus-visible)) { background: var(--color-solid-gray-420); }
+.dads-radio.dads-choice__box, .dads-choice__box.dads-radio { border-radius: var(--radius-full); }
+.dads-choice__label { color: var(--text-body); font: 400 16px/1.3 var(--font-sans); padding-top: 1px; }
+
+.dads-checkbox, .dads-radio {
+  appearance: none; -webkit-appearance: none; margin: 0;
+  width: 18px; height: 18px; background: #fff; border: 2px solid var(--border-field);
+  display: grid; place-content: center; cursor: pointer;
+}
+.dads-checkbox { border-radius: 2px; }
+.dads-radio { border-radius: var(--radius-full); }
+.dads-checkbox:hover, .dads-radio:hover { border-color: var(--color-black); }
+.dads-checkbox::before {
+  content: ""; width: 14px; height: 14px; transform: scale(0); transform-origin: center;
+  background: #fff; clip-path: path('M5.6,11.2L12.65,4.15L11.25,2.75L5.6,8.4L2.75,5.55L1.35,6.95L5.6,11.2Z');
+}
+.dads-checkbox:checked { background: var(--color-blue-900); border-color: var(--color-blue-900); }
+.dads-checkbox:checked::before { transform: scale(1); }
+.dads-checkbox:checked:hover { background: var(--color-blue-1100); border-color: var(--color-blue-1100); }
+.dads-radio::before {
+  content: ""; width: 100%; height: 100%; transform: scale(0);
+  background: var(--color-blue-900); clip-path: circle(31.25%);
+}
+.dads-radio:checked { border-color: var(--color-blue-900); }
+.dads-radio:checked::before { transform: scale(1); }
+.dads-checkbox[aria-invalid="true"], .dads-radio[aria-invalid="true"] { border-color: var(--color-error-1); }
+.dads-checkbox[aria-invalid="true"]:checked { background: var(--color-error-1); }
+.dads-radio[aria-invalid="true"]:checked::before { background: var(--color-error-1); }
+.dads-checkbox:disabled, .dads-radio:disabled { border-color: var(--color-solid-gray-300) !important; background: var(--color-solid-gray-50); pointer-events: none; }
+.dads-checkbox:disabled:checked { background: var(--color-solid-gray-300); }
+
+/* =========================== Chip / Tag =========================== */
+.dads-chip {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 32px;
+  border-radius: var(--radius-8); font: 400 16px/1 var(--font-sans);
+  padding: 4px 8px; overflow-wrap: anywhere;
+}
+.dads-chip--outline { padding: 3px 7px; border: 1px solid currentColor; }
+.dads-chip--filled-outline { padding: 3px 7px; border: 1px solid currentColor; }
+.dads-chip--fill { padding: 3px 7px; border: 1px solid transparent; color: #fff; }
+
+/* =========================== Status badge =========================== */
+.dads-status-badge {
+  display: inline-block; border-radius: 8px; background: var(--color-solid-gray-536);
+  padding: 8px; font: 400 16px/1 var(--font-sans); color: #fff;
+}
+
+/* =========================== Link =========================== */
+.dads-link {
+  color: var(--link); text-decoration: underline; text-underline-offset: 3px;
+}
+.dads-link:visited { color: var(--color-magenta-900); }
+.dads-link:hover { color: var(--color-blue-1000); text-decoration-thickness: 3px; }
+.dads-link:active { color: var(--color-orange-800); text-decoration-thickness: 1px; }
+
+/* =========================== Breadcrumbs =========================== */
+.dads-breadcrumbs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; }
+.dads-breadcrumbs li { display: inline-flex; align-items: center; font: 400 16px/1 var(--font-sans); color: var(--text-subtle); }
+.dads-breadcrumbs li:not([aria-current]) .dads-bc-sep { margin: 0 8px; color: var(--text-subtle); display: inline-flex; }
+.dads-breadcrumbs a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+.dads-breadcrumbs a:hover { color: var(--color-blue-900); text-decoration-thickness: 3px; }
+.dads-breadcrumbs [aria-current="page"] { color: var(--text-body); }
+
+/* =========================== Accordion =========================== */
+.dads-accordion { border-bottom: 1px solid var(--border-divider); }
+.dads-accordion__summary {
+  list-style: none; cursor: pointer; position: relative;
+  padding: 12px 8px 12px 44px; font: 700 16px/1.7 var(--font-sans); color: var(--text-heading);
+}
+.dads-accordion__summary::-webkit-details-marker { display: none; }
+.dads-accordion__summary:hover { background: var(--color-solid-gray-50); }
+.dads-accordion__icon {
+  position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid currentColor; border-radius: var(--radius-full); color: var(--color-blue-1000); background: #fff;
+  transition: transform 0.15s ease;
+}
+.dads-accordion[open] .dads-accordion__icon { transform: translateY(-50%) rotate(180deg); }
+.dads-accordion__content { padding: 8px 16px 24px 44px; font: 400 16px/1.7 var(--font-sans); color: var(--text-body); }
+
+/* =========================== Notification banner =========================== */
+.dads-banner {
+  display: grid; grid-template-columns: auto 1fr; gap: 8px 16px;
+  padding: 16px 24px 24px; border: 3px solid currentColor; border-radius: var(--radius-12);
+}
+.dads-banner__head { display: flex; align-items: flex-start; gap: 12px; grid-column: 1 / -1; }
+.dads-banner__icon { flex-shrink: 0; width: 28px; height: 28px; }
+.dads-banner__title { font: 700 18px/1.5 var(--font-sans); color: var(--text-heading); }
+.dads-banner__body { grid-column: 1 / -1; color: var(--text-body); font: 400 16px/1.7 var(--font-sans); }
+.dads-banner--info1 { color: var(--color-blue-900); }
+.dads-banner--info2 { color: var(--color-solid-gray-536); }
+.dads-banner--success { color: var(--color-success-2); }
+.dads-banner--warning { color: var(--color-warning-yellow-2); }
+.dads-banner--error { color: var(--color-error-1); }
+/* color-chip style: thin border + thick inset left bar */
+.dads-banner--chip { border-width: 2px; padding-left: 40px; box-shadow: inset 16px 0 0 0 var(--chip-color, currentColor); border-radius: var(--radius-12); }
+
+/* =========================== Table =========================== */
+.dads-table { border-collapse: collapse; width: 100%; font: 400 16px/1.5 var(--font-sans); color: var(--text-body); }
+.dads-table caption { text-align: left; font: 700 18px/1.6 var(--font-sans); color: var(--text-heading); padding-bottom: 12px; }
+.dads-table th, .dads-table td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border-divider); vertical-align: top; }
+.dads-table thead th { background: var(--color-solid-gray-50); color: var(--text-heading); font-weight: 700; border-bottom: 2px solid var(--color-solid-gray-400); }
+.dads-table tbody tr:hover { background: var(--color-blue-50); }
+.dads-table th[scope="row"] { font-weight: 700; color: var(--text-heading); }

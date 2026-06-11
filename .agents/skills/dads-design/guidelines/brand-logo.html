@@ -1,0 +1,28 @@
+<!-- @dsCard group="Brand" viewport="700x180" name="Logo lockup" subtitle="Mark + デジタル庁 wordmark. Horizontal lockup on light; knockout on Key blue." -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 0; background: var(--surface-page); display: grid; grid-template-columns: 1fr 1fr; height: 180px; }
+  .panel { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .light { background: var(--surface-page); }
+  .dark { background: var(--color-blue-900); }
+  .mark { width: 40px; height: 40px; flex-shrink: 0; }
+  .wm { display: flex; flex-direction: column; line-height: 1; }
+  .wm .ja { font: 700 26px/1 var(--font-sans); letter-spacing: 0.04em; }
+  .wm .en { font: 400 11px/1 var(--font-sans); letter-spacing: 0.18em; margin-top: 5px; }
+</style>
+</head>
+<body>
+  <div class="panel light">
+    <svg class="mark" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" fill="#fff" rx="2"/><path fill="#0017C1" d="M4 6c0-1.1.9-2 2-2h20c1.1 0 2 .9 2 2v6a2 2 0 0 1-2 2H6c-1.1 0-2-.9-2-2V6Z"/><path fill="#8B008B" d="M4 20c0-1.1.9-2 2-2h20c1.1 0 2 .9 2 2v6a2 2 0 0 1-2 2H6c-1.1 0-2-.9-2-2v-6Z"/></svg>
+    <div class="wm"><span class="ja" style="color:var(--color-blue-900)">デジタル庁</span><span class="en" style="color:var(--text-subtle)">DIGITAL AGENCY</span></div>
+  </div>
+  <div class="panel dark">
+    <svg class="mark" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" fill="#fff" rx="2"/><path fill="#0017C1" d="M4 6c0-1.1.9-2 2-2h20c1.1 0 2 .9 2 2v6a2 2 0 0 1-2 2H6c-1.1 0-2-.9-2-2V6Z"/><path fill="#8B008B" d="M4 20c0-1.1.9-2 2-2h20c1.1 0 2 .9 2 2v6a2 2 0 0 1-2 2H6c-1.1 0-2-.9-2-2v-6Z"/></svg>
+    <div class="wm"><span class="ja" style="color:#fff">デジタル庁</span><span class="en" style="color:var(--color-blue-200)">DIGITAL AGENCY</span></div>
+  </div>
+</body>
+</html>

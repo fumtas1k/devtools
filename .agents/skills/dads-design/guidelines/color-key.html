@@ -1,0 +1,33 @@
+<!-- @dsCard group="Colors" viewport="700x190" name="Key / Blue scale" subtitle="The brand color — 13 steps. blue-900 drives primary actions." -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--surface-page); }
+  .scale { display: grid; grid-template-columns: repeat(13, 1fr); gap: 0; border-radius: var(--radius-8); overflow: hidden; box-shadow: var(--elevation-1); }
+  .sw { aspect-ratio: 1 / 1.35; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; }
+  .sw span { font: 400 11px/1 var(--font-sans); }
+  .key { outline: 3px solid var(--color-black); outline-offset: -3px; position: relative; }
+  .key::after { content: 'Key'; position: absolute; top: 5px; left: 0; right: 0; text-align: center; font: 700 10px/1 var(--font-sans); color: #fff; }
+  .legend { display: flex; justify-content: space-between; margin-top: 10px; font: 400 12px/1 var(--font-sans); color: var(--text-subtle); }
+</style>
+</head>
+<body>
+  <div class="scale" id="scale"></div>
+  <div class="legend"><span>50 — lightest</span><span>900 = primary</span><span>1200 — deepest</span></div>
+  <script>
+    const steps = [50,100,200,300,400,500,600,700,800,900,1000,1100,1200];
+    const el = document.getElementById('scale');
+    steps.forEach(s => {
+      const d = document.createElement('div');
+      d.className = 'sw' + (s===900 ? ' key' : '');
+      d.style.background = getComputedStyle(document.documentElement).getPropertyValue('--color-blue-'+s);
+      const light = s <= 400;
+      d.innerHTML = `<span style="color:${light ? '#1a1a1a' : '#fff'}">${s}</span>`;
+      el.appendChild(d);
+    });
+  </script>
+</body>
+</html>

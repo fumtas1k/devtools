@@ -1,0 +1,8 @@
+/* =============================================================
+   DADS — Webfonts
+   The product UI is set in Noto Sans JP (sans) and Noto Sans
+   Mono (mono). Both ship from Google Fonts. If self-hosting,
+   replace these @font-face srcs with local .woff2 files.
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+Mono:wght@400;700&display=swap');

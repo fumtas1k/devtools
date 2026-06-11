@@ -1,0 +1,32 @@
+<!-- @dsCard group="Colors" viewport="700x250" name="Accent palettes" subtitle="Ten primitive hues, each a 13-step ramp. Used sparingly for data, chips and tags." -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--surface-page); }
+  .grid { display: flex; flex-direction: column; gap: 6px; }
+  .ramp { display: grid; grid-template-columns: 84px repeat(13, 1fr); align-items: center; gap: 0; }
+  .label { font: 400 12px/1 var(--font-sans); color: var(--text-subtle); }
+  .ramp .cells { display: contents; }
+  .cell { height: 16px; }
+  .ramp:first-child .cell { height: 16px; }
+</style>
+</head>
+<body>
+  <div class="grid" id="grid"></div>
+  <script>
+    const hues = ['light-blue','cyan','green','lime','yellow','orange','red','magenta','purple'];
+    const steps = [50,100,200,300,400,500,600,700,800,900,1000,1100,1200];
+    const grid = document.getElementById('grid');
+    hues.forEach(h => {
+      const row = document.createElement('div'); row.className='ramp';
+      const l = document.createElement('div'); l.className='label'; l.textContent=h; row.appendChild(l);
+      steps.forEach(s => { const c=document.createElement('div'); c.className='cell';
+        c.style.background = getComputedStyle(document.documentElement).getPropertyValue('--color-'+h+'-'+s); row.appendChild(c); });
+      grid.appendChild(row);
+    });
+  </script>
+</body>
+</html>

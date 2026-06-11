@@ -3962,3 +3962,23 @@ decisions [096] のツリー遅延構築 + 500KB ガード後も、ガードを�
 - ⚠️ 仮想パスはフラット ul のため、入れ子 ul が伝えていたリストのネスト（深さ）情報がスクリーンリーダーに伝わらない（表示は depth ベースのインデントのみ）。両ビューとも表示専用で `role="tree"` を付けない方針（RegexAstTree と同じ）の範囲内だが、仮想パス固有の後退として記録。将来 `aria-level` 等の付与を検討する場合は仮想パス側から。
 - ⚠️ キーボード操作中にフォーカス中の行が可視範囲外へスクロールアウトすると行ごと unmount され、フォーカスが body へ落ちる（windowing の既知制限。巨大入力時のみ・対応保留）。
 - ⚠️ spacer の SVG はブラウザの要素高上限（Firefox 約 17.8M px ≒ 行高 24px で約 74 万行）を超えると破綻する理論上限がある。500KB ガード強制解除時のみ到達し得る規模のため現状対応不要だが、Worker オフロード導入でガード緩和を検討する際に再評価する。
+
+## [104] 2026-06-11 — DADS 忠実再現デザインシステムを `dads-design` スキルとして導入
+
+**2026-06-11 | ステータス: 採用**
+
+### 背景
+
+Claude Design (claude.ai/design) で公式リポジトリ（digital-go-jp/design-system-example-components-react、design-tokens 等）から作成した DADS v2 忠実再現バンドル（公式トークン CSS・React コンポーネント 13 種・ガイドライン specimen・行政ポータル UI キット）を、Claude Code から再利用できるよう SKILL 化したいという要望。
+
+### 決断
+
+- **既存 `dads-design-system` スキルとは統合せず、別スキル `dads-design` として併設**: 既存スキルは devtools 本体の適応値（`--color-primary: #1a56db`、`src/styles/global.css` と整合）が正本。バンドルは公式値（`blue-900 #0017c1` 等）であり、統合すると本体実装と矛盾するトークン値が混入する。両 SKILL.md に役割分担表を明記し相互参照させてドリフトを防止。
+- **用途の切り分け**: プロトタイプ / モック / デザインアセット生成・公式値の正確な参照 → `dads-design`。devtools 本体（`src/`）の UI 実装 → `dads-design-system` + CLAUDE.md §7。
+- **デザインツール生成物は除外**: コンパイラ生成物（`_ds_bundle.js` / `_ds_manifest.json` / `_adherence.oxlintrc.json`）と、bundle 注入前提で単体動作しない `*.card.html` は持ち込まない。UI キット `index.html` は同梱の `lib/dads.jsx`（スタンドアロン版コンポーネント定義）+ CDN React でブラウザ直開きで動作する。
+
+### 結果・トレードオフ
+
+- ✅ DADS 準拠のモック・アセット生成時に公式トークン・コンポーネント実装パターンへ即アクセスできる。
+- ⚠️ ロゴはプレースホルダー、フォントは Google Fonts CDN 依存（バンドル由来の caveat をそのまま引き継ぎ。SKILL.md に明記）。
+- ⚠️ DADS 本家の更新には自動追従しない。精度が必要な場合は公式 `figma/tokens.json` と照合する（readme.md の Sources 参照）。

@@ -6,3 +6,6 @@ package-lock.json
 
 # vendored skill（skills-lock.json で hash 管理。upstream 整形を保持するため除外）
 .agents/skills/vercel-react-best-practices/
+
+# Claude Design エクスポートバンドル（decisions [104]。エクスポート元との diff 容易性のため整形除外）
+.agents/skills/dads-design/

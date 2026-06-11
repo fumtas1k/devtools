@@ -1,0 +1,22 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Usage roles" subtitle="Semantic aliases that map intent to primitives — primary, link, text, surface." -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--surface-page); display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .role { display: flex; flex-direction: column; gap: 8px; }
+  .chip { height: 56px; border-radius: var(--radius-8); border: 1px solid var(--border-subtle); }
+  .t { font: 700 13px/1.2 var(--font-sans); color: var(--text-heading); }
+  .v { font: 400 11px/1.3 var(--font-mono); color: var(--text-subtle); }
+</style>
+</head>
+<body>
+  <div class="role"><div class="chip" style="background:var(--primary)"></div><div class="t">--primary</div><div class="v">blue-900</div></div>
+  <div class="role"><div class="chip" style="background:var(--link)"></div><div class="t">--link</div><div class="v">blue-1000</div></div>
+  <div class="role"><div class="chip" style="background:var(--text-body)"></div><div class="t">--text-body</div><div class="v">gray-800</div></div>
+  <div class="role"><div class="chip" style="background:var(--surface-subtle)"></div><div class="t">--surface-subtle</div><div class="v">gray-50</div></div>
+  <div class="role"><div class="chip" style="background:var(--link-visited)"></div><div class="t">--link-visited</div><div class="v">magenta-800</div></div>
+</body>
+</html>
