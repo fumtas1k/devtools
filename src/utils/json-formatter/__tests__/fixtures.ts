@@ -1,6 +1,5 @@
 /**
- * ベンチマーク・E2E 計測用フィクスチャ生成ヘルパー
- * Node ベンチと Playwright 両方から import する。
+ * Worker オフロード判断ベンチ用のフィクスチャ生成ヘルパー（offload.bench.ts から import）。
  */
 
 /**
@@ -65,11 +64,4 @@ export function makeQueryTarget(n: number): unknown {
     })),
     meta: { total: n, page: 1 },
   };
-}
-
-/**
- * バイト長を計測する（JSON.stringify 後）
- */
-export function byteLen(value: unknown): number {
-  return new TextEncoder().encode(JSON.stringify(value)).length;
 }

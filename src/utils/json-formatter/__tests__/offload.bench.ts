@@ -24,13 +24,12 @@ import { makeWideArray, makeDeepNest, makeMaskHeavy, makeQueryTarget } from './f
 // フィクスチャ構築
 // ──────────────────────────────────────────────
 
-// 幅広配列（≈500KB / ≈1MB / ≈5MB）
-// N=5000 → 整形済み約 560KB 程度
+// 幅広配列（整形済み実測: n=5,000→1,462KB / n=10,000→2,936KB / n=50,000→14,880KB）
 const WIDE_5000 = JSON.stringify(makeWideArray(5000), null, 2);
 const WIDE_10000 = JSON.stringify(makeWideArray(10000), null, 2);
 const WIDE_50000 = JSON.stringify(makeWideArray(50000), null, 2);
 
-// マスク重い（≈500KB / ≈1MB）
+// マスク重い（整形済み実測: n=3,000→1,009KB / n=6,000→2,023KB）
 const MASK_3000 = JSON.stringify(makeMaskHeavy(3000), null, 2);
 const MASK_6000 = JSON.stringify(makeMaskHeavy(6000), null, 2);
 
