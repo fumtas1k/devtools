@@ -8,7 +8,7 @@
  * 4. 後ろから順に置換（オフセット保護）
  */
 
-import { SCRUB_RULES, type ScrubCategory } from './rules';
+import { SCRUB_RULES, emptyCounts, type ScrubCategory } from './rules';
 
 export interface ScrubFinding {
   category: ScrubCategory;
@@ -30,11 +30,11 @@ export interface ScrubResult {
 interface RawMatch {
   start: number;
   end: number;
-  /** マスク対象の文字列（maskGroup 指定時はそのグループの値） */
+  /** マスク対象の文字列（maskGroup 指定時はそのグループの値。union マージ後に再計算される） */
   value: string;
-  /** maskGroup 指定時、元のマッチ全体の start */
+  /** マッチ全体の開始（maskGroup 指定時、意図的に残すキー名・ホスト等を含む「考慮済み領域」） */
   fullStart: number;
-  /** maskGroup 指定時、元のマッチ全体の end */
+  /** マッチ全体の終了 */
   fullEnd: number;
   category: ScrubCategory;
   ruleId: string;
@@ -57,9 +57,6 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
 
     let m: RegExpExecArray | null;
     while ((m = rule.pattern.exec(input)) !== null) {
-      const fullStart = m.index;
-      const fullEnd = m.index + m[0].length;
-
       let maskValue: string;
       let maskStart: number;
       let maskEnd: number;
@@ -74,8 +71,8 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
         [maskStart, maskEnd] = groupRange;
       } else {
         maskValue = m[0];
-        maskStart = fullStart;
-        maskEnd = fullEnd;
+        maskStart = m.index;
+        maskEnd = m.index + m[0].length;
       }
 
       // バリデーション（validate は元のマッチ全体に対して適用）
@@ -85,8 +82,8 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
         start: maskStart,
         end: maskEnd,
         value: maskValue,
-        fullStart,
-        fullEnd,
+        fullStart: m.index,
+        fullEnd: m.index + m[0].length,
         category: rule.category,
         ruleId: rule.id,
         priority: rule.priority,
@@ -104,25 +101,50 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
     return b.priority - a.priority;
   });
 
+  // 重なるマッチの解決方針:
+  // - 負けた側（priority 低、同 priority なら短い方）が勝者の full range
+  //   （maskGroup ルールが意図的に残すキー名・URL ホスト等を含む「考慮済み領域」）に
+  //   完全に含まれる場合は破棄する（例: Authorization ヘッダ内 JWT、URL 認証情報の
+  //   `パスワード@ホスト` 部分がメール形式に誤マッチしたケース）。
+  // - 勝者の full range からはみ出す場合は範囲を union（min〜max）にマージする。
+  //   負けた側を丸ごと破棄すると、勝者に覆われていない断片（例: 高エントロピー文字列の
+  //   内側だけが AWS キーにマッチしたときの前後）がマスクされず漏えいするため、
+  //   安全側（over-masking）に倒す。
   const resolved: RawMatch[] = [];
   for (const m of rawMatches) {
-    if (resolved.length === 0) {
-      resolved.push(m);
-      continue;
-    }
     const last = resolved[resolved.length - 1];
-    if (m.start < last.end) {
-      // 重複: priority 高い方を採用、同 priority なら長い方
-      if (
+    if (last && m.start < last.end) {
+      const mWins =
         m.priority > last.priority ||
-        (m.priority === last.priority && m.end - m.start > last.end - last.start)
-      ) {
-        resolved[resolved.length - 1] = m;
+        (m.priority === last.priority && m.end - m.start > last.end - last.start);
+      const winner = mWins ? m : last;
+      const loser = mWins ? last : m;
+
+      if (loser.start >= winner.fullStart && loser.end <= winner.fullEnd) {
+        // 負けた側は勝者の考慮済み領域内 → 破棄（勝者をそのまま採用）
+        if (mWins) {
+          resolved[resolved.length - 1] = { ...m };
+        }
+      } else {
+        // はみ出しあり → union マージ（メタデータは勝者を採用）
+        last.category = winner.category;
+        last.ruleId = winner.ruleId;
+        last.priority = winner.priority;
+        last.start = Math.min(last.start, m.start);
+        last.end = Math.max(last.end, m.end);
+        last.fullStart = Math.min(last.fullStart, m.fullStart);
+        last.fullEnd = Math.max(last.fullEnd, m.fullEnd);
       }
-      // それ以外は既存を維持（スキップ）
     } else {
-      resolved.push(m);
+      // rawMatches の要素を直接 mutate しないようコピーを積む
+      resolved.push({ ...m });
     }
+  }
+
+  // 一貫トークン化のキーは union マージ後の範囲で再計算する
+  // （同一の見た目の文字列には同一プレースホルダを割り当てるため）
+  for (const m of resolved) {
+    m.value = input.slice(m.start, m.end);
   }
 
   // ステップ 3: 一貫トークン化
@@ -159,17 +181,7 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
   }
 
   // カテゴリ別件数集計（プレースホルダの種類でなく置換された occurrence 数）
-  const counts: Record<ScrubCategory, number> = {
-    API_KEY: 0,
-    PRIVATE_KEY: 0,
-    CREDENTIAL: 0,
-    JWT: 0,
-    EMAIL: 0,
-    IP: 0,
-    PHONE_JP: 0,
-    CREDIT_CARD: 0,
-    HIGH_ENTROPY: 0,
-  };
+  const counts = emptyCounts();
   for (const f of findings) {
     counts[f.category]++;
   }

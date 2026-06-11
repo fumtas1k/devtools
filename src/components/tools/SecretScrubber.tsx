@@ -4,7 +4,12 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ToggleChips } from '@/components/ui/ToggleChips';
 import { scrubText } from '@/utils/secret-scrubber/scrub';
-import { SCRUB_CATEGORIES, CATEGORY_LABEL, DEFAULT_ENABLED } from '@/utils/secret-scrubber/rules';
+import {
+  SCRUB_CATEGORIES,
+  CATEGORY_LABEL,
+  DEFAULT_ENABLED,
+  emptyCounts,
+} from '@/utils/secret-scrubber/rules';
 import type { ScrubCategory } from '@/utils/secret-scrubber/rules';
 import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
 
@@ -23,17 +28,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 const EMPTY_RESULT = {
   output: '',
   findings: [],
-  counts: {
-    API_KEY: 0,
-    PRIVATE_KEY: 0,
-    CREDENTIAL: 0,
-    JWT: 0,
-    EMAIL: 0,
-    IP: 0,
-    PHONE_JP: 0,
-    CREDIT_CARD: 0,
-    HIGH_ENTROPY: 0,
-  },
+  counts: emptyCounts(),
 };
 
 export function SecretScrubberTool() {
@@ -54,11 +49,12 @@ export function SecretScrubberTool() {
     { fallbackError: 'マスク処理に失敗しました' }
   );
 
-  // 入力があるときの出力（空入力は空表示）
+  // 入力があるときの出力（空入力は空表示）。
+  // debounce 中（isPending）も前回結果を保持し、キーストロークごとのフリッカーを避ける
   const outputText = input.length > 0 ? result.output : '';
 
-  // カウント（入力が空のときは null）
-  const counts = input.length > 0 && !isPending ? result.counts : null;
+  // カウント（入力が空・初回未評価のときは null）。pending 中は前回値を保持してバッジの 0 フリッカーを避ける
+  const counts = input.length > 0 && result !== EMPTY_RESULT ? result.counts : null;
 
   const hasDetected = counts ? SCRUB_CATEGORIES.some((c) => counts[c] > 0) : false;
 
@@ -105,8 +101,9 @@ export function SecretScrubberTool() {
           {announcement}
         </p>
 
-        {/* 検出ゼロ時の可視メッセージ。読み上げは上の live region 済みのため aria-hidden */}
-        {counts && !hasDetected && (
+        {/* 検出ゼロ時の可視メッセージ。読み上げは上の live region 済みのため aria-hidden。
+            pending 中は前回入力に対する「ありません」を出さない */}
+        {counts && !hasDetected && !isPending && (
           <p
             className="caption text-muted mt-1"
             aria-hidden="true"
@@ -124,13 +121,14 @@ export function SecretScrubberTool() {
             <span className="body-emphasis text-default">マスク済みテキスト</span>
             <CopyButton text={outputText} label="コピー" ariaLabel="出力テキストをコピー" />
           </div>
+          {/* aria-live は付けない: 全文が変更のたびに読み上げ対象になり、上の sr-only
+              status region（件数サマリ）と二重アナウンスになるため（PR #631 レビュー指摘） */}
           <textarea
             id="secret-scrubber-output"
             readOnly
-            value={isPending ? '処理中…' : outputText}
+            value={outputText}
             rows={10}
             aria-label="マスク済みテキスト"
-            aria-live="polite"
             aria-busy={isPending}
             className="caption w-full rounded-lg px-3 py-2 border border-input bg-surface font-mono resize-none"
           />

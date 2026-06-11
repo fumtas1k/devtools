@@ -149,6 +149,22 @@ describe('陽性対照 — CREDENTIAL', () => {
     expect(result.counts.CREDENTIAL).toBeGreaterThan(0);
     expect(result.output).toBe('password=[REDACTED:CREDENTIAL_1]');
   });
+
+  it('日本語キー名（パスワード）+ 全角コロンの代入式を検出し値が出力に含まれない', () => {
+    const secret = 'himitsu-no-atai123';
+    const result = scrubText(`パスワード： ${secret}`, DEFAULT_ENABLED);
+    expect(result.counts.CREDENTIAL).toBeGreaterThan(0);
+    expect(result.output).not.toContain(secret);
+    // キー名は残る
+    expect(result.output).toContain('パスワード');
+  });
+
+  it('日本語キー名（トークン）+ 半角コロンの代入式を検出し値が出力に含まれない', () => {
+    const secret = 'tok-abcdef123456';
+    const result = scrubText(`トークン: ${secret}`, DEFAULT_ENABLED);
+    expect(result.counts.CREDENTIAL).toBeGreaterThan(0);
+    expect(result.output).not.toContain(secret);
+  });
 });
 
 describe('陽性対照 — JWT', () => {
@@ -169,6 +185,12 @@ describe('陽性対照 — EMAIL', () => {
     expect(result.counts.EMAIL).toBeGreaterThan(0);
     expect(result.output).not.toContain(email);
     expect(result.output).toContain('[REDACTED:EMAIL_1]');
+  });
+
+  it('文末ピリオドはプレースホルダに巻き込まれない', () => {
+    const result = scrubText('Contact user@example.com.', DEFAULT_ENABLED);
+    expect(result.counts.EMAIL).toBe(1);
+    expect(result.output).toBe('Contact [REDACTED:EMAIL_1].');
   });
 });
 
@@ -270,6 +292,29 @@ describe('重複解決', () => {
     expect(redacted.length).toBe(1);
     // 元の JWT は残らない
     expect(result.output).not.toContain(jwt);
+  });
+
+  // 回帰防止（陽性対照）: 負けたマッチを丸ごと破棄する旧実装では、勝者に覆われて
+  // いない断片（高エントロピー文字列の内側だけが AWS キーにマッチしたときの前後）が
+  // マスクされず漏えいした。union マージで範囲を min(start)〜max(end) に広げて解消
+  it('高エントロピー文字列の内側に AWS キーがあるとき、前後の断片も漏えいしない', () => {
+    const input = 'Qz7vWx2RtYpL-AKIAIOSFODNN7EXAMPLE-pQ9sKd4FhB8nJc6';
+    const result = scrubText(input, DEFAULT_ENABLED);
+    // 全体が 1 つのプレースホルダになり、前後の高エントロピー断片が残らない
+    expect(result.output).not.toContain('Qz7vWx2RtYpL');
+    expect(result.output).not.toContain('pQ9sKd4FhB8nJc6');
+    expect(result.output).not.toContain('AKIAIOSFODNN7EXAMPLE');
+    // 勝者（priority 高）の API_KEY カテゴリでマスクされる
+    expect(result.output).toBe('[REDACTED:API_KEY_1]');
+  });
+
+  it('負けたマッチの尾部が勝者の end を超えて伸びる場合も漏えいしない', () => {
+    // AWS キーと同じ位置から始まり、より長く伸びる高エントロピー文字列
+    const input = 'AKIAIOSFODNN7EXAMPLE-pQ9sKd4FhB8nJc6xT2mWv5Z';
+    const result = scrubText(input, DEFAULT_ENABLED);
+    expect(result.output).not.toContain('pQ9sKd4FhB8nJc6');
+    expect(result.output).not.toContain('AKIAIOSFODNN7EXAMPLE');
+    expect(result.output).toBe('[REDACTED:API_KEY_1]');
   });
 });
 

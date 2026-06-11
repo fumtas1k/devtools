@@ -4069,7 +4069,7 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 
 4. **maskGroup でキー名を保持**: `password=secretvalue` の代入式では `secretvalue` のみをマスクし `password=` を残すことで、マスク後のテキストのコンテキストを保持する。
 
-5. **priority 付き重複解決**: CREDENTIAL ルールと JWT ルールが Authorization ヘッダで重複するケースを priority（PRIVATE_KEY=95 > ANTHROPIC_KEY=92 > OPENAI_KEY=91 > その他 API_KEY=90 > JWT=85 > CREDENTIAL=80 > CREDIT_CARD=65 > EMAIL=60 > PHONE_JP=55 > IP=50 > HIGH_ENTROPY=10）で解決。
+5. **priority 付き重複解決（含有は破棄・はみ出しは union マージ）**: 重なるマッチは priority（PRIVATE_KEY=95 > ANTHROPIC_KEY=92 > OPENAI_KEY=91 > その他 API_KEY=90 > JWT=85 > CREDENTIAL=80 > CREDIT_CARD=65 > EMAIL=60 > PHONE_JP=55 > IP=50 > HIGH_ENTROPY=10）で勝者を決め、負けた側が勝者のフルマッチ範囲（maskGroup が意図的に残すキー名・ホスト等の「考慮済み領域」）に完全に含まれるなら破棄（Authorization ヘッダ内 JWT の二重置換防止・URL の `パスワード@ホスト` へのメール誤マッチ抑制）、はみ出すなら範囲を union にマージする。負けた側を丸ごと破棄する単純方式は、高エントロピー文字列の内側だけが AWS キーにマッチした場合に前後の断片が漏えいする（PR #631 レビューで指摘・union 化で修正、再現入力を陽性対照テストとして同梱）。
 
 6. **maskGroup の位置特定は RegExp `d` フラグの indices**: グループ位置を `m[0].indexOf(groupVal)` で探す実装は、キー名/ユーザー名と値が同一文字列のとき（`password=password` / `postgres://admin:admin@...`）に値側を取り違えてパスワードが漏えいするため不可。この漏えいケースは陽性対照テストとして同梱（旧実装に当てると fail することを実機確認済み）。
 

@@ -1058,7 +1058,7 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 - API キー: AWS（`AKIA`/`ASIA`/`ABIA`/`ACCA` + 16 文字）・GitHub・GitLab・Slack・Stripe・Google API・SendGrid・Anthropic・OpenAI・npm
 - 秘密鍵: PEM `-----BEGIN ... PRIVATE KEY-----` 〜 `-----END ... PRIVATE KEY-----` ブロック全体
-- 認証情報（値のみマスク）: `password=` / `token:` 等の代入式・URL 認証情報のパスワード部・Authorization / x-api-key ヘッダのトークン部
+- 認証情報（値のみマスク）: `password=` / `token:` / `パスワード：` 等の代入式（日本語キー名・全角コロン対応）・URL 認証情報のパスワード部・Authorization / x-api-key ヘッダのトークン部
 - JWT: `eyJ` で始まる 3 セグメント形式
 - メール: `ユーザー名@ドメイン` 形式
 - IP: IPv4（オクテット 0〜255 検証付き）

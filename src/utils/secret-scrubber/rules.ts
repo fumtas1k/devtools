@@ -54,6 +54,11 @@ export const DEFAULT_ENABLED: Record<ScrubCategory, boolean> = {
   HIGH_ENTROPY: true,
 };
 
+/** 全カテゴリ 0 の件数オブジェクトを返す（手書きリテラルの重複・drift 防止） */
+export function emptyCounts(): Record<ScrubCategory, number> {
+  return Object.fromEntries(SCRUB_CATEGORIES.map((c) => [c, 0])) as Record<ScrubCategory, number>;
+}
+
 export interface ScrubRule {
   id: string;
   category: ScrubCategory;
@@ -188,17 +193,19 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'CREDENTIAL_ASSIGN',
     category: 'CREDENTIAL',
-    // キー名は残し、値部分のみマスク（グループ 1）
+    // キー名は残し、値部分のみマスク（グループ 1）。日本語キー名・全角コロンにも対応
     pattern:
-      /(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|credential)\s*[:=]\s*['"]?([^\s'",;]{6,})/dgi,
+      /(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|credential|パスワード|シークレット|トークン|秘密鍵|認証キー)\s*[:=：]\s*['"]?([^\s'",;]{6,})/dgi,
     maskGroup: 1,
     priority: 80,
   },
   {
     id: 'CREDENTIAL_URL',
     category: 'CREDENTIAL',
-    // URL 認証情報: パスワード部（グループ 1）のみマスク
-    pattern: /[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:([^@/\s]+)@/dgi,
+    // URL 認証情報: パスワード部（グループ 1）のみマスク。
+    // ホスト部までフルマッチに含めることで、`パスワード@ホスト` がメール形式に
+    // 誤マッチしても「考慮済み領域内」として重複解決で破棄される（ホスト保持）
+    pattern: /[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:([^@/\s]+)@[\w.-]+/dgi,
     maskGroup: 1,
     priority: 80,
   },
@@ -224,7 +231,8 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'EMAIL',
     category: 'EMAIL',
-    pattern: /[\w.+-]+@[\w-]+\.[\w.-]+/g,
+    // ドメインは「.+セグメント」の繰り返しで終端し、文末ピリオドを巻き込まない
+    pattern: /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,
     priority: 60,
   },
 

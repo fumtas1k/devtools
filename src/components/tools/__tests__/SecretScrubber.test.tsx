@@ -85,17 +85,16 @@ describe('SecretScrubber — 陰性対照（平文を誤検出しない）', () 
       fireEvent.change(textarea, { target: { value: plain } });
     });
 
+    // debounce 完了後、出力が入力そのままになる（pending 中は前回結果 = 空のまま）
     await waitFor(
       () => {
         const output = screen.getByLabelText('マスク済みテキスト') as HTMLTextAreaElement;
-        // 「処理中…」が消えて実際の出力が出ること
-        expect(output.value).not.toBe('処理中…');
+        expect(output.value).toBe(plain);
       },
       { timeout: 2000 }
     );
 
     const output = screen.getByLabelText('マスク済みテキスト') as HTMLTextAreaElement;
-    expect(output.value).toBe(plain);
     expect(output.value).not.toContain('[REDACTED:');
   });
 });
