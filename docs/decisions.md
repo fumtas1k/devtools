@@ -4025,3 +4025,28 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 
 - ✅ issue #512 の全スコープ（①仮想化=実装 / ②Worker=no-go / ③getNodeValue 遅延化=no-go）が measure-first で決着。
 - ⚠️ `makeTree` は thunk で遅延化済みなのに `value` だけ eager という非対称は残る。整合性のための thunk 化（~15 行）は安価だが、数値上の便益がノイズレベルのため YAGNI で見送り。将来 `processJson` 周りを触る機会があれば ride-along で揃えてよい。
+
+## [106] 2026-06-11 — Web セッションの enabledPlugins 自動 install を SessionStart hook で再導入
+
+**2026-06-11 | ステータス: 採用**
+
+### 背景
+
+`.claude/settings.json` の `enabledPlugins`（superpowers / frontend-design / context7）は Claude Code on the web で silent skip され（trust dialog 非発火、upstream #23737）、superpowers のスキル群が web セッションで使えなかった。PR #204 で hook 自動化を試みた際は `claude plugin install` が `not found in marketplace` で失敗し「手動 install 運用」に確定していた。
+
+### 再検証で判明したこと（2026-06、Claude Code 2.1.173）
+
+- 現行の Claude Code は**セッション開始時に `extraKnownMarketplaces` を `~/.claude/plugins/marketplaces` へ自動 clone する**ようになっており、PR #204 当時の失敗原因（marketplace 未解決）が解消。web コンテナの hook から `claude plugin install` が 3 プラグインとも成功することを実機確認。
+- superpowers は marketplace 同梱でなく外部 repo（`obra/superpowers.git`、sha pin）から clone される external プラグインで、install 実行なしでは実体が取得されない（これが「marketplace clone はあるのにスキルが無い」状態の正体）。
+- `claude plugin install` は冪等（install 済みなら "already installed" で exit 0、再 clone なし）。
+
+### 決断
+
+`.claude/scripts/session-install.sh`（SessionStart hook）に web 限定（`CLAUDE_CODE_REMOTE=true`）の enabledPlugins 自動 install を追加。プラグイン一覧は `.claude/settings.json` から動的に読む（ハードコードによる宣言との drift を防止）。失敗は warn のみで非致命（npm ci / playwright install の結果に影響させない・次セッション再試行で self-healing）。meta テスト（`tests/meta/session-install.test.ts`）に fake claude による陽性対照・陰性対照を併設し、旧実装で fail することを確認済み。
+
+### 結果・トレードオフ
+
+- ✅ 各環境 1 回の手動 `/plugin install` 運用が不要になる（手動コマンドはフォールバックとして docs に残置）。
+- ⚠️ スキルのロードはセッション開始時のため、**新規コンテナの初回セッションでは未反映**。コンテナ状態キャッシュ（`~/.claude/plugins` 含む）により同一環境の次セッション以降で有効。
+- ⚠️ CLI / Desktop は従来どおり trust dialog の自動 prompt に委ね、hook では触らない（開発者ローカルの user scope 状態を hook が暗黙に書き換えない）。
+- ⚠️ context7 の MCP は web では egress 403 の別制約が残る（decisions [059]、リポジトリ側で解消不可）。
