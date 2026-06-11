@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   mkdtempSync,
   rmSync,
@@ -8,6 +8,7 @@ import {
   existsSync,
   readFileSync,
   chmodSync,
+  symlinkSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -83,6 +84,26 @@ function runHook(cwd: string, binDir: string, env: Record<string, string> = {}):
       PATH: `${binDir}:${process.env.PATH ?? ''}`,
     },
   });
+}
+
+/** runHook と同じ実行で exit code / stderr も観測する（warn 出力の assert 用） */
+function runHookCapture(
+  cwd: string,
+  binDir: string,
+  env: Record<string, string> = {},
+  pathOverride?: string
+): { status: number | null; stderr: string } {
+  const r = spawnSync('bash', [scriptPath], {
+    cwd,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      CLAUDE_CODE_REMOTE: '',
+      ...env,
+      PATH: pathOverride ?? `${binDir}:${process.env.PATH ?? ''}`,
+    },
+  });
+  return { status: r.status, stderr: r.stderr };
 }
 
 /** npm ci が呼ばれた回数（ci-count の行数）を返す */
@@ -197,5 +218,43 @@ describe('session-install.sh: enabledPlugins 自動 install（web 限定）', ()
   it('plugin install が失敗しても hook は exit 0 のまま継続する', () => {
     setupFakeClaude(binDir, 1);
     expect(() => runHook(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' })).not.toThrow();
+  });
+
+  // 陽性対照: settings.json が malformed JSON なら warn を stderr に出して hook は exit 0 で継続する。
+  // 旧実装（node の stderr を 2>/dev/null で握りつぶす）に当てると warn が観測できず fail する。
+  it('settings.json が malformed JSON なら warn を出しつつ exit 0 で継続する', () => {
+    writeFileSync(join(dir, '.claude', 'settings.json'), '{ broken');
+    const r = runHookCapture(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' });
+    expect(r.status).toBe(0);
+    expect(installedPlugins(dir)).toEqual([]);
+    expect(r.stderr).toContain('parse に失敗');
+  });
+
+  // 陽性対照: `-` 始まり等の不正形式プラグイン名は CLI に渡さず warn して skip する。
+  // 旧実装（形式チェックなし）に当てると不正名も install されて fail する。
+  it('不正な形式のプラグイン名は install せず warn する', () => {
+    writeSettings(dir, {
+      '--dangerously-evil': true,
+      'superpowers@claude-plugins-official': true,
+    });
+    const r = runHookCapture(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' });
+    expect(installedPlugins(dir)).toEqual(['superpowers@claude-plugins-official']);
+    expect(r.stderr).toContain('--dangerously-evil');
+  });
+
+  // 陰性対照: claude コマンド不在（CLI 未配備環境）では install を試みず hook も fail しない。
+  // PATH を fakebin + 最小システム dir に限定し、実 claude（node と同居しがち）を除外する。
+  // bash / coreutils / node だけ解決できるよう node は fakebin に symlink して持ち込む。
+  it('claude コマンドが無ければ install せず exit 0 で継続する', () => {
+    rmSync(join(binDir, 'claude')); // beforeEach の fake claude を除去して不在を再現
+    symlinkSync(process.execPath, join(binDir, 'node'));
+    const r = runHookCapture(
+      dir,
+      binDir,
+      { CLAUDE_CODE_REMOTE: 'true' },
+      `${binDir}:/usr/bin:/bin`
+    );
+    expect(r.status).toBe(0);
+    expect(installedPlugins(dir)).toEqual([]);
   });
 });

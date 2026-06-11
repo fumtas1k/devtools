@@ -44,9 +44,24 @@ fi
 # 反映されず、コンテナ状態キャッシュにより同一環境の次セッション以降で有効になる。
 if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -f .claude/settings.json ] && command -v claude >/dev/null 2>&1; then
   node -e '
-    const s = JSON.parse(require("fs").readFileSync(".claude/settings.json", "utf8"));
-    for (const [name, enabled] of Object.entries(s.enabledPlugins ?? {})) if (enabled) console.log(name);
-  ' 2>/dev/null | while IFS= read -r plugin; do
+    let s;
+    try {
+      s = JSON.parse(require("fs").readFileSync(".claude/settings.json", "utf8"));
+    } catch (e) {
+      // install 失敗が warn を出すのと対称に、settings 破損も silent skip にせず気づけるようにする
+      console.error("warn: .claude/settings.json の parse に失敗したため plugin install をスキップします: " + e.message);
+      process.exit(0);
+    }
+    for (const [name, enabled] of Object.entries(s.enabledPlugins ?? {})) {
+      if (!enabled) continue;
+      // `-` 始まり等が CLI フラグとして解釈されないよう name@marketplace 形式のみ通す
+      if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*@[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(name)) {
+        console.error("warn: 不正な形式のプラグイン名をスキップします: " + name);
+        continue;
+      }
+      console.log(name);
+    }
+  ' | while IFS= read -r plugin; do
     claude plugin install "$plugin" || echo "warn: plugin install failed: $plugin（次セッションで再試行されます）" >&2
   done
 fi
