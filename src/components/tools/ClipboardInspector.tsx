@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Section } from '@/components/ui/Section';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -40,6 +40,10 @@ function HtmlFlavorBody({
   view: HtmlView;
   onViewChange: (view: HtmlView) => void;
 }) {
+  // MB 級 HTML のフルパース再実行を避けるため、サニタイズ結果は html 単位で memo 化する
+  // （preview 表示中の親再レンダー＝dragover の isDragOver トグル等で毎回再計算されるのを防ぐ）
+  const sanitized = useMemo(() => sanitizeHtml(html), [html]);
+
   return (
     <div className="space-y-3">
       <ToggleGroup
@@ -58,7 +62,7 @@ function HtmlFlavorBody({
           <iframe
             title="サニタイズ後プレビュー"
             sandbox=""
-            srcDoc={sanitizeHtml(html)}
+            srcDoc={sanitized}
             className="h-64 w-full rounded-lg border border-default bg-default"
           />
           <p className="caption text-muted m-0 mt-2">
