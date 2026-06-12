@@ -144,6 +144,17 @@ describe('陽性対照 — CREDENTIAL', () => {
     expect(result.output).toContain('postgres://admin:[REDACTED:CREDENTIAL_1]@db.example.com');
   });
 
+  // 回帰防止: ホスト部を `[\w.-]+` 必須にした regex ではブラケット形式 IPv6 ホストで
+  // ルール全体が不成立になりパスワードが素通しした（PR #631 再レビュー指摘）
+  it('ブラケット形式 IPv6 ホストの URL 認証情報でもパスワードがマスクされる', () => {
+    const password = 's3cretpw';
+    const result = scrubText(`redis://user:${password}@[::1]:6379`, DEFAULT_ENABLED);
+    expect(result.counts.CREDENTIAL).toBeGreaterThan(0);
+    expect(result.output).not.toContain(password);
+    // ホスト部は残る
+    expect(result.output).toContain('@[::1]:6379');
+  });
+
   it('代入式でキー名と値が同一でも値側がマスクされる', () => {
     const result = scrubText('password=password', DEFAULT_ENABLED);
     expect(result.counts.CREDENTIAL).toBeGreaterThan(0);
