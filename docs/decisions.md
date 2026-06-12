@@ -4113,3 +4113,29 @@ decisions [106] の SessionStart hook 自動 install を導入した後も、Cla
 - ✅ lockfile + hash により supply chain 検証（upstream 突き合わせ・ローカル改変検知）が可能。
 - ⚠️ upstream 更新への追従は手動（`npx skills update`）。SKILL.md はエージェントが実行する指示書のため、**bump 時は hash 差分だけでなく本文 diff のレビューを必須とする**。
 - ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design / context7 はプラグイン運用を継続（[106] の hook は引き続き有効）。
+
+## [109] clipboard-inspector: DOMPurify 不採用＝自作許可リストサニタイザ＋sandbox iframe 二重防御
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+クリップボードインスペクタ（`clipboard-inspector`）は `text/html` フレーバーを受け取り、プレビュー表示する。XSS リスクを排除するため HTML サニタイズが必要であり、DOMPurify（業界標準）の採用を検討した。
+
+### 決断
+
+- **決定**: text/html フレーバーのプレビューは、自作の許可リスト方式サニタイザ（`src/utils/sanitizeHtml.ts`）で除去したうえで `sandbox=""`（allow-scripts なし）iframe の srcdoc に描画する。DOMPurify は導入しない。
+- **理由**: sandbox iframe が第二防壁として存在するため、サニタイザの見落としが直ちにスクリプト実行に繋がらない。依存追加（約 20KB gzip）よりも依存ゼロの二重防御を選択。
+- **補足**: style 属性 / style 要素もサニタイズ対象。srcdoc iframe は親ドキュメントの CSP（style-src strict）を継承するため、残しても CSP 違反ノイズになるだけで描画されない。サニタイザは検知・ガード機構として test-gates ルールに従い陽性対照テストを同梱（`src/utils/__tests__/sanitizeHtml.test.ts`、深いネスト・mXSS 経路含む）。走査は明示スタックの反復実装（攻撃者制御入力での再帰スタックオーバーフロー回避）。
+- 関連: spec `docs/superpowers/specs/2026-06-12-clipboard-inspector-design.md`
+
+### 却下した選択肢
+
+- **DOMPurify 採用**: 実績ある外部ライブラリだが、約 20KB（gzip）の依存追加になる。sandbox iframe が第二防壁として機能するため、依存追加のコスト・リスクが利益を上回らないと判断。
+
+### 結果・トレードオフ
+
+- ✅ 追加依存ゼロ。クリップボード内容は 100% ブラウザ内処理。
+- ✅ サニタイザ＋sandbox iframe の二重防御により、サニタイザの見落とし単独では XSS に至らない。
+- ✅ 陽性対照テストにより「ガードが実際に機能している」ことを CI で継続検証。
+- ⚠️ 自作サニタイザのため、未知の mXSS 手法への対応は手動メンテナンスが必要。プレビュー用途（開発者向け）に限定することで許容リスクと判断。

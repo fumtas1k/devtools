@@ -500,3 +500,4 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **プレビューにインラインスタイルが反映されない**: `srcdoc` の iframe は親ドキュメントの CSP（`style-src` strict）を継承するため、サニタイズ後プレビューは構造・テキスト中心の表示になる。
 - **Async Clipboard API 非対応**: ボタンクリックでの読み取り（`navigator.clipboard.read()`）には対応しない。権限プロンプトが必要で取得できる型も限定的なため、初版のスコープ外とした。
 - **サニタイズで除去された要素・属性はプレビューに現れない**: 除去内容を確認したい場合は「生ソース」表示に切り替えれば原文をそのまま確認できる。
+- **style 属性付き HTML 貼り付け時の CSP 違反ログ**: style 属性を含む HTML を貼り付けると、Chromium のクリップボード内部処理（`getAsString` の HTML サニタイズ）が inline style を評価するため、本番 CSP 環境（`style-src` strict）のコンソールに style-src 違反ログが数件記録されることがある。アプリの実装・表示には影響しない（E2E `tests/e2e/clipboard-inspector.spec.ts` の本番 CSP テスト参照）。
