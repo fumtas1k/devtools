@@ -32,6 +32,25 @@ describe('ClipboardInspector — 初期表示', () => {
     expect(live!.getAttribute('role')).toBe('status');
     expect(live!.getAttribute('aria-live')).toBe('polite');
   });
+
+  it('受付領域がスマホ長押しペースト用の contenteditable 属性群を持つ（issue #636）', () => {
+    render(<ClipboardInspectorTool />);
+    const zone = screen.getByRole('textbox', { name: /貼り付け受付領域/ });
+    expect(zone.getAttribute('contenteditable')).toBe('true');
+    // フォーカス時のソフトキーボード表示を抑制（長押しペーストメニューは出る想定）
+    expect(zone.getAttribute('inputmode')).toBe('none');
+  });
+
+  it('受付領域への beforeinput が preventDefault され編集できない（陽性対照: 編集阻止ガード）', () => {
+    // 編集阻止が無い実装（素の contenteditable）に当てると dispatchEvent が true を返し fail する設計
+    render(<ClipboardInspectorTool />);
+    const zone = screen.getByRole('textbox', { name: /貼り付け受付領域/ });
+    const notPrevented = zone.dispatchEvent(
+      new InputEvent('beforeinput', { bubbles: true, cancelable: true })
+    );
+    // dispatchEvent は preventDefault されると false を返す
+    expect(notPrevented).toBe(false);
+  });
 });
 
 describe('ClipboardInspector — paste 捕捉', () => {
