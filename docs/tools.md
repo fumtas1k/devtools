@@ -468,6 +468,22 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - Luhn アルゴリズム（ISO/IEC 7812）によるクレジットカード番号検証
 - 各プロバイダ公式ドキュメントのシークレット形式仕様
 
+### クリップボードインスペクタ
+
+#### 仕組み・アルゴリズム
+
+`src/utils/dataTransferSnapshot.ts` と `src/utils/sanitizeHtml.ts` を組み合わせて実装。
+
+- **DataTransfer 取得**: `paste` イベント（`document` 全体で捕捉）と `drop` イベントの `DataTransfer` を受け取り、`DataTransferItemList` を同期パスで列挙する。`getAsString` の呼び出しはイベントハンドラの同期スコープ内で行う必要があり（ハンドラ終了後は `DataTransferItemList` が無効化される）、Promise で非同期解決する設計を採っている。
+- **フレーバー分類**: `DataTransferItem.kind === 'string'` のものを `StringFlavor`（type・content・byteSize）、`kind === 'file'` のものを `FileFlavor`（type・name・size・lastModified・File オブジェクト）として分離して収集する。
+- **HTML サニタイズ + sandbox**: `text/html` フレーバーのプレビュー表示時は、`sanitizeHtml`（許可リスト方式のサニタイザ）でスクリプト・危険属性を除去したうえで `sandbox=""` 属性付き `<iframe>`（スクリプト実行・フォーム送信・同一オリジン不許可）に `srcdoc` として渡す二重防御を実施する。
+- **画像プレビュー**: `image/*` 型のファイルフレーバーは `URL.createObjectURL` でブラウザ内 blob URL を生成して `<img>` に渡す。コンポーネントアンマウント時に `URL.revokeObjectURL` でメモリを解放する。
+
+#### 準拠仕様・参考
+
+- W3C Clipboard API および `DataTransfer` インターフェース仕様
+- W3C HTML Living Standard `<iframe sandbox>` 属性仕様
+
 #### 制限・エッジケース
 
 - **IPv6 未対応**: IPv6 アドレスは検出しない（今後の拡張候補）。

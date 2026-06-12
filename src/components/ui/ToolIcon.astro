@@ -342,3 +342,17 @@ const attrs = {
     </svg>
   )
 }
+{
+  slug === 'clipboard-inspector' && (
+    <svg {...attrs}>
+      {/* クリップボード本体 */}
+      <rect x="6" y="4" width="12" height="16" rx="1" />
+      {/* クリップ部分（上部バー） */}
+      <rect x="9" y="2" width="6" height="3" rx="1" />
+      {/* 内容を示す横線 */}
+      <line x1="9" y1="10" x2="15" y2="10" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="16" x2="13" y2="16" />
+    </svg>
+  )
+}
