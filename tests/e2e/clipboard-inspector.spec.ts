@@ -131,20 +131,25 @@ test.describe('クリップボードインスペクタ — 本番 CSP（style �
       const guard = await applyProductionCsp(page);
       await page.goto(PAGE_PATH);
       await waitForReactHydration(page);
+      // CSP 違反は console への到達が非同期のため、固定 sleep ではなく
+      // 「違反件数が変化しなくなる」まで expect.poll で安定を待ってから件数を読む
+      // （直後に件数を読むと記録途中の中間値を掴み flaky / false green になる）。
+      const waitForViolationCountToStabilize = async (): Promise<void> => {
+        let lastCount = -1;
+        await expect
+          .poll(() => {
+            const current = guard.violations.length;
+            const stable = current === lastCount;
+            lastCount = current;
+            return stable;
+          })
+          .toBe(true);
+      };
+
       await dispatchPaste(page, { 'text/html': '<p style="color:red">styled</p>' });
       await expect(page.getByText('text/html', { exact: true })).toBeVisible();
-      // Chromium 内部処理由来の違反は getAsString の非同期コールバック経路で記録されるため、
-      // 固定 sleep ではなく「違反件数が変化しなくなる」まで expect.poll で安定を待つ
-      // （カード表示直後に件数を読むと記録途中の中間値を掴み flaky になる）。
-      let lastCount = -1;
-      await expect
-        .poll(() => {
-          const current = guard.violations.length;
-          const stable = current === lastCount;
-          lastCount = current;
-          return stable;
-        })
-        .toBe(true);
+      // Chromium 内部処理由来の違反は getAsString の非同期コールバック経路で記録される
+      await waitForViolationCountToStabilize();
       const violationsBeforePreview = guard.violations.length;
       await page.getByRole('button', { name: 'サニタイズ後プレビュー' }).click();
       const iframe = page.getByTitle('サニタイズ後プレビュー');
@@ -153,7 +158,10 @@ test.describe('クリップボードインスペクタ — 本番 CSP（style �
       const srcdoc = await iframe.getAttribute('srcdoc');
       expect(srcdoc).toContain('styled');
       expect(srcdoc).not.toContain('style=');
-      // プレビュー（srcdoc iframe）表示が新たな CSP 違反を生まないこと
+      // プレビュー（srcdoc iframe）表示が新たな CSP 違反を生まないこと。
+      // クリック前と対称に、srcdoc 起因の違反が console に遅延到達する窓を潰すため
+      // 件数比較の前にも同じ安定化 poll を入れる。
+      await waitForViolationCountToStabilize();
       expect(guard.violations.length).toBe(violationsBeforePreview);
     } finally {
       await context.close();
