@@ -477,3 +477,28 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **検出は完全ではない**: 未知の形式のシークレット・プロバイダ固有の非標準形式は検出されない場合がある。共有前に必ず目視確認すること。
 - **高エントロピー検出は誤検出が発生しうる**: 長いランダムに見える文字列（Base64 エンコードされた非機密データ等）も HIGH_ENTROPY で検出される場合がある。不要なカテゴリはトグルで OFF にすることを推奨する。
 - **json-formatter/mask.ts との関係**: JSON 構造の値を走査するマスク機能（`json-formatter`）とは独立したモジュール。テキスト全文を正規表現で走査するため、JSON 以外のログ・設定ファイルにも対応する。将来的な共通基盤化（S2-3）は別 PR で判断する。
+
+### クリップボードインスペクタ
+
+#### 仕組み・アルゴリズム
+
+`src/utils/dataTransferSnapshot.ts` と `src/utils/sanitizeHtml.ts` を組み合わせて実装。
+
+- **DataTransfer 取得**: `paste` イベント（`document` 全体で捕捉）と `drop` イベントの `DataTransfer` を受け取り、`DataTransferItemList` を同期パスで列挙する。`getAsString` の呼び出しはイベントハンドラの同期スコープ内で行う必要があり（ハンドラ終了後は `DataTransferItemList` が無効化される）、Promise で非同期解決する設計を採っている。
+- **フレーバー分類**: `DataTransferItem.kind === 'string'` のものを `StringFlavor`（type・content・byteSize）、`kind === 'file'` のものを `FileFlavor`（type・name・size・lastModified・File オブジェクト）として分離して収集する。
+- **HTML サニタイズ + sandbox**: `text/html` フレーバーのプレビュー表示時は、`sanitizeHtml`（許可リスト方式のサニタイザ。`script`・`iframe`・`on*` イベント属性・`javascript:` URL・`style`・remote 画像 URL（img の src は data:image の raster 形式 png/jpeg/gif/webp/avif/bmp のみ許可。svg+xml は script を内包し得るため除外）を除去。a の href は http/https/mailto のみ許可）でスクリプト・危険属性を除去したうえで `sandbox=""` 属性付き `<iframe>`（スクリプト実行・フォーム送信・同一オリジン不許可）に `srcdoc` として渡す二重防御を実施する。
+- **画像プレビュー**: `image/*` 型のファイルフレーバーは `URL.createObjectURL` でブラウザ内 blob URL を生成して `<img>` に渡す。コンポーネントアンマウント時に `URL.revokeObjectURL` でメモリを解放する。
+
+#### 準拠仕様・参考
+
+- W3C Clipboard API および `DataTransfer` インターフェース仕様
+- W3C HTML Living Standard `<iframe sandbox>` 属性仕様
+
+#### 制限・エッジケース
+
+- **ブラウザ非公開フレーバーは表示不可**: OS のクリップボードに存在しても、ブラウザが Web ページへ公開しないフレーバー（独自アプリ形式等）は列挙されない。
+- **プレビューにインラインスタイルが反映されない**: `srcdoc` の iframe は親ドキュメントの CSP（`style-src` strict）を継承するため、サニタイズ後プレビューは構造・テキスト中心の表示になる。
+- **Async Clipboard API 非対応**: ボタンクリックでの読み取り（`navigator.clipboard.read()`）には対応しない。権限プロンプトが必要で取得できる型も限定的なため、初版のスコープ外とした。
+- **サニタイズで除去された要素・属性はプレビューに現れない**: 除去内容を確認したい場合は「生ソース」表示に切り替えれば原文をそのまま確認できる。
+- **style 属性付き HTML 貼り付け時の CSP 違反ログ**: style 属性を含む HTML を貼り付けると、Chromium のクリップボード内部処理（`getAsString` の HTML サニタイズ）が inline style を評価するため、本番 CSP 環境（`style-src` strict）のコンソールに style-src 違反ログが数件記録されることがある。アプリの実装・表示には影響しない（E2E `tests/e2e/clipboard-inspector.spec.ts` の本番 CSP テスト参照）。
+- **プレビューでは remote 画像は表示されない**: http/https の img src は外部リクエスト防止（tracking pixel 対策）と CSP 違反ノイズ回避のためサニタイズで src を除去する（alt テキストは保持）。img の src として表示されるのは data:image の raster 形式（png/jpeg/gif/webp/avif/bmp）のみ。

@@ -172,6 +172,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'しーくれっとすくらばー',
   },
+  {
+    slug: 'clipboard-inspector',
+    name: 'クリップボードインスペクタ',
+    description:
+      '貼り付け・ドラッグ&ドロップしたデータの全 MIME フレーバー（テキスト・HTML・画像・ファイル）と中身を可視化します。HTML はサニタイズ後プレビュー付き',
+    category: 'convert',
+    yomi: 'くりっぷぼーどいんすぺくた',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる
