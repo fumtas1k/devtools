@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Section } from '@/components/ui/Section';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -126,14 +126,22 @@ export function ClipboardInspectorTool() {
   const [snapshot, setSnapshot] = useState<DataTransferSnapshot | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [htmlViews, setHtmlViews] = useState<Record<number, HtmlView>>({});
+  // SR 向けアナウンス。snapshot 派生にするとクリア時に空文字になるだけで SR に通知されないため独立 state にする
+  const [announcement, setAnnouncement] = useState('');
+  // 連続キャプチャの race 対策: 最新キャプチャの連番。stale な resolve を破棄する
+  const captureSeqRef = useRef(0);
 
   const capture = useCallback((dt: DataTransfer | null, source: CaptureSource) => {
     if (!dt) return;
+    const seq = ++captureSeqRef.current;
     // getAsString の発行はイベントハンドラの同期パスで行う必要がある
     // （ハンドラ終了後は DataTransferItemList が無効化されるため await を挟まない）
     void snapshotDataTransfer(dt, source).then((snap) => {
+      // 後発のキャプチャが先に resolve していたら、この古い結果は破棄する
+      if (seq !== captureSeqRef.current) return;
       setSnapshot(snap);
       setHtmlViews({});
+      setAnnouncement(`${snap.strings.length + snap.files.length} 件のフレーバーを捕捉しました`);
     });
   }, []);
 
@@ -179,7 +187,7 @@ export function ClipboardInspectorTool() {
 
       {/* SR 向け捕捉アナウンス（常設 live region） */}
       <p className="sr-only" role="status" aria-live="polite" data-testid="clipboard-announcement">
-        {snapshot ? `${flavorCount} 件のフレーバーを捕捉しました` : ''}
+        {announcement}
       </p>
 
       {snapshot && (
@@ -191,7 +199,12 @@ export function ClipboardInspectorTool() {
                 {flavorCount} 件のフレーバーを捕捉
               </span>
             </div>
-            <ClearButton onClick={() => setSnapshot(null)} />
+            <ClearButton
+              onClick={() => {
+                setSnapshot(null);
+                setAnnouncement('クリアしました');
+              }}
+            />
           </div>
 
           {flavorCount === 0 && (

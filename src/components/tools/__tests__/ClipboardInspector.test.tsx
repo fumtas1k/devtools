@@ -7,13 +7,16 @@ afterEach(() => {
   cleanup();
 });
 
-/** jsdom には DataTransfer がないため、コンポーネントが参照する範囲のみモック */
-function mockClipboardData(flavors: Record<string, string>): DataTransfer {
+/**
+ * jsdom には DataTransfer がないため、コンポーネントが参照する範囲のみモック。
+ * `delayMs` で getAsString コールバックの resolve を遅延でき、連続キャプチャの race を再現できる。
+ */
+function mockClipboardData(flavors: Record<string, string>, delayMs = 0): DataTransfer {
   const items = Object.entries(flavors).map(([type, content]) => ({
     kind: 'string',
     type,
     getAsString: (cb: ((data: string) => void) | null) => {
-      if (cb) setTimeout(() => cb(content), 0);
+      if (cb) setTimeout(() => cb(content), delayMs);
     },
     getAsFile: () => null,
   }));
@@ -84,13 +87,33 @@ describe('ClipboardInspector — paste 捕捉', () => {
     expect(srcdoc).not.toContain('onerror');
   });
 
-  it('クリアボタンで結果をリセットする', async () => {
-    render(<ClipboardInspectorTool />);
+  it('クリアボタンで結果をリセットし、SR にクリアを通知する', async () => {
+    const { container } = render(<ClipboardInspectorTool />);
     fireEvent.paste(document, {
       clipboardData: mockClipboardData({ 'text/plain': 'abc' }),
     });
     await waitFor(() => expect(screen.getByText('text/plain')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'クリア' }));
     expect(screen.queryByText('text/plain')).toBeNull();
+    // SR 向け live region にクリア通知が流れる（空文字では SR に何も読まれない）
+    const live = container.querySelector('[data-testid="clipboard-announcement"]');
+    expect(live!.textContent).toBe('クリアしました');
+  });
+
+  it('連続 paste で先行キャプチャの遅延 resolve が後発の結果を上書きしない', async () => {
+    render(<ClipboardInspectorTool />);
+    // 1 回目: getAsString の resolve を 50ms 遅延（大きい HTML の貼り付けを模擬）
+    fireEvent.paste(document, {
+      clipboardData: mockClipboardData({ 'text/plain': '遅い貼り付け' }, 50),
+    });
+    // 2 回目: 即時 resolve（小さい text の貼り付けを模擬）
+    fireEvent.paste(document, {
+      clipboardData: mockClipboardData({ 'text/plain': '速い貼り付け' }),
+    });
+    await waitFor(() => expect(screen.getByText('速い貼り付け')).toBeTruthy());
+    // 先行キャプチャ（50ms 遅延）の resolve を待ってから、stale な結果で上書きされていないことを確認
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(screen.getByText('速い貼り付け')).toBeTruthy();
+    expect(screen.queryByText('遅い貼り付け')).toBeNull();
   });
 });
