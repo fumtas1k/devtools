@@ -74,6 +74,8 @@ const DROP_WITH_CHILDREN = new Set([
   'meta',
   'base',
   'noscript',
+  // template の中身は childNodes ではなく .content（別 fragment）に入るため、
+  // リストから外すと走査に映らないまま innerHTML 再シリアライズで復活する。drop 必須
   'template',
   'svg',
   'math',
@@ -114,6 +116,7 @@ function isSafeUrl(value: string, opts: { allowDataImage?: boolean } = {}): bool
   } catch {
     return false;
   }
+  // mailto: は連絡先リンクとして表示価値があり、sandbox iframe 内では navigation も遮断されるため許可
   if (url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'mailto:') {
     return true;
   }
@@ -141,9 +144,27 @@ function sanitizeAttributes(el: Element, tag: string): void {
   }
 }
 
-function sanitizeNode(root: Element): void {
-  // 走査中に付け替え・削除を行うため childNodes は配列化してから処理する
-  for (const node of [...root.childNodes]) {
+/**
+ * 明示スタックによる反復走査でツリー全体をサニタイズする。
+ *
+ * クリップボード由来 HTML は攻撃者制御入力であり、関数再帰だと深いネスト
+ * （約 2000 段）で RangeError が throw されレンダー中のコンポーネントごと
+ * クラッシュするため、任意深度で throw しない反復実装とする。
+ *
+ * unwrap（許可リスト外の無害タグの展開）は、子をスタックへ積んでから
+ * replaceWith で親へ移すことで、移動後の子も漏れなく処理される
+ * （再帰版の「子を先に処理してから展開」と同じ結果になる）。
+ *
+ * root 自身は対象外で、root の子孫のみをサニタイズする（doc.body と同じ扱い）。
+ * 既に DOM ツリーを持つ呼び出し元・深いネストのテスト用に export している。
+ */
+export function sanitizeTree(root: Element): void {
+  // 走査中に付け替え・削除を行うため childNodes はスタックへ積んでから処理する
+  const stack: Node[] = [];
+  for (const node of root.childNodes) stack.push(node);
+
+  while (stack.length > 0) {
+    const node = stack.pop()!;
     if (node.nodeType === Node.COMMENT_NODE) {
       node.parentNode?.removeChild(node);
       continue;
@@ -156,19 +177,21 @@ function sanitizeNode(root: Element): void {
       continue;
     }
     if (!ALLOWED_TAGS.has(tag)) {
-      // 許可リスト外の無害タグは unwrap（子要素のみ残す）。先に子を処理してから展開
-      sanitizeNode(el);
-      el.replaceWith(...el.childNodes);
+      // 許可リスト外の無害タグは unwrap（子要素のみ残す）。
+      // 子は先にスタックへ積み、親へ移した後に必ず処理される
+      const children = [...el.childNodes];
+      for (const child of children) stack.push(child);
+      el.replaceWith(...children);
       continue;
     }
     sanitizeAttributes(el, tag);
-    sanitizeNode(el);
+    for (const child of el.childNodes) stack.push(child);
   }
 }
 
 /** HTML 文字列をサニタイズして安全な HTML 文字列を返す */
 export function sanitizeHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  sanitizeNode(doc.body);
+  sanitizeTree(doc.body);
   return doc.body.innerHTML;
 }
