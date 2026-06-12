@@ -4,8 +4,13 @@ import { PRODUCTION_CSP } from '../../src/utils/csp';
 /**
  * Astro の client:load island は SSR でも DOM に要素が現れるが、
  * React のイベントハンドラはハイドレーション後に初めて有効になる。
- * React がハイドレーション完了すると DOM 要素に __react* キーを付与するため、
- * その出現を待って「操作可能」を確認する。
+ * React がハイドレーション完了すると astro-island 配下の React ホスト要素に
+ * __react* キー (`__reactFiber$...` 等) を付与するため、その出現を待って
+ * 「操作可能」を確認する。
+ *
+ * フォームコントロール (input/textarea/button) 限定の走査だと、初期状態に
+ * それらを持たないツール (例: clipboard-inspector は drop zone の div のみ) で
+ * timeout するため、astro-island 配下の全要素を対象にする。
  *
  * timeout を明示しないと per-test timeout (30s) を全消費しうるため、
  * デフォルト 10s で打ち切って早期に失敗を顕在化させる。呼び出し側で
@@ -18,7 +23,7 @@ export async function waitForReactHydration(
   const timeout = options?.timeout ?? 10_000;
   await page.waitForFunction(
     () => {
-      const els = document.querySelectorAll('input, textarea, button');
+      const els = document.querySelectorAll('astro-island *');
       if (!els.length) return false;
       return [...els].some((el) => Object.keys(el).some((k) => k.startsWith('__react')));
     },

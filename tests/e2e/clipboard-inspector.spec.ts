@@ -1,24 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
-import { applyProductionCsp, withProductionCsp } from './helpers';
+import { applyProductionCsp, waitForReactHydration, withProductionCsp } from './helpers';
 
 const PAGE_PATH = '/tools/clipboard-inspector';
-
-/**
- * ClipboardInspector の初期状態には button/input/textarea が存在しないため、
- * 汎用の waitForReactHydration（button 要素の __react キーを待つ）は使えない。
- * drop zone の div に __react キーが付くことでハイドレーション完了を確認する。
- */
-async function waitForClipboardInspectorHydration(page: Page): Promise<void> {
-  await page.waitForFunction(
-    () => {
-      const zone = document.querySelector('[data-testid="clipboard-drop-zone"]');
-      if (!zone) return false;
-      return Object.keys(zone).some((k) => k.startsWith('__react'));
-    },
-    null,
-    { timeout: 10_000 }
-  );
-}
 
 /**
  * 合成 ClipboardEvent をディスパッチして貼り付けを再現する。
@@ -55,7 +38,7 @@ async function dispatchFileDrop(page: Page): Promise<void> {
 test.describe('クリップボードインスペクタ', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(PAGE_PATH);
-    await waitForClipboardInspectorHydration(page);
+    await waitForReactHydration(page);
   });
 
   test('貼り付けで text/plain と text/html のフレーバーカードが表示される', async ({ page }) => {
@@ -104,38 +87,29 @@ test.describe('クリップボードインスペクタ', () => {
 
 test.describe('クリップボードインスペクタ — 本番 CSP', () => {
   test('本番 CSP 下で HTML のプレビューを表示しても CSP 違反が発生しない', async ({ browser }) => {
-    await withProductionCsp(
-      browser,
-      PAGE_PATH,
-      async (page) => {
-        // withProductionCsp の汎用 waitForReactHydration は button 要素を探すため
-        // 初期状態に button がない本ページでは timeout する。skipHydration を指定し
-        // カスタム wait でハイドレーション完了を確認する。
-        await waitForClipboardInspectorHydration(page);
-        // style 属性を持つ HTML を DataTransfer 経由で paste すると、アプリ実装と無関係に
-        // "Applying inline style" の CSP 違反が記録される（Chromium の getAsString('text/html')
-        // 内部サニタイズが page コンテキストで inline style を評価する経路が有力。
-        // タイムポイント計測で paste evaluate 直後は 0 件、フレーバーカード表示後に 2 件、
-        // iframe 表示後も増加なしを確認済み）。そのため本テストでは style なし HTML を使用し、
-        // サニタイズ後のプレビュー表示が CSP 違反を起こさないことを確認する。
-        // style 付き HTML のケースは後続の describe（inline pattern）で検証する。
-        await page.evaluate(() => {
-          const dt = new DataTransfer();
-          dt.setData(
-            'text/html',
-            '<p><strong>bold</strong> text</p><script>document.title="pwned"</script>'
-          );
-          document.dispatchEvent(
-            new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
-          );
-        });
-        await expect(page.getByText('text/html', { exact: true })).toBeVisible();
-        await page.getByRole('button', { name: 'サニタイズ後プレビュー' }).click();
-        await expect(page.getByTitle('サニタイズ後プレビュー')).toBeVisible();
-        // withProductionCsp が終端で assertNoViolations() を呼ぶ
-      },
-      { skipHydration: true }
-    );
+    await withProductionCsp(browser, PAGE_PATH, async (page) => {
+      // style 属性を持つ HTML を DataTransfer 経由で paste すると、アプリ実装と無関係に
+      // "Applying inline style" の CSP 違反が記録される（Chromium の getAsString('text/html')
+      // 内部サニタイズが page コンテキストで inline style を評価する経路が有力。
+      // タイムポイント計測で paste evaluate 直後は 0 件、フレーバーカード表示後に 2 件、
+      // iframe 表示後も増加なしを確認済み）。そのため本テストでは style なし HTML を使用し、
+      // サニタイズ後のプレビュー表示が CSP 違反を起こさないことを確認する。
+      // style 付き HTML のケースは後続の describe（inline pattern）で検証する。
+      await page.evaluate(() => {
+        const dt = new DataTransfer();
+        dt.setData(
+          'text/html',
+          '<p><strong>bold</strong> text</p><script>document.title="pwned"</script>'
+        );
+        document.dispatchEvent(
+          new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
+        );
+      });
+      await expect(page.getByText('text/html', { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'サニタイズ後プレビュー' }).click();
+      await expect(page.getByTitle('サニタイズ後プレビュー')).toBeVisible();
+      // withProductionCsp が終端で assertNoViolations() を呼ぶ
+    });
   });
 });
 
@@ -156,7 +130,7 @@ test.describe('クリップボードインスペクタ — 本番 CSP（style �
       const page = await context.newPage();
       const guard = await applyProductionCsp(page);
       await page.goto(PAGE_PATH);
-      await waitForClipboardInspectorHydration(page);
+      await waitForReactHydration(page);
       await dispatchPaste(page, { 'text/html': '<p style="color:red">styled</p>' });
       await expect(page.getByText('text/html', { exact: true })).toBeVisible();
       // Chromium 内部処理由来の違反は getAsString の非同期コールバック経路で記録されるため、
