@@ -108,22 +108,40 @@ const ALLOWED_ATTRS = new Set([
   'lang',
 ]);
 
-function isSafeUrl(value: string, opts: { allowDataImage?: boolean } = {}): boolean {
-  let url: URL;
+function parseUrl(value: string): URL | null {
   try {
     // 相対 URL はダミー base で解決される（srcdoc 内では親 origin 基準になり無害）
-    url = new URL(value.trim(), 'https://sandbox.invalid/');
+    return new URL(value.trim(), 'https://sandbox.invalid/');
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** a の href 用: http / https / mailto のみ許可 */
+function isSafeLinkUrl(value: string): boolean {
+  const url = parseUrl(value);
+  if (!url) return false;
   // mailto: は連絡先リンクとして表示価値があり、sandbox iframe 内では navigation も遮断されるため許可
-  if (url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'mailto:') {
-    return true;
-  }
-  if (opts.allowDataImage && url.protocol === 'data:') {
-    return /^image\//i.test(url.pathname);
-  }
-  return false;
+  return url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'mailto:';
+}
+
+/** img src で許可する data: URL の MIME（raster 画像形式のみ。svg+xml は script を内包し得るため除外） */
+const RASTER_IMAGE_MIME = /^image\/(png|jpe?g|gif|webp|avif|bmp)$/i;
+
+/**
+ * img の src 用: data:image の raster 形式のみ許可。
+ *
+ * remote 画像（http / https）は本番 CSP（img-src 'self' data: blob:）で
+ * srcdoc iframe 内でも描画されず img-src 違反ノイズになるだけで、
+ * CSP のない dev では逆に外部フェッチ（tracking pixel）が発生してしまう
+ * （「外部に送信されません」の建付けと齟齬）ため許可しない。
+ */
+function isSafeImageSrc(value: string): boolean {
+  const url = parseUrl(value);
+  if (!url || url.protocol !== 'data:') return false;
+  // data: URL の pathname は "image/png;base64,..." 形式。MIME 部分のみ取り出して判定
+  const mime = url.pathname.split(/[;,]/, 1)[0];
+  return RASTER_IMAGE_MIME.test(mime);
 }
 
 function sanitizeAttributes(el: Element, tag: string): void {
@@ -133,12 +151,9 @@ function sanitizeAttributes(el: Element, tag: string): void {
       el.removeAttribute(attr.name);
       continue;
     }
-    if (name === 'href' && (tag !== 'a' || !isSafeUrl(attr.value))) {
+    if (name === 'href' && (tag !== 'a' || !isSafeLinkUrl(attr.value))) {
       el.removeAttribute(attr.name);
-    } else if (
-      name === 'src' &&
-      (tag !== 'img' || !isSafeUrl(attr.value, { allowDataImage: true }))
-    ) {
+    } else if (name === 'src' && (tag !== 'img' || !isSafeImageSrc(attr.value))) {
       el.removeAttribute(attr.name);
     }
   }

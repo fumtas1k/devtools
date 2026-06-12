@@ -55,6 +55,18 @@ describe('sanitizeHtml — 陽性対照（危険要素・属性の除去）', ()
     expect(out).not.toContain('data:text/html');
   });
 
+  it('img の https src を除去する（本番 CSP img-src 違反ノイズ・dev での外部フェッチを断つ）', () => {
+    const out = sanitizeHtml('<img src="https://example.com/a.png" alt="x">');
+    expect(out).not.toContain('src=');
+    expect(out).toContain('alt="x"');
+  });
+
+  it('img src の data:image/svg+xml を除去する（raster 形式のみ許可）', () => {
+    const out = sanitizeHtml('<img src="data:image/svg+xml,<svg onload=alert(1)></svg>" alt="x">');
+    expect(out).not.toContain('svg+xml');
+    expect(out).toContain('alt="x"');
+  });
+
   it('style 属性を除去する（本番 CSP style-src strict 違反の発生源を断つ）', () => {
     const out = sanitizeHtml('<p style="color:red">x</p>');
     expect(out).not.toContain('style=');
@@ -123,12 +135,12 @@ describe('sanitizeHtml — 陰性対照（安全な HTML の保持）', () => {
     expect(sanitizeHtml(input)).toBe(input);
   });
 
-  it('https リンクと画像を保持する', () => {
+  it('https リンクは保持する（img の https src は除去される）', () => {
     const out = sanitizeHtml(
       '<a href="https://example.com/">link</a><img src="https://example.com/a.png" alt="x">'
     );
     expect(out).toContain('href="https://example.com/"');
-    expect(out).toContain('src="https://example.com/a.png"');
+    expect(out).not.toContain('src="https://example.com/a.png"');
     expect(out).toContain('alt="x"');
   });
 
