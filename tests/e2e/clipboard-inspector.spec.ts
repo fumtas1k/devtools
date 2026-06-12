@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { withProductionCsp } from './helpers';
+import { applyProductionCsp, withProductionCsp } from './helpers';
 
 const PAGE_PATH = '/tools/clipboard-inspector';
 
@@ -112,9 +112,13 @@ test.describe('クリップボードインスペクタ — 本番 CSP', () => {
         // 初期状態に button がない本ページでは timeout する。skipHydration を指定し
         // カスタム wait でハイドレーション完了を確認する。
         await waitForClipboardInspectorHydration(page);
-        // style 属性を持つ HTML を DataTransfer 経由で paste すると
-        // Chromium 内部の ClipboardEvent 処理で CSP 違反が発生するため（アプリ実装の問題ではなくブラウザ挙動）、
-        // style なし HTML を使用してサニタイズ後のプレビュー表示が CSP 違反を起こさないことを確認する。
+        // style 属性を持つ HTML を DataTransfer 経由で paste すると、アプリ実装と無関係に
+        // "Applying inline style" の CSP 違反が記録される（Chromium の getAsString('text/html')
+        // 内部サニタイズが page コンテキストで inline style を評価する経路が有力。
+        // タイムポイント計測で paste evaluate 直後は 0 件、フレーバーカード表示後に 2 件、
+        // iframe 表示後も増加なしを確認済み）。そのため本テストでは style なし HTML を使用し、
+        // サニタイズ後のプレビュー表示が CSP 違反を起こさないことを確認する。
+        // style 付き HTML のケースは後続の describe（inline pattern）で検証する。
         await page.evaluate(() => {
           const dt = new DataTransfer();
           dt.setData(
@@ -132,5 +136,53 @@ test.describe('クリップボードインスペクタ — 本番 CSP', () => {
       },
       { skipHydration: true }
     );
+  });
+});
+
+test.describe('クリップボードインスペクタ — 本番 CSP（style 付き HTML）', () => {
+  // Chromium は paste 後の getAsString('text/html') 内部サニタイズで、DataTransfer 内の
+  // inline style を page コンテキストで評価するため、style 付き HTML を貼り付けると
+  // アプリ実装と無関係に "Applying inline style" の CSP 違反が数件記録される
+  // （ブラウザ内部挙動。srcdoc iframe 由来でないことはタイムポイント別の violations
+  // 観測で確認済み: カード表示後に 2 件 / iframe 表示後も増加なし）。
+  // そのため withProductionCsp（終端で違反 0 を assert）は使えず、applyProductionCsp の
+  // inline pattern で「sanitizer が style を除去し、プレビュー表示が違反を増やさない」
+  // ことを検証する。
+  test('style 付き HTML でも sanitizer が style を除去し、プレビュー表示は CSP 違反を増やさない', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      const guard = await applyProductionCsp(page);
+      await page.goto(PAGE_PATH);
+      await waitForClipboardInspectorHydration(page);
+      await dispatchPaste(page, { 'text/html': '<p style="color:red">styled</p>' });
+      await expect(page.getByText('text/html', { exact: true })).toBeVisible();
+      // Chromium 内部処理由来の違反は getAsString の非同期コールバック経路で記録されるため、
+      // 固定 sleep ではなく「違反件数が変化しなくなる」まで expect.poll で安定を待つ
+      // （カード表示直後に件数を読むと記録途中の中間値を掴み flaky になる）。
+      let lastCount = -1;
+      await expect
+        .poll(() => {
+          const current = guard.violations.length;
+          const stable = current === lastCount;
+          lastCount = current;
+          return stable;
+        })
+        .toBe(true);
+      const violationsBeforePreview = guard.violations.length;
+      await page.getByRole('button', { name: 'サニタイズ後プレビュー' }).click();
+      const iframe = page.getByTitle('サニタイズ後プレビュー');
+      await expect(iframe).toBeVisible();
+      // sanitizer が style 属性を除去していること（E2E レベルの陽性確認）
+      const srcdoc = await iframe.getAttribute('srcdoc');
+      expect(srcdoc).toContain('styled');
+      expect(srcdoc).not.toContain('style=');
+      // プレビュー（srcdoc iframe）表示が新たな CSP 違反を生まないこと
+      expect(guard.violations.length).toBe(violationsBeforePreview);
+    } finally {
+      await context.close();
+    }
   });
 });
