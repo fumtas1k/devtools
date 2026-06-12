@@ -24,9 +24,10 @@ Claude Code 固有の補足は `.claude/rules/` 配下に分割し、上記 `@im
 
 | プラグイン                                | 用途                                                              |
 | :---------------------------------------- | :---------------------------------------------------------------- |
-| `superpowers@claude-plugins-official`     | 設計・計画・実装支援スキル群（writing-plans, debugging, TDD 等）  |
 | `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                    |
 | `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
+
+**superpowers はプラグインではなく `npx skills add` でリポジトリ内に vendor 済み**（`.agents/skills/` + `skills-lock.json` 管理）。Web セッションでプラグイン install が効かない問題の回避のため移行した。出典・ライセンスは `.agents/skills/README.md` を参照。
 
 CLI / Desktop は `.claude/settings.json` から自動 install を prompt します。**Web (claude.ai/code) は trust dialog 非発火で silent skip される既知制約**があるため、SessionStart hook（`.claude/scripts/session-install.sh`）が web セッションで自動 install します（新規コンテナの初回セッションのみ未反映、同一環境の次セッション以降で有効）。
 

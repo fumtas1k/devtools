@@ -4085,3 +4085,31 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 - ✅ 一貫トークン化により同一値のプレースホルダが揃い、マスク後テキストの読解性が高い。
 - ⚠️ エントロピー閾値は実測ベースの経験則であり、環境によっては誤検出・検出漏れが発生しうる。ユーザーへの「共有前に目視確認」の注記を ToolInfoSection に明記。
 - ⚠️ IPv6・プロバイダ固有の非標準形式は対象外（docs/tools.md 制限事項に記載）。
+
+## [108] 2026-06-12 — superpowers をプラグイン運用から `npx skills add` vendor 方式へ移行
+
+**2026-06-12 | ステータス: 採用**
+
+### 背景
+
+decisions [106] の SessionStart hook 自動 install を導入した後も、Claude Code on the web で superpowers プラグインが install されない事象が継続した（新規コンテナの初回セッション未反映の制約に加え、その後のセッションでも install が反映されないケースが発生）。superpowers のスキル群（writing-plans / systematic-debugging / TDD 等）は本プロジェクトの開発ワークフローの前提であり、web セッションで使えない状態は許容できない。
+
+### 決断
+
+`npx skills add` で obra/superpowers の 14 スキルを `.agents/skills/` にリポジトリ内 vendor し、プラグイン依存を外した（PR #632）。
+
+1. **vendor + lockfile 管理**: スキル実体を `.agents/skills/` にコミットし、`skills-lock.json` で出典（source / skillPath）と computedHash を管理。upstream との突き合わせ・改変検知が可能（PR #632 レビューで `npx skills check` により全 14 スキルの upstream byte 一致を検証済み）。
+2. **MIT ライセンス対応**: vendor は public リポジトリへの再配布にあたるため、`LICENSE-superpowers`（obra/superpowers）・`LICENSE-mattpocock-skills`（既存 vendor の grill-me 用）を同梱し、出典・ライセンス対応表を `.agents/skills/README.md` に集約。vercel-labs/agent-skills は upstream に LICENSE ファイルが無いため README の MIT 宣言を出典リンク付きで明記。
+3. **Prettier 除外**: vendor ディレクトリを `.prettierignore` に個別列挙（整形すると lockfile の computedHash と実体が乖離するため）。自作スキル（dads-design-system / test-gates）は整形対象に残す。
+
+### 却下した選択肢
+
+- **プラグイン運用の継続（hook 改善で対応）**: install 経路が Claude Code 本体の実装変更に左右され続け、silent skip の再発を repo 側で制御できない。vendor ならセッション種別に依存せず常にスキルが存在する。
+- **`.agents/skills/` 一括 Prettier 除外**: 自作スキルまで整形チェック対象から外れるため、vendor ディレクトリの個別列挙とした。
+
+### 結果・トレードオフ
+
+- ✅ web / CLI / Desktop すべてのセッションでスキルが即座に利用可能（プラグイン install 状態に依存しない）。
+- ✅ lockfile + hash により supply chain 検証（upstream 突き合わせ・ローカル改変検知）が可能。
+- ⚠️ upstream 更新への追従は手動（`npx skills update`）。SKILL.md はエージェントが実行する指示書のため、**bump 時は hash 差分だけでなく本文 diff のレビューを必須とする**。
+- ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design / context7 はプラグイン運用を継続（[106] の hook は引き続き有効）。
