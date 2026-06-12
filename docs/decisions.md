@@ -4126,7 +4126,7 @@ decisions [106] の SessionStart hook 自動 install を導入した後も、Cla
 
 - **決定**: text/html フレーバーのプレビューは、自作の許可リスト方式サニタイザ（`src/utils/sanitizeHtml.ts`）で除去したうえで `sandbox=""`（allow-scripts なし）iframe の srcdoc に描画する。DOMPurify は導入しない。
 - **理由**: sandbox iframe が第二防壁として存在するため、サニタイザの見落としが直ちにスクリプト実行に繋がらない。依存追加（約 20KB gzip）よりも依存ゼロの二重防御を選択。
-- **補足**: style 属性 / style 要素もサニタイズ対象。srcdoc iframe は親ドキュメントの CSP（style-src strict）を継承するため、残しても CSP 違反ノイズになるだけで描画されない。サニタイザは検知・ガード機構として test-gates ルールに従い陽性対照テストを同梱（`src/utils/__tests__/sanitizeHtml.test.ts`、深いネスト・mXSS 経路含む）。走査は明示スタックの反復実装（攻撃者制御入力での再帰スタックオーバーフロー回避）。
+- **補足**: style 属性 / style 要素もサニタイズ対象。srcdoc iframe は親ドキュメントの CSP（style-src strict）を継承するため、残しても CSP 違反ノイズになるだけで描画されない。サニタイザは検知・ガード機構として test-gates ルールに従い陽性対照テストを同梱（`src/utils/__tests__/sanitizeHtml.test.ts`、深いネスト・mXSS 経路含む）。走査は明示スタックの反復実装（攻撃者制御入力での再帰スタックオーバーフロー回避）。PR #635 のレビュー指摘を受け、img の src 許可を当初の http / https / data:image/\* から data:image の raster 形式（png/jpeg/gif/webp/avif/bmp）のみに制限した — remote 画像は本番 CSP（img-src 'self' data: blob:）下では srcdoc iframe 内でも描画されず違反ノイズになるだけで、CSP のない dev 環境では外部フェッチ（tracking pixel）が発生し「外部に送信されません」の建付けと齟齬するため（svg+xml は script を内包し得るため除外）。
 - 関連: spec `docs/superpowers/specs/2026-06-12-clipboard-inspector-design.md`
 
 ### 却下した選択肢
