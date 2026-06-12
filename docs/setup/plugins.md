@@ -6,9 +6,10 @@
 
 | プラグイン                                | 用途                                                              |
 | :---------------------------------------- | :---------------------------------------------------------------- |
-| `superpowers@claude-plugins-official`     | 設計・計画・実装支援スキル群（writing-plans, debugging, TDD 等）  |
 | `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                    |
 | `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
+
+> **superpowers について**: 以前は `superpowers@claude-plugins-official` プラグインで運用していたが、Web セッションでプラグイン install が効かない制約（後述 2 章）の回避のため、`npx skills add` で `.agents/skills/` にスキル本体を vendor する方式へ移行した（`skills-lock.json` で出典・hash を管理）。出典・ライセンスは `.agents/skills/README.md` を参照。
 
 ---
 
@@ -44,7 +45,6 @@ PR #204 で SessionStart hook 経由の自動 install を試みた際は、`clau
 hook が失敗する場合や初回セッションで即座に使いたい場合は手動で install する:
 
 ```
-/plugin install superpowers@claude-plugins-official
 /plugin install frontend-design@claude-plugins-official
 /plugin install context7@claude-plugins-official
 ```
