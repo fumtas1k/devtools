@@ -621,7 +621,8 @@ export function CertDecoder() {
                 }}
                 placeholder="PKCS#12 のパスワード"
                 className="caption w-full rounded-lg border border-default bg-default text-default px-3 py-2"
-                autoComplete="current-password"
+                // 一回限りの復号用途のため、パスワードマネージャへの保存提案を避ける
+                autoComplete="off"
               />
             </div>
             <ActionButton

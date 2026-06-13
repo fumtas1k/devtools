@@ -108,10 +108,19 @@ export function looksLikePkcs12(bytes: Uint8Array): boolean {
 /**
  * PKCS#12 バイト列をパスワードで復号し、証明書 DER と秘密鍵を抽出する。
  * 不正入力（誤パスワード・非 p12・レガシー暗号）は throw せず errorKind で返す。
+ *
+ * ⚠️ errorKind の `wrong-password` / `unsupported-encryption` 判定は pkijs が throw する
+ * エラーメッセージ文言（"Integrity ... broken" / "Unknown contentEncryptionAlgorithm" 等）への
+ * 暗黙依存である。pkijs を bump した際に文言が変わると分類が崩れうるが、その場合は
+ * `cert-pkcs12.test.ts` の陽性対照（誤パスワード→wrong-password / レガシー→unsupported-encryption）が
+ * CI で fail して検知するため、テストが落ちたら本関数の判定文字列を更新すること。
  */
 export async function parsePkcs12(bytes: Uint8Array, password: string): Promise<Pkcs12Result> {
   ensureCryptoEngine();
 
+  // パスワードは UTF-8 でエンコードして渡す。pkijs が内部で UTF-8 decode → BMPString(UTF-16BE)
+  // 変換する（makePKCS12B2Key）。OpenSSL 3 生成の非 ASCII（日本語）パスワード p12 と
+  // round-trip 一致することを確認済み（古い実装が異なる正規化を使う場合は不一致の可能性あり）。
   const pwd = toArrayBuffer(new TextEncoder().encode(password));
 
   // 1. 構造パース
