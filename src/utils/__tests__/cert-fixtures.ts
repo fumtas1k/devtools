@@ -12,16 +12,8 @@ import {
   Extension,
   GeneralName,
   GeneralNames,
-  setEngine,
-  CryptoEngine,
 } from 'pkijs';
-
-// pkijs に Web Crypto エンジンを登録（Node.js テスト環境用）
-function ensureCryptoEngine(): void {
-  if (typeof globalThis.crypto !== 'undefined') {
-    setEngine('WebCrypto', new CryptoEngine({ name: 'WebCrypto', crypto: globalThis.crypto }));
-  }
-}
+import { ensureCryptoEngine } from '@/utils/cert/engine';
 
 /** DER バイト列を PEM 文字列に変換する */
 function derToPem(der: Uint8Array): string {

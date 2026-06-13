@@ -10,15 +10,9 @@
  */
 
 import * as asn1js from 'asn1js';
-import { Certificate, setEngine, CryptoEngine } from 'pkijs';
+import { Certificate } from 'pkijs';
+import { ensureCryptoEngine } from './engine';
 import type { ParsedCert, ChainLink, ChainResult } from './types';
-
-// pkijs に Web Crypto エンジンを登録（ブラウザ / Node テスト環境の両対応）
-function ensureCryptoEngine(): void {
-  if (typeof globalThis.crypto !== 'undefined') {
-    setEngine('WebCrypto', new CryptoEngine({ name: 'WebCrypto', crypto: globalThis.crypto }));
-  }
-}
 
 /**
  * ParsedCert.der から pkijs Certificate オブジェクトを再構築する。

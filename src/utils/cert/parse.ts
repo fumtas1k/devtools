@@ -17,20 +17,12 @@ import {
   AuthorityKeyIdentifier,
   ExtKeyUsage,
   AttributeTypeAndValue,
-  setEngine,
-  CryptoEngine,
   getAlgorithmByOID,
 } from 'pkijs';
 
 import { detectInput } from './detect';
+import { ensureCryptoEngine } from './engine';
 import type { ParsedCert, ParseResult, CertName, PublicKeyInfo } from './types';
-
-// pkijs に Web Crypto エンジンを登録（ブラウザ / Node テスト環境の両対応）
-function ensureCryptoEngine(): void {
-  if (typeof globalThis.crypto !== 'undefined') {
-    setEngine('WebCrypto', new CryptoEngine({ name: 'WebCrypto', crypto: globalThis.crypto }));
-  }
-}
 
 // ────────────────────────────────────────────────────────────────────────────
 // OID → 短縮名マッピング
@@ -248,8 +240,7 @@ function parseKeyUsage(cert: Certificate): string[] {
     const kuDer = getExtensionValueHex(kuExt);
     const asn1 = asn1js.fromBER(kuDer);
     const bs = asn1.result as asn1js.BitString;
-    const view =
-      bs.valueBlock.valueHexView ?? new Uint8Array(bs.valueBlock.valueHex ?? new ArrayBuffer(0));
+    const view = bs.valueBlock.valueHexView;
     const usages: string[] = [];
     // ビットは MSB first（RFC 5280）
     for (let byteIdx = 0; byteIdx < view.length; byteIdx++) {
@@ -330,9 +321,7 @@ function parseAkId(cert: Certificate): string | undefined {
     const asn1 = asn1js.fromBER(akiDer);
     const aki = new AuthorityKeyIdentifier({ schema: asn1.result });
     if (aki.keyIdentifier) {
-      const view =
-        aki.keyIdentifier.valueBlock.valueHexView ??
-        new Uint8Array(aki.keyIdentifier.valueBlock.valueHex ?? new ArrayBuffer(0));
+      const view = aki.keyIdentifier.valueBlock.valueHexView;
       return bytesToHexPlain(view);
     }
   } catch {
@@ -343,9 +332,7 @@ function parseAkId(cert: Certificate): string | undefined {
 
 /** pkijs Certificate の Integer serialNumber を hex に変換する */
 function serialToHex(cert: Certificate): string {
-  const view =
-    cert.serialNumber.valueBlock.valueHexView ??
-    new Uint8Array(cert.serialNumber.valueBlock.valueHex ?? new ArrayBuffer(0));
+  const view = cert.serialNumber.valueBlock.valueHexView;
   return bytesToHexPlain(view);
 }
 
