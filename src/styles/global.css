@@ -806,6 +806,15 @@
     color: var(--color-neutral-700);
   }
 
+  /* トップページ hero h1 見出し (2rem)。.page-heading (1.75rem) / .section-heading (1.125rem) より
+     一段大きい hero 用見出しスケールの SoT。color は class に含めず consumer 側で text-default を併用
+     (既存 hero h1 は text-default 付き)。(issue #565) */
+  .hero-heading {
+    font-size: 2rem;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+  }
+
   /* ページ h1 見出し: about/privacy/404 の静的ページ共通 (1.75rem)。
      .section-heading (h2, 1.125rem) より一段大きい page タイトル用。
      color は .section-heading と同様 class に含めず consumer 側で text-default を併用 (issue #535)。 */
