@@ -6,6 +6,7 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Section } from '@/components/ui/Section';
 import { FileInputButton } from '@/components/ui/FileInputButton';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { useQrCamera } from '@/hooks/useQrCamera';
 import { useAbortableEffect } from '@/hooks/useAbortableEffect';
 import { detectQrContent, decodeQrFromFile, DEFAULT_QR_MAX_DIM } from '@/utils/qr-reader';
@@ -121,13 +122,9 @@ export function QrReaderTool() {
             <div className="space-y-3">
               {/* カメラ未起動・結果なし時に「起動」ボタンを表示。エラー後もボタンを残すことでリトライを可能にしている */}
               {!camera.cameraActive && !decoded && (
-                <button
-                  type="button"
-                  onClick={camera.startCamera}
-                  className="caption font-semibold inline-flex items-center px-5 py-2 rounded-lg bg-primary text-on-primary border-0 cursor-pointer"
-                >
+                <ActionButton onClick={camera.startCamera} variant="primary">
                   カメラを起動
-                </button>
+                </ActionButton>
               )}
               {/* video/canvas は常時レンダリングして videoRef を確保する */}
               <video
@@ -141,13 +138,9 @@ export function QrReaderTool() {
                 aria-label="カメラプレビュー"
               />
               {camera.cameraActive && (
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  className="caption font-semibold inline-flex items-center px-5 py-2 rounded-lg border border-error bg-error-tint text-error cursor-pointer"
-                >
+                <ActionButton onClick={stopCamera} variant="danger">
                   カメラを停止
-                </button>
+                </ActionButton>
               )}
               <canvas ref={camera.canvasRef} className="hidden" aria-hidden="true" />
             </div>
@@ -185,13 +178,9 @@ export function QrReaderTool() {
             {/* コピー & 再スキャンボタン */}
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton text={content.raw} />
-              <button
-                type="button"
-                onClick={handleRescan}
-                className="caption font-bold leading-none inline-flex items-center gap-1.5 px-3 py-2 rounded border border-default bg-subtle text-default cursor-pointer whitespace-nowrap"
-              >
+              <ActionButton onClick={handleRescan} size="compact">
                 再スキャン
-              </button>
+              </ActionButton>
             </div>
 
             {/* URLの場合のフィッシング警告 */}
