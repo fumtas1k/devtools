@@ -179,7 +179,9 @@ export function DsnBuilderTool() {
                     mono
                     inputMode="numeric"
                     aria-label={`ポート ${i + 1}`}
-                    placeholder={dialect.defaultPort === null ? '指定不可' : String(dialect.defaultPort)}
+                    placeholder={
+                      dialect.defaultPort === null ? '指定不可' : String(dialect.defaultPort)
+                    }
                     className="w-24 flex-none"
                   />
                   {model.hosts.length > 1 && (

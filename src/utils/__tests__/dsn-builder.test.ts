@@ -14,7 +14,9 @@ function mustParse(uri: string): DsnModel {
 
 describe('parseDsn: 正常系（陰性対照）', () => {
   it('PostgreSQL の基本形を分解する', () => {
-    const model = mustParse('postgresql://app_user:p%40ss%2Fw0rd@db.example.com:5432/app_db?sslmode=require');
+    const model = mustParse(
+      'postgresql://app_user:p%40ss%2Fw0rd@db.example.com:5432/app_db?sslmode=require'
+    );
     expect(model.scheme).toBe('postgresql');
     expect(model.user).toBe('app_user');
     expect(model.password).toBe('p@ss/w0rd'); // percent-decode 済み
@@ -24,7 +26,9 @@ describe('parseDsn: 正常系（陰性対照）', () => {
   });
 
   it('mongodb のカンマ区切り複数ホストを分解する', () => {
-    const model = mustParse('mongodb://admin:s3cret@mongo1.example.com:27017,mongo2.example.com:27018/app_db?replicaSet=rs0');
+    const model = mustParse(
+      'mongodb://admin:s3cret@mongo1.example.com:27017,mongo2.example.com:27018/app_db?replicaSet=rs0'
+    );
     expect(model.hosts).toEqual([
       { host: 'mongo1.example.com', port: '27017' },
       { host: 'mongo2.example.com', port: '27018' },
@@ -118,7 +122,8 @@ describe('parseDsn: 陽性対照（不正入力を必ずエラーにする）', 
 
 describe('serializeDsn / ラウンドトリップ', () => {
   it('記号入りパスワードを percent-encode して往復が一致する', () => {
-    const uri = 'postgresql://app_user:p%40ss%2Fw0rd@db.example.com:5432/app_db?sslmode=require&connect_timeout=10';
+    const uri =
+      'postgresql://app_user:p%40ss%2Fw0rd@db.example.com:5432/app_db?sslmode=require&connect_timeout=10';
     expect(serializeDsn(mustParse(uri))).toBe(uri);
   });
 
@@ -164,7 +169,11 @@ describe('validateModel: 陽性対照（フォーム編集起因の不整合）'
 
   it('mongodb+srv でポート入力をエラーにする', () => {
     expect(
-      validateModel({ ...base, scheme: 'mongodb+srv', hosts: [{ host: 'c.example.net', port: '27017' }] })
+      validateModel({
+        ...base,
+        scheme: 'mongodb+srv',
+        hosts: [{ host: 'c.example.net', port: '27017' }],
+      })
     ).not.toBeNull();
   });
 

@@ -76,7 +76,8 @@ export const DIALECTS: Record<DsnScheme, Dialect> = {
     pathLabel: 'データベース名',
     pathIsInteger: false,
     srv: true,
-    sample: 'mongodb+srv://admin:s3cret@cluster0.abcde.mongodb.net/app_db?retryWrites=true&w=majority',
+    sample:
+      'mongodb+srv://admin:s3cret@cluster0.abcde.mongodb.net/app_db?retryWrites=true&w=majority',
   },
   redis: {
     label: 'Redis',
