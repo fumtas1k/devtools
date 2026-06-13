@@ -30,22 +30,27 @@ function isExpired(d: Date): boolean {
 
 interface CertCardProps {
   cert: ParsedCert;
-  index: number;
   /** チェーンリンク情報（順序付き表示用） */
   signatureValid: boolean | null;
   expired: boolean;
-  /** ルートから何番目か（0 = ルート）*/
+  /** チェーン表示順での位置（0 = 先頭）*/
   chainPosition: number;
   totalInChain: number;
 }
 
+/**
+ * 証明書のチェーン上の役割ラベルを返す。
+ * 自己署名（subject == issuer）のみ「ルート CA」とし、root 未添付時に
+ * 先頭の中間証明書を誤って「ルート CA」と表示しないようにする。
+ */
+function certRoleLabel(cert: ParsedCert, chainPosition: number, totalInChain: number): string {
+  if (cert.subject.full === cert.issuer.full) return 'ルート CA（自己署名）';
+  if (chainPosition === totalInChain - 1) return 'リーフ（サーバ証明書）';
+  return chainPosition === 0 ? '中間 CA' : `中間 CA (${chainPosition})`;
+}
+
 function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }: CertCardProps) {
-  const positionLabel =
-    chainPosition === 0
-      ? 'ルート CA'
-      : chainPosition === totalInChain - 1
-        ? 'リーフ（サーバ証明書）'
-        : `中間 CA (${chainPosition})`;
+  const positionLabel = certRoleLabel(cert, chainPosition, totalInChain);
 
   if (cert.error) {
     return (
@@ -288,7 +293,11 @@ function ChainBanner({ chainResult, certs }: ChainBannerProps) {
           return (
             <div key={certIdx} className="flex items-center gap-2 caption text-default">
               <span className="text-muted">
-                {pos === 0 ? 'Root' : pos === order.length - 1 ? 'Leaf' : `Int.${pos}`}
+                {cert.subject.full === cert.issuer.full
+                  ? 'Root'
+                  : pos === order.length - 1
+                    ? 'Leaf'
+                    : 'Int.'}
               </span>
               <span className="font-mono truncate">{cn}</span>
               {link?.signatureValid !== null && (
@@ -379,9 +388,16 @@ export function CertDecoder() {
 
     if (isBinary) {
       const buf = await file.arrayBuffer();
-      // バイナリファイルは Base64 PEM に変換してテキスト入力欄に渡す
+      // バイナリファイルは Base64 PEM に変換してテキスト入力欄に渡す。
+      // String.fromCharCode(...bytes) の spread は巨大ファイルでスタック超過の恐れがあるため
+      // チャンク単位で連結する。
       const bytes = new Uint8Array(buf);
-      const b64 = btoa(String.fromCharCode(...bytes));
+      let binary = '';
+      const CHUNK = 0x8000;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const b64 = btoa(binary);
       const lines = b64.match(/.{1,64}/g) ?? [];
       setInput(`-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----`);
     } else {
@@ -446,7 +462,6 @@ export function CertDecoder() {
               <CertCard
                 key={certIdx}
                 cert={cert}
-                index={certIdx}
                 signatureValid={link?.signatureValid ?? null}
                 expired={link?.expired ?? isExpired(cert.notAfter)}
                 chainPosition={pos}
@@ -465,7 +480,6 @@ export function CertDecoder() {
                 <CertCard
                   key={idx}
                   cert={cert}
-                  index={idx}
                   signatureValid={link?.signatureValid ?? null}
                   expired={link?.expired ?? isExpired(cert.notAfter)}
                   chainPosition={decodeState.chainResult.order.length + pos}

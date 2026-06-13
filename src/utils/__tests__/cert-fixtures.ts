@@ -231,6 +231,39 @@ export async function makeExpiredCert(): Promise<Uint8Array> {
 }
 
 /**
+ * 2048bit RSA（RSASSA-PKCS1-v1_5 / SHA-256）の自己署名証明書を生成する。
+ * 鍵長算出（parsePublicKeyInfo）の検証に使う。
+ */
+export async function makeRsaCert(): Promise<Uint8Array> {
+  ensureCryptoEngine();
+
+  const keys = await crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256',
+    },
+    true,
+    ['sign', 'verify']
+  );
+
+  const now = new Date();
+  const cert = await buildCert({
+    subjectCN: 'RSA Test Cert',
+    issuerCN: 'RSA Test Cert',
+    subjectKeyPair: keys,
+    issuerPrivateKey: keys.privateKey,
+    serial: 7,
+    isCa: false,
+    notBefore: new Date(now.getTime() - 86400_000),
+    notAfter: new Date(now.getTime() + 365 * 86400_000),
+  });
+
+  return certToDer(cert);
+}
+
+/**
  * Subject Alternative Name 拡張を構築する。
  * @param dnsNames - DNS 名の配列
  */

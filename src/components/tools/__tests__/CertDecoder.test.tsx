@@ -35,4 +35,22 @@ describe('CertDecoder', () => {
       expect(screen.getByRole('alert')).toBeTruthy();
     });
   });
+
+  it('単独の leaf 証明書を「ルート CA」と誤表示しない（自己署名のみ Root 扱い）', async () => {
+    render(<CertDecoder />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: chain.leafPem } });
+    await waitFor(() => {
+      expect(screen.getByText(/リーフ（サーバ証明書）/)).toBeTruthy();
+    });
+    // leaf は自己署名ではないため「ルート CA」ラベルは出ない
+    expect(screen.queryByText(/ルート CA/)).toBeNull();
+  });
+
+  it('自己署名のルート証明書は「ルート CA（自己署名）」と表示する', async () => {
+    render(<CertDecoder />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: chain.rootPem } });
+    await waitFor(() => {
+      expect(screen.getByText(/ルート CA（自己署名）/)).toBeTruthy();
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { parseCertificates } from '@/utils/cert/parse';
-import { makeTestChain, type TestChain } from './cert-fixtures';
+import { makeTestChain, makeRsaCert, type TestChain } from './cert-fixtures';
 
 let chain: TestChain;
 beforeAll(async () => {
@@ -37,5 +37,19 @@ describe('parseCertificates', () => {
     const r = await parseCertificates(`${chain.leafPem}\n${broken}`);
     expect(r.certs.length).toBeGreaterThanOrEqual(1);
     expect(r.certs.some((c) => c.error)).toBe(true);
+  });
+
+  it('2048bit RSA 証明書の鍵長を正確に算出する（modulus 長から）', async () => {
+    const der = await makeRsaCert();
+    const r = await parseCertificates(der);
+    expect(r.certs).toHaveLength(1);
+    expect(r.certs[0].publicKey.algorithm).toBe('RSA');
+    // BIT STRING 全体長からの概算（旧実装は 2080 等にずれる）ではなく modulus 長から 2048 を得る
+    expect(r.certs[0].publicKey.keySizeBits).toBe(2048);
+  });
+
+  it('EC 証明書の曲線を P-256 として返す', async () => {
+    const r = await parseCertificates(chain.leafPem);
+    expect(r.certs[0].publicKey.namedCurve).toBe('P-256');
   });
 });

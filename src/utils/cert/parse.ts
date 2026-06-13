@@ -17,11 +17,13 @@ import {
   AuthorityKeyIdentifier,
   ExtKeyUsage,
   AttributeTypeAndValue,
+  RSAPublicKey,
   getAlgorithmByOID,
 } from 'pkijs';
 
 import { detectInput } from './detect';
 import { ensureCryptoEngine } from './engine';
+import { decodeSct } from './sct';
 import type { ParsedCert, ParseResult, CertName, PublicKeyInfo } from './types';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -105,6 +107,23 @@ function bytesToHexPlain(bytes: Uint8Array): string {
     .join('');
 }
 
+/** iPAddress オクテット列を IPv4（4 byte）/ IPv6（16 byte）表記に整形する */
+function formatIpAddress(bytes: Uint8Array): string {
+  if (bytes.length === 4) {
+    return Array.from(bytes).join('.');
+  }
+  if (bytes.length === 16) {
+    // 2 byte ずつ 16 進グループに（省略圧縮はせず素直に表示）
+    const groups: string[] = [];
+    for (let i = 0; i < 16; i += 2) {
+      groups.push(((bytes[i] << 8) | bytes[i + 1]).toString(16));
+    }
+    return groups.join(':');
+  }
+  // 想定外長は hex で fallback
+  return bytesToHexPlain(bytes);
+}
+
 /** AttributeTypeAndValue[] を CertName に変換する */
 function parseDn(typesAndValues: AttributeTypeAndValue[]): CertName {
   const attributes: { type: string; value: string }[] = [];
@@ -181,15 +200,27 @@ function parsePublicKeyInfo(cert: Certificate): PublicKeyInfo {
       // パラメータなし
     }
   } else if (algName === 'RSA') {
-    // RSA 公開鍵長の簡易推定（subjectPublicKey のビット長から）
+    // subjectPublicKey（BIT STRING）の中身は RSAPublicKey ::= SEQUENCE { modulus, publicExponent }。
+    // modulus INTEGER のバイト長（先頭の符号用 0x00 を除く）から正確な鍵長を求める。
     try {
-      const spkBitLen = cert.subjectPublicKeyInfo.subjectPublicKey.valueBlock.valueHexView?.length;
-      if (spkBitLen) {
-        // modulus を含む DER から概算（先頭の数バイトはヘッダ）
-        info.keySizeBits = (spkBitLen - 10) * 8;
+      const spkView = cert.subjectPublicKeyInfo.subjectPublicKey.valueBlock.valueHexView;
+      const buf = spkView.buffer.slice(
+        spkView.byteOffset,
+        spkView.byteOffset + spkView.byteLength
+      ) as ArrayBuffer;
+      const asn1 = asn1js.fromBER(buf);
+      if (asn1.offset !== -1) {
+        const rsaPub = new RSAPublicKey({ schema: asn1.result });
+        const modulus = rsaPub.modulus.valueBlock.valueHexView;
+        // 先頭の符号用 0x00 を除いたバイト長 × 8 が鍵長
+        const modulusBytes =
+          modulus.length > 0 && modulus[0] === 0x00 ? modulus.length - 1 : modulus.length;
+        if (modulusBytes > 0) {
+          info.keySizeBits = modulusBytes * 8;
+        }
       }
     } catch {
-      // 推定失敗
+      // 鍵長の算出失敗（best-effort）
     }
   }
 
@@ -211,11 +242,10 @@ function parseSan(cert: Certificate): string[] {
       if (prefix) {
         let val = '';
         if (gn.type === 7 && gn.value instanceof asn1js.OctetString) {
-          // IP アドレス
-          const ipBytes = new Uint8Array(
-            (gn.value as unknown as { valueBlock: { valueHex: ArrayBuffer } }).valueBlock.valueHex
-          );
-          val = Array.from(ipBytes).join('.');
+          // IP アドレス（4 byte → IPv4、16 byte → IPv6）
+          const ipBytes = (gn.value as unknown as { valueBlock: { valueHexView: Uint8Array } })
+            .valueBlock.valueHexView;
+          val = formatIpAddress(ipBytes);
         } else if (typeof gn.value === 'string') {
           val = gn.value;
         } else {
@@ -355,7 +385,6 @@ function sigAlgName(cert: Certificate): string {
 // ────────────────────────────────────────────────────────────────────────────
 
 async function parseSingleDer(der: Uint8Array): Promise<ParsedCert> {
-  // SCT は Task 5 実装後に結線するため、ここでは空配列で初期化
   const sct: ParsedCert['sct'] = [];
 
   const derBuf = der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer;
@@ -382,11 +411,9 @@ async function parseSingleDer(der: Uint8Array): Promise<ParsedCert> {
   const fp = await fingerprintSha256(der);
 
   // SCT 拡張（OID: 1.3.6.1.4.1.11129.2.4.2）を処理
-  // Task 5 実装後に decodeSct を呼ぶ
   const sctExt = cert.extensions?.find((e) => e.extnID === '1.3.6.1.4.1.11129.2.4.2');
   if (sctExt) {
     try {
-      const { decodeSct } = await import('./sct');
       const sctDer = getExtensionValueHex(sctExt);
       // SCT 拡張は OCTET STRING の中に TLS 構造があるため、内部バイト列を渡す
       // extnValue は OctetString で、その valueHex が実際の TLS serialized SCT list
