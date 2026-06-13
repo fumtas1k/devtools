@@ -40,6 +40,7 @@ export const PAGES = [
   '/tools/secret-scrubber',
   '/tools/clipboard-inspector',
   '/tools/dsn-builder',
+  '/tools/cert-decoder',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy', '/404']);

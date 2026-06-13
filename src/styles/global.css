@@ -237,6 +237,10 @@
   .border-input {
     border-color: var(--color-border-input);
   }
+  /* divide-y の境界線色（Tailwind v4 は divide-{color} を auto-generate しないため手書き定義）*/
+  .divide-subtle > :not(:last-child) {
+    border-color: var(--color-border);
+  }
 
   /* === Semantic aliases for awkward Tailwind auto-utility names === */
   .bg-error-tint {
