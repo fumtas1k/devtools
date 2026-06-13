@@ -205,6 +205,7 @@ ECDSA 署名付きチケットを生成し、公開鍵でオフライン検証�
 カメラまたは画像ファイルから QR コードを読み取る。デコードは `jsQR`。
 
 - **画像ファイル**: `URL.createObjectURL` → `Image` → `<canvas>` に描画 → `getImageData` → `jsQR` でデコードする（`decodeQrFromFile`）。長辺が `maxDim`（既定 1600px）を超える画像はアスペクト比を保ってダウンスケールしてから処理する。各 `await` ポイントで `AbortSignal` を確認し、処理中のキャンセルに対応する。
+- **ファイル検証**: アップロード前に `validateFile`（`@/utils/file-validation`）で検証する。画像判定は `file.type`（OS / browser 由来の advisory 値で拡張子偽装を検知できない）に依存せず、先頭バイトの magic number（PNG / JPEG / GIF / WebP）で行う。SVG はバイナリ magic を持たないため先頭テキストを sniff（`<svg>` 始まり、または `<?xml>` 始まり かつ `<svg>` 出現）する。拡張子だけ画像に偽装した非画像ファイルは canvas 到達前に拒否される。
 - **カメラ**: `useQrCamera` フックでライブ映像から読み取る。
 - **結果判定**: デコード文字列を `detectQrContent` で解析し、`http:` / `https:` の URL ならホスト名付きの URL として、それ以外はテキストとして表示する。
 
