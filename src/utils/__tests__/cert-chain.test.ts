@@ -17,7 +17,9 @@ import { makeTestChain, makeExpiredCert, type TestChain } from './cert-fixtures'
 
 /** DER → PEM 変換ヘルパー */
 function derToPem(der: Uint8Array): string {
-  const b64 = Buffer.from(der).toString('base64').replace(/(.{64})/g, '$1\n');
+  const b64 = Buffer.from(der)
+    .toString('base64')
+    .replace(/(.{64})/g, '$1\n');
   return `-----BEGIN CERTIFICATE-----\n${b64}\n-----END CERTIFICATE-----`;
 }
 
@@ -33,7 +35,7 @@ beforeAll(async () => {
 describe('buildChain — 陽性対照', () => {
   it('正しい root/intermediate/leaf チェーンは全リンクの signatureValid が true になる', async () => {
     const { certs } = await parseCertificates(
-      `${chain.leafPem}\n${chain.intermediatePem}\n${chain.rootPem}`,
+      `${chain.leafPem}\n${chain.intermediatePem}\n${chain.rootPem}`
     );
     expect(certs).toHaveLength(3);
 
@@ -49,7 +51,7 @@ describe('buildChain — 陽性対照', () => {
 
   it('全証明書が有効期限内なので expired は全て false', async () => {
     const { certs } = await parseCertificates(
-      `${chain.leafPem}\n${chain.intermediatePem}\n${chain.rootPem}`,
+      `${chain.leafPem}\n${chain.intermediatePem}\n${chain.rootPem}`
     );
     const r = await buildChain(certs);
     expect(r.links.every((l) => l.expired === false)).toBe(true);
@@ -58,7 +60,7 @@ describe('buildChain — 陽性対照', () => {
   it('order は root を先頭に leaf を末尾に並べる', async () => {
     const { certs } = await parseCertificates(
       // 意図的に leaf→intermediate→root の逆順で渡す
-      `${chain.leafPem}\n${chain.intermediatePem}\n${chain.rootPem}`,
+      `${chain.leafPem}\n${chain.intermediatePem}\n${chain.rootPem}`
     );
     const r = await buildChain(certs);
     // order の先頭が root（自己署名）であることを確認
@@ -79,7 +81,7 @@ describe('buildChain — 陰性対照1: issuer 不一致', () => {
     // 別チェーンの root を用意（chain.leaf の issuer とは DN が一致しない）
     const other = await makeTestChain();
     const { certs } = await parseCertificates(
-      `${chain.leafPem}\n${other.rootPem}`, // leaf の issuer は other.root ではない
+      `${chain.leafPem}\n${other.rootPem}` // leaf の issuer は other.root ではない
     );
     const r = await buildChain(certs);
 
@@ -99,14 +101,12 @@ describe('buildChain — 陰性対照1: issuer 不一致', () => {
 describe('buildChain — 陰性対照2: DER 改ざん', () => {
   it('intermediate の DER を1バイト改ざんすると署名検証が false になる', async () => {
     const { certs } = await parseCertificates(
-      `${chain.leafPem}\n${chain.intermediatePem}\n${chain.rootPem}`,
+      `${chain.leafPem}\n${chain.intermediatePem}\n${chain.rootPem}`
     );
     expect(certs).toHaveLength(3);
 
     // intermediate を特定（subject が 'Test Intermediate CA' を含む）
-    const intermediateIdx = certs.findIndex((c) =>
-      c.subject.full.includes('Test Intermediate CA'),
-    );
+    const intermediateIdx = certs.findIndex((c) => c.subject.full.includes('Test Intermediate CA'));
     expect(intermediateIdx).toBeGreaterThanOrEqual(0);
 
     // DER の TBS 付近（バイト 40）を1ビット反転して改ざん

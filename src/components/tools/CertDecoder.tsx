@@ -76,9 +76,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
         {signatureValid !== null && (
           <span
             className={`caption font-medium px-2 py-0.5 rounded-full ${
-              signatureValid
-                ? 'bg-success-tint text-success'
-                : 'bg-error-tint text-error-text'
+              signatureValid ? 'bg-success-tint text-success' : 'bg-error-tint text-error-text'
             }`}
           >
             {signatureValid ? '✓ 署名有効' : '✗ 署名無効'}
@@ -92,7 +90,9 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
         <details open>
           <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
             <span>基本情報</span>
-            <span className="caption text-muted cert-chevron" aria-hidden="true">▾</span>
+            <span className="caption text-muted cert-chevron" aria-hidden="true">
+              ▾
+            </span>
           </summary>
           <div className="px-4 pb-4 pt-2 space-y-2">
             <CertField label="サブジェクト (Subject)" value={cert.subject.full} copyable />
@@ -122,7 +122,9 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
           <details open>
             <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
               <span>サブジェクト代替名 (SAN)</span>
-              <span className="caption text-muted" aria-hidden="true">▾</span>
+              <span className="caption text-muted" aria-hidden="true">
+                ▾
+              </span>
             </summary>
             <div className="px-4 pb-4 pt-2">
               <div className="flex items-start gap-2">
@@ -136,11 +138,15 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
         )}
 
         {/* 拡張 */}
-        {(cert.keyUsage.length > 0 || cert.extKeyUsage.length > 0 || cert.pathLen !== undefined) && (
+        {(cert.keyUsage.length > 0 ||
+          cert.extKeyUsage.length > 0 ||
+          cert.pathLen !== undefined) && (
           <details>
             <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
               <span>拡張</span>
-              <span className="caption text-muted" aria-hidden="true">▾</span>
+              <span className="caption text-muted" aria-hidden="true">
+                ▾
+              </span>
             </summary>
             <div className="px-4 pb-4 pt-2 space-y-2">
               {cert.keyUsage.length > 0 && (
@@ -169,7 +175,9 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
         <details>
           <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
             <span>公開鍵</span>
-            <span className="caption text-muted" aria-hidden="true">▾</span>
+            <span className="caption text-muted" aria-hidden="true">
+              ▾
+            </span>
           </summary>
           <div className="px-4 pb-4 pt-2 space-y-2">
             <CertField label="アルゴリズム" value={cert.publicKey.algorithm} />
@@ -186,7 +194,9 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
         <details>
           <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
             <span>署名</span>
-            <span className="caption text-muted" aria-hidden="true">▾</span>
+            <span className="caption text-muted" aria-hidden="true">
+              ▾
+            </span>
           </summary>
           <div className="px-4 pb-4 pt-2">
             <CertField label="署名アルゴリズム" value={cert.signatureAlgorithm} />
@@ -198,7 +208,9 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
           <details>
             <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
               <span>SCT（証明書透明性）</span>
-              <span className="caption text-muted" aria-hidden="true">▾</span>
+              <span className="caption text-muted" aria-hidden="true">
+                ▾
+              </span>
             </summary>
             <div className="px-4 pb-4 pt-2 space-y-3">
               {cert.sct.map((sct, i) => (
@@ -229,7 +241,9 @@ function CertField({ label, value, mono, copyable, tone }: CertFieldProps) {
   return (
     <div className="flex flex-col gap-0.5">
       <dt className="caption text-muted">{label}</dt>
-      <dd className={`flex items-start gap-2 ${mono ? 'font-mono' : ''} caption ${tone === 'error' ? 'text-error' : 'text-default'} break-all`}>
+      <dd
+        className={`flex items-start gap-2 ${mono ? 'font-mono' : ''} caption ${tone === 'error' ? 'text-error' : 'text-default'} break-all`}
+      >
         <span className="flex-1">{value}</span>
         {copyable && <CopyButton text={value} label="コピー" />}
       </dd>
@@ -388,19 +402,14 @@ export function CertDecoder() {
           label="証明書を貼り付け（PEM / Base64 DER）"
           value={input}
           onChange={setInput}
-          placeholder={
-            '-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----'
-          }
+          placeholder={'-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----'}
           multiline
           rows={6}
           mono
           resize
         />
         <div className="flex items-center gap-3">
-          <FileInputButton
-            accept=".pem,.crt,.cer,.der,.p7b"
-            onChange={handleFileChange}
-          >
+          <FileInputButton accept=".pem,.crt,.cer,.der,.p7b" onChange={handleFileChange}>
             ファイルを選択
           </FileInputButton>
           <span className="caption text-muted">.pem / .crt / .cer / .der / .p7b</span>
@@ -410,8 +419,8 @@ export function CertDecoder() {
       {/* PKCS#12 未対応バナー */}
       {decodeState.status === 'pkcs12' && (
         <NotificationBanner variant="warning" title="PKCS#12（.pfx / .p12）は v1 非対応です">
-          秘密鍵を含む PKCS#12 ファイルのパースは別ツールで対応予定です。PEM / DER /
-          PKCS#7 形式の証明書をご利用ください。
+          秘密鍵を含む PKCS#12 ファイルのパースは別ツールで対応予定です。PEM / DER / PKCS#7
+          形式の証明書をご利用ください。
         </NotificationBanner>
       )}
 

@@ -22,6 +22,7 @@
 ## ファイル構成
 
 新規作成:
+
 - `src/utils/cert/types.ts` — `ParsedCert` / `ChainLink` / `ChainResult` / `DetectResult` 等の型
 - `src/utils/cert/detect.ts` — 入力種別判定（PEM / DER / PKCS#7）
 - `src/utils/cert/parse.ts` — `parseCertificates(input) → ParsedCert[]`
@@ -38,6 +39,7 @@
 - `src/pages/tools/cert-decoder.astro`
 
 修正:
+
 - `package.json` / `package-lock.json` — pkijs / asn1js 追加
 - `src/data/tools.ts` — `toolEntries` にエントリ追加
 - `tests/e2e/visual-regression-pages.ts` — `/tools/cert-decoder` 追加
@@ -48,14 +50,17 @@
 ## Task 1: 依存ライブラリ追加
 
 **Files:**
+
 - Modify: `package.json`, `package-lock.json`
 
 - [ ] **Step 1: 依存を追加（lock 同期込み）**
 
 Run:
+
 ```bash
 npm install pkijs@^3.4.0 asn1js@^3.0.10 --cache "$TMPDIR/npm-cache" --no-audit --no-fund
 ```
+
 Expected: `package.json` の dependencies に `pkijs` / `asn1js` が追加され、`package-lock.json` も更新される。
 
 - [ ] **Step 2: lock 同期を確認**
@@ -80,6 +85,7 @@ git commit -m "build: cert-decoder 用に pkijs / asn1js を追加"
 ## Task 2: 型定義と入力種別判定（detect）
 
 **Files:**
+
 - Create: `src/utils/cert/types.ts`, `src/utils/cert/detect.ts`
 - Test: `src/utils/__tests__/cert-detect.test.ts`
 
@@ -88,6 +94,7 @@ git commit -m "build: cert-decoder 用に pkijs / asn1js を追加"
 - [ ] **Step 1: 型を定義**
 
 `src/utils/cert/types.ts`:
+
 ```ts
 /** 入力から検出した1件分の DER エンコード済み証明書候補 */
 export interface DerCandidate {
@@ -108,6 +115,7 @@ export interface DetectResult {
 - [ ] **Step 2: 失敗するテストを書く**
 
 `src/utils/__tests__/cert-detect.test.ts`:
+
 ```ts
 import { describe, it, expect } from 'vitest';
 import { detectInput } from '@/utils/cert/detect';
@@ -144,6 +152,7 @@ Expected: FAIL（`detectInput` 未定義）
 - [ ] **Step 4: detect を実装**
 
 `src/utils/cert/detect.ts`:
+
 - PEM 抽出: 正規表現 `/-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/g` で全ブロックを走査。`CERTIFICATE` ラベルのみ採用し、Base64 本文を `Uint8Array` にデコード（既存 `@/utils/base64` を利用）。`PKCS7` ラベルは PKCS#7 として後段に渡す
 - `ENCRYPTED PRIVATE KEY` や入力がバイナリ pfx magic の場合は `kind: 'pkcs12', unsupported: 'pkcs12'`
 - PEM ブロックが無くテキストが Base64 のみ → DER とみなしデコードを試みる
@@ -151,6 +160,7 @@ Expected: FAIL（`detectInput` 未定義）
 - CERTIFICATE ブロックも DER も取れなければ `unknown`
 
 実装方針（擬似）:
+
 ```ts
 export function detectInput(input: string | Uint8Array): DetectResult {
   if (typeof input === 'string' && input.trim() === '') return { kind: 'empty', candidates: [] };
@@ -177,6 +187,7 @@ git commit -m "feat: cert-decoder の入力種別判定（detect）を追加"
 ## Task 3: テスト用証明書チェーン生成ヘルパー
 
 **Files:**
+
 - Create: `src/utils/__tests__/cert-fixtures.ts`
 
 実証明書 PEM をハードコードすると有効期限切れ・差し替えで脆くなる。pkijs + Web Crypto で root→intermediate→leaf の自己署名チェーンを **テスト実行時に生成** し、parse / chain の陽性・陰性対照に使う。
@@ -184,6 +195,7 @@ git commit -m "feat: cert-decoder の入力種別判定（detect）を追加"
 - [ ] **Step 1: フィクスチャ生成を実装**
 
 `src/utils/__tests__/cert-fixtures.ts`:
+
 - `makeTestChain()` を実装し、ECDSA P-256 鍵で 3 段のチェーンを生成して各証明書の DER（`Uint8Array`）と PEM を返す
 - root は自己署名、intermediate は root 秘密鍵で署名、leaf は intermediate 秘密鍵で署名
 - leaf に SAN（`example.test`）・BasicConstraints・KeyUsage を付与
@@ -191,6 +203,7 @@ git commit -m "feat: cert-decoder の入力種別判定（detect）を追加"
 - 期限切れ証明書も生成する `makeExpiredCert()`（`notAfter = now-1日`）を用意
 
 シグネチャ:
+
 ```ts
 export interface TestChain {
   rootDer: Uint8Array;
@@ -220,6 +233,7 @@ git commit -m "test: cert-decoder 用のテスト証明書チェーン生成ヘ�
 ## Task 4: 証明書パース（parse）
 
 **Files:**
+
 - Create: `src/utils/cert/parse.ts`
 - Modify: `src/utils/cert/types.ts`
 - Test: `src/utils/__tests__/cert-parse.test.ts`
@@ -227,6 +241,7 @@ git commit -m "test: cert-decoder 用のテスト証明書チェーン生成ヘ�
 - [ ] **Step 1: ParsedCert 型を追加**
 
 `src/utils/cert/types.ts` に追記:
+
 ```ts
 export interface CertName {
   /** RFC4514 風の文字列（例: "CN=example.test, O=Test"） */
@@ -281,6 +296,7 @@ export interface ParseResult {
 - [ ] **Step 2: 失敗するテストを書く**
 
 `src/utils/__tests__/cert-parse.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeAll } from 'vitest';
 import { parseCertificates } from '@/utils/cert/parse';
@@ -333,6 +349,7 @@ Expected: FAIL（`parseCertificates` 未定義）
 - [ ] **Step 4: parse を実装**
 
 `src/utils/cert/parse.ts`:
+
 - `detectInput` で DER 候補を得る。`unsupported === 'pkcs12'` なら `{ certs: [], unsupported: 'pkcs12', topLevelError: 'PKCS#12 は未対応です' }`
 - DER 候補が PKCS#7 由来の場合は pkijs `ContentInfo` → `SignedData` から `certificates` を展開
 - 各 DER を pkijs `Certificate` でパースし `ParsedCert` に正規化。1件の throw を catch して `error` 入り ParsedCert を push（他は継続）
@@ -365,6 +382,7 @@ git commit -m "feat: cert-decoder の証明書パース（parse）を追加"
 ## Task 5: SCT デコード（sct）
 
 **Files:**
+
 - Create: `src/utils/cert/sct.ts`
 - Modify: `src/utils/cert/parse.ts`（SCT 結線）
 - Test: `src/utils/__tests__/cert-sct.test.ts`
@@ -374,6 +392,7 @@ SCT 拡張の中身は ASN.1 OCTET STRING の中に TLS シリアライズの `S
 - [ ] **Step 1: 失敗するテストを書く**
 
 `src/utils/__tests__/cert-sct.test.ts`:
+
 ```ts
 import { describe, it, expect } from 'vitest';
 import { decodeSct } from '@/utils/cert/sct';
@@ -414,6 +433,7 @@ Expected: FAIL
 - [ ] **Step 3: decodeSct を実装**
 
 `src/utils/cert/sct.ts`:
+
 - 入力 octet string から outer 2バイト長を読み、各 SCT エントリ（2バイト長 prefix）を切り出す
 - 各エントリで version(1) / logId(32, hex) / timestamp(8, ms, Number 化) を読む。残り（extensions/signature）はスキップ
 - 範囲外アクセス・長さ不整合は try/catch でまとめて `[]` を返す（best-effort）
@@ -437,6 +457,7 @@ git commit -m "feat: cert-decoder の SCT 拡張デコードを追加"
 ## Task 6: チェーン並べ替え + 署名検証（chain）— test-gates 必須
 
 **Files:**
+
 - Create: `src/utils/cert/chain.ts`, `src/utils/cert/index.ts`
 - Modify: `src/utils/cert/types.ts`
 - Test: `src/utils/__tests__/cert-chain.test.ts`
@@ -450,6 +471,7 @@ git commit -m "feat: cert-decoder の SCT 拡張デコードを追加"
 - [ ] **Step 1: 型を追加**
 
 `src/utils/cert/types.ts` に追記:
+
 ```ts
 export interface ChainLink {
   subjectIndex: number; // ParsedCert 配列内の index
@@ -467,6 +489,7 @@ export interface ChainResult {
 - [ ] **Step 2: 失敗するテスト（陽性＋陰性対照）を書く**
 
 `src/utils/__tests__/cert-chain.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeAll } from 'vitest';
 import { parseCertificates } from '@/utils/cert/parse';
@@ -531,7 +554,9 @@ describe('buildChain', () => {
 
 // テスト内ヘルパー: DER → PEM
 function derToPem(der: Uint8Array): string {
-  const b64 = Buffer.from(der).toString('base64').replace(/(.{64})/g, '$1\n');
+  const b64 = Buffer.from(der)
+    .toString('base64')
+    .replace(/(.{64})/g, '$1\n');
   return `-----BEGIN CERTIFICATE-----\n${b64}\n-----END CERTIFICATE-----`;
 }
 ```
@@ -544,6 +569,7 @@ Expected: FAIL（`buildChain` 未定義）
 - [ ] **Step 4: buildChain を実装**
 
 `src/utils/cert/chain.ts`:
+
 - 各証明書の subject DN / issuer DN（正規化文字列）で親子関係を構築。`issuer == subject` の親を持つものを親候補に
 - 並べ替え: root（自己署名 or 親が集合内に無い）を先頭に、子へ辿って `order` を作る。閉路や複数候補は素直に best-effort
 - 署名検証: pkijs `Certificate.verify(issuerCert)`（内部で Web Crypto）を用いる。親が集合内に無ければ `signatureValid = null`、AKI/SKI も突き合わせて親を特定
@@ -551,6 +577,7 @@ Expected: FAIL（`buildChain` 未定義）
 - 検証で throw（未対応アルゴ等）したら `signatureValid = null`
 
 `src/utils/cert/index.ts`:
+
 ```ts
 export * from './types';
 export { detectInput } from './detect';
@@ -581,6 +608,7 @@ git commit -m "feat: cert-decoder のチェーン並べ替えと署名検証を�
 ## Task 7: React コンポーネント（CertDecoder.tsx）
 
 **Files:**
+
 - Create: `src/components/tools/CertDecoder.tsx`
 - Test: `src/components/tools/__tests__/CertDecoder.test.tsx`
 
@@ -589,6 +617,7 @@ git commit -m "feat: cert-decoder のチェーン並べ替えと署名検証を�
 - [ ] **Step 1: 失敗するテストを書く**
 
 `src/components/tools/__tests__/CertDecoder.test.tsx`:
+
 ```tsx
 import { describe, it, expect, beforeAll } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -632,6 +661,7 @@ Expected: FAIL（コンポーネント未定義）
 - [ ] **Step 3: コンポーネントを実装**
 
 `src/components/tools/CertDecoder.tsx`:
+
 - `InputField`（textarea）でテキスト貼り付け + `FileInputButton`（`accept=".pem,.crt,.cer,.der,.p7b"`）でファイル読み込み（バイナリは `arrayBuffer()`、テキストは `text()`）
 - 入力をデバウンス（150ms 程度、`useEffect` + `setTimeout`）→ `parseCertificates` → `buildChain`
 - 結果: チェーンステータスバナー（`NotificationBanner` / `StatusBadge`：並び順・各リンク ✓/✗・期限切れ警告）+ 証明書カード列。各カードは折りたたみ `<details>`/`Section` で 基本情報 / SAN / 拡張 / 公開鍵 / 署名 / SCT を表示
@@ -663,12 +693,14 @@ git commit -m "feat: cert-decoder の UI コンポーネントを追加"
 ## Task 8: ページ・ツール登録・VRT 登録
 
 **Files:**
+
 - Create: `src/pages/tools/cert-decoder.astro`
 - Modify: `src/data/tools.ts`, `tests/e2e/visual-regression-pages.ts`
 
 - [ ] **Step 1: tools.ts にエントリ追加**
 
 `src/data/tools.ts` の `toolEntries` 末尾に追加:
+
 ```ts
   {
     slug: 'cert-decoder',
@@ -687,6 +719,7 @@ git commit -m "feat: cert-decoder の UI コンポーネントを追加"
 - [ ] **Step 3: VRT に登録**
 
 `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列末尾（`/tools/dsn-builder` の後）に追加:
+
 ```ts
   '/tools/cert-decoder',
 ```
@@ -713,6 +746,7 @@ git commit -m "feat: cert-decoder のページとツール登録・VRT 登録を
 ## Task 9: ドキュメント更新と分離 issue
 
 **Files:**
+
 - Modify: `README.md`, `SPEC.md`, `docs/decisions.md`, `docs/tools.md`, `docs/tool-candidates.md`
 
 - [ ] **Step 1: README.md のツール一覧に追加**
@@ -721,7 +755,7 @@ git commit -m "feat: cert-decoder のページとツール登録・VRT 登録を
 
 - [ ] **Step 2: SPEC.md を更新**
 
-2.3（ライブラリ: pkijs / asn1js 追加と用途）、2.4（`src/utils/cert/` 構成）、4・5 章（ツール一覧/ルーティング）、9 章チェックリストに反映。
+  2.3（ライブラリ: pkijs / asn1js 追加と用途）、2.4（`src/utils/cert/` 構成）、4・5 章（ツール一覧/ルーティング）、9 章チェックリストに反映。
 
 - [ ] **Step 3: docs/decisions.md に決定記録を追加**
 
@@ -755,9 +789,11 @@ git commit -m "docs: cert-decoder の追加に伴うドキュメントを更新"
 - [ ] **Step 1: ユニット + 型 + ビルド**
 
 Run:
+
 ```bash
 npm run test && node_modules/.bin/astro check && npm run build
 ```
+
 Expected: 全 PASS / エラーなし
 
 - [ ] **Step 2: E2E（preview 経由）**

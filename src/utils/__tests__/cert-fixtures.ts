@@ -32,11 +32,10 @@ function derToPem(der: Uint8Array): string {
 
 /** ECDSA P-256 鍵ペアを生成する */
 async function generateEcKeyPair(): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey(
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    true,
-    ['sign', 'verify'],
-  );
+  return crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
+    'sign',
+    'verify',
+  ]);
 }
 
 /**
@@ -86,7 +85,7 @@ async function buildCert(options: {
     new AttributeTypeAndValue({
       type: '2.5.4.3', // CN
       value: new asn1js.Utf8String({ value: subjectCN }),
-    }),
+    })
   );
 
   // Issuer
@@ -94,7 +93,7 @@ async function buildCert(options: {
     new AttributeTypeAndValue({
       type: '2.5.4.3', // CN
       value: new asn1js.Utf8String({ value: issuerCN }),
-    }),
+    })
   );
 
   // 有効期限
@@ -115,7 +114,7 @@ async function buildCert(options: {
       critical: true,
       extnValue: basicConstr.toSchema().toBER(false),
       parsedValue: basicConstr,
-    }),
+    })
   );
 
   // 追加の拡張（SAN 等）
@@ -250,7 +249,7 @@ function buildSanExtension(dnsNames: string[]): Extension {
         new GeneralName({
           type: 2, // dNSName
           value: name,
-        }),
+        })
     ),
   });
 

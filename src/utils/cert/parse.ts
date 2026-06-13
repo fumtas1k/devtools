@@ -121,9 +121,15 @@ function parseDn(typesAndValues: AttributeTypeAndValue[]): CertName {
     const shortName = OID_TO_SHORT[atv.type] ?? atv.type;
     let val = '';
     // asn1js の値オブジェクトから文字列を取り出す
-    if (atv.value && typeof (atv.value as { valueBlock?: { value?: unknown } }).valueBlock?.value === 'string') {
+    if (
+      atv.value &&
+      typeof (atv.value as { valueBlock?: { value?: unknown } }).valueBlock?.value === 'string'
+    ) {
       val = (atv.value as { valueBlock: { value: string } }).valueBlock.value;
-    } else if (atv.value && typeof (atv.value as unknown as { value?: unknown }).value === 'string') {
+    } else if (
+      atv.value &&
+      typeof (atv.value as unknown as { value?: unknown }).value === 'string'
+    ) {
       val = (atv.value as unknown as { value: string }).value;
     } else {
       val = String(atv.value ?? '');
@@ -170,9 +176,11 @@ function parsePublicKeyInfo(cert: Certificate): PublicKeyInfo {
     // algorithmParams は asn1js ObjectIdentifier。OID 文字列は valueBlock.toString() で取得する。
     // valueBlock.value は SID ブロックの配列なので直接文字列として使わない。
     try {
-      const params = cert.subjectPublicKeyInfo.algorithm.algorithmParams as {
-        valueBlock?: { toString?: () => string };
-      } | undefined;
+      const params = cert.subjectPublicKeyInfo.algorithm.algorithmParams as
+        | {
+            valueBlock?: { toString?: () => string };
+          }
+        | undefined;
       if (params?.valueBlock?.toString) {
         const curveOid = params.valueBlock.toString();
         info.namedCurve = EC_NAMED_CURVE_OID[curveOid] ?? curveOid;
@@ -213,7 +221,7 @@ function parseSan(cert: Certificate): string[] {
         if (gn.type === 7 && gn.value instanceof asn1js.OctetString) {
           // IP アドレス
           const ipBytes = new Uint8Array(
-            (gn.value as unknown as { valueBlock: { valueHex: ArrayBuffer } }).valueBlock.valueHex,
+            (gn.value as unknown as { valueBlock: { valueHex: ArrayBuffer } }).valueBlock.valueHex
           );
           val = Array.from(ipBytes).join('.');
         } else if (typeof gn.value === 'string') {
@@ -240,7 +248,8 @@ function parseKeyUsage(cert: Certificate): string[] {
     const kuDer = getExtensionValueHex(kuExt);
     const asn1 = asn1js.fromBER(kuDer);
     const bs = asn1.result as asn1js.BitString;
-    const view = bs.valueBlock.valueHexView ?? new Uint8Array(bs.valueBlock.valueHex ?? new ArrayBuffer(0));
+    const view =
+      bs.valueBlock.valueHexView ?? new Uint8Array(bs.valueBlock.valueHex ?? new ArrayBuffer(0));
     const usages: string[] = [];
     // ビットは MSB first（RFC 5280）
     for (let byteIdx = 0; byteIdx < view.length; byteIdx++) {
@@ -397,11 +406,14 @@ async function parseSingleDer(der: Uint8Array): Promise<ParsedCert> {
       const inner = asn1js.fromBER(sctDer);
       if (inner.offset !== -1 && inner.result instanceof asn1js.OctetString) {
         const octView =
-          (inner.result as unknown as { valueBlock: { valueHexView?: Uint8Array; valueHex?: ArrayBuffer } }).valueBlock
-            .valueHexView ??
+          (
+            inner.result as unknown as {
+              valueBlock: { valueHexView?: Uint8Array; valueHex?: ArrayBuffer };
+            }
+          ).valueBlock.valueHexView ??
           new Uint8Array(
-            (inner.result as unknown as { valueBlock: { valueHex?: ArrayBuffer } }).valueBlock.valueHex ??
-              new ArrayBuffer(0),
+            (inner.result as unknown as { valueBlock: { valueHex?: ArrayBuffer } }).valueBlock
+              .valueHex ?? new ArrayBuffer(0)
           );
         sct.push(...decodeSct(octView));
       }
@@ -483,7 +495,10 @@ export async function parseCertificates(input: string | Uint8Array): Promise<Par
   }
 
   if (detected.kind === 'unknown') {
-    return { certs: [], topLevelError: '対応している証明書形式（PEM/DER/PKCS#7）が見つかりませんでした' };
+    return {
+      certs: [],
+      topLevelError: '対応している証明書形式（PEM/DER/PKCS#7）が見つかりませんでした',
+    };
   }
 
   // DER 候補を収集

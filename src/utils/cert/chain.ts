@@ -41,7 +41,7 @@ function derToCertificate(der: Uint8Array): Certificate {
  */
 async function verifySignature(
   subjectDer: Uint8Array,
-  issuerDer: Uint8Array,
+  issuerDer: Uint8Array
 ): Promise<boolean | null> {
   try {
     const subject = derToCertificate(subjectDer);
@@ -212,7 +212,7 @@ export async function buildChain(certs: ParsedCert[]): Promise<ChainResult> {
         signatureValid,
         expired,
       };
-    }),
+    })
   );
 
   return { order, links };

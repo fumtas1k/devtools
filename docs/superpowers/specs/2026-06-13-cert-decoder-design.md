@@ -26,13 +26,13 @@
 
 ## 3. ツール定義・配置
 
-| 項目 | 値 |
-| :--- | :--- |
-| slug | `cert-decoder` |
-| name | `SSL/TLS証明書デコーダ` |
+| 項目        | 値                                                                                                                                                |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| slug        | `cert-decoder`                                                                                                                                    |
+| name        | `SSL/TLS証明書デコーダ`                                                                                                                           |
 | description | `PEM/DER/PKCS#7 の証明書を解析し、Subject/SAN/有効期限/署名アルゴリズム/SCT を表示。チェーンの署名検証にも対応。データはブラウザ外に送信しません` |
-| category | `encode`（エンコード・デコード。既存 `JwtDecoder` と同じ「解析・閲覧専用」の位置づけ） |
-| yomi | `えすえすえるてぃーえるえすしょうめいしょでこーだ` |
+| category    | `encode`（エンコード・デコード。既存 `JwtDecoder` と同じ「解析・閲覧専用」の位置づけ）                                                            |
+| yomi        | `えすえすえるてぃーえるえすしょうめいしょでこーだ`                                                                                                |
 
 - `src/components/tools/CertDecoder.tsx`
 - `src/pages/tools/cert-decoder.astro`（`client:load` でマウント）
