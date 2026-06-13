@@ -485,6 +485,8 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 `src/utils/dataTransferSnapshot.ts` と `src/utils/sanitizeHtml.ts` を組み合わせて実装。
 
 - **DataTransfer 取得**: `paste` イベント（`document` 全体で捕捉）と `drop` イベントの `DataTransfer` を受け取り、`DataTransferItemList` を同期パスで列挙する。`getAsString` の呼び出しはイベントハンドラの同期スコープ内で行う必要があり（ハンドラ終了後は `DataTransferItemList` が無効化される）、Promise で非同期解決する設計を採っている。
+- **受付領域は contenteditable（モバイル対応）**: モバイルの OS ペーストメニューは編集可能要素の長押しでしか出ないため、受付領域を `contenteditable` 化している（issue #636）。`inputMode="none"` でフォーカス時のソフトキーボード表示を抑制する。paste 自体は従来どおり `document` レベルの listener が捕捉するため、ページ内のどこでも Ctrl+V / Cmd+V で貼り付けできる。
+- **contenteditable の編集阻止（二段ガード）**: ① `beforeinput` の `preventDefault`（React の `onBeforeInput` は native beforeinput ではなく textInput / keypress 等から合成されるため、native と React 合成の両系統に登録して全編集経路を阻止）。② IME の `insertCompositionText` は W3C Input Events 仕様で non-cancelable のため beforeinput では阻止できず、貫通した編集は `input` イベント時にマウント時に保存した deep clone から案内文言を復元する（実 IME は既存テキストノード内部を直接変異させるため同一ノード参照の保存では復元が no-op になる。復元のたびに再クローンして装着し、master の clone 汚染も防止する）。
 - **フレーバー分類**: `DataTransferItem.kind === 'string'` のものを `StringFlavor`（type・content・byteSize）、`kind === 'file'` のものを `FileFlavor`（type・name・size・lastModified・File オブジェクト）として分離して収集する。
 - **HTML サニタイズ + sandbox**: `text/html` フレーバーのプレビュー表示時は、`sanitizeHtml`（許可リスト方式のサニタイザ。`script`・`iframe`・`on*` イベント属性・`javascript:` URL・`style`・remote 画像 URL（img の src は data:image の raster 形式 png/jpeg/gif/webp/avif/bmp のみ許可。svg+xml は script を内包し得るため除外）を除去。a の href は http/https/mailto のみ許可）でスクリプト・危険属性を除去したうえで `sandbox=""` 属性付き `<iframe>`（スクリプト実行・フォーム送信・同一オリジン不許可）に `srcdoc` として渡す二重防御を実施する。
 - **画像プレビュー**: `image/*` 型のファイルフレーバーは `URL.createObjectURL` でブラウザ内 blob URL を生成して `<img>` に渡す。コンポーネントアンマウント時に `URL.revokeObjectURL` でメモリを解放する。
@@ -502,3 +504,4 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **サニタイズで除去された要素・属性はプレビューに現れない**: 除去内容を確認したい場合は「生ソース」表示に切り替えれば原文をそのまま確認できる。
 - **style 属性付き HTML 貼り付け時の CSP 違反ログ**: style 属性を含む HTML を貼り付けると、Chromium のクリップボード内部処理（`getAsString` の HTML サニタイズ）が inline style を評価するため、本番 CSP 環境（`style-src` strict）のコンソールに style-src 違反ログが数件記録されることがある。アプリの実装・表示には影響しない（E2E `tests/e2e/clipboard-inspector.spec.ts` の本番 CSP テスト参照）。
 - **プレビューでは remote 画像は表示されない**: http/https の img src は外部リクエスト防止（tracking pixel 対策）と CSP 違反ノイズ回避のためサニタイズで src を除去する（alt テキストは保持）。img の src として表示されるのは data:image の raster 形式（png/jpeg/gif/webp/avif/bmp）のみ。
+- **ハイドレーション完了前は貼り付けを捕捉できない**: `paste` listener は React コンポーネントのマウント時に `document` へ登録されるため、ページ表示直後の数百 ms（ハイドレーション完了前）の貼り付けは捕捉されない。
