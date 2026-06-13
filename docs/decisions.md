@@ -4112,7 +4112,7 @@ decisions [106] の SessionStart hook 自動 install を導入した後も、Cla
 - ✅ web / CLI / Desktop すべてのセッションでスキルが即座に利用可能（プラグイン install 状態に依存しない）。
 - ✅ lockfile + hash により supply chain 検証（upstream 突き合わせ・ローカル改変検知）が可能。
 - ⚠️ upstream 更新への追従は手動（`npx skills update`）。SKILL.md はエージェントが実行する指示書のため、**bump 時は hash 差分だけでなく本文 diff のレビューを必須とする**。
-- ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design / context7 はプラグイン運用を継続（[106] の hook は引き続き有効）。
+- ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design は後日同方式で vendor（[113]）、context7 は MCP server 同梱のためプラグイン運用を継続（[106] の hook は引き続き有効）。
 
 ## [109] clipboard-inspector: DOMPurify 不採用＝自作許可リストサニタイザ＋sandbox iframe 二重防御
 
@@ -4164,3 +4164,107 @@ DSN/接続文字列ビルダは複数スキームの URI を分解・再構成�
 - ✅ mongodb 複数ホスト・IPv6 ブラケット・SRV 制約等すべての方言に対応。
 - ✅ 陽性対照テストにより「不正入力が必ずエラーになる」ことを CI で継続検証。
 - ⚠️ 自前パーサのため URI 仕様（RFC 3986）の edge case への対応は手動メンテナンスが必要。対応スキームを 9 種に限定することで許容リスクと判断。
+
+## [111] cert-decoder: 証明書パースに `pkijs` + `asn1js` を採用＋スコープを「読む側」に限定
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+SSL/TLS証明書デコーダ（候補 S-2）は社内 CA・本番証明書を外部送信せずに解析する需要に応えるツール。X.509 / PKCS#7 のパースと署名検証をブラウザ内で行う必要があり、ライブラリ選定と初版スコープが論点となった。
+
+### 決断
+
+- **ライブラリ**: `pkijs` + `asn1js` を採用する。
+  - **理由**: 署名検証を Web Crypto（`crypto.subtle`）経由で実行でき、既存の JWT デコーダ・QRチケットと同じ暗号基盤に揃う。必要クラス（`Certificate` / `ContentInfo` / `SignedData`）のみ import でき tree-shaking に向く。拡張領域（SCT 等）の生バイトを `asn1js` で辿れる。
+  - **却下**: `node-forge` は高レベル API で実装は速いが独自 JS 暗号実装で Web Crypto と二重になり、バンドルも分割が粗い。
+- **スコープ**: 初版は「読む側」（PEM/DER/PKCS#7 の解析・表示＋チェーン署名検証）に限定する。
+  - **PKCS#12（.pfx/.p12）対応**・**鍵フォーマット変換（PEM/DER/JWK）** は別 issue / 別ツールへ分離。秘密鍵・パスワード処理は責務が異なり、鍵変換は B2-7（csr-generator）等と共通基盤化する余地があるため。（※ PKCS#12 は #644 で対応済み、PBES2/AES 限定。詳細は decision [114]）
+- **失効確認（CRL/OCSP）非対応**: ブラウザ単体・外部送信不可の方針と矛盾する（OCSP/CRL は外部問い合わせが必須）ため初版から除外。署名検証はチェーン内隣接ペアに限定し、信頼ストア照合も行わない。
+
+### 結果・トレードオフ
+
+- ✅ 既存の Web Crypto 基盤に揃い、署名検証・フィンガープリント計算をブラウザ内で完結。
+- ✅ チェーン署名検証は改ざん・issuer 不一致・期限切れを検出する陽性＋陰性対照テストを同梱（test-gates 準拠）。
+- ⚠️ `pkijs` / `asn1js` の API は ASN.1 構造を直接辿るため込み入っており、拡張パースは個別実装が必要。
+- ⚠️ SCT は表示のみ（署名の暗号検証なし）、失効確認なしのため「証明書が現在も有効か」の最終判断には別手段が必要。
+
+## [112] key-converter: Web Crypto 主体 + asn1js OID 判定、pkijs 不採用
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+cert-decoder（issue #643）で「鍵フォーマット変換（PEM/DER/JWK）は別ツールへ分離」とした方針（decision [111]）に基づき、issue #645 として独立実装する。鍵種別（RSA / ECDSA）・鍵形式（SPKI / PKCS#8）の判定ライブラリ選定と、v1 スコープが論点となった。
+
+### 決断
+
+- **変換エンジン**: `crypto.subtle`（Web Crypto API）を主体とし、OID 判定のみ既存依存の `asn1js` を使用する。
+  - **理由**: 変換そのものは `importKey` / `exportKey` のみで完結する。pkijs の高機能（証明書パース・署名検証）は不要でオーバーキル。`asn1js` は cert-decoder で既に依存しており、追加依存なしで SEQUENCE/OID 解析ができる。
+  - **pkijs 不採用**: pkijs の `PrivateKeyInfo` / `PublicKeyInfo` クラスを使う案も検討したが、EC 曲線 OID の取得パスが不明瞭で結局 `asn1js` レイヤーに降りる必要がある。直接 `asn1js` を使う方がシンプル。
+  - **node-forge 不採用**: 独自 JS 暗号実装で Web Crypto と二重管理になる。バンドルサイズも大きい（decision [111] と同じ理由）。
+- **v1 スコープの限定**:
+  - **対応**: RSA / ECDSA（P-256/P-384/P-521）の公開鍵（SPKI）・秘密鍵（PKCS#8）、入力形式 PEM / DER / JWK。
+  - **非対応**: PKCS#1（RSA PUBLIC KEY / RSA PRIVATE KEY）・SEC1（EC PRIVATE KEY）レガシー PEM、暗号化秘密鍵（ENCRYPTED PRIVATE KEY）、Ed25519/Ed448（kty: OKP）、秘密鍵からの公開鍵抽出、鍵ペア生成（csr-generator 予定）。
+  - **理由**: PKCS#1/SEC1 は `openssl pkcs8 -topk8` で PKCS#8 に変換できるため、v1 では変換ガイドの表示で対応。暗号化秘密鍵はパスフレーズ入力 UI が別途必要で責務が異なる。Ed25519 は Web Crypto の `subtle.importKey` が対応するが、JWK の `kty: OKP` は RSA/EC と異なるパスを要し、利用頻度比でコスト高と判断。
+- **test-gates 準拠**: `detectKeyInput` は入力バリデーター（不正入力を検知して `error` を返す機構）を含むため、陽性対照テスト（不正入力が throw せず `error` を返すこと）を陰性対照（round-trip 正常系）と別 describe に分離して同梱。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし（`asn1js` は cert-decoder で既依存）。
+- ✅ 変換は Web Crypto のみで完結し、外部送信コードが混入する余地がない。
+- ✅ 陽性対照テストにより「不正入力が必ず error になる」ことを CI で継続検証（test-gates 準拠）。
+- ⚠️ `asn1js` の valueBlock API は未型付けで直接辿るため脆弱性がある。Web Crypto の `importKey` 失敗で catch → error 返却でカバー。
+- ⚠️ PKCS#1/SEC1 のレガシー PEM を直接変換したい場合は別途 openssl が必要（v1 の既知制限として UI で案内）。
+
+## [113] 2026-06-13 — frontend-design もプラグイン運用から `npx skills add` vendor 方式へ移行
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+decisions [108] で superpowers を vendor 化したが、`frontend-design@claude-plugins-official` はプラグイン運用のまま残していた（[108] 結果欄に「frontend-design / context7 はプラグイン運用を継続」と記載）。しかし superpowers と同じく Claude Code on the web でプラグイン install が silent skip される制約（[106] / upstream #23737）の影響を受け、web セッションで frontend-design スキルが使えない。frontend-design は単一の `SKILL.md` のみで構成され MCP server を同梱しないため、superpowers と同方式で vendor 可能。
+
+### 決断
+
+`npx skills add anthropics/claude-plugins-official -s frontend-design` で `.agents/skills/frontend-design/` にリポジトリ内 vendor し、`.claude/settings.json` の `enabledPlugins` から `frontend-design@claude-plugins-official` を削除した。
+
+1. **vendor + lockfile 管理**: [108] と同じく `skills-lock.json` で出典（`anthropics/claude-plugins-official` / `plugins/frontend-design/skills/frontend-design/SKILL.md`）と computedHash を管理。
+2. **Apache-2.0 ライセンス対応**: upstream（anthropics/claude-plugins-official）の LICENSE が Apache-2.0 のため、`LICENSE-frontend-design` を同梱し `.agents/skills/README.md` の対応表に追記。superpowers / grill-me（MIT）とライセンス系統が異なる点に留意。
+3. **context7 は対象外**: context7 は MCP server を同梱するプラグインであり skill 単体に vendor できないため、プラグイン運用＋[106] の SessionStart hook 自動 install を継続（marketplace 宣言 `extraKnownMarketplaces` も残す）。
+
+### 結果・トレードオフ
+
+- ✅ web / CLI / Desktop すべてのセッションで frontend-design スキルが即座に利用可能（プラグイン install 状態に依存しない）。
+- ✅ enabledPlugins が context7 のみになり、web の plugin silent-skip 制約の影響を受ける対象が MCP 型 1 つに縮小。
+- ⚠️ `npx skills add -a '*'` は多数の未使用エージェント dir（`.roo` / `.windsurf` 等）を生成するため、`.agents/skills/` 以外は手動削除した。次回 vendor 時も同様の後始末が必要。
+- ⚠️ upstream 更新への追従は手動（`npx skills update`）。bump 時は hash 差分だけでなく SKILL.md 本文 diff のレビューを必須とする（[108] と同じ運用）。
+
+## [114] cert-decoder: PKCS#12 対応 — PBES2/AES 限定・秘密鍵トグル開示・node-forge 不採用継続
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+cert-decoder v1（decision [111]）では PKCS#12 をスコープ外としていたが、`.pfx/.p12` ファイルから証明書チェーンを確認したい需要が確認され、#644 で対応する。秘密鍵を含むため、UI・セキュリティ・暗号方式制限の設計判断が必要となった。
+
+### 決断
+
+- **暗号方式**: PBES2（PBKDF2 + AES-CBC）のみ対応する。
+  - Web Crypto API がブラウザネイティブで PBES2 を復号できる。
+  - レガシー RC2-40/3DES（OpenSSL 1.x 既定）は Web Crypto 非対応のため復号不可とし、`unsupported-encryption` エラーで案内する（`openssl pkcs12 -keypbe AES-256-CBC -certpbe AES-256-CBC ...` での再エクスポートを促す）。
+- **秘密鍵の扱い**:
+  - アルゴリズム・鍵長・曲線名などのメタ情報は常時表示。
+  - PKCS#8 PEM は `<details>` トグルで開示（誤操作・画面共有時の漏洩リスクを軽減）。
+  - ダウンロードボタンを提供し、コピー・保存は明示的な操作のみ。
+  - browser-only バナー（NotificationBanner）で「外部送信なし」を明示。
+- **node-forge 不採用継続**: decision [111] と同じ理由（独自 JS 暗号、バンドル肥大）。pkijs の既存依存のみで PKCS#12 パースが完結する。
+- **入力方式**: ファイル選択（.p12/.pfx）＋ Base64 貼り付け（`looksLikePkcs12` で自動検出）の両方をサポート。
+- **test-gates 準拠**: `parsePkcs12` は不正入力検知機構（誤パスワード・非 p12・レガシー暗号）を含むため、陽性対照テスト 3 件を陰性対照（正常系）と別 describe に分離して同梱。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし（pkijs / asn1js は cert-decoder で既依存）。
+- ✅ 全処理ブラウザ内完結。秘密鍵が外部送信される経路がない。
+- ✅ 陽性対照テストにより誤パスワード・非 p12・レガシー暗号の検知能力を CI で継続検証。
+- ⚠️ RC2/3DES 保護の既存 .pfx は再エクスポートが必要（既知制限として UI で案内済み）。

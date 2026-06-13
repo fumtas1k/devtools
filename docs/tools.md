@@ -9,9 +9,11 @@
 - [生成](#生成)
 - [コード・バーコード](#コードバーコード)
 - [エンコード・デコード](#エンコードデコード)
+  - [SSL/TLS証明書デコーダ](#ssltls証明書デコーダ)
 - [変換・解析](#変換解析)
   - [CIDR/サブネット計算機](#cidrサブネット計算機)
   - [DSN/接続文字列ビルダ](#dsn接続文字列ビルダ)
+  - [鍵フォーマット変換](#鍵フォーマット変換)
 
 ## 生成
 
@@ -272,6 +274,35 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - デコード（Header/Payload の表示）は署名検証なしでも行える。**改竄の検出には署名検証が必要**で、検証せずに Payload を信用してはならない。
 - RS\* / ES\* の検証には対応する公開鍵 PEM（`-----BEGIN PUBLIC KEY-----`）が必要。
 
+### SSL/TLS証明書デコーダ
+
+#### 仕組み・アルゴリズム
+
+- 入力種別を `detect.ts` で判定する。PEM は `-----BEGIN CERTIFICATE-----` / `-----BEGIN PKCS7-----` ブロックを正規表現で全抽出し Base64 を DER 化、生 DER（先頭 `0x30`）・Base64 単体も受け付ける。`PKCS12` / `PFX` / 証明書を含まない `ENCRYPTED PRIVATE KEY` は PKCS#12 として識別し、パスワード入力 UI へ誘導する
+- 各 DER を `asn1js.fromBER` でデコードし `pkijs` の `Certificate` に変換、`parse.ts` で表示用フィールドへ正規化する。DN は OID を短縮名（CN/O/OU/C/L/ST 等）へマップ、SAN・KeyUsage・ExtKeyUsage・BasicConstraints・SKI/AKI は拡張 OID から取得する。フィンガープリントは `crypto.subtle.digest('SHA-256', der)`
+- PKCS#7 は `ContentInfo` → `SignedData` から証明書を展開する
+- SCT 拡張（OID `1.3.6.1.4.1.11129.2.4.2`）は ASN.1 ではなく RFC 6962 の TLS シリアライズ構造のため、OCTET STRING 内のバイト列を `sct.ts` で手動デコードする（version / logId / timestamp、best-effort）
+- チェーンは `chain.ts` が subject/issuer DN（必要に応じて AKI/SKI）で親子関係を構築し issuer→subject 順に並べ替える。各リンクの署名は DER から再構築した `Certificate.verify`（Web Crypto）で検証し、改ざん・issuer 不一致を検出する。有効期限は現在時刻と NotBefore/NotAfter の比較で判定する
+- 1 枚のパース失敗は `error` 付きで保持し、他証明書の表示を継続する
+- **PKCS#12（.pfx/.p12）**: pkijs の `PFX → AuthenticatedSafe → SafeContents → SafeBag` を辿って証明書 DER と PKCS#8 秘密鍵を抽出する（`src/utils/cert/pkcs12.ts`）
+  - **パスワード**: UI で入力 → `TextEncoder().encode(password).buffer`（UTF-8 ArrayBuffer）を pkijs に渡す。pkijs が内部で BMPString 変換する（`makePKCS12B2Key`）
+  - **証明書抽出**: `CertBag`（OID `1.2.840.113549.1.12.10.1.3`）から DER を取り出し、既存の `parseDerCertificates → buildChain` パイプラインに流す
+  - **秘密鍵抽出**: `PKCS8ShroudedKeyBag`（OID `1.2.840.113549.1.12.10.1.2`）を `parseInternalValues` で復号し `PrivateKeyInfo` から PKCS#8 PEM を生成。アルゴリズム・鍵長・曲線名は常時表示、PEM 本体は `<details>` トグル開示
+  - **暗号方式制限**: PBES2（PBKDF2 + AES-CBC）のみ復号可能。レガシー RC2-40/3DES は Web Crypto 非対応のため `unsupported-encryption` エラーで案内する
+  - **誤パスワード検出**: `pfx.parseInternalValues({ checkIntegrity: true })` が "Integrity for the PKCS#12 data is broken!" を throw → `wrong-password` として UI に表示
+
+#### 準拠仕様・RFC
+
+- X.509（[RFC 5280](https://www.rfc-editor.org/rfc/rfc5280)）/ PKCS#7・CMS（[RFC 5652](https://www.rfc-editor.org/rfc/rfc5652)）/ Certificate Transparency SCT（[RFC 6962](https://www.rfc-editor.org/rfc/rfc6962)）/ PKCS#12（[RFC 7292](https://www.rfc-editor.org/rfc/rfc7292)）
+
+#### 制限・エッジケース
+
+- PKCS#12 は PBES2/AES のみ対応。レガシー暗号（RC2-40/3DES）保護の .pfx は `openssl pkcs12 -keypbe AES-256-CBC -certpbe AES-256-CBC` で再エクスポートが必要
+- 鍵フォーマット変換（PEM/DER/JWK）は key-converter ツールで対応
+- 失効確認（CRL / OCSP）は行わない。署名検証はチェーン内の隣接ペアに対してのみで、信頼ストアとの照合（ルート CA の信頼性確認）は行わない
+- SCT はタイムスタンプ・ログ ID の表示のみで、署名の暗号検証はしない（best-effort）
+- 全処理はブラウザ内で完結し、入力（社内 CA・本番証明書・秘密鍵を含む）は外部に送信しない
+
 ## 変換・解析
 
 ### JSON / XML 変換
@@ -530,3 +561,30 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - クエリパラメータの意味的妥当性（sslmode の値等）は検証しない
 - 過剰エンコードされた入力（例: `%41` = `A`）は decode → 再 encode で正規化される
 - JDBC / ADO.NET（`Server=...;`）形式は対象外
+
+### 鍵フォーマット変換
+
+#### 仕組み・アルゴリズム
+
+- 入力種別を `key/detect.ts` で判定する。テキストが `{` 始まりで JSON parse 可能かつ `kty` を持つ → JWK、`-----BEGIN ... -----` マッチ → PEM、Uint8Array または base64-only テキスト（先頭 `0x30` DER SEQUENCE）→ DER の優先順で判別する
+- DER / PEM の場合は `asn1js.fromBER` でトップレベル SEQUENCE を解析し、第1要素が INTEGER（version=0）→ PKCS#8 秘密鍵、第1要素が SEQUENCE（AlgorithmIdentifier）→ SPKI 公開鍵と判定する。AlgorithmIdentifier の OID で RSA（`1.2.840.113549.1.1.1`）/ EC（`1.2.840.10045.2.1`）を識別し、EC の場合は params の named curve OID（P-256=`1.2.840.10045.3.1.7` / P-384=`1.3.132.0.34` / P-521=`1.3.132.0.35`）から曲線名を取得する
+- JWK の場合は `kty` / `crv` フィールドとプライベートキーフィールド（`d` の有無）で鍵種別を判定する
+- 変換は `crypto.subtle.importKey`（`extractable: true`）→ `exportKey` の流れで全形式を生成する。RSA は `RSASSA-PKCS1-v1_5 / SHA-256`、EC は `ECDSA / namedCurve` をアルゴリズムパラメータとして使用する（hash は変換用の便宜値で実際の署名/検証には使用しない）
+- PEM は DER を base64 化し 64 文字折返しで構築する。JWK は `JSON.stringify(jwk, null, 2)` でインデント付き出力する
+- PKCS#1（RSA PUBLIC KEY / RSA PRIVATE KEY）/ SEC1（EC PRIVATE KEY）/ ENCRYPTED PRIVATE KEY などの未対応形式は `detectKeyInput` が `unsupported` を返し、UI で openssl 変換コマンドを案内する
+- `importKey` 失敗（壊れた DER/JWK）は catch して `error` フィールド付きの結果を返す（throw しない設計）
+
+#### 準拠仕様・RFC
+
+- RFC 5958（非対称鍵パッケージ、PKCS#8 Private-Key Information Syntax）
+- RFC 5480（楕円曲線暗号 SubjectPublicKeyInfo）
+- RFC 7517（JSON Web Key）/ RFC 7518（JSON Web Algorithms、鍵パラメータ定義）
+- Web Cryptography API（W3C）
+
+#### 制限・エッジケース
+
+- PKCS#1 形式（RSA PUBLIC KEY / RSA PRIVATE KEY）・SEC1 形式（EC PRIVATE KEY）のレガシー PEM は非対応。`openssl pkcs8 -topk8 -nocrypt` で PKCS#8 に変換してから使用する
+- 暗号化秘密鍵（ENCRYPTED PRIVATE KEY・パスフレーズ付き PEM）は非対応。`openssl pkcs8 -in key.pem -nocrypt -out key_plain.pem` で復号してから変換する
+- Ed25519 / Ed448（EdDSA、`kty: OKP`）は非対応
+- 秘密鍵からの公開鍵抽出は非対応
+- 全処理はブラウザ内で完結し、秘密鍵データは外部に送信しない

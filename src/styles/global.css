@@ -237,6 +237,10 @@
   .border-input {
     border-color: var(--color-border-input);
   }
+  /* divide-y の境界線色（Tailwind v4 は divide-{color} を auto-generate しないため手書き定義）*/
+  .divide-subtle > :not(:last-child) {
+    border-color: var(--color-border);
+  }
 
   /* === Semantic aliases for awkward Tailwind auto-utility names === */
   .bg-error-tint {
@@ -686,6 +690,18 @@
   }
   .hover-bg-subtle:hover {
     background: var(--color-bg-subtle);
+  }
+
+  /* === CertDecoder: アコーディオン chevron アイコン (DADS Accordion 準拠) ===
+     §7.1 の通り `@layer components` 手書き class は Tailwind variant 非対応のため、
+     開閉状態の回転は `details[open]` 状態ルールを直接定義する
+     (`group-open:` 等の Tailwind variant 生成に依存しない)。
+     DADS Accordion は閉時に chevron が下向き、開時に 180° 回転して上向きになる。 */
+  .cert-chevron {
+    transition: transform 0.2s;
+  }
+  details[open] > summary .cert-chevron {
+    transform: rotate(180deg);
   }
 
   /* === #136: FileInputButton (label 内包 input 構造のファイル選択ボタン) ===

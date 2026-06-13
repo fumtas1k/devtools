@@ -188,6 +188,22 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'でぃーえすえぬせつぞくもじれつびるだ',
   },
+  {
+    slug: 'cert-decoder',
+    name: 'SSL/TLS証明書デコーダ',
+    description:
+      'PEM/DER/PKCS#7 の証明書を解析し、Subject/SAN/有効期限/署名アルゴリズム/SCT を表示します。チェーンの署名検証にも対応。データはブラウザ外に送信しません',
+    category: 'encode',
+    yomi: 'えすえすえるてぃーえるえすしょうめいしょでこーだ',
+  },
+  {
+    slug: 'key-converter',
+    name: '鍵フォーマット変換',
+    description:
+      'RSA / ECDSA の公開鍵・秘密鍵を PEM / DER / JWK 形式で相互変換します。形式と鍵種別を自動判定。全処理ブラウザ内完結で秘密鍵も外部送信しません',
+    category: 'convert',
+    yomi: 'かぎふぉーまっとへんかん',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる

@@ -85,6 +85,8 @@
 | `recheck`                  | ReDoS 脆弱性検出。browser エントリ（`lib/browser.js`）を使用し `checkSync` で同期判定。型同梱・install script なし | 正規表現ビジュアライザ      |
 | `jsonc-parser`             | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア          |
 | `jmespath`                 | JMESPath クエリ評価（eval 非使用・CSP 安全）。フィルタ・射影に対応                                                 | JSON整形・ビューア          |
+| `pkijs`                    | X.509 証明書・PKCS#7 のパースと署名検証（Web Crypto エンジン経由）                                                 | SSL/TLS証明書デコーダ       |
+| `asn1js`                   | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ       |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -176,7 +178,9 @@ devtools/
     │       ├── cidr-calculator.astro
     │       ├── secret-scrubber.astro
     │       ├── clipboard-inspector.astro
-    │       └── dsn-builder.astro
+    │       ├── dsn-builder.astro
+    │       ├── cert-decoder.astro
+    │       └── key-converter.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -201,6 +205,8 @@ devtools/
         ├── cidr-calculator/    # CIDR/サブネット計算機（types.ts / ipv4.ts / ipv6.ts / parse.ts / index.ts、__tests__ colocated）
         ├── secret-scrubber/    # シークレットスクラバー（rules.ts / entropy.ts / scrub.ts / index.ts）
         ├── dsn-builder/        # DSN/接続文字列ビルダ（types.ts / dialects.ts / parse.ts / serialize.ts / validate.ts / index.ts）
+        ├── cert/               # SSL/TLS証明書デコーダ（types.ts / detect.ts / parse.ts / sct.ts / chain.ts / index.ts）
+        ├── key/                # 鍵フォーマット変換（types.ts / detect.ts / convert.ts / index.ts）
         ├── dataTransferSnapshot.ts  # DataTransfer 捕捉・フレーバー列挙（clipboard-inspector が利用）
         ├── sanitizeHtml.ts          # 許可リスト方式 HTML サニタイザ（clipboard-inspector が利用）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
@@ -294,11 +300,12 @@ devtools/
 
 ### カテゴリ C: エンコード・デコードツール（`encode`）
 
-| #   | ツール名                  | slug          | 概要                                                                      |
-| --- | ------------------------- | ------------- | ------------------------------------------------------------------------- |
-| 10  | URLエンコード/デコード    | `url-encode`  | テキスト⇔URLエンコード相互変換                                            |
-| 11  | Base64エンコード/デコード | `base64`      | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応         |
-| 12  | JWTデコーダー             | `jwt-decoder` | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応 |
+| #   | ツール名                  | slug           | 概要                                                                                                                                                                                                                                                                    |
+| --- | ------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10  | URLエンコード/デコード    | `url-encode`   | テキスト⇔URLエンコード相互変換                                                                                                                                                                                                                                          |
+| 11  | Base64エンコード/デコード | `base64`       | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                                                                                                                                                                                                       |
+| 12  | JWTデコーダー             | `jwt-decoder`  | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応                                                                                                                                                                                               |
+| 25  | SSL/TLS証明書デコーダ     | `cert-decoder` | PEM/DER/PKCS#7/PKCS#12（.pfx/.p12）証明書を解析し Subject/SAN/有効期限/署名アルゴリズム/SCT を表示。複数証明書のチェーン並べ替え・署名検証（pkijs + Web Crypto）対応。PKCS#12 はパスワード復号・秘密鍵（メタ情報常時／PKCS#8 PEM トグル開示）含む。全処理ブラウザ内完結 |
 
 ### カテゴリ D: 変換・解析ツール（`convert`）
 
@@ -316,6 +323,7 @@ devtools/
 | 22  | シークレットスクラバー            | `secret-scrubber`     | ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換。全処理ブラウザ内完結・外部ライブラリなし                                                                                 |
 | 23  | クリップボードインスペクタ        | `clipboard-inspector` | 貼り付け・ドラッグ&ドロップの DataTransfer を捕捉し、全 MIME フレーバー（text/plain・text/html・カスタム型・画像・ファイル）の種別と中身を可視化。HTML はサニタイズ後 sandbox iframe プレビュー付き。追加依存なし（DOMParser・Web API のみ）    |
 | 24  | DSN/接続文字列ビルダ              | `dsn-builder`         | 接続文字列（DSN）をフォームと URI で双方向編集。パスワードをマスクした共有用 URI も生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応。自前パーサで percent-encode を自動処理。外部ライブラリなし                                           |
+| 26  | 鍵フォーマット変換                | `key-converter`       | RSA / ECDSA（P-256/P-384/P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK で相互変換。入力形式と鍵種別を自動判定。Web Crypto API 主体で asn1js による OID 判定。全処理ブラウザ内完結                                                          |
 
 ---
 
@@ -1121,6 +1129,44 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.25 SSL/TLS証明書デコーダ（`cert-decoder`）
+
+**概要:** PEM / DER / PKCS#7 / PKCS#12（.pfx/.p12）形式の証明書を貼り付け・ファイル選択で解析し、主要フィールドを表示する閲覧専用ツール。複数証明書を issuer→subject 順に並べ替え、隣接ペアの署名を検証する。社内 CA・本番証明書を外部送信せず扱う前提で、全処理をブラウザ内で完結する。
+
+**対応形式:** PEM（複数ブロック可）/ DER（バイナリ・Base64）/ PKCS#7（`.p7b`、証明書抽出のみ）/ PKCS#12（`.p12`/`.pfx`、PBES2/AES 限定）
+
+**表示フィールド:** Subject/Issuer DN・SAN・有効期限（NotBefore/NotAfter）・シリアル番号・署名アルゴリズム・公開鍵情報（種別・鍵長・curve）・KeyUsage/ExtendedKeyUsage/BasicConstraints・SubjectKeyIdentifier/AuthorityKeyIdentifier・SHA-256 フィンガープリント・SCT 一覧（RFC 6962 TLS 構造を best-effort デコード）
+
+**チェーン検証:** subject/issuer DN（必要に応じて AKI/SKI）で親子関係を構築し、`pkijs` の `Certificate.verify`（Web Crypto）で各リンクの署名を検証。各証明書の現在時刻に対する有効/期限切れも判定する。改ざん・issuer 不一致・期限切れを検出する（陽性・陰性対照テスト併設）。
+
+**PKCS#12 対応（#644）:** パスワード入力 UI でパスワードを受け取り、`parsePkcs12`（`src/utils/cert/pkcs12.ts`）で復号。証明書は `parseDerCertificates` → `buildChain` パイプラインに流す。秘密鍵は RSA/EC のアルゴリズム・鍵長・曲線名を常時表示し、PKCS#8 PEM は `<details>` トグルで開示。ダウンロードボタン付き。レガシー暗号（RC2/3DES）は UI でエラー案内（re-export コマンドを提示）。
+
+**モジュール構成:** `src/utils/cert/`（`detect.ts` 入力種別判定 / `parse.ts` 正規化・`parseDerCertificates` / `pkcs12.ts` PKCS#12 復号 / `sct.ts` SCT デコード / `chain.ts` 並べ替え・検証 / `types.ts` / `index.ts`）
+
+**追加依存:** `pkijs` / `asn1js`（PKCS#12 追加も同ライブラリで完結）
+
+**スコープ外:** 鍵フォーマット変換（PEM/DER/JWK）→ key-converter ツール / 失効確認（CRL/OCSP）/ PKCS#12 のレガシー RC2-40/3DES 暗号（Web Crypto 非対応）
+
+---
+
+### 5.26 鍵フォーマット変換（`key-converter`）
+
+**概要:** RSA / ECDSA（P-256 / P-384 / P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK 形式で相互変換する。入力形式（PEM テキスト / DER バイナリ・Base64 / JWK JSON）と鍵種別（公開鍵 / 秘密鍵）を自動判定し、3形式を同時出力する。全処理はブラウザ内で完結するため、秘密鍵も外部サーバーに送信されない。
+
+**対応入力形式:** PEM（PUBLIC KEY / PRIVATE KEY ヘッダ、SPKI / PKCS#8 構造）/ DER バイナリ（.der / .cer ファイル選択、または Base64 テキスト貼り付け）/ JWK（JSON Web Key、RFC 7517）
+
+**対応鍵種別:** RSA 公開鍵・秘密鍵（SPKI / PKCS#8）/ ECDSA 公開鍵・秘密鍵（P-256 / P-384 / P-521 曲線）
+
+**出力:** PEM テキスト（CopyButton + DownloadButton）/ DER Base64 テキスト（CopyButton）+ DER バイナリ（DownloadButton）/ JWK JSON テキスト（CopyButton + DownloadButton）の3形式同時出力
+
+**モジュール構成:** `src/utils/key/`（`types.ts` / `detect.ts` 入力種別・アルゴリズム判定 / `convert.ts` Web Crypto 変換 / `index.ts`）
+
+**追加依存:** なし（既存の `asn1js` を OID 判定に利用。pkijs 不使用）
+
+**スコープ外（v1 非対応）:** PKCS#1 形式（RSA PUBLIC KEY / RSA PRIVATE KEY）・SEC1 形式（EC PRIVATE KEY）のレガシー PEM・暗号化秘密鍵（ENCRYPTED PRIVATE KEY）・Ed25519/Ed448・秘密鍵からの公開鍵抽出・cert-decoder 連携・鍵ペア生成
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1283,6 +1329,8 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] シークレットスクラバー（`secret-scrubber`）
   - [x] クリップボードインスペクタ（`clipboard-inspector`）
   - [x] DSN/接続文字列ビルダ（`dsn-builder`）
+  - [x] SSL/TLS証明書デコーダ（`cert-decoder`）
+  - [x] 鍵フォーマット変換（`key-converter`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
