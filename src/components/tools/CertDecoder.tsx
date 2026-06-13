@@ -50,6 +50,38 @@ function certRoleLabel(cert: ParsedCert, chainPosition: number, totalInChain: nu
   return chainPosition === 0 ? '中間 CA' : `中間 CA (${chainPosition})`;
 }
 
+/**
+ * 証明書カード内のアコーディオンセクション（DADS Accordion 準拠）。
+ * 左側に円形ボーダー付き chevron アイコンを置き、開閉時に 180° 回転させる。
+ */
+interface CertSectionProps {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+function CertSection({ title, defaultOpen = false, children }: CertSectionProps) {
+  return (
+    <details open={defaultOpen}>
+      <summary className="px-4 py-3 cursor-pointer hover-bg-subtle summary-no-marker flex items-center gap-2">
+        <span
+          className="cert-chevron shrink-0 inline-flex items-center justify-center size-5 rounded-full border border-current bg-default text-primary"
+          aria-hidden="true"
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <path
+              d="M16.668 5.5L10.0013 12.1667L3.33464 5.5L2.16797 6.66667L10.0013 14.5L17.8346 6.66667L16.668 5.5Z"
+              fill="currentColor"
+            />
+          </svg>
+        </span>
+        <span className="body-emphasis text-default">{title}</span>
+      </summary>
+      {children}
+    </details>
+  );
+}
+
 function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }: CertCardProps) {
   const positionLabel = certRoleLabel(cert, chainPosition, totalInChain);
 
@@ -93,13 +125,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
       {/* カード本体 */}
       <div className="bg-default divide-y divide-subtle">
         {/* 基本情報 */}
-        <details open>
-          <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
-            <span>基本情報</span>
-            <span className="caption text-muted cert-chevron" aria-hidden="true">
-              ▾
-            </span>
-          </summary>
+        <CertSection title="基本情報" defaultOpen>
           <div className="px-4 pb-4 pt-2 space-y-2">
             <CertField label="サブジェクト (Subject)" value={cert.subject.full} copyable />
             <CertField label="発行者 (Issuer)" value={cert.issuer.full} copyable />
@@ -121,17 +147,11 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
               copyable
             />
           </div>
-        </details>
+        </CertSection>
 
         {/* SAN */}
         {cert.san.length > 0 && (
-          <details open>
-            <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
-              <span>サブジェクト代替名 (SAN)</span>
-              <span className="caption text-muted" aria-hidden="true">
-                ▾
-              </span>
-            </summary>
+          <CertSection title="サブジェクト代替名 (SAN)" defaultOpen>
             <div className="px-4 pb-4 pt-2">
               <div className="flex items-start gap-2">
                 <div className="font-mono caption text-default break-all flex-1">
@@ -140,20 +160,14 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
                 <CopyButton text={cert.san.join('\n')} label="コピー" />
               </div>
             </div>
-          </details>
+          </CertSection>
         )}
 
         {/* 拡張 */}
         {(cert.keyUsage.length > 0 ||
           cert.extKeyUsage.length > 0 ||
           cert.pathLen !== undefined) && (
-          <details>
-            <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
-              <span>拡張</span>
-              <span className="caption text-muted" aria-hidden="true">
-                ▾
-              </span>
-            </summary>
+          <CertSection title="拡張">
             <div className="px-4 pb-4 pt-2 space-y-2">
               {cert.keyUsage.length > 0 && (
                 <CertField label="KeyUsage" value={cert.keyUsage.join(', ')} />
@@ -174,17 +188,11 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
                 <CertField label="AuthorityKeyIdentifier" value={cert.authorityKeyId} mono />
               )}
             </div>
-          </details>
+          </CertSection>
         )}
 
         {/* 公開鍵 */}
-        <details>
-          <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
-            <span>公開鍵</span>
-            <span className="caption text-muted" aria-hidden="true">
-              ▾
-            </span>
-          </summary>
+        <CertSection title="公開鍵">
           <div className="px-4 pb-4 pt-2 space-y-2">
             <CertField label="アルゴリズム" value={cert.publicKey.algorithm} />
             {cert.publicKey.keySizeBits && (
@@ -194,30 +202,18 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
               <CertField label="曲線" value={cert.publicKey.namedCurve} />
             )}
           </div>
-        </details>
+        </CertSection>
 
         {/* 署名 */}
-        <details>
-          <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
-            <span>署名</span>
-            <span className="caption text-muted" aria-hidden="true">
-              ▾
-            </span>
-          </summary>
+        <CertSection title="署名">
           <div className="px-4 pb-4 pt-2">
             <CertField label="署名アルゴリズム" value={cert.signatureAlgorithm} />
           </div>
-        </details>
+        </CertSection>
 
         {/* SCT */}
         {cert.sct.length > 0 && (
-          <details>
-            <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
-              <span>SCT（証明書透明性）</span>
-              <span className="caption text-muted" aria-hidden="true">
-                ▾
-              </span>
-            </summary>
+          <CertSection title="SCT（証明書透明性）">
             <div className="px-4 pb-4 pt-2 space-y-3">
               {cert.sct.map((sct, i) => (
                 <div key={i} className="rounded-lg bg-subtle p-3 space-y-1">
@@ -227,7 +223,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
                 </div>
               ))}
             </div>
-          </details>
+          </CertSection>
         )}
       </div>
     </div>
