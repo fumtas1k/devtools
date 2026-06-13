@@ -60,12 +60,12 @@ issue 本文は「コンテナを `tabIndex={0}`」と「個々の `<mark>` の�
 
 各 `<mark>` の `onKeyDown(e, i)` で以下を処理する（いずれも `e.preventDefault()`）:
 
-| キー            | 動作                                                          |
+| キー            | 動作                                                         |
 | :-------------- | :----------------------------------------------------------- |
 | `ArrowRight`    | 次のマッチへ focus 移動（末尾なら先頭へ wrap）               |
 | `ArrowLeft`     | 前のマッチへ focus 移動（先頭なら末尾へ wrap）               |
-| `Home`          | 先頭マッチへ focus 移動                                       |
-| `End`           | 末尾マッチへ focus 移動                                       |
+| `Home`          | 先頭マッチへ focus 移動                                      |
+| `End`           | 末尾マッチへ focus 移動                                      |
 | `Enter` / `' '` | `onSelect(i)`（= `aria-pressed` + `ResultTable` 連動、現行） |
 
 - 矢印 / Home / End は **focus のみ移動**し、選択（`selected`）は変えない（toolbar 型）。

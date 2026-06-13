@@ -28,6 +28,7 @@ CSS（`src/styles/global.css` の `.match-highlight*`）は変更しない。
 ### Task 1: roving tabindex のユニットテストを追加（失敗する状態にする）
 
 **Files:**
+
 - Test: `src/components/tools/__tests__/RegexMatchTester.test.tsx`
 
 ロービングの陽性対照テストを追加する。jest-dom の matcher（`toHaveFocus` 等）には依存せず、
@@ -39,72 +40,72 @@ CSS（`src/styles/global.css` の `.match-highlight*`）は変更しない。
 `describe('RegexMatchTester', ...)` ブロックの末尾（既存の最後の `it` の後ろ）に以下を追加:
 
 ```tsx
-  it('複数マッチで tabIndex=0 はちょうど 1 個（roving 初期状態）', async () => {
-    render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
-    typeTest('a1 b22');
-    await screen.findByText(/2 件マッチ/, undefined, FIND);
+it('複数マッチで tabIndex=0 はちょうど 1 個（roving 初期状態）', async () => {
+  render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
+  typeTest('a1 b22');
+  await screen.findByText(/2 件マッチ/, undefined, FIND);
 
-    const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
-    expect(marks).toHaveLength(2);
-    const tabbable = marks.filter((m) => m.getAttribute('tabindex') === '0');
-    expect(tabbable).toHaveLength(1);
-    expect(marks[0].getAttribute('tabindex')).toBe('0');
-    expect(marks[1].getAttribute('tabindex')).toBe('-1');
-  });
+  const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
+  expect(marks).toHaveLength(2);
+  const tabbable = marks.filter((m) => m.getAttribute('tabindex') === '0');
+  expect(tabbable).toHaveLength(1);
+  expect(marks[0].getAttribute('tabindex')).toBe('0');
+  expect(marks[1].getAttribute('tabindex')).toBe('-1');
+});
 
-  it('ArrowRight で roving が次のマッチへ移動し、末尾で先頭に wrap する', async () => {
-    render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
-    typeTest('a1 b22');
-    await screen.findByText(/2 件マッチ/, undefined, FIND);
-    const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
+it('ArrowRight で roving が次のマッチへ移動し、末尾で先頭に wrap する', async () => {
+  render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
+  typeTest('a1 b22');
+  await screen.findByText(/2 件マッチ/, undefined, FIND);
+  const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
 
-    marks[0].focus();
-    fireEvent.keyDown(marks[0], { key: 'ArrowRight' });
-    expect(marks[1].getAttribute('tabindex')).toBe('0');
-    expect(marks[0].getAttribute('tabindex')).toBe('-1');
-    expect(document.activeElement).toBe(marks[1]);
+  marks[0].focus();
+  fireEvent.keyDown(marks[0], { key: 'ArrowRight' });
+  expect(marks[1].getAttribute('tabindex')).toBe('0');
+  expect(marks[0].getAttribute('tabindex')).toBe('-1');
+  expect(document.activeElement).toBe(marks[1]);
 
-    // 末尾で ArrowRight → 先頭へ wrap
-    fireEvent.keyDown(marks[1], { key: 'ArrowRight' });
-    expect(marks[0].getAttribute('tabindex')).toBe('0');
-    expect(document.activeElement).toBe(marks[0]);
+  // 末尾で ArrowRight → 先頭へ wrap
+  fireEvent.keyDown(marks[1], { key: 'ArrowRight' });
+  expect(marks[0].getAttribute('tabindex')).toBe('0');
+  expect(document.activeElement).toBe(marks[0]);
 
-    // 先頭で ArrowLeft → 末尾へ wrap
-    fireEvent.keyDown(marks[0], { key: 'ArrowLeft' });
-    expect(marks[1].getAttribute('tabindex')).toBe('0');
-    expect(document.activeElement).toBe(marks[1]);
-  });
+  // 先頭で ArrowLeft → 末尾へ wrap
+  fireEvent.keyDown(marks[0], { key: 'ArrowLeft' });
+  expect(marks[1].getAttribute('tabindex')).toBe('0');
+  expect(document.activeElement).toBe(marks[1]);
+});
 
-  it('Home / End で先頭・末尾のマッチへ roving 移動する', async () => {
-    render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
-    typeTest('a1 b22');
-    await screen.findByText(/2 件マッチ/, undefined, FIND);
-    const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
+it('Home / End で先頭・末尾のマッチへ roving 移動する', async () => {
+  render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
+  typeTest('a1 b22');
+  await screen.findByText(/2 件マッチ/, undefined, FIND);
+  const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
 
-    marks[0].focus();
-    fireEvent.keyDown(marks[0], { key: 'End' });
-    expect(marks[1].getAttribute('tabindex')).toBe('0');
-    expect(document.activeElement).toBe(marks[1]);
+  marks[0].focus();
+  fireEvent.keyDown(marks[0], { key: 'End' });
+  expect(marks[1].getAttribute('tabindex')).toBe('0');
+  expect(document.activeElement).toBe(marks[1]);
 
-    fireEvent.keyDown(marks[1], { key: 'Home' });
-    expect(marks[0].getAttribute('tabindex')).toBe('0');
-    expect(document.activeElement).toBe(marks[0]);
-  });
+  fireEvent.keyDown(marks[1], { key: 'Home' });
+  expect(marks[0].getAttribute('tabindex')).toBe('0');
+  expect(document.activeElement).toBe(marks[0]);
+});
 
-  it('Enter / Space は focus 移動ではなく選択（aria-pressed 切替）を行う', async () => {
-    render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
-    typeTest('a1 b22');
-    await screen.findByText(/2 件マッチ/, undefined, FIND);
-    const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
+it('Enter / Space は focus 移動ではなく選択（aria-pressed 切替）を行う', async () => {
+  render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
+  typeTest('a1 b22');
+  await screen.findByText(/2 件マッチ/, undefined, FIND);
+  const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
 
-    expect(marks[0].getAttribute('aria-pressed')).toBe('false');
-    fireEvent.keyDown(marks[0], { key: 'Enter' });
-    expect(marks[0].getAttribute('aria-pressed')).toBe('true');
+  expect(marks[0].getAttribute('aria-pressed')).toBe('false');
+  fireEvent.keyDown(marks[0], { key: 'Enter' });
+  expect(marks[0].getAttribute('aria-pressed')).toBe('true');
 
-    expect(marks[1].getAttribute('aria-pressed')).toBe('false');
-    fireEvent.keyDown(marks[1], { key: ' ' });
-    expect(marks[1].getAttribute('aria-pressed')).toBe('true');
-  });
+  expect(marks[1].getAttribute('aria-pressed')).toBe('false');
+  fireEvent.keyDown(marks[1], { key: ' ' });
+  expect(marks[1].getAttribute('aria-pressed')).toBe('true');
+});
 ```
 
 - [ ] **Step 2: テストが失敗することを確認する**
@@ -126,6 +127,7 @@ git commit -m "test: RegexMatchTester roving tabindex の失敗テストを追�
 ### Task 2: `MatchHighlights` を実装してテストを通す
 
 **Files:**
+
 - Modify: `src/components/tools/RegexMatchTester.tsx`
 
 - [ ] **Step 1: import を更新する**
@@ -320,6 +322,7 @@ git commit -m "feat(a11y): RegexMatchTester のマッチハイライトを rovin
 ### Task 3: E2E（陽性対照）を追加する
 
 **Files:**
+
 - Modify: `tests/e2e/regex-visualizer.spec.ts`
 
 - [ ] **Step 1: 既存の role="button" E2E の直後にロービング E2E を追加する**
@@ -329,41 +332,41 @@ PR #665 で追加された
 ブロックの直後に、次を追加する:
 
 ```ts
-  // a11y 陽性対照: roving tabindex で tab stop を 1 つに集約していることを検証。
-  // 旧実装（全マッチ tabindex=0）に当てると「非 roving 要素が tabindex=-1」が偽になり fail する。
-  test('マッチハイライトが roving tabindex で 1 つの tab stop に集約される（CSP 違反なし）', async ({
-    browser,
-  }) => {
-    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
-      await page.getByRole('button', { name: 'g: 全マッチ' }).click();
-      await page.getByLabel('正規表現').fill('\\d+');
-      await page.getByLabel('テスト文字列').fill('a1 b22');
+// a11y 陽性対照: roving tabindex で tab stop を 1 つに集約していることを検証。
+// 旧実装（全マッチ tabindex=0）に当てると「非 roving 要素が tabindex=-1」が偽になり fail する。
+test('マッチハイライトが roving tabindex で 1 つの tab stop に集約される（CSP 違反なし）', async ({
+  browser,
+}) => {
+  await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+    await page.getByRole('button', { name: 'g: 全マッチ' }).click();
+    await page.getByLabel('正規表現').fill('\\d+');
+    await page.getByLabel('テスト文字列').fill('a1 b22');
 
-      await expect(page.getByText(/2 件マッチ/)).toBeVisible();
+    await expect(page.getByText(/2 件マッチ/)).toBeVisible();
 
-      const m1 = page.getByRole('button', { name: /マッチ 1/ }).first();
-      const m2 = page.getByRole('button', { name: /マッチ 2/ }).first();
+    const m1 = page.getByRole('button', { name: /マッチ 1/ }).first();
+    const m2 = page.getByRole('button', { name: /マッチ 2/ }).first();
 
-      // roving 初期状態: 1 件目だけ tab stop（0）、2 件目は -1（旧実装＝両方 0 と区別）
-      await expect(m1).toHaveAttribute('tabindex', '0');
-      await expect(m2).toHaveAttribute('tabindex', '-1');
+    // roving 初期状態: 1 件目だけ tab stop（0）、2 件目は -1（旧実装＝両方 0 と区別）
+    await expect(m1).toHaveAttribute('tabindex', '0');
+    await expect(m2).toHaveAttribute('tabindex', '-1');
 
-      // 1 件目に focus → ArrowRight で 2 件目へ roving（focus と tabindex が移動）
-      await m1.focus();
-      await m1.press('ArrowRight');
-      await expect(m2).toBeFocused();
-      await expect(m2).toHaveAttribute('tabindex', '0');
-      await expect(m1).toHaveAttribute('tabindex', '-1');
+    // 1 件目に focus → ArrowRight で 2 件目へ roving（focus と tabindex が移動）
+    await m1.focus();
+    await m1.press('ArrowRight');
+    await expect(m2).toBeFocused();
+    await expect(m2).toHaveAttribute('tabindex', '0');
+    await expect(m1).toHaveAttribute('tabindex', '-1');
 
-      // 末尾で ArrowRight → 先頭へ wrap
-      await m2.press('ArrowRight');
-      await expect(m1).toBeFocused();
+    // 末尾で ArrowRight → 先頭へ wrap
+    await m2.press('ArrowRight');
+    await expect(m1).toBeFocused();
 
-      // Enter は focus 移動ではなく選択（aria-pressed=true）
-      await m1.press('Enter');
-      await expect(m1).toHaveAttribute('aria-pressed', 'true');
-    });
+    // Enter は focus 移動ではなく選択（aria-pressed=true）
+    await m1.press('Enter');
+    await expect(m1).toHaveAttribute('aria-pressed', 'true');
   });
+});
 ```
 
 - [ ] **Step 2: E2E を実行する**
