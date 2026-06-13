@@ -11,6 +11,7 @@
 - [エンコード・デコード](#エンコードデコード)
 - [変換・解析](#変換解析)
   - [CIDR/サブネット計算機](#cidrサブネット計算機)
+  - [DSN/接続文字列ビルダ](#dsn接続文字列ビルダ)
 
 ## 生成
 
@@ -505,3 +506,27 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **style 属性付き HTML 貼り付け時の CSP 違反ログ**: style 属性を含む HTML を貼り付けると、Chromium のクリップボード内部処理（`getAsString` の HTML サニタイズ）が inline style を評価するため、本番 CSP 環境（`style-src` strict）のコンソールに style-src 違反ログが数件記録されることがある。アプリの実装・表示には影響しない（E2E `tests/e2e/clipboard-inspector.spec.ts` の本番 CSP テスト参照）。
 - **プレビューでは remote 画像は表示されない**: http/https の img src は外部リクエスト防止（tracking pixel 対策）と CSP 違反ノイズ回避のためサニタイズで src を除去する（alt テキストは保持）。img の src として表示されるのは data:image の raster 形式（png/jpeg/gif/webp/avif/bmp）のみ。
 - **ハイドレーション完了前は貼り付けを捕捉できない**: `paste` listener は React コンポーネントのマウント時に `document` へ登録されるため、ページ表示直後の数百 ms（ハイドレーション完了前）の貼り付けは捕捉されない。
+
+### DSN/接続文字列ビルダ
+
+#### 仕組み・アルゴリズム
+
+- `scheme://[userinfo@]authority[/path][?query]` を自前パーサで分解する。`URL` API は
+  mongodb のカンマ区切り複数ホスト（`host1:27017,host2:27018`）を解釈できないため使用しない
+- userinfo・パス・クエリは percent-decode してフォームに表示し、URI 生成時に
+  `encodeURIComponent` で再エンコードする（パスワード中の `@ : /` 等の手動エンコード不要）
+- スキーム方言辞書（`src/utils/dsn-builder/dialects.ts`）が既定ポート・複数ホスト可否・
+  パス部の意味（DB 名 / DB 番号 / vhost）・SRV 制約を定義する
+- パスワードを `****` に置換した共有用 URI を常時導出する（同期不要の純粋関数）
+
+#### 準拠仕様・RFC
+
+- RFC 3986（URI 構文・percent-encoding）
+- libpq 接続 URI（PostgreSQL 複数ホスト）・MongoDB Connection String・RabbitMQ URI Specification
+
+#### 制限・エッジケース
+
+- 実接続テストは不可（ブラウザの制約）
+- クエリパラメータの意味的妥当性（sslmode の値等）は検証しない
+- 過剰エンコードされた入力（例: `%41` = `A`）は decode → 再 encode で正規化される
+- JDBC / ADO.NET（`Server=...;`）形式は対象外

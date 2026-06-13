@@ -175,7 +175,8 @@ devtools/
     │       ├── json-formatter.astro
     │       ├── cidr-calculator.astro
     │       ├── secret-scrubber.astro
-    │       └── clipboard-inspector.astro
+    │       ├── clipboard-inspector.astro
+    │       └── dsn-builder.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -199,6 +200,7 @@ devtools/
         ├── json-formatter/     # JSON 整形・最小化・検証・ツリー構築（parse.ts / format.ts / tree.ts / errors.ts / index.ts、__tests__ colocated）
         ├── cidr-calculator/    # CIDR/サブネット計算機（types.ts / ipv4.ts / ipv6.ts / parse.ts / index.ts、__tests__ colocated）
         ├── secret-scrubber/    # シークレットスクラバー（rules.ts / entropy.ts / scrub.ts / index.ts）
+        ├── dsn-builder/        # DSN/接続文字列ビルダ（types.ts / dialects.ts / parse.ts / serialize.ts / validate.ts / index.ts）
         ├── dataTransferSnapshot.ts  # DataTransfer 捕捉・フレーバー列挙（clipboard-inspector が利用）
         ├── sanitizeHtml.ts          # 許可リスト方式 HTML サニタイザ（clipboard-inspector が利用）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
@@ -313,6 +315,7 @@ devtools/
 | 21  | CIDR/サブネット計算機             | `cidr-calculator`     | CIDR 記法でアドレスを入力しネットワーク情報を計算。IPv4/IPv6 対応。ネットワーク・ブロードキャスト・ホスト範囲・サブネットマスク・利用可能ホスト数を表示。BigInt による 128bit 統一処理。外部ライブラリなし                                      |
 | 22  | シークレットスクラバー            | `secret-scrubber`     | ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換。全処理ブラウザ内完結・外部ライブラリなし                                                                                 |
 | 23  | クリップボードインスペクタ        | `clipboard-inspector` | 貼り付け・ドラッグ&ドロップの DataTransfer を捕捉し、全 MIME フレーバー（text/plain・text/html・カスタム型・画像・ファイル）の種別と中身を可視化。HTML はサニタイズ後 sandbox iframe プレビュー付き。追加依存なし（DOMParser・Web API のみ）    |
+| 24  | DSN/接続文字列ビルダ              | `dsn-builder`         | 接続文字列（DSN）をフォームと URI で双方向編集。パスワードをマスクした共有用 URI も生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応。自前パーサで percent-encode を自動処理。外部ライブラリなし                                           |
 
 ---
 
@@ -1099,6 +1102,25 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.24 DSN/接続文字列ビルダ（`dsn-builder`）
+
+**概要:** データベース・ミドルウェアの接続文字列（DSN）をフォーム ⇄ URI で双方向編集し、パスワードをマスクした共有用 URI を生成するツール。
+
+**対応スキーム:** postgresql / postgres / mysql / mongodb / mongodb+srv / redis / rediss / amqp / amqps（9スキーム）
+
+**双方向同期:**
+
+- URI テキストエリア編集 → `parseDsn` → 成功時フォーム反映 / 失敗時エラー表示（フォームは直前の有効状態を保持）
+- フォーム編集 → `serializeDsn` → URI テキストエリアを上書き
+
+**バリデーション（日本語メッセージ）:**
+
+- 未対応スキーム / mongodb+srv でのポート指定・複数ホスト / ポート範囲外 / redis 非整数 DB / 不正 percent-encoding
+
+**追加依存:** なし（純粋な文字列処理・`URL` API 不使用）
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1260,6 +1282,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] CIDR/サブネット計算機（`cidr-calculator`）
   - [x] シークレットスクラバー（`secret-scrubber`）
   - [x] クリップボードインスペクタ（`clipboard-inspector`）
+  - [x] DSN/接続文字列ビルダ（`dsn-builder`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
