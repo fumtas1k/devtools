@@ -4151,7 +4151,7 @@ DSN/接続文字列ビルダは複数スキームの URI を分解・再構成�
 ### 決断
 
 - **決定**: `URL` API ではなく自前パーサ（`src/utils/dsn-builder/parse.ts`）を採用する。
-- **理由**: `URL` API は mongodb のカンマ区切り複数ホスト（`host1:27017,host2:27018`）を解釈できず authority 全体を hostname 扱いして失敗する。また `redis://` / `amqp://` 等の非特殊スキームはブラウザ間で挙動差が残る（Chrome と Firefox で pathname の解釈が異なる）。
+- **理由**: `URL` API は mongodb のカンマ区切り複数ホスト（`host1:27017,host2:27018`）を解釈できず `Invalid URL` を throw する（Node 実測）。また userinfo・パスを percent-decode 済みの生値として編集し再エンコードする本ツールの双方向編集には、構成要素を生値で保持する自前モデルの方が適合する。
 - **補足**: パース・シリアライズ・バリデーションを `src/utils/dsn-builder/` の純関数に分離し、フォーム/URI 双方の編集が単一の `validateModel` を通る設計とした。新規ライブラリ追加なし。バリデータを含むため陽性対照テストを同梱（test-gates 準拠）。
 
 ### 却下した選択肢
