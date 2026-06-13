@@ -20,8 +20,9 @@ export function validateModel(model: DsnModel): string | null {
   }
   for (const { port } of model.hosts) {
     if (port === '') continue;
-    if (!/^\d+$/.test(port) || Number(port) > 65535) {
-      return `ポートは 0〜65535 の整数で指定してください: ${port}`;
+    // 1〜65535 のみ許可。先頭ゼロ（01 等）・0・非数値・範囲外を拒否する
+    if (!/^[1-9]\d*$/.test(port) || Number(port) > 65535) {
+      return `ポートは 1〜65535 の整数で指定してください: ${port}`;
     }
   }
   if (dialect.pathIsInteger && model.database !== '' && !/^\d+$/.test(model.database)) {

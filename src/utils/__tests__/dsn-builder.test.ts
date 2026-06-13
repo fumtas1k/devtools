@@ -106,6 +106,16 @@ describe('parseDsn: 陽性対照（不正入力を必ずエラーにする）', 
     expect(parseDsn('postgresql://u:p@host:abc/db').ok).toBe(false);
   });
 
+  it('ポート 0 を拒否する', () => {
+    const result = parseDsn('postgresql://u:p@host:0/db');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('ポート');
+  });
+
+  it('先頭ゼロのポート（01）を拒否する', () => {
+    expect(parseDsn('postgresql://u:p@host:01/db').ok).toBe(false);
+  });
+
   it('redis の非整数 DB 番号を拒否する', () => {
     const result = parseDsn('redis://localhost:6379/mydb');
     expect(result.ok).toBe(false);
