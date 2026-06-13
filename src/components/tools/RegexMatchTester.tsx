@@ -44,7 +44,12 @@ function highlight(
     nodes.push(
       <mark
         key={`m-${i}`}
-        className={cx('match-highlight text-default', colorClass, selected === i && 'match-highlight-active', m.value === '' && 'match-highlight-empty')}
+        className={cx(
+          'match-highlight text-default',
+          colorClass,
+          selected === i && 'match-highlight-active',
+          m.value === '' && 'match-highlight-empty'
+        )}
         onClick={() => onSelect(i)}
         title={`マッチ ${i + 1}`}
       >

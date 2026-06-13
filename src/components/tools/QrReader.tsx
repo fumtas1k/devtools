@@ -134,7 +134,10 @@ export function QrReaderTool() {
                 ref={camera.videoRef}
                 playsInline
                 muted
-                className={cx('w-full max-w-[400px] rounded-lg qr-video-preview', !camera.cameraActive && 'hidden')}
+                className={cx(
+                  'w-full max-w-[400px] rounded-lg qr-video-preview',
+                  !camera.cameraActive && 'hidden'
+                )}
                 aria-label="カメラプレビュー"
               />
               {camera.cameraActive && (

@@ -173,7 +173,10 @@ export function CharCountTool() {
           <dd className="caption font-mono text-right">{lines.longestGraphemes}</dd>
           <dt className="caption text-muted">改行コード</dt>
           <dd
-            className={cx('caption font-mono text-right', lines.newline === 'mixed' && 'text-warning')}
+            className={cx(
+              'caption font-mono text-right',
+              lines.newline === 'mixed' && 'text-warning'
+            )}
           >
             {lines.newline === 'lf' && 'LF'}
             {lines.newline === 'crlf' && 'CRLF'}

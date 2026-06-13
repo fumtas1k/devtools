@@ -214,7 +214,10 @@ export function ClipboardInspectorTool() {
           setIsDragOver(true);
         }}
         onDragLeave={() => setIsDragOver(false)}
-        className={cx('caret-transparent rounded-xl border-2 border-dashed border-default p-8 text-center', isDragOver && 'bg-subtle')}
+        className={cx(
+          'caret-transparent rounded-xl border-2 border-dashed border-default p-8 text-center',
+          isDragOver && 'bg-subtle'
+        )}
       >
         <p className="body-emphasis text-default m-0">
           このページで Ctrl+V / Cmd+V

@@ -78,7 +78,10 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
               {f.key} <span className="uuid-field-bits">({f.bits})</span>
             </span>
             <code
-              className={cx('font-mono whitespace-nowrap rounded px-1.5 py-0.5 bg-default border border-default caption', f.className)}
+              className={cx(
+                'font-mono whitespace-nowrap rounded px-1.5 py-0.5 bg-default border border-default caption',
+                f.className
+              )}
             >
               {f.value}
             </code>

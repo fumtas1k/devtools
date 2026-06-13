@@ -153,10 +153,17 @@ export function VerifyTab({
             ) : verificationResult ? (
               <div className="space-y-3">
                 <div
-                  className={cx('rounded-lg p-4 border', verificationResult.valid ? 'alert-success' : 'alert-error')}
+                  className={cx(
+                    'rounded-lg p-4 border',
+                    verificationResult.valid ? 'alert-success' : 'alert-error'
+                  )}
                 >
                   <p
-                    className={cx('body-emphasis', verificationResult.valid ? 'text-success' : 'text-error', verificationResult.ticket && 'mb-3')}
+                    className={cx(
+                      'body-emphasis',
+                      verificationResult.valid ? 'text-success' : 'text-error',
+                      verificationResult.ticket && 'mb-3'
+                    )}
                   >
                     {verificationResult.valid ? (
                       <span className="inline-flex items-center gap-2">

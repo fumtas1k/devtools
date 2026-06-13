@@ -220,7 +220,10 @@ export function ConfigConverterTool() {
         >
           <span
             aria-hidden="true"
-            className={cx('inline-block transition-transform duration-200', schemaOpen && 'rotate-90')}
+            className={cx(
+              'inline-block transition-transform duration-200',
+              schemaOpen && 'rotate-90'
+            )}
           >
             ▶
           </span>
@@ -263,7 +266,10 @@ export function ConfigConverterTool() {
             </div>
             {validationResult && (
               <div
-                className={cx('rounded-lg p-3 border', validationResult.valid ? 'alert-success' : 'alert-error')}
+                className={cx(
+                  'rounded-lg p-3 border',
+                  validationResult.valid ? 'alert-success' : 'alert-error'
+                )}
               >
                 {validationResult.valid ? (
                   <p className="caption text-default inline-flex items-center gap-1">

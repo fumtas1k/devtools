@@ -216,7 +216,10 @@ export function JwtDecoderTool() {
         <div className="flex flex-wrap items-center gap-2">
           {verifyExp && (
             <span
-              className={cx('rounded-full px-3 py-0.5 caption font-medium', expBadge[parsed.expStatus].badgeClass)}
+              className={cx(
+                'rounded-full px-3 py-0.5 caption font-medium',
+                expBadge[parsed.expStatus].badgeClass
+              )}
             >
               {expBadge[parsed.expStatus].label}
               {parsed.expStatus === 'valid' && parsed.remainingMs !== undefined && (
@@ -226,7 +229,10 @@ export function JwtDecoderTool() {
           )}
           {sigBadge[sigStatus] && (
             <span
-              className={cx('rounded-full px-3 py-0.5 caption font-medium', sigBadge[sigStatus]!.badgeClass)}
+              className={cx(
+                'rounded-full px-3 py-0.5 caption font-medium',
+                sigBadge[sigStatus]!.badgeClass
+              )}
             >
               {sigBadge[sigStatus]!.label}
             </span>
