@@ -19,6 +19,7 @@
 - コミットは Conventional Commits（日本語）。プレフィックスは `refactor:` 主体。
 
 参照（読むこと）:
+
 - `src/components/ui/ActionButton.tsx`（variant: default/primary/secondary/danger、size: default/compact）
 - `src/components/ui/FileInputButton.tsx`（`disabled` で `aria-disabled`）
 - `src/components/ui/InputField.tsx`（`multiline`/`readOnly`/`mono`/`headerRight`）
@@ -30,6 +31,7 @@
 ## Task 1: InputField に `busy` prop を追加（SecretScrubber の aria-busy 温存準備）
 
 **Files:**
+
 - Modify: `src/components/ui/InputField.tsx`
 
 - [ ] **Step 1: Props 型に `busy` を追加**
@@ -72,6 +74,7 @@ git commit -m "refactor(ui): InputField に optional busy prop を追加（aria-
 ## Task 2: QrReader のボタンを ActionButton に集約（項目1）
 
 **Files:**
+
 - Modify: `src/components/tools/QrReader.tsx`
 
 - [ ] **Step 1: import を追加**
@@ -85,29 +88,33 @@ import { ActionButton } from '@/components/ui/ActionButton';
 - [ ] **Step 2: 起動ボタンを置換（現 `:124-131`）**
 
 ```tsx
-              {!camera.cameraActive && !decoded && (
-                <ActionButton onClick={camera.startCamera} variant="primary">
-                  カメラを起動
-                </ActionButton>
-              )}
+{
+  !camera.cameraActive && !decoded && (
+    <ActionButton onClick={camera.startCamera} variant="primary">
+      カメラを起動
+    </ActionButton>
+  );
+}
 ```
 
 - [ ] **Step 3: 停止ボタンを置換（現 `:143-151`）**
 
 ```tsx
-              {camera.cameraActive && (
-                <ActionButton onClick={stopCamera} variant="danger">
-                  カメラを停止
-                </ActionButton>
-              )}
+{
+  camera.cameraActive && (
+    <ActionButton onClick={stopCamera} variant="danger">
+      カメラを停止
+    </ActionButton>
+  );
+}
 ```
 
 - [ ] **Step 4: 再スキャンボタンを置換（現 `:188-194`）**
 
 ```tsx
-              <ActionButton onClick={handleRescan} size="compact">
-                再スキャン
-              </ActionButton>
+<ActionButton onClick={handleRescan} size="compact">
+  再スキャン
+</ActionButton>
 ```
 
 - [ ] **Step 5: video の className を確認（変更不要）**
@@ -136,6 +143,7 @@ git commit -m "refactor(ui): QrReader のカメラ起動/停止/再スキャン�
 ## Task 3: VerifyTab の video 背景と FileInputButton 化（項目2・3）
 
 **Files:**
+
 - Modify: `src/components/tools/qr-ticket/VerifyTab.tsx`
 - Modify: `src/styles/global.css`（`.qr-file-picker-label` 削除）
 
@@ -152,7 +160,7 @@ import { FileInputButton } from '@/components/ui/FileInputButton';
 `className="w-full max-w-[400px] rounded-lg bg-black block"` を以下に変更:
 
 ```tsx
-                className="w-full max-w-[400px] rounded-lg qr-video-preview block"
+className = 'w-full max-w-[400px] rounded-lg qr-video-preview block';
 ```
 
 （`hidden`/`aria-label`/`ref`/`playsInline`/`muted` は維持）
@@ -160,13 +168,9 @@ import { FileInputButton } from '@/components/ui/FileInputButton';
 - [ ] **Step 3: ファイル選択を FileInputButton に置換（現 `:110-123` の `<label>...</label>`）**
 
 ```tsx
-              <FileInputButton
-                accept="image/*"
-                onChange={onImageUpload}
-                disabled={!verifyPubKeyStr.trim()}
-              >
-                画像を選択
-              </FileInputButton>
+<FileInputButton accept="image/*" onChange={onImageUpload} disabled={!verifyPubKeyStr.trim()}>
+  画像を選択
+</FileInputButton>
 ```
 
 （直前の説明文 `<p>` と直後の `<p className="hint-xs ...">`、および `{!verifyPubKeyStr.trim() && (<p>公開鍵を入力してください</p>)}` は維持）
@@ -202,6 +206,7 @@ git commit -m "refactor(ui): VerifyTab の video を qr-video-preview・ファ�
 ## Task 4: GenerateTab の鍵 textarea を InputField 化 + border-default 置換（項目4・5の一部）
 
 **Files:**
+
 - Modify: `src/components/tools/qr-ticket/GenerateTab.tsx`
 
 - [ ] **Step 1: 秘密鍵ブロックを InputField に置換（現 `:150-163`）**
@@ -209,33 +214,33 @@ git commit -m "refactor(ui): VerifyTab の video を qr-video-preview・ファ�
 `InputField` は既に import 済み。秘密鍵の `<div>...<textarea readOnly .../></div>` 全体を以下に置換:
 
 ```tsx
-              <InputField
-                id="qr-ticket-private-key"
-                label="秘密鍵（主催者が保管）"
-                value={privateKeyJwkStr}
-                onChange={() => {}}
-                multiline
-                rows={4}
-                mono
-                readOnly
-                headerRight={<CopyButton text={privateKeyJwkStr} label="コピー" />}
-              />
+<InputField
+  id="qr-ticket-private-key"
+  label="秘密鍵（主催者が保管）"
+  value={privateKeyJwkStr}
+  onChange={() => {}}
+  multiline
+  rows={4}
+  mono
+  readOnly
+  headerRight={<CopyButton text={privateKeyJwkStr} label="コピー" />}
+/>
 ```
 
 - [ ] **Step 2: 公開鍵ブロックを InputField に置換（現 `:164-179`）**
 
 ```tsx
-              <InputField
-                id="qr-ticket-public-key"
-                label="公開鍵（検証スタッフへ共有）"
-                value={publicKeyJwkStr}
-                onChange={() => {}}
-                multiline
-                rows={4}
-                mono
-                readOnly
-                headerRight={<CopyButton text={publicKeyJwkStr} label="コピー" />}
-              />
+<InputField
+  id="qr-ticket-public-key"
+  label="公開鍵（検証スタッフへ共有）"
+  value={publicKeyJwkStr}
+  onChange={() => {}}
+  multiline
+  rows={4}
+  mono
+  readOnly
+  headerRight={<CopyButton text={publicKeyJwkStr} label="コピー" />}
+/>
 ```
 
 注: `readOnly` のため `onChange` は呼ばれないが InputField の必須 prop。no-op を渡す。
@@ -268,6 +273,7 @@ git commit -m "refactor(ui): GenerateTab の鍵表示を InputField・border を
 ## Task 5: SecretScrubber の出力 textarea を InputField 化（項目4）
 
 **Files:**
+
 - Modify: `src/components/tools/SecretScrubber.tsx`
 
 - [ ] **Step 1: 出力ブロックを InputField に置換（現 `:118-136`）**
@@ -275,23 +281,25 @@ git commit -m "refactor(ui): GenerateTab の鍵表示を InputField・border を
 `InputField` は既に import 済み。出力の `<div>...</div>`（ラベル行 + textarea）全体を以下に置換:
 
 ```tsx
-      {/* 出力 */}
-      {input.length > 0 && (
-        <InputField
-          id="secret-scrubber-output"
-          label="マスク済みテキスト"
-          value={outputText}
-          onChange={() => {}}
-          multiline
-          rows={10}
-          mono
-          readOnly
-          busy={isPending}
-          headerRight={
-            <CopyButton text={outputText} label="コピー" ariaLabel="出力テキストをコピー" />
-          }
-        />
-      )}
+{
+  /* 出力 */
+}
+{
+  input.length > 0 && (
+    <InputField
+      id="secret-scrubber-output"
+      label="マスク済みテキスト"
+      value={outputText}
+      onChange={() => {}}
+      multiline
+      rows={10}
+      mono
+      readOnly
+      busy={isPending}
+      headerRight={<CopyButton text={outputText} label="コピー" ariaLabel="出力テキストをコピー" />}
+    />
+  );
+}
 ```
 
 注: aria-live は付与しない（InputField はそもそも付けない＝PR #631 の挙動維持）。`busy={isPending}` で従来の `aria-busy` を温存。
@@ -323,6 +331,7 @@ git commit -m "refactor(ui): SecretScrubber のマスク出力を InputField に
 ## Task 6: Gs1Databar の border-default 置換（項目5）
 
 **Files:**
+
 - Modify: `src/components/tools/Gs1Databar.tsx`
 
 - [ ] **Step 1: `:239` 付近の border-(--color-border) を確認して置換**
@@ -377,8 +386,9 @@ Expected: 成功。
 
 Run: `npm run test:e2e`
 Expected: 機能系 PASS。VRT は差分が出る可能性あり（QrReader 停止ボタンの背景・ボタン padding 等）。差分が出たら:
-  1. DOM 構造 diff と computed style diff の 2 段階で真の regression でないことを確認。
-  2. pixel 数のみを根拠に baseline 更新を recommend しない（CLAUDE.md §6.8）。意図した見た目変更（停止ボタンの透過化等）であることを記録し、baseline 更新の要否は人間の目視確認に委ねる。
+
+1. DOM 構造 diff と computed style diff の 2 段階で真の regression でないことを確認。
+2. pixel 数のみを根拠に baseline 更新を recommend しない（CLAUDE.md §6.8）。意図した見た目変更（停止ボタンの透過化等）であることを記録し、baseline 更新の要否は人間の目視確認に委ねる。
 
 - [ ] **Step 6: ドキュメント影響確認**
 
