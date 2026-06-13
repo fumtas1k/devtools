@@ -188,17 +188,19 @@ export function DsnBuilderTool() {
                     placeholder="db.example.com"
                     className="flex-1 min-w-0"
                   />
-                  <BareInput
-                    value={h.port}
-                    onChange={(v) => updateHost(i, h.host, v)}
-                    mono
-                    inputMode="numeric"
-                    aria-label={`ポート ${i + 1}`}
-                    placeholder={
-                      dialect.defaultPort === null ? '指定不可' : String(dialect.defaultPort)
-                    }
-                    className="w-24 flex-none"
-                  />
+                  {/* BareInput 基底の w-full と w-24 が衝突するため、固定幅は wrapper 側に持たせる */}
+                  <div className="w-24 flex-none">
+                    <BareInput
+                      value={h.port}
+                      onChange={(v) => updateHost(i, h.host, v)}
+                      mono
+                      inputMode="numeric"
+                      aria-label={`ポート ${i + 1}`}
+                      placeholder={
+                        dialect.defaultPort === null ? '指定不可' : String(dialect.defaultPort)
+                      }
+                    />
+                  </div>
                   {model.hosts.length > 1 && (
                     <ActionButton
                       size="compact"
