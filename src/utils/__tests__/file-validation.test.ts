@@ -12,12 +12,7 @@ const MAX_BYTES = 2 * MB;
  * @param name ファイル名
  * @param type MIME タイプ
  */
-function makeFile(
-  totalBytes: number,
-  name: string,
-  type: string,
-  magic: number[] = []
-): File {
+function makeFile(totalBytes: number, name: string, type: string, magic: number[] = []): File {
   const data = new Uint8Array(totalBytes);
   // 先頭に magic バイトを配置する
   for (let i = 0; i < magic.length && i < totalBytes; i++) {
@@ -34,9 +29,18 @@ const JPEG_MAGIC = [0xff, 0xd8, 0xff, 0xe0];
 const GIF_MAGIC = [0x47, 0x49, 0x46, 0x38];
 // WebP: "RIFF" (offset 0) + 4 bytes サイズ + "WEBP" (offset 8)
 const WEBP_MAGIC = [
-  0x52, 0x49, 0x46, 0x46, // RIFF
-  0x00, 0x00, 0x00, 0x00, // サイズ（ダミー）
-  0x57, 0x45, 0x42, 0x50, // WEBP
+  0x52,
+  0x49,
+  0x46,
+  0x46, // RIFF
+  0x00,
+  0x00,
+  0x00,
+  0x00, // サイズ（ダミー）
+  0x57,
+  0x45,
+  0x42,
+  0x50, // WEBP
 ];
 // PDF magic（画像ではない非画像バイト列、陽性対照に使用）
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]; // "%PDF-"
@@ -138,10 +142,10 @@ describe('validateFile — SVG OK (陰性対照: SVG はテキスト sniff で�
     // 陰性対照: type が空でも先頭テキストで SVG を識別できる
     const svgContent =
       '<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg"></svg>';
-    const result = await validateFile(
-      new File([svgContent], 'image.svg', { type: '' }),
-      { maxBytes: MAX_BYTES, kind: 'image' }
-    );
+    const result = await validateFile(new File([svgContent], 'image.svg', { type: '' }), {
+      maxBytes: MAX_BYTES,
+      kind: 'image',
+    });
     expect(result.ok).toBe(true);
   });
 
@@ -166,10 +170,10 @@ describe('validateFile — image WRONG_TYPE (陽性対照: 非画像バイトは
     // 陽性対照: file.type = image/png でも実バイトが PDF magic なら拒否される。
     // 旧実装（file.type.startsWith("image/") チェックのみ）ではこれが ok=true で通っていた。
     // magic-byte 検証への変更により確実に WRONG_TYPE になることを保証する。
-    const result = await validateFile(
-      makeFile(100, 'photo.png', 'image/png', PDF_MAGIC),
-      { maxBytes: MAX_BYTES, kind: 'image' }
-    );
+    const result = await validateFile(makeFile(100, 'photo.png', 'image/png', PDF_MAGIC), {
+      maxBytes: MAX_BYTES,
+      kind: 'image',
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe('WRONG_TYPE');
   });
@@ -197,10 +201,10 @@ describe('validateFile — image WRONG_TYPE (陽性対照: 非画像バイトは
   it('PNG magic を持ち name=fake.jpg type=image/jpeg なファイルは ok = true（実体が画像なら通る）', async () => {
     // 陽性対照の逆証明: magic が正しければ拡張子・MIME が違っても ok になる。
     // これは magic 検証の正しい挙動（file.type 依存ではない証明）。
-    const result = await validateFile(
-      makeFile(100, 'fake.jpg', 'image/jpeg', PNG_MAGIC),
-      { maxBytes: MAX_BYTES, kind: 'image' }
-    );
+    const result = await validateFile(makeFile(100, 'fake.jpg', 'image/jpeg', PNG_MAGIC), {
+      maxBytes: MAX_BYTES,
+      kind: 'image',
+    });
     expect(result.ok).toBe(true);
   });
 });
