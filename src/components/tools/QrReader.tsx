@@ -51,7 +51,7 @@ export function QrReaderTool() {
     // 同名ファイルを再選択できるよう値をクリア（File 自体は file 変数で参照済み）
     e.target.value = '';
 
-    const validation = validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
+    const validation = await validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
     if (!validation.ok) {
       setDecodeError(validation.message);
       return;

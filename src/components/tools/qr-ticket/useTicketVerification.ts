@@ -88,7 +88,7 @@ export function useTicketVerification({
     if (!file) return;
     e.target.value = '';
 
-    const validation = validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
+    const validation = await validateFile(file, { kind: 'image', maxBytes: 15 * 1024 * 1024 });
     if (!validation.ok) {
       camera.setCameraError(validation.message);
       return;
