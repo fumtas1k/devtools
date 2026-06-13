@@ -21,6 +21,8 @@ interface Props {
   mono?: boolean;
   resize?: boolean;
   onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement | HTMLInputElement>;
+  /** multiline（textarea）時に aria-busy を付与する。debounce 中の表明など。既定 false。 */
+  busy?: boolean;
 }
 
 export function InputField({
@@ -41,6 +43,7 @@ export function InputField({
   mono = false,
   resize = false,
   onKeyDown,
+  busy = false,
 }: Props) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -91,6 +94,7 @@ export function InputField({
           maxLength={maxLength}
           aria-describedby={describedBy}
           aria-invalid={!!error}
+          aria-busy={busy || undefined}
           className={inputClass}
         />
       ) : (
