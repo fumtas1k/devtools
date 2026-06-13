@@ -1,0 +1,39 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { DsnBuilderTool } from '@/components/tools/DsnBuilder';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'dsn-builder')!;
+---
+
+<ToolLayout tool={tool}>
+  <DsnBuilderTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      データベース・ミドルウェアの接続文字列（DSN）を貼り付けると、ユーザー名・パスワード・ホスト・データベース名・クエリパラメータに分解してフォームに表示します。フォームを編集すると接続文字列にリアルタイムで反映され、記号入りパスワードの
+      percent-encode も自動で行われます。接続文字列にはパスワードが含まれるため、すべての処理はブラウザ内で完結し、入力内容は外部に送信されません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">対応スキーム</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>PostgreSQL（postgresql:// / postgres://、libpq 仕様の複数ホスト対応）</li>
+      <li>MySQL（mysql://）</li>
+      <li>MongoDB（mongodb:// の複数ホスト、mongodb+srv:// の SRV 制約検証）</li>
+      <li>Redis（redis:// / rediss://、パスの DB 番号検証）</li>
+      <li>AMQP / RabbitMQ（amqp:// / amqps://、vhost の percent-encode 対応）</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>既存の接続文字列の構成要素（ホスト・DB 名・パラメータ）の確認・修正</li>
+      <li>記号入りパスワードを含む接続文字列の組み立て（手動エンコードのミス防止）</li>
+      <li>パスワードをマスクした共有用 URI を issue・チャットに貼る前処理</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">制限事項</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>実際の接続テストは行いません（ブラウザからは接続不可）</li>
+      <li>クエリパラメータの妥当性（sslmode の値等）は検証しません</li>
+      <li>JDBC 形式（jdbc:mysql://...）・SQL Server 形式（Server=...;）には対応していません</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>
