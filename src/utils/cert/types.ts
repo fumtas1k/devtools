@@ -74,3 +74,24 @@ export interface ChainResult {
   order: number[];
   links: ChainLink[];
 }
+
+/** PKCS#12 から抽出した秘密鍵 1 件分の情報 */
+export interface Pkcs12KeyInfo {
+  /** 'RSA' | 'EC' | OID 文字列 */
+  algorithm: string;
+  keySizeBits?: number;
+  namedCurve?: string;
+  /** PKCS#8 PEM（-----BEGIN PRIVATE KEY----- ...）。トグル開示用 */
+  pkcs8Pem: string;
+}
+
+/** parsePkcs12 の結果 */
+export interface Pkcs12Result {
+  /** 抽出した証明書 DER（parseDerCertificates へ渡す） */
+  certs: Uint8Array[];
+  /** 抽出した秘密鍵 */
+  privateKeys: Pkcs12KeyInfo[];
+  /** 失敗理由（成功時は undefined） */
+  error?: string;
+  errorKind?: 'wrong-password' | 'unsupported-encryption' | 'parse-error';
+}
