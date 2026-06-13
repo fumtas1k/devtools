@@ -4188,3 +4188,31 @@ SSL/TLS証明書デコーダ（候補 S-2）は社内 CA・本番証明書を外
 - ✅ チェーン署名検証は改ざん・issuer 不一致・期限切れを検出する陽性＋陰性対照テストを同梱（test-gates 準拠）。
 - ⚠️ `pkijs` / `asn1js` の API は ASN.1 構造を直接辿るため込み入っており、拡張パースは個別実装が必要。
 - ⚠️ SCT は表示のみ（署名の暗号検証なし）、失効確認なしのため「証明書が現在も有効か」の最終判断には別手段が必要。
+
+## [112] key-converter: Web Crypto 主体 + asn1js OID 判定、pkijs 不採用
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+cert-decoder（issue #643）で「鍵フォーマット変換（PEM/DER/JWK）は別ツールへ分離」とした方針（decision [111]）に基づき、issue #645 として独立実装する。鍵種別（RSA / ECDSA）・鍵形式（SPKI / PKCS#8）の判定ライブラリ選定と、v1 スコープが論点となった。
+
+### 決断
+
+- **変換エンジン**: `crypto.subtle`（Web Crypto API）を主体とし、OID 判定のみ既存依存の `asn1js` を使用する。
+  - **理由**: 変換そのものは `importKey` / `exportKey` のみで完結する。pkijs の高機能（証明書パース・署名検証）は不要でオーバーキル。`asn1js` は cert-decoder で既に依存しており、追加依存なしで SEQUENCE/OID 解析ができる。
+  - **pkijs 不採用**: pkijs の `PrivateKeyInfo` / `PublicKeyInfo` クラスを使う案も検討したが、EC 曲線 OID の取得パスが不明瞭で結局 `asn1js` レイヤーに降りる必要がある。直接 `asn1js` を使う方がシンプル。
+  - **node-forge 不採用**: 独自 JS 暗号実装で Web Crypto と二重管理になる。バンドルサイズも大きい（decision [111] と同じ理由）。
+- **v1 スコープの限定**:
+  - **対応**: RSA / ECDSA（P-256/P-384/P-521）の公開鍵（SPKI）・秘密鍵（PKCS#8）、入力形式 PEM / DER / JWK。
+  - **非対応**: PKCS#1（RSA PUBLIC KEY / RSA PRIVATE KEY）・SEC1（EC PRIVATE KEY）レガシー PEM、暗号化秘密鍵（ENCRYPTED PRIVATE KEY）、Ed25519/Ed448（kty: OKP）、秘密鍵からの公開鍵抽出、鍵ペア生成（csr-generator 予定）。
+  - **理由**: PKCS#1/SEC1 は `openssl pkcs8 -topk8` で PKCS#8 に変換できるため、v1 では変換ガイドの表示で対応。暗号化秘密鍵はパスフレーズ入力 UI が別途必要で責務が異なる。Ed25519 は Web Crypto の `subtle.importKey` が対応するが、JWK の `kty: OKP` は RSA/EC と異なるパスを要し、利用頻度比でコスト高と判断。
+- **test-gates 準拠**: `detectKeyInput` は入力バリデーター（不正入力を検知して `error` を返す機構）を含むため、陽性対照テスト（不正入力が throw せず `error` を返すこと）を陰性対照（round-trip 正常系）と別 describe に分離して同梱。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし（`asn1js` は cert-decoder で既依存）。
+- ✅ 変換は Web Crypto のみで完結し、外部送信コードが混入する余地がない。
+- ✅ 陽性対照テストにより「不正入力が必ず error になる」ことを CI で継続検証（test-gates 準拠）。
+- ⚠️ `asn1js` の valueBlock API は未型付けで直接辿るため脆弱性がある。Web Crypto の `importKey` 失敗で catch → error 返却でカバー。
+- ⚠️ PKCS#1/SEC1 のレガシー PEM を直接変換したい場合は別途 openssl が必要（v1 の既知制限として UI で案内）。

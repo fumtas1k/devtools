@@ -13,6 +13,7 @@
 - [変換・解析](#変換解析)
   - [CIDR/サブネット計算機](#cidrサブネット計算機)
   - [DSN/接続文字列ビルダ](#dsn接続文字列ビルダ)
+  - [鍵フォーマット変換](#鍵フォーマット変換)
 
 ## 生成
 
@@ -553,3 +554,30 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - クエリパラメータの意味的妥当性（sslmode の値等）は検証しない
 - 過剰エンコードされた入力（例: `%41` = `A`）は decode → 再 encode で正規化される
 - JDBC / ADO.NET（`Server=...;`）形式は対象外
+
+### 鍵フォーマット変換
+
+#### 仕組み・アルゴリズム
+
+- 入力種別を `key/detect.ts` で判定する。テキストが `{` 始まりで JSON parse 可能かつ `kty` を持つ → JWK、`-----BEGIN ... -----` マッチ → PEM、Uint8Array または base64-only テキスト（先頭 `0x30` DER SEQUENCE）→ DER の優先順で判別する
+- DER / PEM の場合は `asn1js.fromBER` でトップレベル SEQUENCE を解析し、第1要素が INTEGER（version=0）→ PKCS#8 秘密鍵、第1要素が SEQUENCE（AlgorithmIdentifier）→ SPKI 公開鍵と判定する。AlgorithmIdentifier の OID で RSA（`1.2.840.113549.1.1.1`）/ EC（`1.2.840.10045.2.1`）を識別し、EC の場合は params の named curve OID（P-256=`1.2.840.10045.3.1.7` / P-384=`1.3.132.0.34` / P-521=`1.3.132.0.35`）から曲線名を取得する
+- JWK の場合は `kty` / `crv` フィールドとプライベートキーフィールド（`d` の有無）で鍵種別を判定する
+- 変換は `crypto.subtle.importKey`（`extractable: true`）→ `exportKey` の流れで全形式を生成する。RSA は `RSASSA-PKCS1-v1_5 / SHA-256`、EC は `ECDSA / namedCurve` をアルゴリズムパラメータとして使用する（hash は変換用の便宜値で実際の署名/検証には使用しない）
+- PEM は DER を base64 化し 64 文字折返しで構築する。JWK は `JSON.stringify(jwk, null, 2)` でインデント付き出力する
+- PKCS#1（RSA PUBLIC KEY / RSA PRIVATE KEY）/ SEC1（EC PRIVATE KEY）/ ENCRYPTED PRIVATE KEY などの未対応形式は `detectKeyInput` が `unsupported` を返し、UI で openssl 変換コマンドを案内する
+- `importKey` 失敗（壊れた DER/JWK）は catch して `error` フィールド付きの結果を返す（throw しない設計）
+
+#### 準拠仕様・RFC
+
+- RFC 5958（非対称鍵パッケージ、PKCS#8 Private-Key Information Syntax）
+- RFC 5480（楕円曲線暗号 SubjectPublicKeyInfo）
+- RFC 7517（JSON Web Key）/ RFC 7518（JSON Web Algorithms、鍵パラメータ定義）
+- Web Cryptography API（W3C）
+
+#### 制限・エッジケース
+
+- PKCS#1 形式（RSA PUBLIC KEY / RSA PRIVATE KEY）・SEC1 形式（EC PRIVATE KEY）のレガシー PEM は非対応。`openssl pkcs8 -topk8 -nocrypt` で PKCS#8 に変換してから使用する
+- 暗号化秘密鍵（ENCRYPTED PRIVATE KEY・パスフレーズ付き PEM）は非対応。`openssl pkcs8 -in key.pem -nocrypt -out key_plain.pem` で復号してから変換する
+- Ed25519 / Ed448（EdDSA、`kty: OKP`）は非対応
+- 秘密鍵からの公開鍵抽出は非対応
+- 全処理はブラウザ内で完結し、秘密鍵データは外部に送信しない
