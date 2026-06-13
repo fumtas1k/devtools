@@ -197,6 +197,9 @@ export function ClipboardInspectorTool() {
         contentEditable
         suppressContentEditableWarning
         inputMode="none"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
         role="textbox"
         aria-label="貼り付け受付領域。長押しまたは Ctrl+V で貼り付けるとクリップボードの内容を検査します"
         onBeforeInput={(e) => e.preventDefault()}
