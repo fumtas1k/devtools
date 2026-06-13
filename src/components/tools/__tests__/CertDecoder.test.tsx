@@ -53,4 +53,14 @@ describe('CertDecoder', () => {
       expect(screen.getByText(/ルート CA（自己署名）/)).toBeTruthy();
     });
   });
+
+  it('「サンプルを入力」でサンプルチェーンが解析・表示される', async () => {
+    render(<CertDecoder />);
+    fireEvent.click(screen.getByRole('button', { name: 'サンプルを入力' }));
+    await waitFor(() => {
+      // サンプルは root→intermediate→leaf の 3 枚。自己署名 root とリーフが表示される
+      expect(screen.getByText(/ルート CA（自己署名）/)).toBeTruthy();
+      expect(screen.getByText(/リーフ（サーバ証明書）/)).toBeTruthy();
+    });
+  });
 });
