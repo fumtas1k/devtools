@@ -167,12 +167,14 @@ function parsePublicKeyInfo(cert: Certificate): PublicKeyInfo {
 
   if (algName === 'EC') {
     // EC パラメータから namedCurve を取得
+    // algorithmParams は asn1js ObjectIdentifier。OID 文字列は valueBlock.toString() で取得する。
+    // valueBlock.value は SID ブロックの配列なので直接文字列として使わない。
     try {
       const params = cert.subjectPublicKeyInfo.algorithm.algorithmParams as {
-        valueBlock?: { value?: string };
+        valueBlock?: { toString?: () => string };
       } | undefined;
-      if (params?.valueBlock?.value) {
-        const curveOid = params.valueBlock.value as string;
+      if (params?.valueBlock?.toString) {
+        const curveOid = params.valueBlock.toString();
         info.namedCurve = EC_NAMED_CURVE_OID[curveOid] ?? curveOid;
       }
     } catch {
