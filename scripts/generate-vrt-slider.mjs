@@ -211,12 +211,19 @@ export function generateHTML(comparisons) {
   ${cards}
 </main>
 <script>
-  // スマホ幅では画像表示スペースを優先するため、ファイル一覧を初期状態で折りたたむ。
+  // スマホ幅では画像表示スペースを優先するため、ファイル一覧を折りたたむ。
   // (open 属性は media query で切り替えられないため JS で制御する)
-  if (window.matchMedia('(max-width: 767px)').matches) {
+  // リサイズにも追従し、スマホ幅では閉じ・デスクトップ幅では開く。
+  (function () {
     const nav = document.querySelector('.nav-details');
-    if (nav) nav.open = false;
-  }
+    if (!nav) return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const apply = () => {
+      nav.open = !mq.matches;
+    };
+    apply();
+    mq.addEventListener('change', apply);
+  })();
 </script>
 </body>
 </html>`;
