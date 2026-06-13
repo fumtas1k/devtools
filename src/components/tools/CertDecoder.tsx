@@ -1,12 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { FileInputButton } from '@/components/ui/FileInputButton';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ChipLabel } from '@/components/ui/ChipLabel';
-import { parseCertificates, buildChain } from '@/utils/cert';
-import type { ParsedCert, ChainResult, ParseResult } from '@/utils/cert';
+import { OutputField } from '@/components/ui/OutputField';
+import { ActionButton } from '@/components/ui/ActionButton';
+import { DownloadButton } from '@/components/ui/DownloadButton';
+import {
+  parseCertificates,
+  parseDerCertificates,
+  parsePkcs12,
+  looksLikePkcs12,
+  buildChain,
+} from '@/utils/cert';
+import type { ParsedCert, ChainResult, ParseResult, Pkcs12KeyInfo } from '@/utils/cert';
 import { SAMPLE_CERT_CHAIN_PEM } from './certDecoderSample';
 
 // ---- 内部ユーティリティ ----
@@ -25,6 +34,37 @@ function formatDate(d: Date): string {
 
 function isExpired(d: Date): boolean {
   return d.getTime() < Date.now();
+}
+
+/** PEM -----BEGIN PKCS12----- の本文を base64 デコードして Uint8Array に変換する */
+function pemPkcs12ToBytes(pem: string): Uint8Array {
+  const match = /-----BEGIN PKCS12-----([\s\S]*?)-----END PKCS12-----/i.exec(pem);
+  if (!match) return new Uint8Array(0);
+  const b64 = match[1].replace(/\s/g, '');
+  return base64ToBytesSafe(b64) ?? new Uint8Array(0);
+}
+
+/** try/catch 付き atob ヘルパー */
+function base64ToBytesSafe(b64: string): Uint8Array | null {
+  try {
+    const binary = atob(b64);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/** テキストファイルをダウンロードする */
+function downloadText(filename: string, text: string): void {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ---- 証明書カード ----
@@ -315,18 +355,78 @@ function ChainBanner({ chainResult, certs }: ChainBannerProps) {
   );
 }
 
+// ---- 秘密鍵セクション ----
+
+interface PrivateKeySectionProps {
+  privateKeys: Pkcs12KeyInfo[];
+}
+
+function PrivateKeySection({ privateKeys }: PrivateKeySectionProps) {
+  if (privateKeys.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      <NotificationBanner variant="info" title="秘密鍵はブラウザ外に送信されません">
+        このツールの全処理はブラウザ内で完結します。入力した PKCS#12 と抽出した秘密鍵は外部サーバーに送信されません。
+      </NotificationBanner>
+      {privateKeys.map((key, i) => (
+        <div key={i} className="rounded-xl border border-default overflow-hidden">
+          <div className="bg-subtle px-4 py-3 border-b border-default flex flex-wrap items-center gap-2">
+            <span className="body-emphasis text-default">秘密鍵 #{i + 1}</span>
+            <ChipLabel tone="error">秘密鍵</ChipLabel>
+            <ChipLabel tone="neutral">{key.algorithm}</ChipLabel>
+            {key.keySizeBits && <ChipLabel tone="neutral">{key.keySizeBits} bit</ChipLabel>}
+            {key.namedCurve && <ChipLabel tone="neutral">{key.namedCurve}</ChipLabel>}
+          </div>
+          <div className="bg-default p-4">
+            <details>
+              <summary className="cursor-pointer body-emphasis text-default">
+                秘密鍵（PKCS#8 PEM）を表示
+              </summary>
+              <div className="mt-3">
+                <OutputField
+                  id={`pkcs12-key-${i}`}
+                  label="PKCS#8 PEM"
+                  value={key.pkcs8Pem}
+                  rows={8}
+                  rightSlot={
+                    <DownloadButton
+                      label="保存"
+                      aria-label="秘密鍵 PEM をダウンロード"
+                      onClick={() => downloadText(`private_key_${i + 1}.pem`, key.pkcs8Pem)}
+                    />
+                  }
+                />
+              </div>
+            </details>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ---- メインコンポーネント ----
 
 type DecodeState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'pkcs12' }
+  | { status: 'awaiting-password'; bytes: Uint8Array; error?: string }
+  | { status: 'decrypting' }
+  | { status: 'unsupported'; reason: string }
   | { status: 'error'; message: string }
-  | { status: 'done'; parseResult: ParseResult; chainResult: ChainResult };
+  | {
+      status: 'done';
+      parseResult: ParseResult;
+      chainResult: ChainResult;
+      privateKeys?: Pkcs12KeyInfo[];
+    };
 
 export function CertDecoder() {
   const [input, setInput] = useState('');
   const [decodeState, setDecodeState] = useState<DecodeState>({ status: 'idle' });
+  const [password, setPassword] = useState('');
+  // awaiting-password 状態の bytes を useRef で保持（再レンダー時も安定）
+  const pendingBytesRef = useRef<Uint8Array | null>(null);
 
   // デバウンス + 非同期パース
   useEffect(() => {
@@ -345,9 +445,24 @@ export function CertDecoder() {
 
         if (cancelled) return;
 
+        // PKCS#12（PEM ラベル検出 or Base64 貼り付け）
+        const stripped = trimmed.replace(/\s/g, '');
+        const isBase64 = /^[A-Za-z0-9+/]+=*$/.test(stripped);
         if (parseResult.unsupported === 'pkcs12') {
-          setDecodeState({ status: 'pkcs12' });
+          const bytes = pemPkcs12ToBytes(trimmed);
+          pendingBytesRef.current = bytes;
+          setPassword('');
+          setDecodeState({ status: 'awaiting-password', bytes });
           return;
+        }
+        if (parseResult.certs.length === 0 && isBase64) {
+          const bytes = base64ToBytesSafe(stripped);
+          if (bytes && looksLikePkcs12(bytes)) {
+            pendingBytesRef.current = bytes;
+            setPassword('');
+            setDecodeState({ status: 'awaiting-password', bytes });
+            return;
+          }
         }
 
         if (parseResult.topLevelError && parseResult.certs.length === 0) {
@@ -375,10 +490,48 @@ export function CertDecoder() {
     };
   }, [input]);
 
+  // PKCS#12 パスワード復号ハンドラ
+  const handleDecryptPkcs12 = useCallback(async (bytes: Uint8Array, pwd: string) => {
+    setDecodeState({ status: 'decrypting' });
+    const result = await parsePkcs12(bytes, pwd);
+    if (result.errorKind === 'wrong-password') {
+      setDecodeState({
+        status: 'awaiting-password',
+        bytes,
+        error: result.error ?? 'パスワードが正しくありません。',
+      });
+      return;
+    }
+    if (result.errorKind === 'unsupported-encryption') {
+      setDecodeState({ status: 'unsupported', reason: result.error! });
+      return;
+    }
+    if (result.error) {
+      setDecodeState({ status: 'error', message: result.error });
+      return;
+    }
+    const parseResult = await parseDerCertificates(result.certs);
+    const chainResult = await buildChain(parseResult.certs);
+    setDecodeState({ status: 'done', parseResult, chainResult, privateKeys: result.privateKeys });
+  }, []);
+
   // ファイル読み込み
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // PKCS#12（.p12/.pfx）の場合はパスワード入力モードへ
+    const isPkcs12 = ['.p12', '.pfx'].some((ext) => file.name.toLowerCase().endsWith(ext));
+    if (isPkcs12) {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      pendingBytesRef.current = bytes;
+      setInput(''); // text 経路の解析を止める
+      setPassword('');
+      setDecodeState({ status: 'awaiting-password', bytes });
+      e.target.value = '';
+      return;
+    }
 
     const binaryExtensions = ['.der', '.cer'];
     const isBinary = binaryExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
@@ -417,25 +570,75 @@ export function CertDecoder() {
           onChange={setInput}
           onSampleClick={() => setInput(SAMPLE_CERT_CHAIN_PEM)}
           placeholder={'-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----'}
-          hint="対応形式: PEM / DER（Base64）/ PKCS#7（.p7b）"
+          hint="対応形式: PEM / DER（Base64）/ PKCS#7（.p7b）/ PKCS#12（.p12/.pfx）"
           multiline
           rows={6}
           mono
           resize
         />
         <div className="flex items-center gap-3">
-          <FileInputButton accept=".pem,.crt,.cer,.der,.p7b" onChange={handleFileChange}>
+          <FileInputButton
+            accept=".pem,.crt,.cer,.der,.p7b,.p12,.pfx"
+            onChange={handleFileChange}
+          >
             ファイルを選択
           </FileInputButton>
-          <span className="caption text-muted">.pem / .crt / .cer / .der / .p7b</span>
+          <span className="caption text-muted">.pem / .crt / .cer / .der / .p7b / .p12 / .pfx</span>
         </div>
       </div>
 
-      {/* PKCS#12 未対応バナー */}
-      {decodeState.status === 'pkcs12' && (
-        <NotificationBanner variant="warning" title="PKCS#12（.pfx / .p12）は v1 非対応です">
-          秘密鍵を含む PKCS#12 ファイルのパースは別ツールで対応予定です。PEM / DER / PKCS#7
-          形式の証明書をご利用ください。
+      {/* PKCS#12 パスワード入力 UI */}
+      {decodeState.status === 'awaiting-password' && (
+        <div className="space-y-3">
+          <NotificationBanner variant="info" title="PKCS#12 ファイルが検出されました">
+            パスワードを入力して証明書・秘密鍵を解析します。入力したデータはブラウザ外に送信されません。
+          </NotificationBanner>
+          {decodeState.error && <ErrorMessage message={decodeState.error} variant="block" />}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label htmlFor="pkcs12-password" className="body-emphasis text-default block mb-1">
+                パスワード
+              </label>
+              <input
+                id="pkcs12-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && password.length > 0) {
+                    handleDecryptPkcs12(decodeState.bytes, password);
+                  }
+                }}
+                placeholder="PKCS#12 のパスワード"
+                className="caption w-full rounded-lg border border-default bg-default text-default px-3 py-2"
+                autoComplete="current-password"
+              />
+            </div>
+            <ActionButton
+              variant="primary"
+              onClick={() => handleDecryptPkcs12(decodeState.bytes, password)}
+              disabled={password.length === 0}
+            >
+              解析
+            </ActionButton>
+          </div>
+        </div>
+      )}
+
+      {/* 復号中 */}
+      {decodeState.status === 'decrypting' && (
+        <p className="caption text-muted" aria-live="polite">
+          復号中…
+        </p>
+      )}
+
+      {/* レガシー暗号バナー */}
+      {decodeState.status === 'unsupported' && (
+        <NotificationBanner
+          variant="warning"
+          title="この PKCS#12 はブラウザで復号できません（レガシー暗号）"
+        >
+          {decodeState.reason}
         </NotificationBanner>
       )}
 
@@ -447,6 +650,11 @@ export function CertDecoder() {
       {/* デコード結果 */}
       {decodeState.status === 'done' && (
         <div className="space-y-4" role="status" aria-live="polite">
+          {/* 秘密鍵セクション（証明書カードの前） */}
+          {decodeState.privateKeys && decodeState.privateKeys.length > 0 && (
+            <PrivateKeySection privateKeys={decodeState.privateKeys} />
+          )}
+
           {/* チェーンバナー（複数枚・問題あり時） */}
           <ChainBanner
             chainResult={decodeState.chainResult}
