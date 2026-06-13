@@ -532,6 +532,17 @@ export async function parseCertificates(input: string | Uint8Array): Promise<Par
     }
   }
 
+  return parseDerCertificates(derList);
+}
+
+/**
+ * DER エンコード済み証明書の配列を ParsedCert[] に変換する。
+ * PKCS#12 経路（pkcs12.ts）と PEM/DER/PKCS#7 経路（parseCertificates）の共通後段。
+ * 1 枚のパース失敗は error フィールド付き ParsedCert として継続する。
+ */
+export async function parseDerCertificates(derList: Uint8Array[]): Promise<ParseResult> {
+  ensureCryptoEngine();
+
   if (derList.length === 0) {
     return { certs: [], topLevelError: '証明書が見つかりませんでした' };
   }
@@ -543,7 +554,6 @@ export async function parseCertificates(input: string | Uint8Array): Promise<Par
       const parsed = await parseSingleDer(der);
       certs.push(parsed);
     } catch (e) {
-      // 1枚の失敗は error フィールド付きで継続
       certs.push({
         subject: { full: '(パースエラー)', attributes: [] },
         issuer: { full: '(パースエラー)', attributes: [] },
