@@ -1,4 +1,5 @@
 import type { ChangeEvent, ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 
 interface Props {
   /** 許可する MIME タイプ / 拡張子 (例: "image/*") */
@@ -38,10 +39,7 @@ export function FileInputButton({
   disabled = false,
 }: Props) {
   return (
-    <label
-      className={`btn-file-input${className ? ` ${className}` : ''}`}
-      aria-disabled={disabled ? true : undefined}
-    >
+    <label className={cx('btn-file-input', className)} aria-disabled={disabled ? true : undefined}>
       <input
         type="file"
         className="sr-only"

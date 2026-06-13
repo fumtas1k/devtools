@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { copyToClipboard } from '@/utils/clipboard';
 import { COMPACT_BUTTON_SHAPE_CLASSES } from './_compactButton';
+import { cx } from '@/utils/cx';
 
 function ClipboardIcon() {
   return (
@@ -105,7 +106,11 @@ export function CopyButton({
         type="button"
         onClick={handleClick}
         aria-label={accessibleName}
-        className={`btn-copy is-compact ${stateClass} rounded-md inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap`.trim()}
+        className={cx(
+          'btn-copy is-compact',
+          stateClass,
+          'rounded-md inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap'
+        )}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
         <CopyAnnounce copied={copied} />
@@ -118,7 +123,14 @@ export function CopyButton({
       type="button"
       onClick={handleClick}
       aria-label={accessibleName}
-      className={`btn-copy ${stateClass} caption inline-flex items-center gap-1.5 ${COMPACT_BUTTON_SHAPE_CLASSES} tracking-wide whitespace-nowrap ${className}`.trim()}
+      className={cx(
+        'btn-copy',
+        stateClass,
+        'caption inline-flex items-center gap-1.5',
+        COMPACT_BUTTON_SHAPE_CLASSES,
+        'tracking-wide whitespace-nowrap',
+        className
+      )}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}
       {label}

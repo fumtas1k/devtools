@@ -1,3 +1,5 @@
+import { cx } from '@/utils/cx';
+
 interface Props {
   onClick: () => void;
   className?: string;
@@ -14,7 +16,10 @@ export function ClearButton({ onClick, className = '' }: Props) {
     <button
       type="button"
       onClick={onClick}
-      className={`caption text-muted btn-clear rounded-lg px-3 py-1.5 whitespace-nowrap border-0 ${className}`.trim()}
+      className={cx(
+        'caption text-muted btn-clear rounded-lg px-3 py-1.5 whitespace-nowrap border-0',
+        className
+      )}
     >
       クリア
     </button>

@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { COMPACT_BUTTON_SHAPE_CLASSES } from './_compactButton';
+import { cx } from '@/utils/cx';
 
 type Variant = 'default' | 'primary' | 'secondary' | 'danger';
 type Size = 'default' | 'compact';
@@ -58,7 +59,11 @@ export function ActionButton({
       onClick={onClick}
       disabled={isDisabled}
       aria-busy={loading ? 'true' : undefined}
-      className={`caption inline-flex items-center whitespace-nowrap btn-action btn-action--${variant} ${SIZE_CLASS[size]}`}
+      className={cx(
+        'caption inline-flex items-center whitespace-nowrap btn-action',
+        `btn-action--${variant}`,
+        SIZE_CLASS[size]
+      )}
       {...rest}
     >
       {children}

@@ -1,4 +1,5 @@
 import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
+import { cx } from '@/utils/cx';
 
 type ProgressBarProps = {
   current: number;
@@ -57,7 +58,7 @@ export function ProgressBar({ current, max, 'aria-describedby': describedBy }: P
       aria-valuenow={valuenow}
       aria-valuetext={valuetext}
       aria-describedby={describedBy}
-      className={`progress-track ${dynClassName}`}
+      className={cx('progress-track', dynClassName)}
     >
       <span className="progress-fill" aria-hidden="true" />
       {isOver && <span className="progress-overflow" aria-hidden="true" />}
