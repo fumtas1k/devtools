@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { cx } from '@/utils/cx';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { InputField } from '@/components/ui/InputField';
@@ -69,7 +70,7 @@ interface SectionProps {
 function Section({ title, variant, data, renderValue, 'data-testid': testId }: SectionProps) {
   const json = JSON.stringify(data, null, 2);
   return (
-    <div className={`rounded-lg p-4 bg-subtle ${SECTION_CLASSES[variant]}`} data-testid={testId}>
+    <div className={cx('rounded-lg p-4 bg-subtle', SECTION_CLASSES[variant])} data-testid={testId}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="body-emphasis text-default">{title}</h3>
         <CopyButton text={json} label="コピー" />
@@ -215,7 +216,10 @@ export function JwtDecoderTool() {
         <div className="flex flex-wrap items-center gap-2">
           {verifyExp && (
             <span
-              className={`rounded-full px-3 py-0.5 caption font-medium ${expBadge[parsed.expStatus].badgeClass}`}
+              className={cx(
+                'rounded-full px-3 py-0.5 caption font-medium',
+                expBadge[parsed.expStatus].badgeClass
+              )}
             >
               {expBadge[parsed.expStatus].label}
               {parsed.expStatus === 'valid' && parsed.remainingMs !== undefined && (
@@ -225,7 +229,10 @@ export function JwtDecoderTool() {
           )}
           {sigBadge[sigStatus] && (
             <span
-              className={`rounded-full px-3 py-0.5 caption font-medium ${sigBadge[sigStatus]!.badgeClass}`}
+              className={cx(
+                'rounded-full px-3 py-0.5 caption font-medium',
+                sigBadge[sigStatus]!.badgeClass
+              )}
             >
               {sigBadge[sigStatus]!.label}
             </span>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { cx } from '@/utils/cx';
 import type { ReactNode } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { ActionButton } from '@/components/ui/ActionButton';
@@ -40,12 +41,15 @@ function highlight(
       nodes.push(<span key={`t-${i}`}>{input.slice(cursor, m.start)}</span>);
     }
     const colorClass = i % 2 === 0 ? 'match-highlight-a' : 'match-highlight-b';
-    const activeClass = selected === i ? ' match-highlight-active' : '';
-    const emptyClass = m.value === '' ? ' match-highlight-empty' : '';
     nodes.push(
       <mark
         key={`m-${i}`}
-        className={`match-highlight text-default ${colorClass}${activeClass}${emptyClass}`}
+        className={cx(
+          'match-highlight text-default',
+          colorClass,
+          selected === i && 'match-highlight-active',
+          m.value === '' && 'match-highlight-empty'
+        )}
         onClick={() => onSelect(i)}
         title={`マッチ ${i + 1}`}
       >

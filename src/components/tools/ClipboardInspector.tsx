@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { cx } from '@/utils/cx';
 import { Section } from '@/components/ui/Section';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -213,9 +214,10 @@ export function ClipboardInspectorTool() {
           setIsDragOver(true);
         }}
         onDragLeave={() => setIsDragOver(false)}
-        className={`caret-transparent rounded-xl border-2 border-dashed border-default p-8 text-center ${
-          isDragOver ? 'bg-subtle' : ''
-        }`}
+        className={cx(
+          'caret-transparent rounded-xl border-2 border-dashed border-default p-8 text-center',
+          isDragOver && 'bg-subtle'
+        )}
       >
         <p className="body-emphasis text-default m-0">
           このページで Ctrl+V / Cmd+V

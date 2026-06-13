@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { cx } from '@/utils/cx';
 import { InputField } from '@/components/ui/InputField';
 import { FileInputButton } from '@/components/ui/FileInputButton';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -153,9 +154,10 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
         </div>
         {signatureValid !== null && (
           <span
-            className={`caption font-medium px-2 py-0.5 rounded-full ${
+            className={cx(
+              'caption font-medium px-2 py-0.5 rounded-full',
               signatureValid ? 'bg-success-tint text-success' : 'bg-error-tint text-error-text'
-            }`}
+            )}
           >
             {signatureValid ? '✓ 署名有効' : '✗ 署名無効'}
           </span>
@@ -284,7 +286,13 @@ function CertField({ label, value, mono, copyable, tone }: CertFieldProps) {
     <div className="flex flex-col gap-0.5">
       <dt className="caption text-muted">{label}</dt>
       <dd
-        className={`flex items-start gap-2 ${mono ? 'font-mono' : ''} caption ${tone === 'error' ? 'text-error' : 'text-default'} break-all`}
+        className={cx(
+          'flex items-start gap-2',
+          mono && 'font-mono',
+          'caption',
+          tone === 'error' ? 'text-error' : 'text-default',
+          'break-all'
+        )}
       >
         <span className="flex-1">{value}</span>
         {copyable && <CopyButton text={value} label="コピー" />}
