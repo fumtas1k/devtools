@@ -115,6 +115,31 @@ describe('generateHTML (slider lib 参照経路)', () => {
   });
 });
 
+/**
+ * generateHTML: 差分ファイル一覧を折りたためる nav（スマホで画像表示スペースを確保するため）。
+ */
+describe('generateHTML (折りたたみ可能な nav)', () => {
+  const sample = [
+    { label: '[desktop 1280x800] /tools/foo', id: 'foo', hasDiff: false },
+    { label: '[mobile 390x844] /tools/bar', id: 'bar', hasDiff: true },
+  ];
+
+  it('ファイル一覧を <details class="nav-details"> でラップする', () => {
+    const html = generateHTML(sample);
+    expect(html).toContain('<details class="nav-details" open>');
+  });
+
+  it('summary に差分件数を表示する', () => {
+    const html = generateHTML(sample);
+    expect(html).toContain('<summary>差分ファイル一覧（2 件）</summary>');
+  });
+
+  it('スマホ幅で初期折りたたみする制御スクリプトを含む', () => {
+    const html = generateHTML(sample);
+    expect(html).toContain("window.matchMedia('(max-width: 767px)')");
+  });
+});
+
 // 陽性対照: CDN 参照検知 assertion が「常に green」化していないことを確認する。
 // もし将来 generateHTML が unpkg URL を再導入してしまった時、上の `.not.toContain` が
 // 確実に fail することを、CDN URL を含む synthetic HTML 文字列で能動検知できることで証明する。
