@@ -124,7 +124,8 @@ export async function parsePkcs12(bytes: Uint8Array, password: string): Promise<
     return {
       certs: [],
       privateKeys: [],
-      error: 'PKCS#12（.pfx/.p12）として解析できませんでした。ファイルが破損している可能性があります。',
+      error:
+        'PKCS#12（.pfx/.p12）として解析できませんでした。ファイルが破損している可能性があります。',
       errorKind: 'parse-error',
     };
   }
@@ -153,7 +154,12 @@ export async function parsePkcs12(bytes: Uint8Array, password: string): Promise<
   // 3. AuthenticatedSafe 復号（レガシー暗号検出）
   const authSafe = pfx.parsedValue?.authenticatedSafe;
   if (!authSafe) {
-    return { certs: [], privateKeys: [], error: 'AuthenticatedSafe が見つかりません。', errorKind: 'parse-error' };
+    return {
+      certs: [],
+      privateKeys: [],
+      error: 'AuthenticatedSafe が見つかりません。',
+      errorKind: 'parse-error',
+    };
   }
   try {
     await authSafe.parseInternalValues({
@@ -172,9 +178,19 @@ export async function parsePkcs12(bytes: Uint8Array, password: string): Promise<
       };
     }
     if (/integrity/i.test(msg)) {
-      return { certs: [], privateKeys: [], error: 'パスワードが正しくありません。', errorKind: 'wrong-password' };
+      return {
+        certs: [],
+        privateKeys: [],
+        error: 'パスワードが正しくありません。',
+        errorKind: 'wrong-password',
+      };
     }
-    return { certs: [], privateKeys: [], error: `復号に失敗しました: ${msg}`, errorKind: 'parse-error' };
+    return {
+      certs: [],
+      privateKeys: [],
+      error: `復号に失敗しました: ${msg}`,
+      errorKind: 'parse-error',
+    };
   }
 
   // 4. SafeBag 走査

@@ -42,6 +42,7 @@
 ### Task 1: 型定義の追加
 
 **Files:**
+
 - Modify: `src/utils/cert/types.ts`
 
 - [ ] **Step 1: 型を追記**
@@ -90,6 +91,7 @@ git commit -m "feat: cert PKCS#12 用の型 Pkcs12Result / Pkcs12KeyInfo を追�
 既存 `parseCertificates` の「DER 候補配列 → `ParsedCert[]`」部分を `parseDerCertificates` として切り出し export する。挙動は不変（リファクタ）。
 
 **Files:**
+
 - Modify: `src/utils/cert/parse.ts`
 - Test: `src/utils/__tests__/cert-parse.test.ts`（既存テストが回帰検出に使える）
 
@@ -170,6 +172,7 @@ git commit -m "refactor: 証明書 DER 配列パースを parseDerCertificates �
 OpenSSL 3 で生成した PBES2/AES-256-CBC + SHA256 MAC の `.p12`（RSA・EC）と、レガシー RC2/3DES の `.p12` を base64 で埋め込む。全てパスワードは `test-password`。証明書は 100 年有効（期限切れ無関係）。
 
 **Files:**
+
 - Create: `src/utils/__tests__/cert-pkcs12-fixtures.ts`
 
 - [ ] **Step 1: フィクスチャファイルを作成**
@@ -224,6 +227,7 @@ git commit -m "test: PKCS#12 テスト用フィクスチャ（RSA/EC/legacy）�
 ### Task 4: parsePkcs12 のテスト（先に失敗させる / TDD）
 
 **Files:**
+
 - Create: `src/utils/__tests__/cert-pkcs12.test.ts`
 
 - [ ] **Step 1: 失敗するテストを書く**
@@ -302,6 +306,7 @@ Expected: FAIL（`parsePkcs12` 未実装で import エラー）
 ### Task 5: parsePkcs12 / looksLikePkcs12 の実装
 
 **Files:**
+
 - Create: `src/utils/cert/pkcs12.ts`
 
 - [ ] **Step 1: pkcs12.ts を実装**
@@ -435,7 +440,8 @@ export async function parsePkcs12(bytes: Uint8Array, password: string): Promise<
     return {
       certs: [],
       privateKeys: [],
-      error: 'PKCS#12（.pfx/.p12）として解析できませんでした。ファイルが破損している可能性があります。',
+      error:
+        'PKCS#12（.pfx/.p12）として解析できませんでした。ファイルが破損している可能性があります。',
       errorKind: 'parse-error',
     };
   }
@@ -464,7 +470,12 @@ export async function parsePkcs12(bytes: Uint8Array, password: string): Promise<
   // 3. AuthenticatedSafe 復号（レガシー暗号検出）
   const authSafe = pfx.parsedValue?.authenticatedSafe;
   if (!authSafe) {
-    return { certs: [], privateKeys: [], error: 'AuthenticatedSafe が見つかりません。', errorKind: 'parse-error' };
+    return {
+      certs: [],
+      privateKeys: [],
+      error: 'AuthenticatedSafe が見つかりません。',
+      errorKind: 'parse-error',
+    };
   }
   try {
     await authSafe.parseInternalValues({
@@ -483,9 +494,19 @@ export async function parsePkcs12(bytes: Uint8Array, password: string): Promise<
       };
     }
     if (/integrity/i.test(msg)) {
-      return { certs: [], privateKeys: [], error: 'パスワードが正しくありません。', errorKind: 'wrong-password' };
+      return {
+        certs: [],
+        privateKeys: [],
+        error: 'パスワードが正しくありません。',
+        errorKind: 'wrong-password',
+      };
     }
-    return { certs: [], privateKeys: [], error: `復号に失敗しました: ${msg}`, errorKind: 'parse-error' };
+    return {
+      certs: [],
+      privateKeys: [],
+      error: `復号に失敗しました: ${msg}`,
+      errorKind: 'parse-error',
+    };
   }
 
   // 4. SafeBag 走査
@@ -546,6 +567,7 @@ git commit -m "feat: PKCS#12 復号・証明書/秘密鍵抽出の parsePkcs12 �
 ### Task 6: index.ts に re-export を追加
 
 **Files:**
+
 - Modify: `src/utils/cert/index.ts`
 
 - [ ] **Step 1: export を追記**
@@ -580,6 +602,7 @@ git commit -m "feat: cert index に parsePkcs12 / parseDerCertificates を re-ex
 UI を追加する。既存の text 経路（PEM/DER/PKCS#7）は不変。
 
 **Files:**
+
 - Modify: `src/components/tools/CertDecoder.tsx`
 
 実装方針（既存コードに追記する形。共通 UI コンポーネントを再利用）:
@@ -587,24 +610,33 @@ UI を追加する。既存の text 経路（PEM/DER/PKCS#7）は不変。
 - [ ] **Step 1: import と状態型を拡張**
 
 先頭の import に追加:
+
 ```ts
 import { OutputField } from '@/components/ui/OutputField';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { parseCertificates, parseDerCertificates, parsePkcs12, looksLikePkcs12, buildChain } from '@/utils/cert';
+import {
+  parseCertificates,
+  parseDerCertificates,
+  parsePkcs12,
+  looksLikePkcs12,
+  buildChain,
+} from '@/utils/cert';
 import type { ParsedCert, ChainResult, ParseResult, Pkcs12KeyInfo } from '@/utils/cert';
 ```
+
 （`ActionButton` / `OutputField` / `DownloadButton` / `StatusBadge` の props は `src/components/ui/` の各定義を確認して合わせる。`ActionButton` が無い場合は既存ボタン class `btn-action btn-action--primary` を用いる）
 
 `DecodeState` を拡張:
+
 ```ts
 type DecodeState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'awaiting-password'; bytes: Uint8Array }
   | { status: 'decrypting' }
-  | { status: 'unsupported'; reason: string }   // レガシー暗号案内
+  | { status: 'unsupported'; reason: string } // レガシー暗号案内
   | { status: 'error'; message: string }
   | {
       status: 'done';
@@ -637,11 +669,13 @@ if (parseResult.certs.length === 0 && isBase64) {
   }
 }
 ```
+
 （`pemPkcs12ToBytes` = PEM `-----BEGIN PKCS12-----` 本文を base64 デコードするヘルパー、`base64ToBytesSafe` = try/catch 付き atob ヘルパー。コンポーネント内に小関数として定義）
 
 - [ ] **Step 3: ファイル選択で .p12/.pfx を分岐**
 
 `handleFileChange` に拡張子分岐を追加:
+
 ```ts
 const isPkcs12 = ['.p12', '.pfx'].some((ext) => file.name.toLowerCase().endsWith(ext));
 if (isPkcs12) {
@@ -652,11 +686,13 @@ if (isPkcs12) {
   return;
 }
 ```
+
 `accept` 属性に `.p12,.pfx` を追加、ヒント文言も更新。
 
 - [ ] **Step 4: パスワード入力 UI と解析ハンドラ**
 
 `awaiting-password` 状態のとき、パスワード入力欄（`type="password"`、`InputField` または素の input）＋「解析」`ActionButton` を表示。ハンドラ:
+
 ```ts
 const handleDecryptPkcs12 = useCallback(async (bytes: Uint8Array, password: string) => {
   setDecodeState({ status: 'decrypting' });
@@ -679,65 +715,78 @@ const handleDecryptPkcs12 = useCallback(async (bytes: Uint8Array, password: stri
   setDecodeState({ status: 'done', parseResult, chainResult, privateKeys: result.privateKeys });
 }, []);
 ```
+
 > 誤パスワード時の再入力エラー表示のため、`awaiting-password` state に `error?: string` フィールドを追加してよい（型定義も合わせて更新）。
 
 - [ ] **Step 5: 秘密鍵セクションの描画**
 
 `status === 'done'` の結果表示に、`privateKeys` があれば以下を証明書カード群の後（または前）に描画する。秘密鍵は既定で折りたたみ:
+
 ```tsx
-{decodeState.privateKeys && decodeState.privateKeys.length > 0 && (
-  <div className="space-y-3">
-    <NotificationBanner variant="info" title="秘密鍵はブラウザ外に送信されません">
-      このツールの全処理はブラウザ内で完結します。入力した PKCS#12 と抽出した秘密鍵は外部サーバーに送信されません。
-    </NotificationBanner>
-    {decodeState.privateKeys.map((key, i) => (
-      <div key={i} className="rounded-xl border border-default overflow-hidden">
-        <div className="bg-subtle px-4 py-3 border-b border-default flex flex-wrap items-center gap-2">
-          <span className="body-emphasis text-default">秘密鍵 #{i + 1}</span>
-          <ChipLabel tone="error">秘密鍵</ChipLabel>
-          <ChipLabel tone="neutral">{key.algorithm}</ChipLabel>
-          {key.keySizeBits && <ChipLabel tone="neutral">{key.keySizeBits} bit</ChipLabel>}
-          {key.namedCurve && <ChipLabel tone="neutral">{key.namedCurve}</ChipLabel>}
+{
+  decodeState.privateKeys && decodeState.privateKeys.length > 0 && (
+    <div className="space-y-3">
+      <NotificationBanner variant="info" title="秘密鍵はブラウザ外に送信されません">
+        このツールの全処理はブラウザ内で完結します。入力した PKCS#12
+        と抽出した秘密鍵は外部サーバーに送信されません。
+      </NotificationBanner>
+      {decodeState.privateKeys.map((key, i) => (
+        <div key={i} className="rounded-xl border border-default overflow-hidden">
+          <div className="bg-subtle px-4 py-3 border-b border-default flex flex-wrap items-center gap-2">
+            <span className="body-emphasis text-default">秘密鍵 #{i + 1}</span>
+            <ChipLabel tone="error">秘密鍵</ChipLabel>
+            <ChipLabel tone="neutral">{key.algorithm}</ChipLabel>
+            {key.keySizeBits && <ChipLabel tone="neutral">{key.keySizeBits} bit</ChipLabel>}
+            {key.namedCurve && <ChipLabel tone="neutral">{key.namedCurve}</ChipLabel>}
+          </div>
+          <div className="bg-default p-4">
+            <details>
+              <summary className="cursor-pointer body-emphasis text-default">
+                秘密鍵（PKCS#8 PEM）を表示
+              </summary>
+              <div className="mt-3">
+                <OutputField
+                  id={`pkcs12-key-${i}`}
+                  label="PKCS#8 PEM"
+                  value={key.pkcs8Pem}
+                  rows={8}
+                  rightSlot={
+                    <DownloadButton
+                      label="保存"
+                      aria-label="秘密鍵 PEM をダウンロード"
+                      onClick={() => downloadText(`private_key_${i + 1}.pem`, key.pkcs8Pem)}
+                    />
+                  }
+                />
+              </div>
+            </details>
+          </div>
         </div>
-        <div className="bg-default p-4">
-          <details>
-            <summary className="cursor-pointer body-emphasis text-default">
-              秘密鍵（PKCS#8 PEM）を表示
-            </summary>
-            <div className="mt-3">
-              <OutputField
-                id={`pkcs12-key-${i}`}
-                label="PKCS#8 PEM"
-                value={key.pkcs8Pem}
-                rows={8}
-                rightSlot={
-                  <DownloadButton
-                    label="保存"
-                    aria-label="秘密鍵 PEM をダウンロード"
-                    onClick={() => downloadText(`private_key_${i + 1}.pem`, key.pkcs8Pem)}
-                  />
-                }
-              />
-            </div>
-          </details>
-        </div>
-      </div>
-    ))}
-  </div>
-)}
+      ))}
+    </div>
+  );
+}
 ```
+
 `downloadText` ヘルパーは KeyConverter.tsx と同形（Blob + a.click）をコンポーネント内に定義。
 
 - [ ] **Step 6: レガシー暗号バナー**
 
 `status === 'unsupported'` のとき:
+
 ```tsx
-{decodeState.status === 'unsupported' && (
-  <NotificationBanner variant="warning" title="この PKCS#12 はブラウザで復号できません（レガシー暗号）">
-    {decodeState.reason}
-  </NotificationBanner>
-)}
+{
+  decodeState.status === 'unsupported' && (
+    <NotificationBanner
+      variant="warning"
+      title="この PKCS#12 はブラウザで復号できません（レガシー暗号）"
+    >
+      {decodeState.reason}
+    </NotificationBanner>
+  );
+}
 ```
+
 既存の `decodeState.status === 'pkcs12'` バナーブロックは削除する（パスワード UI に置換済みのため）。
 
 - [ ] **Step 7: 型チェック＋ビルド**
@@ -761,6 +810,7 @@ git commit -m "feat: cert-decoder に PKCS#12 パスワード入力・秘密鍵�
 ### Task 8: E2E テストの追加
 
 **Files:**
+
 - 確認/Modify: `tests/e2e/` 配下の cert-decoder 関連 spec（存在すれば追記、なければ最小限の新規 spec）
 
 - [ ] **Step 1: 既存 cert-decoder E2E を確認**
@@ -787,6 +837,7 @@ git commit -m "test: cert-decoder PKCS#12 の E2E ケースを追加 (#644)"
 ### Task 9: ドキュメント更新
 
 **Files:**
+
 - Modify: `docs/decisions.md` / `docs/tools.md` / `README.md` / `SPEC.md`
 
 - [ ] **Step 1: decisions.md に追記**
@@ -817,9 +868,11 @@ git commit -m "docs: cert-decoder PKCS#12 対応をドキュメントに反映 (
 - [ ] **Step 1: 全チェック（push 前必須）**
 
 Run:
+
 ```bash
 npm run test && node_modules/.bin/astro check && npm run test:e2e
 ```
+
 Expected: ユニット・型・E2E すべて PASS
 
 - [ ] **Step 2: 差分確認**

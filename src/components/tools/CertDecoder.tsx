@@ -366,7 +366,8 @@ function PrivateKeySection({ privateKeys }: PrivateKeySectionProps) {
   return (
     <div className="space-y-3">
       <NotificationBanner variant="info" title="秘密鍵はブラウザ外に送信されません">
-        このツールの全処理はブラウザ内で完結します。入力した PKCS#12 と抽出した秘密鍵は外部サーバーに送信されません。
+        このツールの全処理はブラウザ内で完結します。入力した PKCS#12
+        と抽出した秘密鍵は外部サーバーに送信されません。
       </NotificationBanner>
       {privateKeys.map((key, i) => (
         <div key={i} className="rounded-xl border border-default overflow-hidden">
@@ -586,10 +587,7 @@ export function CertDecoder() {
           resize
         />
         <div className="flex items-center gap-3">
-          <FileInputButton
-            accept=".pem,.crt,.cer,.der,.p7b,.p12,.pfx"
-            onChange={handleFileChange}
-          >
+          <FileInputButton accept=".pem,.crt,.cer,.der,.p7b,.p12,.pfx" onChange={handleFileChange}>
             ファイルを選択
           </FileInputButton>
           <span className="caption text-muted">.pem / .crt / .cer / .der / .p7b / .p12 / .pfx</span>
