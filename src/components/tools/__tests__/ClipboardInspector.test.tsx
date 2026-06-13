@@ -51,6 +51,22 @@ describe('ClipboardInspector — 初期表示', () => {
     // dispatchEvent は preventDefault されると false を返す
     expect(notPrevented).toBe(false);
   });
+
+  it('beforeinput を貫通した編集（IME 等）が input イベントで元の内容に復元される（陽性対照: 復元 fallback）', () => {
+    // insertCompositionText の beforeinput は W3C Input Events 仕様で non-cancelable のため
+    // preventDefault では阻止できない。貫通した DOM 編集を input イベント時に復元する fallback を検証する。
+    // 復元 fallback の無い実装に当てると「あいう」が残留して fail する設計（陽性対照）
+    render(<ClipboardInspectorTool />);
+    const zone = screen.getByRole('textbox', { name: /貼り付け受付領域/ });
+    // IME 変換テキストの貫通挿入を模擬
+    zone.appendChild(document.createTextNode('あいう'));
+    expect(zone.textContent).toContain('あいう');
+    // 貫通編集が DOM に反映されると input イベントが発火する
+    zone.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    // 元の案内文言へ復元され、貫通テキストは消えている
+    expect(zone.textContent).not.toContain('あいう');
+    expect(zone.textContent).toContain('Ctrl+V');
+  });
 });
 
 describe('ClipboardInspector — paste 捕捉', () => {

@@ -135,13 +135,22 @@ export function ClipboardInspectorTool() {
   // 受付領域（contenteditable）の編集阻止。
   // React の onBeforeInput は native beforeinput ではなく textInput / keypress / compositionend 等から
   // 合成されるため、IME 入力等が通る native beforeinput 経路は ref で直接 preventDefault する
-  // （JSX の onBeforeInput と二段構えで全編集経路を阻止）
+  // （JSX の onBeforeInput と二段構えで全編集経路を阻止）。
+  // さらに insertCompositionText の beforeinput は仕様上 non-cancelable（W3C Input Events）のため、
+  // 貫通した編集（IME 変換・autocorrect 等）は input イベント時に mount 時の元ノードへ復元する。
+  // 同一ノードオブジェクトを replaceChildren で戻すため React の管理ノードとの整合が保たれる
   useEffect(() => {
     const zone = dropZoneRef.current;
     if (!zone) return;
+    const savedChildren = [...zone.childNodes];
     const blockEdit = (e: Event) => e.preventDefault();
+    const restoreContent = () => zone.replaceChildren(...savedChildren);
     zone.addEventListener('beforeinput', blockEdit);
-    return () => zone.removeEventListener('beforeinput', blockEdit);
+    zone.addEventListener('input', restoreContent);
+    return () => {
+      zone.removeEventListener('beforeinput', blockEdit);
+      zone.removeEventListener('input', restoreContent);
+    };
   }, []);
 
   const capture = useCallback((dt: DataTransfer | null, source: CaptureSource) => {
