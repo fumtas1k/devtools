@@ -427,12 +427,21 @@ export function CertDecoder() {
   const [password, setPassword] = useState('');
   // awaiting-password 状態の bytes を useRef で保持（再レンダー時も安定）
   const pendingBytesRef = useRef<Uint8Array | null>(null);
+  // 最新の decodeState を effect から参照するための ref（依存配列に入れずに現在値を読む）
+  const decodeStateRef = useRef<DecodeState>(decodeState);
+  decodeStateRef.current = decodeState;
 
   // デバウンス + 非同期パース
   useEffect(() => {
     const trimmed = input.trim();
     if (!trimmed) {
-      setDecodeState({ status: 'idle' });
+      // PKCS#12 ファイル選択時は handleFileChange が input を '' にクリアしつつ
+      // awaiting-password へ遷移する。この effect が idle で上書きすると
+      // パスワード入力 UI が消えるため、PKCS#12 フロー中は idle 化しない。
+      const status = decodeStateRef.current.status;
+      if (status !== 'awaiting-password' && status !== 'decrypting' && status !== 'unsupported') {
+        setDecodeState({ status: 'idle' });
+      }
       return;
     }
 
