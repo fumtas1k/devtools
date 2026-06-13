@@ -12,6 +12,9 @@ interface Props {
   error?: string;
   hint?: string;
   onSampleClick?: () => void;
+  /** ラベル行の右端に差し込む追加要素（複数サンプルボタン等、標準の onSampleClick で
+      1 つに収まらないケース用）。onSampleClick と併用も可。 */
+  headerRight?: ReactNode;
   inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
   maxLength?: number;
   readOnly?: boolean;
@@ -31,6 +34,7 @@ export function InputField({
   error,
   hint,
   onSampleClick,
+  headerRight,
   inputMode,
   maxLength,
   readOnly = false,
@@ -59,14 +63,19 @@ export function InputField({
         <label htmlFor={id} className="body-emphasis text-default">
           {label}
         </label>
-        {onSampleClick && (
-          <button
-            type="button"
-            onClick={onSampleClick}
-            className="caption text-link-plain btn-link-plain"
-          >
-            サンプルを入力
-          </button>
+        {(onSampleClick || headerRight) && (
+          <div className="flex items-center gap-3">
+            {headerRight}
+            {onSampleClick && (
+              <button
+                type="button"
+                onClick={onSampleClick}
+                className="caption text-link-plain btn-link-plain"
+              >
+                サンプルを入力
+              </button>
+            )}
+          </div>
         )}
       </div>
 

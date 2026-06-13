@@ -140,24 +140,27 @@ export function KeyConverter() {
           rows={7}
           mono
           resize
+          headerRight={
+            <>
+              <button
+                type="button"
+                className="caption text-link-plain btn-link-plain"
+                onClick={() => setInput(SAMPLE_RSA_PUBLIC_KEY)}
+              >
+                RSA 公開鍵を入力
+              </button>
+              <button
+                type="button"
+                className="caption text-link-plain btn-link-plain"
+                onClick={() => setInput(SAMPLE_EC_PRIVATE_KEY)}
+              >
+                EC 秘密鍵を入力
+              </button>
+            </>
+          }
         />
-        {/* サンプルボタン群 */}
+        {/* ファイル選択 */}
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            className="caption text-link-plain btn-link-plain"
-            onClick={() => setInput(SAMPLE_RSA_PUBLIC_KEY)}
-          >
-            RSA 公開鍵を入力
-          </button>
-          <button
-            type="button"
-            className="caption text-link-plain btn-link-plain"
-            onClick={() => setInput(SAMPLE_EC_PRIVATE_KEY)}
-          >
-            EC 秘密鍵を入力
-          </button>
-          <span className="caption text-muted">|</span>
           <FileInputButton accept=".pem,.der,.cer,.key,.json,.jwk" onChange={handleFileChange}>
             ファイルを選択
           </FileInputButton>
