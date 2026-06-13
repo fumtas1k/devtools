@@ -141,7 +141,9 @@ describe('generateHTML (折りたたみ可能な nav)', () => {
 
   it('リサイズ追従用に matchMedia の change リスナーを登録する', () => {
     const html = generateHTML(sample);
-    expect(html).toContain("addEventListener('change'");
+    // レシーバを mq に束縛し「リサイズ追従の意図」まで検証する
+    // (mq 以外への change リスナー追加で false negative になるのを防ぐ)
+    expect(html).toContain("mq.addEventListener('change'");
   });
 });
 
