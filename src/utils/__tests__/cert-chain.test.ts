@@ -14,6 +14,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { parseCertificates } from '@/utils/cert/parse';
 import { buildChain } from '@/utils/cert/chain';
 import { makeTestChain, makeExpiredCert, type TestChain } from './cert-fixtures';
+import { SAMPLE_CERT_CHAIN_PEM } from '@/components/tools/certDecoderSample';
 
 /** DER → PEM 変換ヘルパー */
 function derToPem(der: Uint8Array): string {
@@ -135,5 +136,23 @@ describe('buildChain — 陰性対照3: 期限切れ', () => {
 
     const r = await buildChain(certs);
     expect(r.links.some((l) => l.expired === true)).toBe(true);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// サンプル証明書チェーンの健全性（UI のサンプルボタンが壊れていないことの保証）
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('SAMPLE_CERT_CHAIN_PEM', () => {
+  it('3 枚にパースでき、全リンクの署名が有効かつ期限内である', async () => {
+    const { certs } = await parseCertificates(SAMPLE_CERT_CHAIN_PEM);
+    expect(certs).toHaveLength(3);
+    expect(certs.every((c) => c.error === undefined)).toBe(true);
+
+    const r = await buildChain(certs);
+    const verifiable = r.links.filter((l) => l.signatureValid !== null);
+    expect(verifiable.length).toBeGreaterThanOrEqual(2);
+    expect(verifiable.every((l) => l.signatureValid === true)).toBe(true);
+    expect(r.links.every((l) => l.expired === false)).toBe(true);
   });
 });

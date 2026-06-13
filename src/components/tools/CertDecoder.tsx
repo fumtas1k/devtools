@@ -7,6 +7,7 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ChipLabel } from '@/components/ui/ChipLabel';
 import { parseCertificates, buildChain } from '@/utils/cert';
 import type { ParsedCert, ChainResult, ParseResult } from '@/utils/cert';
+import { SAMPLE_CERT_CHAIN_PEM } from './certDecoderSample';
 
 // ---- 内部ユーティリティ ----
 
@@ -415,10 +416,12 @@ export function CertDecoder() {
       <div className="space-y-3">
         <InputField
           id="cert-input"
-          label="証明書を貼り付け（PEM / Base64 DER）"
+          label="証明書を貼り付け"
           value={input}
           onChange={setInput}
+          onSampleClick={() => setInput(SAMPLE_CERT_CHAIN_PEM)}
           placeholder={'-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----'}
+          hint="対応形式: PEM / DER（Base64）/ PKCS#7（.p7b）"
           multiline
           rows={6}
           mono
