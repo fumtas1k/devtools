@@ -61,3 +61,16 @@ export interface DetectResult {
   /** PKCS#12 等の未対応形式を検出したときの理由（UI で別issue誘導に使う） */
   unsupported?: 'pkcs12';
 }
+
+export interface ChainLink {
+  subjectIndex: number; // ParsedCert 配列内の index
+  issuerIndex: number | null; // 親（null = 自己署名 or 親不明）
+  signatureValid: boolean | null; // null = 検証不能（親不明・アルゴ未対応）
+  expired: boolean;
+}
+
+export interface ChainResult {
+  /** issuer→subject の表示順に並べ替えた ParsedCert の index 列 */
+  order: number[];
+  links: ChainLink[];
+}
