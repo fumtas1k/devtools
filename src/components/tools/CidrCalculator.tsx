@@ -406,9 +406,9 @@ export function CidrCalculatorTool() {
             />
           )}
 
-          {/* 行エラー一覧 */}
+          {/* 行エラー一覧: role="alert" で SR に確実に通知する（親 aria-live の初期コンテンツ問題を回避） */}
           {!overlapResult.limitExceeded && overlapResult.errors.length > 0 && (
-            <div className="mb-4">
+            <div role="alert" className="mb-4">
               <p className="body-emphasis text-error mb-2">解析エラーがある行:</p>
               <ul className="flex flex-col gap-1">
                 {overlapResult.errors.map((err) => (

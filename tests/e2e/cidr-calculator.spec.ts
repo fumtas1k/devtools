@@ -116,6 +116,24 @@ test.describe('CIDR/サブネット計算機（production CSP 適用）', () => 
     });
   });
 
+  // a11y 陽性対照: 解析エラーになる不正 CIDR を入力したとき、行エラー一覧が role="alert" で
+  // 取得できることを検証。role="alert" が外れると getByRole('alert') が取得できず fail する。
+  test('重複検出モード: 不正な CIDR を入力すると role="alert" でエラー一覧が表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/cidr-calculator', async (page) => {
+      await page.getByRole('button', { name: '重複検出' }).click();
+
+      // 不正な CIDR（prefix 長が範囲外）を入力して解析エラーを発生させる
+      await page.getByLabel('CIDR 一覧（1 行 1 CIDR）').fill('10.0.0.0/99');
+
+      // role="alert" のエラーコンテナが表示され、エラー文言を含むことを確認
+      const alertEl = page.getByRole('alert');
+      await expect(alertEl).toBeVisible();
+      await expect(alertEl).toContainText('解析エラーがある行');
+    });
+  });
+
   // 陽性対照: 有効 CIDR 上限超過時に警告が表示される（O(n²) 爆発防止ガード）
   // 旧実装（limitExceeded ガードなし）に当てると警告が表示されず fail する設計
   test('重複検出モード: 上限超過（257 件）で件数超過の警告を表示する（CSP 違反なし）', async ({
