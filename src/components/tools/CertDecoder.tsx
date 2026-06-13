@@ -416,11 +416,12 @@ export function CertDecoder() {
       <div className="space-y-3">
         <InputField
           id="cert-input"
-          label="証明書を貼り付け（PEM / Base64 DER）"
+          label="証明書を貼り付け"
           value={input}
           onChange={setInput}
           onSampleClick={() => setInput(SAMPLE_CERT_CHAIN_PEM)}
           placeholder={'-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----'}
+          hint="対応形式: PEM / DER（Base64）/ PKCS#7（.p7b）"
           multiline
           rows={6}
           mono
