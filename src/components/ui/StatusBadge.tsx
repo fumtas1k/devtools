@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 
 interface Props {
   tone: 'error' | 'success' | 'warning' | 'info';
@@ -11,7 +12,7 @@ interface Props {
 export function StatusBadge({ tone, children, className = '', decorative = false }: Props) {
   return (
     <span
-      className={`status-badge status-badge--${tone}${className ? ` ${className}` : ''}`}
+      className={cx('status-badge', `status-badge--${tone}`, className)}
       aria-hidden={decorative || undefined}
     >
       {children}

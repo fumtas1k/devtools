@@ -1,4 +1,5 @@
 import type { AriaAttributes, ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 
 interface Props extends AriaAttributes {
   title?: ReactNode;
@@ -34,7 +35,10 @@ export function Section({
     <div role={role} {...ariaProps} className="rounded-xl border border-default overflow-hidden">
       {hasHeader && (
         <div
-          className={`body-emphasis text-default bg-subtle border-b border-default px-4 py-3 m-0${headerSlot ? ' flex items-center justify-between flex-wrap gap-2' : ''}`}
+          className={cx(
+            'body-emphasis text-default bg-subtle border-b border-default px-4 py-3 m-0',
+            headerSlot != null && 'flex items-center justify-between flex-wrap gap-2'
+          )}
         >
           {title != null && (
             <span role="heading" aria-level={headingLevel}>

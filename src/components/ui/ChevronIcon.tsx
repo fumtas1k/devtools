@@ -1,3 +1,5 @@
+import { cx } from '@/utils/cx';
+
 interface Props {
   /** 開状態 (true なら 180° 回転して上向き ▲) */
   open?: boolean;
@@ -22,9 +24,11 @@ export function ChevronIcon({ open = false, size = 14, className = '' }: Props) 
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className={`inline-block align-middle transition-transform duration-150 ease-in-out${
-        open ? ' rotate-180' : ''
-      }${className ? ` ${className}` : ''}`}
+      className={cx(
+        'inline-block align-middle transition-transform duration-150 ease-in-out',
+        open && 'rotate-180',
+        className
+      )}
     >
       <polyline points="6 9 12 15 18 9" />
     </svg>
