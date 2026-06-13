@@ -4112,7 +4112,7 @@ decisions [106] の SessionStart hook 自動 install を導入した後も、Cla
 - ✅ web / CLI / Desktop すべてのセッションでスキルが即座に利用可能（プラグイン install 状態に依存しない）。
 - ✅ lockfile + hash により supply chain 検証（upstream 突き合わせ・ローカル改変検知）が可能。
 - ⚠️ upstream 更新への追従は手動（`npx skills update`）。SKILL.md はエージェントが実行する指示書のため、**bump 時は hash 差分だけでなく本文 diff のレビューを必須とする**。
-- ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design / context7 はプラグイン運用を継続（[106] の hook は引き続き有効）。
+- ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design は後日同方式で vendor（[113]）、context7 は MCP server 同梱のためプラグイン運用を継続（[106] の hook は引き続き有効）。
 
 ## [109] clipboard-inspector: DOMPurify 不採用＝自作許可リストサニタイザ＋sandbox iframe 二重防御
 
@@ -4179,7 +4179,7 @@ SSL/TLS証明書デコーダ（候補 S-2）は社内 CA・本番証明書を外
   - **理由**: 署名検証を Web Crypto（`crypto.subtle`）経由で実行でき、既存の JWT デコーダ・QRチケットと同じ暗号基盤に揃う。必要クラス（`Certificate` / `ContentInfo` / `SignedData`）のみ import でき tree-shaking に向く。拡張領域（SCT 等）の生バイトを `asn1js` で辿れる。
   - **却下**: `node-forge` は高レベル API で実装は速いが独自 JS 暗号実装で Web Crypto と二重になり、バンドルも分割が粗い。
 - **スコープ**: 初版は「読む側」（PEM/DER/PKCS#7 の解析・表示＋チェーン署名検証）に限定する。
-  - **PKCS#12（.pfx/.p12）対応**・**鍵フォーマット変換（PEM/DER/JWK）** は別 issue / 別ツールへ分離。秘密鍵・パスワード処理は責務が異なり、鍵変換は B2-7（csr-generator）等と共通基盤化する余地があるため。（※ PKCS#12 は #644 で対応済み、PBES2/AES 限定。詳細は decision [113]）
+  - **PKCS#12（.pfx/.p12）対応**・**鍵フォーマット変換（PEM/DER/JWK）** は別 issue / 別ツールへ分離。秘密鍵・パスワード処理は責務が異なり、鍵変換は B2-7（csr-generator）等と共通基盤化する余地があるため。（※ PKCS#12 は #644 で対応済み、PBES2/AES 限定。詳細は decision [114]）
 - **失効確認（CRL/OCSP）非対応**: ブラウザ単体・外部送信不可の方針と矛盾する（OCSP/CRL は外部問い合わせが必須）ため初版から除外。署名検証はチェーン内隣接ペアに限定し、信頼ストア照合も行わない。
 
 ### 結果・トレードオフ
@@ -4217,7 +4217,30 @@ cert-decoder（issue #643）で「鍵フォーマット変換（PEM/DER/JWK）�
 - ⚠️ `asn1js` の valueBlock API は未型付けで直接辿るため脆弱性がある。Web Crypto の `importKey` 失敗で catch → error 返却でカバー。
 - ⚠️ PKCS#1/SEC1 のレガシー PEM を直接変換したい場合は別途 openssl が必要（v1 の既知制限として UI で案内）。
 
-## [113] cert-decoder: PKCS#12 対応 — PBES2/AES 限定・秘密鍵トグル開示・node-forge 不採用継続
+## [113] 2026-06-13 — frontend-design もプラグイン運用から `npx skills add` vendor 方式へ移行
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+decisions [108] で superpowers を vendor 化したが、`frontend-design@claude-plugins-official` はプラグイン運用のまま残していた（[108] 結果欄に「frontend-design / context7 はプラグイン運用を継続」と記載）。しかし superpowers と同じく Claude Code on the web でプラグイン install が silent skip される制約（[106] / upstream #23737）の影響を受け、web セッションで frontend-design スキルが使えない。frontend-design は単一の `SKILL.md` のみで構成され MCP server を同梱しないため、superpowers と同方式で vendor 可能。
+
+### 決断
+
+`npx skills add anthropics/claude-plugins-official -s frontend-design` で `.agents/skills/frontend-design/` にリポジトリ内 vendor し、`.claude/settings.json` の `enabledPlugins` から `frontend-design@claude-plugins-official` を削除した。
+
+1. **vendor + lockfile 管理**: [108] と同じく `skills-lock.json` で出典（`anthropics/claude-plugins-official` / `plugins/frontend-design/skills/frontend-design/SKILL.md`）と computedHash を管理。
+2. **Apache-2.0 ライセンス対応**: upstream（anthropics/claude-plugins-official）の LICENSE が Apache-2.0 のため、`LICENSE-frontend-design` を同梱し `.agents/skills/README.md` の対応表に追記。superpowers / grill-me（MIT）とライセンス系統が異なる点に留意。
+3. **context7 は対象外**: context7 は MCP server を同梱するプラグインであり skill 単体に vendor できないため、プラグイン運用＋[106] の SessionStart hook 自動 install を継続（marketplace 宣言 `extraKnownMarketplaces` も残す）。
+
+### 結果・トレードオフ
+
+- ✅ web / CLI / Desktop すべてのセッションで frontend-design スキルが即座に利用可能（プラグイン install 状態に依存しない）。
+- ✅ enabledPlugins が context7 のみになり、web の plugin silent-skip 制約の影響を受ける対象が MCP 型 1 つに縮小。
+- ⚠️ `npx skills add -a '*'` は多数の未使用エージェント dir（`.roo` / `.windsurf` 等）を生成するため、`.agents/skills/` 以外は手動削除した。次回 vendor 時も同様の後始末が必要。
+- ⚠️ upstream 更新への追従は手動（`npx skills update`）。bump 時は hash 差分だけでなく SKILL.md 本文 diff のレビューを必須とする（[108] と同じ運用）。
+
+## [114] cert-decoder: PKCS#12 対応 — PBES2/AES 限定・秘密鍵トグル開示・node-forge 不採用継続
 
 **2026-06-13 | ステータス: 採用**
 
