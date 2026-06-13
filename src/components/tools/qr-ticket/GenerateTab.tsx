@@ -1,3 +1,4 @@
+import { cx } from '@/utils/cx';
 import { ChevronIcon } from '@/components/ui/ChevronIcon';
 import { CloseIcon } from '@/components/ui/CloseIcon';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -234,9 +235,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
               return (
                 <div
                   key={row._key}
-                  className={`flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-(--color-border) md:border-b-0 ${
-                    i === tickets.length - 1 ? 'border-none' : ''
-                  }`}
+                  className={cx('flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-(--color-border) md:border-b-0', i === tickets.length - 1 && 'border-none')}
                 >
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <span className="md:hidden caption text-muted font-semibold leading-none">
@@ -278,7 +277,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                   <div className="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
                     <span className="md:hidden caption text-muted font-semibold">合計データ量</span>
                     <span
-                      className={`w-auto md:w-15 caption text-right ${isOver ? 'text-error font-semibold' : 'text-muted'}`}
+                      className={cx('w-auto md:w-15 caption text-right', isOver ? 'text-error font-semibold' : 'text-muted')}
                       title="QRコードに埋め込まれる全データ（署名・時間含む）の合計バイト数"
                     >
                       {byteSize} B

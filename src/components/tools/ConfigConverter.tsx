@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { cx } from '@/utils/cx';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
@@ -219,7 +220,7 @@ export function ConfigConverterTool() {
         >
           <span
             aria-hidden="true"
-            className={`inline-block transition-transform duration-200 ${schemaOpen ? 'rotate-90' : ''}`}
+            className={cx('inline-block transition-transform duration-200', schemaOpen && 'rotate-90')}
           >
             ▶
           </span>
@@ -262,7 +263,7 @@ export function ConfigConverterTool() {
             </div>
             {validationResult && (
               <div
-                className={`rounded-lg p-3 border ${validationResult.valid ? 'alert-success' : 'alert-error'}`}
+                className={cx('rounded-lg p-3 border', validationResult.valid ? 'alert-success' : 'alert-error')}
               >
                 {validationResult.valid ? (
                   <p className="caption text-default inline-flex items-center gap-1">

@@ -1,4 +1,5 @@
 import { useState, useMemo, type ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 import { Section } from '@/components/ui/Section';
 import { InputField } from '@/components/ui/InputField';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -70,7 +71,7 @@ function SnsCard({
         <p className="caption text-muted">{method}</p>
       </div>
       <div className="flex items-baseline gap-2">
-        <span className={`font-mono${isOver ? ' text-error' : ''}`}>{current}</span>
+        <span className={cx('font-mono', isOver && 'text-error')}>{current}</span>
         <span className="text-muted">/</span>
         {limitNode ?? <span className="font-mono text-muted">{limit}</span>}
         {isOver && <span className="sr-only"> 上限超過</span>}
@@ -172,7 +173,7 @@ export function CharCountTool() {
           <dd className="caption font-mono text-right">{lines.longestGraphemes}</dd>
           <dt className="caption text-muted">改行コード</dt>
           <dd
-            className={`caption font-mono text-right${lines.newline === 'mixed' ? ' text-warning' : ''}`}
+            className={cx('caption font-mono text-right', lines.newline === 'mixed' && 'text-warning')}
           >
             {lines.newline === 'lf' && 'LF'}
             {lines.newline === 'crlf' && 'CRLF'}

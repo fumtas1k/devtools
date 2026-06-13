@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
+import { cx } from '@/utils/cx';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -133,7 +134,7 @@ export function QrReaderTool() {
                 ref={camera.videoRef}
                 playsInline
                 muted
-                className={`w-full max-w-[400px] rounded-lg qr-video-preview ${camera.cameraActive ? '' : 'hidden'}`}
+                className={cx('w-full max-w-[400px] rounded-lg qr-video-preview', !camera.cameraActive && 'hidden')}
                 aria-label="カメラプレビュー"
               />
               {camera.cameraActive && (
