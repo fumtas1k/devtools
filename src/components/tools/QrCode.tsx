@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import qrcode from '@/utils/qrcode';
+import { createQrSvg } from '@/utils/qrcode';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { DownloadButton } from '@/components/ui/DownloadButton';
@@ -29,10 +29,7 @@ function escapeXml(text: string): string {
 function generateQrSvg(text: string, errorLevel: ErrorLevel): string | null {
   if (!text) return null;
   try {
-    const qr = qrcode(0, errorLevel);
-    qr.addData(text);
-    qr.make();
-    const svg = qr.createSvgTag({ scalable: true });
+    const svg = createQrSvg(text, errorLevel);
     // SR が SVG の意味を読み取れるよう role="img" + `<title>` を first child として
     // 注入する (issue #386)。`aria-label` は意図的に付けない: ARIA Accessible Name
     // and Description Computation 4.3.1 で aria-label があると `<title>` が name

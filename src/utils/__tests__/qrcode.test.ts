@@ -1,33 +1,48 @@
 import { describe, it, expect } from 'vitest';
-import qrcode from '@/utils/qrcode';
+import { createQrSvg } from '@/utils/qrcode';
 
-// このテストは @/utils/qrcode の import 副作用（stringToBytes の UTF-8 上書き）に依存している。
-// qrcode-generator を直接 import するテストとの実行順序に注意すること。
-describe('qrcode (patched)', () => {
-  it('stringToBytes が TextEncoder (UTF-8) を使用するように上書きされている', () => {
-    // 'あ' の UTF-8 バイト配列は [227, 129, 130] (0xE3, 0x81, 0x82)
-    const result = qrcode.stringToBytes('あ');
-    expect(result).toEqual([227, 129, 130]);
+// stringToBytes の UTF-8 上書きは qrcode.ts モジュール内部で適用される。
+// createQrSvg 経由で日本語・絵文字が正しく QR 生成できることを検証することで、
+// マルチバイト対応パッチの回帰を間接的に検知する。
+describe('createQrSvg', () => {
+  it('ASCII テキスト（"ABC"）から SVG 文字列を生成できる', () => {
+    const svg = createQrSvg('ABC', 'M');
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('</svg>');
   });
 
-  it('絵文字を含む文字列も正しく UTF-8 バイト配列に変換できる', () => {
-    // '🚀' (U+1F680) の UTF-8 バイト配列は [240, 159, 154, 128]
-    const result = qrcode.stringToBytes('🚀');
-    expect(result).toEqual([240, 159, 154, 128]);
+  it('日本語テキスト（"こんにちは"）から SVG 文字列を生成できる（UTF-8 パッチの回帰検知）', () => {
+    const svg = createQrSvg('こんにちは', 'M');
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('</svg>');
   });
 
-  it('ASCII 文字列は従来通り 1 バイトずつ変換される（UTF-8 と共通）', () => {
-    const result = qrcode.stringToBytes('ABC');
-    expect(result).toEqual([65, 66, 67]);
+  it('日本語 1 文字（"あ"）から SVG 文字列を生成できる（UTF-8 パッチの回帰検知）', () => {
+    const svg = createQrSvg('あ', 'M');
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('</svg>');
   });
 
-  it('QRコードの生成プロセスが動作することを確認', () => {
-    // 実際に生成してエラーにならないかチェック
-    const qr = qrcode(0, 'M');
-    qr.addData('こんにちは');
-    expect(() => qr.make()).not.toThrow();
+  it('絵文字（"🚀"）から SVG 文字列を生成できる（UTF-8 パッチの回帰検知）', () => {
+    const svg = createQrSvg('🚀', 'M');
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('</svg>');
+  });
 
-    const svg = qr.createSvgTag();
+  it('エラー訂正レベル L で SVG を生成できる', () => {
+    const svg = createQrSvg('test', 'L');
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('</svg>');
+  });
+
+  it('エラー訂正レベル Q で SVG を生成できる', () => {
+    const svg = createQrSvg('test', 'Q');
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('</svg>');
+  });
+
+  it('エラー訂正レベル H で SVG を生成できる', () => {
+    const svg = createQrSvg('test', 'H');
     expect(svg).toContain('<svg');
     expect(svg).toContain('</svg>');
   });

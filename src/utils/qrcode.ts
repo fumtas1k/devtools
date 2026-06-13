@@ -6,10 +6,19 @@ import qrcode from 'qrcode-generator';
  * ここでTextEncoderを用いてUTF-8エンコードを行うようにグローバルに上書きします。
  *
  * 重要: 他のファイルからは 'qrcode-generator' を直接インポートせず、
- * 必ずこのパッチ済みのモジュール (@/utils/qrcode) を使用してください。
+ * 必ず createQrSvg (@/utils/qrcode) を使用してください。
  */
 qrcode.stringToBytes = (s: string) => {
   return [...new TextEncoder().encode(s)];
 };
 
-export default qrcode;
+/**
+ * テキストとエラー訂正レベルを受け取り、QRコードのSVG文字列を返す。
+ * 'qrcode-generator' の直接 import を他ファイルに持ち込まないための窓口関数。
+ */
+export function createQrSvg(text: string, level: 'L' | 'M' | 'Q' | 'H'): string {
+  const qr = qrcode(0, level);
+  qr.addData(text);
+  qr.make();
+  return qr.createSvgTag({ scalable: true });
+}
