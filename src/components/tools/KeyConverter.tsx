@@ -178,8 +178,11 @@ export function KeyConverter() {
       )}
 
       {/* 変換結果 */}
+      {/* 外側ラッパには live region を付けない。各 OutputField が自身の role="status"
+          aria-live を持つため、ここで二重化すると変換成功時に SR が鍵材料全文を
+          重複読み上げする恐れがある（live region のネスト回避）。 */}
       {convertState.status === 'done' && result && (
-        <div className="space-y-4" role="status" aria-live="polite">
+        <div className="space-y-4">
           {/* 鍵情報チップ */}
           {!result.error && result.visibility && (
             <div className="flex flex-wrap items-center gap-2">
