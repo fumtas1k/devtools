@@ -609,6 +609,7 @@ export function CertDecoder() {
               <label htmlFor="pkcs12-password" className="body-emphasis text-default block mb-1">
                 パスワード
               </label>
+              {/* 一回限りの復号用途のため autoComplete=off でパスワードマネージャへの保存提案を避ける */}
               <input
                 id="pkcs12-password"
                 type="password"
@@ -621,7 +622,6 @@ export function CertDecoder() {
                 }}
                 placeholder="PKCS#12 のパスワード"
                 className="caption w-full rounded-lg border border-default bg-default text-default px-3 py-2"
-                // 一回限りの復号用途のため、パスワードマネージャへの保存提案を避ける
                 autoComplete="off"
               />
             </div>
