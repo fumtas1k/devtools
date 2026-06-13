@@ -4112,7 +4112,7 @@ decisions [106] の SessionStart hook 自動 install を導入した後も、Cla
 - ✅ web / CLI / Desktop すべてのセッションでスキルが即座に利用可能（プラグイン install 状態に依存しない）。
 - ✅ lockfile + hash により supply chain 検証（upstream 突き合わせ・ローカル改変検知）が可能。
 - ⚠️ upstream 更新への追従は手動（`npx skills update`）。SKILL.md はエージェントが実行する指示書のため、**bump 時は hash 差分だけでなく本文 diff のレビューを必須とする**。
-- ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design は後日同方式で vendor（[110]）、context7 は MCP server 同梱のためプラグイン運用を継続（[106] の hook は引き続き有効）。
+- ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design は後日同方式で vendor（[113]）、context7 は MCP server 同梱のためプラグイン運用を継続（[106] の hook は引き続き有効）。
 
 ## [109] clipboard-inspector: DOMPurify 不採用＝自作許可リストサニタイザ＋sandbox iframe 二重防御
 
