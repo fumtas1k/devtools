@@ -1,14 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { createQrSvg } from '@/utils/qrcode';
+import { createQrSvg, type QrErrorLevel } from '@/utils/qrcode';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { downloadSvgElement } from '@/utils/download';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 
-type ErrorLevel = 'L' | 'M' | 'Q' | 'H';
-
-const ERROR_LEVELS: { value: ErrorLevel; label: string; desc: string }[] = [
+const ERROR_LEVELS: { value: QrErrorLevel; label: string; desc: string }[] = [
   { value: 'L', label: 'L', desc: '7%' },
   { value: 'M', label: 'M', desc: '15%' },
   { value: 'Q', label: 'Q', desc: '25%' },
@@ -26,7 +24,7 @@ function escapeXml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
-function generateQrSvg(text: string, errorLevel: ErrorLevel): string | null {
+function generateQrSvg(text: string, errorLevel: QrErrorLevel): string | null {
   if (!text) return null;
   try {
     const svg = createQrSvg(text, errorLevel);
@@ -43,7 +41,7 @@ function generateQrSvg(text: string, errorLevel: ErrorLevel): string | null {
 
 export function QrCodeGenerator() {
   const [text, setText] = useState('');
-  const [errorLevel, setErrorLevel] = useState<ErrorLevel>('M');
+  const [errorLevel, setErrorLevel] = useState<QrErrorLevel>('M');
   const [svgHtml, setSvgHtml] = useState<string | null>(null);
   const [error, setError] = useState('');
   // sr-only live region 用の announcement テキスト。

@@ -12,11 +12,14 @@ qrcode.stringToBytes = (s: string) => {
   return [...new TextEncoder().encode(s)];
 };
 
+/** QRコードのエラー訂正レベル（L: 7% 〜 H: 30% の冗長度）。 */
+export type QrErrorLevel = 'L' | 'M' | 'Q' | 'H';
+
 /**
  * テキストとエラー訂正レベルを受け取り、QRコードのSVG文字列を返す。
  * 'qrcode-generator' の直接 import を他ファイルに持ち込まないための窓口関数。
  */
-export function createQrSvg(text: string, level: 'L' | 'M' | 'Q' | 'H'): string {
+export function createQrSvg(text: string, level: QrErrorLevel): string {
   const qr = qrcode(0, level);
   qr.addData(text);
   qr.make();
