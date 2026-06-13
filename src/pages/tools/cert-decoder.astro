@@ -1,0 +1,43 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { CertDecoder as CertDecoderTool } from '@/components/tools/CertDecoder';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'cert-decoder')!;
+---
+
+<ToolLayout tool={tool}>
+  <CertDecoderTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      PEM / DER / PKCS#7 形式の証明書を貼り付けるかファイル選択するだけで、Subject・SAN・有効期限・署名アルゴリズム・公開鍵情報・SCT
+      などの主要フィールドをブラウザ内で即座に解析して表示します。複数の証明書を一度に入力すると、issuer→subject
+      の正しいチェーン順に並べ替え、隣接ペアの署名をブラウザ内の Web Crypto API で検証します。入力内容は外部に送信されません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">対応形式</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>PEM（-----BEGIN CERTIFICATE----- ブロック、複数連結可）</li>
+      <li>DER バイナリ（.der / .cer ファイル選択）</li>
+      <li>PKCS#7 / P7B（.p7b、証明書抽出のみ）</li>
+      <li>Base64 エンコード済み DER（PEM ヘッダなし）</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>社内 CA 証明書・自己署名証明書の内容確認（外部送信なし）</li>
+      <li>証明書チェーンの並び順・署名検証の確認</li>
+      <li>SAN（Subject Alternative Name）に対象ドメインが含まれるかの確認</li>
+      <li>有効期限・フィンガープリントの目視チェック</li>
+      <li>SCT（Certificate Transparency）のタイムスタンプ・Log ID の確認</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">制限事項</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>
+        PKCS#12（.pfx / .p12）・秘密鍵の読み込み・鍵フォーマット変換（PEM/DER/JWK 相互変換）は非対応（別ツール予定）
+      </li>
+      <li>失効確認（CRL / OCSP）は行いません（ブラウザ内完結のため外部問い合わせ不可）</li>
+      <li>チェーン署名検証は隣接ペアのみ。ルート CA の信頼アンカー検証は行いません</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>
