@@ -4179,7 +4179,7 @@ SSL/TLS証明書デコーダ（候補 S-2）は社内 CA・本番証明書を外
   - **理由**: 署名検証を Web Crypto（`crypto.subtle`）経由で実行でき、既存の JWT デコーダ・QRチケットと同じ暗号基盤に揃う。必要クラス（`Certificate` / `ContentInfo` / `SignedData`）のみ import でき tree-shaking に向く。拡張領域（SCT 等）の生バイトを `asn1js` で辿れる。
   - **却下**: `node-forge` は高レベル API で実装は速いが独自 JS 暗号実装で Web Crypto と二重になり、バンドルも分割が粗い。
 - **スコープ**: 初版は「読む側」（PEM/DER/PKCS#7 の解析・表示＋チェーン署名検証）に限定する。
-  - **PKCS#12（.pfx/.p12）対応**・**鍵フォーマット変換（PEM/DER/JWK）** は別 issue / 別ツールへ分離。秘密鍵・パスワード処理は責務が異なり、鍵変換は B2-7（csr-generator）等と共通基盤化する余地があるため。
+  - **PKCS#12（.pfx/.p12）対応**・**鍵フォーマット変換（PEM/DER/JWK）** は別 issue / 別ツールへ分離。秘密鍵・パスワード処理は責務が異なり、鍵変換は B2-7（csr-generator）等と共通基盤化する余地があるため。（※ PKCS#12 は #644 で対応済み、PBES2/AES 限定。詳細は decision [113]）
 - **失効確認（CRL/OCSP）非対応**: ブラウザ単体・外部送信不可の方針と矛盾する（OCSP/CRL は外部問い合わせが必須）ため初版から除外。署名検証はチェーン内隣接ペアに限定し、信頼ストア照合も行わない。
 
 ### 結果・トレードオフ
@@ -4216,3 +4216,32 @@ cert-decoder（issue #643）で「鍵フォーマット変換（PEM/DER/JWK）�
 - ✅ 陽性対照テストにより「不正入力が必ず error になる」ことを CI で継続検証（test-gates 準拠）。
 - ⚠️ `asn1js` の valueBlock API は未型付けで直接辿るため脆弱性がある。Web Crypto の `importKey` 失敗で catch → error 返却でカバー。
 - ⚠️ PKCS#1/SEC1 のレガシー PEM を直接変換したい場合は別途 openssl が必要（v1 の既知制限として UI で案内）。
+
+## [113] cert-decoder: PKCS#12 対応 — PBES2/AES 限定・秘密鍵トグル開示・node-forge 不採用継続
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+cert-decoder v1（decision [111]）では PKCS#12 をスコープ外としていたが、`.pfx/.p12` ファイルから証明書チェーンを確認したい需要が確認され、#644 で対応する。秘密鍵を含むため、UI・セキュリティ・暗号方式制限の設計判断が必要となった。
+
+### 決断
+
+- **暗号方式**: PBES2（PBKDF2 + AES-CBC）のみ対応する。
+  - Web Crypto API がブラウザネイティブで PBES2 を復号できる。
+  - レガシー RC2-40/3DES（OpenSSL 1.x 既定）は Web Crypto 非対応のため復号不可とし、`unsupported-encryption` エラーで案内する（`openssl pkcs12 -keypbe AES-256-CBC -certpbe AES-256-CBC ...` での再エクスポートを促す）。
+- **秘密鍵の扱い**:
+  - アルゴリズム・鍵長・曲線名などのメタ情報は常時表示。
+  - PKCS#8 PEM は `<details>` トグルで開示（誤操作・画面共有時の漏洩リスクを軽減）。
+  - ダウンロードボタンを提供し、コピー・保存は明示的な操作のみ。
+  - browser-only バナー（NotificationBanner）で「外部送信なし」を明示。
+- **node-forge 不採用継続**: decision [111] と同じ理由（独自 JS 暗号、バンドル肥大）。pkijs の既存依存のみで PKCS#12 パースが完結する。
+- **入力方式**: ファイル選択（.p12/.pfx）＋ Base64 貼り付け（`looksLikePkcs12` で自動検出）の両方をサポート。
+- **test-gates 準拠**: `parsePkcs12` は不正入力検知機構（誤パスワード・非 p12・レガシー暗号）を含むため、陽性対照テスト 3 件を陰性対照（正常系）と別 describe に分離して同梱。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし（pkijs / asn1js は cert-decoder で既依存）。
+- ✅ 全処理ブラウザ内完結。秘密鍵が外部送信される経路がない。
+- ✅ 陽性対照テストにより誤パスワード・非 p12・レガシー暗号の検知能力を CI で継続検証。
+- ⚠️ RC2/3DES 保護の既存 .pfx は再エクスポートが必要（既知制限として UI で案内済み）。

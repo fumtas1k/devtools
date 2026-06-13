@@ -289,12 +289,27 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 - X.509（[RFC 5280](https://www.rfc-editor.org/rfc/rfc5280)）/ PKCS#7・CMS（[RFC 5652](https://www.rfc-editor.org/rfc/rfc5652)）/ Certificate Transparency SCT（[RFC 6962](https://www.rfc-editor.org/rfc/rfc6962)）
 
+#### PKCS#12（.pfx/.p12）の仕組み
+
+pkijs の `PFX → AuthenticatedSafe → SafeContents → SafeBag` を辿って証明書 DER と PKCS#8 秘密鍵を抽出する（`src/utils/cert/pkcs12.ts`）。
+
+- **パスワード**: UI で入力 → `TextEncoder().encode(password).buffer`（UTF-8 ArrayBuffer）を pkijs に渡す。pkijs が内部で BMPString 変換する（`makePKCS12B2Key`）。
+- **証明書抽出**: `CertBag`（OID `1.2.840.113549.1.12.10.1.3`）から DER を取り出し、既存の `parseDerCertificates → buildChain` パイプラインに流す。
+- **秘密鍵抽出**: `PKCS8ShroudedKeyBag`（OID `1.2.840.113549.1.12.10.1.2`）を `parseInternalValues` で復号し `PrivateKeyInfo` から PKCS#8 PEM を生成。アルゴリズム・鍵長・曲線名は常時表示、PEM 本体は `<details>` トグル開示。
+- **暗号方式制限**: PBES2（PBKDF2 + AES-CBC）のみ復号可能。レガシー RC2-40/3DES は Web Crypto 非対応のため `unsupported-encryption` エラーで案内する。
+- **誤パスワード検出**: `pfx.parseInternalValues({ checkIntegrity: true })` が "Integrity for the PKCS#12 data is broken!" を throw → `wrong-password` として UI に表示。
+
+#### 準拠仕様・RFC
+
+- X.509（[RFC 5280](https://www.rfc-editor.org/rfc/rfc5280)）/ PKCS#7・CMS（[RFC 5652](https://www.rfc-editor.org/rfc/rfc5652)）/ Certificate Transparency SCT（[RFC 6962](https://www.rfc-editor.org/rfc/rfc6962)）/ PKCS#12（[RFC 7292](https://www.rfc-editor.org/rfc/rfc7292)）
+
 #### 制限・エッジケース
 
-- PKCS#12（.pfx/.p12）・秘密鍵・鍵フォーマット変換（PEM/DER/JWK）は対象外（別ツールで対応予定）
+- PKCS#12 は PBES2/AES のみ対応。レガシー暗号（RC2-40/3DES）保護の .pfx は `openssl pkcs12 -keypbe AES-256-CBC -certpbe AES-256-CBC` で再エクスポートが必要
+- 鍵フォーマット変換（PEM/DER/JWK）は key-converter ツールで対応
 - 失効確認（CRL / OCSP）は行わない。署名検証はチェーン内の隣接ペアに対してのみで、信頼ストアとの照合（ルート CA の信頼性確認）は行わない
 - SCT はタイムスタンプ・ログ ID の表示のみで、署名の暗号検証はしない（best-effort）
-- 全処理はブラウザ内で完結し、入力（社内 CA・本番証明書を含む）は外部に送信しない
+- 全処理はブラウザ内で完結し、入力（社内 CA・本番証明書・秘密鍵を含む）は外部に送信しない
 
 ## 変換・解析
 
