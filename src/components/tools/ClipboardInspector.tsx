@@ -137,14 +137,19 @@ export function ClipboardInspectorTool() {
   // 合成されるため、IME 入力等が通る native beforeinput 経路は ref で直接 preventDefault する
   // （JSX の onBeforeInput と二段構えで全編集経路を阻止）。
   // さらに insertCompositionText の beforeinput は仕様上 non-cancelable（W3C Input Events）のため、
-  // 貫通した編集（IME 変換・autocorrect 等）は input イベント時に mount 時の元ノードへ復元する。
-  // 同一ノードオブジェクトを replaceChildren で戻すため React の管理ノードとの整合が保たれる
+  // 貫通した編集（IME 変換・autocorrect 等）は input イベント時に mount 時の内容へ復元する。
+  // - 保存は deep clone 必須: 実 IME はキャレット位置 = 既存ノード「内部」のテキストノードを
+  //   直接変異させるため、同一ノード参照の保存では保存内容ごと汚染され復元が no-op になる
+  // - 復元毎の再クローンも必須: master を直接装着すると次の IME 貫通で master 自体が汚染される
+  // - 復元で React 生成の元ノードは detach されるが、zone の children は静的 JSX で
+  //   React が以後触らない（再レンダーの diff 対象にならない）ため実害なし
   useEffect(() => {
     const zone = dropZoneRef.current;
     if (!zone) return;
-    const savedChildren = [...zone.childNodes];
+    const savedChildren = [...zone.childNodes].map((n) => n.cloneNode(true));
     const blockEdit = (e: Event) => e.preventDefault();
-    const restoreContent = () => zone.replaceChildren(...savedChildren);
+    const restoreContent = () =>
+      zone.replaceChildren(...savedChildren.map((n) => n.cloneNode(true)));
     zone.addEventListener('beforeinput', blockEdit);
     zone.addEventListener('input', restoreContent);
     return () => {
