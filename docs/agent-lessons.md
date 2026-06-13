@@ -5,100 +5,7 @@
 - 共通ルール化すべき内容は `.agents/rules/common.md` に昇格させ、本ファイルから削除する。
 - セッション開始時に必ず読む必要はない（PR 作成前や定期整理時に見直す）。
 - 詳細な運用ルールは `.agents/rules/common.md` 11 章（教訓の運用）を参照。
-- 「（規約昇格候補）」と注記した項目は、次回 `agent-lessons.md` の整理タイミングで `shared-agent-rules.md` への昇格 / issue 化 / 削除のいずれかを判断する。
-
----
-
-## [2026-04-28] QRチケット 160px 表示と等倍デコードによる読み取り失敗リスク
-
-### 現象
-
-`MAX_QR_BYTE_SIZE = 300` 未満のデータでも「画像からQRコードを読み取れませんでした」が発生した。
-
-### 根本原因
-
-- QRコードは `scalable: true` の SVG で生成され、160px の div に縮小表示される
-- 300B 付近では QR バージョンが v10（65 modules）になり、1 モジュール ≈ 2.46px
-- 画像アップロード検証（`handleImageUpload`）は元画像を等倍で Canvas に描画してから jsQR に渡す → 解像度不足
-- E2E テストは SVG を 768×768 にリスケールしてから jsQR に渡しており、本番 UI と異なる条件のためバグを見逃す
-
-### 対処（今回）
-
-`MAX_QR_BYTE_SIZE` を 300→250 に引き下げ、QR バージョンを v9（61 modules、2.62px/module）以下に抑えた（対症療法）。
-
-### 残存リスクと根本対策（将来タスク）
-
-改善幅は約 6% と限定的。実機で依然として読み取り失敗が起きる場合は以下を検討すること：
-
-1. **表示サイズ拡大** (160px → 256px): グリッドの `minmax` も合わせて変更
-2. **アップロード時アップスケール**: `handleImageUpload` で短辺 < 512px なら 768px に拡大してから jsQR へ渡す
-
----
-
-## [2026-05-01] devDependency 追加時は `package-lock.json` を必ず同期コミット
-
-### 現象
-
-PR #181 のレビュー対応で、サブエージェントが `@testing-library/react` と `jsdom` を `package.json` の `devDependencies` に追加してテスト追加・push まで実行したが、`package-lock.json` の更新コミットが漏れていた。CI の `npm ci` は lock との不整合を検出して失敗する状態だった（手動コミット前に検出して回避）。
-
-### 根本原因
-
-サブエージェントが `npm install <pkg>` ではなく package.json を直接編集してから `npm install --no-save` 等で deps を入れたか、あるいは個別 install を回避してテストだけ走らせたため、lock ファイルが diff から漏れた。
-
-### 対処方針
-
-- 親はサブエージェント完了報告を受けたら **`git diff origin/develop --name-only` に `package.json` が含まれる場合は必ず `package-lock.json` も含まれているか確認**する。
-- 漏れていれば親で `npm install --package-lock-only --cache "$TMPDIR/npm-cache" --no-audit --no-fund` を実行し、別コミットで lock 同期を push する。
-- サブエージェント側のプロンプトでも「`package.json` を変更したら `package-lock.json` の同期コミットも作ること」と明記する余地あり（規約昇格候補）。
-
-> **補足**: `~/.npm` の所有権で `npm install` がエラーになる環境では `--cache "$TMPDIR/npm-cache"` で逃げる。
-
----
-
-## [2026-05-02] サブエージェントへの「effect 依存配列を一次入力ベースに切り替え」指示が `eslint-disable` を生む
-
-### 現象
-
-PR #217 (refactor #167-A EncodingConverter) で、親が subagent に「`activeBytes` を `useMemo` 化したうえで、effect の依存配列を `[textInput, fileBytes, inputMethod, ...]` のように **一次入力ベースに切り替えて** debounce を文字列に対して掛ける構造へ」と指示した結果、subagent は素直に依存配列を一次入力に展開し、`react-hooks/exhaustive-deps` 違反を `// eslint-disable-line` で 2 箇所抑制した。レビューで「`useMemo` で参照を安定化したのだから依存配列は `[activeBytes, ...]` に保つべき。`eslint-disable` も lint 保護も両方失う書き方は React 慣用に反する」と指摘され、追加 commit で `[activeBytes, ...]` ベースに戻した。
-
-### 根本原因
-
-「依存配列を一次入力ベースにする」と「`useMemo` で派生値を作る」は本来反対方向の設計判断。`useMemo` で参照を安定化したなら依存にはその memo 値を入れ、`react-hooks/exhaustive-deps` の保護を活かすのが慣用。親プロンプトでこの 2 つを混ぜて指示してしまったため、subagent が両方実装して破綻した。
-
-### 対処方針
-
-- **親プロンプトの設計判断の整合性が最優先で、subagent は素直に解釈する前提で書く**。指示が矛盾を内包していたら subagent はそのまま矛盾を実装する。subagent の判断力に期待してプロンプトの曖昧さを残さない
-- React の effect / memo を扱う subagent プロンプトでは、**依存配列の方針を片方に寄せる**。「memo 化した派生値を依存に保つ」と「一次入力に展開する」を併記しない
-- どうしても両論併記したい場合は「`eslint-disable` は使わない、それで済まない設計なら知らせる」と明記して subagent に判断材料を渡す
-- レビューで「素直に書けばよい」指摘を受けたら、それは指示の文言が誘導した可能性があると疑う
-
-### 関連 PR / 観点
-
-- PR #217 review (2026-05-02)、commit `03a89a1` (初期実装) → `fb82961` (依存配列を `[activeBytes, ...]` に戻し eslint-disable 撤去) → `76bcbd4` (回帰テスト追加) → `c5cf49b` (button 取得を `getByRole` に置換)
-- React `react-hooks/exhaustive-deps` の慣用と `useMemo` の組み合わせ
-
----
-
-## [2026-05-02] サブエージェントはスコープ箇条書きの一部のみで「完了」報告することがある
-
-### 現象
-
-PR #218 (refactor #169) で subagent に項目 1c として `useCodec.test.tsx` / `useClampedInput.test.tsx` / `useQrCamera.test.tsx` の 3 hook テスト新規作成を指示したが、subagent は `useClampedInput.test.tsx` のみ作成して完了報告した。`useCodec` / `useQrCamera` のテストが未実装のまま「全項目完了」として返ってきた。
-
-### 根本原因
-
-スコープを箇条書きで列挙すると、subagent は内部で「一部やれば全体方針は伝わる」と省略判断することがある。完了報告に「項目 1c の 3 ファイル中 1 ファイル作成」と書かず、暗黙に他 2 件を「カバー不要 / 既存で足りる」のような judgement で切り落とすケース。
-
-### 対処方針
-
-- subagent プロンプトの完了報告フォーマットに **「項目ごとに 実装 / 既存で十分 / スキップ理由 を明示する」** チェックリスト形式を要求する
-- 親 (司令塔) の完了確認チェックリストに「**依頼項目数 vs 実装項目数の機械的突き合わせ**」を入れる
-- スコープが広い項目は **複数 subagent に分割** するのが手堅い
-
-### 関連 PR / 観点
-
-- PR #218 (#169) で発生、SendMessage で漏れ 2 件を再依頼して解消
-- （規約昇格候補）`.agents/rules/common.md` のサブエージェント指示テンプレに「項目別実装ステータス必須」を追加検討
+- 「（規約昇格候補）」と注記した項目は、次回 `agent-lessons.md` の整理タイミングで `.agents/rules/common.md` への昇格 / issue 化 / 削除のいずれかを判断する。
 
 ---
 
@@ -135,7 +42,7 @@ macOS sandbox-exec でも同症状を再現確認 (2026-05-04)。
 ### 関連
 
 - 関連個人メモ: `~/.claude/projects/*/memory/feedback_bang_prefix_not_sandbox_bypass.md`（本リポジトリには未収録、開発者個人の Claude Code memory）
-- 規約昇格: 不要（Claude Code の harness 挙動のため `shared-agent-rules.md` ではなく本ファイルが正所）
+- 規約昇格: 不要（Claude Code の harness 挙動のため `.agents/rules/common.md` ではなく本ファイルが正所）
 
 ---
 
@@ -176,60 +83,6 @@ PR #267 内では実施しない（settings 巻き戻しが必要 + 検証のた
 - PR #267 (#267 review コメントで reviewer から提示された観察)
 - 上記前エントリ「Claude memory dir は Bash `rm` で削除できない（Claude Code 既知 bug）」と関連 — sandbox.filesystem.allowWrite が Bash に効かない bug と「sandbox profile mirror」仮説は **両立する**（mirror があっても Bash には適用されない実装、というシナリオ）
 - 規約昇格: 不要（仮説段階、harness 挙動のため本ファイルが正所）
-
----
-
-## [2026-05-08] VRT baseline 更新前に DOM / computed style diff を確認する手順
-
-### 現象 / きっかけ
-
-PR #299 (#289 PR 7b、Astro inline `style="..."` 撤去) で VRT が `/` のみ desktop / mobile 両方 fail。page height が 1px 短縮 (1632 → 1631、diff ratio 0.02% / 23925 px)。inline → CSS class refactor で fractional pixel rendering が tool card 14 枚で累積し合計 1px 差に到達。
-
-### 根本原因
-
-inline `style="..."` と CSS class (例: `bg-[var(...)]` / `.section-heading`) は CSS としては完全等価だが、cascade resolution / fractional pixel rendering で 0.003〜0.005px 単位の微小な差分が出る場合がある。視覚的には等価でも pixel 比較 VRT は失敗する。
-
-### 対処方針 (新規ルール)
-
-VRT が **任意の visual diff で fail** した場合、**baseline 更新する前に必ず以下 2 段階の検証を行う**:
-
-#### 1. DOM 構造 diff
-
-`gh run download <run-id> --name visual-regression-report-pr-<n>` で playwright report を取得し、`expected` と `actual` の HTML スナップショット (Astro が生成する HTML) を比較。次の点に regression がないことを確認:
-
-- `aria-*` / `role=` 属性削除なし (`.agents/rules/common.md` 9.6 章 a11y 保護にも該当)
-- DOM 階層・要素数の差分なし
-- `<img>` `alt` / `<a>` `href` 等の semantic 属性が同一
-
-#### 2. Computed style diff (Playwright MCP)
-
-local preview server で問題ページを開き、**疑わしい element の computed style** を `getComputedStyle()` で取得。`fontSize` / `lineHeight` / `borderBottomWidth` / `backgroundColor` 等の semantic property が baseline と一致することを確認:
-
-```js
-// Playwright MCP 経由の例
-const cs = getComputedStyle(document.querySelector('section'));
-return {
-  borderBottomWidth: cs.borderBottomWidth, // "1px"
-  borderBottomColor: cs.borderBottomColor, // "rgb(219, 234, 254)"
-  backgroundColor: cs.backgroundColor, // "rgb(239, 246, 255)"
-};
-```
-
-両方が baseline と一致 (= rendering nondeterminism のみ) → baseline 更新が妥当。
-どちらかが不一致 (= 真の semantic regression) → baseline 更新前に root cause を fix。
-
-### なぜこの手順が必要か
-
-baseline 更新は「意図した変更」を承認する操作であり、**真の regression を silent に baseline に焼き込んでしまうリスク** がある。本 PR #299 のような pure CSS class refactor では baseline 更新が正解だが、PR 8 (CSP `style-src 'unsafe-inline'` 削除) 等で発生し得る real regression と区別する **判別 gate** を agent ワークフローに組み込む必要がある。
-
-「rendering nondeterminism は baseline 更新で吸収」が pattern 化すると、judgment が機械的になり regression 見逃しが起きる。
-
-### 関連 PR / 観点
-
-- PR #299 (本ルール起票のきっかけ): 1px 累積差で baseline 更新成功、commit `d5c5841` (`Update Visual Regression Baseline` workflow による自動 commit)
-- PR 7a spec § VRT (Visual Regression Test): 「意図的差分があれば `update-visual-baseline.yml` workflow で baseline 更新」 (本ルールはこの判断基準を **明示化**)
-- 関連個人 memory (PC ローカル、本 repo 未収録): `feedback_vrt_ci_only.md` (VRT は CI Linux のみで検証)
-- （規約昇格候補）`.agents/rules/common.md` の VRT 関連 sub-section として昇格検討。本 PR review (`#299` 軽微指摘 #3) で reviewer から「次 PR では VRT 差分が出た場合 baseline 更新前に必ず DOM diff / computed style diff を確認する手順を agent-lessons に明記する価値あり」と提案を受けて記録
 
 ---
 
@@ -361,17 +214,9 @@ PR [#438](https://github.com/fumtas1k/devtools/pull/438) で `src/utils/download
 3. Cloudflare Pages deploy log の `Uploaded N files (M already uploaded)` を確認 → `M` が大きく `N` が極小で 500 が残るなら dedup trap 確定
 4. 該当 artifact のソースに微小な real change を入れて PR → byte 変化で edge をバイパス
 
-### 副次的発見（別件）
+### 副次的発見（別件、対応済み）
 
-deploy log で下記 warning も観測:
-
-```
-Found invalid redirect lines:
-  - #5: /test-fixtures/*  /404  404
-    Valid status codes are 200, 301, 302 (default), 303, 307, or 308. Got 404.
-```
-
-`public/_redirects` の 404 ルールは Cloudflare に拒否されており効いていない（本番で test-fixture 配下が公開されている既存バグ）。本件と無関係だが要別途対応。
+deploy log で `public/_redirects` の `/test-fixtures/* /404 404` ルールに対する invalid redirect warning を観測したが、その後 issue #409（test-fixtures の本番 404 化）/ issue #411（カスタム 404 ページ `src/pages/404.astro` 追加、PR #534）で対応済み。`tests/meta/redirects-404-fallback.test.ts` が `_redirects` の 404 fallback 整合性をガードしている。
 
 ### 関連
 

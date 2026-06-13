@@ -106,8 +106,9 @@
   cursor: pointer;
 }
 
-/* focus-visible を CSS で一括適用（JS の onFocusRing/onBlurRing ハンドラは不要） */
-:where(button, a, [role='button'], input, textarea, select):focus-visible {
+/* focus-visible を CSS で一括適用（JS の onFocusRing/onBlurRing ハンドラは不要）。
+   [role='textbox'] は contenteditable な貼り付け受付領域（clipboard-inspector）用 */
+:where(button, a, [role='button'], [role='textbox'], input, textarea, select):focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;
 }
@@ -160,17 +161,17 @@
   color: var(--color-text);
 }
 
-/* リンクの色のみを制御するクラス（下線なし） */
-.text-link-color {
+/* 下線なしのプレーンリンク色クラス */
+.text-link-plain {
   color: var(--color-link);
   transition: color 0.2s;
 }
 
-.text-link-color:hover {
+.text-link-plain:hover {
   color: var(--color-primary);
 }
 
-.text-link-color:visited {
+.text-link-plain:visited {
   color: var(--color-link-visited);
 }
 

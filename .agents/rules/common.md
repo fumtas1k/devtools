@@ -71,6 +71,7 @@ post-PR 代行は不要、CI が最終ゲート。
 3. `src/data/tools.ts` の `toolEntries` 配列にエントリを追加（slug / name / description / category / yomi）。`yomi` は並び替え用の読み仮名（ひらがな）で、表示順はこの `yomi` の五十音順に自動ソートされる（手動で位置を決める必要はない）
 4. `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列に `/tools/<slug>` を追加（VRT 対象に登録）。baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を `workflow_dispatch` trigger して生成（mac との font 描画差を回避するためローカル生成は不可）。**漏れた場合は `tests/meta/vrt-pages-coverage.test.ts` が `npm run test` で fail させる**ため CI で必ず検知される（issue #355 で導入）。
 5. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
+6. 候補リスト（`docs/tool-candidates.md`）由来のツールの場合、PR マージ時に該当行の「状態」列へ ✅ と PR 番号を記載する
 
 新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `.agents/rules/ui-conventions.md` を参照。
 
@@ -160,11 +161,14 @@ solo dev 体制（PR 作成者 = レビュアー = merger が同一人物）で�
 
 VRT が小さい pixel diff (例: 0.07%) を検出しても「微小だから baseline 更新で OK」と recommend してはいけない。**pixel 数 ≠ visual design 品質** (design token 由来の意図しない変更でも pixel ratio は小さく見える)。判断は user の目視確認に委ね、エージェントは数値根拠で baseline 更新を勧めない。
 
+また、baseline 更新前には **DOM 構造 diff / computed style diff の 2 段階検証が必須**（真の regression を baseline に焼き込まないための判別 gate、PR #299 の事例を起点に明文化）。手順 → `docs/playbooks/e2e-validation.md` 7.7 章
+
 ### 6.9 サブエージェント運用の補足
 
 - **完了報告は項目別ステータス必須**: 親プロンプトのスコープ箇条書きを subagent が一部のみで「完了」と返すケースがあるため、完了報告フォーマットに「項目ごとに 実装 / 既存で十分 / スキップ理由 を明示する」チェックリスト形式を要求する。親側でも依頼項目数 vs 実装項目数の機械的突き合わせを行う（過去事例: PR #218 で 3 件依頼中 1 件のみ実装で完了報告された）。
 - **`package.json` 変更時は `package-lock.json` 同期確認**: subagent が deps を追加・更新した場合、`git diff origin/develop --name-only` に `package.json` が含まれる場合は必ず `package-lock.json` も含まれているか確認する。漏れていれば親で `npm install --package-lock-only --cache "$TMPDIR/npm-cache" --no-audit --no-fund` を実行し別コミットで lock 同期を push する（過去事例: PR #181 で lock 不整合のまま push される寸前で発覚）。
 - **PR 本文の更新は親で実行**: `gh pr edit --body-file` は `permissions.ask` のため subagent から非対話 deny される。subagent は完了報告に「PR 本文更新が必要」と明記し、親 (司令塔) が `gh pr edit` で引き取る（過去事例: PR #189 で subagent から呼べず指摘事項対応が止まった）。
+- **subagent プロンプトに矛盾する設計指示を混ぜない**: subagent は指示を素直に実装するため、矛盾を内包した指示はそのまま矛盾した実装になる。subagent の判断力に期待してプロンプトの曖昧さを残さない。特に React の effect / memo では「memo 化した派生値を依存配列に保つ」と「依存配列を一次入力に展開する」は反対方向の設計判断であり併記しない（片方に寄せる）。どうしても両論併記する場合は「`eslint-disable` は使わない、それで済まない設計なら知らせる」と判断材料を明記する（過去事例: PR #217 で矛盾指示により `react-hooks/exhaustive-deps` を 2 箇所 `eslint-disable` で抑制する実装になりレビューで差し戻し）。
 
 ---
 

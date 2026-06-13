@@ -293,7 +293,7 @@ export function TotpHotpGeneratorTool() {
                 <button
                   type="button"
                   onClick={handleRegenerateSecret}
-                  className="caption text-link-color btn-link-plain"
+                  className="caption text-link-plain btn-link-plain"
                   aria-label="ランダム生成（新しいシークレット）"
                 >
                   ランダム生成
@@ -301,7 +301,7 @@ export function TotpHotpGeneratorTool() {
                 <button
                   type="button"
                   onClick={() => setShowSecret((v) => !v)}
-                  className="caption text-link-color btn-link-plain"
+                  className="caption text-link-plain btn-link-plain"
                   aria-label={showSecret ? 'シークレットを隠す' : 'シークレットを表示する'}
                 >
                   {showSecret ? '隠す' : '表示'}
@@ -536,7 +536,7 @@ export function TotpHotpGeneratorTool() {
           {otpauthUri && (
             <p className="caption text-muted">
               このURIをコピーして{' '}
-              <a href="/tools/qr-code" className="text-link-color hover:underline">
+              <a href="/tools/qr-code" className="text-link-plain hover:underline">
                 QRコード生成ツール
               </a>{' '}
               に貼り付けると、Google Authenticator 等で読み取れます。

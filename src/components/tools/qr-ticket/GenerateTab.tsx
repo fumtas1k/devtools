@@ -117,7 +117,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
               onClick={onToggleImport}
               aria-expanded={showImport}
               aria-controls="qr-ticket-import-panel"
-              className="caption text-link-color btn-link-plain inline-flex items-center gap-1"
+              className="caption text-link-plain btn-link-plain inline-flex items-center gap-1"
             >
               <ChevronIcon open={showImport} />
               {showImport ? '秘密鍵インポートを閉じる' : '既存の秘密鍵をインポート'}

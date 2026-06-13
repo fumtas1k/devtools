@@ -11,6 +11,7 @@
 - [エンコード・デコード](#エンコードデコード)
 - [変換・解析](#変換解析)
   - [CIDR/サブネット計算機](#cidrサブネット計算機)
+  - [DSN/接続文字列ビルダ](#dsn接続文字列ビルダ)
 
 ## 生成
 
@@ -399,10 +400,14 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 `jsonc-parser` の `parseTree` で **strict JSON**（コメント・末尾カンマ・空入力を不許可）としてパースし、AST と構文エラー（行・列付き）を得る。
 
 - **整形 / 最小化**: AST を走査して直列化するが、プリミティブは **元ソースのテキスト span をそのまま出力**するため、大きな数値の精度・数値表記（`1.0`, `1e3`）・文字列エスケープを失わない（lossless）。インデントは 2 / 4 / タブ、最小化は空白除去。
-- **ツリービュー**: 折りたたみツリーを遅延構築（`makeTree`）。
+- **ツリービュー**: 折りたたみツリーを遅延構築（`makeTree`）。全展開換算 2,000 行超は仮想スクロールに自動切替（後述）。
 - **JMESPath クエリ**: `jmespath` の `search` で抽出。
 - **マスク**: 機密データを 6 カテゴリで伏字化する。SECRET（`password`/`token`/`secret` 等のキー名部分一致で値全体）・EMAIL・JWT・IP（IPv4 妥当性チェック）・CREDIT_CARD（Luhn チェック）・PHONE_JP。カテゴリごとに ON/OFF と検出件数を表示。
 - **TypeScript 型生成**: JSON から型定義を生成する。
+
+#### ツリー仮想化
+
+全展開換算 2,000 行超のツリーは可視範囲のみを DOM 化する仮想スクロールに自動で切り替わる（自前 windowing・依存なし）。仮想表示では入れ子の罫線（インデントガイド）は省略され、深さはインデント幅で表現される。画面外の行はブラウザのページ内検索にヒットしない。また、フラット構造のためリストのネスト（深さ）情報はスクリーンリーダーに伝わらず、フォーカス中の行が画面外へスクロールアウトするとフォーカスが外れる。2,000 行以下は従来どおり全行を描画する。
 
 #### 制限・エッジケース
 
@@ -443,3 +448,85 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - /0 は全アドレス空間を表し、総アドレス数が `2^32`（IPv4）または `2^128`（IPv6）となる。
 - 分割モードで分割数が 1024 を超える場合（例: /8 を /24 へ = 65536 件）はエラーメッセージを表示する。
 - 重複検出モードで有効 CIDR が 256 件を超える場合はエラーメッセージを表示し、重複判定をスキップする。検出ペアが 1000 件を超える場合は先頭 1000 件のみ表示し、打ち切り旨を通知する。
+
+### シークレットスクラバー
+
+#### 仕組み・アルゴリズム
+
+`src/utils/secret-scrubber/` に独立モジュールとして実装した純関数エンジン（外部ライブラリなし）。
+
+- **ルールベース検出**: カテゴリ別の正規表現ルール群（`rules.ts`）でテキストを走査し、マッチした範囲を収集する。API キーはプロバイダ別パターン（AWS `AKIA/ASIA/ABIA/ACCA`・GitHub `ghp_/ghs_`・Anthropic `sk-ant-`・OpenAI `sk-`・Stripe・Google API・SendGrid・npm・GitLab・Slack）で高精度に検出する。
+- **maskGroup**: `CREDENTIAL_ASSIGN`（代入式。`password` 等の英語キーに加え `パスワード`・`トークン` 等の日本語キー名・全角コロンに対応）・`CREDENTIAL_URL`（URL 認証）・`CREDENTIAL_AUTH_HEADER`（Authorization ヘッダ）はキャプチャグループを使い、キー名や URL のホスト部を残して値部分のみをマスクする。
+- **バリデーション**: IPv4 は各オクテット 0〜255 検証、クレジットカードは Luhn アルゴリズム、HIGH_ENTROPY は Shannon エントロピー閾値チェックで誤検出を抑制する。
+- **重複解決**: マッチを start 昇順でソートし、重なる場合は `priority` 高い方（同値なら長い方）を勝者とする。負けた側が勝者のフルマッチ範囲（maskGroup ルールが意図的に残すキー名・ホスト等を含む「考慮済み領域」）に完全に含まれる場合は破棄する（例: Authorization ヘッダ内 JWT は 1 つのプレースホルダになる）。はみ出す場合は範囲を union にマージし、負けたマッチの断片（例: 高エントロピー文字列の内側だけが AWS キーにマッチしたときの前後）が素通しになる漏えいを防ぐ（over-masking 側に倒す。PR #631 レビュー指摘）。
+- **一貫トークン化**: `Map<カテゴリ:値, プレースホルダ>` を持ち、同一値に対して常に同一プレースホルダ（`[REDACTED:EMAIL_1]` 等）を割り当てる。カテゴリごとに初出順で連番を振る。
+- **後ろから順に置換**: オフセット保護のため、解決済みマッチを末尾から処理して前方の位置が変化しないようにする。
+- **Shannon エントロピー**: `entropy.ts` で実装。文字ごとの出現頻度から `- Σ p * log2(p)` を計算する（bits/char）。base64 風文字列は ≥ 4.0、hex 文字列は ≥ 3.0 を閾値とする。
+
+#### 準拠仕様・参考
+
+- Shannon エントロピー（Claude E. Shannon, 1948）による情報エントロピー計算
+- Luhn アルゴリズム（ISO/IEC 7812）によるクレジットカード番号検証
+- 各プロバイダ公式ドキュメントのシークレット形式仕様
+
+#### 制限・エッジケース
+
+- **IPv6 未対応**: IPv6 アドレスは検出しない（今後の拡張候補）。
+- **UUID は HIGH_ENTROPY から除外**: `8-4-4-4-12` の hex 形式は識別子の可能性が高いため HIGH_ENTROPY 検出対象外。ただし UUID がプロバイダ特有パターンに合致する場合は別ルールで検出される。
+- **代入式の値は 6 文字以上のみ検出**: `password=abc12` のような 6 文字未満の値は誤検出抑制のため検出しない。
+- **既知の誤検出（over-masking 側）**: `06-11-2026` のようなハイフン区切り日付が電話番号として、`10.2.3.4` のようなバージョン表記が IP アドレスとして検出されることがある。不要ならカテゴリのトグルを OFF にする。
+- **検出は完全ではない**: 未知の形式のシークレット・プロバイダ固有の非標準形式は検出されない場合がある。共有前に必ず目視確認すること。
+- **高エントロピー検出は誤検出が発生しうる**: 長いランダムに見える文字列（Base64 エンコードされた非機密データ等）も HIGH_ENTROPY で検出される場合がある。不要なカテゴリはトグルで OFF にすることを推奨する。
+- **json-formatter/mask.ts との関係**: JSON 構造の値を走査するマスク機能（`json-formatter`）とは独立したモジュール。テキスト全文を正規表現で走査するため、JSON 以外のログ・設定ファイルにも対応する。将来的な共通基盤化（S2-3）は別 PR で判断する。
+
+### クリップボードインスペクタ
+
+#### 仕組み・アルゴリズム
+
+`src/utils/dataTransferSnapshot.ts` と `src/utils/sanitizeHtml.ts` を組み合わせて実装。
+
+- **DataTransfer 取得**: `paste` イベント（`document` 全体で捕捉）と `drop` イベントの `DataTransfer` を受け取り、`DataTransferItemList` を同期パスで列挙する。`getAsString` の呼び出しはイベントハンドラの同期スコープ内で行う必要があり（ハンドラ終了後は `DataTransferItemList` が無効化される）、Promise で非同期解決する設計を採っている。
+- **受付領域は contenteditable（モバイル対応）**: モバイルの OS ペーストメニューは編集可能要素の長押しでしか出ないため、受付領域を `contenteditable` 化している（issue #636）。`inputMode="none"` でフォーカス時のソフトキーボード表示を抑制する。paste 自体は従来どおり `document` レベルの listener が捕捉するため、ページ内のどこでも Ctrl+V / Cmd+V で貼り付けできる。
+- **contenteditable の編集阻止（二段ガード）**: ① `beforeinput` の `preventDefault`（React の `onBeforeInput` は native beforeinput ではなく textInput / keypress 等から合成されるため、native と React 合成の両系統に登録して全編集経路を阻止）。② IME の `insertCompositionText` は W3C Input Events 仕様で non-cancelable のため beforeinput では阻止できず、貫通した編集は `input` イベント時にマウント時に保存した deep clone から案内文言を復元する（実 IME は既存テキストノード内部を直接変異させるため同一ノード参照の保存では復元が no-op になる。復元のたびに再クローンして装着し、master の clone 汚染も防止する）。
+- **フレーバー分類**: `DataTransferItem.kind === 'string'` のものを `StringFlavor`（type・content・byteSize）、`kind === 'file'` のものを `FileFlavor`（type・name・size・lastModified・File オブジェクト）として分離して収集する。
+- **HTML サニタイズ + sandbox**: `text/html` フレーバーのプレビュー表示時は、`sanitizeHtml`（許可リスト方式のサニタイザ。`script`・`iframe`・`on*` イベント属性・`javascript:` URL・`style`・remote 画像 URL（img の src は data:image の raster 形式 png/jpeg/gif/webp/avif/bmp のみ許可。svg+xml は script を内包し得るため除外）を除去。a の href は http/https/mailto のみ許可）でスクリプト・危険属性を除去したうえで `sandbox=""` 属性付き `<iframe>`（スクリプト実行・フォーム送信・同一オリジン不許可）に `srcdoc` として渡す二重防御を実施する。
+- **画像プレビュー**: `image/*` 型のファイルフレーバーは `URL.createObjectURL` でブラウザ内 blob URL を生成して `<img>` に渡す。コンポーネントアンマウント時に `URL.revokeObjectURL` でメモリを解放する。
+
+#### 準拠仕様・参考
+
+- W3C Clipboard API および `DataTransfer` インターフェース仕様
+- W3C HTML Living Standard `<iframe sandbox>` 属性仕様
+
+#### 制限・エッジケース
+
+- **ブラウザ非公開フレーバーは表示不可**: OS のクリップボードに存在しても、ブラウザが Web ページへ公開しないフレーバー（独自アプリ形式等）は列挙されない。
+- **プレビューにインラインスタイルが反映されない**: `srcdoc` の iframe は親ドキュメントの CSP（`style-src` strict）を継承するため、サニタイズ後プレビューは構造・テキスト中心の表示になる。
+- **Async Clipboard API 非対応**: ボタンクリックでの読み取り（`navigator.clipboard.read()`）には対応しない。権限プロンプトが必要で取得できる型も限定的なため、初版のスコープ外とした。
+- **サニタイズで除去された要素・属性はプレビューに現れない**: 除去内容を確認したい場合は「生ソース」表示に切り替えれば原文をそのまま確認できる。
+- **style 属性付き HTML 貼り付け時の CSP 違反ログ**: style 属性を含む HTML を貼り付けると、Chromium のクリップボード内部処理（`getAsString` の HTML サニタイズ）が inline style を評価するため、本番 CSP 環境（`style-src` strict）のコンソールに style-src 違反ログが数件記録されることがある。アプリの実装・表示には影響しない（E2E `tests/e2e/clipboard-inspector.spec.ts` の本番 CSP テスト参照）。
+- **プレビューでは remote 画像は表示されない**: http/https の img src は外部リクエスト防止（tracking pixel 対策）と CSP 違反ノイズ回避のためサニタイズで src を除去する（alt テキストは保持）。img の src として表示されるのは data:image の raster 形式（png/jpeg/gif/webp/avif/bmp）のみ。
+- **ハイドレーション完了前は貼り付けを捕捉できない**: `paste` listener は React コンポーネントのマウント時に `document` へ登録されるため、ページ表示直後の数百 ms（ハイドレーション完了前）の貼り付けは捕捉されない。
+
+### DSN/接続文字列ビルダ
+
+#### 仕組み・アルゴリズム
+
+- `scheme://[userinfo@]authority[/path][?query]` を自前パーサで分解する。`URL` API は
+  mongodb のカンマ区切り複数ホスト（`host1:27017,host2:27018`）を解釈できないため使用しない
+- userinfo・パス・クエリは percent-decode してフォームに表示し、URI 生成時に
+  `encodeURIComponent` で再エンコードする（パスワード中の `@ : /` 等の手動エンコード不要）
+- スキーム方言辞書（`src/utils/dsn-builder/dialects.ts`）が既定ポート・複数ホスト可否・
+  パス部の意味（DB 名 / DB 番号 / vhost）・SRV 制約を定義する
+- パスワードを `****` に置換した共有用 URI を常時導出する（同期不要の純粋関数）
+
+#### 準拠仕様・RFC
+
+- RFC 3986（URI 構文・percent-encoding）
+- libpq 接続 URI（PostgreSQL 複数ホスト）・MongoDB Connection String・RabbitMQ URI Specification
+
+#### 制限・エッジケース
+
+- 実接続テストは不可（ブラウザの制約）
+- クエリパラメータの意味的妥当性（sslmode の値等）は検証しない
+- 過剰エンコードされた入力（例: `%41` = `A`）は decode → 再 encode で正規化される
+- JDBC / ADO.NET（`Server=...;`）形式は対象外

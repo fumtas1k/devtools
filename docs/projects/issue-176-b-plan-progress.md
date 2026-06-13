@@ -205,7 +205,7 @@ PR 5 を **PR 5a / PR 5b** に分割する根拠と各 PR のスコープ。新�
 | [#281](https://github.com/fumtas1k/devtools/issues/281) | `withProductionCsp` 自体の挙動を検証する meta-test 追加                                    | **PR 5 着手前に再確認**                         | PR #278 由来 (review 提案 #4)。`fn` throw 時の `context.close` 確実呼出 / `assertNoViolations` 自動呼出 を assert。PR 5 完了後 or #280 着手時に併設候補 |
 | [#284](https://github.com/fumtas1k/devtools/issues/284) | ラベル最小幅 `min-w-10` の集約検討 (`.label-prefix` 専用 class 化)                         | **PR 5b / PR 6 で類似 pattern 確認**            | PR 5a (#283) self-review NIT #1。出なければ close、blocking なし                                                                                        |
 | [#285](https://github.com/fumtas1k/devtools/issues/285) | カメラボタン等の utility 列挙を `.btn-action--*-fill` variant に集約検討                   | **PR 5b / PR 6 で類似 pattern 確認**            | PR 5a (#283) self-review NIT #2。`bg-error-tint` 派 danger fill の新 variant 必要、出なければ close                                                     |
-| [#119](https://github.com/fumtas1k/devtools/issues/119) | .text-link-color 命名規則統一                                                              | 独立 (低優先)                                   | PR 1.5 で消費パターン定着、改名は all-files rename になる時期まで保留                                                                                   |
+| [#119](https://github.com/fumtas1k/devtools/issues/119) | .text-link-color → .text-link-plain 改名完了                                               | ✅ 完了                                         | 2026-06-10 に全ファイル rename 実施。decisions.md [102] に記録。docs/superpowers/ 履歴記録は意図的に変更対象外                                          |
 
 ## B 案接近系 issue（独立判断）
 

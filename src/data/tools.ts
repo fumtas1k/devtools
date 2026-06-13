@@ -164,6 +164,30 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'しーあいでぃーあーるさぶねっとけいさんき',
   },
+  {
+    slug: 'secret-scrubber',
+    name: 'シークレットスクラバー',
+    description:
+      'ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換',
+    category: 'convert',
+    yomi: 'しーくれっとすくらばー',
+  },
+  {
+    slug: 'clipboard-inspector',
+    name: 'クリップボードインスペクタ',
+    description:
+      '貼り付け・ドラッグ&ドロップしたデータの全 MIME フレーバー（テキスト・HTML・画像・ファイル）と中身を可視化します。HTML はサニタイズ後プレビュー付き',
+    category: 'convert',
+    yomi: 'くりっぷぼーどいんすぺくた',
+  },
+  {
+    slug: 'dsn-builder',
+    name: 'DSN/接続文字列ビルダ',
+    description:
+      '接続文字列（DSN）をフォームとURIで双方向編集します。パスワードをマスクした共有用URIも生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応',
+    category: 'convert',
+    yomi: 'でぃーえすえぬせつぞくもじれつびるだ',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる

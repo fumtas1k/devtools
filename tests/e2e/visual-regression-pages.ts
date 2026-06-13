@@ -37,6 +37,9 @@ export const PAGES = [
   '/tools/regex-visualizer',
   '/tools/json-formatter',
   '/tools/cidr-calculator',
+  '/tools/secret-scrubber',
+  '/tools/clipboard-inspector',
+  '/tools/dsn-builder',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy', '/404']);

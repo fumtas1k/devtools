@@ -3818,3 +3818,349 @@ IPv4（32bit）と IPv6（128bit）のアドレス演算を、安全かつブラ
 - ✅ IPv4/IPv6 を BigInt で統一的に扱い、シンプルなロジックで正確なネットワーク計算を実現。
 - ✅ 外部依存ゼロでブラウザ完結を維持。
 - ⚠️ IPv4-mapped IPv6（`::ffff:x.x.x.x`）は BigInt にパースできるが、フォーマット時に IPv4 形式には戻さない（表示は純 IPv6）。
+
+---
+
+## [100] 2026-06-10 — テスト陽性対照強化 (#316/#324/#334)（issue #533）
+
+### 課題
+
+以下の 3 つのテスト / CI 設定に「検知機構が壊れても green が継続する」陰性対照のみの設計が残っていた:
+
+- **#316**: `meta-csp.test.ts` の Astro island inline style hash 整合性テストが、定数 `ASTRO_ISLAND_INLINE_CONTENT` を hardcode して比較する 2 段構造だったため、Astro が inline style 文字列を変更しても旧 hash を `_headers` に残したまま陰性対照で素通りする危険があった。
+- **#324**: `visual-regression.yml` の「PR comment 本文を組み立て」step は VRT 失敗時のみ通る経路で CI 実証手段がなく、`( ... ) || true` による regression 修正が正しいかを手元で確認する手段がなかった。
+- **#334**: `update-visual-baseline.yml` の secret env audit step は陰性対照のみで、grep パターンが壊れても silent pass するリスクがあった（`FAKE_API_KEY` を注入して検知を確認する陽性対照が欠如）。
+
+### 決断
+
+**#316（dist 直読化）**: `meta-csp.test.ts` の integrity テストを dist HTML から `<style>` 中身を全件抽出して sha256 を計算する 1 段構造に書き換え。dist と `_headers` を直接比較する設計で定数の二重管理を排除。「dist に inline style が少なくとも 1 件存在する」assert を陽性対照として追加し、抽出 regex が 0 件で空回りする偽 green を防止。
+
+**#324（陽性対照スクリプト）**: `scripts/test-vrt-comment-build.sh` を新設し、workflow 内の失敗 spec 抽出 pipeline を bash 環境で再現。陰性対照 2 件（空 log / fixture log）に加え、`|| true` を外した旧実装で空 log を流したとき pipeline が確実に中断することを assert するケース C（陽性対照）を追加。`tests/meta/vrt-comment-build-script.test.ts` で `npm run test` に自動組み込み。
+
+**#334（案 1: 別 workflow + 週次 cron）**: `.github/workflows/test-baseline-audit.yml` を新設し、`FAKE_API_KEY=sentinel-value-not-a-real-secret` を job env に注入した状態で audit pipeline を実行。FAKE_API_KEY が検知されなければ `::error::` で fail させる（陽性対照）。さらに FAKE_API_KEY を除外した step で GH Actions runtime 由来 env が allow list で正しく除外されることを確認（陰性対照）。inline 複製した grep パターンの drift は `tests/meta/baseline-audit-positive-control.test.ts` が `npm run test` で自動検知する。
+
+### 案 2・案 3 を却下した理由（#334）
+
+- **案 2（composite action 化）**: action の抽象化により grep パターンを DRY にできるが、workflow のステップを action でラップすると `env:` コンテキストが変わり sentinel 注入の設計が複雑化する。メンテナンスコストが案 1 を上回ると判断。
+- **案 3（bats 導入）**: bash 専用テストフレームワークを導入すれば表現力が上がるが、npm 管理の vitest と二重管理になる。小規模な検証に対してオーバーエンジニアリング。
+
+### inline 複製を meta テストで drift guard する判断
+
+`test-baseline-audit.yml` は `update-visual-baseline.yml` の grep パターンを「一字一句同一」で inline 複製している。DRY でないことは意図的なトレードオフで、以下の理由から許容する:
+
+- grep パターンは短く変更頻度が低い（audit 対象の secret 命名規則が変わった場合のみ更新）。
+- `tests/meta/baseline-audit-positive-control.test.ts` が両 workflow のパターンを抽出して完全一致を assert するため、drift は `npm run test` で即時検知できる。
+- composite action 化より運用が単純で、CI 設定追加の安全性も高い（`permissions: contents: read` のみ、sentinel は実 secret でない）。
+
+### 結果・トレードオフ
+
+- ✅ #316: dist HTML から直接 hash を計算する設計で定数の二重管理を排除。Astro の inline style 変更を自動検知。
+- ✅ #324: pipeline の `|| true` 有無の違いをケース C が実証し、regression クラス全体をテストハーネスが検知できることを証明。
+- ✅ #334: 週次 cron と `workflow_dispatch` の両建てで、audit step の silent drift を定期自動確認。meta テストで grep パターンの inline 複製 drift を CI から検知。
+- ⚠️ #334: `test-baseline-audit.yml` の陰性対照（Step 2）は shell の `unset FAKE_API_KEY` で「env に存在しない」状態を再現する。step env で `FAKE_API_KEY: ''` と空文字上書きする案はレビューで却下した — GH Actions は空文字でも env var を set するため `env` 出力に `FAKE_API_KEY=` が残り、detect パターン（`...KEY=` 接尾辞マッチ）に必ずマッチして陰性対照が常時 fail する。
+
+---
+
+## [101] web セッションの Playwright Chromium 確保は SessionStart hook で行う (2026-06-10)
+
+### 課題
+
+Claude Code on the web で Playwright スクリーンショット / E2E を使うため、環境セットアップスクリプトに `npx -y playwright install chromium` を設定したが、セッション開始時点でブラウザ（このリポジトリの Playwright 1.59.1 が要求する build 1217）が `/opt/pw-browsers/` に存在しなかった。ベースイメージ焼き込みの build 1194 はバージョン不一致で使われない。
+
+### 原因分析
+
+環境セットアップスクリプトはコンテナ作成時（SessionStart hook の `npm ci` より前）に走るため、`npx -y playwright` が playwright パッケージ自体の npm registry 取得から始まる。ネットワーク許可構成によってはブラウザダウンロード以前に失敗し、`set -e` でスクリプト全体が異常終了する。どの home の `~/.cache/ms-playwright` にも痕跡がないことから、別パスへのインストールではなく実行自体が完了していないと判定。
+
+### 選定理由
+
+`.claude/scripts/session-install.sh`（SessionStart hook、動作実績あり）の `npm ci` 後に `CLAUDE_CODE_REMOTE=true` ガード付きで `npx playwright install chromium` を追加。
+
+- **npm ci 後**なので lock 固定版 playwright が使われ、必要なネットワークは `cdn.playwright.dev` のみ。
+- **`CLAUDE_CODE_REMOTE` ガード**で web セッション限定。ローカル開発者の playwright cache には触れない。
+- install 済みなら即 no-op（実測 約3秒）。web はフック完了後のコンテナ状態キャッシュにより約 280MB のダウンロードは環境ごとに実質 1 回。
+
+### 却下した選択肢
+
+- **環境セットアップスクリプトの修正続行**: 環境側 UI でしか管理できずリポジトリで再現・レビューできない。registry 許可の追加も環境ごとの手作業になる。
+- **ガードなしで hook に追加**: ローカルセッションでもブラウザダウンロードが走り、開発者のローカル環境を汚染する。
+
+### 結果・トレードオフ
+
+- ✅ web セッションで Playwright スクリーンショット撮影・E2E 実行が再現可能に。
+- ⚠️ 環境側のセットアップスクリプト（`npx -y playwright install chromium`）は不要になるため削除してよい。
+
+---
+
+## [102] リンク用ユーティリティクラスを semantic 命名に統一（.text-link-color → .text-link-plain）（2026-06-10）
+
+### 課題
+
+PR #116 で新設した `.text-link-color` クラスは「色のみを制御する」という **属性ベース命名** であり、クラス名を見ただけでは「下線なし」という利用意図が読み取りにくかった。また、既存の `.text-link`（下線あり汎用リンク）との命名上の対比が不明確だった。
+
+### 決断
+
+`.text-link-color` を **`.text-link-plain`** に改名する。
+
+- `.text-link`（下線あり）と `.text-link-plain`（下線なし）で **用途ベースの一貫したペア** が成立する。
+- BEM modifier 形式（例: `.text-link--no-underline`）ではなく独立クラス名にした理由: 実態として `.text-link` と `.text-link-plain` は**併用されず単独で使われている**。modifier 表記は「base クラスとの併用」を示唆するため、用途を誤解させる可能性がある。
+
+### 変更対象
+
+- `src/styles/global.css`（セレクタ 3 件 + コメント）
+- `src/components/ui/InputField.tsx`
+- `src/components/ui/ToolCard.astro`
+- `src/components/tools/JsonFormatter.tsx`（2 件）
+- `src/components/tools/JsonTreeResult.tsx`
+- `src/components/tools/ConfigConverter.tsx`
+- `src/components/tools/TotpHotpGenerator.tsx`（3 件）
+- `src/components/tools/Gs1Databar.tsx`
+- `src/components/tools/qr-ticket/GenerateTab.tsx`
+- `tests/e2e/link-styles.spec.ts`
+
+### 結果・トレードオフ
+
+- ✅ 命名規則が用途ベースで一貫し、新規実装者が `.text-link` / `.text-link-plain` のどちらを使うべきか直感的に判断できる。
+- ✅ 挙動・見た目は不変（純粋な rename）。
+- ℹ️ `docs/superpowers/plans/` / `docs/superpowers/specs/` 配下の point-in-time 履歴記録は変更対象外（旧名が残るが意図的）。
+
+---
+
+## [103] 2026-06-11 — json-formatter ツリーの行数閾値仮想化（#512 残スコープ①）
+
+**2026-06-11 | ステータス: 採用**
+
+### 背景
+
+decisions [096] のツリー遅延構築 + 500KB ガード後も、ガードを明示解除した巨大ツリーは全ノード再帰 DOM 化で重く、ガード未満（数百 KB）でも数万ノードで描画・操作が重い（issue #512 残スコープ）。
+
+### 計測（measure-first）
+
+5000 要素の配列（全展開換算 約 60,000 行・整形済み 500KB 超）での実測（Playwright MCP / preview ビルド / 2 回計測）:
+
+| 指標                       | before（全行 DOM 化） | after（仮想化） |
+| -------------------------- | --------------------- | --------------- |
+| 強制表示 → ツリー出現 (ms) | 5,307                 | 44              |
+| DOM 行数 (li.json-row)     | 45,001                | 39              |
+| 全折りたたみ応答 (ms)      | 2,666                 | 53              |
+
+（before: Run1 renderMs 5484 / collapseMs 2694、Run2 renderMs 5129 / collapseMs 2638。after: Run1 renderMs 64 / liCount 39 / collapseMs 52、Run2 renderMs 24 / liCount 39 / collapseMs 53）
+
+### 決断
+
+- **行数閾値で仮想化**: 全展開換算の総行数（`countRows`）が `TREE_VIRTUALIZE_THRESHOLD = 2_000` 超のとき `JsonTreeViewVirtual`（自前 windowing）へ切替。以下は従来の再帰ツリーのまま（DOM・見た目・VRT 不変）。
+- **自前 windowing 採用**: 行は等高（1 行固定・nowrap）・固定高コンテナ（28rem）という最も単純なケースで、可視範囲計算は純粋関数 `computeWindow` 1 つ。`@tanstack/react-virtual` は公式パターンが全可視行の inline style（transform/height）前提で CSP `style-src 'unsafe-inline'` 撤去（#176）と衝突し、依存 2 パッケージ追加の割に提供価値が薄いため不採用。
+- **spacer は SVG height 属性**: 範囲外の高さは aria-hidden な li 内の SVG presentation attribute で表現（decisions [098] と同方式・CSP 対象外）。`useDynamicStyleSheet` は `useEffect` 経由で描画より 1 フレーム遅れスクロールジッターが出るため不採用。
+- **開閉状態の XOR 集中管理**: 「デフォルト開閉からの反転 行キー集合」で保持し、全折りたたみ時の全キー列挙を回避。全展開/全折りたたみは既存の key 再マウント方式を踏襲。行キーは「親の行キー + 相対セグメント + 兄弟内出現回数 `#n`」で構成し、重複キーがなければ path と一致する。重複キー JSON（strict パースでも構文エラーにならない）では兄弟の path も、重複親が同名の子を持つ場合の cousin の path も衝突するが、兄弟は親ごとの局所採番・cousin は親キー連鎖（`$.a.b` と `$.a#1.b`）で区別されるため、他 subtree の開閉に影響されず安定する（PR #622 レビュー・再レビュー指摘で対応）。
+- **500KB ガードは維持**: ツリー構築（makeTree）自体のメインスレッド同期コストは仮想化では解消しない。Worker オフロードと `getNodeValue` 遅延化は #512 残スコープとして継続。
+
+### 結果・トレードオフ
+
+- ✅ 閾値以下の通常入力は DOM・見た目とも完全不変（VRT baseline 更新不要）。
+- ✅ 陽性対照 E2E（DOM 行数 < 総行数）を配線前に実行して fail（liCount 4501）を実機確認済み（test-gates 準拠）。
+- ⚠️ 仮想パスでは入れ子 ul の罫線（インデントガイド）を省略し depth ベースの spacer で代替。
+- ⚠️ 仮想パスは可視行のみ DOM 化するため、ブラウザのページ内検索（Ctrl+F）は画面外の行にヒットしない。
+- ⚠️ 仮想パスはフラット ul のため、入れ子 ul が伝えていたリストのネスト（深さ）情報がスクリーンリーダーに伝わらない（表示は depth ベースのインデントのみ）。両ビューとも表示専用で `role="tree"` を付けない方針（RegexAstTree と同じ）の範囲内だが、仮想パス固有の後退として記録。将来 `aria-level` 等の付与を検討する場合は仮想パス側から。
+- ⚠️ キーボード操作中にフォーカス中の行が可視範囲外へスクロールアウトすると行ごと unmount され、フォーカスが body へ落ちる（windowing の既知制限。巨大入力時のみ・対応保留）。
+- ⚠️ spacer の SVG はブラウザの要素高上限（Firefox 約 17.8M px ≒ 行高 24px で約 74 万行）を超えると破綻する理論上限がある。500KB ガード強制解除時のみ到達し得る規模のため現状対応不要だが、Worker オフロード導入でガード緩和を検討する際に再評価する。
+
+## [104] 2026-06-11 — json-formatter 重い処理の Worker オフロードは見送り（#512 残スコープ②・measure-first no-go）
+
+**2026-06-11 | ステータス: 不採用（measure-first により見送り）**
+
+### 背景
+
+issue #512 の残スコープ②として、parse / format / mask / query（+ makeTree / type-gen）の同一オリジン静的 Worker オフロードを検討。メインスレッド同期実行による大入力時フリーズの解消が目的。decisions [096] の方針どおり measure-first で、実装前に「どの処理が実際にフリーズ要因か」「postMessage の structured clone 往復コストを差し引いても Worker 化が得か」を実測した。
+
+### 計測（measure-first）
+
+Node v22 で各純粋関数の CPU 時間（中央値）と `structuredClone` の往復コストを実測。`正味便益 = CPU − (clone_in + clone_out)`。判定基準: 大入力で CPU > 約 50ms（long task / INP 閾値）をフリーズ要因、正味便益が明確に正（目安 2 倍ヘッドルーム）なら Worker 対象。詳細表とフィクスチャ定義は `docs/superpowers/specs/2026-06-11-json-formatter-offload-measurement.md`。
+
+| 処理                | 1.4MB CPU | 14.5MB CPU | 正味便益(14.5MB) | 判定                                                                                         |
+| :------------------ | --------: | ---------: | ---------------: | :------------------------------------------------------------------------------------------- |
+| parseJson           |      30ms |      407ms |         -1,286ms | no-go（返す Node AST の clone が CPU の約 5 倍。jsonc-parser の親参照で循環し clone が爆発） |
+| buildTree           |      15ms |      130ms |           -608ms | no-go（TreeNode の clone_out が CPU を大幅超過）                                             |
+| maskValue           |      12ms |          — |                — | no-go（最大 22ms で 50ms 閾値未達）                                                          |
+| runQuery            |     0.4ms |          — |                — | no-go（CPU < clone_in の 1/20。桁違いにオーバーヘッド負け）                                  |
+| formatJson / minify |      10ms |   103/86ms |        +94/+78ms | ~15MB+ でのみ go（string→string で clone 最小）                                              |
+| generateTypeScript  |      39ms |      293ms |           +159ms | ~15MB+ でのみ条件付き go（clone_in 134ms でヘッドルームぎりぎり）                            |
+
+ブラウザ実測（native JSON 代理・throwaway Playwright）では ~1.4MB〜~3MB で long task 未発生。Blob Worker は本番 CSP（`worker-src 'self'`）で塞がるため往復は `structuredClone` で近似。
+
+### 決断
+
+- **Worker オフロードは実装しない（見送り）**。素直なオフロードは structured clone の往復コストに負けて逆効果。フリーズが実際に起きる大入力（~15MB+）で唯一成立する設計は「parse+format/minify を Worker 内で完結し**文字列だけ返す**」案だが、これは整形/minify のみ救い、ツリー表示・mask・query は救えない（構造を main に戻す時点で clone に負ける）。PR #622 の仮想化後、現実的サイズ（数 MB）では恩恵が限定的で、適用ユーザーも狭いため YAGNI で見送る。
+- **計測レポート + 再現用ベンチを成果物として残す**。`offload.bench.ts`（vitest、`npm run test` の glob 外で CI 非汚染）と `fixtures.ts` をコミットし、将来 ~15MB+ 対応が要件化したときに数値から再判断できるようにする。
+
+### 結果・トレードオフ
+
+- ✅ 空振り実装（複雑な Worker 通信基盤）を回避。measure-first の本来の使い方で対象を数値で除外できた。
+- ✅ ベンチは `.bench.ts` で `npm run test` の include glob（`*.test.{ts,tsx}`）外。CI を汚染しない。実行は `npx vitest bench src/utils/json-formatter/__tests__/offload.bench.ts`。
+- ⚠️ 超大入力（~15MB+）を将来サポートする場合は、本ベンチの数値を起点に「parse+format を Worker 内完結・文字列返し」の狭い設計から再検討する（別 issue/サイクル）。
+- ⚠️ ブラウザ実測は実 `parseJson`(jsonc-parser) でなく native `JSON.parse`/`stringify` を代理に使ったため、実パスの long task 有無は厳密には未検証。ただし同一 V8 エンジンの Node 実関数値で像は確定しており、結論は変わらない。
+
+## [105] 2026-06-11 — json-formatter getNodeValue の遅延評価は見送り（#512 残スコープ③・measure-first no-go）
+
+**2026-06-11 | ステータス: 不採用（measure-first により見送り）**
+
+### 背景
+
+issue #512 の任意スコープ③。`processJson` は入力が変わるたび `value: getNodeValue(root)` を eager 評価して `meta.value` に格納するが、`meta.value` を読むのは query 入力時 / mask ビュー / type ビューのみ。デフォルトの text ビューと tree ビューでは一切使われない（text は整形文字列、tree は `buildTree`）。つまり最頻パスで「毎キーストローク計算されるが読まれない無駄仕事」になっており、消費する view のときだけ評価する遅延化（thunk 化）がフリーズ削減に効くかを decisions [096]/[104] と同じ measure-first で実測した。
+
+### 計測（measure-first）
+
+Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と同じ「大入力で CPU > 約 50ms（long task / INP 閾値）」。再現: `npx vitest bench src/utils/json-formatter/__tests__/getnodevalue.bench.ts`。
+
+| サイズ             |   parse | format | getNodeValue | 必須計(parse+format) | 無駄率 | long task |
+| :----------------- | ------: | -----: | -----------: | -------------------: | -----: | :-------- |
+| ~1.4MB (n=5,000)   |  30.6ms |  7.8ms |    **2.2ms** |               38.4ms |   5.8% | no        |
+| ~2.9MB (n=10,000)  |  54.7ms | 16.4ms |    **4.9ms** |               71.0ms |   6.9% | no        |
+| ~14.5MB (n=50,000) | 351.9ms | 89.7ms |   **40.9ms** |              441.6ms |   9.3% | no        |
+
+### 決断
+
+- **getNodeValue の遅延評価は実装しない（見送り）**。無駄仕事であることは確認できたが規模が小さい: 最大 14.5MB でも 40.9ms で long task 閾値 50ms 未達、現実的サイズ（≤3MB）では ≤5ms のノイズレベル。真のボトルネックは parse+format（必須計の 90%+）で、これは整形文字列を常に表示する以上どの view でも遅延できず、getNodeValue 遅延化ではフリーズは消えない。なお絶対値はマシン依存（遅い環境の再計測では 14.5MB で 87ms と閾値超えの例あり）だが、その環境でも必須計は 13 倍の 1,128ms であり、無駄率ベースの論拠（parse+format 支配）はハードウェア非依存で結論は不変。
+- 再現用ベンチ `getnodevalue.bench.ts` を成果物として残す（[104] の `offload.bench.ts` と同じ流儀・`npm run test` の glob 外）。
+
+### 結果・トレードオフ
+
+- ✅ issue #512 の全スコープ（①仮想化=実装 / ②Worker=no-go / ③getNodeValue 遅延化=no-go）が measure-first で決着。
+- ⚠️ `makeTree` は thunk で遅延化済みなのに `value` だけ eager という非対称は残る。整合性のための thunk 化（~15 行）は安価だが、数値上の便益がノイズレベルのため YAGNI で見送り。将来 `processJson` 周りを触る機会があれば ride-along で揃えてよい。
+
+## [106] 2026-06-11 — Web セッションの enabledPlugins 自動 install を SessionStart hook で再導入
+
+**2026-06-11 | ステータス: 採用**
+
+### 背景
+
+`.claude/settings.json` の `enabledPlugins`（superpowers / frontend-design / context7）は Claude Code on the web で silent skip され（trust dialog 非発火、upstream #23737）、superpowers のスキル群が web セッションで使えなかった。PR #204 で hook 自動化を試みた際は `claude plugin install` が `not found in marketplace` で失敗し「手動 install 運用」に確定していた。
+
+### 再検証で判明したこと（2026-06、Claude Code 2.1.173）
+
+- 現行の Claude Code は**セッション開始時に `extraKnownMarketplaces` を `~/.claude/plugins/marketplaces` へ自動 clone する**ようになっており、PR #204 当時の失敗原因（marketplace 未解決）が解消。web コンテナの hook から `claude plugin install` が 3 プラグインとも成功することを実機確認。
+- superpowers は marketplace 同梱でなく外部 repo（`obra/superpowers.git`、sha pin）から clone される external プラグインで、install 実行なしでは実体が取得されない（これが「marketplace clone はあるのにスキルが無い」状態の正体）。
+- `claude plugin install` は冪等（install 済みなら "already installed" で exit 0、再 clone なし）。
+
+### 決断
+
+`.claude/scripts/session-install.sh`（SessionStart hook）に web 限定（`CLAUDE_CODE_REMOTE=true`）の enabledPlugins 自動 install を追加。プラグイン一覧は `.claude/settings.json` から動的に読む（ハードコードによる宣言との drift を防止）。失敗は warn のみで非致命（npm ci / playwright install の結果に影響させない・次セッション再試行で self-healing）。meta テスト（`tests/meta/session-install.test.ts`）に fake claude による陽性対照・陰性対照を併設し、旧実装で fail することを確認済み。
+
+### 結果・トレードオフ
+
+- ✅ 各環境 1 回の手動 `/plugin install` 運用が不要になる（手動コマンドはフォールバックとして docs に残置）。
+- ⚠️ スキルのロードはセッション開始時のため、**新規コンテナの初回セッションでは未反映**。コンテナ状態キャッシュ（`~/.claude/plugins` 含む）により同一環境の次セッション以降で有効。
+- ⚠️ CLI / Desktop は従来どおり trust dialog の自動 prompt に委ね、hook では触らない（開発者ローカルの user scope 状態を hook が暗黙に書き換えない）。
+- ⚠️ context7 の MCP は web では egress 403 の別制約が残る（decisions [059]、リポジトリ側で解消不可）。
+
+## [107] 2026-06-11 — シークレットスクラバーを独立モジュール（secret-scrubber/）として実装
+
+**2026-06-11 | ステータス: 採用**
+
+### 背景
+
+`docs/tool-candidates.md` S2-1「シークレット/ログマスキング」の実装。LLM・Issue への貼り付け前の機密除去ユースケース。既存の `src/utils/json-formatter/mask.ts` は JSON 構造の値走査に特化しており、テキスト全文への正規表現適用・一貫トークン化・優先度付き重複解決といった要件が異なるため、独立モジュール（`src/utils/secret-scrubber/`）として新設した。
+
+### 決断
+
+1. **独立モジュール方針**: `json-formatter/mask.ts` とは要件が根本的に異なる（JSON 値走査 vs テキスト全文走査、固定プレースホルダ vs 一貫トークン化連番）ため、統合せず独立モジュールとした。共通基盤化（S2-3）は将来判断。
+
+2. **プレースホルダ形式 `[REDACTED:<CATEGORY>_<n>]`**: 既存の `[REDACTED:EMAIL]`（固定）と家族的整合性を保ちつつ、同一カテゴリ内の異なる値を連番で区別できる形式を採用。同一値は同一番号（一貫性）。
+
+3. **エントロピー閾値 base64 ≥ 4.0 / hex ≥ 3.0**: 実測ベースで選定。低すぎると平文の単語で誤検出、高すぎると本物のシークレットを取りこぼす。hex はアルファベット種が少ないため base64 より低い閾値を設定。UUID は識別子の可能性が高くノイズになるため除外。
+
+4. **maskGroup でキー名を保持**: `password=secretvalue` の代入式では `secretvalue` のみをマスクし `password=` を残すことで、マスク後のテキストのコンテキストを保持する。
+
+5. **priority 付き重複解決（含有は破棄・はみ出しは union マージ）**: 重なるマッチは priority（PRIVATE_KEY=95 > ANTHROPIC_KEY=92 > OPENAI_KEY=91 > その他 API_KEY=90 > JWT=85 > CREDENTIAL=80 > CREDIT_CARD=65 > EMAIL=60 > PHONE_JP=55 > IP=50 > HIGH_ENTROPY=10）で勝者を決め、負けた側が勝者のフルマッチ範囲（maskGroup が意図的に残すキー名・ホスト等の「考慮済み領域」）に完全に含まれるなら破棄（Authorization ヘッダ内 JWT の二重置換防止・URL の `パスワード@ホスト` へのメール誤マッチ抑制）、はみ出すなら範囲を union にマージする。負けた側を丸ごと破棄する単純方式は、高エントロピー文字列の内側だけが AWS キーにマッチした場合に前後の断片が漏えいする（PR #631 レビューで指摘・union 化で修正、再現入力を陽性対照テストとして同梱）。
+
+6. **maskGroup の位置特定は RegExp `d` フラグの indices**: グループ位置を `m[0].indexOf(groupVal)` で探す実装は、キー名/ユーザー名と値が同一文字列のとき（`password=password` / `postgres://admin:admin@...`）に値側を取り違えてパスワードが漏えいするため不可。この漏えいケースは陽性対照テストとして同梱（旧実装に当てると fail することを実機確認済み）。
+
+### 却下した選択肢
+
+- **ML 検出（言語モデルやベクトル類似度）**: ブラウザ完結・外部送信なし・依存ライブラリなしの制約と相容れないため却下。
+- **json-formatter/mask.ts との統合**: 既存ツールの挙動変更リスクが高く、2 つのユースケースで異なる API が必要（MaskOptions vs ScrubOptions）。S2-3 実装タイミングで改めて判断。
+- **File System Access API でのフォルダ走査**: C2-16 として別 PR スコープ。
+
+### 結果・トレードオフ
+
+- ✅ 完全ブラウザ完結・外部ライブラリ追加なし（pure JS・既存依存ゼロ増）。
+- ✅ 一貫トークン化により同一値のプレースホルダが揃い、マスク後テキストの読解性が高い。
+- ⚠️ エントロピー閾値は実測ベースの経験則であり、環境によっては誤検出・検出漏れが発生しうる。ユーザーへの「共有前に目視確認」の注記を ToolInfoSection に明記。
+- ⚠️ IPv6・プロバイダ固有の非標準形式は対象外（docs/tools.md 制限事項に記載）。
+
+## [108] 2026-06-12 — superpowers をプラグイン運用から `npx skills add` vendor 方式へ移行
+
+**2026-06-12 | ステータス: 採用**
+
+### 背景
+
+decisions [106] の SessionStart hook 自動 install を導入した後も、Claude Code on the web で superpowers プラグインが install されない事象が継続した（新規コンテナの初回セッション未反映の制約に加え、その後のセッションでも install が反映されないケースが発生）。superpowers のスキル群（writing-plans / systematic-debugging / TDD 等）は本プロジェクトの開発ワークフローの前提であり、web セッションで使えない状態は許容できない。
+
+### 決断
+
+`npx skills add` で obra/superpowers の 14 スキルを `.agents/skills/` にリポジトリ内 vendor し、プラグイン依存を外した（PR #632）。
+
+1. **vendor + lockfile 管理**: スキル実体を `.agents/skills/` にコミットし、`skills-lock.json` で出典（source / skillPath）と computedHash を管理。upstream との突き合わせ・改変検知が可能（PR #632 レビューで `npx skills check` により全 14 スキルの upstream byte 一致を検証済み）。
+2. **MIT ライセンス対応**: vendor は public リポジトリへの再配布にあたるため、`LICENSE-superpowers`（obra/superpowers）・`LICENSE-mattpocock-skills`（既存 vendor の grill-me 用）を同梱し、出典・ライセンス対応表を `.agents/skills/README.md` に集約。vercel-labs/agent-skills は upstream に LICENSE ファイルが無いため README の MIT 宣言を出典リンク付きで明記。
+3. **Prettier 除外**: vendor ディレクトリを `.prettierignore` に個別列挙（整形すると lockfile の computedHash と実体が乖離するため）。自作スキル（dads-design-system / test-gates）は整形対象に残す。
+
+### 却下した選択肢
+
+- **プラグイン運用の継続（hook 改善で対応）**: install 経路が Claude Code 本体の実装変更に左右され続け、silent skip の再発を repo 側で制御できない。vendor ならセッション種別に依存せず常にスキルが存在する。
+- **`.agents/skills/` 一括 Prettier 除外**: 自作スキルまで整形チェック対象から外れるため、vendor ディレクトリの個別列挙とした。
+
+### 結果・トレードオフ
+
+- ✅ web / CLI / Desktop すべてのセッションでスキルが即座に利用可能（プラグイン install 状態に依存しない）。
+- ✅ lockfile + hash により supply chain 検証（upstream 突き合わせ・ローカル改変検知）が可能。
+- ⚠️ upstream 更新への追従は手動（`npx skills update`）。SKILL.md はエージェントが実行する指示書のため、**bump 時は hash 差分だけでなく本文 diff のレビューを必須とする**。
+- ⚠️ リポジトリサイズ増（約 8.6k 行）。frontend-design / context7 はプラグイン運用を継続（[106] の hook は引き続き有効）。
+
+## [109] clipboard-inspector: DOMPurify 不採用＝自作許可リストサニタイザ＋sandbox iframe 二重防御
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+クリップボードインスペクタ（`clipboard-inspector`）は `text/html` フレーバーを受け取り、プレビュー表示する。XSS リスクを排除するため HTML サニタイズが必要であり、DOMPurify（業界標準）の採用を検討した。
+
+### 決断
+
+- **決定**: text/html フレーバーのプレビューは、自作の許可リスト方式サニタイザ（`src/utils/sanitizeHtml.ts`）で除去したうえで `sandbox=""`（allow-scripts なし）iframe の srcdoc に描画する。DOMPurify は導入しない。
+- **理由**: sandbox iframe が第二防壁として存在するため、サニタイザの見落としが直ちにスクリプト実行に繋がらない。依存追加（約 20KB gzip）よりも依存ゼロの二重防御を選択。
+- **補足**: style 属性 / style 要素もサニタイズ対象。srcdoc iframe は親ドキュメントの CSP（style-src strict）を継承するため、残しても CSP 違反ノイズになるだけで描画されない。サニタイザは検知・ガード機構として test-gates ルールに従い陽性対照テストを同梱（`src/utils/__tests__/sanitizeHtml.test.ts`、深いネスト・mXSS 経路含む）。走査は明示スタックの反復実装（攻撃者制御入力での再帰スタックオーバーフロー回避）。PR #635 のレビュー指摘を受け、img の src 許可を当初の http / https / data:image/\* から data:image の raster 形式（png/jpeg/gif/webp/avif/bmp）のみに制限した — remote 画像は本番 CSP（img-src 'self' data: blob:）下では srcdoc iframe 内でも描画されず違反ノイズになるだけで、CSP のない dev 環境では外部フェッチ（tracking pixel）が発生し「外部に送信されません」の建付けと齟齬するため（svg+xml は script を内包し得るため除外）。
+- 関連: spec `docs/superpowers/specs/2026-06-12-clipboard-inspector-design.md`
+
+### 却下した選択肢
+
+- **DOMPurify 採用**: 実績ある外部ライブラリだが、約 20KB（gzip）の依存追加になる。sandbox iframe が第二防壁として機能するため、依存追加のコスト・リスクが利益を上回らないと判断。
+
+### 結果・トレードオフ
+
+- ✅ 追加依存ゼロ。クリップボード内容は 100% ブラウザ内処理。
+- ✅ サニタイザ＋sandbox iframe の二重防御により、サニタイザの見落とし単独では XSS に至らない。
+- ✅ 陽性対照テストにより「ガードが実際に機能している」ことを CI で継続検証。
+- ⚠️ 自作サニタイザのため、未知の mXSS 手法への対応は手動メンテナンスが必要。プレビュー用途（開発者向け）に限定することで許容リスクと判断。
+
+## [110] dsn-builder: `URL` API 不採用＝自前パーサで mongodb 複数ホスト対応
+
+**2026-06-13 | ステータス: 採用**
+
+### 背景
+
+DSN/接続文字列ビルダは複数スキームの URI を分解・再構成する必要がある。ブラウザ組み込みの `URL` API 利用が最初に検討された。
+
+### 決断
+
+- **決定**: `URL` API ではなく自前パーサ（`src/utils/dsn-builder/parse.ts`）を採用する。
+- **理由**: `URL` API は mongodb のカンマ区切り複数ホスト（`host1:27017,host2:27018`）を解釈できず `Invalid URL` を throw する（Node 実測）。また userinfo・パスを percent-decode 済みの生値として編集し再エンコードする本ツールの双方向編集には、構成要素を生値で保持する自前モデルの方が適合する。
+- **補足**: パース・シリアライズ・バリデーションを `src/utils/dsn-builder/` の純関数に分離し、フォーム/URI 双方の編集が単一の `validateModel` を通る設計とした。新規ライブラリ追加なし。バリデータを含むため陽性対照テストを同梱（test-gates 準拠）。
+
+### 却下した選択肢
+
+- **`URL` API 採用**: mongodb のカンマ区切り複数ホストを解釈できず、非特殊スキームの挙動もブラウザ間で不安定なため採用不可。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし（純粋な文字列処理のみ）。
+- ✅ mongodb 複数ホスト・IPv6 ブラケット・SRV 制約等すべての方言に対応。
+- ✅ 陽性対照テストにより「不正入力が必ずエラーになる」ことを CI で継続検証。
+- ⚠️ 自前パーサのため URI 仕様（RFC 3986）の edge case への対応は手動メンテナンスが必要。対応スキームを 9 種に限定することで許容リスクと判断。

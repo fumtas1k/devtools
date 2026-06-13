@@ -55,33 +55,39 @@ export function UrlEncoderTool() {
         ariaLabel="変換モード"
       />
 
-      {/* 入力 */}
-      <InputField
-        id="url-input"
-        label="入力"
-        value={input}
-        onChange={handleInput}
-        placeholder={
-          mode === 'encode'
-            ? 'https://example.com/検索?q=テスト'
-            : 'https%3A%2F%2Fexample.com%2F...'
-        }
-        multiline
-        rows={4}
-        error={error || undefined}
-        onSampleClick={() => handleInput(SAMPLE[mode])}
-        mono
-      />
+      {/* 入力・出力（横並び） */}
+      <div className="flex flex-col md:flex-row gap-4 items-start">
+        <div className="w-full md:flex-1 min-w-0" data-testid="url-input-column">
+          <InputField
+            id="url-input"
+            label="入力"
+            value={input}
+            onChange={handleInput}
+            placeholder={
+              mode === 'encode'
+                ? 'https://example.com/検索?q=テスト'
+                : 'https%3A%2F%2Fexample.com%2F...'
+            }
+            multiline
+            rows={12}
+            error={error || undefined}
+            onSampleClick={() => handleInput(SAMPLE[mode])}
+            mono
+            resize
+          />
+        </div>
 
-      {/* 出力 */}
-      <OutputField
-        id="url-output"
-        label="出力"
-        value={output}
-        rows={4}
-        ariaLabel="変換結果"
-        resize={false}
-      />
+        <div className="w-full md:flex-1 min-w-0" data-testid="url-output-column">
+          <OutputField
+            id="url-output"
+            label="出力"
+            value={output}
+            rows={12}
+            ariaLabel="変換結果"
+            resize={false}
+          />
+        </div>
+      </div>
 
       {/* アクション */}
       <div className="flex justify-end gap-2">

@@ -80,7 +80,7 @@ test.describe('Link Styles（production CSP 適用）', () => {
         // 最初のツールカードを取得
         const card = page.getByRole('main').getByRole('link').first();
         const title = card.getByRole('heading', { level: 2 });
-        const link = card.locator('.text-link-color');
+        const link = card.locator('.text-link-plain');
 
         await expect(card).toBeVisible();
 
@@ -143,8 +143,8 @@ test.describe('Link Styles（production CSP 適用）', () => {
         // .text-link の :visited 定義確認
         expectVisitedColor(await getVisitedColor('text-link'));
 
-        // .text-link-color の :visited 定義確認
-        expectVisitedColor(await getVisitedColor('text-link-color'));
+        // .text-link-plain の :visited 定義確認
+        expectVisitedColor(await getVisitedColor('text-link-plain'));
       },
       { skipHydration: true }
     );
