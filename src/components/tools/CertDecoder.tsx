@@ -87,7 +87,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
       </div>
 
       {/* カード本体 */}
-      <div className="bg-default divide-y divide-default">
+      <div className="bg-default divide-y divide-subtle">
         {/* 基本情報 */}
         <details open>
           <summary className="px-4 py-3 body-emphasis text-default cursor-pointer hover-bg-subtle list-none flex items-center justify-between">
