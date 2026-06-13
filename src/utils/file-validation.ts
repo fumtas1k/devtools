@@ -48,14 +48,20 @@ function matchesBinaryImageMagic(bytes: Uint8Array): boolean {
 
 /**
  * SVG はバイナリ magic を持たないため XML テキストとして sniff する。
- * 先頭 1KB を UTF-8 デコードし、BOM・前方空白を除いた小文字テキストに
- * "<?xml" または "<svg" が含まれるかで判定する。
+ * 先頭 1KB を UTF-8 デコードし、前方空白を除いた小文字テキストで判定する。
+ * - `<svg` 直開始
+ * - もしくは XML 宣言 `<?xml` 始まり **かつ** `<svg` が出現する場合
+ * `<?xml` の単純包含だけで通すと RSS / SOAP / plist 等の任意 XML まで
+ * image 扱いになるため、SVG 要素の存在を必須にして誤検知を抑える。
  */
 function matchesSvgText(bytes: Uint8Array): boolean {
-  const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-  // BOM (U+FEFF) と先頭空白を除去して小文字化
-  const trimmed = text.replace(/^﻿/, '').trimStart().toLowerCase();
-  return trimmed.includes('<?xml') || trimmed.startsWith('<svg');
+  // TextDecoder は既定（ignoreBOM: false）で先頭 BOM を消費・除去するため
+  // 別途 BOM を strip する必要はない。前方空白のみ trim して判定する。
+  const trimmed = new TextDecoder('utf-8', { fatal: false })
+    .decode(bytes)
+    .trimStart()
+    .toLowerCase();
+  return trimmed.startsWith('<svg') || (trimmed.startsWith('<?xml') && trimmed.includes('<svg'));
 }
 
 /**
@@ -82,18 +88,12 @@ export async function validateFile(file: File, opts: ValidateOptions): Promise<V
   }
 
   if (opts.kind === 'image') {
-    // file.type は advisory のため実バイトの magic を検証する
-    const buf = await file.slice(0, 16).arrayBuffer();
-    const header = new Uint8Array(buf);
+    // file.type は advisory のため実バイトの magic を検証する。
+    // 先頭 1KB を 1 回だけ読み、binary magic（先頭数バイト）と
+    // SVG テキスト sniff の両方で共用して I/O を 1 回に抑える。
+    const header = new Uint8Array(await file.slice(0, 1024).arrayBuffer());
 
-    if (matchesBinaryImageMagic(header)) {
-      return { ok: true, file };
-    }
-
-    // SVG: バイナリ magic を持たないため先頭 1KB をテキストとして sniff する
-    const svgBuf = await file.slice(0, 1024).arrayBuffer();
-    const svgHeader = new Uint8Array(svgBuf);
-    if (matchesSvgText(svgHeader)) {
+    if (matchesBinaryImageMagic(header) || matchesSvgText(header)) {
       return { ok: true, file };
     }
 

@@ -44,6 +44,21 @@ const WEBP_MAGIC = [
 ];
 // PDF magic（画像ではない非画像バイト列、陽性対照に使用）
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]; // "%PDF-"
+// RIFF だが offset 8 が "WAVE"（WebP ではない）。offset 8 チェックの退行検知用。
+const RIFF_WAVE = [
+  0x52,
+  0x49,
+  0x46,
+  0x46, // RIFF
+  0x00,
+  0x00,
+  0x00,
+  0x00, // サイズ（ダミー）
+  0x57,
+  0x41,
+  0x56,
+  0x45, // WAVE
+];
 
 // ──────────────────────────────────────────────
 // サイズ境界テスト（magic 不問: EMPTY は size 0、TOO_LARGE は size チェックが先行）
@@ -206,6 +221,30 @@ describe('validateFile — image WRONG_TYPE (陽性対照: 非画像バイトは
       kind: 'image',
     });
     expect(result.ok).toBe(true);
+  });
+
+  it('RIFF だが offset 8 が "WAVE" のファイルは WRONG_TYPE を返す', async () => {
+    // 陽性対照: WebP 判定は "RIFF"(0) + "WEBP"(8) の両方を要求する。
+    // offset 8 チェックが将来削られると RIFF コンテナ（WAV 等）が誤って
+    // 画像として通る退行になるため、それを検知する。
+    const result = await validateFile(makeFile(100, 'audio.webp', 'image/webp', RIFF_WAVE), {
+      maxBytes: MAX_BYTES,
+      kind: 'image',
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe('WRONG_TYPE');
+  });
+
+  it('<?xml> 始まりでも <svg> を含まない XML は WRONG_TYPE を返す', async () => {
+    // 陽性対照: XML 宣言の単純包含だけで通すと RSS / SOAP 等まで image 扱いになる。
+    // SVG 要素の存在を必須にしているため、<svg> なしの XML は拒否される。
+    const rss = '<?xml version="1.0"?><rss version="2.0"><channel></channel></rss>';
+    const result = await validateFile(new File([rss], 'feed.xml', { type: 'application/xml' }), {
+      maxBytes: MAX_BYTES,
+      kind: 'image',
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe('WRONG_TYPE');
   });
 });
 
