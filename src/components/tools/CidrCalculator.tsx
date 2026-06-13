@@ -7,6 +7,7 @@
  */
 
 import { useState, useMemo, useRef } from 'react';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -284,13 +285,18 @@ export function CidrCalculatorTool() {
   const splitRows = useMemo(() => (subnets ? buildSplitRows(subnets) : []), [subnets]);
 
   // 重複検出モードの計算
+  // 入力を debounce してから計算する。行エラー一覧は role="alert"（暗黙 assertive + atomic）の
+  // ため、毎キーストロークで再計算すると入力 1 文字ごとにエラー一覧全体が SR へ割り込み再読み上げ
+  // されてしまう（issue #663 レビュー指摘）。打鍵が止まってから 1 度だけ更新することで冗長な
+  // 再読み上げを抑えつつ、エラー出現時の確実な通知（role="alert"）は維持する。
+  const debouncedOverlapInput = useDebouncedValue(overlapInput, 300);
   const overlapResult = useMemo(() => {
     if (mode !== 'overlap') return null;
-    const lines = overlapInput.split('\n');
+    const lines = debouncedOverlapInput.split('\n');
     // 全行空ならスキップ
     if (lines.every((l) => l.trim() === '')) return null;
     return detectOverlaps(lines);
-  }, [mode, overlapInput]);
+  }, [mode, debouncedOverlapInput]);
 
   const overlapRows = useMemo(
     () => (overlapResult ? buildOverlapRows(overlapResult.pairs) : []),
