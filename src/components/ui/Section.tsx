@@ -37,7 +37,7 @@ export function Section({
         <div
           className={cx(
             'body-emphasis text-default bg-subtle border-b border-default px-4 py-3 m-0',
-            headerSlot != null && 'flex items-center justify-between flex-wrap gap-2'
+            !!headerSlot && 'flex items-center justify-between flex-wrap gap-2'
           )}
         >
           {title != null && (
