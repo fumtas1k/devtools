@@ -59,4 +59,37 @@ test.describe('DSN/接続文字列ビルダ', () => {
     await expect(page.getByLabel('ホスト 2', { exact: true })).toHaveValue('mongo2.example.com');
     await expect(page.getByLabel('ポート 2', { exact: true })).toHaveValue('27018');
   });
+
+  test('複数ホスト→単一ホストスキーム切替で 2 件目以降が自動で除去されエラーが出ない', async ({
+    page,
+  }) => {
+    await page
+      .getByLabel('接続 URI')
+      .fill('mongodb://admin:s3cret@mongo1.example.com:27017,mongo2.example.com:27018/app_db');
+    await expect(page.getByLabel('ホスト 2', { exact: true })).toHaveValue('mongo2.example.com');
+
+    await page.getByLabel('スキーム').selectOption('mysql');
+
+    // 2 件目のホスト行が消え、エラーは出ず URI が単一ホストで再生成される
+    await expect(page.getByLabel('ホスト 2', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByLabel('接続 URI')).toHaveValue(
+      'mysql://admin:s3cret@mongo1.example.com:27017/app_db'
+    );
+  });
+
+  test('ポート入力済み→mongodb+srv 切替でポートが自動クリアされエラーが出ない', async ({
+    page,
+  }) => {
+    await page.getByLabel('接続 URI').fill('mongodb://admin:s3cret@cluster0.example.net:27017/db');
+    await expect(page.getByLabel('ポート 1', { exact: true })).toHaveValue('27017');
+
+    await page.getByLabel('スキーム').selectOption('mongodb+srv');
+
+    await expect(page.getByLabel('ポート 1', { exact: true })).toHaveValue('');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByLabel('接続 URI')).toHaveValue(
+      'mongodb+srv://admin:s3cret@cluster0.example.net/db'
+    );
+  });
 });

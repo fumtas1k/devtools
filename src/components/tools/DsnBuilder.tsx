@@ -84,6 +84,21 @@ export function DsnBuilderTool() {
     handleUriChange(dialect.sample);
   };
 
+  // スキーム切替時は新スキームで非対応のプロパティを自動で丸める
+  // （複数ホスト不可なら先頭ホストのみ／SRV ならポートを除去）。
+  // 残ったままだと validateModel がエラーを返し URI 更新が止まるため、切替直後の不可解なエラーを防ぐ。
+  const handleSchemeChange = (scheme: DsnScheme) => {
+    const next = DIALECTS[scheme];
+    let hosts = model.hosts;
+    if (!next.multiHost && hosts.length > 1) {
+      hosts = [hosts[0]];
+    }
+    if (next.srv) {
+      hosts = hosts.map((h) => (h.port === '' ? h : { ...h, port: '' }));
+    }
+    applyModel({ ...model, scheme, hosts });
+  };
+
   const updateHost = (index: number, host: string, port: string) => {
     const hosts = model.hosts.map((h, i) => (i === index ? { host, port } : h));
     applyModel({ ...model, hosts });
@@ -140,7 +155,7 @@ export function DsnBuilderTool() {
                 id="dsn-scheme"
                 options={SCHEME_OPTIONS}
                 value={model.scheme}
-                onChange={(v: DsnScheme) => applyModel({ ...model, scheme: v })}
+                onChange={handleSchemeChange}
               />
             </div>
             <InputField
