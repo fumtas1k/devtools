@@ -465,7 +465,10 @@ export function CertDecoder() {
           setDecodeState({ status: 'awaiting-password', bytes });
           return;
         }
-        if (parseResult.certs.length === 0 && isBase64) {
+        // Base64 貼り付けが PKCS#12（PFX）構造に見える場合はパスワード UI へ。
+        // p12 は先頭 0x30 のため detect では DER 証明書扱いになりパース失敗
+        // （error 付き cert 1 件）となる。certs.length ではなく構造判定で振り分ける。
+        if (isBase64) {
           const bytes = base64ToBytesSafe(stripped);
           if (bytes && looksLikePkcs12(bytes)) {
             pendingBytesRef.current = bytes;
@@ -586,7 +589,7 @@ export function CertDecoder() {
           mono
           resize
         />
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <FileInputButton accept=".pem,.crt,.cer,.der,.p7b,.p12,.pfx" onChange={handleFileChange}>
             ファイルを選択
           </FileInputButton>
