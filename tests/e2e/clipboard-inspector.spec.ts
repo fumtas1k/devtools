@@ -105,6 +105,20 @@ test.describe('クリップボードインスペクタ', () => {
     await page.getByRole('button', { name: 'クリア' }).click();
     await expect(page.getByText('text/plain', { exact: true })).toBeHidden();
   });
+
+  test('受付領域は contenteditable だがタイピングによる編集は阻止される（issue #636 編集ガード）', async ({
+    page,
+  }) => {
+    // スマホ長押しペースト対応のため受付領域は contenteditable（issue #636）。
+    // beforeinput の preventDefault により実ブラウザでタイプしても DOM が変化しないことを確認する
+    const zone = page.getByRole('textbox', { name: /貼り付け受付領域/ });
+    await expect(zone).toBeVisible();
+    await zone.click();
+    await page.keyboard.type('abc');
+    await expect(zone).not.toContainText('abc');
+    // 案内文言が編集で破壊されていないこと
+    await expect(zone).toContainText('Ctrl+V');
+  });
 });
 
 test.describe('クリップボードインスペクタ — 本番 CSP', () => {

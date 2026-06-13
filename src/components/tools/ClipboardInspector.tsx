@@ -130,6 +130,33 @@ export function ClipboardInspectorTool() {
   const [announcement, setAnnouncement] = useState('');
   // 連続キャプチャの race 対策: 最新キャプチャの連番。stale な resolve を破棄する
   const captureSeqRef = useRef(0);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // 受付領域（contenteditable）の編集阻止。
+  // React の onBeforeInput は native beforeinput ではなく textInput / keypress / compositionend 等から
+  // 合成されるため、IME 入力等が通る native beforeinput 経路は ref で直接 preventDefault する
+  // （JSX の onBeforeInput と二段構えで全編集経路を阻止）。
+  // さらに insertCompositionText の beforeinput は仕様上 non-cancelable（W3C Input Events）のため、
+  // 貫通した編集（IME 変換・autocorrect 等）は input イベント時に mount 時の内容へ復元する。
+  // - 保存は deep clone 必須: 実 IME はキャレット位置 = 既存ノード「内部」のテキストノードを
+  //   直接変異させるため、同一ノード参照の保存では保存内容ごと汚染され復元が no-op になる
+  // - 復元毎の再クローンも必須: master を直接装着すると次の IME 貫通で master 自体が汚染される
+  // - 復元で React 生成の元ノードは detach されるが、zone の children は静的 JSX で
+  //   React が以後触らない（再レンダーの diff 対象にならない）ため実害なし
+  useEffect(() => {
+    const zone = dropZoneRef.current;
+    if (!zone) return;
+    const savedChildren = [...zone.childNodes].map((n) => n.cloneNode(true));
+    const blockEdit = (e: Event) => e.preventDefault();
+    const restoreContent = () =>
+      zone.replaceChildren(...savedChildren.map((n) => n.cloneNode(true)));
+    zone.addEventListener('beforeinput', blockEdit);
+    zone.addEventListener('input', restoreContent);
+    return () => {
+      zone.removeEventListener('beforeinput', blockEdit);
+      zone.removeEventListener('input', restoreContent);
+    };
+  }, []);
 
   const capture = useCallback((dt: DataTransfer | null, source: CaptureSource) => {
     if (!dt) return;
@@ -160,9 +187,22 @@ export function ClipboardInspectorTool() {
 
   return (
     <div className="space-y-6">
-      {/* 受付領域（paste は document 全体で捕捉、ここは案内と drop の的） */}
+      {/* 受付領域（paste は document 全体で捕捉、ここは案内と drop の的）。
+          モバイルの OS ペーストメニューは編集可能要素の長押しでしか出ないため contenteditable 化（issue #636）。
+          編集は beforeinput で全阻止（貼り付け自体は document の paste listener が preventDefault + 捕捉するため二重に安全）。
+          inputMode="none" はフォーカス時のソフトキーボード表示を抑制する（実機で長押しメニューが出ない場合はこの属性を外す） */}
       <div
+        ref={dropZoneRef}
         data-testid="clipboard-drop-zone"
+        contentEditable
+        suppressContentEditableWarning
+        inputMode="none"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        role="textbox"
+        aria-label="貼り付け受付領域。長押しまたは Ctrl+V で貼り付けるとクリップボードの内容を検査します"
+        onBeforeInput={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
           setIsDragOver(false);
@@ -173,12 +213,13 @@ export function ClipboardInspectorTool() {
           setIsDragOver(true);
         }}
         onDragLeave={() => setIsDragOver(false)}
-        className={`rounded-xl border-2 border-dashed border-default p-8 text-center ${
+        className={`caret-transparent rounded-xl border-2 border-dashed border-default p-8 text-center ${
           isDragOver ? 'bg-subtle' : ''
         }`}
       >
         <p className="body-emphasis text-default m-0">
-          このページで Ctrl+V / Cmd+V で貼り付け、またはここにドラッグ&ドロップ
+          このページで Ctrl+V / Cmd+V
+          で貼り付け（スマホはここを長押ししてペースト）、またはここにドラッグ&ドロップ
         </p>
         <p className="caption text-muted m-0 mt-2">
           クリップボード・ドラッグデータの内容はブラウザ内でのみ処理され、外部に送信されません

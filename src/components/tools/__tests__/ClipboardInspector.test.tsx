@@ -32,6 +32,63 @@ describe('ClipboardInspector — 初期表示', () => {
     expect(live!.getAttribute('role')).toBe('status');
     expect(live!.getAttribute('aria-live')).toBe('polite');
   });
+
+  it('受付領域がスマホ長押しペースト用の contenteditable 属性群を持つ（issue #636）', () => {
+    render(<ClipboardInspectorTool />);
+    const zone = screen.getByRole('textbox', { name: /貼り付け受付領域/ });
+    expect(zone.getAttribute('contenteditable')).toBe('true');
+    // フォーカス時のソフトキーボード表示を抑制（長押しペーストメニューは出る想定）
+    expect(zone.getAttribute('inputmode')).toBe('none');
+  });
+
+  it('受付領域への beforeinput が preventDefault され編集できない（陽性対照: 編集阻止ガード）', () => {
+    // 編集阻止が無い実装（素の contenteditable）に当てると dispatchEvent が true を返し fail する設計
+    render(<ClipboardInspectorTool />);
+    const zone = screen.getByRole('textbox', { name: /貼り付け受付領域/ });
+    const notPrevented = zone.dispatchEvent(
+      new InputEvent('beforeinput', { bubbles: true, cancelable: true })
+    );
+    // dispatchEvent は preventDefault されると false を返す
+    expect(notPrevented).toBe(false);
+  });
+
+  it('beforeinput を貫通した編集（IME 等）が input イベントで元の内容に復元される（陽性対照: 復元 fallback）', () => {
+    // insertCompositionText の beforeinput は W3C Input Events 仕様で non-cancelable のため
+    // preventDefault では阻止できない。貫通した DOM 編集を input イベント時に復元する fallback を検証する。
+    //
+    // 実 IME はキャレット位置 = 既存 <p> ノード「内部」のテキストノードを直接変異させる
+    // （zone 直下への append ではない）。zone 直下 append での模擬は実 IME の挿入点を
+    // bypass する偽の陽性対照だった（test-gates 鉄則 4 違反）ため、実挿入点で模擬する。
+    // 同一ノード参照を保存・再装着する実装（deep clone なし）では保存ノード自体が
+    // 変異済みのため復元が no-op になり、このテストは fail する設計（陽性対照）
+    render(<ClipboardInspectorTool />);
+    const zone = screen.getByRole('textbox', { name: /貼り付け受付領域/ });
+    // 実 IME の挿入点を模擬: <p> 内部のテキストノードを直接変異させる
+    const paragraph = zone.querySelector('p')!;
+    const textNode = paragraph.firstChild!;
+    textNode.textContent = `あいう${textNode.textContent}`;
+    expect(zone.textContent).toContain('あいう');
+    // 貫通編集が DOM に反映されると input イベントが発火する
+    zone.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    // 元の案内文言へ復元され、貫通テキストは消えている
+    expect(zone.textContent).not.toContain('あいう');
+    expect(zone.textContent).toContain('Ctrl+V');
+  });
+
+  it('復元 fallback は連続した IME 貫通編集でも復元能力を維持する（master 汚染の回帰防止）', () => {
+    // 復元時に master ノードを直接装着する実装だと、2 回目の IME 貫通で master 自体が
+    // 汚染され以後の復元が壊れる。復元毎の再クローンが必要なことを 2 回連続の貫通で検証する
+    render(<ClipboardInspectorTool />);
+    const zone = screen.getByRole('textbox', { name: /貼り付け受付領域/ });
+    for (const inserted of ['あいう', 'かきく']) {
+      const paragraph = zone.querySelector('p')!;
+      const textNode = paragraph.firstChild!;
+      textNode.textContent = `${inserted}${textNode.textContent}`;
+      zone.dispatchEvent(new InputEvent('input', { bubbles: true }));
+      expect(zone.textContent).not.toContain(inserted);
+      expect(zone.textContent).toContain('Ctrl+V');
+    }
+  });
 });
 
 describe('ClipboardInspector — paste 捕捉', () => {
