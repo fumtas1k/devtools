@@ -278,23 +278,30 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 #### 仕組み・アルゴリズム
 
-- 入力種別を `detect.ts` で判定する。PEM は `-----BEGIN CERTIFICATE-----` / `-----BEGIN PKCS7-----` ブロックを正規表現で全抽出し Base64 を DER 化、生 DER（先頭 `0x30`）・Base64 単体も受け付ける。`PKCS12` / `PFX` / 証明書を含まない `ENCRYPTED PRIVATE KEY` は未対応として識別する
+- 入力種別を `detect.ts` で判定する。PEM は `-----BEGIN CERTIFICATE-----` / `-----BEGIN PKCS7-----` ブロックを正規表現で全抽出し Base64 を DER 化、生 DER（先頭 `0x30`）・Base64 単体も受け付ける。`PKCS12` / `PFX` / 証明書を含まない `ENCRYPTED PRIVATE KEY` は PKCS#12 として識別し、パスワード入力 UI へ誘導する
 - 各 DER を `asn1js.fromBER` でデコードし `pkijs` の `Certificate` に変換、`parse.ts` で表示用フィールドへ正規化する。DN は OID を短縮名（CN/O/OU/C/L/ST 等）へマップ、SAN・KeyUsage・ExtKeyUsage・BasicConstraints・SKI/AKI は拡張 OID から取得する。フィンガープリントは `crypto.subtle.digest('SHA-256', der)`
 - PKCS#7 は `ContentInfo` → `SignedData` から証明書を展開する
 - SCT 拡張（OID `1.3.6.1.4.1.11129.2.4.2`）は ASN.1 ではなく RFC 6962 の TLS シリアライズ構造のため、OCTET STRING 内のバイト列を `sct.ts` で手動デコードする（version / logId / timestamp、best-effort）
 - チェーンは `chain.ts` が subject/issuer DN（必要に応じて AKI/SKI）で親子関係を構築し issuer→subject 順に並べ替える。各リンクの署名は DER から再構築した `Certificate.verify`（Web Crypto）で検証し、改ざん・issuer 不一致を検出する。有効期限は現在時刻と NotBefore/NotAfter の比較で判定する
 - 1 枚のパース失敗は `error` 付きで保持し、他証明書の表示を継続する
+- **PKCS#12（.pfx/.p12）**: pkijs の `PFX → AuthenticatedSafe → SafeContents → SafeBag` を辿って証明書 DER と PKCS#8 秘密鍵を抽出する（`src/utils/cert/pkcs12.ts`）
+  - **パスワード**: UI で入力 → `TextEncoder().encode(password).buffer`（UTF-8 ArrayBuffer）を pkijs に渡す。pkijs が内部で BMPString 変換する（`makePKCS12B2Key`）
+  - **証明書抽出**: `CertBag`（OID `1.2.840.113549.1.12.10.1.3`）から DER を取り出し、既存の `parseDerCertificates → buildChain` パイプラインに流す
+  - **秘密鍵抽出**: `PKCS8ShroudedKeyBag`（OID `1.2.840.113549.1.12.10.1.2`）を `parseInternalValues` で復号し `PrivateKeyInfo` から PKCS#8 PEM を生成。アルゴリズム・鍵長・曲線名は常時表示、PEM 本体は `<details>` トグル開示
+  - **暗号方式制限**: PBES2（PBKDF2 + AES-CBC）のみ復号可能。レガシー RC2-40/3DES は Web Crypto 非対応のため `unsupported-encryption` エラーで案内する
+  - **誤パスワード検出**: `pfx.parseInternalValues({ checkIntegrity: true })` が "Integrity for the PKCS#12 data is broken!" を throw → `wrong-password` として UI に表示
 
 #### 準拠仕様・RFC
 
-- X.509（[RFC 5280](https://www.rfc-editor.org/rfc/rfc5280)）/ PKCS#7・CMS（[RFC 5652](https://www.rfc-editor.org/rfc/rfc5652)）/ Certificate Transparency SCT（[RFC 6962](https://www.rfc-editor.org/rfc/rfc6962)）
+- X.509（[RFC 5280](https://www.rfc-editor.org/rfc/rfc5280)）/ PKCS#7・CMS（[RFC 5652](https://www.rfc-editor.org/rfc/rfc5652)）/ Certificate Transparency SCT（[RFC 6962](https://www.rfc-editor.org/rfc/rfc6962)）/ PKCS#12（[RFC 7292](https://www.rfc-editor.org/rfc/rfc7292)）
 
 #### 制限・エッジケース
 
-- PKCS#12（.pfx/.p12）・秘密鍵・鍵フォーマット変換（PEM/DER/JWK）は対象外（別ツールで対応予定）
+- PKCS#12 は PBES2/AES のみ対応。レガシー暗号（RC2-40/3DES）保護の .pfx は `openssl pkcs12 -keypbe AES-256-CBC -certpbe AES-256-CBC` で再エクスポートが必要
+- 鍵フォーマット変換（PEM/DER/JWK）は key-converter ツールで対応
 - 失効確認（CRL / OCSP）は行わない。署名検証はチェーン内の隣接ペアに対してのみで、信頼ストアとの照合（ルート CA の信頼性確認）は行わない
 - SCT はタイムスタンプ・ログ ID の表示のみで、署名の暗号検証はしない（best-effort）
-- 全処理はブラウザ内で完結し、入力（社内 CA・本番証明書を含む）は外部に送信しない
+- 全処理はブラウザ内で完結し、入力（社内 CA・本番証明書・秘密鍵を含む）は外部に送信しない
 
 ## 変換・解析
 

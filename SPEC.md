@@ -300,12 +300,12 @@ devtools/
 
 ### カテゴリ C: エンコード・デコードツール（`encode`）
 
-| #   | ツール名                  | slug           | 概要                                                                                                                                                                   |
-| --- | ------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 10  | URLエンコード/デコード    | `url-encode`   | テキスト⇔URLエンコード相互変換                                                                                                                                         |
-| 11  | Base64エンコード/デコード | `base64`       | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                                                                                                      |
-| 12  | JWTデコーダー             | `jwt-decoder`  | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応                                                                                              |
-| 25  | SSL/TLS証明書デコーダ     | `cert-decoder` | PEM/DER/PKCS#7 証明書を解析し Subject/SAN/有効期限/署名アルゴリズム/SCT を表示。複数証明書のチェーン並べ替え・署名検証（pkijs + Web Crypto）対応。全処理ブラウザ内完結 |
+| #   | ツール名                  | slug           | 概要                                                                                                                                                                                                                                                                    |
+| --- | ------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10  | URLエンコード/デコード    | `url-encode`   | テキスト⇔URLエンコード相互変換                                                                                                                                                                                                                                          |
+| 11  | Base64エンコード/デコード | `base64`       | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                                                                                                                                                                                                       |
+| 12  | JWTデコーダー             | `jwt-decoder`  | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応                                                                                                                                                                                               |
+| 25  | SSL/TLS証明書デコーダ     | `cert-decoder` | PEM/DER/PKCS#7/PKCS#12（.pfx/.p12）証明書を解析し Subject/SAN/有効期限/署名アルゴリズム/SCT を表示。複数証明書のチェーン並べ替え・署名検証（pkijs + Web Crypto）対応。PKCS#12 はパスワード復号・秘密鍵（メタ情報常時／PKCS#8 PEM トグル開示）含む。全処理ブラウザ内完結 |
 
 ### カテゴリ D: 変換・解析ツール（`convert`）
 
@@ -1131,19 +1131,21 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ### 5.25 SSL/TLS証明書デコーダ（`cert-decoder`）
 
-**概要:** PEM / DER / PKCS#7 形式の証明書を貼り付け・ファイル選択で解析し、主要フィールドを表示する閲覧専用ツール。複数証明書を issuer→subject 順に並べ替え、隣接ペアの署名を検証する。社内 CA・本番証明書を外部送信せず扱う前提で、全処理をブラウザ内で完結する。
+**概要:** PEM / DER / PKCS#7 / PKCS#12（.pfx/.p12）形式の証明書を貼り付け・ファイル選択で解析し、主要フィールドを表示する閲覧専用ツール。複数証明書を issuer→subject 順に並べ替え、隣接ペアの署名を検証する。社内 CA・本番証明書を外部送信せず扱う前提で、全処理をブラウザ内で完結する。
 
-**対応形式:** PEM（複数ブロック可）/ DER（バイナリ・Base64）/ PKCS#7（`.p7b`、証明書抽出のみ）
+**対応形式:** PEM（複数ブロック可）/ DER（バイナリ・Base64）/ PKCS#7（`.p7b`、証明書抽出のみ）/ PKCS#12（`.p12`/`.pfx`、PBES2/AES 限定）
 
 **表示フィールド:** Subject/Issuer DN・SAN・有効期限（NotBefore/NotAfter）・シリアル番号・署名アルゴリズム・公開鍵情報（種別・鍵長・curve）・KeyUsage/ExtendedKeyUsage/BasicConstraints・SubjectKeyIdentifier/AuthorityKeyIdentifier・SHA-256 フィンガープリント・SCT 一覧（RFC 6962 TLS 構造を best-effort デコード）
 
 **チェーン検証:** subject/issuer DN（必要に応じて AKI/SKI）で親子関係を構築し、`pkijs` の `Certificate.verify`（Web Crypto）で各リンクの署名を検証。各証明書の現在時刻に対する有効/期限切れも判定する。改ざん・issuer 不一致・期限切れを検出する（陽性・陰性対照テスト併設）。
 
-**モジュール構成:** `src/utils/cert/`（`detect.ts` 入力種別判定 / `parse.ts` 正規化 / `sct.ts` SCT デコード / `chain.ts` 並べ替え・検証 / `types.ts` / `index.ts`）
+**PKCS#12 対応（#644）:** パスワード入力 UI でパスワードを受け取り、`parsePkcs12`（`src/utils/cert/pkcs12.ts`）で復号。証明書は `parseDerCertificates` → `buildChain` パイプラインに流す。秘密鍵は RSA/EC のアルゴリズム・鍵長・曲線名を常時表示し、PKCS#8 PEM は `<details>` トグルで開示。ダウンロードボタン付き。レガシー暗号（RC2/3DES）は UI でエラー案内（re-export コマンドを提示）。
 
-**追加依存:** `pkijs` / `asn1js`
+**モジュール構成:** `src/utils/cert/`（`detect.ts` 入力種別判定 / `parse.ts` 正規化・`parseDerCertificates` / `pkcs12.ts` PKCS#12 復号 / `sct.ts` SCT デコード / `chain.ts` 並べ替え・検証 / `types.ts` / `index.ts`）
 
-**スコープ外（別 issue）:** PKCS#12（.pfx/.p12）対応・鍵フォーマット変換（PEM/DER/JWK）・失効確認（CRL/OCSP）
+**追加依存:** `pkijs` / `asn1js`（PKCS#12 追加も同ライブラリで完結）
+
+**スコープ外:** 鍵フォーマット変換（PEM/DER/JWK）→ key-converter ツール / 失効確認（CRL/OCSP）/ PKCS#12 のレガシー RC2-40/3DES 暗号（Web Crypto 非対応）
 
 ---
 
