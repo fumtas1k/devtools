@@ -41,9 +41,16 @@ function highlight(
       nodes.push(<span key={`t-${i}`}>{input.slice(cursor, m.start)}</span>);
     }
     const colorClass = i % 2 === 0 ? 'match-highlight-a' : 'match-highlight-b';
+    // aria-label: 空マッチは「（空マッチ）」を付けて SR が聞き取れるようにする
+    const ariaLabel =
+      m.value === '' ? `マッチ ${i + 1}（空マッチ）` : `マッチ ${i + 1}: ${m.value}`;
     nodes.push(
       <mark
         key={`m-${i}`}
+        role="button"
+        tabIndex={0}
+        aria-pressed={selected === i}
+        aria-label={ariaLabel}
         className={cx(
           'match-highlight text-default',
           colorClass,
@@ -52,6 +59,13 @@ function highlight(
         )}
         onClick={() => onSelect(i)}
         title={`マッチ ${i + 1}`}
+        onKeyDown={(e) => {
+          // Enter または スペースでクリックと同等の動作（キーボード操作対応）
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect(i);
+          }
+        }}
       >
         {m.value === '' ? '​' : m.value}
       </mark>
