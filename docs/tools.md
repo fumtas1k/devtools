@@ -9,6 +9,7 @@
 - [生成](#生成)
 - [コード・バーコード](#コードバーコード)
 - [エンコード・デコード](#エンコードデコード)
+  - [SSL/TLS証明書デコーダ](#ssltls証明書デコーダ)
 - [変換・解析](#変換解析)
   - [CIDR/サブネット計算機](#cidrサブネット計算機)
   - [DSN/接続文字列ビルダ](#dsn接続文字列ビルダ)
@@ -271,6 +272,28 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - 上記マップにないアルゴリズム（`none` / EdDSA / PS\* 等）は「unsupported」となり検証できない。
 - デコード（Header/Payload の表示）は署名検証なしでも行える。**改竄の検出には署名検証が必要**で、検証せずに Payload を信用してはならない。
 - RS\* / ES\* の検証には対応する公開鍵 PEM（`-----BEGIN PUBLIC KEY-----`）が必要。
+
+### SSL/TLS証明書デコーダ
+
+#### 仕組み・アルゴリズム
+
+- 入力種別を `detect.ts` で判定する。PEM は `-----BEGIN CERTIFICATE-----` / `-----BEGIN PKCS7-----` ブロックを正規表現で全抽出し Base64 を DER 化、生 DER（先頭 `0x30`）・Base64 単体も受け付ける。`PKCS12` / `PFX` / 証明書を含まない `ENCRYPTED PRIVATE KEY` は未対応として識別する
+- 各 DER を `asn1js.fromBER` でデコードし `pkijs` の `Certificate` に変換、`parse.ts` で表示用フィールドへ正規化する。DN は OID を短縮名（CN/O/OU/C/L/ST 等）へマップ、SAN・KeyUsage・ExtKeyUsage・BasicConstraints・SKI/AKI は拡張 OID から取得する。フィンガープリントは `crypto.subtle.digest('SHA-256', der)`
+- PKCS#7 は `ContentInfo` → `SignedData` から証明書を展開する
+- SCT 拡張（OID `1.3.6.1.4.1.11129.2.4.2`）は ASN.1 ではなく RFC 6962 の TLS シリアライズ構造のため、OCTET STRING 内のバイト列を `sct.ts` で手動デコードする（version / logId / timestamp、best-effort）
+- チェーンは `chain.ts` が subject/issuer DN（必要に応じて AKI/SKI）で親子関係を構築し issuer→subject 順に並べ替える。各リンクの署名は DER から再構築した `Certificate.verify`（Web Crypto）で検証し、改ざん・issuer 不一致を検出する。有効期限は現在時刻と NotBefore/NotAfter の比較で判定する
+- 1 枚のパース失敗は `error` 付きで保持し、他証明書の表示を継続する
+
+#### 準拠仕様・RFC
+
+- X.509（[RFC 5280](https://www.rfc-editor.org/rfc/rfc5280)）/ PKCS#7・CMS（[RFC 5652](https://www.rfc-editor.org/rfc/rfc5652)）/ Certificate Transparency SCT（[RFC 6962](https://www.rfc-editor.org/rfc/rfc6962)）
+
+#### 制限・エッジケース
+
+- PKCS#12（.pfx/.p12）・秘密鍵・鍵フォーマット変換（PEM/DER/JWK）は対象外（別ツールで対応予定）
+- 失効確認（CRL / OCSP）は行わない。署名検証はチェーン内の隣接ペアに対してのみで、信頼ストアとの照合（ルート CA の信頼性確認）は行わない
+- SCT はタイムスタンプ・ログ ID の表示のみで、署名の暗号検証はしない（best-effort）
+- 全処理はブラウザ内で完結し、入力（社内 CA・本番証明書を含む）は外部に送信しない
 
 ## 変換・解析
 
