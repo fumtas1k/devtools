@@ -71,6 +71,7 @@ post-PR 代行は不要、CI が最終ゲート。
 3. `src/data/tools.ts` の `toolEntries` 配列にエントリを追加（slug / name / description / category / yomi）。`yomi` は並び替え用の読み仮名（ひらがな）で、表示順はこの `yomi` の五十音順に自動ソートされる（手動で位置を決める必要はない）
 4. `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列に `/tools/<slug>` を追加（VRT 対象に登録）。baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を `workflow_dispatch` trigger して生成（mac との font 描画差を回避するためローカル生成は不可）。**漏れた場合は `tests/meta/vrt-pages-coverage.test.ts` が `npm run test` で fail させる**ため CI で必ず検知される（issue #355 で導入）。
 5. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
+6. 候補リスト（`docs/tool-candidates.md`）由来のツールの場合、PR マージ時に該当行の「状態」列へ ✅ と PR 番号を記載する
 
 新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `.agents/rules/ui-conventions.md` を参照。
 
