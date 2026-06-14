@@ -219,4 +219,39 @@ test.describe('HAR ビューア', () => {
     // サマリのリクエスト件数は 2 件（entry は配列に保持される）
     await expect(page.getByText(/リクエスト:/)).toBeVisible();
   });
+
+  test('先頭 entry が null でも自動選択で詳細プレースホルダが表示される', async ({ page }) => {
+    await page.goto('/tools/har-viewer');
+
+    // 先頭 entry が null（index=0 が自動選択される）+ 2 件目は正常
+    const json = JSON.stringify({
+      log: {
+        version: '1.2',
+        creator: { name: 'test', version: '1.0' },
+        entries: [
+          null,
+          {
+            time: 10,
+            request: {
+              method: 'GET',
+              url: 'https://example.com/api/ok',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    });
+    await uploadHar(page, json);
+
+    // 正常 entry が一覧に描画される（React island がクラッシュしていない陽性対照）
+    await expect(page.getByRole('button', { name: /\/api\/ok$/ })).toBeVisible({
+      timeout: 10000,
+    });
+    // 先頭 null entry が自動選択され、詳細パネルにプレースホルダが出る。
+    // 修正前は selectedEntry が falsy で詳細パネル自体が描画されず、この assert は fail する（陽性ガード）。
+    await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+  });
 });
