@@ -204,6 +204,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'かぎふぉーまっとへんかん',
   },
+  {
+    slug: 'har-viewer',
+    name: 'HARビューア＆サニタイザ',
+    description:
+      'HARファイルを一覧・詳細表示し、Cookie・認証ヘッダ・トークン類を自動redactした共有用HARを出力します。ファイルはブラウザ外に送信しません',
+    category: 'convert',
+    yomi: 'えいちえーあーるびゅーあ',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる
