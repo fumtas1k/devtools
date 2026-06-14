@@ -14,28 +14,29 @@
 
 ## ファイル構成
 
-| ファイル | 責務 |
-| --- | --- |
-| `src/utils/har/types.ts` | HAR 1.2 の必要サブセット型 |
-| `src/utils/har/rules.ts` | redact カテゴリ定義・機密ヘッダ/クエリ辞書・既定 ON |
-| `src/utils/har/parse.ts` | HAR JSON パース＋最小スキーマ検証 |
-| `src/utils/har/sanitize.ts` | 構造的 redact ＋ `scrubText` 併用（純関数・非破壊） |
-| `src/utils/har/index.ts` | re-export |
-| `src/utils/har/__tests__/parse.test.ts` | parse ユニットテスト |
-| `src/utils/har/__tests__/sanitize.test.ts` | sanitize 陽性/陰性対照テスト |
-| `src/components/tools/HarEntryList.tsx` | エントリ一覧テーブル |
-| `src/components/tools/HarEntryDetail.tsx` | 詳細パネル |
-| `src/components/tools/HarViewer.tsx` | 親: 入力・トグル・サマリ・出力 |
-| `src/pages/tools/har-viewer.astro` | Astro ページ |
-| `tests/e2e/visual-regression-pages.ts` | `/tools/har-viewer` を PAGES に追加 |
-| `src/data/tools.ts` | `toolEntries` にエントリ追加 |
-| `README.md` / `SPEC.md` / `docs/decisions.md` / `docs/tools.md` / `docs/tool-candidates.md` | ドキュメント更新 |
+| ファイル                                                                                    | 責務                                                |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `src/utils/har/types.ts`                                                                    | HAR 1.2 の必要サブセット型                          |
+| `src/utils/har/rules.ts`                                                                    | redact カテゴリ定義・機密ヘッダ/クエリ辞書・既定 ON |
+| `src/utils/har/parse.ts`                                                                    | HAR JSON パース＋最小スキーマ検証                   |
+| `src/utils/har/sanitize.ts`                                                                 | 構造的 redact ＋ `scrubText` 併用（純関数・非破壊） |
+| `src/utils/har/index.ts`                                                                    | re-export                                           |
+| `src/utils/har/__tests__/parse.test.ts`                                                     | parse ユニットテスト                                |
+| `src/utils/har/__tests__/sanitize.test.ts`                                                  | sanitize 陽性/陰性対照テスト                        |
+| `src/components/tools/HarEntryList.tsx`                                                     | エントリ一覧テーブル                                |
+| `src/components/tools/HarEntryDetail.tsx`                                                   | 詳細パネル                                          |
+| `src/components/tools/HarViewer.tsx`                                                        | 親: 入力・トグル・サマリ・出力                      |
+| `src/pages/tools/har-viewer.astro`                                                          | Astro ページ                                        |
+| `tests/e2e/visual-regression-pages.ts`                                                      | `/tools/har-viewer` を PAGES に追加                 |
+| `src/data/tools.ts`                                                                         | `toolEntries` にエントリ追加                        |
+| `README.md` / `SPEC.md` / `docs/decisions.md` / `docs/tools.md` / `docs/tool-candidates.md` | ドキュメント更新                                    |
 
 ---
 
 ## Task 1: HAR 型定義
 
 **Files:**
+
 - Create: `src/utils/har/types.ts`
 
 - [ ] **Step 1: 型を定義する**
@@ -138,6 +139,7 @@ git commit -m "feat: HAR 1.2 サブセット型を追加"
 ## Task 2: redact ルール辞書
 
 **Files:**
+
 - Create: `src/utils/har/rules.ts`
 
 - [ ] **Step 1: ルール辞書を定義する**
@@ -239,6 +241,7 @@ git commit -m "feat: HAR redact カテゴリと機密フィールド辞書を追
 ## Task 3: HAR パーサ（TDD）
 
 **Files:**
+
 - Create: `src/utils/har/parse.ts`
 - Test: `src/utils/har/__tests__/parse.test.ts`
 
@@ -255,7 +258,13 @@ const VALID_HAR = JSON.stringify({
     entries: [
       {
         time: 12.3,
-        request: { method: 'GET', url: 'https://example.com/', headers: [], queryString: [], cookies: [] },
+        request: {
+          method: 'GET',
+          url: 'https://example.com/',
+          headers: [],
+          queryString: [],
+          cookies: [],
+        },
         response: { status: 200, headers: [], cookies: [], content: { size: 0 } },
       },
     ],
@@ -308,9 +317,7 @@ Expected: FAIL（`parseHar` が存在しない）
 // src/utils/har/parse.ts
 import type { Har } from './types';
 
-export type ParseResult =
-  | { ok: true; har: Har }
-  | { ok: false; message: string };
+export type ParseResult = { ok: true; har: Har } | { ok: false; message: string };
 
 /**
  * HAR JSON 文字列をパースし、最小スキーマ（log.entries が配列）を検証する。
@@ -362,6 +369,7 @@ git commit -m "feat: HAR パーサとスキーマ検証を追加"
 > **test-gates skill 準拠**: redact 検知器のため陽性対照（redact されること）と陰性対照（トグル OFF で素通り）の両方を必須とする。実装前に `Skill` tool で `test-gates` skill を確認すること。
 
 **Files:**
+
 - Create: `src/utils/har/sanitize.ts`
 - Test: `src/utils/har/__tests__/sanitize.test.ts`
 
@@ -460,7 +468,9 @@ describe('sanitizeHar', () => {
     const { har, counts } = sanitizeHar(original, ALL_OFF);
     const e = har.log.entries[0];
     expect(e.request.cookies[0].value).toBe('deadbeefcookie');
-    expect(e.request.headers.find((h) => h.name === 'Authorization')?.value).toBe('Bearer abc.def.ghi');
+    expect(e.request.headers.find((h) => h.name === 'Authorization')?.value).toBe(
+      'Bearer abc.def.ghi'
+    );
     expect(e.request.url).toContain('SECRETTOKEN123');
     expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(0);
   });
@@ -587,7 +597,14 @@ function redactUrl(
       const base = result.slice(0, qIndex + 1);
       const queryPart = result.slice(qIndex + 1);
       const [query, hash = ''] = queryPart.split('#');
-      const newQuery = redactPairString(query, '&', false, SENSITIVE_PARAM_NAMES, 'QUERY', tokenize);
+      const newQuery = redactPairString(
+        query,
+        '&',
+        false,
+        SENSITIVE_PARAM_NAMES,
+        'QUERY',
+        tokenize
+      );
       result = base + newQuery + (hash ? '#' + hash : '');
     }
   }
@@ -614,7 +631,10 @@ function redactHeaders(
   }
 }
 
-export function sanitizeHar(input: Har, enabled: Record<HarRedactCategory, boolean>): SanitizeResult {
+export function sanitizeHar(
+  input: Har,
+  enabled: Record<HarRedactCategory, boolean>
+): SanitizeResult {
   const har: Har = structuredClone(input);
   const counts = emptyRedactCounts();
   const tokenize = makeTokenizer(counts);
@@ -694,6 +714,7 @@ git commit -m "feat: HAR サニタイザを追加（構造的 redact + scrubText
 ## Task 5: index re-export
 
 **Files:**
+
 - Create: `src/utils/har/index.ts`
 
 - [ ] **Step 1: re-export を書く**
@@ -741,6 +762,7 @@ git commit -m "feat: har モジュールの re-export を追加"
 ## Task 6: エントリ一覧テーブル
 
 **Files:**
+
 - Create: `src/components/tools/HarEntryList.tsx`
 
 事前確認: `src/components/tools/CidrCalculator.tsx` 等の既存テーブル表現と `.agents/rules/common.md` 7 章のカラー規約（primitive scale 禁止・意味クラス使用）。
@@ -786,11 +808,21 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
         <caption className="sr-only">HTTP リクエスト一覧</caption>
         <thead>
           <tr className="bg-subtle text-left">
-            <th scope="col" className="px-3 py-2 font-medium">メソッド</th>
-            <th scope="col" className="px-3 py-2 font-medium">URL</th>
-            <th scope="col" className="px-3 py-2 font-medium">ステータス</th>
-            <th scope="col" className="px-3 py-2 font-medium">サイズ</th>
-            <th scope="col" className="px-3 py-2 font-medium">時間</th>
+            <th scope="col" className="px-3 py-2 font-medium">
+              メソッド
+            </th>
+            <th scope="col" className="px-3 py-2 font-medium">
+              URL
+            </th>
+            <th scope="col" className="px-3 py-2 font-medium">
+              ステータス
+            </th>
+            <th scope="col" className="px-3 py-2 font-medium">
+              サイズ
+            </th>
+            <th scope="col" className="px-3 py-2 font-medium">
+              時間
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -811,7 +843,9 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
                 </button>
               </td>
               <td className="px-3 py-1.5 font-mono">{e.response.status}</td>
-              <td className="px-3 py-1.5 font-mono">{formatSize(e.response.content?.size ?? e.response.bodySize)}</td>
+              <td className="px-3 py-1.5 font-mono">
+                {formatSize(e.response.content?.size ?? e.response.bodySize)}
+              </td>
               <td className="px-3 py-1.5 font-mono">{formatTime(e.time)}</td>
             </tr>
           ))}
@@ -846,6 +880,7 @@ git commit -m "feat: HAR エントリ一覧テーブルを追加"
 ## Task 7: 詳細パネル
 
 **Files:**
+
 - Create: `src/components/tools/HarEntryDetail.tsx`
 
 - [ ] **Step 1: コンポーネントを書く**
@@ -885,25 +920,33 @@ export function HarEntryDetail({ entry }: Props) {
     <div className="space-y-4 rounded border border-default p-4">
       <div>
         <h3 className="font-medium">リクエスト</h3>
-        <p className="break-all font-mono text-sm">{request.method} {request.url}</p>
+        <p className="break-all font-mono text-sm">
+          {request.method} {request.url}
+        </p>
         <NameValueTable rows={request.headers} label="ヘッダ" />
         <NameValueTable rows={request.queryString} label="クエリ文字列" />
         <NameValueTable rows={request.cookies} label="Cookie" />
         {request.postData?.text != null && (
           <div>
             <h4 className="mb-1 mt-3 font-medium">POST ボディ</h4>
-            <pre className="overflow-x-auto rounded bg-subtle p-2 text-xs">{request.postData.text}</pre>
+            <pre className="overflow-x-auto rounded bg-subtle p-2 text-xs">
+              {request.postData.text}
+            </pre>
           </div>
         )}
       </div>
       <div>
-        <h3 className="font-medium">レスポンス（{response.status} {response.statusText ?? ''}）</h3>
+        <h3 className="font-medium">
+          レスポンス（{response.status} {response.statusText ?? ''}）
+        </h3>
         <NameValueTable rows={response.headers} label="ヘッダ" />
         <NameValueTable rows={response.cookies} label="Cookie" />
         {response.content?.text != null && (
           <div>
             <h4 className="mb-1 mt-3 font-medium">ボディ</h4>
-            <pre className="overflow-x-auto rounded bg-subtle p-2 text-xs">{response.content.text}</pre>
+            <pre className="overflow-x-auto rounded bg-subtle p-2 text-xs">
+              {response.content.text}
+            </pre>
           </div>
         )}
       </div>
@@ -929,6 +972,7 @@ git commit -m "feat: HAR エントリ詳細パネルを追加"
 ## Task 8: 親コンポーネント（入力・トグル・サマリ・出力）
 
 **Files:**
+
 - Create: `src/components/tools/HarViewer.tsx`
 
 事前確認: `src/components/tools/SecretScrubber.tsx`（ToggleChips 使用例）、`src/components/tools/ClipboardInspector.tsx`（drop イベント）、`src/utils/file-validation.ts`、`src/utils/download.ts`。
@@ -964,7 +1008,9 @@ export function HarViewer() {
   const [har, setHar] = useState<Har | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [enabled, setEnabled] = useState<Record<HarRedactCategory, boolean>>({ ...HAR_REDACT_DEFAULT });
+  const [enabled, setEnabled] = useState<Record<HarRedactCategory, boolean>>({
+    ...HAR_REDACT_DEFAULT,
+  });
 
   const handleToggle = useCallback((cat: HarRedactCategory) => {
     setEnabled((prev) => ({ ...prev, [cat]: !prev[cat] }));
@@ -1007,9 +1053,7 @@ export function HarViewer() {
     [sanitized]
   );
 
-  const totalRedacted = sanitized
-    ? Object.values(sanitized.counts).reduce((a, b) => a + b, 0)
-    : 0;
+  const totalRedacted = sanitized ? Object.values(sanitized.counts).reduce((a, b) => a + b, 0) : 0;
 
   const selectedEntry =
     sanitized && selectedIndex != null ? sanitized.har.log.entries[selectedIndex] : null;
@@ -1042,9 +1086,7 @@ export function HarViewer() {
         >
           ファイルを選択
         </FileInputButton>
-        <p className="caption mt-2 text-muted">
-          ファイルはブラウザ外に送信されません（最大 25MB）
-        </p>
+        <p className="caption mt-2 text-muted">ファイルはブラウザ外に送信されません（最大 25MB）</p>
       </div>
 
       {error && <ErrorMessage message={error} />}
@@ -1053,8 +1095,12 @@ export function HarViewer() {
         <>
           {/* サマリ */}
           <div className="flex flex-wrap gap-4 text-sm">
-            <span>リクエスト: <strong>{har.log.entries.length}</strong> 件</span>
-            <span>redact: <strong>{totalRedacted}</strong> 件</span>
+            <span>
+              リクエスト: <strong>{har.log.entries.length}</strong> 件
+            </span>
+            <span>
+              redact: <strong>{totalRedacted}</strong> 件
+            </span>
           </div>
 
           {/* redact トグル */}
@@ -1119,6 +1165,7 @@ git commit -m "feat: HAR ビューア親コンポーネントを追加"
 ## Task 9: Astro ページ
 
 **Files:**
+
 - Create: `src/pages/tools/har-viewer.astro`
 
 - [ ] **Step 1: ページを書く**
@@ -1140,12 +1187,17 @@ const tool = tools.find((t) => t.slug === 'har-viewer')!;
 
   <ToolInfoSection>
     <p class="tool-info-body">
-      ブラウザの DevTools が出力する HAR（HTTP Archive）ファイルを読み込み、リクエスト/レスポンスを一覧・詳細表示します。Cookie・Authorization
-      ヘッダ・トークン類を自動で redact した共有用 HAR を出力できます。ファイルはブラウザ内でのみ処理され、外部に送信されません。
+      ブラウザの DevTools が出力する HAR（HTTP
+      Archive）ファイルを読み込み、リクエスト/レスポンスを一覧・詳細表示します。Cookie・Authorization
+      ヘッダ・トークン類を自動で redact した共有用 HAR
+      を出力できます。ファイルはブラウザ内でのみ処理され、外部に送信されません。
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">仕組み</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
-      <li>HAR は JSON のため <code class="rounded px-1 font-mono bg-subtle text-sm">JSON.parse</code> でパースし、log.entries を一覧化</li>
+      <li>
+        HAR は JSON のため <code class="rounded px-1 font-mono bg-subtle text-sm">JSON.parse</code> でパースし、log.entries
+        を一覧化
+      </li>
       <li>Cookie / 認証ヘッダ / 機密クエリ / POST ボディをフィールド名ベースで確実に redact</li>
       <li>本文スキャンは secret-scrubber の検出ルールで API キー・JWT・メール等を追加検出</li>
       <li>同一値は同一プレースホルダ（[REDACTED:COOKIE_1] 等）で一貫トークン化</li>
@@ -1197,6 +1249,7 @@ git commit -m "feat: HARビューアのページとツール登録を追加"
 ## Task 10: VRT ページ登録 + meta テスト
 
 **Files:**
+
 - Modify: `tests/e2e/visual-regression-pages.ts`
 
 - [ ] **Step 1: PAGES に追加**
@@ -1220,6 +1273,7 @@ git commit -m "test: HARビューアを VRT 対象ページに登録"
 ## Task 11: ドキュメント更新
 
 **Files:**
+
 - Modify: `README.md`, `SPEC.md`, `docs/decisions.md`, `docs/tools.md`, `docs/tool-candidates.md`
 
 - [ ] **Step 1: README ツール一覧に追加**
@@ -1289,6 +1343,7 @@ Expected: 既存 + 新規ページの a11y/スモークが PASS（VRT baseline �
 ## Self-Review（記入済み）
 
 **1. Spec coverage:**
+
 - パース＋スキーマ検証 → Task 3 ✓
 - 一覧テーブル → Task 6 ✓
 - 詳細パネル → Task 7 ✓

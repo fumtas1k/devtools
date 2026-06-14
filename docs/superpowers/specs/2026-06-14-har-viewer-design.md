@@ -76,13 +76,13 @@ src/pages/tools/har-viewer.astro
 
 ### 構造的 redact（フィールド名ベース・確実に処理）
 
-| 対象 | 処理 |
-| --- | --- |
-| `request.cookies[].value` / `response.cookies[].value` | 一貫トークン化 |
-| 機密ヘッダの `value`（request/response の `headers[]`） | 辞書判定（大文字小文字無視）で一貫トークン化 |
-| 機密クエリの `value`（`request.queryString[]`） | 辞書判定で一貫トークン化 |
-| `request.url` | URL 内 basic-auth（`user:pass@`）と機密クエリパラメータを redact |
-| `request.postData.text` / `request.postData.params[].value` | `scrubText` 適用＋機密パラメータ名は確実に redact |
+| 対象                                                        | 処理                                                             |
+| ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| `request.cookies[].value` / `response.cookies[].value`      | 一貫トークン化                                                   |
+| 機密ヘッダの `value`（request/response の `headers[]`）     | 辞書判定（大文字小文字無視）で一貫トークン化                     |
+| 機密クエリの `value`（`request.queryString[]`）             | 辞書判定で一貫トークン化                                         |
+| `request.url`                                               | URL 内 basic-auth（`user:pass@`）と機密クエリパラメータを redact |
+| `request.postData.text` / `request.postData.params[].value` | `scrubText` 適用＋機密パラメータ名は確実に redact                |
 
 機密ヘッダ辞書（小文字比較）: `authorization` / `proxy-authorization` / `cookie` /
 `set-cookie` / `x-api-key` / `x-auth-token` / `x-csrf-token` / `x-xsrf-token`
