@@ -7,7 +7,9 @@ PR #683（issue #681 の描画クラッシュガード）のレビューで指�
 `HarViewer` は読み込み時に先頭 entry（index=0）を自動選択する。選択中 entry の詳細は `HarViewer.tsx:161` の以下のゲートで描画される。
 
 ```tsx
-{selectedEntry && <HarEntryDetail entry={selectedEntry} />}
+{
+  selectedEntry && <HarEntryDetail entry={selectedEntry} />;
+}
 ```
 
 `selectedEntry` は `result.har.log.entries[selectedIndex]`。
@@ -38,9 +40,13 @@ PR #683（issue #681 の描画クラッシュガード）のレビューで指�
 
    ```tsx
    // before
-   {selectedEntry && <HarEntryDetail entry={selectedEntry} />}
+   {
+     selectedEntry && <HarEntryDetail entry={selectedEntry} />;
+   }
    // after
-   {result && selectedIndex != null && <HarEntryDetail entry={selectedEntry} />}
+   {
+     result && selectedIndex != null && <HarEntryDetail entry={selectedEntry} />;
+   }
    ```
 
    - これにより、`selectedIndex` が設定されている（= 何らかの entry が選択されている）限り、entry が null でも `HarEntryDetail` が描画されプレースホルダが出る。

@@ -15,6 +15,7 @@
 ### Task 1: ユニットテスト追加（型拡張の陽性対照）と HarEntryDetail 型拡張
 
 **Files:**
+
 - Test: `src/components/tools/__tests__/HarEntryDetail.test.tsx`
 - Modify: `src/components/tools/HarEntryDetail.tsx:3-5`（Props 型）
 
@@ -23,12 +24,10 @@
 `src/components/tools/__tests__/HarEntryDetail.test.tsx` の `describe('HarEntryDetail 壊れた entry のガード', ...)` ブロック内、「空 entry でも throw せず…」の `it` の直後に以下を追加する:
 
 ```tsx
-  it('null entry でも throw せずプレースホルダを表示する', () => {
-    expect(() =>
-      render(<HarEntryDetail entry={null as unknown as HarEntry} />)
-    ).not.toThrow();
-    expect(screen.getByText(/詳細を表示できません/)).toBeTruthy();
-  });
+it('null entry でも throw せずプレースホルダを表示する', () => {
+  expect(() => render(<HarEntryDetail entry={null as unknown as HarEntry} />)).not.toThrow();
+  expect(screen.getByText(/詳細を表示できません/)).toBeTruthy();
+});
 ```
 
 - [ ] **Step 2: テストを実行して fail（または型エラー）を確認**
@@ -51,10 +50,10 @@ interface Props {
 Step 1 で追加したテストの `entry={null as unknown as HarEntry}` を `entry={null}` に簡素化する:
 
 ```tsx
-  it('null entry でも throw せずプレースホルダを表示する', () => {
-    expect(() => render(<HarEntryDetail entry={null} />)).not.toThrow();
-    expect(screen.getByText(/詳細を表示できません/)).toBeTruthy();
-  });
+it('null entry でも throw せずプレースホルダを表示する', () => {
+  expect(() => render(<HarEntryDetail entry={null} />)).not.toThrow();
+  expect(screen.getByText(/詳細を表示できません/)).toBeTruthy();
+});
 ```
 
 - [ ] **Step 5: テストと型チェックを実行して pass を確認**
@@ -74,6 +73,7 @@ git commit -m "fix: HarEntryDetail が null entry でもプレースホルダを
 ### Task 2: HarViewer の描画ゲートを selectedIndex 基準に変更
 
 **Files:**
+
 - Modify: `src/components/tools/HarViewer.tsx:161`
 
 - [ ] **Step 1: 描画ゲートを変更**
@@ -81,10 +81,16 @@ git commit -m "fix: HarEntryDetail が null entry でもプレースホルダを
 `src/components/tools/HarViewer.tsx` の詳細パネル描画箇所（コメント `{/* 詳細パネル */}` の直下）を以下に変更する:
 
 ```tsx
-          {/* 詳細パネル */}
-          {/* selectedIndex があれば（entry が null/壊れていても）プレースホルダを描画し、
-              {} ケースとの UX 非対称を解消する（issue #684） */}
-          {selectedIndex != null && <HarEntryDetail entry={selectedEntry} />}
+{
+  /* 詳細パネル */
+}
+{
+  /* selectedIndex があれば（entry が null/壊れていても）プレースホルダを描画し、
+              {} ケースとの UX 非対称を解消する（issue #684） */
+}
+{
+  selectedIndex != null && <HarEntryDetail entry={selectedEntry} />;
+}
 ```
 
 `selectedEntry` の導出（`HarViewer.tsx:80-81`）はそのまま残す。`result && selectedIndex != null` の `result` は `selectedEntry` 導出内で既に評価されるが、このゲートは `result &&` ブロック（`HarViewer.tsx:129`）の内側にあるため `result` 判定は冗長。`selectedIndex != null` のみで足りる。
@@ -106,6 +112,7 @@ git commit -m "fix: har-viewer の null 先頭 entry でも詳細プレースホ
 ### Task 3: E2E テスト追加（描画ゲート変更の陽性対照）
 
 **Files:**
+
 - Modify: `tests/e2e/har-viewer.spec.ts`（既存 `test.describe('HAR ビューア', ...)` ブロック末尾に追加）
 
 - [ ] **Step 1: E2E テストを追加**
@@ -113,40 +120,40 @@ git commit -m "fix: har-viewer の null 先頭 entry でも詳細プレースホ
 `tests/e2e/har-viewer.spec.ts` の `test.describe('HAR ビューア', ...)` 内、最後の `test(...)` の直後（describe の閉じ括弧 `});` の直前）に以下を追加する:
 
 ```ts
-  test('先頭 entry が null でも自動選択で詳細プレースホルダが表示される', async ({ page }) => {
-    await page.goto('/tools/har-viewer');
+test('先頭 entry が null でも自動選択で詳細プレースホルダが表示される', async ({ page }) => {
+  await page.goto('/tools/har-viewer');
 
-    // 先頭 entry が null（index=0 が自動選択される）+ 2 件目は正常
-    const json = JSON.stringify({
-      log: {
-        version: '1.2',
-        creator: { name: 'test', version: '1.0' },
-        entries: [
-          null,
-          {
-            time: 10,
-            request: {
-              method: 'GET',
-              url: 'https://example.com/api/ok',
-              headers: [],
-              queryString: [],
-              cookies: [],
-            },
-            response: { status: 200, headers: [], cookies: [], content: {} },
+  // 先頭 entry が null（index=0 が自動選択される）+ 2 件目は正常
+  const json = JSON.stringify({
+    log: {
+      version: '1.2',
+      creator: { name: 'test', version: '1.0' },
+      entries: [
+        null,
+        {
+          time: 10,
+          request: {
+            method: 'GET',
+            url: 'https://example.com/api/ok',
+            headers: [],
+            queryString: [],
+            cookies: [],
           },
-        ],
-      },
-    });
-    await uploadHar(page, json);
-
-    // 正常 entry が一覧に描画される（React island がクラッシュしていない陽性対照）
-    await expect(page.getByRole('button', { name: /\/api\/ok$/ })).toBeVisible({
-      timeout: 10000,
-    });
-    // 先頭 null entry が自動選択され、詳細パネルにプレースホルダが出る。
-    // 修正前は selectedEntry が falsy で詳細パネル自体が描画されず、この assert は fail する（陽性ガード）。
-    await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+          response: { status: 200, headers: [], cookies: [], content: {} },
+        },
+      ],
+    },
   });
+  await uploadHar(page, json);
+
+  // 正常 entry が一覧に描画される（React island がクラッシュしていない陽性対照）
+  await expect(page.getByRole('button', { name: /\/api\/ok$/ })).toBeVisible({
+    timeout: 10000,
+  });
+  // 先頭 null entry が自動選択され、詳細パネルにプレースホルダが出る。
+  // 修正前は selectedEntry が falsy で詳細パネル自体が描画されず、この assert は fail する（陽性ガード）。
+  await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+});
 ```
 
 - [ ] **Step 2: E2E を実行して pass を確認**
