@@ -57,36 +57,39 @@
 
 ### 2.3 主要ライブラリ（MVP で使用）
 
-| ライブラリ                 | 用途                                                                                                               | ツール                      |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| `ulidx`                    | ULID生成                                                                                                           | ULID生成                    |
-| `uuid`                     | UUID v7 生成（`v7()` 関数）                                                                                        | UUID v7 生成                |
-| 手動デコード（Base64URL）  | JWTデコード・署名検証                                                                                              | JWTデコーダー               |
-| `qrcode-generator`         | QRコード生成                                                                                                       | QRコード生成                |
-| `JsBarcode`                | バーコード描画                                                                                                     | JANコード生成               |
-| `bwip-js`                  | GS1バーコード描画（SVG）                                                                                           | GS1 DataBar生成             |
-| `jszip`                    | 複数バーコードのZIPパッケージング                                                                                  | GS1 DataBar生成             |
-| `fast-xml-parser`          | JSON⇔XML 相互変換                                                                                                  | JSON/XML変換                |
-| `papaparse`                | JSON⇔CSV 相互変換・パース                                                                                          | JSON/CSV変換                |
-| `jsqr`                     | QRコードデコード（カメラ・画像）                                                                                   | QRチケット                  |
-| `@fontsource/noto-sans-jp` | フォントセルフホスト                                                                                               | 全ページ共通                |
-| `@astrojs/check`           | Astro/TypeScript 型チェック（devDependency）                                                                       | 開発ツール共通              |
-| `typescript`               | TypeScript コンパイラ（devDependency）                                                                             | 開発ツール共通              |
-| `@playwright/test`         | E2Eリグレッションテスト（devDependency）                                                                           | 開発ツール共通              |
-| `@vitest/coverage-v8`      | テストカバレッジ測定（devDependency）                                                                              | 開発ツール共通              |
-| `lint-staged`              | コミット時の自動フォーマット (devDependency)                                                                       | 開発ツール共通              |
-| `encoding-japanese`        | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）                                                           | 文字コード判定・変換        |
-| `yaml`                     | YAML パース/シリアライズ。コメント保持（Document API）                                                             | 設定ファイル相互変換        |
-| `smol-toml`                | TOML パース/シリアライズ（軽量、コメント保持なし）                                                                 | 設定ファイル相互変換        |
-| `ajv`                      | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード                                                   | 設定ファイル相互変換        |
-| `ajv-formats`              | ajv の format キーワード拡張（date-time 等）                                                                       | 設定ファイル相互変換        |
-| `sql-formatter`            | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0                                                 | SQL整形・パラメータ埋め込み |
-| `regexp-tree`              | 正規表現を位置情報付き AST へパース（CJS・純 JS・型同梱）                                                          | 正規表現ビジュアライザ      |
-| `recheck`                  | ReDoS 脆弱性検出。browser エントリ（`lib/browser.js`）を使用し `checkSync` で同期判定。型同梱・install script なし | 正規表現ビジュアライザ      |
-| `jsonc-parser`             | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア          |
-| `jmespath`                 | JMESPath クエリ評価（eval 非使用・CSP 安全）。フィルタ・射影に対応                                                 | JSON整形・ビューア          |
-| `pkijs`                    | X.509 証明書・PKCS#7 のパースと署名検証（Web Crypto エンジン経由）                                                 | SSL/TLS証明書デコーダ       |
-| `asn1js`                   | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ       |
+| ライブラリ                  | 用途                                                                                                               | ツール                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| `ulidx`                     | ULID生成                                                                                                           | ULID生成                    |
+| `uuid`                      | UUID v7 生成（`v7()` 関数）                                                                                        | UUID v7 生成                |
+| 手動デコード（Base64URL）   | JWTデコード・署名検証                                                                                              | JWTデコーダー               |
+| `qrcode-generator`          | QRコード生成                                                                                                       | QRコード生成                |
+| `JsBarcode`                 | バーコード描画                                                                                                     | JANコード生成               |
+| `bwip-js`                   | GS1バーコード描画（SVG）                                                                                           | GS1 DataBar生成             |
+| `jszip`                     | 複数バーコードのZIPパッケージング                                                                                  | GS1 DataBar生成             |
+| `fast-xml-parser`           | JSON⇔XML 相互変換                                                                                                  | JSON/XML変換                |
+| `papaparse`                 | JSON⇔CSV 相互変換・パース                                                                                          | JSON/CSV変換                |
+| `jsqr`                      | QRコードデコード（カメラ・画像）                                                                                   | QRチケット                  |
+| `@fontsource/noto-sans-jp`  | フォントセルフホスト                                                                                               | 全ページ共通                |
+| `@astrojs/check`            | Astro/TypeScript 型チェック（devDependency）                                                                       | 開発ツール共通              |
+| `typescript`                | TypeScript コンパイラ（devDependency）                                                                             | 開発ツール共通              |
+| `@playwright/test`          | E2Eリグレッションテスト（devDependency）                                                                           | 開発ツール共通              |
+| `@vitest/coverage-v8`       | テストカバレッジ測定（devDependency）                                                                              | 開発ツール共通              |
+| `lint-staged`               | コミット時の自動フォーマット (devDependency)                                                                       | 開発ツール共通              |
+| `eslint`                    | button type 漏れ検出の lint 本体（devDependency / #569）                                                           | 開発ツール共通              |
+| `eslint-plugin-react`       | `react/button-has-type` ルール提供（devDependency / #569）                                                         | 開発ツール共通              |
+| `@typescript-eslint/parser` | `.tsx` を ESLint でパースする parser（devDependency / #569）                                                       | 開発ツール共通              |
+| `encoding-japanese`         | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）                                                           | 文字コード判定・変換        |
+| `yaml`                      | YAML パース/シリアライズ。コメント保持（Document API）                                                             | 設定ファイル相互変換        |
+| `smol-toml`                 | TOML パース/シリアライズ（軽量、コメント保持なし）                                                                 | 設定ファイル相互変換        |
+| `ajv`                       | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード                                                   | 設定ファイル相互変換        |
+| `ajv-formats`               | ajv の format キーワード拡張（date-time 等）                                                                       | 設定ファイル相互変換        |
+| `sql-formatter`             | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0                                                 | SQL整形・パラメータ埋め込み |
+| `regexp-tree`               | 正規表現を位置情報付き AST へパース（CJS・純 JS・型同梱）                                                          | 正規表現ビジュアライザ      |
+| `recheck`                   | ReDoS 脆弱性検出。browser エントリ（`lib/browser.js`）を使用し `checkSync` で同期判定。型同梱・install script なし | 正規表現ビジュアライザ      |
+| `jsonc-parser`              | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア          |
+| `jmespath`                  | JMESPath クエリ評価（eval 非使用・CSP 安全）。フィルタ・射影に対応                                                 | JSON整形・ビューア          |
+| `pkijs`                     | X.509 証明書・PKCS#7 のパースと署名検証（Web Crypto エンジン経由）                                                 | SSL/TLS証明書デコーダ       |
+| `asn1js`                    | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ       |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
