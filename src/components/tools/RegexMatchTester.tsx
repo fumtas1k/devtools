@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { cx } from '@/utils/cx';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { ResultTable, type TableColumn } from '@/components/ui/ResultTable';
@@ -27,18 +27,68 @@ const UNKNOWN_CAP = 1000; // unknown verdict の force 実行時の入力長上�
 const TEXTAREA_MAX_LENGTH = 10000; // textarea の粗い上限（safe は線形マッチ）
 const EMPTY_MATCH: MatchResult | null = null; // useDebouncedTransform 用の安定参照
 
-/** マッチ結果をハイライト済み React 要素配列へ。マッチ全体を交互色 mark で囲む。 */
-function highlight(
-  input: string,
-  matches: RegexMatch[],
-  selected: number | null,
-  onSelect: (i: number) => void
-): ReactNode[] {
+interface MatchHighlightsProps {
+  text: string;
+  matches: RegexMatch[];
+  selected: number | null;
+  onSelect: (i: number) => void;
+}
+
+/**
+ * マッチ箇所を交互色 mark でハイライトする。roving tabindex パターンで、ハイライト群全体を
+ * 1 つの tab stop に集約する（issue #666）。常に 1 個の <mark> だけ tabIndex=0、残りは -1。
+ * 矢印 / Home / End で focus を移動（選択は変えない）、Enter / Space で onSelect を呼ぶ。
+ */
+function MatchHighlights({ text, matches, selected, onSelect }: MatchHighlightsProps) {
+  const [rovingIndex, setRovingIndex] = useState(0);
+  const markRefs = useRef<Array<HTMLElement | null>>([]);
+
+  // 新しいマッチ結果（安定参照）が来たら roving を先頭へリセットする
+  useEffect(() => {
+    setRovingIndex(0);
+  }, [matches]);
+
+  const n = matches.length;
+  // 件数縮小時の安全弁: 常に有効な tab stop が 1 個残るようにクランプ
+  const safeRoving = Math.min(rovingIndex, n - 1);
+
+  const focusMatch = (i: number) => {
+    setRovingIndex(i);
+    markRefs.current[i]?.focus();
+  };
+
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLElement>, i: number) => {
+    switch (e.key) {
+      case 'ArrowRight':
+        e.preventDefault();
+        focusMatch((i + 1) % n);
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        focusMatch((i - 1 + n) % n);
+        break;
+      case 'Home':
+        e.preventDefault();
+        focusMatch(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        focusMatch(n - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        // Enter / スペースは focus 移動ではなく選択（クリックと同等）
+        e.preventDefault();
+        onSelect(i);
+        break;
+    }
+  };
+
   const nodes: ReactNode[] = [];
   let cursor = 0;
   matches.forEach((m, i) => {
     if (m.start > cursor) {
-      nodes.push(<span key={`t-${i}`}>{input.slice(cursor, m.start)}</span>);
+      nodes.push(<span key={`t-${i}`}>{text.slice(cursor, m.start)}</span>);
     }
     const colorClass = i % 2 === 0 ? 'match-highlight-a' : 'match-highlight-b';
     // aria-label: 空マッチは「（空マッチ）」を付けて SR が聞き取れるようにする
@@ -47,8 +97,12 @@ function highlight(
     nodes.push(
       <mark
         key={`m-${i}`}
+        ref={(el) => {
+          markRefs.current[i] = el;
+        }}
         role="button"
-        tabIndex={0}
+        // roving tabindex: 常に 1 個だけ 0、残りは -1（tab stop を 1 つに集約）
+        tabIndex={i === safeRoving ? 0 : -1}
         aria-pressed={selected === i}
         aria-label={ariaLabel}
         className={cx(
@@ -57,25 +111,30 @@ function highlight(
           selected === i && 'match-highlight-active',
           m.value === '' && 'match-highlight-empty'
         )}
-        onClick={() => onSelect(i)}
-        title={`マッチ ${i + 1}`}
-        onKeyDown={(e) => {
-          // Enter または スペースでクリックと同等の動作（キーボード操作対応）
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onSelect(i);
-          }
+        onClick={() => {
+          // クリックでも roving item を更新し、次の Tab 復帰先を保持する
+          setRovingIndex(i);
+          onSelect(i);
         }}
+        title={`マッチ ${i + 1}`}
+        onKeyDown={(e) => handleKeyDown(e, i)}
       >
         {m.value === '' ? '​' : m.value}
       </mark>
     );
     cursor = Math.max(cursor, m.end);
   });
-  if (cursor < input.length) {
-    nodes.push(<span key="t-tail">{input.slice(cursor)}</span>);
+  if (cursor < text.length) {
+    nodes.push(<span key="t-tail">{text.slice(cursor)}</span>);
   }
-  return nodes;
+
+  // role="group" + aria-label で「矢印ナビ可能な 1 グループ」であることを SR に伝える。
+  // span（inline）でラップし、親コンテナの whitespace-pre-wrap / break-all 描画を変えない。
+  return (
+    <span role="group" aria-label="マッチ箇所">
+      {nodes}
+    </span>
+  );
 }
 
 export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Props) {
@@ -189,7 +248,12 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
               )}
               <div className="rounded-lg border border-default p-3 font-mono caption whitespace-pre-wrap break-all">
                 {matches.length > 0 ? (
-                  highlight(shownText, matches, selectedIndex, setSelected)
+                  <MatchHighlights
+                    text={shownText}
+                    matches={matches}
+                    selected={selectedIndex}
+                    onSelect={setSelected}
+                  />
                 ) : (
                   <span className="text-muted" aria-live="polite">
                     マッチしませんでした。
