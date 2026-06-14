@@ -278,6 +278,221 @@ describe('sanitizeHar', () => {
     expect(out.log.entries[0].request.postData!.text).not.toContain('hunter2');
   });
 
+  it('陽性対照: 拡充した認証ヘッダ名（x-amz-security-token 等）が redact される（#687a）', () => {
+    const secret = 'FQoGZXIvYXdzELONGSESSIONTOKEN1234567890';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/',
+              headers: [{ name: 'X-Amz-Security-Token', value: secret }],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.headers[0].value).not.toContain(secret);
+  });
+
+  it('陽性対照: 拡充した機密クエリ名（assertion 等）が構造的に redact される（#689a）', () => {
+    const secret = 'SAMLASSERTIONVALUE12345';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://x.com/sso?assertion=${secret}`,
+              headers: [],
+              queryString: [{ name: 'assertion', value: secret }],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.queryString[0].value).not.toBe(secret);
+  });
+
+  it('陽性対照: URL パスセグメント内のトークンが redact され host は保持される（#687c）', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://api.example.com/reset-password/${jwt}`,
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    const url = out.log.entries[0].request.url;
+    expect(url).not.toContain(jwt);
+    expect(url).toContain('https://api.example.com/'); // host は保持
+  });
+
+  it('陽性対照: 辞書外クエリ名の JWT も scrubText で redact される（#689b）', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyIn0.AbCdEfGhIjKlMnOpQrStUvWx';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://x.com/cb?foo=${jwt}`,
+              headers: [],
+              queryString: [{ name: 'foo', value: jwt }],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.url).not.toContain(jwt);
+  });
+
+  it('陽性対照: 辞書外ヘッダの値に含まれる JWT が scrubText で redact される（#687b）', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/',
+              headers: [{ name: 'X-Custom-Trace', value: `trace=${jwt}` }],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.headers[0].value).not.toContain(jwt);
+  });
+
+  it('退行対照: 機密を含まない辞書外ヘッダは変更しない', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/',
+              headers: [{ name: 'Accept-Language', value: 'ja-JP,ja;q=0.9' }],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.headers[0].value).toBe('ja-JP,ja;q=0.9');
+  });
+
+  it('陽性対照: response.redirectURL 内のトークンが redact される（#687d）', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/login',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: {
+              status: 302,
+              headers: [],
+              cookies: [],
+              content: {},
+              redirectURL: 'https://x.com/cb?access_token=SUPERSECRETTOKEN12345&code=AUTH99',
+            },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].response.redirectURL!).not.toContain('SUPERSECRETTOKEN12345');
+  });
+
+  it('退行対照: encoding 欄が無くても mimeType がバイナリ系なら本文スキャンをスキップし破壊しない（#690 M-2）', () => {
+    const b64 = 'SGVsbG8gd29ybGRIaWdoRW50cm9weUJhc2U2NENvbnRlbnRBYmNkZWZnaGlqaw==';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/img.png',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: {
+              status: 200,
+              headers: [],
+              cookies: [],
+              content: { mimeType: 'image/png', text: b64 },
+            },
+          },
+        ],
+      },
+    };
+    const { har: out, counts } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].response.content.text).toBe(b64);
+    expect(counts.BODY_SCAN).toBe(0);
+  });
+
+  it('陽性対照: テキスト系 mimeType（application/json）の本文は引き続きスキャンされる', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzIn0.ZZZZxwRJSMeKKF2QTabcDEF';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/api',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: {
+              status: 200,
+              headers: [],
+              cookies: [],
+              content: { mimeType: 'application/json', text: `{"t":"${jwt}"}` },
+            },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].response.content.text).not.toContain(jwt);
+  });
+
   // ── P2-3: 壊れた entry でクラッシュしない ──
   it('JSON として妥当だが entry が壊れた HAR でも例外を投げない', () => {
     // { "log": { "entries": [ {} ] } } — request/response 欠落

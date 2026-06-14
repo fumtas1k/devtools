@@ -42,7 +42,7 @@ export function emptyRedactCounts(): Record<HarRedactCategory, number> {
 }
 
 /** Cookie を運ぶヘッダ名（小文字比較）。COOKIE カテゴリで redact する。 */
-export const COOKIE_HEADER_NAMES = new Set(['cookie', 'set-cookie']);
+export const COOKIE_HEADER_NAMES = new Set(['cookie', 'set-cookie', 'cookie2', 'set-cookie2']);
 
 /** 認証系ヘッダ名（小文字比較）。AUTH_HEADER カテゴリで redact する。 */
 export const AUTH_HEADER_NAMES = new Set([
@@ -52,6 +52,14 @@ export const AUTH_HEADER_NAMES = new Set([
   'x-auth-token',
   'x-csrf-token',
   'x-xsrf-token',
+  'x-amz-security-token',
+  'x-amz-credential',
+  'x-session-token',
+  'x-access-token',
+  'x-refresh-token',
+  'x-functions-key',
+  'www-authenticate',
+  'proxy-authenticate',
 ]);
 
 /**
@@ -84,4 +92,13 @@ export const SENSITIVE_PARAM_NAMES = new Set([
   'passwd',
   'pwd',
   'code',
+  'next',
+  'redirect',
+  'continue',
+  'return_to',
+  'assertion',
+  'saml_response',
+  'jwt',
+  'auth',
+  'session_state',
 ]);

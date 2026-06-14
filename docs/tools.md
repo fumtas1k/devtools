@@ -597,8 +597,14 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - HAR（HTTP Archive）は JSON 形式のため `JSON.parse` でパースし、`log.entries` が配列であることを最小スキーマ検証する（`src/utils/har/parse.ts`）
 - サニタイズは二段階。①構造的 redact（`src/utils/har/sanitize.ts`）: フィールド名辞書で確実に処理。②`scrubText`（`src/utils/secret-scrubber/scrub.ts`）: 本文の取りこぼしを自由テキスト走査で補完
 - 構造的 redact の対象: `request.cookies[].value` / `response.cookies[].value` / Cookie・Set-Cookie ヘッダ値（COOKIE カテゴリ）/ Authorization 等の認証ヘッダ値（AUTH_HEADER）/ `request.queryString[]` の機密名エントリ（QUERY）/ `request.url` のクエリパラメータと basic-auth パスワード（QUERY）/ URL を運ぶヘッダ `Referer`・`Origin`・`Location`・`Content-Location` への URL redact 適用（QUERY。URL から消した値が他ヘッダに残る漏洩を防ぐ）/ `postData.params[]` の機密名エントリと `postData.text` への scrubText（BODY）/ `response.content.text` への scrubText（BODY_SCAN）
+- カバレッジ拡張（#687/#689/#690）:
+  - **辞書外ヘッダ値**にも `scrubText` フォールバックを適用（AUTH_HEADER）。`x-amz-security-token` 等の認証ヘッダ辞書も拡充
+  - **URL のパス以降**（path?query#fragment）に `scrubText` を適用（QUERY）。`scheme://authority`（host・port・basic-auth）は保持し、パス内トークン（`/reset/<jwt>`）や辞書外クエリ名の JWT/API キーを redact する。クエリ/フラグメントは `&` 越えの飲み込みを防ぐため param value 単位で走査する
+  - **`response.redirectURL`** にも URL redact を適用（QUERY）
+  - over-masking 方針: パス/ヘッダ内の IP・メール・高エントロピー文字列も redact されうるが、host は保持され漏えい方向ではなく安全側。詳細は `docs/decisions.md`
+  - **本文スキャンのスキップ拡張**: `encoding === 'base64'` に加え、`content.mimeType` がバイナリ系（`image/*`・`audio/*`・`video/*`・`font/*`・`application/octet-stream`・`pdf`・`zip` 等）なら encoding 欄が無くてもスキップし、`HIGH_ENTROPY_BASE64` による本文破壊を防ぐ
 - 防御的処理: JSON として妥当でも `request`/`response` を欠く壊れた entry は例外を投げずスキップする（`sanitizeHar` はレンダリング中の `useMemo` で走るため、throw すると画面が落ちる）
-- 一貫トークン化: `makeTokenizer` がカテゴリ × 値 → `[REDACTED:COOKIE_1]` 等のプレースホルダを発行する。同一値には同一プレースホルダを割り当て、HAR 全体で値の同一性が保たれる
+- 一貫トークン化: `makeTokenizer` がカテゴリ × 値 → `[REDACTED:COOKIE_1]` 等のプレースホルダを発行する。同一値には同一プレースホルダを割り当て、HAR 全体で値の同一性が保たれる。**ただしこの HAR 全体一貫性は構造的 redact（tokenize 由来）に限る**。`scrubText` 由来の redaction（本文・辞書外ヘッダ・URLパス等）は呼び出しごとに採番されるため、異なるフィールドに跨る同一秘密値の一貫トークン化は保証されない（安全側であり漏えいはしない）
 - 純関数・入力非破壊: `structuredClone` でディープコピーしてから処理するため元オブジェクトを mutate しない
 - parse + sanitize は **Web Worker**（`src/workers/harSanitizer.worker.ts`）で実行する。`sanitizeHar` は `structuredClone` + 全 response body の正規表現スキャンで中規模 HAR でも数秒かかり、メインスレッド同期実行だと「ページが応答しません」になる（issue #677）。worker に逃がしメインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する
 - フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` の `onProgress` コールバックで処理済みエントリ数を逐次受け取り、`ProgressBar` で進捗表示する

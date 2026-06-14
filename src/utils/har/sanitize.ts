@@ -71,10 +71,67 @@ function redactPairString(
     .join(pairSep);
 }
 
+/**
+ * `name=value&...` 形式の各 value 部のみに scrubText を適用する。
+ * クエリ/フラグメント全体を scrubText に渡すと CREDENTIAL_ASSIGN の値クラスが
+ * 区切り `&` を越えて隣の param まで飲み込む（非機密 param を破壊する）ため、
+ * value 単位で走査して取りこぼし無く・破壊無く redact する。
+ */
+function scrubPairValues(s: string, counts: Record<HarRedactCategory, number>): string {
+  return s
+    .split('&')
+    .map((pair) => {
+      const eq = pair.indexOf('=');
+      if (eq === -1) return scrubInto(pair, counts, 'QUERY');
+      return pair.slice(0, eq + 1) + scrubInto(pair.slice(eq + 1), counts, 'QUERY');
+    })
+    .join('&');
+}
+
+/**
+ * URL の scheme://authority（host・port・basic-auth）を保持しつつ、パス以降に
+ * scrubText を適用する。host を潰さず URL の可読性を保ったまま、パス内トークンや
+ * 辞書外クエリ名の JWT/API キーを redact する。
+ * - path: そのまま scrubText（`key=value&` 構造を持たないため安全）
+ * - query / fragment: param value 単位で scrubText（`&` 越えの飲み込みを防ぐ）
+ */
+function scrubUrlPath(url: string, counts: Record<HarRedactCategory, number>): string {
+  const schemeMatch = url.match(/^[a-z][a-z0-9+.-]{0,31}:\/\//i);
+  let authorityEnd: number;
+  if (schemeMatch) {
+    const after = schemeMatch[0].length;
+    const sepIndex = url.slice(after).search(/[/?#]/);
+    authorityEnd = sepIndex === -1 ? url.length : after + sepIndex;
+  } else if (url.startsWith('//')) {
+    const sepIndex = url.slice(2).search(/[/?#]/);
+    authorityEnd = sepIndex === -1 ? url.length : 2 + sepIndex;
+  } else {
+    // scheme/authority 無しの相対 URL 等は全体を対象にする
+    authorityEnd = 0;
+  }
+  const head = url.slice(0, authorityEnd);
+  const rest = url.slice(authorityEnd);
+  if (rest === '') return url;
+
+  // path? query # fragment に分解する
+  const hashIndex = rest.indexOf('#');
+  const fragment = hashIndex !== -1 ? rest.slice(hashIndex + 1) : '';
+  const beforeHash = hashIndex !== -1 ? rest.slice(0, hashIndex) : rest;
+  const qIndex = beforeHash.indexOf('?');
+  const path = qIndex !== -1 ? beforeHash.slice(0, qIndex) : beforeHash;
+  const query = qIndex !== -1 ? beforeHash.slice(qIndex + 1) : '';
+
+  let result = head + scrubInto(path, counts, 'QUERY');
+  if (qIndex !== -1) result += '?' + scrubPairValues(query, counts);
+  if (hashIndex !== -1) result += '#' + scrubPairValues(fragment, counts);
+  return result;
+}
+
 /** request.url の basic-auth と機密クエリパラメータを redact する。 */
 function redactUrl(
   url: string,
   enabled: Record<HarRedactCategory, boolean>,
+  counts: Record<HarRedactCategory, number>,
   tokenize: (c: HarRedactCategory, v: string) => string
 ): string {
   let result = url;
@@ -108,12 +165,63 @@ function redactUrl(
       result = base + newQuery + hash;
     }
   }
+
+  // パス以降（path?query#fragment）に scrubText を適用（host は保持）。
+  // 構造的クエリ redact（SENSITIVE_PARAM_NAMES）の後に走らせ、placeholder は再マッチしない。
+  if (enabled.QUERY) {
+    result = scrubUrlPath(result, counts);
+  }
+
   return result;
+}
+
+/**
+ * value に scrubText を適用し、findings 件数を counts[category] に加算して
+ * redact 済み文字列を返す（findings が無ければ原文を返す）。
+ */
+function scrubInto(
+  value: string,
+  counts: Record<HarRedactCategory, number>,
+  category: HarRedactCategory
+): string {
+  const r = scrubText(value, DEFAULT_ENABLED);
+  if (r.findings.length > 0) {
+    counts[category] += r.findings.length;
+    return r.output;
+  }
+  return value;
+}
+
+/**
+ * 本文走査をスキップすべきバイナリ系 mimeType か判定する。
+ * base64 でエンコードされがちで、scrubText（特に HIGH_ENTROPY_BASE64）が
+ * 本文を破壊しデコード不能にするのを防ぐ。
+ */
+function isBinaryMimeType(mimeType: unknown): boolean {
+  if (typeof mimeType !== 'string') return false;
+  const m = mimeType.toLowerCase().split(';')[0].trim();
+  if (
+    m.startsWith('image/') ||
+    m.startsWith('audio/') ||
+    m.startsWith('video/') ||
+    m.startsWith('font/')
+  ) {
+    return true;
+  }
+  return [
+    'application/octet-stream',
+    'application/pdf',
+    'application/zip',
+    'application/gzip',
+    'application/x-protobuf',
+    'application/wasm',
+  ].includes(m);
 }
 
 function redactHeaders(
   headers: HarNameValue[],
   enabled: Record<HarRedactCategory, boolean>,
+  counts: Record<HarRedactCategory, number>,
   tokenize: (c: HarRedactCategory, v: string) => string
 ): void {
   for (const h of headers) {
@@ -131,7 +239,11 @@ function redactHeaders(
     } else if (enabled.QUERY && URL_HEADER_NAMES.has(lower)) {
       // Referer / Origin / Location 等は URL を運ぶため URL と同じ redact を適用する。
       // （URL のクエリだけ redact しても同じ秘密値がこれらのヘッダに残るのを防ぐ）
-      h.value = redactUrl(h.value, enabled, tokenize);
+      h.value = redactUrl(h.value, enabled, counts, tokenize);
+    } else if (enabled.AUTH_HEADER) {
+      // 辞書外ヘッダ値に含まれる機密（JWT / API キー等）を scrubText で拾う。
+      // 認証ヘッダトグルの意味的拡張（ヘッダ値の機密走査）として AUTH_HEADER で計上。
+      h.value = scrubInto(h.value, counts, 'AUTH_HEADER');
     }
   }
 }
@@ -165,7 +277,7 @@ export function sanitizeHar(
     // ── リクエスト ──
     if (typeof request === 'object' && request !== null) {
       // ヘッダ
-      if (Array.isArray(request.headers)) redactHeaders(request.headers, enabled, tokenize);
+      if (Array.isArray(request.headers)) redactHeaders(request.headers, enabled, counts, tokenize);
 
       // Cookie 配列
       if (enabled.COOKIE && Array.isArray(request.cookies)) {
@@ -189,7 +301,7 @@ export function sanitizeHar(
 
       // URL
       if (typeof request.url === 'string') {
-        request.url = redactUrl(request.url, enabled, tokenize);
+        request.url = redactUrl(request.url, enabled, counts, tokenize);
       }
 
       // POST ボディ
@@ -206,18 +318,15 @@ export function sanitizeHar(
           }
         }
         if (typeof request.postData.text === 'string') {
-          const r = scrubText(request.postData.text, DEFAULT_ENABLED);
-          if (r.findings.length > 0) {
-            request.postData.text = r.output;
-            counts.BODY += r.findings.length;
-          }
+          request.postData.text = scrubInto(request.postData.text, counts, 'BODY');
         }
       }
     }
 
     // ── レスポンス ──
     if (typeof response === 'object' && response !== null) {
-      if (Array.isArray(response.headers)) redactHeaders(response.headers, enabled, tokenize);
+      if (Array.isArray(response.headers))
+        redactHeaders(response.headers, enabled, counts, tokenize);
 
       if (enabled.COOKIE && Array.isArray(response.cookies)) {
         for (const c of response.cookies) {
@@ -225,25 +334,28 @@ export function sanitizeHar(
         }
       }
 
+      // リダイレクト先 URL（Location ヘッダと同じく URL を運ぶ独立フィールド）
+      if (enabled.QUERY && typeof response.redirectURL === 'string' && response.redirectURL) {
+        response.redirectURL = redactUrl(response.redirectURL, enabled, counts, tokenize);
+      }
+
       // レスポンスボディスキャン。
-      // base64 エンコードされた本文は scrubText にかけない:
+      // base64 本文・バイナリ系 mimeType は scrubText にかけない:
       //  - 秘密は base64 文字列内にありパターン検出が効かない（false confidence）。
       //  - HIGH_ENTROPY_BASE64 ルールが base64 ブロック自体にマッチし、本文を破壊して
       //    デコード不能な HAR を出力してしまう。
-      // よって encoding === 'base64' のときはスキップし、本文を素通しで保持する。
+      // encoding === 'base64' に加え、encoding 欄が無くても mimeType がバイナリ系なら
+      // スキップする（多くの HAR は画像等で encoding を省略するため）。
       const content = response.content;
       if (
         enabled.BODY_SCAN &&
         content &&
         typeof content === 'object' &&
         typeof content.text === 'string' &&
-        content.encoding !== 'base64'
+        content.encoding !== 'base64' &&
+        !isBinaryMimeType(content.mimeType)
       ) {
-        const r = scrubText(content.text, DEFAULT_ENABLED);
-        if (r.findings.length > 0) {
-          content.text = r.output;
-          counts.BODY_SCAN += r.findings.length;
-        }
+        content.text = scrubInto(content.text, counts, 'BODY_SCAN');
       }
     }
 
