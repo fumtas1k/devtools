@@ -9,11 +9,11 @@
 
 key-converter のレビューで、JWK 入出力に関する忠実性・堅牢性の問題が判明した。実機（Node.js の Web Crypto）で挙動を検証済み。
 
-| # | 重要度 | 問題 | 検証結果 |
-| - | :----- | :--- | :------- |
-| P1 | 中 | `alg:"RS384"/"RS512"/"PS256"` を宣言した正当な RSA 署名 JWK が import 失敗する | ハードコードの `RSASSA-PKCS1-v1_5 / SHA-256` で import すると、JWK の `alg` と hash の不整合により `DataError`。UI では「鍵のインポートに失敗しました」になる |
-| P2 | 中 | round-trip で `kid`/`use` が脱落し、RSA では `alg:"RS256"` が常時誤注入される | `importKey`→`exportKey('jwk')` を通すと入力の `kid`/`use` が失われ、RSA は鍵の意図に関わらず一律 `alg:"RS256"` が付く。説明文がうたう「JWKS への変換」で `kid` が要なのに失われる |
-| P3 | 低 | `RSA PUBLIC KEY`（PKCS#1 公開鍵）の openssl 案内が不完全 | `detect.ts` の案内 `openssl rsa -in key.pem -pubout` は PKCS#1 公開鍵に効かない（`openssl rsa` は既定で秘密鍵を期待）。正しくは `-RSAPublicKey_in` が必要 |
+| #   | 重要度 | 問題                                                                           | 検証結果                                                                                                                                                                          |
+| --- | :----- | :----------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1  | 中     | `alg:"RS384"/"RS512"/"PS256"` を宣言した正当な RSA 署名 JWK が import 失敗する | ハードコードの `RSASSA-PKCS1-v1_5 / SHA-256` で import すると、JWK の `alg` と hash の不整合により `DataError`。UI では「鍵のインポートに失敗しました」になる                     |
+| P2  | 中     | round-trip で `kid`/`use` が脱落し、RSA では `alg:"RS256"` が常時誤注入される  | `importKey`→`exportKey('jwk')` を通すと入力の `kid`/`use` が失われ、RSA は鍵の意図に関わらず一律 `alg:"RS256"` が付く。説明文がうたう「JWKS への変換」で `kid` が要なのに失われる |
+| P3  | 低     | `RSA PUBLIC KEY`（PKCS#1 公開鍵）の openssl 案内が不完全                       | `detect.ts` の案内 `openssl rsa -in key.pem -pubout` は PKCS#1 公開鍵に効かない（`openssl rsa` は既定で秘密鍵を期待）。正しくは `-RSAPublicKey_in` が必要                         |
 
 ## 2. 方針（採用：素材重視・制約除去）
 
@@ -22,7 +22,7 @@ key-converter のレビューで、JWK 入出力に関する忠実性・堅牢�
 - 検証済み: `alg`/`key_ops`/`use`/`ext` を除去すれば、RS384/RS512/PS256・用途宣言付き（`use:"enc"` 等）の RSA/EC JWK もすべて素材を保ったまま import できる。
 - 副作用として RSA-OAEP / ECDH など暗号用途の鍵も「鍵素材の形式変換」として通るようになる（素材は同一であり安全側）。`kty` は引き続き RSA / EC のみ対応（OKP は非対応のまま）。
 
-採用しなかった代替案: JWK の `alg` から import hash を導出（RS256→SHA-256 等）し PS*→RSA-PSS と name も切替える「hash マッピング」案。署名鍵限定を維持できるが分岐が増え、対応 alg を網羅する必要があり複雑。素材重視案の方がシンプルで対応範囲も広い。
+採用しなかった代替案: JWK の `alg` から import hash を導出（RS256→SHA-256 等）し PS\*→RSA-PSS と name も切替える「hash マッピング」案。署名鍵限定を維持できるが分岐が増え、対応 alg を網羅する必要があり複雑。素材重視案の方がシンプルで対応範囲も広い。
 
 ## 3. 実装
 
@@ -39,7 +39,13 @@ async function importFromJwk(jwkObject, visibility, algorithm, namedCurve) {
   // 整合を厳密検証するため、これらが付いた JWK（RS384/RS512/PS256・enc 用途等）は
   // そのままだと DataError になる。本ツールは鍵素材の形式変換が目的で hash/用途は
   // 変換結果に影響しないため、制約フィールドを外して素材だけを import する。
-  const { alg: _a, key_ops: _k, use: _u, ext: _e, ...material } = jwkObject as Record<string, unknown>;
+  const {
+    alg: _a,
+    key_ops: _k,
+    use: _u,
+    ext: _e,
+    ...material
+  } = jwkObject as Record<string, unknown>;
   return crypto.subtle.importKey('jwk', material as JsonWebKey, alg, true, usages);
 }
 ```
@@ -65,6 +71,7 @@ const jwkText = JSON.stringify(jwkOut, null, 2);
 ```
 
 結果:
+
 - PEM/DER 入力 → 出力 JWK は `kty` + 素材のみ（`alg`/`ext`/`key_ops` を付けない＝アルゴリズムを詐称しない）。
 - JWK 入力 → 出力 JWK は素材 + 入力由来の `kid`/`use`/`alg`/`key_ops` を忠実に保持。
 

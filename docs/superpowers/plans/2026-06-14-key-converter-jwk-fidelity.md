@@ -15,6 +15,7 @@
 ## 事前確認（環境）
 
 このリポジトリの規約（`.agents/rules/common.md`）:
+
 - コミットメッセージは **日本語 + Conventional Commits**（`feat:`/`fix:`/`docs:`/`refactor:`/`test:` 等）。
 - push 前に `npm run test`（ユニット）と `node_modules/.bin/astro check`（型）を実行。
 - ステージは明示 pathspec のみ（`git add .`/`-A` 禁止）。
@@ -22,20 +23,21 @@
 
 ## File Structure
 
-| ファイル | 役割 | 変更種別 |
-| :------- | :--- | :------- |
-| `src/utils/key/convert.ts` | JWK import の素材除去 + 出力 JWK 正規化 | Modify |
-| `src/utils/key/detect.ts` | RSA PUBLIC KEY の openssl 案内訂正 | Modify |
-| `src/utils/__tests__/key-convert.test.ts` | 回帰テスト追加（import 成功 / メタデータ保持 / alg 非付与） | Modify |
-| `docs/tools.md` | 仕組み・制限の追記 | Modify |
-| `src/pages/tools/key-converter.astro` | 説明文の反映 | Modify |
-| `docs/decisions.md` | [112] への追記 | Modify |
+| ファイル                                  | 役割                                                        | 変更種別 |
+| :---------------------------------------- | :---------------------------------------------------------- | :------- |
+| `src/utils/key/convert.ts`                | JWK import の素材除去 + 出力 JWK 正規化                     | Modify   |
+| `src/utils/key/detect.ts`                 | RSA PUBLIC KEY の openssl 案内訂正                          | Modify   |
+| `src/utils/__tests__/key-convert.test.ts` | 回帰テスト追加（import 成功 / メタデータ保持 / alg 非付与） | Modify   |
+| `docs/tools.md`                           | 仕組み・制限の追記                                          | Modify   |
+| `src/pages/tools/key-converter.astro`     | 説明文の反映                                                | Modify   |
+| `docs/decisions.md`                       | [112] への追記                                              | Modify   |
 
 ---
 
 ### Task 1: JWK import を鍵素材のみの取り込みに変更
 
 **Files:**
+
 - Modify: `src/utils/key/convert.ts`（`importFromJwk` 関数、現状 71-81 行付近）
 - Test: `src/utils/__tests__/key-convert.test.ts`（陽性対照 describe に追加）
 
@@ -92,7 +94,13 @@ async function importFromJwk(
   // 整合を厳密検証するため、これらが付いた JWK（RS384/RS512/PS256・enc 用途等）は
   // そのままだと DataError になる。本ツールは鍵素材の形式変換が目的で hash/用途は
   // 変換結果に影響しないため、制約フィールドを外して素材だけを import する。
-  const { alg: _a, key_ops: _k, use: _u, ext: _e, ...material } = jwkObject as Record<string, unknown>;
+  const {
+    alg: _a,
+    key_ops: _k,
+    use: _u,
+    ext: _e,
+    ...material
+  } = jwkObject as Record<string, unknown>;
 
   return crypto.subtle.importKey('jwk', material as JsonWebKey, alg, true, usages);
 }
@@ -120,6 +128,7 @@ git commit -m "fix: key-converter の JWK import を鍵素材のみ取り込み�
 ### Task 2: 出力 JWK のメタデータ正規化（kid/use/alg の忠実化）
 
 **Files:**
+
 - Modify: `src/utils/key/convert.ts`（メイン関数 `convertKey` の export ブロック、現状 126-156 行付近）
 - Test: `src/utils/__tests__/key-convert.test.ts`
 
@@ -169,14 +178,14 @@ Expected: FAIL（現状は kid/use が脱落し、PEM 入力の出力 JWK に `a
 `src/utils/key/convert.ts` のメイン関数内、現状の以下の行:
 
 ```ts
-    // JWK export
-    const jwkExported = await crypto.subtle.exportKey('jwk', cryptoKey);
+// JWK export
+const jwkExported = await crypto.subtle.exportKey('jwk', cryptoKey);
 ```
 
 および後段の
 
 ```ts
-    const jwkText = JSON.stringify(jwkExported, null, 2);
+const jwkText = JSON.stringify(jwkExported, null, 2);
 ```
 
 を、それぞれ次のように置き換える。`jwkExported` の宣言を残しつつ、`jwkText` 生成の直前で正規化する。
@@ -184,27 +193,27 @@ Expected: FAIL（現状は kid/use が脱落し、PEM 入力の出力 JWK に `a
 `const jwkExported = await crypto.subtle.exportKey('jwk', cryptoKey);` を以下へ:
 
 ```ts
-    // JWK export（Web Crypto 注入の advisory フィールドを正規化する）
-    const jwkOut = (await crypto.subtle.exportKey('jwk', cryptoKey)) as Record<string, unknown>;
-    // Web Crypto が付与する advisory フィールドは変換アーティファクトなので除去する。
-    // 特に RSA では実際の意図に関わらず alg:"RS256" が注入されるため、鍵素材から
-    // 導けない情報を詐称しないよう削除する。
-    delete jwkOut.ext;
-    delete jwkOut.key_ops;
-    delete jwkOut.alg;
-    // 入力が JWK の場合、round-trip で失われる利用者由来メタデータを復元する。
-    if (source === 'jwk' && jwkObject) {
-      const srcJwk = jwkObject as Record<string, unknown>;
-      for (const field of ['alg', 'use', 'kid', 'key_ops'] as const) {
-        if (srcJwk[field] !== undefined) jwkOut[field] = srcJwk[field];
-      }
-    }
+// JWK export（Web Crypto 注入の advisory フィールドを正規化する）
+const jwkOut = (await crypto.subtle.exportKey('jwk', cryptoKey)) as Record<string, unknown>;
+// Web Crypto が付与する advisory フィールドは変換アーティファクトなので除去する。
+// 特に RSA では実際の意図に関わらず alg:"RS256" が注入されるため、鍵素材から
+// 導けない情報を詐称しないよう削除する。
+delete jwkOut.ext;
+delete jwkOut.key_ops;
+delete jwkOut.alg;
+// 入力が JWK の場合、round-trip で失われる利用者由来メタデータを復元する。
+if (source === 'jwk' && jwkObject) {
+  const srcJwk = jwkObject as Record<string, unknown>;
+  for (const field of ['alg', 'use', 'kid', 'key_ops'] as const) {
+    if (srcJwk[field] !== undefined) jwkOut[field] = srcJwk[field];
+  }
+}
 ```
 
 `const jwkText = JSON.stringify(jwkExported, null, 2);` を以下へ:
 
 ```ts
-    const jwkText = JSON.stringify(jwkOut, null, 2);
+const jwkText = JSON.stringify(jwkOut, null, 2);
 ```
 
 注意: 既存コードでは `jwkExported` という変数名を使っているため、上記で `jwkOut` に統一する。`jwkExported` への他の参照は無い（`jwkText` 生成のみ）ことを確認してから置換する。
@@ -234,6 +243,7 @@ git commit -m "fix: key-converter の出力JWKでkid/use/algを忠実化しRS256
 ### Task 3: RSA PUBLIC KEY の openssl 案内訂正
 
 **Files:**
+
 - Modify: `src/utils/key/detect.ts`（現状 395-396 行付近、legacy-pem の message 構築部）
 
 - [ ] **Step 1: 案内文を訂正**
@@ -271,6 +281,7 @@ git commit -m "fix: key-converter の RSA PUBLIC KEY openssl 案内に -RSAPubli
 ### Task 4: ドキュメント更新
 
 **Files:**
+
 - Modify: `docs/tools.md`（「鍵フォーマット変換」節、現状 566-591 行付近）
 - Modify: `src/pages/tools/key-converter.astro`（ToolInfoSection 内）
 - Modify: `docs/decisions.md`（[112] の結果・トレードオフ）
@@ -297,7 +308,9 @@ git commit -m "fix: key-converter の RSA PUBLIC KEY openssl 案内に -RSAPubli
 「対応形式」の `<ul>` 内、JWK の `<li>`（現状: `<li>JWK（JSON Web Key、RFC 7517）</li>`）を次に置き換える。
 
 ```astro
-      <li>JWK（JSON Web Key、RFC 7517）。入力 JWK の <code>kid</code> / <code>use</code> / <code>alg</code> は出力に保持されます</li>
+<li>
+  JWK（JSON Web Key、RFC 7517）。入力 JWK の <code>kid</code> / <code>use</code> / <code>alg</code> は出力に保持されます
+</li>
 ```
 
 - [ ] **Step 4: `docs/decisions.md` [112] に結果追記**

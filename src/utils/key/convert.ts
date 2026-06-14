@@ -82,7 +82,13 @@ async function importFromJwk(
   // 整合を厳密検証するため、これらが付いた JWK（RS384/RS512/PS256・enc 用途等）は
   // そのままだと DataError になる。本ツールは鍵素材の形式変換が目的で hash/用途は
   // 変換結果に影響しないため、制約フィールドを外して素材だけを import する。
-  const { alg: _a, key_ops: _k, use: _u, ext: _e, ...material } = jwkObject as Record<string, unknown>;
+  const {
+    alg: _a,
+    key_ops: _k,
+    use: _u,
+    ext: _e,
+    ...material
+  } = jwkObject as Record<string, unknown>;
 
   return crypto.subtle.importKey('jwk', material as JsonWebKey, alg, true, usages);
 }
