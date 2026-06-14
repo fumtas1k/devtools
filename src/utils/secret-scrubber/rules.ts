@@ -232,8 +232,10 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'EMAIL',
     category: 'EMAIL',
-    // ドメインは「.+セグメント」の繰り返しで終端し、文末ピリオドを巻き込まない
-    pattern: /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,
+    // local part ≤64 / label ≤63（RFC 上限）で量化子を bound し、@ 無し長語連での
+    // catastrophic backtracking（O(n²) ReDoS, #688）を防ぐ。ドメインは「.+セグメント」の
+    // 繰り返しで終端し文末ピリオドを巻き込まない。上限超過のメール風文字列は RFC 上無効。
+    pattern: /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63})+/g,
     priority: 60,
   },
 

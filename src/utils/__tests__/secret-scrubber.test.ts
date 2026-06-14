@@ -517,6 +517,35 @@ describe('CREDENTIAL_URL — multi-@ / protocol-relative の陽性対照', () =>
   });
 });
 
+describe('ReDoS 回帰防止 — scrubText の線形時間性（#688）', () => {
+  it('陽性対照: 区切りの無い長語連でも閾値内に完了する（EMAIL/CREDENTIAL_URL の旧 greedy regex なら fail）', () => {
+    // `'a'.repeat(n)` は catastrophic backtracking の 2 つの主因を同時に踏む:
+    //  - 旧 EMAIL `[\w.+-]+@...`（@ 無し長語連で O(n²)、80k で ~5.7s）
+    //  - 旧 CREDENTIAL_URL scheme `[a-z][a-z0-9+.-]*:`（: 無し小文字連で O(n²)、100k で ~8s）
+    // 上限付き（`{1,64}`/`{1,63}` と scheme `{0,31}`）では全体 O(n)（100k で ~50ms）。
+    // 閾値 1500ms は旧（数千ms / vitest 既定 5s タイムアウト）と新（数十ms）の
+    // 間に十分なマージンで置く（CI のばらつきにも耐える）。どちらの regex を旧に戻しても fail する。
+    const input = 'a'.repeat(100000);
+    const start = performance.now();
+    scrubText(input, DEFAULT_ENABLED);
+    const elapsed = performance.now() - start;
+    expect(elapsed).toBeLessThan(1500);
+  });
+
+  it('retention: 上限内の実在メールは引き続き検出・redact する', () => {
+    for (const email of [
+      'foo@bar.com',
+      'alice.smith+tag@sub.example.co.jp',
+      'x@y.io',
+      'a_b-c@d-e.f.org',
+    ]) {
+      const r = scrubText(email, DEFAULT_ENABLED);
+      expect(r.output).not.toContain(email);
+      expect(r.counts.EMAIL).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('resolveMaskRange — d フラグ fail-safe（#690 M-1）', () => {
   it('indices が取れない場合はマッチ全体を over-mask する（漏えい方向に倒さない）', () => {
     // d フラグ非対応環境を模した、.indices を持たないマッチ
