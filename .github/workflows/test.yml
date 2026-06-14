@@ -30,6 +30,9 @@ jobs:
       - name: フォーマットチェックを実行
         run: npm run format:check
 
+      - name: ESLint を実行（button type 漏れ検出 / #569）
+        run: npm run lint
+
       # #339: astro check は CI で走っていなかったため hint debt が蓄積していた。
       # errors / warnings / hints すべて 0 を強制し、新規 hint 混入を即時 fail させる。
       # 内訳をログに残して debug 容易性も担保。
