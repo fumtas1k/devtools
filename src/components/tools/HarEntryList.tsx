@@ -53,26 +53,39 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
           </tr>
         </thead>
         <tbody>
-          {entries.map((e, i) => (
-            <tr key={i} className={selectedIndex === i ? 'bg-active' : undefined}>
-              <td className="whitespace-nowrap px-3 py-1.5 font-mono">{e.request.method}</td>
-              <td className="px-3 py-1.5">
-                <button
-                  type="button"
-                  aria-current={selectedIndex === i ? 'true' : undefined}
-                  className="text-left text-primary underline-offset-2 hover:underline"
-                  onClick={() => onSelect(i)}
-                >
-                  {shortUrl(e.request.url)}
-                </button>
-              </td>
-              <td className="whitespace-nowrap px-3 py-1.5 font-mono">{e.response.status}</td>
-              <td className="whitespace-nowrap px-3 py-1.5 font-mono">
-                {formatSize(e.response.content?.size ?? e.response.bodySize)}
-              </td>
-              <td className="whitespace-nowrap px-3 py-1.5 font-mono">{formatTime(e.time)}</td>
-            </tr>
-          ))}
+          {entries.map((e, i) => {
+            const request = e?.request;
+            const response = e?.response;
+            const url = typeof request?.url === 'string' ? request.url : null;
+            return (
+              <tr key={i} className={selectedIndex === i ? 'bg-active' : undefined}>
+                <td className="whitespace-nowrap px-3 py-1.5 font-mono">
+                  {request?.method ?? '—'}
+                </td>
+                <td className="px-3 py-1.5">
+                  {url != null ? (
+                    <button
+                      type="button"
+                      aria-current={selectedIndex === i ? 'true' : undefined}
+                      className="text-left text-primary underline-offset-2 hover:underline"
+                      onClick={() => onSelect(i)}
+                    >
+                      {shortUrl(url)}
+                    </button>
+                  ) : (
+                    <span className="text-muted">（壊れたエントリ）</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-1.5 font-mono">
+                  {response?.status ?? '—'}
+                </td>
+                <td className="whitespace-nowrap px-3 py-1.5 font-mono">
+                  {formatSize(response?.content?.size ?? response?.bodySize)}
+                </td>
+                <td className="whitespace-nowrap px-3 py-1.5 font-mono">{formatTime(e?.time)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
