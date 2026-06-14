@@ -53,19 +53,24 @@ describe('HarEntryList 壊れた entry のガード', () => {
     expect(screen.getByRole('button', { name: 'example.com/api/ok' })).toBeTruthy();
   });
 
-  it('壊れた entry 行はプレースホルダを表示し URL ボタンを描画しない', () => {
+  it('壊れた entry 行はプレースホルダ文言の button を描画する', () => {
     render(<HarEntryList entries={entries} selectedIndex={null} onSelect={() => {}} />);
-    // 「壊れたエントリ」プレースホルダが request 欠落行に出る（{} と null の 2 行）
+    // 「（壊れたエントリ）」プレースホルダが request 欠落行に出る（{} と null の 2 行）
     expect(screen.getAllByText('（壊れたエントリ）').length).toBeGreaterThanOrEqual(2);
-    // request はあるが response 欠落の行は URL ボタンを描画する（クリック可能）
-    expect(screen.getByRole('button', { name: 'example.com/api/noresp' })).toBeTruthy();
+    // url を持つ行（ok / noresp）と壊れ行（{} / null）すべてが button（計 4 つ）
+    expect(screen.getAllByRole('button')).toHaveLength(4);
+    // 壊れ行「（壊れたエントリ）」も accessible name を持つ button として取得できる
+    expect(screen.getAllByRole('button', { name: '（壊れたエントリ）' })).toHaveLength(2);
   });
 
-  it('壊れた entry の URL セルは選択 button を持たない', () => {
+  it('壊れた entry 行クリックでその index の onSelect が呼ばれる（再選択可能）', () => {
     const onSelect = vi.fn();
     render(<HarEntryList entries={entries} selectedIndex={null} onSelect={onSelect} />);
-    // URL ボタンは正常 entry(ok) と response欠落(noresp) の 2 つだけ（{}/null は非ボタン）
-    const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(2);
+    // 壊れ行は {} (index 1) と null (index 2)。先頭の壊れ行をクリック。
+    const brokenButtons = screen.getAllByRole('button', { name: '（壊れたエントリ）' });
+    brokenButtons[0].click();
+    expect(onSelect).toHaveBeenCalledWith(1);
+    brokenButtons[1].click();
+    expect(onSelect).toHaveBeenCalledWith(2);
   });
 });
