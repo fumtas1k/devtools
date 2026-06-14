@@ -13,8 +13,11 @@ import {
   SENSITIVE_PARAM_NAMES,
   emptyRedactCounts,
 } from './rules';
-import { scrubText } from '@/utils/secret-scrubber/scrub';
-import { DEFAULT_ENABLED } from '@/utils/secret-scrubber/rules';
+// 相対 import で統一する理由: このモジュールは Web Worker（harSanitizer.worker.ts）の
+// 依存グラフに含まれる。Vite の worker Rollup サブビルドには tsconfig paths / `@/` エイリアス
+// が伝播せず、`@/utils/...` 形式だと worker ビルドが解決に失敗する（issue #677）。
+import { scrubText } from '../secret-scrubber/scrub';
+import { DEFAULT_ENABLED } from '../secret-scrubber/rules';
 
 export interface SanitizeResult {
   har: Har;
@@ -131,15 +134,25 @@ function redactHeaders(
 
 export function sanitizeHar(
   input: Har,
-  enabled: Record<HarRedactCategory, boolean>
+  enabled: Record<HarRedactCategory, boolean>,
+  /**
+   * 進捗コールバック。処理済みエントリ数を一定間隔で通知する。
+   * Web Worker から呼び、メインスレッドに進捗バーを表示するために使う。
+   * 純粋な計算には影響しない（省略可）。
+   */
+  onProgress?: (processed: number) => void
 ): SanitizeResult {
   const har: Har = structuredClone(input);
   const counts = emptyRedactCounts();
   const tokenize = makeTokenizer(counts);
 
+  // 進捗通知の間隔（エントリ数）。細かすぎると postMessage が増えてかえって遅くなる。
+  const PROGRESS_INTERVAL = 100;
+  let processed = 0;
+
   // entries が配列でも各要素が壊れている（request/response 欠落・型不正）ことは
-  // 手編集・切り詰めた HAR で起こりうる。レンダリング中の useMemo で走るため、
-  // 例外を投げると ErrorBoundary 不在のコンポーネントが落ちる。各 entry を防御的に扱う。
+  // 手編集・切り詰めた HAR で起こりうる。Web Worker 内で走るため例外で worker が
+  // 落ちないよう、各 entry を防御的に扱う。
   for (const entry of har.log.entries) {
     if (typeof entry !== 'object' || entry === null) continue;
     const request = entry.request;
@@ -229,7 +242,15 @@ export function sanitizeHar(
         }
       }
     }
+
+    processed++;
+    if (onProgress && processed % PROGRESS_INTERVAL === 0) {
+      onProgress(processed);
+    }
   }
+
+  // 端数（最後の PROGRESS_INTERVAL に満たない分）を最終通知する。
+  if (onProgress) onProgress(processed);
 
   return { har, counts };
 }

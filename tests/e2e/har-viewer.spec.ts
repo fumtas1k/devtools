@@ -45,6 +45,42 @@ function buildTestHar(entryCount: number): string {
 }
 
 /**
+ * n 件のエントリを持ち、各エントリに Cookie ヘッダを含む HAR を生成する。
+ * COOKIE カテゴリの redact 件数が entryCount と一致する（1 エントリ 1 Cookie ペア）。
+ */
+function buildCookieHar(entryCount: number): string {
+  const entries = Array.from({ length: entryCount }, (_, i) => ({
+    startedDateTime: new Date().toISOString(),
+    time: 10,
+    request: {
+      method: 'GET',
+      url: `https://example.com/api/item/${i}`,
+      headers: [{ name: 'Cookie', value: 'session=secretvalue123' }],
+      queryString: [],
+      cookies: [],
+      headersSize: -1,
+      bodySize: -1,
+    },
+    response: {
+      status: 200,
+      statusText: 'OK',
+      headers: [],
+      cookies: [],
+      content: { mimeType: 'application/json', size: 2, text: '{}' },
+      redirectURL: '',
+      headersSize: -1,
+      bodySize: 2,
+    },
+    cache: {},
+    timings: { send: 0, wait: 10, receive: 0 },
+  }));
+
+  return JSON.stringify({
+    log: { version: '1.2', creator: { name: 'test', version: '1.0' }, entries },
+  });
+}
+
+/**
  * HAR ファイルをアップロードし、React コンポーネントが hydrate されるのを待ってから
  * setInputFiles を呼ぶヘルパー。
  * client:load コンポーネントは hydrate 前にはイベントハンドラが未登録のため、
@@ -137,5 +173,26 @@ test.describe('HAR ビューア — ページング', () => {
     // (PAGE_SIZE=100 なので 50 件は 1 ページに収まる)
     await expect(page.getByRole('button', { name: '次へ' })).not.toBeVisible();
     await expect(page.getByRole('button', { name: '前へ' })).not.toBeVisible();
+  });
+
+  test('redact トグルで Web Worker の再 sanitize が走り redact 件数が変化する', async ({
+    page,
+  }) => {
+    await page.goto('/tools/har-viewer');
+
+    // 各エントリに Cookie ヘッダを持つ 5 件の HAR（COOKIE redact 件数 = 5）
+    const json = buildCookieHar(5);
+    await uploadHar(page, json);
+
+    // 初期（COOKIE 有効）: redact 5 件。worker が parse+sanitize した結果が反映される。
+    await expect(page.getByText(/redact:\s*5\s*件/)).toBeVisible({ timeout: 10000 });
+
+    // Cookie チップをトグル off → worker に sanitize 再実行を依頼 → redact 0 件
+    await page.getByRole('button', { name: /Cookie/ }).click();
+    await expect(page.getByText(/redact:\s*0\s*件/)).toBeVisible({ timeout: 10000 });
+
+    // 再度 on に戻すと 5 件へ戻る（resanitize が双方向に効く）
+    await page.getByRole('button', { name: /Cookie/ }).click();
+    await expect(page.getByText(/redact:\s*5\s*件/)).toBeVisible({ timeout: 10000 });
   });
 });

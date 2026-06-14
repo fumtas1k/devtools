@@ -80,4 +80,20 @@
 ## リスク・留意
 
 - `CopyButton` は共有コンポーネント。`text` 型拡張は後方互換だが、ユニットテストで遅延パスを担保する。
-- `key={loadCount}` による remount は内部 state リセットが目的。`HarEntryList` は副作用を持たない純表示コンポーネントのため remount コストは軽微。
+- `key={loadSeq}` による remount は内部 state リセットが目的。`HarEntryList` は副作用を持たない純表示コンポーネントのため remount コストは軽微。
+
+## 追記（2026-06-14・実装中の設計修正）
+
+この設計は当初「白画面の主因は DOM 描画（最有力）」という issue の root-cause 推定（**実プロファイル未実施**）に基づき、ページング + 遅延生成 + cap 見直しをスコープとし、sanitize 非同期化を別 issue へ分離していた。
+
+**実装着手後の user 実機検証で、主因は同期 sanitize であることが判明した**: まず `sanitizeHar` がメインスレッドを数秒〜十数秒固め（「ページが応答しません」発生）、その後ようやく描画に入る、という順序。ページング/cap だけでは読み込み時のフリーズは消えない。
+
+このため本 PR のスコープを修正し、**parse + sanitize の Web Worker 化**を主軸に据えた:
+
+- `src/workers/harSanitizer.worker.ts`（stateful worker）+ `src/hooks/useHarSanitizer.ts`（worker ライフサイクル / `requestId` による stale result 破棄）。
+- `sanitizeHar` に `onProgress` を追加し `ProgressBar` で進捗表示。
+- ページング / 遅延 stringify は「描画フェーズの最適化」として維持（user が観察した「描画でさらに時間がかかる」への対策）。
+- `MAX_BYTES` は 25MB を維持（フリーズが解消したためメモリ防御ガードに戻す。初版で 10MB に下げたのは撤回）。
+- Vite worker サブビルドに `@/` エイリアスが伝播しないため、`sanitize.ts` の secret-scrubber import を相対パスに変更。
+
+確定した設計判断は `docs/decisions.md [117]` を正本とする。

@@ -35,9 +35,11 @@ const tool = tools.find((t) => t.slug === 'har-viewer')!;
     <h3 class="mb-2 mt-4 tool-info-heading">制限事項</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>ウォーターフォール（タイミング可視化）は今後対応予定</li>
-      <li>大きな HAR（10MB 超）は読み込めません</li>
+      <li>大きな HAR（25MB 超）は読み込めません</li>
       <li>
-        大きな HAR は redact 切替時の処理（全エントリの再スキャン）に時間がかかることがあります
+        サニタイズ（redact）は Web Worker 上で実行するため画面は固まりませんが、大きな HAR
+        ほど処理に時間がかかります（進捗バーを表示）。redact
+        切替のたびに全エントリを再スキャンします
       </li>
       <li>
         辞書に無い独自ヘッダ名や、独自名のクエリ/フォームパラメータは本文スキャンが拾える範囲のみ

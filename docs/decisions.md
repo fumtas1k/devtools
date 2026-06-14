@@ -4319,45 +4319,45 @@ HAR は `JSON.parse` でパース可能で専用ライブラリのメリット�
 - ⚠️ 辞書外の独自ヘッダ名・パラメータ名は本文スキャンが拾える範囲のみの redact（完全網羅は保証しない）。
 - ⚠️ ウォーターフォールは v1 非対応。別 issue（#674）で継続。
 
-## [117] HAR ビューア パフォーマンス改善: ページング・遅延生成・バイト cap 引き下げ
+## [117] HAR ビューア パフォーマンス改善: sanitize の Web Worker 化（+ 描画最適化）
 
 **2026-06-14 | ステータス: 採用**
 
 ### 背景
 
-7.8MB の HAR を読み込むとタブが固まり白画面になるという user 報告（issue #677）。UI / docs の「最大 25MB」表記が実態の処理能力と乖離し、誤解を招いていた。
+7.8MB の HAR を読み込むとタブが固まり「ページが応答しません」になるという user 報告（issue #677）。UI / docs の「最大 25MB」表記が実態の処理能力と乖離し、誤解を招いていた。
 
-root-cause 調査により、白画面の主因は `HarEntryList` が全エントリを `<tr>` で一括描画する DOM ノード爆発であることを特定。中規模 HAR でも数千エントリ → 数千行の DOM → レイアウト/ペイントでタブ凍結。
+issue の root-cause 表は「白画面の主因は DOM ノード爆発（`HarEntryList` の全件 `<tr>` 描画）」と推定していたが、**実プロファイル未実施**との但し書きがあった。実装着手後の user 実機検証で**主因は同期 sanitize である**ことが判明した: まず `sanitizeHar` がメインスレッドを数秒〜十数秒固め（「ページが応答しません」発生）、その後ようやく描画に入ってさらに時間がかかる、という順序。バイト数 cap の調整やページングだけでは読み込み時のフリーズは解消しない。
 
 ### 決断
 
-**リスト描画のページング化（白画面の主因対策）**
-`HarEntryList` に内部ページング状態（`PAGE_SIZE = 100`）を持たせ、現在ページ分のみ `<tr>` 描画する。100 行の DOM はレイアウト/ペイントで凍結しない。新規ファイル読込時のみ `key={loadCount}` による remount でページをリセット。redact トグル変更時はページを保持（トグルのたびに 1 ページ目に戻る UX を避ける）。
+**parse + sanitize の Web Worker 化（フリーズの根治）**
+`sanitizeHar`（`structuredClone` + 全 response body の正規表現スキャン）を `src/workers/harSanitizer.worker.ts` で実行し、メインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する。フック `useHarSanitizer` が worker ライフサイクル・メッセージングを担い、`requestId` で最新リクエストのみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` に `onProgress` コールバックを追加し、処理済みエントリ数を逐次 worker → メインへ通知して `ProgressBar` で進捗表示する。処理時間自体は変わらないが UI が固まらず進捗が見える。
 
-**`outputJson` の遅延生成（`JSON.stringify` を copy/DL 押下時のみ実行）**
-毎レンダリングで数 MB を `JSON.stringify(.., null, 2)` する `useMemo` を廃止。`CopyButton` の `text` prop を `string | (() => string)` に拡張し、クリック時のみコールバックを評価する遅延パスを追加。後方互換（既存 string 呼び出しは不変）。
+**リスト描画のページング化（描画フェーズの最適化）**
+user が観察した「描画でさらに時間がかかる」への対策。`HarEntryList` に内部ページング（`PAGE_SIZE = 100`）を持たせ現在ページ分のみ `<tr>` 描画する。新規ファイル読込時のみ `key={loadSeq}` の remount でページをリセット、redact トグル時はページ保持。
 
-**`MAX_BYTES` 引き下げ（25MB → 10MB）**
-実測ベンチ（2026-06-14、Node.js / vitest 環境）の結果:
+**`outputJson` の遅延生成（`JSON.stringify` を copy/DL 押下時のみ）**
+毎レンダリングで数 MB を直列化する `useMemo` を廃止。`CopyButton` の `text` prop を `string | (() => string)` に拡張し、クリック時のみコールバックを評価する（後方互換）。
 
-- ~6MB / 5000 エントリ（大量小エントリ型）: sanitize **約 2600ms** — 2s 超
-- ~18MB / 10000 エントリ（大量小エントリ型）: sanitize **約 17700ms** — 大幅超
+**`MAX_BYTES` は 25MB を維持（メモリ防御ガード）**
+読み込み時のフリーズは Worker 化で解消したため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。実測（~6MB/5000 エントリで sanitize 約 2.6s、~18MB/10000 エントリで約 17s）では大きな HAR ほど時間がかかるが、worker 上のためメインスレッドは固まらず進捗バーで状況が分かる。
 
-sanitize 時間はエントリ数 × ボディ長に比例し、バイト数だけでは予測できない。少数大ボディ型（50 エントリ程度）は構造走査が少ないため同バイト数でも速い可能性があるが、ユーザーに体感される最悪ケース（多エントリ型）を基準に保守的に **10MB** を上限とする。25MB cap は実態の処理能力（~6MB で 2.6s）と大きく乖離していたため引き下げが必要と判断。バイト cap はメモリ防御ガードとして継続維持する（撤廃しない）。
+### 実装上の注意
 
-**sanitize 非同期化は別 issue に分離**
-`sanitizeHar`（structuredClone + 全 response body の scrubText）は redact トグル変更のたびに同期で全件再実行される。これを Web Worker 化する差分 sanitize はスコープが大きく別 issue で継続（元々 docs に将来課題として記載済み）。本 PR ではページングで白画面（描画起因）を解消することに集中する。
+- `sanitize.ts` は worker の依存グラフに含まれるため `@/` ではなく**相対 import** を使う。Vite の worker Rollup サブビルドには tsconfig paths / `@/` エイリアスが伝播せず、`@/utils/...` 形式だと worker ビルドが解決に失敗する（build5 で確認）。`secret-scrubber/*` は内部が相対 import のため、`sanitize.ts` の 2 行を相対化するだけで worker グラフ全体が alias-free になる。
+- 本番 CSP（`src/utils/csp.ts`）には既に `worker-src 'self'` があり、同一オリジンの module worker は許可される。
 
 ### 却下した選択肢
 
-- **仮想スクロール（react-virtual 等）**: ライブラリ追加が発生し、キーボード操作・a11y・スクロール位置の管理が複雑になる。ページングは実装が単純で DOM 数を確実に抑制できる。
-- **`MAX_BYTES` 据え置き（25MB）**: ベンチで ~6MB/5000 エントリが 2.6s を超えることを確認。「バイト数が同じなら安全」は成立せず、据え置きは過大な期待値を誘発する。
-- **sanitize の非同期化（本 PR 内）**: Web Worker 化は設計コストが大きく、白画面対策の主軸（ページング）とは独立した課題。別 issue に分離して段階的に対処する。
+- **ページング / バイト cap 調整のみ（sanitize 非同期化を別 issue へ分離）**: 初版 PR の方針。しかし user 実機検証で主因が同期 sanitize と判明し、これでは見出しの症状（読み込み時フリーズ）が消えないため撤回。Worker 化を本 PR に取り込んだ。
+- **メインスレッドで chunk 分割 async**: Worker より単純だが完全な off-thread ではなく、長い同期区間が残りうる。確実にフリーズを消す Worker を採用。
+- **仮想スクロール（react-virtual 等）**: ライブラリ追加 + a11y / スクロール管理が複雑。ページングで DOM 数を確実に抑制できるため不要。
 
 ### 結果・トレードオフ
 
-- ✅ 中規模 HAR（数千エントリ）でも DOM が最大 100 行に抑制され白画面が解消される。
-- ✅ `JSON.stringify` が copy/DL 時のみ実行されるため、ファイル読込直後の描画ブロックが軽減。
-- ✅ 後方互換を維持したまま `CopyButton` の遅延 text 生成に対応（既存呼び出し箇所は変更不要）。
-- ⚠️ redact トグル変更時の sanitize（全件同期再実行）はスコープ外。大きな HAR でトグルを連打すると UI が固まる可能性は残存（別 issue で対処）。
-- ⚠️ ページャが表示されると UX の期待値が変わる（スクロールではなく「次へ」でナビ）。将来的に仮想スクロールへ移行する場合は E2E テストの更新が必要。
+- ✅ 読み込み時の「ページが応答しません」を解消（sanitize がメインスレッドを固めない）。
+- ✅ 大きな HAR でも進捗バーで処理状況が見える。中規模 HAR で DOM が最大 100 行に抑制され描画も軽い。
+- ✅ `JSON.stringify` が copy/DL 時のみ実行され、毎レンダリングの数 MB 直列化を排除。
+- ⚠️ 差分 sanitize（トグル時に変更カテゴリのみ再処理）は未対応。大きな HAR ではトグルのたびに全件再 sanitize するが、worker 上のため UI は固まらない（進捗表示）。将来課題。
+- ⚠️ worker 化で parse/sanitize は非同期になり、結果反映前に短時間ローディング状態を経由する（E2E は `toBeVisible` の auto-retry で吸収）。
