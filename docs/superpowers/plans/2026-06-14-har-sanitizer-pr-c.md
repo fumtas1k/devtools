@@ -16,25 +16,28 @@
 
 ## 前提・検証済み事実（実機 node で確認済み）
 
-- ルール別計測（40k 文字・`@` 無しランダム語連）で O(n²) の**唯一の主因は `EMAIL` ルール**（1461ms、他全ルール <5ms）。`HIGH_ENTROPY` は単一 greedy マッチで O(n)（7ms）のため無関係。
-- 旧 `EMAIL` `[\w.+-]+@[\w-]+(?:\.[\w-]+)+` は全体で O(n²)（80k: 5721ms）。新 `[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63})+` は O(n)（80k: 29ms）。`recheck` の攻撃文字列 `'.-'.repeat(n)` でも新パターンは線形（32k: 10.2ms）。
-- 実在メール（`foo@bar.com` / `alice.smith+tag@sub.example.co.jp` / `x@y.io` / `a_b-c@d-e.f.org`）の検出は新旧で同一。
-- 上限超過の「メール風」文字列（local >64 / label >63）は RFC 上も無効なため実害ある検出損失なし。
+- O(n²) の主因は **2 つの catastrophic backtracking**:
+  1. **`EMAIL` ルール** `[\w.+-]+@[\w-]+(?:\.[\w-]+)+`（`@` 無し長語連。40k で 1461ms）。
+  2. **`CREDENTIAL_URL` 共有ビルダーの scheme 部** `[a-z][a-z0-9+.-]*:`（`:` 無し小文字英数連。100k で 8193ms）。PR-A 以前から存在。ランダム英数字計測では run が分断され見逃し、`'a'.repeat(n)` で顕在化（PR-C 着手時の実装中に判明）。
+- 新 `EMAIL` `[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63})+` と新 scheme `[a-z][a-z0-9+.-]{0,31}:` を両方適用すると、全ルール合算が全 adversarial 入力（all-a / dots / slashes / scheme-ish / hex）で線形（100k で ≤52ms）。
+- `HIGH_ENTROPY` は単一 greedy マッチで O(n)（無関係）。`{24,512}` 上限化は512字超で逆に O(n²) を生むため有害＝不採用。
+- 実在メール・実在 URL（`https://` / `postgres://` / `mongodb+srv://` / `redis://[::1]` / protocol-relative）の検出は新旧で同一。上限超過の「メール風/scheme 風」文字列は RFC 上無効なため実害ある検出損失なし。
 - `recheck`（依存にあり）は境界付き版も保守的に polynomial 判定するためゲートには使わない。代わりに実測ベースの性能 assert を陽性対照にする。
 
 ## File Structure
 
 - 変更: `src/utils/secret-scrubber/rules.ts` — `EMAIL` ルールの `pattern` を上限付きに変更（1箇所）。
-- テスト: `src/utils/__tests__/secret-scrubber.test.ts` — 性能回帰テスト（陽性対照）+ 実在メール retention テストを追加。
+- 変更: `src/utils/secret-scrubber/url-credential.ts` — `SCHEME` 定数を上限付き `{0,31}` に変更（1箇所）。`scrub.ts` の CREDENTIAL_URL と `sanitize.ts` の redactUrl 両方に共有ビルダー経由で波及。
+- テスト: `src/utils/__tests__/secret-scrubber.test.ts` — 性能回帰テスト（陽性対照。EMAIL/scheme 両方をカバー）+ 実在メール retention テストを追加。
 
 ## 注意事項
 
-- 変更は EMAIL の量化子上限のみ。`HIGH_ENTROPY` の量化子上限化・広域な入力長ガードは**行わない**（真因でなく、前者は512字超で逆に O(n²) を生むため有害、後者は YAGNI）。
+- 変更は EMAIL と scheme の量化子上限のみ。`HIGH_ENTROPY` の量化子上限化・広域な入力長ガードは**行わない**（真因でなく、前者は512字超で逆に O(n²) を生むため有害、後者は YAGNI）。
 - コミットは Conventional Commits + 日本語。明示パスのみ stage。コミット前に `git config user.email noreply@anthropic.com && git config user.name Claude` を確認。
 
 ---
 
-### Task 1: EMAIL 正規表現の量化子を RFC 上限付きにする（#688）
+### Task 1: EMAIL 正規表現と URL scheme の量化子を RFC 上限付きにする（#688）
 
 **Files:**
 
@@ -98,6 +101,20 @@ Expected: 旧 `EMAIL` regex では性能テストが O(n²) のため**閾値超
     // 繰り返しで終端し文末ピリオドを巻き込まない。上限超過のメール風文字列は RFC 上無効。
     pattern: /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63})+/g,
 ```
+
+さらに `src/utils/secret-scrubber/url-credential.ts` の `SCHEME` 定数:
+
+```ts
+const SCHEME = String.raw`[a-z][a-z0-9+.-]*:`;
+```
+
+を上限付きに置換（直前の doc コメントにも scheme 上限化の理由を追記）:
+
+```ts
+const SCHEME = String.raw`[a-z][a-z0-9+.-]{0,31}:`;
+```
+
+これで `scrub.ts` の `CREDENTIAL_URL`（requireScheme:true）と `sanitize.ts` の `redactUrl`（requireScheme:false）の両方の scheme 由来 O(n²) が解消される。性能テストの describe / コメントは EMAIL・scheme 両方をカバーする旨に更新する。
 
 - [ ] **Step 4: テストを実行して成功を確認**
 
