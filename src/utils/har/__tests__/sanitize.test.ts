@@ -60,7 +60,7 @@ const ALL_OFF = {
 describe('sanitizeHar', () => {
   it('陽性対照: Cookie 値が redact される', () => {
     const { har } = sanitizeHar(makeHar(), ALL_ON);
-    const e = har.log.entries[0];
+    const e = har.log.entries[0]!;
     expect(e.request.cookies[0].value).not.toBe('deadbeefcookie');
     expect(e.request.cookies[0].value).toMatch(/REDACTED/);
     const cookieHeader = e.request.headers.find((h) => h.name === 'Cookie');
@@ -71,13 +71,13 @@ describe('sanitizeHar', () => {
 
   it('陽性対照: 認証ヘッダ値が redact される', () => {
     const { har } = sanitizeHar(makeHar(), ALL_ON);
-    const auth = har.log.entries[0].request.headers.find((h) => h.name === 'Authorization');
+    const auth = har.log.entries[0]!.request.headers.find((h) => h.name === 'Authorization');
     expect(auth?.value).not.toContain('abc.def.ghi');
   });
 
   it('陽性対照: 機密クエリ値が redact され URL からも消える', () => {
     const { har } = sanitizeHar(makeHar(), ALL_ON);
-    const e = har.log.entries[0];
+    const e = har.log.entries[0]!;
     const tokenQ = e.request.queryString.find((q) => q.name === 'token');
     expect(tokenQ?.value).not.toBe('SECRETTOKEN123');
     expect(e.request.url).not.toContain('SECRETTOKEN123');
@@ -88,14 +88,14 @@ describe('sanitizeHar', () => {
 
   it('陽性対照: POST ボディの機密 param と本文が redact される', () => {
     const { har } = sanitizeHar(makeHar(), ALL_ON);
-    const pd = har.log.entries[0].request.postData!;
+    const pd = har.log.entries[0]!.request.postData!;
     expect(pd.params![0].value).not.toBe('myP@ssw0rd');
     expect(pd.text).not.toContain('myP@ssw0rd');
   });
 
   it('陽性対照: BODY_SCAN でレスポンスボディの API キーが redact される', () => {
     const { har } = sanitizeHar(makeHar(), ALL_ON);
-    expect(har.log.entries[0].response.content.text).not.toContain(
+    expect(har.log.entries[0]!.response.content.text).not.toContain(
       'sk-proj-abcdef1234567890abcdef1234567890ab'
     );
   });
@@ -103,7 +103,7 @@ describe('sanitizeHar', () => {
   it('陰性対照: 全カテゴリ OFF なら何も変わらない', () => {
     const original = makeHar();
     const { har, counts } = sanitizeHar(original, ALL_OFF);
-    const e = har.log.entries[0];
+    const e = har.log.entries[0]!;
     expect(e.request.cookies[0].value).toBe('deadbeefcookie');
     expect(e.request.headers.find((h) => h.name === 'Authorization')?.value).toBe(
       'Bearer abc.def.ghi'
@@ -116,13 +116,13 @@ describe('sanitizeHar', () => {
   it('入力非破壊: 元オブジェクトを mutate しない', () => {
     const original = makeHar();
     sanitizeHar(original, ALL_ON);
-    expect(original.log.entries[0].request.cookies[0].value).toBe('deadbeefcookie');
-    expect(original.log.entries[0].request.url).toContain('SECRETTOKEN123');
+    expect(original.log.entries[0]!.request.cookies[0].value).toBe('deadbeefcookie');
+    expect(original.log.entries[0]!.request.url).toContain('SECRETTOKEN123');
   });
 
   it('一貫トークン化: 同一 Cookie 値は同一プレースホルダ', () => {
     const { har } = sanitizeHar(makeHar(), ALL_ON);
-    const e = har.log.entries[0];
+    const e = har.log.entries[0]!;
     const cookieVal = e.request.cookies[0].value;
     const headerVal = e.request.headers.find((h) => h.name === 'Cookie')!.value;
     // Cookie ヘッダ "session=<redacted>" に同じプレースホルダが含まれる
@@ -132,7 +132,7 @@ describe('sanitizeHar', () => {
   it('出力が有効な JSON 構造を保つ', () => {
     const { har } = sanitizeHar(makeHar(), ALL_ON);
     expect(() => JSON.stringify(har)).not.toThrow();
-    expect(har.log.entries[0].response.status).toBe(200);
+    expect(har.log.entries[0]!.response.status).toBe(200);
   });
 
   // ── P1-1: URL を運ぶヘッダ（Referer / Location 等）のトークン漏洩防止 ──
@@ -154,9 +154,9 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    const referer = out.log.entries[0].request.headers.find((h) => h.name === 'Referer');
+    const referer = out.log.entries[0]!.request.headers.find((h) => h.name === 'Referer');
     // URL からもヘッダからも同じ秘密値が消えていること（不整合な残存がない）
-    expect(out.log.entries[0].request.url).not.toContain('SUPERSECRET12345');
+    expect(out.log.entries[0]!.request.url).not.toContain('SUPERSECRET12345');
     expect(referer?.value).not.toContain('SUPERSECRET12345');
   });
 
@@ -183,7 +183,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    const loc = out.log.entries[0].response.headers.find((h) => h.name === 'Location');
+    const loc = out.log.entries[0]!.response.headers.find((h) => h.name === 'Location');
     expect(loc?.value).not.toContain('AUTHCODE9999');
   });
 
@@ -213,7 +213,7 @@ describe('sanitizeHar', () => {
     };
     const { har: out, counts } = sanitizeHar(har, ALL_ON);
     // 本文がそのまま保持され、デコードしても壊れないこと
-    expect(out.log.entries[0].response.content.text).toBe(b64);
+    expect(out.log.entries[0]!.response.content.text).toBe(b64);
     expect(counts.BODY_SCAN).toBe(0);
   });
 
@@ -235,8 +235,8 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.url).not.toContain('secretpw');
-    expect(out.log.entries[0].request.url).toContain('@host.com/path');
+    expect(out.log.entries[0]!.request.url).not.toContain('secretpw');
+    expect(out.log.entries[0]!.request.url).toContain('@host.com/path');
   });
 
   it('退行対照: host:port を含む URL を破壊しない', () => {
@@ -258,7 +258,7 @@ describe('sanitizeHar', () => {
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
     // ポート/パスが壊れず保持される
-    expect(out.log.entries[0].request.url).toBe('https://host:8080/p@th');
+    expect(out.log.entries[0]!.request.url).toBe('https://host:8080/p@th');
   });
 
   it('陽性対照: JSON 形式 POST ボディの password が redact される（#685）', () => {
@@ -283,7 +283,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.postData!.text).not.toContain('hunter2');
+    expect(out.log.entries[0]!.request.postData!.text).not.toContain('hunter2');
   });
 
   it('陽性対照: 拡充した認証ヘッダ名（x-amz-security-token 等）が redact される（#687a）', () => {
@@ -305,7 +305,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.headers[0].value).not.toContain(secret);
+    expect(out.log.entries[0]!.request.headers[0].value).not.toContain(secret);
   });
 
   it('陽性対照: 拡充した機密クエリ名（assertion 等）が構造的に redact される（#689a）', () => {
@@ -327,7 +327,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.queryString[0].value).not.toBe(secret);
+    expect(out.log.entries[0]!.request.queryString[0].value).not.toBe(secret);
   });
 
   it('陽性対照: URL パスセグメント内のトークンが redact され host は保持される（#687c）', () => {
@@ -349,7 +349,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    const url = out.log.entries[0].request.url;
+    const url = out.log.entries[0]!.request.url;
     expect(url).not.toContain(jwt);
     expect(url).toContain('https://api.example.com/'); // host は保持
   });
@@ -373,7 +373,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.url).not.toContain(jwt);
+    expect(out.log.entries[0]!.request.url).not.toContain(jwt);
   });
 
   it('陽性対照: 辞書外ヘッダの値に含まれる JWT が scrubText で redact される（#687b）', () => {
@@ -395,7 +395,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.headers[0].value).not.toContain(jwt);
+    expect(out.log.entries[0]!.request.headers[0].value).not.toContain(jwt);
   });
 
   it('退行対照: 機密を含まない辞書外ヘッダは変更しない', () => {
@@ -416,7 +416,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.headers[0].value).toBe('ja-JP,ja;q=0.9');
+    expect(out.log.entries[0]!.request.headers[0].value).toBe('ja-JP,ja;q=0.9');
   });
 
   it('陽性対照: response.redirectURL 内のトークンが redact される（#687d）', () => {
@@ -443,7 +443,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].response.redirectURL!).not.toContain('SUPERSECRETTOKEN12345');
+    expect(out.log.entries[0]!.response.redirectURL!).not.toContain('SUPERSECRETTOKEN12345');
   });
 
   it('退行対照: encoding 欄が無くても mimeType がバイナリ系なら本文スキャンをスキップし破壊しない（#690 M-2）', () => {
@@ -470,7 +470,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out, counts } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].response.content.text).toBe(b64);
+    expect(out.log.entries[0]!.response.content.text).toBe(b64);
     expect(counts.BODY_SCAN).toBe(0);
   });
 
@@ -498,7 +498,7 @@ describe('sanitizeHar', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].response.content.text).not.toContain(jwt);
+    expect(out.log.entries[0]!.response.content.text).not.toContain(jwt);
   });
 
   // ── P2-3: 壊れた entry でクラッシュしない ──
@@ -540,7 +540,7 @@ describe('#695: data: URL を破壊しない', () => {
     };
     const { har: out, counts } = sanitizeHar(har, ALL_ON);
     // ガードが機能すれば URL は原文のまま
-    expect(out.log.entries[0].request.url).toBe(dataUrl);
+    expect(out.log.entries[0]!.request.url).toBe(dataUrl);
     // PATH_SCAN カウントは 0（base64 を誤検出しない）
     expect(counts.PATH_SCAN).toBe(0);
   });
@@ -570,7 +570,7 @@ describe('#695: data: URL を破壊しない', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].response.redirectURL).toBe(dataUrl);
+    expect(out.log.entries[0]!.response.redirectURL).toBe(dataUrl);
   });
 
   it('退行対照: 通常の https:// URL のパストークン redact は従来どおり動作する', () => {
@@ -593,8 +593,8 @@ describe('#695: data: URL を破壊しない', () => {
       },
     };
     const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.url).not.toContain(jwt);
-    expect(out.log.entries[0].request.url).toContain('https://api.example.com/');
+    expect(out.log.entries[0]!.request.url).not.toContain(jwt);
+    expect(out.log.entries[0]!.request.url).toContain('https://api.example.com/');
   });
 });
 
@@ -649,8 +649,8 @@ describe('#694: HEADER_SCAN / PATH_SCAN 独立制御', () => {
     };
     const enabled = { ...ALL_OFF, AUTH_HEADER: true };
     const { har: out, counts } = sanitizeHar(har, enabled);
-    const authHeader = out.log.entries[0].request.headers.find((h) => h.name === 'Authorization');
-    const customHeader = out.log.entries[0].request.headers.find(
+    const authHeader = out.log.entries[0]!.request.headers.find((h) => h.name === 'Authorization');
+    const customHeader = out.log.entries[0]!.request.headers.find(
       (h) => h.name === 'X-Custom-Trace'
     );
     // Authorization（辞書一致）は redact される
@@ -685,8 +685,8 @@ describe('#694: HEADER_SCAN / PATH_SCAN 独立制御', () => {
     };
     const enabled = { ...ALL_OFF, HEADER_SCAN: true };
     const { har: out, counts } = sanitizeHar(har, enabled);
-    const authHeader = out.log.entries[0].request.headers.find((h) => h.name === 'Authorization');
-    const customHeader = out.log.entries[0].request.headers.find(
+    const authHeader = out.log.entries[0]!.request.headers.find((h) => h.name === 'Authorization');
+    const customHeader = out.log.entries[0]!.request.headers.find(
       (h) => h.name === 'X-Custom-Trace'
     );
     // Authorization は AUTH_HEADER OFF なので（辞書一致でも）redact されない
@@ -721,7 +721,7 @@ describe('#694: HEADER_SCAN / PATH_SCAN 独立制御', () => {
     };
     const enabled = { ...ALL_OFF, QUERY: true };
     const { har: out, counts } = sanitizeHar(har, enabled);
-    const url = out.log.entries[0].request.url;
+    const url = out.log.entries[0]!.request.url;
     // 辞書一致クエリ（token）は QUERY で redact される
     expect(url).not.toContain('SECRET123');
     expect(counts.QUERY).toBeGreaterThan(0);
@@ -755,12 +755,12 @@ describe('#694: HEADER_SCAN / PATH_SCAN 独立制御', () => {
     };
     const enabled = { ...ALL_OFF, PATH_SCAN: true };
     const { har: out, counts } = sanitizeHar(har, enabled);
-    const url = out.log.entries[0].request.url;
+    const url = out.log.entries[0]!.request.url;
     // URL パスの JWT は PATH_SCAN で redact される
     expect(url).not.toContain(jwt);
     expect(counts.PATH_SCAN).toBeGreaterThan(0);
     // queryString 配列は QUERY OFF なので辞書一致 token も残る
-    expect(out.log.entries[0].request.queryString.find((q) => q.name === 'token')?.value).toBe(
+    expect(out.log.entries[0]!.request.queryString.find((q) => q.name === 'token')?.value).toBe(
       secret
     );
     expect(counts.QUERY).toBe(0);

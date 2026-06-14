@@ -1,7 +1,7 @@
 import type { HarEntry } from '@/utils/har';
 
 interface Props {
-  entries: HarEntry[];
+  entries: (HarEntry | null)[];
   selectedIndex: number | null;
   onSelect: (index: number) => void;
 }
