@@ -1,7 +1,7 @@
 import type { HarEntry, HarNameValue } from '@/utils/har';
 
 interface Props {
-  entry: HarEntry;
+  entry: HarEntry | null | undefined;
 }
 
 function NameValueTable({ rows, label }: { rows: HarNameValue[]; label: string }) {
