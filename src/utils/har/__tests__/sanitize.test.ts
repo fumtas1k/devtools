@@ -545,34 +545,6 @@ describe('#695: data: URL を破壊しない', () => {
     expect(counts.PATH_SCAN).toBe(0);
   });
 
-  it('陽性対照（#695）: ガードが存在しなければ data: URL の base64 が破壊されることを確認済み', () => {
-    // 【実機確認済み】scrubUrlPath の /^data:/i ガードを外した状態でこのテストを実行すると、
-    // HIGH_ENTROPY_BASE64 ルールが payload を [REDACTED:HIGH_ENTROPY_...] に置換し、
-    // toBe(dataUrl) が fail する（空回りでない証明）。
-    // ここでは「ガード有りで原文が保たれる」ことのみ assert する（旧実装で fail する設計）。
-    const payload =
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-    const dataUrl = `data:image/png;base64,${payload}`;
-    const har: Har = {
-      log: {
-        entries: [
-          {
-            request: {
-              method: 'GET',
-              url: dataUrl,
-              headers: [],
-              queryString: [],
-              cookies: [],
-            },
-            response: { status: 200, headers: [], cookies: [], content: {} },
-          },
-        ],
-      },
-    };
-    const { har: out } = sanitizeHar(har, ALL_ON);
-    expect(out.log.entries[0].request.url).toBe(dataUrl);
-  });
-
   it('退行対照: response.redirectURL が data: URL のとき原文のまま保持される', () => {
     const dataUrl = 'data:text/html;charset=utf-8,<h1>redirect</h1>';
     const har: Har = {

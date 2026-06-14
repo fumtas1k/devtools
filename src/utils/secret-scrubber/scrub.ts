@@ -11,11 +11,13 @@
 import { SCRUB_RULES, emptyCounts, type ScrubCategory } from './rules';
 
 /**
- * 既存のプレースホルダ [REDACTED:CAT_n] を検出する正規表現。
- * scrubText の採番衝突回避（#690 L-3）に使用する。
- * 単一の真実源として定義し、他モジュールから import できるようにする。
+ * プレースホルダ [REDACTED:CAT_n] 形式の正規表現（単一の真実源）。
+ * scrubText の採番衝突回避（#690 L-3）と har/sanitize.ts の makeTokenizer 冪等化で共有する。
+ * - PLACEHOLDER_RE: 入力中の既存プレースホルダを走査しカテゴリ・番号を capture する（g フラグ）
+ * - PLACEHOLDER_EXACT_RE: 値が前後余白なしの単体プレースホルダか判定する（完全一致）
  */
 export const PLACEHOLDER_RE = /\[REDACTED:([A-Z_]+)_(\d+)\]/g;
+export const PLACEHOLDER_EXACT_RE = /^\[REDACTED:[A-Z_]+_\d+\]$/;
 
 export interface ScrubFinding {
   category: ScrubCategory;

@@ -16,7 +16,7 @@ import {
 // 相対 import で統一する理由: このモジュールは Web Worker（harSanitizer.worker.ts）の
 // 依存グラフに含まれる。Vite の worker Rollup サブビルドには tsconfig paths / `@/` エイリアス
 // が伝播せず、`@/utils/...` 形式だと worker ビルドが解決に失敗する（issue #677）。
-import { scrubText } from '../secret-scrubber/scrub';
+import { scrubText, PLACEHOLDER_EXACT_RE } from '../secret-scrubber/scrub';
 import { DEFAULT_ENABLED } from '../secret-scrubber/rules';
 import { makeUrlCredentialRegex } from '../secret-scrubber/url-credential';
 
@@ -24,12 +24,6 @@ export interface SanitizeResult {
   har: Har;
   counts: Record<HarRedactCategory, number>;
 }
-
-/**
- * 既にプレースホルダ化済みの値を検出する正規表現（前後完全一致）。
- * makeTokenizer の冪等化（#690 L-3）に使用する。
- */
-const PLACEHOLDER_EXACT_RE = /^\[REDACTED:[A-Z_]+_\d+\]$/;
 
 /** 一貫トークン発行器。カテゴリ別カウンタと値→トークンの Map を保持する。 */
 function makeTokenizer(counts: Record<HarRedactCategory, number>) {
