@@ -45,6 +45,11 @@ describe('HarEntryDetail 壊れた entry のガード', () => {
     expect(screen.getByText(/詳細を表示できません/)).toBeTruthy();
   });
 
+  it('null entry でも throw せずプレースホルダを表示する', () => {
+    expect(() => render(<HarEntryDetail entry={null} />)).not.toThrow();
+    expect(screen.getByText(/詳細を表示できません/)).toBeTruthy();
+  });
+
   it('正常 entry では method/url/status を表示する', () => {
     render(<HarEntryDetail entry={validEntry} />);
     expect(screen.getByText(/GET https:\/\/example.com\/x/)).toBeTruthy();
