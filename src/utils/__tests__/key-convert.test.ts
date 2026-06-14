@@ -409,6 +409,29 @@ describe('陽性対照: 不正入力を検知して error を返す', () => {
 });
 
 // ===========================================================================
+// JWK 変換の堅牢化・メタデータ忠実化（PR: key-converter JWK fidelity）
+// ===========================================================================
+
+describe('JWK import の堅牢化（制約フィールド非依存）', () => {
+  it('alg:"RS512" を宣言した RSA 公開鍵 JWK でも error なく変換できる', async () => {
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.alg = 'RS512';
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    expect(result.algorithm).toBe('RSA');
+  });
+
+  it('use:"enc" を宣言した RSA 公開鍵 JWK でも error なく変換できる', async () => {
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.use = 'enc';
+    jwk.key_ops = ['encrypt'];
+    delete jwk.alg;
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+  });
+});
+
+// ===========================================================================
 // detectKeyInput の単体テスト（陽性対照：検知機能の確認）
 // ===========================================================================
 
