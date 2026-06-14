@@ -70,9 +70,7 @@ export function HarViewer() {
     [sanitized]
   );
 
-  const totalRedacted = sanitized
-    ? Object.values(sanitized.counts).reduce((a, b) => a + b, 0)
-    : 0;
+  const totalRedacted = sanitized ? Object.values(sanitized.counts).reduce((a, b) => a + b, 0) : 0;
 
   const selectedEntry =
     sanitized && selectedIndex != null ? sanitized.har.log.entries[selectedIndex] : null;
@@ -105,9 +103,7 @@ export function HarViewer() {
         >
           ファイルを選択
         </FileInputButton>
-        <p className="caption mt-2 text-muted">
-          ファイルはブラウザ外に送信されません（最大 25MB）
-        </p>
+        <p className="caption mt-2 text-muted">ファイルはブラウザ外に送信されません（最大 25MB）</p>
       </div>
 
       {error && <ErrorMessage message={error} />}

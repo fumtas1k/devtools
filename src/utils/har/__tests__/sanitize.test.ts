@@ -35,7 +35,10 @@ function makeHar(): Har {
             headers: [{ name: 'Set-Cookie', value: 'sid=anothersecret; HttpOnly' }],
             cookies: [{ name: 'sid', value: 'anothersecret' }],
             // OPENAI_KEY ルール: sk- + 32文字以上で検出される
-            content: { mimeType: 'application/json', text: '{"apiKey":"sk-proj-abcdef1234567890abcdef1234567890ab"}' },
+            content: {
+              mimeType: 'application/json',
+              text: '{"apiKey":"sk-proj-abcdef1234567890abcdef1234567890ab"}',
+            },
           },
         },
       ],

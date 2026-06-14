@@ -1,8 +1,6 @@
 import type { Har } from './types';
 
-export type ParseResult =
-  | { ok: true; har: Har }
-  | { ok: false; message: string };
+export type ParseResult = { ok: true; har: Har } | { ok: false; message: string };
 
 /**
  * HAR JSON 文字列をパースし、最小スキーマ（log.entries が配列）を検証する。

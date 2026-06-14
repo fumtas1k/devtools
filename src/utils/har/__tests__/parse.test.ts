@@ -7,7 +7,13 @@ const VALID_HAR = JSON.stringify({
     entries: [
       {
         time: 12.3,
-        request: { method: 'GET', url: 'https://example.com/', headers: [], queryString: [], cookies: [] },
+        request: {
+          method: 'GET',
+          url: 'https://example.com/',
+          headers: [],
+          queryString: [],
+          cookies: [],
+        },
         response: { status: 200, headers: [], cookies: [], content: { size: 0 } },
       },
     ],

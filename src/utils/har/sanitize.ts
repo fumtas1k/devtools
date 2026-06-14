@@ -89,7 +89,14 @@ function redactUrl(
       const hashIndex = queryPart.indexOf('#');
       const query = hashIndex !== -1 ? queryPart.slice(0, hashIndex) : queryPart;
       const hash = hashIndex !== -1 ? queryPart.slice(hashIndex) : '';
-      const newQuery = redactPairString(query, '&', false, SENSITIVE_PARAM_NAMES, 'QUERY', tokenize);
+      const newQuery = redactPairString(
+        query,
+        '&',
+        false,
+        SENSITIVE_PARAM_NAMES,
+        'QUERY',
+        tokenize
+      );
       result = base + newQuery + hash;
     }
   }
@@ -116,7 +123,10 @@ function redactHeaders(
   }
 }
 
-export function sanitizeHar(input: Har, enabled: Record<HarRedactCategory, boolean>): SanitizeResult {
+export function sanitizeHar(
+  input: Har,
+  enabled: Record<HarRedactCategory, boolean>
+): SanitizeResult {
   const har: Har = structuredClone(input);
   const counts = emptyRedactCounts();
   const tokenize = makeTokenizer(counts);
