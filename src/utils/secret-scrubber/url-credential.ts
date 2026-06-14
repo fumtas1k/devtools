@@ -14,8 +14,10 @@
  * 設計上のポイント:
  * - user 部は `[^/\s:@]+`（`/` を含まない）。`https://host:8080/...@...` のポート/パスを
  *   ユーザー名やパスワードと誤認して URL を破壊する事故を防ぐ。
- * - password 部は `[^/\s]+`（`@` を許容し、host 直前の最後の `@` まで貪欲）。
- *   `user:pa@ss@host` のような生 `@` 入りパスワードでも断片を残さない。
+ * - password 部は `[^/\s?#]+`（`@` を許容し、host 直前の最後の `@` まで貪欲）。
+ *   `user:pa@ss@host` のような生 `@` 入りパスワードでも断片を残さない。`?`/`#` を
+ *   除外することで、パス `/` の無い URL（`https://u:p@host?redirect=x@y.com`）でも
+ *   クエリ/フラグメント内の `@` を巻き込んで host を破壊しない（PR #691 レビュー指摘）。
  * - `requireScheme: true` は自由テキスト走査用。`scheme:` を必須にして
  *   `3//4:5@6` のような非 URL 断片の誤検出を防ぐ。
  * - `requireScheme: false` は HAR の URL フィールド用。protocol-relative
@@ -26,5 +28,5 @@ const HOST = String.raw`(?:\[[^\]\s]+\]|[\w.-]+)`;
 
 export function makeUrlCredentialRegex(opts: { flags: string; requireScheme: boolean }): RegExp {
   const scheme = opts.requireScheme ? SCHEME : `(?:${SCHEME})?`;
-  return new RegExp(String.raw`(${scheme}\/\/[^/\s:@]+:)([^/\s]+)(@${HOST})`, opts.flags);
+  return new RegExp(String.raw`(${scheme}\/\/[^/\s:@]+:)([^/\s?#]+)(@${HOST})`, opts.flags);
 }

@@ -433,6 +433,17 @@ describe('makeUrlCredentialRegex', () => {
     );
   });
 
+  it('退行: パス無し + クエリ内 @ を含む URL でホスト/クエリを破壊しない（PR #691 レビュー指摘）', () => {
+    // password 部が host・query を巻き込んで over-redact する #686 同クラスの回帰を防ぐ
+    expect(redact('https://u:p@host.com?redirect=x@y.com', false)).toBe(
+      'https://u:[X]@host.com?redirect=x@y.com'
+    );
+  });
+
+  it('退行: フラグメント内 @ を巻き込まない', () => {
+    expect(redact('https://u:p@host.com#frag@x', false)).toBe('https://u:[X]@host.com#frag@x');
+  });
+
   it('requireScheme:true では scheme の無い //a:b@c や 3//4:5@6 を誤検出しない', () => {
     expect(redact('3//4:5@6.com', true)).toBe('3//4:5@6.com');
     expect(redact('//user:pass@host.com/', true)).toBe('//user:pass@host.com/');
