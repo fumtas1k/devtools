@@ -431,6 +431,36 @@ describe('JWK import の堅牢化（制約フィールド非依存）', () => {
   });
 });
 
+describe('出力 JWK のメタデータ忠実化', () => {
+  it('入力 JWK の kid / use を出力 JWK に保持する', async () => {
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.kid = 'my-key-2026';
+    jwk.use = 'sig';
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    expect(out.kid).toBe('my-key-2026');
+    expect(out.use).toBe('sig');
+  });
+
+  it('入力 JWK の alg を出力 JWK に保持する', async () => {
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.alg = 'RS512';
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    expect(out.alg).toBe('RS512');
+  });
+
+  it('PEM 入力の出力 JWK には alg / ext を付与しない（アルゴリズムを詐称しない）', async () => {
+    const result = await convertKey(rsaPublic.pem);
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    expect('alg' in out).toBe(false);
+    expect('ext' in out).toBe(false);
+  });
+});
+
 // ===========================================================================
 // detectKeyInput の単体テスト（陽性対照：検知機能の確認）
 // ===========================================================================

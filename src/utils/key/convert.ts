@@ -137,13 +137,26 @@ export async function convertKey(input: string | Uint8Array): Promise<ConvertRes
     const derExported = await crypto.subtle.exportKey(exportFormat, cryptoKey);
     const exportedBytes = new Uint8Array(derExported);
 
-    // JWK export
-    const jwkExported = await crypto.subtle.exportKey('jwk', cryptoKey);
+    // JWK export（Web Crypto 注入の advisory フィールドを正規化する）
+    const jwkOut = (await crypto.subtle.exportKey('jwk', cryptoKey)) as Record<string, unknown>;
+    // Web Crypto が付与する advisory フィールドは変換アーティファクトなので除去する。
+    // 特に RSA では実際の意図に関わらず alg:"RS256" が注入されるため、鍵素材から
+    // 導けない情報を詐称しないよう削除する。
+    delete jwkOut.ext;
+    delete jwkOut.key_ops;
+    delete jwkOut.alg;
+    // 入力が JWK の場合、round-trip で失われる利用者由来メタデータを復元する。
+    if (source === 'jwk' && jwkObject) {
+      const srcJwk = jwkObject as Record<string, unknown>;
+      for (const field of ['alg', 'use', 'kid', 'key_ops'] as const) {
+        if (srcJwk[field] !== undefined) jwkOut[field] = srcJwk[field];
+      }
+    }
 
     // 4. 各形式を文字列として構築する
     const pem = buildPem(exportedBytes, visibility);
     const derBase64 = bytesToBase64(exportedBytes);
-    const jwkText = JSON.stringify(jwkExported, null, 2);
+    const jwkText = JSON.stringify(jwkOut, null, 2);
 
     // 5. 鍵サイズを取得する
     let keySizeBits: number | undefined;
