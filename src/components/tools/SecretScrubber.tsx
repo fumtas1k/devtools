@@ -116,23 +116,20 @@ export function SecretScrubberTool() {
 
       {/* 出力 */}
       {input.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3 min-h-8">
-            <span className="body-emphasis text-default">マスク済みテキスト</span>
+        <InputField
+          id="secret-scrubber-output"
+          label="マスク済みテキスト"
+          value={outputText}
+          onChange={() => {}}
+          multiline
+          rows={10}
+          mono
+          readOnly
+          busy={isPending}
+          headerRight={
             <CopyButton text={outputText} label="コピー" ariaLabel="出力テキストをコピー" />
-          </div>
-          {/* aria-live は付けない: 全文が変更のたびに読み上げ対象になり、上の sr-only
-              status region（件数サマリ）と二重アナウンスになるため（PR #631 レビュー指摘） */}
-          <textarea
-            id="secret-scrubber-output"
-            readOnly
-            value={outputText}
-            rows={10}
-            aria-label="マスク済みテキスト"
-            aria-busy={isPending}
-            className="caption w-full rounded-lg px-3 py-2 border border-input bg-surface font-mono resize-none"
-          />
-        </div>
+          }
+        />
       )}
 
       {/* クリア */}

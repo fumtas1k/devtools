@@ -520,19 +520,6 @@
     color: var(--color-success);
   }
 
-  /* File picker label (VerifyTab upload mode) */
-  .qr-file-picker-label {
-    background: var(--color-bg-surface);
-    color: var(--color-muted);
-    border-color: var(--color-border-input);
-    cursor: not-allowed;
-  }
-  .qr-file-picker-label[data-enabled='true'] {
-    background: var(--color-bg-subtle);
-    color: var(--color-text);
-    cursor: pointer;
-  }
-
   /* Category badge pill (GenerateTab 生成結果) */
   .badge-category {
     display: inline-block;

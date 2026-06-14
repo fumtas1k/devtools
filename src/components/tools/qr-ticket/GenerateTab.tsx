@@ -147,36 +147,30 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
 
           {privateKeyJwkStr && (
             <div className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="caption font-semibold text-default">秘密鍵（主催者が保管）</span>
-                  <CopyButton text={privateKeyJwkStr} label="コピー" />
-                </div>
-                <textarea
-                  readOnly
-                  value={privateKeyJwkStr}
-                  rows={4}
-                  className="caption font-mono w-full px-3 py-2 rounded-lg border border-input bg-surface text-default resize-none"
-                  aria-label="秘密鍵（主催者が保管）"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="caption font-semibold text-default">
-                    公開鍵（検証スタッフへ共有）
-                  </span>
-                  <CopyButton text={publicKeyJwkStr} label="コピー" />
-                </div>
-                <textarea
-                  readOnly
-                  value={publicKeyJwkStr}
-                  rows={4}
-                  className="caption font-mono w-full px-3 py-2 rounded-lg border border-input bg-surface text-default resize-none"
-                  aria-label="公開鍵（検証スタッフへ共有）"
-                  autoComplete="off"
-                />
-              </div>
+              <InputField
+                id="qr-ticket-private-key"
+                label="秘密鍵（主催者が保管）"
+                value={privateKeyJwkStr}
+                onChange={() => {}}
+                multiline
+                rows={4}
+                mono
+                readOnly
+                autoComplete="off"
+                headerRight={<CopyButton text={privateKeyJwkStr} label="コピー" />}
+              />
+              <InputField
+                id="qr-ticket-public-key"
+                label="公開鍵（検証スタッフへ共有）"
+                value={publicKeyJwkStr}
+                onChange={() => {}}
+                multiline
+                rows={4}
+                mono
+                readOnly
+                autoComplete="off"
+                headerRight={<CopyButton text={publicKeyJwkStr} label="コピー" />}
+              />
             </div>
           )}
         </div>
@@ -236,7 +230,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                 <div
                   key={row._key}
                   className={cx(
-                    'flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-(--color-border) md:border-b-0',
+                    'flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-default md:border-b-0',
                     i === tickets.length - 1 && 'border-none'
                   )}
                 >
