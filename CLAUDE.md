@@ -5,6 +5,7 @@
 @.agents/rules/common.md
 @.agents/rules/ui-conventions.md
 @.claude/rules/git-and-fs.md
+@.claude/rules/github-web-session.md
 
 ---
 
@@ -13,6 +14,7 @@
 Claude Code 固有の補足は `.claude/rules/` 配下に分割し、上記 `@import` で読み込んでいます。
 
 - `.claude/rules/git-and-fs.md`: 一時ファイル / sandbox 制約 / git 操作
+- `.claude/rules/github-web-session.md`: web セッションの GitHub 連携トークン制約（`workflow_dispatch` 不可等）
 
 （注: 上記は Claude 固有。Codex は `.codex/rules/`、Gemini CLI は `docs/setup/gemini-policy.md` を参照）
 
