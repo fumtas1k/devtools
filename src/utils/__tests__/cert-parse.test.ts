@@ -52,4 +52,17 @@ describe('parseCertificates', () => {
     const r = await parseCertificates(chain.leafPem);
     expect(r.certs[0].publicKey.namedCurve).toBe('P-256');
   });
+
+  it('1 MiB を超える入力は topLevelError を返す（#1b 入力長ガード・陽性対照）', async () => {
+    const tooLarge = 'a'.repeat(1024 * 1024 + 1);
+    const r = await parseCertificates(tooLarge);
+    expect(r.certs).toHaveLength(0);
+    expect(r.topLevelError).toBeTruthy();
+  });
+
+  it('上限直下の正常な PEM は通常どおりパースできる（陰性対照）', async () => {
+    const r = await parseCertificates(chain.leafPem);
+    expect(r.certs).toHaveLength(1);
+    expect(r.certs[0].error).toBeUndefined();
+  });
 });

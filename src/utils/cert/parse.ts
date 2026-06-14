@@ -26,6 +26,9 @@ import { ensureCryptoEngine } from './engine';
 import { decodeSct } from './sct';
 import type { ParsedCert, ParseResult, CertName, PublicKeyInfo } from './types';
 
+// テキスト入力の最大長（1 MiB）。これを超える入力は早期に拒否する（防御多重化）。
+const MAX_INPUT_LENGTH = 1024 * 1024;
+
 // ────────────────────────────────────────────────────────────────────────────
 // OID → 短縮名マッピング
 // ────────────────────────────────────────────────────────────────────────────
@@ -492,6 +495,10 @@ function extractCertsFromPkcs7(der: Uint8Array): Uint8Array[] {
  * `ParseResult` を返す。1枚のパース失敗は継続する。
  */
 export async function parseCertificates(input: string | Uint8Array): Promise<ParseResult> {
+  if (typeof input === 'string' && input.length > MAX_INPUT_LENGTH) {
+    return { certs: [], topLevelError: '入力が大きすぎます（最大 1 MiB）。' };
+  }
+
   ensureCryptoEngine();
 
   const detected = detectInput(input);
