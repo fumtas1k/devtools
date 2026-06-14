@@ -73,7 +73,14 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
                       {shortUrl(url)}
                     </button>
                   ) : (
-                    <span className="text-muted">（壊れたエントリ）</span>
+                    <button
+                      type="button"
+                      aria-current={selectedIndex === i ? 'true' : undefined}
+                      className="text-left text-muted underline-offset-2 hover:underline"
+                      onClick={() => onSelect(i)}
+                    >
+                      （壊れたエントリ）
+                    </button>
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-1.5 font-mono">
