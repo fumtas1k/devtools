@@ -17,6 +17,7 @@
 ### Task 1: PEM 正規表現の catastrophic backtracking を解消（#1a）
 
 **Files:**
+
 - Modify: `src/utils/cert/detect.ts:56`
 - Test: `src/utils/__tests__/cert-detect.test.ts`
 
@@ -25,20 +26,20 @@
 `src/utils/__tests__/cert-detect.test.ts` の `describe('detectInput', ...)` ブロック内に以下 2 ケースを追加する:
 
 ```ts
-  it('END マーカーの無い大量の BEGIN は候補ゼロを返す（ReDoS 回帰防止）', () => {
-    // 旧 regex（lazy [\s\S]*?）では O(n^2) バックトラックで遅延しうる。
-    // 本文クラスを base64 限定にした修正で線形化される。
-    const adversarial = '-----BEGIN CERTIFICATE-----\n'.repeat(50000);
-    const r = detectInput(adversarial);
-    expect(r.candidates).toHaveLength(0);
-  });
+it('END マーカーの無い大量の BEGIN は候補ゼロを返す（ReDoS 回帰防止）', () => {
+  // 旧 regex（lazy [\s\S]*?）では O(n^2) バックトラックで遅延しうる。
+  // 本文クラスを base64 限定にした修正で線形化される。
+  const adversarial = '-----BEGIN CERTIFICATE-----\n'.repeat(50000);
+  const r = detectInput(adversarial);
+  expect(r.candidates).toHaveLength(0);
+});
 
-  it('改行入りの base64 本文を持つ正常な PEM を抽出する（修正後も機能維持）', () => {
-    const pem = `-----BEGIN CERTIFICATE-----\nMIIBAgMBAAE=\nAQID\n-----END CERTIFICATE-----`;
-    const r = detectInput(pem);
-    expect(r.kind).toBe('pem');
-    expect(r.candidates).toHaveLength(1);
-  });
+it('改行入りの base64 本文を持つ正常な PEM を抽出する（修正後も機能維持）', () => {
+  const pem = `-----BEGIN CERTIFICATE-----\nMIIBAgMBAAE=\nAQID\n-----END CERTIFICATE-----`;
+  const r = detectInput(pem);
+  expect(r.kind).toBe('pem');
+  expect(r.candidates).toHaveLength(1);
+});
 ```
 
 - [ ] **Step 2: テストを実行して陰性対照が通り敵対ケースの意図を確認**
@@ -51,10 +52,10 @@ Expected: 既存実装でも「改行入り base64」ケースは PASS する。
 `src/utils/cert/detect.ts:56` を変更:
 
 ```ts
-  // PEM ブロック抽出
-  // 本文クラスを base64 + 空白に限定（`-` を含まない）ことで、`-----END` 位置での
-  // バックトラックを構造的に排除し catastrophic backtracking を防ぐ。
-  const pemRegex = /-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=\s]*)-----END \1-----/g;
+// PEM ブロック抽出
+// 本文クラスを base64 + 空白に限定（`-` を含まない）ことで、`-----END` 位置での
+// バックトラックを構造的に排除し catastrophic backtracking を防ぐ。
+const pemRegex = /-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=\s]*)-----END \1-----/g;
 ```
 
 （変更前は `([\s\S]*?)`。ラベルクラス `([A-Z0-9 ]+)` と `\1` 後方参照は不変。）
@@ -76,6 +77,7 @@ git commit -m "fix: 証明書デコーダのPEM正規表現を線形化しReDoS�
 ### Task 2: 入力長ガードを追加（#1b）
 
 **Files:**
+
 - Modify: `src/utils/cert/parse.ts`（`parseCertificates` 冒頭・モジュール先頭に定数）
 - Test: `src/utils/__tests__/cert-parse.test.ts`
 
@@ -84,18 +86,18 @@ git commit -m "fix: 証明書デコーダのPEM正規表現を線形化しReDoS�
 `src/utils/__tests__/cert-parse.test.ts` の `describe('parseCertificates', ...)` ブロック内に追加:
 
 ```ts
-  it('1 MiB を超える入力は topLevelError を返す（#1b 入力長ガード・陽性対照）', async () => {
-    const tooLarge = 'a'.repeat(1024 * 1024 + 1);
-    const r = await parseCertificates(tooLarge);
-    expect(r.certs).toHaveLength(0);
-    expect(r.topLevelError).toBeTruthy();
-  });
+it('1 MiB を超える入力は topLevelError を返す（#1b 入力長ガード・陽性対照）', async () => {
+  const tooLarge = 'a'.repeat(1024 * 1024 + 1);
+  const r = await parseCertificates(tooLarge);
+  expect(r.certs).toHaveLength(0);
+  expect(r.topLevelError).toBeTruthy();
+});
 
-  it('上限直下の正常な PEM は通常どおりパースできる（陰性対照）', async () => {
-    const r = await parseCertificates(chain.leafPem);
-    expect(r.certs).toHaveLength(1);
-    expect(r.certs[0].error).toBeUndefined();
-  });
+it('上限直下の正常な PEM は通常どおりパースできる（陰性対照）', async () => {
+  const r = await parseCertificates(chain.leafPem);
+  expect(r.certs).toHaveLength(1);
+  expect(r.certs[0].error).toBeUndefined();
+});
 ```
 
 - [ ] **Step 2: テストを実行して失敗を確認**
@@ -141,6 +143,7 @@ git commit -m "fix: 証明書デコーダにテキスト入力長の上限ガー
 ### Task 3: DN 値抽出を共通ヘルパー化し hex フォールバックを追加（#4）
 
 **Files:**
+
 - Modify: `src/utils/cert/parse.ts`（`parseDn` と新規 export `extractAttributeValue`）
 - Test: `src/utils/__tests__/cert-parse.test.ts`
 
@@ -236,6 +239,7 @@ git commit -m "refactor: 証明書DN値抽出を共通化しhexフォールバ�
 ### Task 4: IPv6 アドレスを RFC 5952 準拠で圧縮表示（#6）
 
 **Files:**
+
 - Modify: `src/utils/cert/parse.ts`（`formatIpAddress` を export + 圧縮、`compressIpv6` 追加）
 - Test: `src/utils/__tests__/cert-parse.test.ts`
 
@@ -351,6 +355,7 @@ git commit -m "feat: 証明書SANのIPv6表示をRFC5952準拠の圧縮表記に
 ### Task 5: 親解決ロジックを一本化し DN 重複に対応（#3 + #5）
 
 **Files:**
+
 - Modify: `src/utils/cert/chain.ts`（`buildSubjectMap`/`resolveParentIndex` 新設、`buildOrder`/`buildChain` を置換）
 - Modify: `src/utils/__tests__/cert-fixtures.ts`（`makeDuplicateDnChain` と SKI/AKI 拡張ビルダーを追加）
 - Test: `src/utils/__tests__/cert-chain.test.ts`
@@ -479,7 +484,12 @@ export async function makeDuplicateDnChain(): Promise<DuplicateDnChain> {
 `src/utils/__tests__/cert-chain.test.ts` の import に `makeDuplicateDnChain` を追加:
 
 ```ts
-import { makeTestChain, makeExpiredCert, makeDuplicateDnChain, type TestChain } from './cert-fixtures';
+import {
+  makeTestChain,
+  makeExpiredCert,
+  makeDuplicateDnChain,
+  type TestChain,
+} from './cert-fixtures';
 ```
 
 ファイル末尾に追加:

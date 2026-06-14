@@ -13,7 +13,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { parseCertificates } from '@/utils/cert/parse';
 import { buildChain } from '@/utils/cert/chain';
-import { makeTestChain, makeExpiredCert, makeDuplicateDnChain, type TestChain } from './cert-fixtures';
+import {
+  makeTestChain,
+  makeExpiredCert,
+  makeDuplicateDnChain,
+  type TestChain,
+} from './cert-fixtures';
 import { SAMPLE_CERT_CHAIN_PEM } from '@/components/tools/certDecoderSample';
 
 /** DER → PEM 変換ヘルパー */
