@@ -71,10 +71,67 @@ function redactPairString(
     .join(pairSep);
 }
 
+/**
+ * `name=value&...` 形式の各 value 部のみに scrubText を適用する。
+ * クエリ/フラグメント全体を scrubText に渡すと CREDENTIAL_ASSIGN の値クラスが
+ * 区切り `&` を越えて隣の param まで飲み込む（非機密 param を破壊する）ため、
+ * value 単位で走査して取りこぼし無く・破壊無く redact する。
+ */
+function scrubPairValues(s: string, counts: Record<HarRedactCategory, number>): string {
+  return s
+    .split('&')
+    .map((pair) => {
+      const eq = pair.indexOf('=');
+      if (eq === -1) return scrubInto(pair, counts, 'QUERY');
+      return pair.slice(0, eq + 1) + scrubInto(pair.slice(eq + 1), counts, 'QUERY');
+    })
+    .join('&');
+}
+
+/**
+ * URL の scheme://authority（host・port・basic-auth）を保持しつつ、パス以降に
+ * scrubText を適用する。host を潰さず URL の可読性を保ったまま、パス内トークンや
+ * 辞書外クエリ名の JWT/API キーを redact する。
+ * - path: そのまま scrubText（`key=value&` 構造を持たないため安全）
+ * - query / fragment: param value 単位で scrubText（`&` 越えの飲み込みを防ぐ）
+ */
+function scrubUrlPath(url: string, counts: Record<HarRedactCategory, number>): string {
+  const schemeMatch = url.match(/^[a-z][a-z0-9+.-]{0,31}:\/\//i);
+  let authorityEnd: number;
+  if (schemeMatch) {
+    const after = schemeMatch[0].length;
+    const sepIndex = url.slice(after).search(/[/?#]/);
+    authorityEnd = sepIndex === -1 ? url.length : after + sepIndex;
+  } else if (url.startsWith('//')) {
+    const sepIndex = url.slice(2).search(/[/?#]/);
+    authorityEnd = sepIndex === -1 ? url.length : 2 + sepIndex;
+  } else {
+    // scheme/authority 無しの相対 URL 等は全体を対象にする
+    authorityEnd = 0;
+  }
+  const head = url.slice(0, authorityEnd);
+  const rest = url.slice(authorityEnd);
+  if (rest === '') return url;
+
+  // path? query # fragment に分解する
+  const hashIndex = rest.indexOf('#');
+  const fragment = hashIndex !== -1 ? rest.slice(hashIndex + 1) : '';
+  const beforeHash = hashIndex !== -1 ? rest.slice(0, hashIndex) : rest;
+  const qIndex = beforeHash.indexOf('?');
+  const path = qIndex !== -1 ? beforeHash.slice(0, qIndex) : beforeHash;
+  const query = qIndex !== -1 ? beforeHash.slice(qIndex + 1) : '';
+
+  let result = head + scrubInto(path, counts, 'QUERY');
+  if (qIndex !== -1) result += '?' + scrubPairValues(query, counts);
+  if (hashIndex !== -1) result += '#' + scrubPairValues(fragment, counts);
+  return result;
+}
+
 /** request.url の basic-auth と機密クエリパラメータを redact する。 */
 function redactUrl(
   url: string,
   enabled: Record<HarRedactCategory, boolean>,
+  counts: Record<HarRedactCategory, number>,
   tokenize: (c: HarRedactCategory, v: string) => string
 ): string {
   let result = url;
@@ -108,6 +165,13 @@ function redactUrl(
       result = base + newQuery + hash;
     }
   }
+
+  // パス以降（path?query#fragment）に scrubText を適用（host は保持）。
+  // 構造的クエリ redact（SENSITIVE_PARAM_NAMES）の後に走らせ、placeholder は再マッチしない。
+  if (enabled.QUERY) {
+    result = scrubUrlPath(result, counts);
+  }
+
   return result;
 }
 
@@ -149,7 +213,7 @@ function redactHeaders(
     } else if (enabled.QUERY && URL_HEADER_NAMES.has(lower)) {
       // Referer / Origin / Location 等は URL を運ぶため URL と同じ redact を適用する。
       // （URL のクエリだけ redact しても同じ秘密値がこれらのヘッダに残るのを防ぐ）
-      h.value = redactUrl(h.value, enabled, tokenize);
+      h.value = redactUrl(h.value, enabled, counts, tokenize);
     } else if (enabled.AUTH_HEADER) {
       // 辞書外ヘッダ値に含まれる機密（JWT / API キー等）を scrubText で拾う。
       // 認証ヘッダトグルの意味的拡張（ヘッダ値の機密走査）として AUTH_HEADER で計上。
@@ -211,7 +275,7 @@ export function sanitizeHar(
 
       // URL
       if (typeof request.url === 'string') {
-        request.url = redactUrl(request.url, enabled, tokenize);
+        request.url = redactUrl(request.url, enabled, counts, tokenize);
       }
 
       // POST ボディ

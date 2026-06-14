@@ -322,6 +322,52 @@ describe('sanitizeHar', () => {
     expect(out.log.entries[0].request.queryString[0].value).not.toBe(secret);
   });
 
+  it('陽性対照: URL パスセグメント内のトークンが redact され host は保持される（#687c）', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://api.example.com/reset-password/${jwt}`,
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    const url = out.log.entries[0].request.url;
+    expect(url).not.toContain(jwt);
+    expect(url).toContain('https://api.example.com/'); // host は保持
+  });
+
+  it('陽性対照: 辞書外クエリ名の JWT も scrubText で redact される（#689b）', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyIn0.AbCdEfGhIjKlMnOpQrStUvWx';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://x.com/cb?foo=${jwt}`,
+              headers: [],
+              queryString: [{ name: 'foo', value: jwt }],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.url).not.toContain(jwt);
+  });
+
   it('陽性対照: 辞書外ヘッダの値に含まれる JWT が scrubText で redact される（#687b）', () => {
     const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
     const har: Har = {
