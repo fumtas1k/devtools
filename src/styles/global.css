@@ -231,6 +231,9 @@
   .bg-subtle {
     background: var(--color-bg-subtle);
   }
+  .bg-active {
+    background: var(--color-bg-active);
+  }
   .border-default {
     border-color: var(--color-border);
   }
