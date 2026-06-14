@@ -1183,9 +1183,9 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 - COOKIE: `request.cookies[].value` / `response.cookies[].value` / `Cookie` ヘッダ / `Set-Cookie` ヘッダを一貫トークン化
 - AUTH_HEADER: `Authorization` / `Proxy-Authorization` / `x-api-key` / `x-auth-token` / `x-csrf-token` / `x-xsrf-token` ヘッダ値を一貫トークン化
-- QUERY: 機密クエリパラメータ（`token` / `access_token` / `password` 等の辞書）の値と URL 内対応箇所を redact
+- QUERY: 機密クエリパラメータ（`token` / `access_token` / `password` 等の辞書）の値と URL 内対応箇所を redact。さらに URL を運ぶヘッダ（`Referer` / `Origin` / `Location` / `Content-Location`）も URL と同じ redact に通し、トークンが他ヘッダに残るのを防ぐ
 - BODY: `postData.params[].value` の機密名と `postData.text` への `scrubText` 適用
-- BODY_SCAN: `response.content.text` への `scrubText` 適用（API キー・JWT 等を追加検出）
+- BODY_SCAN: `response.content.text` への `scrubText` 適用（API キー・JWT 等を追加検出）。`content.encoding === 'base64'` の本文は破壊防止のためスキャン対象外
 
 一貫トークン化: `[REDACTED:COOKIE_1]` 等。同一値は HAR 全体で同一プレースホルダを割り当てる。
 
@@ -1195,7 +1195,7 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 **追加依存:** なし（既存の `secret-scrubber` の `scrubText` / `DEFAULT_ENABLED` を再利用）
 
-**スコープ外（v1 非対応）:** ウォーターフォール（タイミング可視化）・Web Worker による大型 HAR の非同期パース・辞書外の独自ヘッダ名の完全 redact
+**スコープ外（v1 非対応）:** ウォーターフォール（タイミング可視化）・Web Worker による大型 HAR の非同期パース・辞書外の独自名ヘッダ/クエリパラメータの完全 redact・base64 本文内の秘密検出
 
 ---
 

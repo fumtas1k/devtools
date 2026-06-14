@@ -596,7 +596,8 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 
 - HAR（HTTP Archive）は JSON 形式のため `JSON.parse` でパースし、`log.entries` が配列であることを最小スキーマ検証する（`src/utils/har/parse.ts`）
 - サニタイズは二段階。①構造的 redact（`src/utils/har/sanitize.ts`）: フィールド名辞書で確実に処理。②`scrubText`（`src/utils/secret-scrubber/scrub.ts`）: 本文の取りこぼしを自由テキスト走査で補完
-- 構造的 redact の対象: `request.cookies[].value` / `response.cookies[].value` / Cookie・Set-Cookie ヘッダ値（COOKIE カテゴリ）/ Authorization 等の認証ヘッダ値（AUTH_HEADER）/ `request.queryString[]` の機密名エントリ（QUERY）/ `request.url` のクエリパラメータと basic-auth パスワード（QUERY）/ `postData.params[]` の機密名エントリと `postData.text` への scrubText（BODY）/ `response.content.text` への scrubText（BODY_SCAN）
+- 構造的 redact の対象: `request.cookies[].value` / `response.cookies[].value` / Cookie・Set-Cookie ヘッダ値（COOKIE カテゴリ）/ Authorization 等の認証ヘッダ値（AUTH_HEADER）/ `request.queryString[]` の機密名エントリ（QUERY）/ `request.url` のクエリパラメータと basic-auth パスワード（QUERY）/ URL を運ぶヘッダ `Referer`・`Origin`・`Location`・`Content-Location` への URL redact 適用（QUERY。URL から消した値が他ヘッダに残る漏洩を防ぐ）/ `postData.params[]` の機密名エントリと `postData.text` への scrubText（BODY）/ `response.content.text` への scrubText（BODY_SCAN）
+- 防御的処理: JSON として妥当でも `request`/`response` を欠く壊れた entry は例外を投げずスキップする（`sanitizeHar` はレンダリング中の `useMemo` で走るため、throw すると画面が落ちる）
 - 一貫トークン化: `makeTokenizer` がカテゴリ × 値 → `[REDACTED:COOKIE_1]` 等のプレースホルダを発行する。同一値には同一プレースホルダを割り当て、HAR 全体で値の同一性が保たれる
 - 純関数・入力非破壊: `structuredClone` でディープコピーしてから処理するため元オブジェクトを mutate しない
 - UI: トグル変更は `useMemo` で `sanitizeHar(har, enabled)` を再計算し、カテゴリ別の redact 件数を `ToggleChips` のバッジに表示する
@@ -609,6 +610,6 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 
 - ウォーターフォール（タイミング可視化）は v1 非対応。別 issue で引き継ぐ
 - ファイルサイズ上限 25MB（大型 HAR のメインスレッドパース遅延を避けるため）。Web Worker 化は将来課題
-- 辞書に無い独自ヘッダ名・パラメータ名は `scrubText` が拾える範囲のみ redact される（完全な網羅は保証しない）
-- レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする（バイナリ誤検知防止）
+- 辞書に無い独自ヘッダ名・独自名のクエリ/フォームパラメータは `scrubText` が拾える範囲のみ redact される（任意名のセッショントークン等は残りうる。完全な網羅は保証せず、出力は共有前の目視確認が前提）
+- レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする。`HIGH_ENTROPY_BASE64` ルールが base64 ブロック自体にマッチして本文を破壊し、デコード不能な HAR を出力するのを防ぐため（その代わり base64 本文内の秘密は検出されない）
 - 全処理はブラウザ内で完結し、HAR データは外部に送信しない

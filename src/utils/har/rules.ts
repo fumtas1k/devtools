@@ -54,6 +54,19 @@ export const AUTH_HEADER_NAMES = new Set([
   'x-xsrf-token',
 ]);
 
+/**
+ * 値に URL を運ぶヘッダ名（小文字比較）。QUERY カテゴリで URL と同じ redact 処理に通す。
+ * Referer / Origin はリクエスト URL（クエリ込み）を、Location / Content-Location は
+ * レスポンスのリダイレクト先 URL を運ぶため、URL 内の basic-auth・機密クエリが残存しうる。
+ */
+export const URL_HEADER_NAMES = new Set([
+  'referer',
+  'referrer',
+  'origin',
+  'location',
+  'content-location',
+]);
+
 /** 機密クエリ/POST パラメータ名（小文字比較）。QUERY / BODY カテゴリで redact する。 */
 export const SENSITIVE_PARAM_NAMES = new Set([
   'token',

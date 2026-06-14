@@ -54,15 +54,12 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
         </thead>
         <tbody>
           {entries.map((e, i) => (
-            <tr
-              key={i}
-              aria-selected={selectedIndex === i}
-              className={selectedIndex === i ? 'bg-active' : undefined}
-            >
+            <tr key={i} className={selectedIndex === i ? 'bg-active' : undefined}>
               <td className="px-3 py-1.5 font-mono">{e.request.method}</td>
               <td className="px-3 py-1.5">
                 <button
                   type="button"
+                  aria-current={selectedIndex === i ? 'true' : undefined}
                   className="text-left text-primary underline-offset-2 hover:underline"
                   onClick={() => onSelect(i)}
                 >

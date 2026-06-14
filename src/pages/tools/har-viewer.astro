@@ -36,7 +36,14 @@ const tool = tools.find((t) => t.slug === 'har-viewer')!;
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>ウォーターフォール（タイミング可視化）は今後対応予定</li>
       <li>大きな HAR（25MB 超）は読み込めません</li>
-      <li>辞書に無い独自ヘッダ名・パラメータ名は本文スキャンが拾える範囲のみ redact されます</li>
+      <li>
+        辞書に無い独自ヘッダ名や、独自名のクエリ/フォームパラメータは本文スキャンが拾える範囲のみ
+        redact されます（任意名のセッショントークン等は残りうるため、出力は共有前に必ず目視確認を）
+      </li>
+      <li>
+        base64
+        エンコードされたレスポンスボディは、本文を破壊しないようスキャン対象外です（中身の秘密は検出されません）
+      </li>
     </ul>
   </ToolInfoSection>
 </ToolLayout>

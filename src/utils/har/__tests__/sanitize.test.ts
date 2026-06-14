@@ -126,4 +126,97 @@ describe('sanitizeHar', () => {
     expect(() => JSON.stringify(har)).not.toThrow();
     expect(har.log.entries[0].response.status).toBe(200);
   });
+
+  // ── P1-1: URL を運ぶヘッダ（Referer / Location 等）のトークン漏洩防止 ──
+  it('陽性対照: Referer ヘッダ内の URL クエリトークンが redact される', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/?token=SUPERSECRET12345',
+              headers: [{ name: 'Referer', value: 'https://x.com/page?token=SUPERSECRET12345' }],
+              queryString: [{ name: 'token', value: 'SUPERSECRET12345' }],
+              cookies: [],
+            },
+            response: { status: 302, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    const referer = out.log.entries[0].request.headers.find((h) => h.name === 'Referer');
+    // URL からもヘッダからも同じ秘密値が消えていること（不整合な残存がない）
+    expect(out.log.entries[0].request.url).not.toContain('SUPERSECRET12345');
+    expect(referer?.value).not.toContain('SUPERSECRET12345');
+  });
+
+  it('陽性対照: レスポンス Location ヘッダ内の URL トークンが redact される', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/login',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: {
+              status: 302,
+              headers: [{ name: 'Location', value: 'https://x.com/cb?code=AUTHCODE9999' }],
+              cookies: [],
+              content: {},
+            },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    const loc = out.log.entries[0].response.headers.find((h) => h.name === 'Location');
+    expect(loc?.value).not.toContain('AUTHCODE9999');
+  });
+
+  // ── P1-2: base64 レスポンスボディを破壊しない ──
+  it('base64 エンコードのレスポンスボディは BODY_SCAN で改変されない（破壊防止）', () => {
+    const b64 = 'SGVsbG8gd29ybGQhIEhpZ2hFbnRyb3B5QmFzZTY0Q29udGVudEhlcmU=';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/img',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: {
+              status: 200,
+              headers: [],
+              cookies: [],
+              content: { mimeType: 'application/octet-stream', text: b64, encoding: 'base64' },
+            },
+          },
+        ],
+      },
+    };
+    const { har: out, counts } = sanitizeHar(har, ALL_ON);
+    // 本文がそのまま保持され、デコードしても壊れないこと
+    expect(out.log.entries[0].response.content.text).toBe(b64);
+    expect(counts.BODY_SCAN).toBe(0);
+  });
+
+  // ── P2-3: 壊れた entry でクラッシュしない ──
+  it('JSON として妥当だが entry が壊れた HAR でも例外を投げない', () => {
+    // { "log": { "entries": [ {} ] } } — request/response 欠落
+    const broken = {
+      log: { entries: [{}, null, { request: {}, response: {} }] },
+    } as unknown as Har;
+    expect(() => sanitizeHar(broken, ALL_ON)).not.toThrow();
+    const { har } = sanitizeHar(broken, ALL_ON);
+    expect(har.log.entries).toHaveLength(3);
+  });
 });

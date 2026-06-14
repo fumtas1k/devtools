@@ -9,6 +9,7 @@ import {
   type HarRedactCategory,
   COOKIE_HEADER_NAMES,
   AUTH_HEADER_NAMES,
+  URL_HEADER_NAMES,
   SENSITIVE_PARAM_NAMES,
   emptyRedactCounts,
 } from './rules';
@@ -109,6 +110,7 @@ function redactHeaders(
   tokenize: (c: HarRedactCategory, v: string) => string
 ): void {
   for (const h of headers) {
+    if (!h || typeof h.name !== 'string' || typeof h.value !== 'string') continue;
     const lower = h.name.toLowerCase();
     if (enabled.COOKIE && COOKIE_HEADER_NAMES.has(lower)) {
       // Cookie ヘッダは "a=1; b=2" を value だけ redact、Set-Cookie は全体 redact
@@ -119,6 +121,10 @@ function redactHeaders(
       }
     } else if (enabled.AUTH_HEADER && AUTH_HEADER_NAMES.has(lower)) {
       h.value = tokenize('AUTH_HEADER', h.value);
+    } else if (enabled.QUERY && URL_HEADER_NAMES.has(lower)) {
+      // Referer / Origin / Location 等は URL を運ぶため URL と同じ redact を適用する。
+      // （URL のクエリだけ redact しても同じ秘密値がこれらのヘッダに残るのを防ぐ）
+      h.value = redactUrl(h.value, enabled, tokenize);
     }
   }
 }
@@ -131,51 +137,96 @@ export function sanitizeHar(
   const counts = emptyRedactCounts();
   const tokenize = makeTokenizer(counts);
 
+  // entries が配列でも各要素が壊れている（request/response 欠落・型不正）ことは
+  // 手編集・切り詰めた HAR で起こりうる。レンダリング中の useMemo で走るため、
+  // 例外を投げると ErrorBoundary 不在のコンポーネントが落ちる。各 entry を防御的に扱う。
   for (const entry of har.log.entries) {
-    const { request, response } = entry;
+    if (typeof entry !== 'object' || entry === null) continue;
+    const request = entry.request;
+    const response = entry.response;
 
-    // ヘッダ
-    if (request.headers) redactHeaders(request.headers, enabled, tokenize);
-    if (response.headers) redactHeaders(response.headers, enabled, tokenize);
+    // ── リクエスト ──
+    if (typeof request === 'object' && request !== null) {
+      // ヘッダ
+      if (Array.isArray(request.headers)) redactHeaders(request.headers, enabled, tokenize);
 
-    // Cookie 配列
-    if (enabled.COOKIE) {
-      for (const c of request.cookies ?? []) c.value = tokenize('COOKIE', c.value);
-      for (const c of response.cookies ?? []) c.value = tokenize('COOKIE', c.value);
-    }
+      // Cookie 配列
+      if (enabled.COOKIE && Array.isArray(request.cookies)) {
+        for (const c of request.cookies) {
+          if (c && typeof c.value === 'string') c.value = tokenize('COOKIE', c.value);
+        }
+      }
 
-    // クエリ（配列 + URL）
-    if (enabled.QUERY) {
-      for (const q of request.queryString ?? []) {
-        if (SENSITIVE_PARAM_NAMES.has(q.name.toLowerCase())) {
-          q.value = tokenize('QUERY', q.value);
+      // クエリ（配列）
+      if (enabled.QUERY && Array.isArray(request.queryString)) {
+        for (const q of request.queryString) {
+          if (
+            q &&
+            typeof q.value === 'string' &&
+            SENSITIVE_PARAM_NAMES.has(q.name?.toLowerCase())
+          ) {
+            q.value = tokenize('QUERY', q.value);
+          }
+        }
+      }
+
+      // URL
+      if (typeof request.url === 'string') {
+        request.url = redactUrl(request.url, enabled, tokenize);
+      }
+
+      // POST ボディ
+      if (enabled.BODY && request.postData && typeof request.postData === 'object') {
+        if (Array.isArray(request.postData.params)) {
+          for (const p of request.postData.params) {
+            if (
+              p &&
+              typeof p.value === 'string' &&
+              SENSITIVE_PARAM_NAMES.has(p.name?.toLowerCase())
+            ) {
+              p.value = tokenize('BODY', p.value);
+            }
+          }
+        }
+        if (typeof request.postData.text === 'string') {
+          const r = scrubText(request.postData.text, DEFAULT_ENABLED);
+          if (r.findings.length > 0) {
+            request.postData.text = r.output;
+            counts.BODY += r.findings.length;
+          }
         }
       }
     }
-    request.url = redactUrl(request.url, enabled, tokenize);
 
-    // POST ボディ
-    if (enabled.BODY && request.postData) {
-      for (const p of request.postData.params ?? []) {
-        if (SENSITIVE_PARAM_NAMES.has(p.name.toLowerCase())) {
-          p.value = tokenize('BODY', p.value);
+    // ── レスポンス ──
+    if (typeof response === 'object' && response !== null) {
+      if (Array.isArray(response.headers)) redactHeaders(response.headers, enabled, tokenize);
+
+      if (enabled.COOKIE && Array.isArray(response.cookies)) {
+        for (const c of response.cookies) {
+          if (c && typeof c.value === 'string') c.value = tokenize('COOKIE', c.value);
         }
       }
-      if (typeof request.postData.text === 'string') {
-        const r = scrubText(request.postData.text, DEFAULT_ENABLED);
+
+      // レスポンスボディスキャン。
+      // base64 エンコードされた本文は scrubText にかけない:
+      //  - 秘密は base64 文字列内にありパターン検出が効かない（false confidence）。
+      //  - HIGH_ENTROPY_BASE64 ルールが base64 ブロック自体にマッチし、本文を破壊して
+      //    デコード不能な HAR を出力してしまう。
+      // よって encoding === 'base64' のときはスキップし、本文を素通しで保持する。
+      const content = response.content;
+      if (
+        enabled.BODY_SCAN &&
+        content &&
+        typeof content === 'object' &&
+        typeof content.text === 'string' &&
+        content.encoding !== 'base64'
+      ) {
+        const r = scrubText(content.text, DEFAULT_ENABLED);
         if (r.findings.length > 0) {
-          request.postData.text = r.output;
-          counts.BODY += r.findings.length;
+          content.text = r.output;
+          counts.BODY_SCAN += r.findings.length;
         }
-      }
-    }
-
-    // レスポンスボディスキャン
-    if (enabled.BODY_SCAN && typeof response.content?.text === 'string') {
-      const r = scrubText(response.content.text, DEFAULT_ENABLED);
-      if (r.findings.length > 0) {
-        response.content.text = r.output;
-        counts.BODY_SCAN += r.findings.length;
       }
     }
   }
