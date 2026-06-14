@@ -24,6 +24,7 @@
 | 開発サーバー (http://localhost:4321)  | `npm run dev`                                    |
 | 本番ビルド / プレビュー               | `npm run build` / `npm run preview`              |
 | 整形 / 整形チェック                   | `npm run format` / `npm run format:check`        |
+| Lint（button type 漏れ検出 / コミット前推奨） | `npm run lint`                                   |
 | 型チェック（コミット前必須）          | `node_modules/.bin/astro check`                  |
 | ユニットテスト (Vitest)               | `npm run test` / `npm run test:watch`            |
 | E2E テスト (Playwright, preview 経由) | `npm run test:e2e` ❌ `npm run e2e` は存在しない |

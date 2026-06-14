@@ -4268,3 +4268,26 @@ cert-decoder v1（decision [111]）では PKCS#12 をスコープ外としてい
 - ✅ 全処理ブラウザ内完結。秘密鍵が外部送信される経路がない。
 - ✅ 陽性対照テストにより誤パスワード・非 p12・レガシー暗号の検知能力を CI で継続検証。
 - ⚠️ RC2/3DES 保護の既存 .pfx は再エクスポートが必要（既知制限として UI で案内済み）。
+
+## [115] ESLint 導入 — react/button-has-type のみに限定 + CI enforce
+
+**2026-06-14 | ステータス: 採用**
+
+### 背景
+
+#271（親）のフォローアップ #569。`<button>` は `type` 省略時にデフォルト submit 化し、`<form>` 内で意図しない送信を招く事故クラスがある。本プロジェクトには ESLint が未導入だったため、ゼロから最小構成で導入する。
+
+### 決断
+
+- **ルールを `react/button-has-type` 1 本に限定**: recommended ルールセットは有効化しない。最小 blast radius で受け入れ基準を満たし、既存コードの大量違反リスクを排除する（将来のルール追加は別 issue）。
+- **依存最小化**: `eslint`（^9） + `@typescript-eslint/parser`（^8, .tsx パース用） + `eslint-plugin-react`（^7）のみ。typescript-eslint の recommended プラグインは入れない。
+- **バージョン固定**: eslint-plugin-react@7.37.5 の peer が `eslint ^9.7` までのため eslint は `^9` 系に固定（eslint 10 は peer conflict）。
+- **`.astro` は対象外**: HTML button は全件 type 付与済み（#566 等）で、`react/button-has-type` は JSX 専用。astro 用 parser/plugin の追加は YAGNI。
+- **CI enforce（CLAUDE.md §9.2 準拠の CI 設定変更）**: `test.yml` の test job に `npm run lint` step を追加。lint は OS 非依存のため test job 1 箇所のみ（e2e job には追加しない）。
+- **test-gates 準拠**: `tests/meta/eslint-button-has-type.test.ts` で ESLint API による陽性/陰性対照を併設し、検知能力ゼロで green になる事故を防止する。
+
+### 結果・トレードオフ
+
+- ✅ button type 漏れを CI で恒久的に機械検出。陽性対照で検知能力を継続検証。
+- ✅ ルール 1 本限定で導入時の既存違反・レビュー負荷が最小。
+- ⚠️ 他の lint 観点（hooks 依存配列・未使用変数等）は未カバー。必要になれば別 issue で recommended 化を検討する。
