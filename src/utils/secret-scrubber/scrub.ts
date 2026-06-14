@@ -10,6 +10,15 @@
 
 import { SCRUB_RULES, emptyCounts, type ScrubCategory } from './rules';
 
+/**
+ * プレースホルダ [REDACTED:CAT_n] 形式の正規表現（単一の真実源）。
+ * scrubText の採番衝突回避（#690 L-3）と har/sanitize.ts の makeTokenizer 冪等化で共有する。
+ * - PLACEHOLDER_RE: 入力中の既存プレースホルダを走査しカテゴリ・番号を capture する（g フラグ）
+ * - PLACEHOLDER_EXACT_RE: 値が前後余白なしの単体プレースホルダか判定する（完全一致）
+ */
+export const PLACEHOLDER_RE = /\[REDACTED:([A-Z_]+)_(\d+)\]/g;
+export const PLACEHOLDER_EXACT_RE = /^\[REDACTED:[A-Z_]+_\d+\]$/;
+
 export interface ScrubFinding {
   category: ScrubCategory;
   ruleId: string;
@@ -168,13 +177,25 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
   // カテゴリ別のカウンタ
   const categoryCounter: Partial<Record<ScrubCategory, number>> = {};
 
+  // 入力中に既に存在する [REDACTED:CAT_n] リテラルのカテゴリ別最大 n を求め、
+  // 新規採番がそれを超えるようにして同一トークンの衝突を防ぐ（#690 L-3）。
+  const reservedMax: Record<string, number> = {};
+  PLACEHOLDER_RE.lastIndex = 0;
+  for (let pm; (pm = PLACEHOLDER_RE.exec(input)); ) {
+    const cat = pm[1];
+    const n = Number(pm[2]);
+    if (n > (reservedMax[cat] ?? 0)) reservedMax[cat] = n;
+  }
+  PLACEHOLDER_RE.lastIndex = 0;
+
   const findings: ScrubFinding[] = [];
 
   for (const m of resolved) {
     const key = `${m.category}:${m.value}`;
     let placeholder = tokenMap.get(key);
     if (!placeholder) {
-      const n = (categoryCounter[m.category] ?? 0) + 1;
+      const base = Math.max(categoryCounter[m.category] ?? 0, reservedMax[m.category] ?? 0);
+      const n = base + 1;
       categoryCounter[m.category] = n;
       placeholder = `[REDACTED:${m.category}_${n}]`;
       tokenMap.set(key, placeholder);

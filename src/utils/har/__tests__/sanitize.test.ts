@@ -47,7 +47,15 @@ function makeHar(): Har {
 }
 
 const ALL_ON = { ...HAR_REDACT_DEFAULT };
-const ALL_OFF = { COOKIE: false, AUTH_HEADER: false, QUERY: false, BODY: false, BODY_SCAN: false };
+const ALL_OFF = {
+  COOKIE: false,
+  AUTH_HEADER: false,
+  QUERY: false,
+  BODY: false,
+  BODY_SCAN: false,
+  HEADER_SCAN: false,
+  PATH_SCAN: false,
+};
 
 describe('sanitizeHar', () => {
   it('陽性対照: Cookie 値が redact される', () => {
@@ -502,6 +510,260 @@ describe('sanitizeHar', () => {
     expect(() => sanitizeHar(broken, ALL_ON)).not.toThrow();
     const { har } = sanitizeHar(broken, ALL_ON);
     expect(har.log.entries).toHaveLength(3);
+  });
+});
+
+// ── #695: data: URL 破壊回避 ──
+describe('#695: data: URL を破壊しない', () => {
+  it('退行対照: request.url が data: URL のとき原文のまま保持される', () => {
+    // HIGH_ENTROPY_BASE64 が base64 ペイロードを [REDACTED] に置換してデコード不能にする
+    // 破壊クラスを防ぐガード（scrubUrlPath 冒頭の /^data:/i チェック）の退行対照。
+    // ガードを外すと base64 部が [REDACTED:...] に置換されて toBe(原文) が fail する。
+    const payload =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const dataUrl = `data:image/png;base64,${payload}`;
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: dataUrl,
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out, counts } = sanitizeHar(har, ALL_ON);
+    // ガードが機能すれば URL は原文のまま
+    expect(out.log.entries[0].request.url).toBe(dataUrl);
+    // PATH_SCAN カウントは 0（base64 を誤検出しない）
+    expect(counts.PATH_SCAN).toBe(0);
+  });
+
+  it('退行対照: response.redirectURL が data: URL のとき原文のまま保持される', () => {
+    const dataUrl = 'data:text/html;charset=utf-8,<h1>redirect</h1>';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/login',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: {
+              status: 302,
+              headers: [],
+              cookies: [],
+              content: {},
+              redirectURL: dataUrl,
+            },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].response.redirectURL).toBe(dataUrl);
+  });
+
+  it('退行対照: 通常の https:// URL のパストークン redact は従来どおり動作する', () => {
+    // data: URL ガードが https:// URL に誤って適用されないことの確認
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcXYZ';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://api.example.com/reset/${jwt}`,
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.url).not.toContain(jwt);
+    expect(out.log.entries[0].request.url).toContain('https://api.example.com/');
+  });
+});
+
+// ── #690 L-3: makeTokenizer 冪等化（二重計上防止） ──
+describe('#690 L-3: makeTokenizer 冪等化（2b）', () => {
+  it('冪等性（退行対照）: 2回 sanitizeHar してもカウントが増えない', () => {
+    // makeTokenizer の PLACEHOLDER_EXACT_RE ガードが機能すれば、
+    // 1 回目にプレースホルダ化された値を 2 回目に再 tokenize しない。
+    // ガードを外すと 2 回目にも counts が増加して toEqual(0) が fail する（空回りでない証明）。
+    const harInput = makeHar();
+    const { har: once } = sanitizeHar(harInput, ALL_ON);
+    // 2 回目のサニタイズ
+    const { counts: twiceCounts } = sanitizeHar(once, ALL_ON);
+    // 構造的 redact（COOKIE / AUTH_HEADER / QUERY）は冪等ガードで 0 になる
+    expect(twiceCounts.COOKIE).toBe(0);
+    expect(twiceCounts.AUTH_HEADER).toBe(0);
+    expect(twiceCounts.QUERY).toBe(0);
+  });
+
+  it('陽性対照（冪等化）: 初回サニタイズでは Cookie/Auth 等が正常に redact される', () => {
+    // 冪等ガードが初回の redact を妨げていないことを確認（ガード有無どちらでも通る → 初回は正常）
+    const { counts } = sanitizeHar(makeHar(), ALL_ON);
+    // Cookie と AUTH_HEADER は初回で必ず検出される
+    expect(counts.COOKIE).toBeGreaterThan(0);
+    expect(counts.AUTH_HEADER).toBeGreaterThan(0);
+  });
+});
+
+// ── #694: HEADER_SCAN / PATH_SCAN 独立カテゴリ分離の陽性対照 ──
+describe('#694: HEADER_SCAN / PATH_SCAN 独立制御', () => {
+  // AUTH_HEADER のみ ON: 辞書一致ヘッダ（Authorization）は redact される
+  it('AUTH_HEADER のみ ON: Authorization は redact されるが辞書外ヘッダは redact されない', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/',
+              headers: [
+                { name: 'Authorization', value: `Bearer ${jwt}` },
+                { name: 'X-Custom-Trace', value: `trace=${jwt}` },
+              ],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const enabled = { ...ALL_OFF, AUTH_HEADER: true };
+    const { har: out, counts } = sanitizeHar(har, enabled);
+    const authHeader = out.log.entries[0].request.headers.find((h) => h.name === 'Authorization');
+    const customHeader = out.log.entries[0].request.headers.find(
+      (h) => h.name === 'X-Custom-Trace'
+    );
+    // Authorization（辞書一致）は redact される
+    expect(authHeader?.value).not.toContain(jwt);
+    expect(counts.AUTH_HEADER).toBeGreaterThan(0);
+    // X-Custom-Trace（辞書外）は HEADER_SCAN OFF なので redact されない
+    expect(customHeader?.value).toContain(jwt);
+    expect(counts.HEADER_SCAN).toBe(0);
+  });
+
+  // HEADER_SCAN のみ ON: 辞書外ヘッダの JWT は redact されるが Authorization は redact されない
+  it('HEADER_SCAN のみ ON: 辞書外ヘッダの JWT は redact されるが Authorization は redact されない', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/',
+              headers: [
+                { name: 'Authorization', value: `Bearer ${jwt}` },
+                { name: 'X-Custom-Trace', value: `trace=${jwt}` },
+              ],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const enabled = { ...ALL_OFF, HEADER_SCAN: true };
+    const { har: out, counts } = sanitizeHar(har, enabled);
+    const authHeader = out.log.entries[0].request.headers.find((h) => h.name === 'Authorization');
+    const customHeader = out.log.entries[0].request.headers.find(
+      (h) => h.name === 'X-Custom-Trace'
+    );
+    // Authorization は AUTH_HEADER OFF なので（辞書一致でも）redact されない
+    expect(authHeader?.value).toContain(jwt);
+    expect(counts.AUTH_HEADER).toBe(0);
+    // X-Custom-Trace（辞書外）は HEADER_SCAN で redact される
+    expect(customHeader?.value).not.toContain(jwt);
+    expect(counts.HEADER_SCAN).toBeGreaterThan(0);
+  });
+
+  // QUERY のみ ON: 辞書一致クエリ param は redact される。URL パストークンは残る
+  it('QUERY のみ ON: 辞書一致クエリは redact されるが URL パストークンは残る', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://x.com/reset/${jwt}?token=SECRET123&page=1`,
+              headers: [],
+              queryString: [
+                { name: 'token', value: 'SECRET123' },
+                { name: 'page', value: '1' },
+              ],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const enabled = { ...ALL_OFF, QUERY: true };
+    const { har: out, counts } = sanitizeHar(har, enabled);
+    const url = out.log.entries[0].request.url;
+    // 辞書一致クエリ（token）は QUERY で redact される
+    expect(url).not.toContain('SECRET123');
+    expect(counts.QUERY).toBeGreaterThan(0);
+    // URL パスセグメントの JWT は PATH_SCAN OFF なので残る
+    expect(url).toContain(jwt);
+    expect(counts.PATH_SCAN).toBe(0);
+  });
+
+  // PATH_SCAN のみ ON: URL パストークンは redact される。辞書一致クエリ param は残る
+  it('PATH_SCAN のみ ON: URL パストークンは redact されるが辞書一致クエリ param は残る', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
+    const secret = 'PLAINTEXT_SECRET';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://x.com/reset/${jwt}?token=${secret}&page=1`,
+              headers: [],
+              queryString: [
+                { name: 'token', value: secret },
+                { name: 'page', value: '1' },
+              ],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const enabled = { ...ALL_OFF, PATH_SCAN: true };
+    const { har: out, counts } = sanitizeHar(har, enabled);
+    const url = out.log.entries[0].request.url;
+    // URL パスの JWT は PATH_SCAN で redact される
+    expect(url).not.toContain(jwt);
+    expect(counts.PATH_SCAN).toBeGreaterThan(0);
+    // queryString 配列は QUERY OFF なので辞書一致 token も残る
+    expect(out.log.entries[0].request.queryString.find((q) => q.name === 'token')?.value).toBe(
+      secret
+    );
+    expect(counts.QUERY).toBe(0);
   });
 });
 
