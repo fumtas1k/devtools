@@ -23,6 +23,7 @@
 ### Task 1: ユニットテストを新挙動に更新（失敗させる）
 
 **Files:**
+
 - Test: `src/components/tools/__tests__/HarEntryList.test.tsx`
 
 既存ファイルの内容を以下に置き換える。変更点は (a) 「button を持たない」assert を新挙動（壊れ行も button）に更新、(b) 壊れ行クリックで `onSelect` がその index で呼ばれる陽性対照を追加。
@@ -124,6 +125,7 @@ Expected: FAIL（壊れ行がまだ `<span>` なので button 数が 2 になり
 ### Task 2: HarEntryList の壊れた行を button 化
 
 **Files:**
+
 - Modify: `src/components/tools/HarEntryList.tsx`（`url == null` 分岐の `<span>` を `<button>` に）
 
 - [ ] **Step 1: 壊れた行の span を button に置き換える**
@@ -152,6 +154,7 @@ Expected: FAIL（壊れ行がまだ `<span>` なので button 数が 2 になり
 ```
 
 注意:
+
 - `type="button"` 必須（lint の button type 漏れ検出に該当）。
 - `text-muted` を維持し URL リンク（`text-primary`）と視覚的に区別する。`underline`/`hover:underline` は Tailwind コア utility なので variant が効く（`@layer components` 手書き class ではない）。
 - a11y 属性 `aria-current` は正常行の URL button と同じパターン。
@@ -183,6 +186,7 @@ git commit -m "fix: har-viewer 壊れた entry 行をクリック可能にして
 ### Task 3: 再現シナリオの回帰 E2E を追加
 
 **Files:**
+
 - Modify: `tests/e2e/har-viewer.spec.ts`（`test.describe('HAR ビューア', ...)` 内の末尾に追加）
 
 - [ ] **Step 1: E2E テストを追加**
@@ -190,52 +194,52 @@ git commit -m "fix: har-viewer 壊れた entry 行をクリック可能にして
 `tests/e2e/har-viewer.spec.ts` の最後の `test('先頭 entry が null でも...')` ブロックの直後（`});` で describe が閉じる直前）に以下を挿入:
 
 ```ts
-  test('正常 entry 選択後も壊れた行を再クリックして詳細プレースホルダを再表示できる', async ({
-    page,
-  }) => {
-    await page.goto('/tools/har-viewer');
+test('正常 entry 選択後も壊れた行を再クリックして詳細プレースホルダを再表示できる', async ({
+  page,
+}) => {
+  await page.goto('/tools/har-viewer');
 
-    // 先頭が壊れた entry（{}）+ 2 件目は正常（issue #701 再現データ）
-    const json = JSON.stringify({
-      log: {
-        version: '1.2',
-        creator: { name: 'test', version: '1.0' },
-        entries: [
-          {}, // 壊れた entry（先頭。auto-select で index=0 が選ばれる）
-          {
-            time: 10,
-            request: {
-              method: 'GET',
-              url: 'https://example.com/api/ok',
-              headers: [],
-              queryString: [],
-              cookies: [],
-            },
-            response: { status: 200, headers: [], cookies: [], content: {} },
+  // 先頭が壊れた entry（{}）+ 2 件目は正常（issue #701 再現データ）
+  const json = JSON.stringify({
+    log: {
+      version: '1.2',
+      creator: { name: 'test', version: '1.0' },
+      entries: [
+        {}, // 壊れた entry（先頭。auto-select で index=0 が選ばれる）
+        {
+          time: 10,
+          request: {
+            method: 'GET',
+            url: 'https://example.com/api/ok',
+            headers: [],
+            queryString: [],
+            cookies: [],
           },
-        ],
-      },
-    });
-    await uploadHar(page, json);
-
-    // 正常 entry が一覧に描画される（React island がクラッシュしていない陽性対照）
-    const okButton = page.getByRole('button', { name: /\/api\/ok$/ });
-    await expect(okButton).toBeVisible({ timeout: 10000 });
-
-    // 前提: 先頭の壊れ entry が auto-select され詳細プレースホルダが出る
-    await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
-
-    // 正常 entry をクリックして選択を移す → 詳細に正常 entry の URL が出る
-    await okButton.click();
-    await expect(page.getByText('https://example.com/api/ok')).toBeVisible();
-    // プレースホルダは消える
-    await expect(page.getByText(/詳細を表示できません/)).toHaveCount(0);
-
-    // 壊れた行（「（壊れたエントリ）」button）を再クリック → 詳細プレースホルダが再表示される。
-    // 修正前は壊れ行が button でなくクリックできないため、ここで fail する（陽性ガード）。
-    await page.getByRole('button', { name: '（壊れたエントリ）' }).click();
-    await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+          response: { status: 200, headers: [], cookies: [], content: {} },
+        },
+      ],
+    },
   });
+  await uploadHar(page, json);
+
+  // 正常 entry が一覧に描画される（React island がクラッシュしていない陽性対照）
+  const okButton = page.getByRole('button', { name: /\/api\/ok$/ });
+  await expect(okButton).toBeVisible({ timeout: 10000 });
+
+  // 前提: 先頭の壊れ entry が auto-select され詳細プレースホルダが出る
+  await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+
+  // 正常 entry をクリックして選択を移す → 詳細に正常 entry の URL が出る
+  await okButton.click();
+  await expect(page.getByText('https://example.com/api/ok')).toBeVisible();
+  // プレースホルダは消える
+  await expect(page.getByText(/詳細を表示できません/)).toHaveCount(0);
+
+  // 壊れた行（「（壊れたエントリ）」button）を再クリック → 詳細プレースホルダが再表示される。
+  // 修正前は壊れ行が button でなくクリックできないため、ここで fail する（陽性ガード）。
+  await page.getByRole('button', { name: '（壊れたエントリ）' }).click();
+  await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+});
 ```
 
 - [ ] **Step 2: E2E を実行して PASS を確認**
@@ -255,6 +259,7 @@ git commit -m "test: har-viewer 壊れた行の再選択 E2E を追加 (#701)"
 ### Task 4: ドキュメント確認・更新
 
 **Files:**
+
 - Check: `docs/tools.md`（har-viewer の挙動記述）
 
 - [ ] **Step 1: docs/tools.md の har-viewer 記述を確認**
