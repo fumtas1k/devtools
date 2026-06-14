@@ -38,7 +38,7 @@ export function HarEntryDetail({ entry }: Props) {
         {request.postData?.text != null && (
           <div>
             <h4 className="mb-1 mt-3 font-medium">POST ボディ</h4>
-            <pre className="overflow-x-auto rounded bg-subtle p-2 text-xs">
+            <pre className="overflow-x-auto rounded bg-subtle p-2 hint-xs">
               {request.postData.text}
             </pre>
           </div>
@@ -53,7 +53,7 @@ export function HarEntryDetail({ entry }: Props) {
         {response.content?.text != null && (
           <div>
             <h4 className="mb-1 mt-3 font-medium">ボディ</h4>
-            <pre className="overflow-x-auto rounded bg-subtle p-2 text-xs">
+            <pre className="overflow-x-auto rounded bg-subtle p-2 hint-xs">
               {response.content.text}
             </pre>
           </div>
