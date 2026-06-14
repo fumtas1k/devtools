@@ -92,8 +92,10 @@
 
 - `src/workers/harSanitizer.worker.ts`（stateful worker）+ `src/hooks/useHarSanitizer.ts`（worker ライフサイクル / `requestId` による stale result 破棄）。
 - `sanitizeHar` に `onProgress` を追加し `ProgressBar` で進捗表示。
-- ページング / 遅延 stringify は「描画フェーズの最適化」として維持（user が観察した「描画でさらに時間がかかる」への対策）。
+- 遅延 stringify は維持（毎レンダリングの数 MB 直列化を避ける）。
 - `MAX_BYTES` は 25MB を維持（フリーズが解消したためメモリ防御ガードに戻す。初版で 10MB に下げたのは撤回）。
 - Vite worker サブビルドに `@/` エイリアスが伝播しないため、`sanitize.ts` の secret-scrubber import を相対パスに変更。
+
+**さらに追記（ページング撤去）**: 当初は描画最適化としてページングを残したが、user の実 HAR 検証でエントリ数が数百件程度と判明。その規模では描画はボトルネックにならず、ページングは無価値（100 件超で不要なページャが出るデメリットのみ）。フリーズの主因は sanitize であり Worker 化で解消済みのため、**ページングは撤去して全件描画に戻した**（YAGNI）。教訓は `docs/decisions.md [117]` の「教訓（検証の重要性）」を参照。
 
 確定した設計判断は `docs/decisions.md [117]` を正本とする。

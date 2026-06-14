@@ -150,9 +150,8 @@ export function HarViewer() {
             onToggle={handleToggle}
           />
 
-          {/* エントリ一覧（key={loadSeq} で新規読込時のみ remount → ページ状態リセット） */}
+          {/* エントリ一覧（全件描画。フリーズの主因は sanitize でありそれは Worker 化で解消済み） */}
           <HarEntryList
-            key={result.loadSeq}
             entries={result.har.log.entries}
             selectedIndex={selectedIndex}
             onSelect={setSelectedIndex}

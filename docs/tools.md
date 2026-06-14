@@ -603,7 +603,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - parse + sanitize は **Web Worker**（`src/workers/harSanitizer.worker.ts`）で実行する。`sanitizeHar` は `structuredClone` + 全 response body の正規表現スキャンで中規模 HAR でも数秒かかり、メインスレッド同期実行だと「ページが応答しません」になる（issue #677）。worker に逃がしメインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する
 - フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` の `onProgress` コールバックで処理済みエントリ数を逐次受け取り、`ProgressBar` で進捗表示する
 - カテゴリ別の redact 件数は worker が返す `counts` を `ToggleChips` のバッジに表示する
-- エントリ一覧は 100 件/ページのページング（`HarEntryList`）。数千エントリでも DOM を最大 100 行に抑え、一括描画によるタブ凍結を防ぐ。行選択の index は全 entries に対するグローバル index で扱い、ページャ操作はページ状態のみを切り替える。新規ファイル読込時は `key={loadSeq}` の remount でページを 0 に戻し、redact トグル時はページを保持する
+- エントリ一覧（`HarEntryList`）は全件描画する。フリーズの主因は描画ではなく sanitize であり Worker 化で解消したため、ページングは導入しない（実 HAR の検証でエントリ数は数百件程度で、その規模の `<tr>` 描画は問題にならないことを確認。`loadSeq` は新規読込時の選択リセット判定にのみ使い、トグル時は選択を保持する）
 - 出力 HAR の `JSON.stringify(.., null, 2)` はコピー/ダウンロード押下時のみ遅延生成する（`CopyButton` の `text` prop は `string | (() => string)` を受け付け、関数はクリック時に評価される）。毎レンダリングでの数 MB 直列化を避ける
 - `sanitize.ts` は worker の依存グラフに含まれるため `@/` ではなく相対 import を使う（Vite の worker Rollup サブビルドに tsconfig paths が伝播しないため。詳細はファイル冒頭コメント参照）
 

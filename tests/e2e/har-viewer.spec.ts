@@ -98,81 +98,38 @@ async function uploadHar(page: import('@playwright/test').Page, json: string): P
   });
 }
 
-test.describe('HAR ビューア — ページング', () => {
-  test('120 件の HAR を読み込むとページャが表示される', async ({ page }) => {
+test.describe('HAR ビューア', () => {
+  test('Web Worker 経由で読み込み、全エントリが描画される（ページャは無い）', async ({ page }) => {
     await page.goto('/tools/har-viewer');
 
     const json = buildTestHar(120);
     await uploadHar(page, json);
 
-    // ページャの「次へ」ボタンが表示されていることを確認
-    await expect(page.getByRole('button', { name: '次へ' })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: '前へ' })).toBeVisible();
+    // worker が parse+sanitize した結果、先頭・末尾の両エントリが同時に見える
+    // （ページングしないので 120 件すべて DOM 上に存在する）
+    await expect(page.getByRole('button', { name: /\/api\/item\/0$/ })).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByRole('button', { name: /\/api\/item\/119$/ })).toBeVisible();
+
+    // ページャ（前へ/次へ）は存在しない
+    await expect(page.getByRole('button', { name: '次へ' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '前へ' })).toHaveCount(0);
   });
 
-  test('初期状態で 1 ページ目の entry が表示され 2 ページ目の entry は非表示', async ({ page }) => {
+  test('entry クリックで詳細パネルにそのリクエストが表示される', async ({ page }) => {
     await page.goto('/tools/har-viewer');
 
     const json = buildTestHar(120);
     await uploadHar(page, json);
 
-    await expect(page.getByRole('button', { name: '次へ' })).toBeVisible({ timeout: 10000 });
+    // 末尾付近のエントリ（item/119）をクリックしても詳細が出る（全件描画の確認）
+    const entryButton = page.getByRole('button', { name: /\/api\/item\/119$/ });
+    await expect(entryButton).toBeVisible({ timeout: 10000 });
+    await entryButton.click();
 
-    // item/0 が見える（1 ページ目の最初のエントリ）
-    await expect(page.getByRole('button', { name: /\/api\/item\/0$/ })).toBeVisible();
-
-    // item/100 が見えない（2 ページ目のエントリ）
-    await expect(page.getByRole('button', { name: /\/api\/item\/100$/ })).not.toBeVisible();
-  });
-
-  test('「次へ」クリックで 2 ページ目が表示される', async ({ page }) => {
-    await page.goto('/tools/har-viewer');
-
-    const json = buildTestHar(120);
-    await uploadHar(page, json);
-
-    await expect(page.getByRole('button', { name: '次へ' })).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: '次へ' }).click();
-
-    // 2 ページ目では item/100 が見える
-    await expect(page.getByRole('button', { name: /\/api\/item\/100$/ })).toBeVisible();
-
-    // 1 ページ目の最初のエントリは非表示になる
-    await expect(page.getByRole('button', { name: /\/api\/item\/0$/ })).not.toBeVisible();
-  });
-
-  test('2 ページ目の entry クリックで詳細パネルにそのリクエストが表示される', async ({ page }) => {
-    await page.goto('/tools/har-viewer');
-
-    const json = buildTestHar(120);
-    await uploadHar(page, json);
-
-    await expect(page.getByRole('button', { name: '次へ' })).toBeVisible({ timeout: 10000 });
-
-    // 2 ページ目に移動
-    await page.getByRole('button', { name: '次へ' }).click();
-
-    // item/100 の URL ボタンをクリック
-    await page.getByRole('button', { name: /\/api\/item\/100$/ }).click();
-
-    // 詳細パネルに URL が表示されていることを確認（getByText で URL 全体を検索）
-    await expect(page.getByText('https://example.com/api/item/100')).toBeVisible();
-  });
-
-  test('陽性対照: 100 件以下の HAR ではページャが表示されない', async ({ page }) => {
-    await page.goto('/tools/har-viewer');
-
-    // 50 件のみの HAR（ページング不要）
-    const json = buildTestHar(50);
-    await uploadHar(page, json);
-
-    // サマリ「リクエスト: N 件」が表示されるまで待つ（span > strong 構造）
-    await expect(page.getByText('50', { exact: true })).toBeVisible({ timeout: 10000 });
-
-    // ページャが表示されないことを確認
-    // (PAGE_SIZE=100 なので 50 件は 1 ページに収まる)
-    await expect(page.getByRole('button', { name: '次へ' })).not.toBeVisible();
-    await expect(page.getByRole('button', { name: '前へ' })).not.toBeVisible();
+    // 詳細パネルに URL が表示されていることを確認
+    await expect(page.getByText('https://example.com/api/item/119')).toBeVisible();
   });
 
   test('redact トグルで Web Worker の再 sanitize が走り redact 件数が変化する', async ({
