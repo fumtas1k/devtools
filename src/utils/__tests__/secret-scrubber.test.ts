@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scrubText } from '@/utils/secret-scrubber/scrub';
+import { scrubText, resolveMaskRange } from '@/utils/secret-scrubber/scrub';
 import { DEFAULT_ENABLED } from '@/utils/secret-scrubber/rules';
 import type { ScrubCategory } from '@/utils/secret-scrubber/rules';
 import { makeUrlCredentialRegex } from '@/utils/secret-scrubber/url-credential';
@@ -503,5 +503,27 @@ describe('CREDENTIAL_URL — multi-@ / protocol-relative の陽性対照', () =>
     const r = scrubText('https://host:8080/redirect?to=https://u:p@evil.com', DEFAULT_ENABLED);
     expect(r.output).toContain('https://host:8080/redirect?to=https://u:');
     expect(r.output).toContain('@evil.com');
+  });
+});
+
+describe('resolveMaskRange — d フラグ fail-safe（#690 M-1）', () => {
+  it('indices が取れない場合はマッチ全体を over-mask する（漏えい方向に倒さない）', () => {
+    // d フラグ非対応環境を模した、.indices を持たないマッチ
+    const fake = Object.assign(['Bearer abc12345', 'abc12345'], {
+      index: 7,
+    }) as unknown as RegExpExecArray;
+    expect(resolveMaskRange(fake, 1)).toEqual({
+      value: 'Bearer abc12345',
+      start: 7,
+      end: 7 + 'Bearer abc12345'.length,
+    });
+  });
+
+  it('indices があればグループ範囲を使う', () => {
+    const re = /authorization\s*:\s*([a-z0-9]+)/dgi;
+    const m = re.exec('authorization: abc123')!;
+    const r = resolveMaskRange(m, 1);
+    expect(r.value).toBe('abc123');
+    expect('authorization: abc123'.slice(r.start, r.end)).toBe('abc123');
   });
 });
