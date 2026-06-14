@@ -26,6 +26,9 @@ import { ensureCryptoEngine } from './engine';
 import { decodeSct } from './sct';
 import type { ParsedCert, ParseResult, CertName, PublicKeyInfo } from './types';
 
+// テキスト入力の最大長（1 MiB）。これを超える入力は早期に拒否する（防御多重化）。
+const MAX_INPUT_LENGTH = 1024 * 1024;
+
 // ────────────────────────────────────────────────────────────────────────────
 // OID → 短縮名マッピング
 // ────────────────────────────────────────────────────────────────────────────
@@ -108,20 +111,66 @@ function bytesToHexPlain(bytes: Uint8Array): string {
 }
 
 /** iPAddress オクテット列を IPv4（4 byte）/ IPv6（16 byte）表記に整形する */
-function formatIpAddress(bytes: Uint8Array): string {
+export function formatIpAddress(bytes: Uint8Array): string {
   if (bytes.length === 4) {
     return Array.from(bytes).join('.');
   }
   if (bytes.length === 16) {
-    // 2 byte ずつ 16 進グループに（省略圧縮はせず素直に表示）
-    const groups: string[] = [];
+    const groups: number[] = [];
     for (let i = 0; i < 16; i += 2) {
-      groups.push(((bytes[i] << 8) | bytes[i + 1]).toString(16));
+      groups.push(((bytes[i] << 8) | bytes[i + 1]) >>> 0);
     }
-    return groups.join(':');
+    return compressIpv6(groups);
   }
   // 想定外長は hex で fallback
   return bytesToHexPlain(bytes);
+}
+
+/** IPv6 の 8 グループ（16bit 値）を RFC 5952 準拠（小文字・最長ゼロ連続を :: 圧縮）に整形する */
+function compressIpv6(groups: number[]): string {
+  // 最長のゼロ連続ラン（長さ 2 以上）を 1 箇所だけ :: に圧縮する
+  let bestStart = -1;
+  let bestLen = 0;
+  let curStart = -1;
+  let curLen = 0;
+  for (let i = 0; i < groups.length; i++) {
+    if (groups[i] === 0) {
+      if (curStart === -1) curStart = i;
+      curLen++;
+      if (curLen > bestLen) {
+        bestLen = curLen;
+        bestStart = curStart;
+      }
+    } else {
+      curStart = -1;
+      curLen = 0;
+    }
+  }
+
+  const hex = groups.map((g) => g.toString(16));
+  if (bestLen < 2) return hex.join(':');
+
+  const head = hex.slice(0, bestStart).join(':');
+  const tail = hex.slice(bestStart + bestLen).join(':');
+  return `${head}::${tail}`;
+}
+
+/**
+ * asn1js の RDN 値オブジェクトから表示用文字列を取り出す。
+ * 文字列型でない稀なエンコーディングは hex にフォールバックし、
+ * String() による "[object Object]" 表示を避ける。
+ */
+export function extractAttributeValue(value: unknown): string {
+  if (value == null) return '';
+  const v = value as {
+    valueBlock?: { value?: unknown; valueHexView?: Uint8Array };
+    value?: unknown;
+  };
+  if (typeof v.valueBlock?.value === 'string') return v.valueBlock.value;
+  if (typeof v.value === 'string') return v.value;
+  const hexView = v.valueBlock?.valueHexView;
+  if (hexView && hexView.length > 0) return bytesToHexPlain(hexView);
+  return '';
 }
 
 /** AttributeTypeAndValue[] を CertName に変換する */
@@ -130,22 +179,7 @@ function parseDn(typesAndValues: AttributeTypeAndValue[]): CertName {
 
   for (const atv of typesAndValues) {
     const shortName = OID_TO_SHORT[atv.type] ?? atv.type;
-    let val = '';
-    // asn1js の値オブジェクトから文字列を取り出す
-    if (
-      atv.value &&
-      typeof (atv.value as { valueBlock?: { value?: unknown } }).valueBlock?.value === 'string'
-    ) {
-      val = (atv.value as { valueBlock: { value: string } }).valueBlock.value;
-    } else if (
-      atv.value &&
-      typeof (atv.value as unknown as { value?: unknown }).value === 'string'
-    ) {
-      val = (atv.value as unknown as { value: string }).value;
-    } else {
-      val = String(atv.value ?? '');
-    }
-    attributes.push({ type: shortName, value: val });
+    attributes.push({ type: shortName, value: extractAttributeValue(atv.value) });
   }
 
   const full = attributes.map((a) => `${a.type}=${a.value}`).join(', ');
@@ -492,6 +526,10 @@ function extractCertsFromPkcs7(der: Uint8Array): Uint8Array[] {
  * `ParseResult` を返す。1枚のパース失敗は継続する。
  */
 export async function parseCertificates(input: string | Uint8Array): Promise<ParseResult> {
+  if (typeof input === 'string' && input.length > MAX_INPUT_LENGTH) {
+    return { certs: [], topLevelError: '入力が大きすぎます（最大 1 MiB）。' };
+  }
+
   ensureCryptoEngine();
 
   const detected = detectInput(input);

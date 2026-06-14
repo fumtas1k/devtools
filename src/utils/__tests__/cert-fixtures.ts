@@ -12,6 +12,7 @@ import {
   Extension,
   GeneralName,
   GeneralNames,
+  AuthorityKeyIdentifier,
 } from 'pkijs';
 import { ensureCryptoEngine } from '@/utils/cert/engine';
 
@@ -284,4 +285,103 @@ function buildSanExtension(dnsNames: string[]): Extension {
     extnValue: altNames.toSchema().toBER(false),
     parsedValue: altNames,
   });
+}
+
+/** SubjectKeyIdentifier 拡張（2.5.29.14）を構築する */
+function buildSkiExtension(keyId: Uint8Array): Extension {
+  // 拡張値の内側は OCTET STRING { keyId }。pkijs Extension が外側 OCTET STRING で包む。
+  const inner = new asn1js.OctetString({ valueHex: keyId.buffer.slice(0) as ArrayBuffer });
+  return new Extension({
+    extnID: '2.5.29.14',
+    critical: false,
+    extnValue: inner.toBER(false),
+  });
+}
+
+/** AuthorityKeyIdentifier 拡張（2.5.29.35）を keyIdentifier だけ持たせて構築する */
+function buildAkiExtension(keyId: Uint8Array): Extension {
+  const aki = new AuthorityKeyIdentifier({
+    keyIdentifier: new asn1js.OctetString({
+      idBlock: { tagClass: 3, tagNumber: 0 }, // context [0] IMPLICIT
+      valueHex: keyId.buffer.slice(0) as ArrayBuffer,
+    }),
+  });
+  return new Extension({
+    extnID: '2.5.29.35',
+    critical: false,
+    extnValue: aki.toSchema().toBER(false),
+  });
+}
+
+export interface DuplicateDnChain {
+  /** 同一 Subject DN "CN=Dup CA" を持つ自己署名 CA 2 枚（SKI 違い）。 */
+  caAPem: string; // SKI = 0xAA×20
+  caBPem: string; // SKI = 0xBB×20
+  /** issuer=Dup CA、AKI=skiB、caB の鍵で署名された leaf。 */
+  leafPem: string;
+  /** caB の SubjectKeyIdentifier の期待値（lowercase hex）。 */
+  skiBHex: string;
+}
+
+/**
+ * 同一 Subject DN の CA が複数ある状況を再現するフィクスチャ。
+ * leaf は caB の鍵で署名され AKI=skiB を持つため、AKI/SKI による親解決が
+ * 正しく caB を選べるかを検証できる。
+ */
+export async function makeDuplicateDnChain(): Promise<DuplicateDnChain> {
+  ensureCryptoEngine();
+
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 86400_000);
+  const nextYear = new Date(now.getTime() + 365 * 86400_000);
+
+  const skiA = new Uint8Array(20).fill(0xaa);
+  const skiB = new Uint8Array(20).fill(0xbb);
+
+  const caAKeys = await generateEcKeyPair();
+  const caBKeys = await generateEcKeyPair();
+  const leafKeys = await generateEcKeyPair();
+
+  const caA = await buildCert({
+    subjectCN: 'Dup CA',
+    issuerCN: 'Dup CA',
+    subjectKeyPair: caAKeys,
+    issuerPrivateKey: caAKeys.privateKey,
+    serial: 11,
+    isCa: true,
+    notBefore: yesterday,
+    notAfter: nextYear,
+    extraExtensions: [buildSkiExtension(skiA)],
+  });
+
+  const caB = await buildCert({
+    subjectCN: 'Dup CA',
+    issuerCN: 'Dup CA',
+    subjectKeyPair: caBKeys,
+    issuerPrivateKey: caBKeys.privateKey,
+    serial: 12,
+    isCa: true,
+    notBefore: yesterday,
+    notAfter: nextYear,
+    extraExtensions: [buildSkiExtension(skiB)],
+  });
+
+  const leaf = await buildCert({
+    subjectCN: 'dup-leaf.test',
+    issuerCN: 'Dup CA',
+    subjectKeyPair: leafKeys,
+    issuerPrivateKey: caBKeys.privateKey, // caB の鍵で署名
+    serial: 13,
+    isCa: false,
+    notBefore: yesterday,
+    notAfter: nextYear,
+    extraExtensions: [buildAkiExtension(skiB)],
+  });
+
+  return {
+    caAPem: derToPem(certToDer(caA)),
+    caBPem: derToPem(certToDer(caB)),
+    leafPem: derToPem(certToDer(leaf)),
+    skiBHex: 'bb'.repeat(20),
+  };
 }
