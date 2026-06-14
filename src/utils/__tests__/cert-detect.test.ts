@@ -23,13 +23,21 @@ describe('detectInput', () => {
     expect(detectInput(keyOnly).kind).toBe('unknown');
   });
 
-  it('END マーカーの無い大量の BEGIN は候補ゼロを返す（ReDoS 回帰防止）', () => {
-    // 旧 regex（lazy [\s\S]*?）では O(n^2) バックトラックで遅延しうる。
-    // 本文クラスを base64 限定にした修正で線形化される。
-    const adversarial = '-----BEGIN CERTIFICATE-----\n'.repeat(50000);
-    const r = detectInput(adversarial);
-    expect(r.candidates).toHaveLength(0);
-  });
+  // discriminating power は「候補ゼロ」ではなく実行時間で担保する。
+  // END マーカー無し入力は新旧どちらの regex でも論理的に 0 件になるため、
+  // 候補数だけでは旧 quadratic 実装を検知できない（検知ゼロで green になりうる）。
+  // 旧 `([\s\S]*?)` は ~1.4MB 入力で O(n^2)（数十秒規模）になり 1000ms timeout で FAIL、
+  // 新 `[A-Za-z0-9+/=\s]*`（`-` を含まない）は線形で数 ms で完了するため、
+  // 明示 timeout が線形性を正面から検証するゲートになる。
+  it(
+    'END マーカーの無い大量の BEGIN を線形時間で処理する（quadratic ReDoS 回帰防止）',
+    { timeout: 1000 },
+    () => {
+      const adversarial = '-----BEGIN CERTIFICATE-----\n'.repeat(50000);
+      const r = detectInput(adversarial);
+      expect(r.candidates).toHaveLength(0);
+    }
+  );
 
   it('改行入りの base64 本文を持つ正常な PEM を抽出する（修正後も機能維持）', () => {
     const pem = `-----BEGIN CERTIFICATE-----\nMIIBAgMBAAE=\nAQID\n-----END CERTIFICATE-----`;
