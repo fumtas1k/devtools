@@ -480,8 +480,11 @@ git commit -m "fix: CREDENTIAL_ASSIGNを引用符許容・全角＝対応にしJ
 ```ts
 describe('JWT_TOKEN — 多セグメント（JWE）の陽性対照（#690 L-1）', () => {
   it('5セグメント JWE を末尾セグメントを残さず全体 redact する', () => {
+    // 裸の JWE（機密キーワードの prefix を付けない）で JWT_TOKEN ルール単体を分離する。
+    // `token=<jwe>` 形式だと Task4 拡張後の CREDENTIAL_ASSIGN が先に値全体を捕捉して
+    // union マージし、旧 JWT_TOKEN でも PASS してしまい陽性対照にならないため。
     const jwe = 'eyJhbGciOiJSU0Et.QUFB.QkJC.Q0ND.RERE';
-    const r = scrubText(`token=${jwe}`, DEFAULT_ENABLED);
+    const r = scrubText(jwe, DEFAULT_ENABLED);
     expect(r.output).not.toContain('RERE'); // 末尾の暗号文/タグが残らない
     expect(r.output).not.toContain(jwe);
   });
