@@ -157,6 +157,37 @@ describe('ClipboardInspector — paste 捕捉', () => {
     expect(live!.textContent).toBe('クリアしました');
   });
 
+  it('クリア後に in-flight キャプチャが遅延 resolve しても結果を復活させない（陽性対照: clear の seq 無効化）', async () => {
+    // Clear ハンドラが captureSeqRef を進めない実装だと、遅延 resolve が seq 一致のまま
+    // snapshot を復活させ fail する設計（陽性対照）
+    render(<ClipboardInspectorTool />);
+    // 1 回目: 即時 resolve → snapshot 表示（クリアボタンが出る）
+    fireEvent.paste(document, {
+      clipboardData: mockClipboardData({ 'text/plain': '最初のデータ' }),
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'クリア' })).toBeTruthy());
+    // 2 回目: resolve を 50ms 遅延（in-flight キャプチャ）
+    fireEvent.paste(document, {
+      clipboardData: mockClipboardData({ 'text/plain': '遅延データ' }, 50),
+    });
+    // 2 回目の resolve 前にクリア
+    fireEvent.click(screen.getByRole('button', { name: 'クリア' }));
+    expect(screen.queryByText('最初のデータ')).toBeNull();
+    // 遅延 resolve を待っても結果が復活しないこと
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(screen.queryByText('遅延データ')).toBeNull();
+    expect(screen.queryByText('text/plain')).toBeNull();
+  });
+
+  it('type が空のフレーバーは "(type 不明)" と表示する', async () => {
+    render(<ClipboardInspectorTool />);
+    fireEvent.paste(document, {
+      clipboardData: mockClipboardData({ '': '型なしデータ' }),
+    });
+    await waitFor(() => expect(screen.getByText('型なしデータ')).toBeTruthy());
+    expect(screen.getByText('(type 不明)')).toBeTruthy();
+  });
+
   it('連続 paste で先行キャプチャの遅延 resolve が後発の結果を上書きしない', async () => {
     render(<ClipboardInspectorTool />);
     // 1 回目: getAsString の resolve を 50ms 遅延（大きい HTML の貼り付けを模擬）

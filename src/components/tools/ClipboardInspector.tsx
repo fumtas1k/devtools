@@ -244,6 +244,9 @@ export function ClipboardInspectorTool() {
             </div>
             <ClearButton
               onClick={() => {
+                // in-flight キャプチャの resolve を破棄する（クリア後に古い getAsString が
+                // 解決して snapshot を復活させるのを防ぐ）。capture の seq ガードと一貫させる
+                captureSeqRef.current++;
                 setSnapshot(null);
                 setAnnouncement('クリアしました');
               }}
@@ -260,7 +263,7 @@ export function ClipboardInspectorTool() {
           {snapshot.strings.map((flavor, i) => (
             <Section
               key={`${flavor.type}-${i}`}
-              title={<code className="font-mono">{flavor.type}</code>}
+              title={<code className="font-mono">{flavor.type || '(type 不明)'}</code>}
               headerSlot={
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="caption text-muted leading-none">
