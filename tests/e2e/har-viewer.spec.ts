@@ -132,6 +132,35 @@ test.describe('HAR ビューア', () => {
     await expect(page.getByText('https://example.com/api/item/119')).toBeVisible();
   });
 
+  test('固定文言カラムの見出しが nowrap で1文字ずつ縦折り返ししない（狭幅でも）', async ({
+    page,
+  }) => {
+    // スマホ相当の狭幅にしてカラムが squeeze される状況を再現
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/tools/har-viewer');
+
+    const json = buildTestHar(3);
+    await uploadHar(page, json);
+
+    // テーブル描画を待つ
+    await expect(page.getByRole('button', { name: /\/api\/item\/0$/ })).toBeVisible({
+      timeout: 10000,
+    });
+
+    // 固定文言カラムの見出しは折り返さない（whitespace-nowrap）。
+    // これを外すと computed style が 'normal' に戻りこの assert が fail する（陽性ガード）。
+    for (const name of ['メソッド', 'ステータス', 'サイズ', '時間']) {
+      const header = page.getByRole('columnheader', { name });
+      const whiteSpace = await header.evaluate((el) => getComputedStyle(el).whiteSpace);
+      expect(whiteSpace, `${name} カラム見出しは nowrap であるべき`).toBe('nowrap');
+    }
+
+    // URL カラムは可変長を吸収するため折り返し可のまま（nowrap にしない）
+    const urlHeader = page.getByRole('columnheader', { name: 'URL' });
+    const urlWhiteSpace = await urlHeader.evaluate((el) => getComputedStyle(el).whiteSpace);
+    expect(urlWhiteSpace).not.toBe('nowrap');
+  });
+
   test('redact トグルで Web Worker の再 sanitize が走り redact 件数が変化する', async ({
     page,
   }) => {
