@@ -18,6 +18,7 @@ import {
 // が伝播せず、`@/utils/...` 形式だと worker ビルドが解決に失敗する（issue #677）。
 import { scrubText } from '../secret-scrubber/scrub';
 import { DEFAULT_ENABLED } from '../secret-scrubber/rules';
+import { makeUrlCredentialRegex } from '../secret-scrubber/url-credential';
 
 export interface SanitizeResult {
   har: Har;
@@ -78,11 +79,14 @@ function redactUrl(
 ): string {
   let result = url;
 
-  // basic-auth: scheme://user:pass@host → pass を redact（QUERY 扱いで件数計上）
+  // basic-auth: scheme://user:pass@host → pass を redact（QUERY 扱いで件数計上）。
+  // 共有ビルダーで scrub.ts の CREDENTIAL_URL と一本化。HAR の URL フィールドは
+  // protocol-relative も正当なため requireScheme: false。
   if (enabled.QUERY) {
-    result = result.replace(/(:\/\/[^/@:]+:)([^@]+)(@)/, (_m, pre, pass, post) => {
-      return pre + tokenize('QUERY', pass) + post;
-    });
+    result = result.replace(
+      makeUrlCredentialRegex({ flags: 'g', requireScheme: false }),
+      (_m, pre, pass, post) => pre + tokenize('QUERY', pass) + post
+    );
   }
 
   if (enabled.QUERY) {
