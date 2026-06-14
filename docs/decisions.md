@@ -4368,3 +4368,30 @@ issue の root-cause 表（「DOM 描画が最有力」）は**実プロファ�
 - ⚠️ 全件描画のため、数千エントリ級の巨大 HAR では DOM 行数が多くなる（固まりはしないが描画が重くなりうる）。その規模が問題になれば仮想スクロール等を別途検討する。
 - ⚠️ 進捗バーの粒度はエントリ件数基準（`PROGRESS_INTERVAL = 100`）。実ボトルネックである「少数エントリ × 巨大レスポンスボディの正規表現スキャン」では 1 ボディの scan 中は進捗が進まず、数百件規模だとバーがほとんど動かないことがある（固着ではない）。バイト基準の進捗化は将来課題。
 - 堅牢性: worker の `onmessage` を try/catch で包み、`useHarSanitizer` に `worker.onerror` を設定。プロトコル外の例外でも `error` 状態に落とし、`busy` が永久 true で固着するのを防ぐ（PR #680 レビュー反映）。`reset()` は worker に `{ type: 'reset' }` を post して保持中 HAR（最大 25MB）を解放する。
+
+## [118] HAR サニタイザ: サニタイズ監査由来の堅牢化（漏れ修正・ReDoS 解消・カバレッジ拡張）
+
+**2026-06-14 | ステータス: 採用**
+
+### 背景
+
+HAR ビューア＆サニタイザのサニタイズ処理を多角的に監査し（サブエージェント2系統 + 実機裏取り）、機密が出力に残る漏れ・URL 破壊バグ・ReDoS による実質 DoS など6件（#685〜#690）を検出した。根幹機能のため段階的に修正する。設計詳細は `docs/superpowers/specs/2026-06-14-har-sanitizer-hardening-design.md`。
+
+### 決断
+
+3 PR に分割し、ReDoS 攻撃面の拡大を避けるため **PR-A（検出エンジン強化）→ PR-C（ReDoS 対策）→ PR-B（カバレッジ拡張）** の順で実装:
+
+- **PR-A**: JSON ボディの `"password":"value"` 漏れ（CREDENTIAL_ASSIGN の引用符許容）、`redactUrl` の URL 破壊・断片漏れ（共有 `url-credential.ts` ビルダーに一本化）、`d` フラグ非対応時の fail-open 反転、JWT 多セグメント化等。
+- **PR-C**: `scrubText` の O(n²) ReDoS。真因は `HIGH_ENTROPY` ではなく **EMAIL / URL scheme / JWT** の「上限なし greedy + 後続必須トークン」構造（実機計測で特定）。RFC 準拠の量化子上限で O(n) 化。当初案の `HIGH_ENTROPY` 上限化は 512 字超で逆に O(n²) を生むため不採用。
+- **PR-B**: 辞書外ヘッダ値・URL パス・`response.redirectURL`・辞書外クエリへ `scrubText` を拡張し、base64 バイナリ本文（mimeType 判定）はスキャンをスキップ。
+
+### over-masking の許容（PR-B）
+
+URL パス / 辞書外ヘッダへの `scrubText` 適用で、パスやヘッダ内の IP・メール・高エントロピー文字列も redact されうる。これは **漏えい方向ではなく安全側（over-masking）** であり、URL の `scheme://authority`（host）は保持して可読性を維持するため許容する。クエリ/フラグメントは構造を壊さないよう **param value 単位で走査**する（CREDENTIAL_ASSIGN の値クラスが区切り `&` を越えて隣の非機密 param を飲み込む破壊を防ぐ）。
+
+### 既知の残存リスク
+
+- `CREDENTIAL_ASSIGN` の値クラス `[^\s'",;]{6,}` 由来で 6 文字未満・空白入り値は取りこぼす（誤検出とのトレードオフのため一律緩和せず）。
+- JWT セグメント上限 `{1,1024}` 超の巨大トークンは全体マッチしないが、各セグメントを `HIGH_ENTROPY_BASE64` が拾う安全網がある（エントロピー条件付き）。
+- mimeType 欠落かつ base64 本文のケースは完全には防げない。
+- トークン衝突（入力中の既存 `[REDACTED:...]` リテラル）は #690 L-3 として据置（漏えいではなく安全側）。
