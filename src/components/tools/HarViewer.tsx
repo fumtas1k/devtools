@@ -19,7 +19,15 @@ import {
   type Har,
 } from '@/utils/har';
 
-const MAX_BYTES = 25 * 1024 * 1024;
+// メモリ防御ガード。白画面の主因は DOM ノード数でありページングで解消済み。
+// sanitize（structuredClone + 全 response body の scrubText）の同期律速は
+// エントリ数 × ボディ長に比例する。ベンチ実測（2026-06-14, Node vitest 環境）:
+//   ~6MB / 5000 エントリ (大量小エントリ): sanitize 約 2600ms — 2s 超
+//   ~18MB / 10000 エントリ (大量小エントリ): sanitize 約 17700ms — 大幅超
+// 少数大ボディ型（50 エントリ程度）はエントリ走査が少ないため同じバイト数でも
+// 大幅に速い傾向があるが計測値が取れていないため保守的に 10MB を上限とする。
+// 将来的に sanitize の Web Worker 化が完了したら cap を緩和可能（別 issue）。
+const MAX_BYTES = 10 * 1024 * 1024;
 
 export function HarViewer() {
   const [har, setHar] = useState<Har | null>(null);
@@ -28,6 +36,8 @@ export function HarViewer() {
   const [enabled, setEnabled] = useState<Record<HarRedactCategory, boolean>>({
     ...HAR_REDACT_DEFAULT,
   });
+  // 新規ファイル読込のたびにインクリメント。HarEntryList の key として使いページ状態をリセット。
+  const [loadCount, setLoadCount] = useState(0);
 
   const handleToggle = useCallback((cat: HarRedactCategory) => {
     setEnabled((prev) => ({ ...prev, [cat]: !prev[cat] }));
@@ -44,6 +54,7 @@ export function HarViewer() {
     setError(null);
     setHar(result.har);
     setSelectedIndex(result.har.log.entries.length > 0 ? 0 : null);
+    setLoadCount((c) => c + 1);
   }, []);
 
   const handleFile = useCallback(
@@ -64,11 +75,6 @@ export function HarViewer() {
 
   // サニタイズ結果（トグル変更で再計算）
   const sanitized = useMemo(() => (har ? sanitizeHar(har, enabled) : null), [har, enabled]);
-
-  const outputJson = useMemo(
-    () => (sanitized ? JSON.stringify(sanitized.har, null, 2) : ''),
-    [sanitized]
-  );
 
   const totalRedacted = sanitized ? Object.values(sanitized.counts).reduce((a, b) => a + b, 0) : 0;
 
@@ -103,7 +109,10 @@ export function HarViewer() {
         >
           ファイルを選択
         </FileInputButton>
-        <p className="caption mt-2 text-muted">ファイルはブラウザ外に送信されません（最大 25MB）</p>
+        <p className="caption mt-2 text-muted">
+          ファイルはブラウザ外に送信されません（最大 10MB）。大きな HAR は redact
+          切替時の処理に時間がかかることがあります。
+        </p>
       </div>
 
       {error && <ErrorMessage message={error} />}
@@ -132,8 +141,9 @@ export function HarViewer() {
             onToggle={handleToggle}
           />
 
-          {/* エントリ一覧 */}
+          {/* エントリ一覧（key={loadCount} で新規読込時のみ remount → ページ状態リセット） */}
           <HarEntryList
+            key={loadCount}
             entries={sanitized.har.log.entries}
             selectedIndex={selectedIndex}
             onSelect={setSelectedIndex}
@@ -142,11 +152,20 @@ export function HarViewer() {
           {/* 詳細パネル */}
           {selectedEntry && <HarEntryDetail entry={selectedEntry} />}
 
-          {/* 出力ボタン群 */}
+          {/* 出力ボタン群（JSON.stringify はコピー/DL 押下時のみ遅延生成） */}
           <div className="flex flex-wrap justify-end gap-2">
-            <CopyButton text={outputJson} label="サニタイズ済み HAR をコピー" />
+            <CopyButton
+              text={() => JSON.stringify(sanitized.har, null, 2)}
+              label="サニタイズ済み HAR をコピー"
+            />
             <DownloadButton
-              onClick={() => downloadText(outputJson, 'sanitized.har', 'application/json')}
+              onClick={() =>
+                downloadText(
+                  JSON.stringify(sanitized.har, null, 2),
+                  'sanitized.har',
+                  'application/json'
+                )
+              }
               label="サニタイズ済み HAR をダウンロード"
             />
             <ClearButton onClick={handleReset} />

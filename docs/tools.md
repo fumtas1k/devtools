@@ -601,6 +601,8 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 一貫トークン化: `makeTokenizer` がカテゴリ × 値 → `[REDACTED:COOKIE_1]` 等のプレースホルダを発行する。同一値には同一プレースホルダを割り当て、HAR 全体で値の同一性が保たれる
 - 純関数・入力非破壊: `structuredClone` でディープコピーしてから処理するため元オブジェクトを mutate しない
 - UI: トグル変更は `useMemo` で `sanitizeHar(har, enabled)` を再計算し、カテゴリ別の redact 件数を `ToggleChips` のバッジに表示する
+- エントリ一覧は 100 件/ページのページング（`HarEntryList`）。数千エントリでも DOM を最大 100 行に抑え、一括描画によるタブ凍結（白画面）を防ぐ。行選択の index は全 entries に対するグローバル index で扱い、ページャ操作はページ状態のみを切り替える。新規ファイル読込時は `key={loadCount}` の remount でページを 0 に戻し、redact トグル時はページを保持する
+- 出力 HAR の `JSON.stringify(.., null, 2)` はコピー/ダウンロード押下時のみ遅延生成する（`CopyButton` の `text` prop は `string | (() => string)` を受け付け、関数はクリック時に評価される）。毎レンダリングでの数 MB 直列化を避ける
 
 #### 準拠仕様
 
@@ -609,7 +611,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 #### 制限・エッジケース
 
 - ウォーターフォール（タイミング可視化）は v1 非対応。別 issue で引き継ぐ
-- ファイルサイズ上限 25MB（大型 HAR のメインスレッドパース遅延を避けるため）。Web Worker 化は将来課題
+- ファイルサイズ上限 10MB（メモリ防御ガード）。白画面の主因は DOM ノード数でありページングで解消済みだが、`sanitizeHar`（`structuredClone` + 全 response body の `scrubText`）はエントリ数 × ボディ長に比例する同期処理で、実測では ~6MB/5000 エントリで約 2.6 秒を要する。redact トグルのたびに全件再実行されるため、これを抑える Web Worker 化／差分 sanitize は将来課題（別 issue）
 - 辞書に無い独自ヘッダ名・独自名のクエリ/フォームパラメータは `scrubText` が拾える範囲のみ redact される（任意名のセッショントークン等は残りうる。完全な網羅は保証せず、出力は共有前の目視確認が前提）
 - レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする。`HIGH_ENTROPY_BASE64` ルールが base64 ブロック自体にマッチして本文を破壊し、デコード不能な HAR を出力するのを防ぐため（その代わり base64 本文内の秘密は検出されない）
 - 全処理はブラウザ内で完結し、HAR データは外部に送信しない
