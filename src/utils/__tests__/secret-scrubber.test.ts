@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { scrubText } from '@/utils/secret-scrubber/scrub';
 import { DEFAULT_ENABLED } from '@/utils/secret-scrubber/rules';
 import type { ScrubCategory } from '@/utils/secret-scrubber/rules';
+import { makeUrlCredentialRegex } from '@/utils/secret-scrubber/url-credential';
 
 /** 全カテゴリ無効の状態を返すヘルパー */
 function onlyEnabled(categories: ScrubCategory[]) {
@@ -389,5 +390,55 @@ describe('陰性対照 — 誤検出しない', () => {
     const enabled = onlyEnabled(['HIGH_ENTROPY']);
     const result = scrubText(lowEntropy, enabled);
     expect(result.counts.HIGH_ENTROPY).toBe(0);
+  });
+});
+
+describe('makeUrlCredentialRegex', () => {
+  function redact(url: string, requireScheme: boolean): string {
+    const re = makeUrlCredentialRegex({ flags: 'g', requireScheme });
+    return url.replace(re, (_m, pre, _pass, post) => `${pre}[X]${post}`);
+  }
+
+  it('正常 basic-auth のパスワードのみ redact しホストを残す', () => {
+    expect(redact('https://user:secretpw@host.com/', false)).toBe('https://user:[X]@host.com/');
+  });
+
+  it('host:port + 後続 @ を含む URL を破壊せず内側の認証情報のみ redact する', () => {
+    expect(redact('https://host:8080/redirect?to=https://u:p@evil.com', false)).toBe(
+      'https://host:8080/redirect?to=https://u:[X]@evil.com'
+    );
+  });
+
+  it('パス内 @ で誤爆しない（host:port/p@th を無変更）', () => {
+    expect(redact('https://host:8080/p@th', false)).toBe('https://host:8080/p@th');
+  });
+
+  it('パスワード中の @ を含めて完全に redact する（断片を残さない）', () => {
+    expect(redact('https://user:pa@ss@host.com/path', false)).toBe(
+      'https://user:[X]@host.com/path'
+    );
+  });
+
+  it('protocol-relative URL (requireScheme:false) のパスワードを redact する', () => {
+    expect(redact('//user:pass@host.com/', false)).toBe('//user:[X]@host.com/');
+  });
+
+  it('IPv6 ホストでもパスワードのみ redact しホストを残す', () => {
+    expect(redact('https://user:pw@[::1]:8080/x', false)).toBe('https://user:[X]@[::1]:8080/x');
+  });
+
+  it('認証情報の無い通常 URL では何も変更しない', () => {
+    expect(redact('https://api.example.com/v1/users', false)).toBe(
+      'https://api.example.com/v1/users'
+    );
+  });
+
+  it('requireScheme:true では scheme の無い //a:b@c や 3//4:5@6 を誤検出しない', () => {
+    expect(redact('3//4:5@6.com', true)).toBe('3//4:5@6.com');
+    expect(redact('//user:pass@host.com/', true)).toBe('//user:pass@host.com/');
+  });
+
+  it('requireScheme:true では scheme 付き URL のパスワードを redact する', () => {
+    expect(redact('https://user:secretpw@host.com/', true)).toBe('https://user:[X]@host.com/');
   });
 });
