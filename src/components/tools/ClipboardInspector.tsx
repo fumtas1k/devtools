@@ -264,29 +264,29 @@ export function ClipboardInspectorTool() {
             // 空 type のフォールバックは表示タイトルと SR 向け aria-label で揃える
             const typeLabel = flavor.type || '(type 不明)';
             return (
-            <Section
-              key={`${flavor.type}-${i}`}
-              title={<code className="font-mono">{typeLabel}</code>}
-              headerSlot={
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="caption text-muted leading-none">
-                    {[...flavor.content].length.toLocaleString('ja-JP')} 文字 /{' '}
-                    {flavor.byteSize.toLocaleString('ja-JP')} バイト
-                  </span>
-                  <CopyButton text={flavor.content} ariaLabel={`${typeLabel} の内容をコピー`} />
-                </div>
-              }
-            >
-              {flavor.type === 'text/html' ? (
-                <HtmlFlavorBody
-                  html={flavor.content}
-                  view={htmlViews[i] ?? 'source'}
-                  onViewChange={(v) => setHtmlViews((prev) => ({ ...prev, [i]: v }))}
-                />
-              ) : (
-                <FlavorPre content={flavor.content} />
-              )}
-            </Section>
+              <Section
+                key={`${flavor.type}-${i}`}
+                title={<code className="font-mono">{typeLabel}</code>}
+                headerSlot={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="caption text-muted leading-none">
+                      {[...flavor.content].length.toLocaleString('ja-JP')} 文字 /{' '}
+                      {flavor.byteSize.toLocaleString('ja-JP')} バイト
+                    </span>
+                    <CopyButton text={flavor.content} ariaLabel={`${typeLabel} の内容をコピー`} />
+                  </div>
+                }
+              >
+                {flavor.type === 'text/html' ? (
+                  <HtmlFlavorBody
+                    html={flavor.content}
+                    view={htmlViews[i] ?? 'source'}
+                    onViewChange={(v) => setHtmlViews((prev) => ({ ...prev, [i]: v }))}
+                  />
+                ) : (
+                  <FlavorPre content={flavor.content} />
+                )}
+              </Section>
             );
           })}
 
