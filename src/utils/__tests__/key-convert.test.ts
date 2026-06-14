@@ -421,13 +421,16 @@ describe('JWK import の堅牢化（制約フィールド非依存）', () => {
     expect(result.algorithm).toBe('RSA');
   });
 
-  it('use:"enc" を宣言した RSA 公開鍵 JWK でも error なく変換できる', async () => {
+  it('use:"enc" を宣言した RSA 公開鍵 JWK でも error なく変換でき、use / key_ops を保持する', async () => {
     const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
     jwk.use = 'enc';
     jwk.key_ops = ['encrypt'];
     delete jwk.alg;
     const result = await convertKey(JSON.stringify(jwk));
     expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    expect(out.use).toBe('enc');
+    expect(out.key_ops).toEqual(['encrypt']);
   });
 });
 
@@ -458,6 +461,23 @@ describe('出力 JWK のメタデータ忠実化', () => {
     const out = JSON.parse(result.jwk!) as Record<string, unknown>;
     expect('alg' in out).toBe(false);
     expect('ext' in out).toBe(false);
+  });
+
+  it('メタデータ復元は allowlist 限定で、x5c など X.509 連携フィールドは出力に残さない', async () => {
+    // 復元対象は kid / use / alg / key_ops のみ。x5c / x5t#S256 等の証明書連携
+    // フィールドは v1 スコープ外であり、往復で脱落する現挙動を固定する。
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.kid = 'with-cert';
+    jwk.x5c = ['MIIDfake...'];
+    jwk['x5t#S256'] = 'abc123';
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    // allowlist 内は保持
+    expect(out.kid).toBe('with-cert');
+    // allowlist 外は脱落
+    expect('x5c' in out).toBe(false);
+    expect('x5t#S256' in out).toBe(false);
   });
 });
 

@@ -590,7 +590,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 暗号化秘密鍵（ENCRYPTED PRIVATE KEY・パスフレーズ付き PEM）は非対応。`openssl pkcs8 -in key.pem -nocrypt -out key_plain.pem` で復号してから変換する
 - Ed25519 / Ed448（EdDSA、`kty: OKP`）は非対応
 - 秘密鍵からの公開鍵抽出は非対応
-- JWK 出力は鍵素材 + 入力由来のメタデータ（`kid` / `use` / `alg`）のみを保持する。`kty` が RSA / EC 以外（`OKP` 等）は引き続き非対応
+- JWK 出力で復元する入力メタデータは allowlist 限定（`kid` / `use` / `alg` / `key_ops`）。`x5c` / `x5t` / `x5t#S256` / `x5u` などの X.509 連携フィールドは v1 スコープ外で、JWK→JWK の往復では脱落する。`kty` が RSA / EC 以外（`OKP` 等）は引き続き非対応
 - 全処理はブラウザ内で完結し、秘密鍵データは外部に送信しない
 
 ### HARビューア＆サニタイザ
