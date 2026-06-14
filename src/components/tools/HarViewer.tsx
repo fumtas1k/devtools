@@ -158,7 +158,9 @@ export function HarViewer() {
           />
 
           {/* 詳細パネル */}
-          {selectedEntry && <HarEntryDetail entry={selectedEntry} />}
+          {/* selectedIndex があれば（entry が null/壊れていても）プレースホルダを描画し、
+              {} ケースとの UX 非対称を解消する（issue #684） */}
+          {selectedIndex != null && <HarEntryDetail entry={selectedEntry} />}
 
           {/* 出力ボタン群（JSON.stringify はコピー/DL 押下時のみ遅延生成） */}
           <div className="flex flex-wrap justify-end gap-2">
