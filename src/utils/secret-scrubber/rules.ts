@@ -223,7 +223,8 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'JWT_TOKEN',
     category: 'JWT',
-    pattern: /\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/g,
+    // 3セグメント JWT に加え、4〜5セグメントの JWE も末尾まで全体マッチする
+    pattern: /\beyJ[\w-]+(?:\.[\w-]+){2,}\b/g,
     priority: 85,
   },
 
