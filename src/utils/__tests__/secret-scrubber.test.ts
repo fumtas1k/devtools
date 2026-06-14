@@ -443,6 +443,35 @@ describe('makeUrlCredentialRegex', () => {
   });
 });
 
+describe('CREDENTIAL_ASSIGN — JSON / 全角の陽性対照（#685 / #690 L-2）', () => {
+  it('JSON の "password":"value" を redact する', () => {
+    const r = scrubText('{"username":"alice","password":"hunter2"}', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('hunter2');
+    expect(r.output).toContain('"username":"alice"'); // 非機密キーは保持
+  });
+
+  it('JSON の "client_secret":"value" を redact する', () => {
+    const r = scrubText('{"client_secret":"GOCSPX-abcdefABCDEF12"}', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('GOCSPX-abcdefABCDEF12');
+  });
+
+  it('全角イコール パスワード＝value を redact する', () => {
+    const r = scrubText('パスワード＝secret123', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('secret123');
+  });
+
+  it('退行対照: 非機密の通常文を過剰マスクしない', () => {
+    const text = 'description: this is a long sentence value';
+    const r = scrubText(text, DEFAULT_ENABLED);
+    expect(r.output).toBe(text);
+  });
+
+  it('退行対照: form 形式 password=value は引き続き redact する', () => {
+    const r = scrubText('password=myP@ssw0rd', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('myP@ssw0rd');
+  });
+});
+
 describe('CREDENTIAL_URL — multi-@ / protocol-relative の陽性対照', () => {
   it('パスワード中の @ を含む URL 認証情報を断片なく redact する', () => {
     const r = scrubText('see https://user:pa@ss@host.com/path for detail', DEFAULT_ENABLED);

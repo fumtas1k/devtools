@@ -194,9 +194,9 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'CREDENTIAL_ASSIGN',
     category: 'CREDENTIAL',
-    // キー名は残し、値部分のみマスク（グループ 1）。日本語キー名・全角コロンにも対応
+    // キー名は残し、値部分のみマスク（グループ 1）。日本語キー名・全角コロン/イコール・JSON 形式にも対応
     pattern:
-      /(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|credential|パスワード|シークレット|トークン|秘密鍵|認証キー)\s*[:=：]\s*['"]?([^\s'",;]{6,})/dgi,
+      /(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|credential|パスワード|シークレット|トークン|秘密鍵|認証キー)(?:["'])?\s*[:=：＝]\s*['"]?([^\s'",;]{6,})/dgi,
     maskGroup: 1,
     priority: 80,
   },

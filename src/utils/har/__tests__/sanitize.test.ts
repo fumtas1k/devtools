@@ -253,6 +253,31 @@ describe('sanitizeHar', () => {
     expect(out.log.entries[0].request.url).toBe('https://host:8080/p@th');
   });
 
+  it('陽性対照: JSON 形式 POST ボディの password が redact される（#685）', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'POST',
+              url: 'https://x.com/login',
+              headers: [],
+              queryString: [],
+              cookies: [],
+              postData: {
+                mimeType: 'application/json',
+                text: '{"username":"alice","password":"hunter2"}',
+              },
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.postData!.text).not.toContain('hunter2');
+  });
+
   // ── P2-3: 壊れた entry でクラッシュしない ──
   it('JSON として妥当だが entry が壊れた HAR でも例外を投げない', () => {
     // { "log": { "entries": [ {} ] } } — request/response 欠落
