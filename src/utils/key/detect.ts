@@ -393,7 +393,7 @@ export function detectKeyInput(input: string | Uint8Array): KeyDetection {
         message:
           `レガシー PEM 形式（${label}）は v1 非対応です。` +
           (label === 'RSA PUBLIC KEY'
-            ? ' openssl rsa -in key.pem -pubout でSPKI形式に変換してください。'
+            ? ' openssl rsa -RSAPublicKey_in -in key.pem -pubout でSPKI形式に変換してください。'
             : ' openssl pkcs8 -topk8 -nocrypt -in key.pem -out key_pkcs8.pem でPKCS#8形式に変換してください。'),
       };
     }

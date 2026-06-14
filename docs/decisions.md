@@ -4216,6 +4216,7 @@ cert-decoder（issue #643）で「鍵フォーマット変換（PEM/DER/JWK）�
 - ✅ 陽性対照テストにより「不正入力が必ず error になる」ことを CI で継続検証（test-gates 準拠）。
 - ⚠️ `asn1js` の valueBlock API は未型付けで直接辿るため脆弱性がある。Web Crypto の `importKey` 失敗で catch → error 返却でカバー。
 - ⚠️ PKCS#1/SEC1 のレガシー PEM を直接変換したい場合は別途 openssl が必要（v1 の既知制限として UI で案内）。
+- 🔧 **追補（2026-06-14）**: JWK import を鍵素材のみの取り込みに変更（`alg`/`key_ops`/`use`/`ext` を除去）し、`RS384`/`RS512`/`PS256` 等を宣言した署名鍵の import 失敗を解消。出力 JWK は Web Crypto 注入の advisory フィールドを除去し、入力 JWK のメタデータを allowlist（`kid`/`use`/`alg`/`key_ops`）で復元する（JWKS 用途で `kid` が失われる問題を修正）。`x5c`/`x5t#S256` 等の X.509 連携フィールドはスコープ外で往復時に脱落する。
 
 ## [113] 2026-06-13 — frontend-design もプラグイン運用から `npx skills add` vendor 方式へ移行
 
