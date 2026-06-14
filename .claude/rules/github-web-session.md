@@ -21,6 +21,12 @@ web セッションの GitHub 連携トークンには `actions: write` 権限�
 
 ## 過剰な「できない宣言」も避ける
 
-不可と確定しているのは上記 `actions: write` 依存操作のみ。GitHub MCP の read 系（`pull_request_read` / `actions_list` / `get_job_logs` 等）、PR/issue への comment、PR 作成は連携トークンで実行可。`merge_pull_request` 等その他の write 操作の可否は未確認のため、実際に 403 を踏むまで先回りで「できない」と宣言しない。
+不可と確定しているのは上記 `actions: write` 依存操作のみ。以下は連携トークンで**実行可能**であることを確認済み:
+
+- GitHub MCP の read 系（`pull_request_read` / `actions_list` / `get_job_logs` 等）
+- PR/issue への comment、PR 作成（`create_pull_request`）・本文更新（`update_pull_request`）
+- **`merge_pull_request`（squash マージ含む）** — PR #678 で実証（連携トークンで成功）
+
+上記以外の write 操作で可否が未確認のものは、実際に 403 を踏むまで先回りで「できない」と宣言しない。
 
 過去事例: PR #675 で VRT baseline 再生成のため workflow_dispatch を試行 → 403 → 手動依頼、の無駄なラウンドトリップが発生（issue #676）。
