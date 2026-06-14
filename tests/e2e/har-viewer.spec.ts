@@ -254,4 +254,51 @@ test.describe('HAR ビューア', () => {
     // 修正前は selectedEntry が falsy で詳細パネル自体が描画されず、この assert は fail する（陽性ガード）。
     await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
   });
+
+  test('正常 entry 選択後も壊れた行を再クリックして詳細プレースホルダを再表示できる', async ({
+    page,
+  }) => {
+    await page.goto('/tools/har-viewer');
+
+    // 先頭が壊れた entry（{}）+ 2 件目は正常（issue #701 再現データ）
+    const json = JSON.stringify({
+      log: {
+        version: '1.2',
+        creator: { name: 'test', version: '1.0' },
+        entries: [
+          {}, // 壊れた entry（先頭。auto-select で index=0 が選ばれる）
+          {
+            time: 10,
+            request: {
+              method: 'GET',
+              url: 'https://example.com/api/ok',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    });
+    await uploadHar(page, json);
+
+    // 正常 entry が一覧に描画される（React island がクラッシュしていない陽性対照）
+    const okButton = page.getByRole('button', { name: /\/api\/ok$/ });
+    await expect(okButton).toBeVisible({ timeout: 10000 });
+
+    // 前提: 先頭の壊れ entry が auto-select され詳細プレースホルダが出る
+    await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+
+    // 正常 entry をクリックして選択を移す → 詳細に正常 entry の URL が出る
+    await okButton.click();
+    await expect(page.getByText('https://example.com/api/ok')).toBeVisible();
+    // プレースホルダは消える
+    await expect(page.getByText(/詳細を表示できません/)).toHaveCount(0);
+
+    // 壊れた行（「（壊れたエントリ）」button）を再クリック → 詳細プレースホルダが再表示される。
+    // 修正前は壊れ行が button でなくクリックできないため、ここで fail する（陽性ガード）。
+    await page.getByRole('button', { name: '（壊れたエントリ）' }).click();
+    await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+  });
 });
