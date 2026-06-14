@@ -179,13 +179,15 @@ describe('ClipboardInspector — paste 捕捉', () => {
     expect(screen.queryByText('text/plain')).toBeNull();
   });
 
-  it('type が空のフレーバーは "(type 不明)" と表示する', async () => {
+  it('type が空のフレーバーは表示タイトルとコピーボタンの aria-label を "(type 不明)" に揃える', async () => {
     render(<ClipboardInspectorTool />);
     fireEvent.paste(document, {
       clipboardData: mockClipboardData({ '': '型なしデータ' }),
     });
     await waitFor(() => expect(screen.getByText('型なしデータ')).toBeTruthy());
     expect(screen.getByText('(type 不明)')).toBeTruthy();
+    // SR 向け名前も空 type を露出させず（" の内容をコピー" にならず）フォールバックで揃える
+    expect(screen.getByRole('button', { name: '(type 不明) の内容をコピー' })).toBeTruthy();
   });
 
   it('連続 paste で先行キャプチャの遅延 resolve が後発の結果を上書きしない', async () => {

@@ -260,17 +260,20 @@ export function ClipboardInspectorTool() {
             </p>
           )}
 
-          {snapshot.strings.map((flavor, i) => (
+          {snapshot.strings.map((flavor, i) => {
+            // 空 type のフォールバックは表示タイトルと SR 向け aria-label で揃える
+            const typeLabel = flavor.type || '(type 不明)';
+            return (
             <Section
               key={`${flavor.type}-${i}`}
-              title={<code className="font-mono">{flavor.type || '(type 不明)'}</code>}
+              title={<code className="font-mono">{typeLabel}</code>}
               headerSlot={
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="caption text-muted leading-none">
                     {[...flavor.content].length.toLocaleString('ja-JP')} 文字 /{' '}
                     {flavor.byteSize.toLocaleString('ja-JP')} バイト
                   </span>
-                  <CopyButton text={flavor.content} ariaLabel={`${flavor.type} の内容をコピー`} />
+                  <CopyButton text={flavor.content} ariaLabel={`${typeLabel} の内容をコピー`} />
                 </div>
               }
             >
@@ -284,7 +287,8 @@ export function ClipboardInspectorTool() {
                 <FlavorPre content={flavor.content} />
               )}
             </Section>
-          ))}
+            );
+          })}
 
           {snapshot.files.map((entry, i) => (
             <FileFlavorCard key={`${entry.name}-${i}`} entry={entry} />
