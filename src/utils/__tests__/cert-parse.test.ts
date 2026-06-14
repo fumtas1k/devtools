@@ -85,3 +85,36 @@ describe('extractAttributeValue（#4 DN 値の整形）', () => {
     expect(extractAttributeValue({})).toBe('');
   });
 });
+
+describe('formatIpAddress（#6 IPv6 圧縮）', () => {
+  it('IPv4（4 byte）はドット表記', () => {
+    expect(formatIpAddress(new Uint8Array([192, 168, 0, 1]))).toBe('192.168.0.1');
+  });
+
+  it('IPv6 のゼロ連続を :: に圧縮する', () => {
+    const bytes = new Uint8Array([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+    expect(formatIpAddress(bytes)).toBe('2001:db8::1');
+  });
+
+  it('全ゼロは :: になる', () => {
+    expect(formatIpAddress(new Uint8Array(16))).toBe('::');
+  });
+
+  it('ループバック ::1', () => {
+    const bytes = new Uint8Array(16);
+    bytes[15] = 1;
+    expect(formatIpAddress(bytes)).toBe('::1');
+  });
+
+  it('長さ1のゼロ群は圧縮しない', () => {
+    // 2001:0:1:0:1:1:1:1（各ゼロ群は長さ1）
+    const bytes = new Uint8Array([0x20, 0x01, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1]);
+    expect(formatIpAddress(bytes)).toBe('2001:0:1:0:1:1:1:1');
+  });
+
+  it('複数のゼロ連続がある場合は最長を圧縮する', () => {
+    // 0:0:1:0:0:0:0:1 → 後半の長さ4を圧縮 → 0:0:1::1
+    const bytes = new Uint8Array([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+    expect(formatIpAddress(bytes)).toBe('0:0:1::1');
+  });
+});
