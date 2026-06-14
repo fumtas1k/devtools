@@ -26,9 +26,11 @@
 
 ## File Structure
 
-- 変更: `src/utils/secret-scrubber/rules.ts` — `EMAIL` ルールの `pattern` を上限付きに変更（1箇所）。
+- 変更: `src/utils/secret-scrubber/rules.ts` — `EMAIL` と `JWT_TOKEN` の `pattern` を上限付きに変更（2箇所）。
 - 変更: `src/utils/secret-scrubber/url-credential.ts` — `SCHEME` 定数を上限付き `{0,31}` に変更（1箇所）。`scrub.ts` の CREDENTIAL_URL と `sanitize.ts` の redactUrl 両方に共有ビルダー経由で波及。
-- テスト: `src/utils/__tests__/secret-scrubber.test.ts` — 性能回帰テスト（陽性対照。EMAIL/scheme 両方をカバー）+ 実在メール retention テストを追加。
+- テスト: `src/utils/__tests__/secret-scrubber.test.ts` — 性能回帰テスト（陽性対照。EMAIL/scheme/JWT の3主因を adversarial コーパスで網羅）+ 実在メール retention テストを追加（JWT/JWE 検出は PR-A の既存テストでカバー）。
+
+> **レビュー反映（PR #692）**: 当初 EMAIL/scheme のみ修正したが、レビューで `JWT_TOKEN` `\beyJ[\w-]+(?:\.[\w-]+){2,}` にも同型の O(n²)（`-eyJ` 反復で 80k=891ms）が残存し、`'a'.repeat` 回帰テストの盲点だったと指摘。JWT も `[\w-]{1,1024}` で bound し、回帰テストを `-eyJ` 連を含む adversarial コーパスに拡張した。巨大セグメントは `HIGH_ENTROPY_BASE64` が拾う安全網あり。
 
 ## 注意事項
 

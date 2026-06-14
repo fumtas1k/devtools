@@ -61,19 +61,22 @@ PR-B（カバレッジ拡張）は scrubText の適用箇所をヘッダ・URL�
 ### PR-C 性能・ReDoS対策
 
 > **実装着手時の実機調査で真因を特定し、当初方針を修正した（PR-C 着手時, 2026-06-14）。**
-> ルール別計測で O(n²) の主因は **2 つの catastrophic backtracking** と判明:
+> ルール別計測で O(n²) の主因は **3 つの catastrophic backtracking**（いずれも「上限なし greedy `[\w...]+` ＋ 後続の必須トークン」構造）と判明:
 >
 > 1. **`EMAIL` ルール** `[\w.+-]+@[\w-]+(?:\.[\w-]+)+`（`@` 無し長語連。40k で 1461ms）。
 > 2. **`CREDENTIAL_URL`（共有ビルダー url-credential.ts）の scheme 部** `[a-z][a-z0-9+.-]*:`（`:` の無い小文字英数連。100k で 8193ms）。PR-A 以前から存在した既存 ReDoS で、ランダム英数字計測では `:`/`/` が run を分断するため見逃していた（`'a'.repeat(n)` で顕在化）。
+> 3. **`JWT_TOKEN` ルール** `\beyJ[\w-]+(?:\.[\w-]+){2,}`（`.` の無い `-eyJ` 反復。80k で 891ms）。PR-A の多セグメント化で導入した構造。レビュー（PR #692）で指摘。当初の回帰テスト `'a'.repeat` は `eyJ` を含まず検出できない盲点だった。
 >
 > `HIGH_ENTROPY` は単一の greedy マッチ（末尾 `\b` が即成立）で O(n) のため無関係。当初案の「`{24,}`/`{32,}` を `{24,512}` に上限化」は**有害**: 512字超トークンで末尾 `\b` が見つからずバックトラック多発し**逆に O(n²) を生む**（実機確認）。よって採用しない。
 
 - **真因修正 1（EMAIL）**: `rules.ts` の `EMAIL` 量化子を RFC 準拠の上限付きに: `[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63})+`（local ≤64・label ≤63）。
 - **真因修正 2（scheme）**: `url-credential.ts` の `SCHEME` を上限付きに: `[a-z][a-z0-9+.-]*:` → `[a-z][a-z0-9+.-]{0,31}:`（実在 scheme は十分短い。`mongodb+srv` 等も <31）。`scrub.ts` の `CREDENTIAL_URL` と `sanitize.ts` の `redactUrl` 両方に共有ビルダー経由で適用される。
-  - 両修正で各開始位置のバックトラックが定数打ち切りになり O(n) 化。実機で全ルール合算が全 adversarial 入力（all-a / dots / slashes / scheme-ish / hex 等）で線形（100k で ≤52ms）を確認。実在メール・実在 URL の検出は不変。
+- **真因修正 3（JWT）**: `rules.ts` の `JWT_TOKEN` の各セグメントを上限付きに: `\beyJ[\w-]{1,1024}(?:\.[\w-]{1,1024}){2,}`。1024 超の巨大セグメントを持つ稀なトークンは全体マッチしないが、各セグメント（高エントロピー base64url ≥24字）が `HIGH_ENTROPY_BASE64` で redact されるため漏えいしない（安全網）。
+  - 3 修正で各開始位置のバックトラックが定数打ち切りになり O(n) 化。実機で全ルール合算が全 adversarial 入力（all-a / dots / slashes / scheme-ish / hex / `-eyJ` 連）で線形（100k で数十ms）を確認。実在メール・URL・JWT/JWE の検出は不変。
   - 上限超過の「メール風」「scheme 風」文字列は RFC 上も無効なため実害ある検出損失なし（既知の境界として記録）。
-- **回帰防止**: 区切りの無い長語連 `'a'.repeat(100000)` に対し `scrubText` が閾値（1500ms）内に完了する性能 assert を陽性対照として併設。`'a'` 連は EMAIL・scheme 両方の catastrophic backtracking を同時に踏むため、**どちらの regex を旧に戻しても fail する**。
+- **回帰防止**: catastrophic backtracking を起こす 3 主因を網羅する adversarial コーパス（`'a'.repeat`＝EMAIL/scheme、`'-eyJ'.repeat`＝JWT）に対し `scrubText` が閾値（1500ms）内に完了する性能 assert を陽性対照として併設。**どの regex を旧の上限なし版に戻しても、対応入力が閾値超過で fail する**（検知能力ゼロで green を避ける）。
 - `HIGH_ENTROPY` の量化子上限化・広域な入力長ガードは行わない（真因ではなく、前者は有害・後者は YAGNI）。
+- **全ルール監査**: 上記3件以外の SCRUB_RULES は anchored（固有 prefix）か bounded 量化子か「末尾 greedy（後続必須トークンなし）」のため catastrophic backtracking を起こさないことを確認済み。
 
 ### PR-B カバレッジ拡張
 
