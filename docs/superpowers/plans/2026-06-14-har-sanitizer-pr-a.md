@@ -49,6 +49,7 @@
 ### Task 1: URL 認証情報の共有正規表現ビルダーを作成
 
 **Files:**
+
 - Create: `src/utils/secret-scrubber/url-credential.ts`
 - Test: `src/utils/__tests__/secret-scrubber.test.ts`（末尾に describe 追加）
 
@@ -148,10 +149,7 @@ const HOST = String.raw`(?:\[[^\]\s]+\]|[\w.-]+)`;
 
 export function makeUrlCredentialRegex(opts: { flags: string; requireScheme: boolean }): RegExp {
   const scheme = opts.requireScheme ? SCHEME : `(?:${SCHEME})?`;
-  return new RegExp(
-    String.raw`(${scheme}\/\/[^/\s:@]+:)([^/\s]+)(@${HOST})`,
-    opts.flags
-  );
+  return new RegExp(String.raw`(${scheme}\/\/[^/\s:@]+:)([^/\s]+)(@${HOST})`, opts.flags);
 }
 ```
 
@@ -177,6 +175,7 @@ git commit -m "feat: URL認証情報の共有正規表現ビルダーを追加"
 ### Task 2: `CREDENTIAL_URL` ルールを共有ビルダーに一本化（#686）
 
 **Files:**
+
 - Modify: `src/utils/secret-scrubber/rules.ts:202-212`
 - Test: `src/utils/__tests__/secret-scrubber.test.ts`
 
@@ -251,6 +250,7 @@ git commit -m "fix: URL認証情報ルールを共有ビルダーに一本化し
 ### Task 3: `har/sanitize.ts` の `redactUrl` を共有ビルダーに置換（#686）
 
 **Files:**
+
 - Modify: `src/utils/har/sanitize.ts:81-86`（basic-auth 置換ブロック）
 - Modify: `src/utils/har/sanitize.ts` 冒頭 import 群
 - Test: `src/utils/har/__tests__/sanitize.test.ts`
@@ -321,26 +321,26 @@ import { makeUrlCredentialRegex } from '../secret-scrubber/url-credential';
 `src/utils/har/sanitize.ts:81-86` の basic-auth ブロック:
 
 ```ts
-  // basic-auth: scheme://user:pass@host → pass を redact（QUERY 扱いで件数計上）
-  if (enabled.QUERY) {
-    result = result.replace(/(:\/\/[^/@:]+:)([^@]+)(@)/, (_m, pre, pass, post) => {
-      return pre + tokenize('QUERY', pass) + post;
-    });
-  }
+// basic-auth: scheme://user:pass@host → pass を redact（QUERY 扱いで件数計上）
+if (enabled.QUERY) {
+  result = result.replace(/(:\/\/[^/@:]+:)([^@]+)(@)/, (_m, pre, pass, post) => {
+    return pre + tokenize('QUERY', pass) + post;
+  });
+}
 ```
 
 を次に置換:
 
 ```ts
-  // basic-auth: scheme://user:pass@host → pass を redact（QUERY 扱いで件数計上）。
-  // 共有ビルダーで scrub.ts の CREDENTIAL_URL と一本化。HAR の URL フィールドは
-  // protocol-relative も正当なため requireScheme: false。
-  if (enabled.QUERY) {
-    result = result.replace(
-      makeUrlCredentialRegex({ flags: 'g', requireScheme: false }),
-      (_m, pre, pass, post) => pre + tokenize('QUERY', pass) + post
-    );
-  }
+// basic-auth: scheme://user:pass@host → pass を redact（QUERY 扱いで件数計上）。
+// 共有ビルダーで scrub.ts の CREDENTIAL_URL と一本化。HAR の URL フィールドは
+// protocol-relative も正当なため requireScheme: false。
+if (enabled.QUERY) {
+  result = result.replace(
+    makeUrlCredentialRegex({ flags: 'g', requireScheme: false }),
+    (_m, pre, pass, post) => pre + tokenize('QUERY', pass) + post
+  );
+}
 ```
 
 - [ ] **Step 4: テストを実行して成功を確認**
@@ -365,6 +365,7 @@ git commit -m "fix: redactUrlのbasic-auth置換を共有ビルダーに置換�
 ### Task 4: `CREDENTIAL_ASSIGN` を引用符許容 + 全角＝対応に拡張（#685 / #690 L-2）
 
 **Files:**
+
 - Modify: `src/utils/secret-scrubber/rules.ts:193-201`（CREDENTIAL_ASSIGN の pattern）
 - Test: `src/utils/__tests__/secret-scrubber.test.ts` と `src/utils/har/__tests__/sanitize.test.ts`
 
@@ -470,6 +471,7 @@ git commit -m "fix: CREDENTIAL_ASSIGNを引用符許容・全角＝対応にしJ
 ### Task 5: `JWT_TOKEN` を多セグメント（JWE）対応にする（#690 L-1）
 
 **Files:**
+
 - Modify: `src/utils/secret-scrubber/rules.ts:224-229`（JWT_TOKEN の pattern）
 - Test: `src/utils/__tests__/secret-scrubber.test.ts`
 
@@ -533,6 +535,7 @@ git commit -m "fix: JWT検出を多セグメント化しJWE末尾セグメント
 ### Task 6: マスク範囲解決を `resolveMaskRange` に抽出し fail-safe 化（#690 M-1）
 
 **Files:**
+
 - Modify: `src/utils/secret-scrubber/scrub.ts:48-95`（`resolveMaskRange` 追加 + maskGroup 分岐の置換）
 - Test: `src/utils/__tests__/secret-scrubber.test.ts`
 
@@ -600,36 +603,36 @@ export function resolveMaskRange(
 `src/utils/secret-scrubber/scrub.ts:64-76` の maskGroup 分岐:
 
 ```ts
-      if (rule.maskGroup != null) {
-        // グループのみマスク（キー名・URLホストは残す）。
-        // 位置は d フラグの indices から取る（indexOf による探索は
-        // キー名と値が同一文字列のとき値側を取り違えて漏えいするため不可）
-        const groupRange = m.indices?.[rule.maskGroup];
-        if (!groupRange) continue;
-        maskValue = m[rule.maskGroup];
-        [maskStart, maskEnd] = groupRange;
-      } else {
-        maskValue = m[0];
-        maskStart = m.index;
-        maskEnd = m.index + m[0].length;
-      }
+if (rule.maskGroup != null) {
+  // グループのみマスク（キー名・URLホストは残す）。
+  // 位置は d フラグの indices から取る（indexOf による探索は
+  // キー名と値が同一文字列のとき値側を取り違えて漏えいするため不可）
+  const groupRange = m.indices?.[rule.maskGroup];
+  if (!groupRange) continue;
+  maskValue = m[rule.maskGroup];
+  [maskStart, maskEnd] = groupRange;
+} else {
+  maskValue = m[0];
+  maskStart = m.index;
+  maskEnd = m.index + m[0].length;
+}
 ```
 
 を次に置換:
 
 ```ts
-      if (rule.maskGroup != null) {
-        // グループのみマスク（キー名・URLホストは残す）。位置は d フラグの indices から取る。
-        // indices が取れない環境では resolveMaskRange がマッチ全体に倒す（fail-safe over-mask）。
-        const range = resolveMaskRange(m, rule.maskGroup);
-        maskValue = range.value;
-        maskStart = range.start;
-        maskEnd = range.end;
-      } else {
-        maskValue = m[0];
-        maskStart = m.index;
-        maskEnd = m.index + m[0].length;
-      }
+if (rule.maskGroup != null) {
+  // グループのみマスク（キー名・URLホストは残す）。位置は d フラグの indices から取る。
+  // indices が取れない環境では resolveMaskRange がマッチ全体に倒す（fail-safe over-mask）。
+  const range = resolveMaskRange(m, rule.maskGroup);
+  maskValue = range.value;
+  maskStart = range.start;
+  maskEnd = range.end;
+} else {
+  maskValue = m[0];
+  maskStart = m.index;
+  maskEnd = m.index + m[0].length;
+}
 ```
 
 - [ ] **Step 4: テストを実行して成功を確認**

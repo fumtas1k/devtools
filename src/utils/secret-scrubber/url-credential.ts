@@ -26,8 +26,5 @@ const HOST = String.raw`(?:\[[^\]\s]+\]|[\w.-]+)`;
 
 export function makeUrlCredentialRegex(opts: { flags: string; requireScheme: boolean }): RegExp {
   const scheme = opts.requireScheme ? SCHEME : `(?:${SCHEME})?`;
-  return new RegExp(
-    String.raw`(${scheme}\/\/[^/\s:@]+:)([^/\s]+)(@${HOST})`,
-    opts.flags
-  );
+  return new RegExp(String.raw`(${scheme}\/\/[^/\s:@]+:)([^/\s]+)(@${HOST})`, opts.flags);
 }

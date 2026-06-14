@@ -20,11 +20,11 @@ UI 層（表示・コピー・ダウンロードは全てサニタイズ済み�
 
 テーマ別に3 PR へ分割する（レビュー容易性・squash 履歴の明確さのため）。
 
-| PR | テーマ | 含む issue | 主な変更ファイル |
-|----|--------|-----------|-----------------|
-| PR-A | 検出エンジン強化 | #685, #686, #690(M-1 fail-open / L-1 ルール追加 / L-2 全角=) | `secret-scrubber/rules.ts`, `secret-scrubber/scrub.ts`, `har/sanitize.ts`(URL regex 共通化) |
-| PR-B | HAR走査カバレッジ拡張 | #687, #689, #690(M-2 base64) | `har/sanitize.ts`, `har/rules.ts`, `har/types.ts` |
-| PR-C | 性能・ReDoS対策 | #688 | `secret-scrubber/scrub.ts`, `secret-scrubber/rules.ts` |
+| PR   | テーマ                | 含む issue                                                   | 主な変更ファイル                                                                            |
+| ---- | --------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| PR-A | 検出エンジン強化      | #685, #686, #690(M-1 fail-open / L-1 ルール追加 / L-2 全角=) | `secret-scrubber/rules.ts`, `secret-scrubber/scrub.ts`, `har/sanitize.ts`(URL regex 共通化) |
+| PR-B | HAR走査カバレッジ拡張 | #687, #689, #690(M-2 base64)                                 | `har/sanitize.ts`, `har/rules.ts`, `har/types.ts`                                           |
+| PR-C | 性能・ReDoS対策       | #688                                                         | `secret-scrubber/scrub.ts`, `secret-scrubber/rules.ts`                                      |
 
 スコープ外（issue に残置）:
 
