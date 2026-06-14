@@ -278,6 +278,50 @@ describe('sanitizeHar', () => {
     expect(out.log.entries[0].request.postData!.text).not.toContain('hunter2');
   });
 
+  it('陽性対照: 拡充した認証ヘッダ名（x-amz-security-token 等）が redact される（#687a）', () => {
+    const secret = 'FQoGZXIvYXdzELONGSESSIONTOKEN1234567890';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/',
+              headers: [{ name: 'X-Amz-Security-Token', value: secret }],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.headers[0].value).not.toContain(secret);
+  });
+
+  it('陽性対照: 拡充した機密クエリ名（assertion 等）が構造的に redact される（#689a）', () => {
+    const secret = 'SAMLASSERTIONVALUE12345';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: `https://x.com/sso?assertion=${secret}`,
+              headers: [],
+              queryString: [{ name: 'assertion', value: secret }],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.queryString[0].value).not.toBe(secret);
+  });
+
   // ── P2-3: 壊れた entry でクラッシュしない ──
   it('JSON として妥当だが entry が壊れた HAR でも例外を投げない', () => {
     // { "log": { "entries": [ {} ] } } — request/response 欠落
