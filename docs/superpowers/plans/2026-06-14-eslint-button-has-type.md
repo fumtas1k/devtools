@@ -27,6 +27,7 @@
 ### Task 1: ESLint 最小構成の導入（依存・config・script）
 
 **Files:**
+
 - Create: `eslint.config.js`
 - Modify: `package.json`（scripts / devDependencies）
 - Modify: `package-lock.json`（自動）
@@ -34,15 +35,18 @@
 - [ ] **Step 1: 依存を追加**
 
 Run:
+
 ```bash
 npm install --save-dev --cache "$TMPDIR/npm-cache" --no-audit --no-fund \
   eslint@^9 @typescript-eslint/parser@^8 eslint-plugin-react@^7
 ```
+
 Expected: peer conflict（ERESOLVE）なくインストール完了。`package.json` の devDependencies に 3 件、`package-lock.json` が更新される。
 
 - [ ] **Step 2: flat config を作成**
 
 Create `eslint.config.js`:
+
 ```js
 import react from 'eslint-plugin-react';
 import tsParser from '@typescript-eslint/parser';
@@ -76,6 +80,7 @@ export default [
 - [ ] **Step 3: lint script を追加**
 
 `package.json` の `scripts` に追加（`format:check` の次の行など）:
+
 ```json
     "lint": "eslint .",
 ```
@@ -83,10 +88,12 @@ export default [
 - [ ] **Step 4: 既存違反を自動修正して pass を確認**
 
 Run:
+
 ```bash
 npm run lint -- --fix
 npm run lint
 ```
+
 Expected: `npm run lint` が exit 0（違反 0 件）。`--fix` で `.tsx` の type 漏れがあれば `type="button"` 等が自動付与される。`git diff` で意図しない変更が無いか確認する。
 
 > もし大量の違反（数十件規模で、自動修正が design 上問題になる）が出た場合は、その場で修正せず親に報告し別 issue 化を相談すること。少数の機械的な type 付与は本 PR で完結させる。
@@ -109,6 +116,7 @@ git commit -m "chore: ESLint と react/button-has-type を導入 (#569)"
 ### Task 2: 陽性/陰性対照メタテスト（test-gates 準拠）
 
 **Files:**
+
 - Create: `tests/meta/eslint-button-has-type.test.ts`
 
 > test-gates 規約: 検知機構には陽性対照が必須。「ルールが実際に違反を検出できる」ことを ESLint API で直接検証し、設定ミスで検知能力ゼロのまま green になる事故を排除する。
@@ -116,6 +124,7 @@ git commit -m "chore: ESLint と react/button-has-type を導入 (#569)"
 - [ ] **Step 1: メタテストを作成**
 
 Create `tests/meta/eslint-button-has-type.test.ts`:
+
 ```ts
 import { describe, it, expect } from 'vitest';
 import { ESLint } from 'eslint';
@@ -123,10 +132,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 // プロジェクトルート（このファイルは tests/meta/ 配下）
-const projectRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../..',
-);
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 // src/ 配下の filePath を与えて flat config の files パターンにマッチさせる
 async function lintTsx(code: string) {
@@ -139,23 +145,15 @@ async function lintTsx(code: string) {
 
 describe('eslint react/button-has-type ガード', () => {
   it('陽性対照: type 無し button を検出して error にする', async () => {
-    const result = await lintTsx(
-      'export const A = () => <button>x</button>;\n',
-    );
-    const hits = result.messages.filter(
-      (m) => m.ruleId === 'react/button-has-type',
-    );
+    const result = await lintTsx('export const A = () => <button>x</button>;\n');
+    const hits = result.messages.filter((m) => m.ruleId === 'react/button-has-type');
     expect(hits.length).toBeGreaterThan(0);
     expect(result.errorCount).toBeGreaterThan(0);
   });
 
   it('陰性対照: type 付き button は検出しない', async () => {
-    const result = await lintTsx(
-      'export const A = () => <button type="button">x</button>;\n',
-    );
-    const hits = result.messages.filter(
-      (m) => m.ruleId === 'react/button-has-type',
-    );
+    const result = await lintTsx('export const A = () => <button type="button">x</button>;\n');
+    const hits = result.messages.filter((m) => m.ruleId === 'react/button-has-type');
     expect(hits.length).toBe(0);
   });
 });
@@ -182,6 +180,7 @@ git commit -m "test: react/button-has-type の陽性/陰性対照メタテスト
 ### Task 3: CI 組込みとドキュメント更新
 
 **Files:**
+
 - Modify: `.github/workflows/test.yml`
 - Modify: `docs/decisions.md`
 - Modify: `CLAUDE.md`
@@ -189,16 +188,17 @@ git commit -m "test: react/button-has-type の陽性/陰性対照メタテスト
 - [ ] **Step 1: test.yml に lint step を追加**
 
 `.github/workflows/test.yml` の test job、「フォーマットチェックを実行」step の直後（`astro check` step の前）に追加:
+
 ```yaml
-      - name: ESLint を実行（button type 漏れ検出 / #569）
-        run: npm run lint
+- name: ESLint を実行（button type 漏れ検出 / #569）
+  run: npm run lint
 ```
 
 - [ ] **Step 2: decisions.md に決定記録を追加**
 
 `docs/decisions.md` の末尾（`[114]` エントリの後）に追加:
-```markdown
 
+```markdown
 ## [115] ESLint 導入 — react/button-has-type のみに限定 + CI enforce
 
 **2026-06-14 | ステータス: 採用**
@@ -228,8 +228,9 @@ git commit -m "test: react/button-has-type の陽性/陰性対照メタテスト
 - [ ] **Step 3: CLAUDE.md のコマンドリファレンス表に追記**
 
 `.agents/rules/common.md`（CLAUDE.md が import）の §2 コマンドリファレンス表に行を追加。※ 表の正本は `.agents/rules/common.md` 側。「整形 / 整形チェック」行の下に:
+
 ```markdown
-| Lint（button type 漏れ検出 / コミット前推奨） | `npm run lint`                                   |
+| Lint（button type 漏れ検出 / コミット前推奨） | `npm run lint` |
 ```
 
 > 実装時に該当表が `CLAUDE.md` 本体か `.agents/rules/common.md` のどちらにあるか Grep で確認してから編集すること（このプロジェクトでは `.agents/rules/common.md` §2 が正本）。
@@ -237,11 +238,13 @@ git commit -m "test: react/button-has-type の陽性/陰性対照メタテスト
 - [ ] **Step 4: 最終検証（push 前必須）**
 
 Run:
+
 ```bash
 npm run lint
 npm run test
 node_modules/.bin/astro check
 ```
+
 Expected: lint exit 0 / 全テスト pass（メタテスト含む）/ astro check 0/0/0。
 
 - [ ] **Step 5: Commit**
@@ -260,9 +263,9 @@ git commit -m "ci: ESLint を CI に組込み + 導入記録を追加 (#569)"
 
 ## 受け入れ基準対応表
 
-| 受け入れ基準 | 対応タスク |
-| :-- | :-- |
-| `npm run lint` 定義 + 違反検出（陽性対照） | Task 1 Step 3 / Task 2 |
-| 既存コードで lint pass | Task 1 Step 4 |
-| CI 組込み + decisions.md 記録 | Task 3 Step 1-2 |
-| package-lock.json 同期 | Task 1 Step 1 / 完了後チェック |
+| 受け入れ基準                               | 対応タスク                     |
+| :----------------------------------------- | :----------------------------- |
+| `npm run lint` 定義 + 違反検出（陽性対照） | Task 1 Step 3 / Task 2         |
+| 既存コードで lint pass                     | Task 1 Step 4                  |
+| CI 組込み + decisions.md 記録              | Task 3 Step 1-2                |
+| package-lock.json 同期                     | Task 1 Step 1 / 完了後チェック |

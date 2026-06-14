@@ -16,11 +16,11 @@
 
 ### 1. 依存追加（devDependencies）
 
-| パッケージ | 用途 |
-| :-- | :-- |
-| `eslint`（v9 系, flat config） | lint 本体 |
-| `@typescript-eslint/parser` | `.tsx` の TypeScript 構文をパースする parser |
-| `eslint-plugin-react` | `react/button-has-type` ルールを提供 |
+| パッケージ                     | 用途                                         |
+| :----------------------------- | :------------------------------------------- |
+| `eslint`（v9 系, flat config） | lint 本体                                    |
+| `@typescript-eslint/parser`    | `.tsx` の TypeScript 構文をパースする parser |
+| `eslint-plugin-react`          | `react/button-has-type` ルールを提供         |
 
 typescript-eslint の recommended プラグインは導入しない（parser のみ）。これにより有効ルールを `button-has-type` 1 本に厳密に絞れる。`package.json` 変更に伴い `package-lock.json` も同期する。
 
