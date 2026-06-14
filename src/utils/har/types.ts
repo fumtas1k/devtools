@@ -51,6 +51,7 @@ export interface HarResponse {
   headers: HarNameValue[];
   cookies: HarCookie[];
   content: HarContent;
+  redirectURL?: string;
   bodySize?: number;
   [key: string]: unknown;
 }

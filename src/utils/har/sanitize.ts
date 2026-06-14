@@ -192,6 +192,32 @@ function scrubInto(
   return value;
 }
 
+/**
+ * 本文走査をスキップすべきバイナリ系 mimeType か判定する。
+ * base64 でエンコードされがちで、scrubText（特に HIGH_ENTROPY_BASE64）が
+ * 本文を破壊しデコード不能にするのを防ぐ。
+ */
+function isBinaryMimeType(mimeType: unknown): boolean {
+  if (typeof mimeType !== 'string') return false;
+  const m = mimeType.toLowerCase().split(';')[0].trim();
+  if (
+    m.startsWith('image/') ||
+    m.startsWith('audio/') ||
+    m.startsWith('video/') ||
+    m.startsWith('font/')
+  ) {
+    return true;
+  }
+  return [
+    'application/octet-stream',
+    'application/pdf',
+    'application/zip',
+    'application/gzip',
+    'application/x-protobuf',
+    'application/wasm',
+  ].includes(m);
+}
+
 function redactHeaders(
   headers: HarNameValue[],
   enabled: Record<HarRedactCategory, boolean>,
@@ -299,7 +325,8 @@ export function sanitizeHar(
 
     // ── レスポンス ──
     if (typeof response === 'object' && response !== null) {
-      if (Array.isArray(response.headers)) redactHeaders(response.headers, enabled, counts, tokenize);
+      if (Array.isArray(response.headers))
+        redactHeaders(response.headers, enabled, counts, tokenize);
 
       if (enabled.COOKIE && Array.isArray(response.cookies)) {
         for (const c of response.cookies) {
@@ -307,19 +334,26 @@ export function sanitizeHar(
         }
       }
 
+      // リダイレクト先 URL（Location ヘッダと同じく URL を運ぶ独立フィールド）
+      if (enabled.QUERY && typeof response.redirectURL === 'string' && response.redirectURL) {
+        response.redirectURL = redactUrl(response.redirectURL, enabled, counts, tokenize);
+      }
+
       // レスポンスボディスキャン。
-      // base64 エンコードされた本文は scrubText にかけない:
+      // base64 本文・バイナリ系 mimeType は scrubText にかけない:
       //  - 秘密は base64 文字列内にありパターン検出が効かない（false confidence）。
       //  - HIGH_ENTROPY_BASE64 ルールが base64 ブロック自体にマッチし、本文を破壊して
       //    デコード不能な HAR を出力してしまう。
-      // よって encoding === 'base64' のときはスキップし、本文を素通しで保持する。
+      // encoding === 'base64' に加え、encoding 欄が無くても mimeType がバイナリ系なら
+      // スキップする（多くの HAR は画像等で encoding を省略するため）。
       const content = response.content;
       if (
         enabled.BODY_SCAN &&
         content &&
         typeof content === 'object' &&
         typeof content.text === 'string' &&
-        content.encoding !== 'base64'
+        content.encoding !== 'base64' &&
+        !isBinaryMimeType(content.mimeType)
       ) {
         content.text = scrubInto(content.text, counts, 'BODY_SCAN');
       }
