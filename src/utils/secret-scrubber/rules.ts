@@ -223,8 +223,12 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'JWT_TOKEN',
     category: 'JWT',
-    // 3セグメント JWT に加え、4〜5セグメントの JWE も末尾まで全体マッチする
-    pattern: /\beyJ[\w-]+(?:\.[\w-]+){2,}\b/g,
+    // 3セグメント JWT に加え、4〜5セグメントの JWE も末尾まで全体マッチする。
+    // 各セグメントを {1,1024} で bound し、`.` の無い `-eyJ` 反復等での catastrophic
+    // backtracking（O(n²) ReDoS, #688）を防ぐ。1024 超の巨大セグメントを持つ稀なトークンは
+    // 全体マッチしないが、各セグメント（高エントロピー base64url ≥24字）が HIGH_ENTROPY_BASE64
+    // で redact されるため漏えいしない（安全網）。
+    pattern: /\beyJ[\w-]{1,1024}(?:\.[\w-]{1,1024}){2,}\b/g,
     priority: 85,
   },
 

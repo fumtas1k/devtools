@@ -518,18 +518,24 @@ describe('CREDENTIAL_URL — multi-@ / protocol-relative の陽性対照', () =>
 });
 
 describe('ReDoS 回帰防止 — scrubText の線形時間性（#688）', () => {
-  it('陽性対照: 区切りの無い長語連でも閾値内に完了する（EMAIL/CREDENTIAL_URL の旧 greedy regex なら fail）', () => {
-    // `'a'.repeat(n)` は catastrophic backtracking の 2 つの主因を同時に踏む:
-    //  - 旧 EMAIL `[\w.+-]+@...`（@ 無し長語連で O(n²)、80k で ~5.7s）
-    //  - 旧 CREDENTIAL_URL scheme `[a-z][a-z0-9+.-]*:`（: 無し小文字連で O(n²)、100k で ~8s）
-    // 上限付き（`{1,64}`/`{1,63}` と scheme `{0,31}`）では全体 O(n)（100k で ~50ms）。
-    // 閾値 1500ms は旧（数千ms / vitest 既定 5s タイムアウト）と新（数十ms）の
-    // 間に十分なマージンで置く（CI のばらつきにも耐える）。どちらの regex を旧に戻しても fail する。
-    const input = 'a'.repeat(100000);
-    const start = performance.now();
-    scrubText(input, DEFAULT_ENABLED);
-    const elapsed = performance.now() - start;
-    expect(elapsed).toBeLessThan(1500);
+  it('陽性対照: greedy-unbounded ルールを踏む adversarial 入力でも閾値内に完了する', () => {
+    // catastrophic backtracking を起こす 3 つの主因を網羅する adversarial コーパス。
+    // どの regex を旧の上限なし版に戻しても、対応する入力が O(n²) になり閾値超過/
+    // vitest タイムアウトで fail する（検知能力ゼロで green を避ける = test-gates の趣旨）。
+    //  - `'a'.repeat(n)`  : 旧 EMAIL `[\w.+-]+@...` と 旧 scheme `[a-z][a-z0-9+.-]*:` の両方
+    //  - `'-eyJ'.repeat(n)`: 旧 JWT `\beyJ[\w-]+(?:\.[\w-]+){2,}` の `.` 不在バックトラック
+    // 上限付き（EMAIL/JWT セグメント・scheme を bound）では全体 O(n)（100k で数十ms）。
+    // 閾値 1500ms は新（数十ms）と旧（数千ms 以上）の間に十分なマージンで置く。
+    const adversarialInputs: Record<string, string> = {
+      'EMAIL/scheme (a 連)': 'a'.repeat(100000),
+      'JWT (-eyJ 連)': '-eyJ'.repeat(25000),
+    };
+    for (const [name, input] of Object.entries(adversarialInputs)) {
+      const start = performance.now();
+      scrubText(input, DEFAULT_ENABLED);
+      const elapsed = performance.now() - start;
+      expect(elapsed, `${name} が線形時間で完了する`).toBeLessThan(1500);
+    }
   });
 
   it('retention: 上限内の実在メールは引き続き検出・redact する', () => {
