@@ -57,6 +57,7 @@
 ### ユニット（component test, jsdom）
 
 `src/components/tools/__tests__/HarEntryList.test.tsx` を新規追加:
+
 - 壊れた entry（`{}` / `null` / `{ request: {...}, response 欠落 }`）を含む `entries` で `render` しても throw しない。
 - 正常 entry の `method` / URL が描画される。
 - 壊れた entry 行のプレースホルダ（`—` / 「壊れたエントリ」）が描画される。
@@ -64,12 +65,14 @@
 - **陰性対照との区別**: ガードを外すと（直接参照に戻すと）render が throw して fail することで、検知能力があることを担保する。
 
 `src/components/tools/__tests__/HarEntryDetail.test.tsx` を新規追加:
+
 - `request` / `response` 欠落 entry で `render` しても throw せず、プレースホルダ文言を表示する。
 - 正常 entry では従来どおり method/url/status を表示する。
 
 ### E2E
 
 `tests/e2e/har-viewer.spec.ts` にケース追加:
+
 - 2 件目に `request`/`response` を欠く entry を持つ HAR をアップロード → 画面がクラッシュせず、1 件目の正常 entry が描画され、壊れた行のプレースホルダが見える（陽性対照: 壊れた入力で throw せず描画完了）。
 
 ## 影響ファイル

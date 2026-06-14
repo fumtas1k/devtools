@@ -17,12 +17,26 @@ afterEach(() => {
 const entries = [
   {
     time: 12,
-    request: { method: 'GET', url: 'https://example.com/api/ok', headers: [], queryString: [], cookies: [] },
+    request: {
+      method: 'GET',
+      url: 'https://example.com/api/ok',
+      headers: [],
+      queryString: [],
+      cookies: [],
+    },
     response: { status: 200, headers: [], cookies: [], content: { size: 2 } },
   },
   {}, // request/response 欠落
   null, // entry 自体が null
-  { request: { method: 'POST', url: 'https://example.com/api/noresp', headers: [], queryString: [], cookies: [] } }, // response 欠落
+  {
+    request: {
+      method: 'POST',
+      url: 'https://example.com/api/noresp',
+      headers: [],
+      queryString: [],
+      cookies: [],
+    },
+  }, // response 欠落
 ] as unknown as HarEntry[];
 
 describe('HarEntryList 壊れた entry のガード', () => {

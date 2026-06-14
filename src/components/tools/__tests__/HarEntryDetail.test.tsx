@@ -14,13 +14,27 @@ afterEach(() => {
 
 const validEntry = {
   time: 5,
-  request: { method: 'GET', url: 'https://example.com/x', headers: [], queryString: [], cookies: [] },
+  request: {
+    method: 'GET',
+    url: 'https://example.com/x',
+    headers: [],
+    queryString: [],
+    cookies: [],
+  },
   response: { status: 200, statusText: 'OK', headers: [], cookies: [], content: {} },
 } as unknown as HarEntry;
 
 describe('HarEntryDetail 壊れた entry のガード', () => {
   it('response 欠落 entry でも throw せずプレースホルダを表示する', () => {
-    const broken = { request: { method: 'GET', url: 'https://example.com/y', headers: [], queryString: [], cookies: [] } } as unknown as HarEntry;
+    const broken = {
+      request: {
+        method: 'GET',
+        url: 'https://example.com/y',
+        headers: [],
+        queryString: [],
+        cookies: [],
+      },
+    } as unknown as HarEntry;
     expect(() => render(<HarEntryDetail entry={broken} />)).not.toThrow();
     expect(screen.getByText(/詳細を表示できません/)).toBeTruthy();
   });

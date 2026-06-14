@@ -21,6 +21,7 @@
 - `tests/e2e/har-viewer.spec.ts` — 壊れた entry の E2E ケース追加。
 
 注意（プロジェクト規約）:
+
 - コミットは Conventional Commits 形式 + **日本語**（`.githooks/commit-msg` が検証）。
 - 色は primitive scale 直書き禁止。既存意味クラス（`text-muted` 等）を使う。本変更で新規の色は使わない。
 - 既存 component test は先頭に `// @vitest-environment jsdom` を付ける（global env は node）。
@@ -31,6 +32,7 @@
 ### Task 1: HarEntryList のガード（プレースホルダ行）
 
 **Files:**
+
 - Test: `src/components/tools/__tests__/HarEntryList.test.tsx`（新規）
 - Modify: `src/components/tools/HarEntryList.tsx`
 
@@ -58,12 +60,26 @@ afterEach(() => {
 const entries = [
   {
     time: 12,
-    request: { method: 'GET', url: 'https://example.com/api/ok', headers: [], queryString: [], cookies: [] },
+    request: {
+      method: 'GET',
+      url: 'https://example.com/api/ok',
+      headers: [],
+      queryString: [],
+      cookies: [],
+    },
     response: { status: 200, headers: [], cookies: [], content: { size: 2 } },
   },
   {}, // request/response 欠落
   null, // entry 自体が null
-  { request: { method: 'POST', url: 'https://example.com/api/noresp', headers: [], queryString: [], cookies: [] } }, // response 欠落
+  {
+    request: {
+      method: 'POST',
+      url: 'https://example.com/api/noresp',
+      headers: [],
+      queryString: [],
+      cookies: [],
+    },
+  }, // response 欠落
 ] as unknown as HarEntry[];
 
 describe('HarEntryList 壊れた entry のガード', () => {
@@ -108,41 +124,37 @@ Expected: FAIL（現状 `e.request.method` で `Cannot read properties of undefi
 `src/components/tools/HarEntryList.tsx` の `<tbody>` の map 部分（現 56-75 行）を以下に置換する。`shortUrl` / `formatSize` / `formatTime` ヘルパ・テーブル構造はそのまま:
 
 ```tsx
-        <tbody>
-          {entries.map((e, i) => {
-            const request = e?.request;
-            const response = e?.response;
-            const url = typeof request?.url === 'string' ? request.url : null;
-            return (
-              <tr key={i} className={selectedIndex === i ? 'bg-active' : undefined}>
-                <td className="whitespace-nowrap px-3 py-1.5 font-mono">
-                  {request?.method ?? '—'}
-                </td>
-                <td className="px-3 py-1.5">
-                  {url != null ? (
-                    <button
-                      type="button"
-                      aria-current={selectedIndex === i ? 'true' : undefined}
-                      className="text-left text-primary underline-offset-2 hover:underline"
-                      onClick={() => onSelect(i)}
-                    >
-                      {shortUrl(url)}
-                    </button>
-                  ) : (
-                    <span className="text-muted">（壊れたエントリ）</span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-3 py-1.5 font-mono">
-                  {response?.status ?? '—'}
-                </td>
-                <td className="whitespace-nowrap px-3 py-1.5 font-mono">
-                  {formatSize(response?.content?.size ?? response?.bodySize)}
-                </td>
-                <td className="whitespace-nowrap px-3 py-1.5 font-mono">{formatTime(e?.time)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
+<tbody>
+  {entries.map((e, i) => {
+    const request = e?.request;
+    const response = e?.response;
+    const url = typeof request?.url === 'string' ? request.url : null;
+    return (
+      <tr key={i} className={selectedIndex === i ? 'bg-active' : undefined}>
+        <td className="whitespace-nowrap px-3 py-1.5 font-mono">{request?.method ?? '—'}</td>
+        <td className="px-3 py-1.5">
+          {url != null ? (
+            <button
+              type="button"
+              aria-current={selectedIndex === i ? 'true' : undefined}
+              className="text-left text-primary underline-offset-2 hover:underline"
+              onClick={() => onSelect(i)}
+            >
+              {shortUrl(url)}
+            </button>
+          ) : (
+            <span className="text-muted">（壊れたエントリ）</span>
+          )}
+        </td>
+        <td className="whitespace-nowrap px-3 py-1.5 font-mono">{response?.status ?? '—'}</td>
+        <td className="whitespace-nowrap px-3 py-1.5 font-mono">
+          {formatSize(response?.content?.size ?? response?.bodySize)}
+        </td>
+        <td className="whitespace-nowrap px-3 py-1.5 font-mono">{formatTime(e?.time)}</td>
+      </tr>
+    );
+  })}
+</tbody>
 ```
 
 - [ ] **Step 4: テストが通ることを確認**
@@ -167,6 +179,7 @@ git commit -m "fix: har-viewer 一覧で壊れた entry をガードしプレー
 ### Task 2: HarEntryDetail のガード（プレースホルダ表示）
 
 **Files:**
+
 - Test: `src/components/tools/__tests__/HarEntryDetail.test.tsx`（新規）
 - Modify: `src/components/tools/HarEntryDetail.tsx`
 
@@ -191,13 +204,27 @@ afterEach(() => {
 
 const validEntry = {
   time: 5,
-  request: { method: 'GET', url: 'https://example.com/x', headers: [], queryString: [], cookies: [] },
+  request: {
+    method: 'GET',
+    url: 'https://example.com/x',
+    headers: [],
+    queryString: [],
+    cookies: [],
+  },
   response: { status: 200, statusText: 'OK', headers: [], cookies: [], content: {} },
 } as unknown as HarEntry;
 
 describe('HarEntryDetail 壊れた entry のガード', () => {
   it('response 欠落 entry でも throw せずプレースホルダを表示する', () => {
-    const broken = { request: { method: 'GET', url: 'https://example.com/y', headers: [], queryString: [], cookies: [] } } as unknown as HarEntry;
+    const broken = {
+      request: {
+        method: 'GET',
+        url: 'https://example.com/y',
+        headers: [],
+        queryString: [],
+        cookies: [],
+      },
+    } as unknown as HarEntry;
     expect(() => render(<HarEntryDetail entry={broken} />)).not.toThrow();
     expect(screen.getByText(/詳細を表示できません/)).toBeTruthy();
   });
@@ -268,6 +295,7 @@ git commit -m "fix: har-viewer 詳細パネルで壊れた entry をガード (#
 ### Task 3: E2E（壊れた entry を含む HAR でクラッシュしない）
 
 **Files:**
+
 - Modify: `tests/e2e/har-viewer.spec.ts`
 
 - [ ] **Step 1: E2E ケースを追加**
@@ -275,43 +303,41 @@ git commit -m "fix: har-viewer 詳細パネルで壊れた entry をガード (#
 `tests/e2e/har-viewer.spec.ts` の `test.describe('HAR ビューア', ...)` ブロック内（最後の test の後）に以下を追加する。`uploadHar` ヘルパは既存:
 
 ```ts
-  test('壊れた entry（request/response 欠落）を含んでもクラッシュせず描画する', async ({
-    page,
-  }) => {
-    await page.goto('/tools/har-viewer');
+test('壊れた entry（request/response 欠落）を含んでもクラッシュせず描画する', async ({ page }) => {
+  await page.goto('/tools/har-viewer');
 
-    // 1 件目は正常、2 件目は request/response を欠く壊れた entry（issue #681 再現データ）
-    const json = JSON.stringify({
-      log: {
-        version: '1.2',
-        creator: { name: 'test', version: '1.0' },
-        entries: [
-          {
-            time: 10,
-            request: {
-              method: 'GET',
-              url: 'https://example.com/api/ok',
-              headers: [],
-              queryString: [],
-              cookies: [],
-            },
-            response: { status: 200, headers: [], cookies: [], content: {} },
+  // 1 件目は正常、2 件目は request/response を欠く壊れた entry（issue #681 再現データ）
+  const json = JSON.stringify({
+    log: {
+      version: '1.2',
+      creator: { name: 'test', version: '1.0' },
+      entries: [
+        {
+          time: 10,
+          request: {
+            method: 'GET',
+            url: 'https://example.com/api/ok',
+            headers: [],
+            queryString: [],
+            cookies: [],
           },
-          {}, // 壊れた entry
-        ],
-      },
-    });
-    await uploadHar(page, json);
-
-    // 正常 entry が描画される（React island がクラッシュしていない陽性対照）
-    await expect(page.getByRole('button', { name: /\/api\/ok$/ })).toBeVisible({
-      timeout: 10000,
-    });
-    // 壊れた entry 行はプレースホルダで表示される
-    await expect(page.getByText('（壊れたエントリ）')).toBeVisible();
-    // サマリのリクエスト件数は 2 件（entry は配列に保持される）
-    await expect(page.getByText(/リクエスト:/)).toBeVisible();
+          response: { status: 200, headers: [], cookies: [], content: {} },
+        },
+        {}, // 壊れた entry
+      ],
+    },
   });
+  await uploadHar(page, json);
+
+  // 正常 entry が描画される（React island がクラッシュしていない陽性対照）
+  await expect(page.getByRole('button', { name: /\/api\/ok$/ })).toBeVisible({
+    timeout: 10000,
+  });
+  // 壊れた entry 行はプレースホルダで表示される
+  await expect(page.getByText('（壊れたエントリ）')).toBeVisible();
+  // サマリのリクエスト件数は 2 件（entry は配列に保持される）
+  await expect(page.getByText(/リクエスト:/)).toBeVisible();
+});
 ```
 
 - [ ] **Step 2: E2E を実行**
