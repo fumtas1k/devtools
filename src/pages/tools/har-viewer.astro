@@ -1,0 +1,49 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { HarViewer as HarViewerTool } from '@/components/tools/HarViewer';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'har-viewer')!;
+---
+
+<ToolLayout tool={tool}>
+  <HarViewerTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      ブラウザの DevTools が出力する HAR（HTTP
+      Archive）ファイルを読み込み、リクエスト/レスポンスを一覧・詳細表示します。Cookie・Authorization
+      ヘッダ・トークン類を自動で redact した共有用 HAR
+      を出力できます。ファイルはブラウザ内でのみ処理され、外部に送信されません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">仕組み</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>
+        HAR は JSON のため <code class="rounded px-1 font-mono bg-subtle text-sm">JSON.parse</code> でパースし、log.entries
+        を一覧化
+      </li>
+      <li>Cookie / 認証ヘッダ / 機密クエリ / POST ボディをフィールド名ベースで確実に redact</li>
+      <li>本文スキャンは secret-scrubber の検出ルールで API キー・JWT・メール等を追加検出</li>
+      <li>同一値は同一プレースホルダ（[REDACTED:COOKIE_1] 等）で一貫トークン化</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>不具合調査の HAR を、認証情報を消してから issue / チャットに共有</li>
+      <li>API リクエスト/レスポンスの中身を一覧で素早く確認</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">制限事項</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>ウォーターフォール（タイミング可視化）は今後対応予定</li>
+      <li>大きな HAR（25MB 超）は読み込めません</li>
+      <li>
+        辞書に無い独自ヘッダ名や、独自名のクエリ/フォームパラメータは本文スキャンが拾える範囲のみ
+        redact されます（任意名のセッショントークン等は残りうるため、出力は共有前に必ず目視確認を）
+      </li>
+      <li>
+        base64
+        エンコードされたレスポンスボディは、本文を破壊しないようスキャン対象外です（中身の秘密は検出されません）
+      </li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>
