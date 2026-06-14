@@ -88,6 +88,14 @@ export function useHarSanitizer(): UseHarSanitizer {
       setProgress(null);
     };
 
+    // メッセージプロトコル外の致命的エラー（worker のロード失敗 / uncaught 例外）でも
+    // busy が永久 true で固着しないよう、main 側で必ず error 状態に落とす。
+    worker.onerror = () => {
+      setError('サニタイズ処理中に予期しないエラーが発生しました');
+      setBusy(false);
+      setProgress(null);
+    };
+
     return () => {
       worker.terminate();
       workerRef.current = null;
@@ -118,6 +126,8 @@ export function useHarSanitizer(): UseHarSanitizer {
   const reset = useCallback(() => {
     // 進行中リクエストを無効化（worker からの結果を以後無視させる）。
     requestIdRef.current += 1;
+    // worker が保持する parse 済み HAR（最大 25MB）を解放する。
+    workerRef.current?.postMessage({ type: 'reset' });
     setResult(null);
     setBusy(false);
     setProgress(null);

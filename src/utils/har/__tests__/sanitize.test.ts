@@ -255,6 +255,14 @@ describe('sanitizeHar onProgress', () => {
     expect(Math.max(...calls)).toBeLessThanOrEqual(total);
   });
 
+  it('総数が PROGRESS_INTERVAL(100) の倍数のとき最終通知が重複しない', () => {
+    // 旧実装（無条件の最終通知）だと [100, 200, 200] と末尾が重複する。
+    // 重複排除後は [100, 200] になる（最終値=総数は保たれる）。
+    const calls: number[] = [];
+    sanitizeHar(makeHarWithEntries(200), ALL_ON, (processed) => calls.push(processed));
+    expect(calls).toEqual([100, 200]);
+  });
+
   it('onProgress を省略しても例外を投げず結果は同一', () => {
     const har = makeHarWithEntries(10);
     const withCb = sanitizeHar(har, ALL_ON, () => {});

@@ -250,7 +250,11 @@ export function sanitizeHar(
   }
 
   // 端数（最後の PROGRESS_INTERVAL に満たない分）を最終通知する。
-  if (onProgress) onProgress(processed);
+  // 総数が INTERVAL の倍数のときはループ内で同値を通知済みのため重複させない。
+  // ただし 0 件のときは進捗 0 を 1 度だけ通知する。
+  if (onProgress && (processed === 0 || processed % PROGRESS_INTERVAL !== 0)) {
+    onProgress(processed);
+  }
 
   return { har, counts };
 }

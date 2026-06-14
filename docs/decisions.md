@@ -4366,3 +4366,5 @@ issue の root-cause 表（「DOM 描画が最有力」）は**実プロファ�
 - ⚠️ 差分 sanitize（トグル時に変更カテゴリのみ再処理）は未対応。大きな HAR ではトグルのたびに全件再 sanitize するが、worker 上のため UI は固まらない（進捗表示）。将来課題。
 - ⚠️ worker 化で parse/sanitize は非同期になり、結果反映前に短時間ローディング状態を経由する（E2E は `toBeVisible` の auto-retry で吸収）。
 - ⚠️ 全件描画のため、数千エントリ級の巨大 HAR では DOM 行数が多くなる（固まりはしないが描画が重くなりうる）。その規模が問題になれば仮想スクロール等を別途検討する。
+- ⚠️ 進捗バーの粒度はエントリ件数基準（`PROGRESS_INTERVAL = 100`）。実ボトルネックである「少数エントリ × 巨大レスポンスボディの正規表現スキャン」では 1 ボディの scan 中は進捗が進まず、数百件規模だとバーがほとんど動かないことがある（固着ではない）。バイト基準の進捗化は将来課題。
+- 堅牢性: worker の `onmessage` を try/catch で包み、`useHarSanitizer` に `worker.onerror` を設定。プロトコル外の例外でも `error` 状態に落とし、`busy` が永久 true で固着するのを防ぐ（PR #680 レビュー反映）。`reset()` は worker に `{ type: 'reset' }` を post して保持中 HAR（最大 25MB）を解放する。

@@ -18,7 +18,9 @@ export type HarWorkerRequest =
       type: 'sanitize';
       requestId: number;
       enabled: Record<HarRedactCategory, boolean>;
-    };
+    }
+  // 保持中の parse 済み HAR を解放する（reset 時のメモリ防御）。requestId は不要。
+  | { type: 'reset' };
 
 export type HarWorkerResponse =
   | { type: 'progress'; requestId: number; processed: number; total: number }
