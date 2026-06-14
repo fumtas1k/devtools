@@ -476,7 +476,6 @@ export function Gs1DatabarTool() {
       })),
     // cardSvgs が変わるたびに validEntries も変わるため cardSvgs を依存に含める。
     // printXdim が変わると factor が変わるため明示。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [cardSvgs, printXdim]
   );
 

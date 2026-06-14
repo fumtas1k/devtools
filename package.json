@@ -21,7 +21,8 @@
     "pretest:e2e:ui": "lsof -ti:4321 | xargs kill -9 2>/dev/null || true",
     "test:e2e:ui": "playwright test --ui",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@astrojs/react": "5.0.3",
@@ -66,7 +67,10 @@
     "@types/jmespath": "0.15.2",
     "@types/jsbarcode": "^3.11.4",
     "@types/uuid": "10.0.0",
+    "@typescript-eslint/parser": "8.61.0",
     "@vitest/coverage-v8": "4.1.4",
+    "eslint": "9.39.4",
+    "eslint-plugin-react": "7.37.5",
     "img-comparison-slider": "8.0.7",
     "jsdom": "^26.1.0",
     "lint-staged": "16.4.0",
