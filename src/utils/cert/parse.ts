@@ -127,28 +127,31 @@ function formatIpAddress(bytes: Uint8Array): string {
   return bytesToHexPlain(bytes);
 }
 
+/**
+ * asn1js の RDN 値オブジェクトから表示用文字列を取り出す。
+ * 文字列型でない稀なエンコーディングは hex にフォールバックし、
+ * String() による "[object Object]" 表示を避ける。
+ */
+export function extractAttributeValue(value: unknown): string {
+  if (value == null) return '';
+  const v = value as {
+    valueBlock?: { value?: unknown; valueHexView?: Uint8Array };
+    value?: unknown;
+  };
+  if (typeof v.valueBlock?.value === 'string') return v.valueBlock.value;
+  if (typeof v.value === 'string') return v.value;
+  const hexView = v.valueBlock?.valueHexView;
+  if (hexView && hexView.length > 0) return bytesToHexPlain(hexView);
+  return '';
+}
+
 /** AttributeTypeAndValue[] を CertName に変換する */
 function parseDn(typesAndValues: AttributeTypeAndValue[]): CertName {
   const attributes: { type: string; value: string }[] = [];
 
   for (const atv of typesAndValues) {
     const shortName = OID_TO_SHORT[atv.type] ?? atv.type;
-    let val = '';
-    // asn1js の値オブジェクトから文字列を取り出す
-    if (
-      atv.value &&
-      typeof (atv.value as { valueBlock?: { value?: unknown } }).valueBlock?.value === 'string'
-    ) {
-      val = (atv.value as { valueBlock: { value: string } }).valueBlock.value;
-    } else if (
-      atv.value &&
-      typeof (atv.value as unknown as { value?: unknown }).value === 'string'
-    ) {
-      val = (atv.value as unknown as { value: string }).value;
-    } else {
-      val = String(atv.value ?? '');
-    }
-    attributes.push({ type: shortName, value: val });
+    attributes.push({ type: shortName, value: extractAttributeValue(atv.value) });
   }
 
   const full = attributes.map((a) => `${a.type}=${a.value}`).join(', ');

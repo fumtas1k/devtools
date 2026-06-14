@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { parseCertificates } from '@/utils/cert/parse';
+import { parseCertificates, extractAttributeValue, formatIpAddress } from '@/utils/cert/parse';
 import { makeTestChain, makeRsaCert, type TestChain } from './cert-fixtures';
 
 let chain: TestChain;
@@ -64,5 +64,24 @@ describe('parseCertificates', () => {
     const r = await parseCertificates(chain.leafPem);
     expect(r.certs).toHaveLength(1);
     expect(r.certs[0].error).toBeUndefined();
+  });
+});
+
+describe('extractAttributeValue（#4 DN 値の整形）', () => {
+  it('valueBlock.value が文字列ならそのまま返す', () => {
+    expect(extractAttributeValue({ valueBlock: { value: 'example.test' } })).toBe('example.test');
+  });
+
+  it('文字列でなく valueHexView を持つ場合は hex にフォールバックする', () => {
+    expect(
+      extractAttributeValue({
+        valueBlock: { valueHexView: new Uint8Array([0xde, 0xad, 0xbe, 0xef]) },
+      })
+    ).toBe('deadbeef');
+  });
+
+  it('値が取り出せない場合は空文字を返す（[object Object] にしない）', () => {
+    expect(extractAttributeValue(null)).toBe('');
+    expect(extractAttributeValue({})).toBe('');
   });
 });
