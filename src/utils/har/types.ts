@@ -66,7 +66,7 @@ export interface HarEntry {
 
 export interface HarLog {
   version?: string;
-  entries: HarEntry[];
+  entries: (HarEntry | null)[];
   [key: string]: unknown;
 }
 

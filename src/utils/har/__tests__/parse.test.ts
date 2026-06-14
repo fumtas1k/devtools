@@ -26,7 +26,7 @@ describe('parseHar', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.har.log.entries).toHaveLength(1);
-      expect(result.har.log.entries[0].request.method).toBe('GET');
+      expect(result.har.log.entries[0]!.request.method).toBe('GET');
     }
   });
 
