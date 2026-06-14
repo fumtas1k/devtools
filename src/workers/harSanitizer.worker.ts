@@ -1,4 +1,3 @@
-/// <reference lib="webworker" />
 /**
  * HAR の parse + sanitize をメインスレッドから切り離して実行する Web Worker。
  *
@@ -12,7 +11,16 @@
 import { parseHar, sanitizeHar, type Har } from '../utils/har';
 import type { HarWorkerRequest, HarWorkerResponse } from './harSanitizer.types';
 
-const ctx = self as unknown as DedicatedWorkerGlobalScope;
+// worker グローバルスコープのうち本ファイルで使う API のみを型付けする。
+// `/// <reference lib="webworker" />` で webworker lib を取り込むと、グローバル型が
+// 変わり public/sw.js の `self.clients` 型推論にまで影響して astro check が hint を出す
+// （CI の 0/0/0 ゲートが落ちる）。最小インターフェースのキャストで回避する。
+interface HarWorkerScope {
+  postMessage(message: HarWorkerResponse): void;
+  onmessage: ((event: MessageEvent<HarWorkerRequest>) => void) | null;
+}
+
+const ctx = self as unknown as HarWorkerScope;
 
 // parse 済みの元 HAR。sanitize は毎回ここから structuredClone して非破壊で処理する。
 let parsed: Har | null = null;
