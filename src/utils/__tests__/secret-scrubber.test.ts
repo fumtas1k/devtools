@@ -517,6 +517,41 @@ describe('CREDENTIAL_URL — multi-@ / protocol-relative の陽性対照', () =>
   });
 });
 
+describe('ReDoS 回帰防止 — scrubText の線形時間性（#688）', () => {
+  it('陽性対照: greedy-unbounded ルールを踏む adversarial 入力でも閾値内に完了する', () => {
+    // catastrophic backtracking を起こす 3 つの主因を網羅する adversarial コーパス。
+    // どの regex を旧の上限なし版に戻しても、対応する入力が O(n²) になり閾値超過/
+    // vitest タイムアウトで fail する（検知能力ゼロで green を避ける = test-gates の趣旨）。
+    //  - `'a'.repeat(n)`  : 旧 EMAIL `[\w.+-]+@...` と 旧 scheme `[a-z][a-z0-9+.-]*:` の両方
+    //  - `'-eyJ'.repeat(n)`: 旧 JWT `\beyJ[\w-]+(?:\.[\w-]+){2,}` の `.` 不在バックトラック
+    // 上限付き（EMAIL/JWT セグメント・scheme を bound）では全体 O(n)（100k で数十ms）。
+    // 閾値 1500ms は新（数十ms）と旧（数千ms 以上）の間に十分なマージンで置く。
+    const adversarialInputs: Record<string, string> = {
+      'EMAIL/scheme (a 連)': 'a'.repeat(100000),
+      'JWT (-eyJ 連)': '-eyJ'.repeat(25000),
+    };
+    for (const [name, input] of Object.entries(adversarialInputs)) {
+      const start = performance.now();
+      scrubText(input, DEFAULT_ENABLED);
+      const elapsed = performance.now() - start;
+      expect(elapsed, `${name} が線形時間で完了する`).toBeLessThan(1500);
+    }
+  });
+
+  it('retention: 上限内の実在メールは引き続き検出・redact する', () => {
+    for (const email of [
+      'foo@bar.com',
+      'alice.smith+tag@sub.example.co.jp',
+      'x@y.io',
+      'a_b-c@d-e.f.org',
+    ]) {
+      const r = scrubText(email, DEFAULT_ENABLED);
+      expect(r.output).not.toContain(email);
+      expect(r.counts.EMAIL).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('resolveMaskRange — d フラグ fail-safe（#690 M-1）', () => {
   it('indices が取れない場合はマッチ全体を over-mask する（漏えい方向に倒さない）', () => {
     // d フラグ非対応環境を模した、.indices を持たないマッチ

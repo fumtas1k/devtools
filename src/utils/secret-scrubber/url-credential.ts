@@ -22,8 +22,10 @@
  *   `3//4:5@6` のような非 URL 断片の誤検出を防ぐ。
  * - `requireScheme: false` は HAR の URL フィールド用。protocol-relative
  *   (`//user:pass@host`) に対応する。
+ * - scheme は `{0,31}` で上限化（実在 scheme は十分短い）。`:` の無い小文字英数連で
+ *   各開始位置から greedy にバックトラックして O(n²) になる ReDoS（#688）を防ぐ。
  */
-const SCHEME = String.raw`[a-z][a-z0-9+.-]*:`;
+const SCHEME = String.raw`[a-z][a-z0-9+.-]{0,31}:`;
 const HOST = String.raw`(?:\[[^\]\s]+\]|[\w.-]+)`;
 
 export function makeUrlCredentialRegex(opts: { flags: string; requireScheme: boolean }): RegExp {

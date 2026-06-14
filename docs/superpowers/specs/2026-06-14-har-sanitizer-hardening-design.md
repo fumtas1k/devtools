@@ -60,10 +60,23 @@ PR-B（カバレッジ拡張）は scrubText の適用箇所をヘッダ・URL�
 
 ### PR-C 性能・ReDoS対策
 
-- `secret-scrubber/scrub.ts` の本文スキャンに、入力長・連続トークン長の上限ガードを設ける。超過時は当該入力（または当該トークン）のスキャンをスキップし、Worker が二次オーダーで固まらないようにする。
-- `rules.ts` の `{24,}` / `{32,}` 等の上限なし量化子を、実トークン長を十分カバーする上限付き（例 `{24,512}`）に変更し、バックトラックを抑制する。
-- `recheck`（既存依存）で各パターンを静的検証する回帰テストを追加する。
-- 大入力が一定時間内に完了する性能 assert（陽性対照）を併設する。
+> **実装着手時の実機調査で真因を特定し、当初方針を修正した（PR-C 着手時, 2026-06-14）。**
+> ルール別計測で O(n²) の主因は **3 つの catastrophic backtracking**（いずれも「上限なし greedy `[\w...]+` ＋ 後続の必須トークン」構造）と判明:
+>
+> 1. **`EMAIL` ルール** `[\w.+-]+@[\w-]+(?:\.[\w-]+)+`（`@` 無し長語連。40k で 1461ms）。
+> 2. **`CREDENTIAL_URL`（共有ビルダー url-credential.ts）の scheme 部** `[a-z][a-z0-9+.-]*:`（`:` の無い小文字英数連。100k で 8193ms）。PR-A 以前から存在した既存 ReDoS で、ランダム英数字計測では `:`/`/` が run を分断するため見逃していた（`'a'.repeat(n)` で顕在化）。
+> 3. **`JWT_TOKEN` ルール** `\beyJ[\w-]+(?:\.[\w-]+){2,}`（`.` の無い `-eyJ` 反復。80k で 891ms）。PR-A の多セグメント化で導入した構造。レビュー（PR #692）で指摘。当初の回帰テスト `'a'.repeat` は `eyJ` を含まず検出できない盲点だった。
+>
+> `HIGH_ENTROPY` は単一の greedy マッチ（末尾 `\b` が即成立）で O(n) のため無関係。当初案の「`{24,}`/`{32,}` を `{24,512}` に上限化」は**有害**: 512字超トークンで末尾 `\b` が見つからずバックトラック多発し**逆に O(n²) を生む**（実機確認）。よって採用しない。
+
+- **真因修正 1（EMAIL）**: `rules.ts` の `EMAIL` 量化子を RFC 準拠の上限付きに: `[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63})+`（local ≤64・label ≤63）。
+- **真因修正 2（scheme）**: `url-credential.ts` の `SCHEME` を上限付きに: `[a-z][a-z0-9+.-]*:` → `[a-z][a-z0-9+.-]{0,31}:`（実在 scheme は十分短い。`mongodb+srv` 等も <31）。`scrub.ts` の `CREDENTIAL_URL` と `sanitize.ts` の `redactUrl` 両方に共有ビルダー経由で適用される。
+- **真因修正 3（JWT）**: `rules.ts` の `JWT_TOKEN` の各セグメントを上限付きに: `\beyJ[\w-]{1,1024}(?:\.[\w-]{1,1024}){2,}`。1024 超の巨大セグメントを持つ稀なトークンは全体マッチしないが、各セグメント（高エントロピー base64url ≥24字）が `HIGH_ENTROPY_BASE64` で redact されるため漏えいしない（安全網）。
+  - 3 修正で各開始位置のバックトラックが定数打ち切りになり O(n) 化。実機で全ルール合算が全 adversarial 入力（all-a / dots / slashes / scheme-ish / hex / `-eyJ` 連）で線形（100k で数十ms）を確認。実在メール・URL・JWT/JWE の検出は不変。
+  - 上限超過の「メール風」「scheme 風」文字列は RFC 上も無効なため実害ある検出損失なし（既知の境界として記録）。
+- **回帰防止**: catastrophic backtracking を起こす 3 主因を網羅する adversarial コーパス（`'a'.repeat`＝EMAIL/scheme、`'-eyJ'.repeat`＝JWT）に対し `scrubText` が閾値（1500ms）内に完了する性能 assert を陽性対照として併設。**どの regex を旧の上限なし版に戻しても、対応入力が閾値超過で fail する**（検知能力ゼロで green を避ける）。
+- `HIGH_ENTROPY` の量化子上限化・広域な入力長ガードは行わない（真因ではなく、前者は有害・後者は YAGNI）。
+- **全ルール監査**: 上記3件以外の SCRUB_RULES は anchored（固有 prefix）か bounded 量化子か「末尾 greedy（後続必須トークンなし）」のため catastrophic backtracking を起こさないことを確認済み。
 
 ### PR-B カバレッジ拡張
 
@@ -82,7 +95,7 @@ PR-B（カバレッジ拡張）は scrubText の適用箇所をヘッダ・URL�
 全 PR で `test-gates` skill 準拠（陽性対照必須）。陰性対照のみでは「検知能力ゼロで green」と区別不能なため、各修正に「修正前は漏れていた入力が確実に redact される」陽性対照を必ず併設する。
 
 - **PR-A**: `secret-scrubber/__tests__/` と `har/__tests__/sanitize.test.ts`。JSON 各種 / URL 各種 / fail-open / 追加ルール / 全角=。退行: form-urlencoded・正常 basic-auth・非機密 key=value。
-- **PR-C**: 性能 assert + `recheck` 静的検証。
+- **PR-C**: worst-case 入力（`@` 無し長語連）での性能 assert（陽性対照。旧 EMAIL regex は閾値超過で fail）+ 実在メール検出の retention テスト。`recheck` は境界付き量化子も保守的に polynomial 判定するためゲートには使わない（実測は線形）。
 - **PR-B**: 辞書外ヘッダ・URLパス・redirectURL・`?next=`・base64バイナリ本文スキップの陽性対照。
 
 push 前必須（各 PR）: `npm run test` / `node_modules/.bin/astro check` / `npm run test:e2e` / `npm run lint`。UI は無変更（ロジックのみ）のため VRT baseline 再生成は不要見込み。
