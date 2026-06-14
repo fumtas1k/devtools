@@ -290,7 +290,7 @@ function buildSanExtension(dnsNames: string[]): Extension {
 /** SubjectKeyIdentifier 拡張（2.5.29.14）を構築する */
 function buildSkiExtension(keyId: Uint8Array): Extension {
   // 拡張値の内側は OCTET STRING { keyId }。pkijs Extension が外側 OCTET STRING で包む。
-  const inner = new asn1js.OctetString({ valueHex: keyId.buffer.slice(0) });
+  const inner = new asn1js.OctetString({ valueHex: keyId.buffer.slice(0) as ArrayBuffer });
   return new Extension({
     extnID: '2.5.29.14',
     critical: false,
@@ -303,7 +303,7 @@ function buildAkiExtension(keyId: Uint8Array): Extension {
   const aki = new AuthorityKeyIdentifier({
     keyIdentifier: new asn1js.OctetString({
       idBlock: { tagClass: 3, tagNumber: 0 }, // context [0] IMPLICIT
-      valueHex: keyId.buffer.slice(0),
+      valueHex: keyId.buffer.slice(0) as ArrayBuffer,
     }),
   });
   return new Extension({
