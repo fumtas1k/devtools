@@ -53,7 +53,9 @@ export function detectInput(input: string | Uint8Array): DetectResult {
   }
 
   // PEM ブロック抽出
-  const pemRegex = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/g;
+  // 本文クラスを base64 + 空白に限定（`-` を含まない）ことで、`-----END` 位置での
+  // バックトラックを構造的に排除し catastrophic backtracking を防ぐ。
+  const pemRegex = /-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=\s]*)-----END \1-----/g;
   const candidates: DerCandidate[] = [];
   let hasPkcs7 = false;
   let match: RegExpExecArray | null;
