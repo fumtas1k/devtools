@@ -220,3 +220,60 @@ describe('sanitizeHar', () => {
     expect(har.log.entries).toHaveLength(3);
   });
 });
+
+// ── 進捗コールバック（Web Worker の進捗バー用） ──
+describe('sanitizeHar onProgress', () => {
+  /** n 件の最小エントリを持つ HAR を生成する。 */
+  function makeHarWithEntries(n: number): Har {
+    const entries = Array.from({ length: n }, (_, i) => ({
+      request: {
+        method: 'GET',
+        url: `https://example.com/api/${i}`,
+        headers: [],
+        queryString: [],
+        cookies: [],
+      },
+      response: { status: 200, headers: [], cookies: [], content: {} },
+    }));
+    return { log: { version: '1.2', entries } } as unknown as Har;
+  }
+
+  it('処理済みエントリ数を単調増加で通知し、最終値は総エントリ数に一致する', () => {
+    const total = 250;
+    const calls: number[] = [];
+    sanitizeHar(makeHarWithEntries(total), ALL_ON, (processed) => calls.push(processed));
+
+    // 1 回以上通知される（100 件間隔 + 端数の最終通知）
+    expect(calls.length).toBeGreaterThan(0);
+    // 単調増加であること
+    for (let i = 1; i < calls.length; i++) {
+      expect(calls[i]).toBeGreaterThanOrEqual(calls[i - 1]);
+    }
+    // 最終通知は総数に一致（進捗バーが 100% に到達する保証）
+    expect(calls[calls.length - 1]).toBe(total);
+    // 通知値が総数を超えない
+    expect(Math.max(...calls)).toBeLessThanOrEqual(total);
+  });
+
+  it('総数が PROGRESS_INTERVAL(100) の倍数のとき最終通知が重複しない', () => {
+    // 旧実装（無条件の最終通知）だと [100, 200, 200] と末尾が重複する。
+    // 重複排除後は [100, 200] になる（最終値=総数は保たれる）。
+    const calls: number[] = [];
+    sanitizeHar(makeHarWithEntries(200), ALL_ON, (processed) => calls.push(processed));
+    expect(calls).toEqual([100, 200]);
+  });
+
+  it('onProgress を省略しても例外を投げず結果は同一', () => {
+    const har = makeHarWithEntries(10);
+    const withCb = sanitizeHar(har, ALL_ON, () => {});
+    const withoutCb = sanitizeHar(har, ALL_ON);
+    expect(withoutCb.har.log.entries).toHaveLength(10);
+    expect(withoutCb.counts).toEqual(withCb.counts);
+  });
+
+  it('エントリ 0 件でも最終通知が 0 で行われる', () => {
+    const calls: number[] = [];
+    sanitizeHar(makeHarWithEntries(0), ALL_ON, (processed) => calls.push(processed));
+    expect(calls).toEqual([0]);
+  });
+});
