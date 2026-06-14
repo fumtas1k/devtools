@@ -21,7 +21,7 @@ const tool = tools.find((t) => t.slug === 'key-converter')!;
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>PEM（PUBLIC KEY / PRIVATE KEY ヘッダ、SPKI / PKCS#8 構造）</li>
       <li>DER バイナリ（.der / .cer ファイル選択、または Base64 テキスト貼り付け）</li>
-      <li>JWK（JSON Web Key、RFC 7517）</li>
+      <li>JWK（JSON Web Key、RFC 7517）。入力 JWK の <code>kid</code> / <code>use</code> / <code>alg</code> は出力に保持されます</li>
     </ul>
     <h3 class="mb-2 mt-4 tool-info-heading">対応鍵種別</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
