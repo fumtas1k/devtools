@@ -322,6 +322,49 @@ describe('sanitizeHar', () => {
     expect(out.log.entries[0].request.queryString[0].value).not.toBe(secret);
   });
 
+  it('陽性対照: 辞書外ヘッダの値に含まれる JWT が scrubText で redact される（#687b）', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabcDEF';
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/',
+              headers: [{ name: 'X-Custom-Trace', value: `trace=${jwt}` }],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.headers[0].value).not.toContain(jwt);
+  });
+
+  it('退行対照: 機密を含まない辞書外ヘッダは変更しない', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://x.com/',
+              headers: [{ name: 'Accept-Language', value: 'ja-JP,ja;q=0.9' }],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.headers[0].value).toBe('ja-JP,ja;q=0.9');
+  });
+
   // ── P2-3: 壊れた entry でクラッシュしない ──
   it('JSON として妥当だが entry が壊れた HAR でも例外を投げない', () => {
     // { "log": { "entries": [ {} ] } } — request/response 欠落

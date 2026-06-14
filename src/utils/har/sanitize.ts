@@ -131,6 +131,7 @@ function scrubInto(
 function redactHeaders(
   headers: HarNameValue[],
   enabled: Record<HarRedactCategory, boolean>,
+  counts: Record<HarRedactCategory, number>,
   tokenize: (c: HarRedactCategory, v: string) => string
 ): void {
   for (const h of headers) {
@@ -149,6 +150,10 @@ function redactHeaders(
       // Referer / Origin / Location 等は URL を運ぶため URL と同じ redact を適用する。
       // （URL のクエリだけ redact しても同じ秘密値がこれらのヘッダに残るのを防ぐ）
       h.value = redactUrl(h.value, enabled, tokenize);
+    } else if (enabled.AUTH_HEADER) {
+      // 辞書外ヘッダ値に含まれる機密（JWT / API キー等）を scrubText で拾う。
+      // 認証ヘッダトグルの意味的拡張（ヘッダ値の機密走査）として AUTH_HEADER で計上。
+      h.value = scrubInto(h.value, counts, 'AUTH_HEADER');
     }
   }
 }
@@ -182,7 +187,7 @@ export function sanitizeHar(
     // ── リクエスト ──
     if (typeof request === 'object' && request !== null) {
       // ヘッダ
-      if (Array.isArray(request.headers)) redactHeaders(request.headers, enabled, tokenize);
+      if (Array.isArray(request.headers)) redactHeaders(request.headers, enabled, counts, tokenize);
 
       // Cookie 配列
       if (enabled.COOKIE && Array.isArray(request.cookies)) {
@@ -230,7 +235,7 @@ export function sanitizeHar(
 
     // ── レスポンス ──
     if (typeof response === 'object' && response !== null) {
-      if (Array.isArray(response.headers)) redactHeaders(response.headers, enabled, tokenize);
+      if (Array.isArray(response.headers)) redactHeaders(response.headers, enabled, counts, tokenize);
 
       if (enabled.COOKIE && Array.isArray(response.cookies)) {
         for (const c of response.cookies) {
