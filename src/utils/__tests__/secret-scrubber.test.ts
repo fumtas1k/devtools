@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { scrubText } from '@/utils/secret-scrubber/scrub';
+import { scrubText, resolveMaskRange } from '@/utils/secret-scrubber/scrub';
 import { DEFAULT_ENABLED } from '@/utils/secret-scrubber/rules';
 import type { ScrubCategory } from '@/utils/secret-scrubber/rules';
+import { makeUrlCredentialRegex } from '@/utils/secret-scrubber/url-credential';
 
 /** 全カテゴリ無効の状態を返すヘルパー */
 function onlyEnabled(categories: ScrubCategory[]) {
@@ -389,5 +390,151 @@ describe('陰性対照 — 誤検出しない', () => {
     const enabled = onlyEnabled(['HIGH_ENTROPY']);
     const result = scrubText(lowEntropy, enabled);
     expect(result.counts.HIGH_ENTROPY).toBe(0);
+  });
+});
+
+describe('makeUrlCredentialRegex', () => {
+  function redact(url: string, requireScheme: boolean): string {
+    const re = makeUrlCredentialRegex({ flags: 'g', requireScheme });
+    return url.replace(re, (_m, pre, _pass, post) => `${pre}[X]${post}`);
+  }
+
+  it('正常 basic-auth のパスワードのみ redact しホストを残す', () => {
+    expect(redact('https://user:secretpw@host.com/', false)).toBe('https://user:[X]@host.com/');
+  });
+
+  it('host:port + 後続 @ を含む URL を破壊せず内側の認証情報のみ redact する', () => {
+    expect(redact('https://host:8080/redirect?to=https://u:p@evil.com', false)).toBe(
+      'https://host:8080/redirect?to=https://u:[X]@evil.com'
+    );
+  });
+
+  it('パス内 @ で誤爆しない（host:port/p@th を無変更）', () => {
+    expect(redact('https://host:8080/p@th', false)).toBe('https://host:8080/p@th');
+  });
+
+  it('パスワード中の @ を含めて完全に redact する（断片を残さない）', () => {
+    expect(redact('https://user:pa@ss@host.com/path', false)).toBe(
+      'https://user:[X]@host.com/path'
+    );
+  });
+
+  it('protocol-relative URL (requireScheme:false) のパスワードを redact する', () => {
+    expect(redact('//user:pass@host.com/', false)).toBe('//user:[X]@host.com/');
+  });
+
+  it('IPv6 ホストでもパスワードのみ redact しホストを残す', () => {
+    expect(redact('https://user:pw@[::1]:8080/x', false)).toBe('https://user:[X]@[::1]:8080/x');
+  });
+
+  it('認証情報の無い通常 URL では何も変更しない', () => {
+    expect(redact('https://api.example.com/v1/users', false)).toBe(
+      'https://api.example.com/v1/users'
+    );
+  });
+
+  it('退行: パス無し + クエリ内 @ を含む URL でホスト/クエリを破壊しない（PR #691 レビュー指摘）', () => {
+    // password 部が host・query を巻き込んで over-redact する #686 同クラスの回帰を防ぐ
+    expect(redact('https://u:p@host.com?redirect=x@y.com', false)).toBe(
+      'https://u:[X]@host.com?redirect=x@y.com'
+    );
+  });
+
+  it('退行: フラグメント内 @ を巻き込まない', () => {
+    expect(redact('https://u:p@host.com#frag@x', false)).toBe('https://u:[X]@host.com#frag@x');
+  });
+
+  it('requireScheme:true では scheme の無い //a:b@c や 3//4:5@6 を誤検出しない', () => {
+    expect(redact('3//4:5@6.com', true)).toBe('3//4:5@6.com');
+    expect(redact('//user:pass@host.com/', true)).toBe('//user:pass@host.com/');
+  });
+
+  it('requireScheme:true では scheme 付き URL のパスワードを redact する', () => {
+    expect(redact('https://user:secretpw@host.com/', true)).toBe('https://user:[X]@host.com/');
+  });
+});
+
+describe('JWT_TOKEN — 多セグメント（JWE）の陽性対照（#690 L-1）', () => {
+  it('5セグメント JWE を末尾セグメントを残さず全体 redact する', () => {
+    // 裸の JWE（機密キーワードの prefix を付けない）で JWT_TOKEN ルール単体を分離する。
+    // `token=<jwe>` 形式だと Task4 拡張後の CREDENTIAL_ASSIGN が先に値全体を捕捉して
+    // union マージし、旧 JWT_TOKEN でも PASS してしまい陽性対照にならないため。
+    const jwe = 'eyJhbGciOiJSU0Et.QUFB.QkJC.Q0ND.RERE';
+    const r = scrubText(jwe, DEFAULT_ENABLED);
+    expect(r.output).not.toContain('RERE'); // 末尾の暗号文/タグが残らない
+    expect(r.output).not.toContain(jwe);
+  });
+
+  it('退行対照: 通常の3セグメント JWT は引き続き redact する', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QTabc';
+    const r = scrubText(jwt, DEFAULT_ENABLED);
+    expect(r.output).not.toContain(jwt);
+  });
+});
+
+describe('CREDENTIAL_ASSIGN — JSON / 全角の陽性対照（#685 / #690 L-2）', () => {
+  it('JSON の "password":"value" を redact する', () => {
+    const r = scrubText('{"username":"alice","password":"hunter2"}', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('hunter2');
+    expect(r.output).toContain('"username":"alice"'); // 非機密キーは保持
+  });
+
+  it('JSON の "client_secret":"value" を redact する', () => {
+    const r = scrubText('{"client_secret":"GOCSPX-abcdefABCDEF12"}', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('GOCSPX-abcdefABCDEF12');
+  });
+
+  it('全角イコール パスワード＝value を redact する', () => {
+    const r = scrubText('パスワード＝secret123', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('secret123');
+  });
+
+  it('退行対照: 非機密の通常文を過剰マスクしない', () => {
+    const text = 'description: this is a long sentence value';
+    const r = scrubText(text, DEFAULT_ENABLED);
+    expect(r.output).toBe(text);
+  });
+
+  it('退行対照: form 形式 password=value は引き続き redact する', () => {
+    const r = scrubText('password=myP@ssw0rd', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('myP@ssw0rd');
+  });
+});
+
+describe('CREDENTIAL_URL — multi-@ / protocol-relative の陽性対照', () => {
+  it('パスワード中の @ を含む URL 認証情報を断片なく redact する', () => {
+    const r = scrubText('see https://user:pa@ss@host.com/path for detail', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('pa@ss');
+    expect(r.output).not.toContain(':pa');
+    // ホストは保持される
+    expect(r.output).toContain('@host.com/path');
+  });
+
+  it('host:port を含む URL を破壊せず内側の認証情報のみ redact する', () => {
+    const r = scrubText('https://host:8080/redirect?to=https://u:p@evil.com', DEFAULT_ENABLED);
+    expect(r.output).toContain('https://host:8080/redirect?to=https://u:');
+    expect(r.output).toContain('@evil.com');
+  });
+});
+
+describe('resolveMaskRange — d フラグ fail-safe（#690 M-1）', () => {
+  it('indices が取れない場合はマッチ全体を over-mask する（漏えい方向に倒さない）', () => {
+    // d フラグ非対応環境を模した、.indices を持たないマッチ
+    const fake = Object.assign(['Bearer abc12345', 'abc12345'], {
+      index: 7,
+    }) as unknown as RegExpExecArray;
+    expect(resolveMaskRange(fake, 1)).toEqual({
+      value: 'Bearer abc12345',
+      start: 7,
+      end: 7 + 'Bearer abc12345'.length,
+    });
+  });
+
+  it('indices があればグループ範囲を使う', () => {
+    const re = /authorization\s*:\s*([a-z0-9]+)/dgi;
+    const m = re.exec('authorization: abc123')!;
+    const r = resolveMaskRange(m, 1);
+    expect(r.value).toBe('abc123');
+    expect('authorization: abc123'.slice(r.start, r.end)).toBe('abc123');
   });
 });

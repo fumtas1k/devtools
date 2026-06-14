@@ -4,6 +4,7 @@
  */
 
 import { shannonEntropy } from './entropy';
+import { makeUrlCredentialRegex } from './url-credential';
 
 export type ScrubCategory =
   | 'API_KEY'
@@ -193,21 +194,19 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'CREDENTIAL_ASSIGN',
     category: 'CREDENTIAL',
-    // キー名は残し、値部分のみマスク（グループ 1）。日本語キー名・全角コロンにも対応
+    // キー名は残し、値部分のみマスク（グループ 1）。日本語キー名・全角コロン/イコール・JSON 形式にも対応
     pattern:
-      /(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|credential|パスワード|シークレット|トークン|秘密鍵|認証キー)\s*[:=：]\s*['"]?([^\s'",;]{6,})/dgi,
+      /(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|credential|パスワード|シークレット|トークン|秘密鍵|認証キー)(?:["'])?\s*[:=：＝]\s*['"]?([^\s'",;]{6,})/dgi,
     maskGroup: 1,
     priority: 80,
   },
   {
     id: 'CREDENTIAL_URL',
     category: 'CREDENTIAL',
-    // URL 認証情報: パスワード部（グループ 1）のみマスク。
-    // ホスト部までフルマッチに含めることで、`パスワード@ホスト` がメール形式に
-    // 誤マッチしても「考慮済み領域内」として重複解決で破棄される（ホスト保持）。
-    // ホストはブラケット形式 IPv6（`[::1]` 等）にも対応（PR #631 再レビュー指摘）
-    pattern: /[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:([^@/\s]+)@(?:\[[^\]\s]+\]|[\w.-]+)/dgi,
-    maskGroup: 1,
+    // URL 認証情報: パスワード部（グループ 2）のみマスク。共有ビルダーで sanitize.ts と一本化。
+    // 自由テキスト走査では scheme を必須にして非 URL 断片の誤検出を防ぐ（requireScheme: true）。
+    pattern: makeUrlCredentialRegex({ flags: 'dgi', requireScheme: true }),
+    maskGroup: 2,
     priority: 80,
   },
   {
@@ -224,7 +223,8 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'JWT_TOKEN',
     category: 'JWT',
-    pattern: /\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/g,
+    // 3セグメント JWT に加え、4〜5セグメントの JWE も末尾まで全体マッチする
+    pattern: /\beyJ[\w-]+(?:\.[\w-]+){2,}\b/g,
     priority: 85,
   },
 

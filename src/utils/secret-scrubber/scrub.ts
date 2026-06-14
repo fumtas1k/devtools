@@ -42,6 +42,22 @@ interface RawMatch {
 }
 
 /**
+ * maskGroup ルールのマスク範囲を解決する。
+ * d フラグ（match indices）が取れない環境では、マッチ全体を over-mask する
+ * fail-safe に倒す（漏えい方向のフェイルを安全方向へ反転する）。#690 M-1。
+ */
+export function resolveMaskRange(
+  m: RegExpExecArray,
+  maskGroup: number
+): { value: string; start: number; end: number } {
+  const groupRange = m.indices?.[maskGroup];
+  if (groupRange && m[maskGroup] != null) {
+    return { value: m[maskGroup], start: groupRange[0], end: groupRange[1] };
+  }
+  return { value: m[0], start: m.index, end: m.index + m[0].length };
+}
+
+/**
  * テキストを検査して機密情報を [REDACTED:<CATEGORY>_<n>] に置換する。
  * 純関数・入力非破壊。
  */
@@ -62,13 +78,12 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
       let maskEnd: number;
 
       if (rule.maskGroup != null) {
-        // グループのみマスク（キー名・URLホストは残す）。
-        // 位置は d フラグの indices から取る（indexOf による探索は
-        // キー名と値が同一文字列のとき値側を取り違えて漏えいするため不可）
-        const groupRange = m.indices?.[rule.maskGroup];
-        if (!groupRange) continue;
-        maskValue = m[rule.maskGroup];
-        [maskStart, maskEnd] = groupRange;
+        // グループのみマスク（キー名・URLホストは残す）。位置は d フラグの indices から取る。
+        // indices が取れない環境では resolveMaskRange がマッチ全体に倒す（fail-safe over-mask）。
+        const range = resolveMaskRange(m, rule.maskGroup);
+        maskValue = range.value;
+        maskStart = range.start;
+        maskEnd = range.end;
       } else {
         maskValue = m[0];
         maskStart = m.index;

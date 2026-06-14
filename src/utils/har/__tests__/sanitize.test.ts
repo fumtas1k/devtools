@@ -209,6 +209,75 @@ describe('sanitizeHar', () => {
     expect(counts.BODY_SCAN).toBe(0);
   });
 
+  it('陽性対照: URL の basic-auth パスワードを redact する', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://user:secretpw@host.com/path',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.url).not.toContain('secretpw');
+    expect(out.log.entries[0].request.url).toContain('@host.com/path');
+  });
+
+  it('退行対照: host:port を含む URL を破壊しない', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'GET',
+              url: 'https://host:8080/p@th',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    // ポート/パスが壊れず保持される
+    expect(out.log.entries[0].request.url).toBe('https://host:8080/p@th');
+  });
+
+  it('陽性対照: JSON 形式 POST ボディの password が redact される（#685）', () => {
+    const har: Har = {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'POST',
+              url: 'https://x.com/login',
+              headers: [],
+              queryString: [],
+              cookies: [],
+              postData: {
+                mimeType: 'application/json',
+                text: '{"username":"alice","password":"hunter2"}',
+              },
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+        ],
+      },
+    };
+    const { har: out } = sanitizeHar(har, ALL_ON);
+    expect(out.log.entries[0].request.postData!.text).not.toContain('hunter2');
+  });
+
   // ── P2-3: 壊れた entry でクラッシュしない ──
   it('JSON として妥当だが entry が壊れた HAR でも例外を投げない', () => {
     // { "log": { "entries": [ {} ] } } — request/response 欠落
