@@ -181,4 +181,42 @@ test.describe('HAR ビューア', () => {
     await page.getByRole('button', { name: /Cookie/ }).click();
     await expect(page.getByText(/redact:\s*5\s*件/)).toBeVisible({ timeout: 10000 });
   });
+
+  test('壊れた entry（request/response 欠落）を含んでもクラッシュせず描画する', async ({
+    page,
+  }) => {
+    await page.goto('/tools/har-viewer');
+
+    // 1 件目は正常、2 件目は request/response を欠く壊れた entry（issue #681 再現データ）
+    const json = JSON.stringify({
+      log: {
+        version: '1.2',
+        creator: { name: 'test', version: '1.0' },
+        entries: [
+          {
+            time: 10,
+            request: {
+              method: 'GET',
+              url: 'https://example.com/api/ok',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: {} },
+          },
+          {}, // 壊れた entry
+        ],
+      },
+    });
+    await uploadHar(page, json);
+
+    // 正常 entry が描画される（React island がクラッシュしていない陽性対照）
+    await expect(page.getByRole('button', { name: /\/api\/ok$/ })).toBeVisible({
+      timeout: 10000,
+    });
+    // 壊れた entry 行はプレースホルダで表示される
+    await expect(page.getByText('（壊れたエントリ）')).toBeVisible();
+    // サマリのリクエスト件数は 2 件（entry は配列に保持される）
+    await expect(page.getByText(/リクエスト:/)).toBeVisible();
+  });
 });
