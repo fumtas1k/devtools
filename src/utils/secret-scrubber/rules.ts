@@ -4,6 +4,7 @@
  */
 
 import { shannonEntropy } from './entropy';
+import { makeUrlCredentialRegex } from './url-credential';
 
 export type ScrubCategory =
   | 'API_KEY'
@@ -202,12 +203,10 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'CREDENTIAL_URL',
     category: 'CREDENTIAL',
-    // URL 認証情報: パスワード部（グループ 1）のみマスク。
-    // ホスト部までフルマッチに含めることで、`パスワード@ホスト` がメール形式に
-    // 誤マッチしても「考慮済み領域内」として重複解決で破棄される（ホスト保持）。
-    // ホストはブラケット形式 IPv6（`[::1]` 等）にも対応（PR #631 再レビュー指摘）
-    pattern: /[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:([^@/\s]+)@(?:\[[^\]\s]+\]|[\w.-]+)/dgi,
-    maskGroup: 1,
+    // URL 認証情報: パスワード部（グループ 2）のみマスク。共有ビルダーで sanitize.ts と一本化。
+    // 自由テキスト走査では scheme を必須にして非 URL 断片の誤検出を防ぐ（requireScheme: true）。
+    pattern: makeUrlCredentialRegex({ flags: 'dgi', requireScheme: true }),
+    maskGroup: 2,
     priority: 80,
   },
   {

@@ -442,3 +442,19 @@ describe('makeUrlCredentialRegex', () => {
     expect(redact('https://user:secretpw@host.com/', true)).toBe('https://user:[X]@host.com/');
   });
 });
+
+describe('CREDENTIAL_URL — multi-@ / protocol-relative の陽性対照', () => {
+  it('パスワード中の @ を含む URL 認証情報を断片なく redact する', () => {
+    const r = scrubText('see https://user:pa@ss@host.com/path for detail', DEFAULT_ENABLED);
+    expect(r.output).not.toContain('pa@ss');
+    expect(r.output).not.toContain(':pa');
+    // ホストは保持される
+    expect(r.output).toContain('@host.com/path');
+  });
+
+  it('host:port を含む URL を破壊せず内側の認証情報のみ redact する', () => {
+    const r = scrubText('https://host:8080/redirect?to=https://u:p@evil.com', DEFAULT_ENABLED);
+    expect(r.output).toContain('https://host:8080/redirect?to=https://u:');
+    expect(r.output).toContain('@evil.com');
+  });
+});
