@@ -183,7 +183,8 @@ devtools/
     │       ├── clipboard-inspector.astro
     │       ├── dsn-builder.astro
     │       ├── cert-decoder.astro
-    │       └── key-converter.astro
+    │       ├── key-converter.astro
+    │       └── har-viewer.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -210,6 +211,7 @@ devtools/
         ├── dsn-builder/        # DSN/接続文字列ビルダ（types.ts / dialects.ts / parse.ts / serialize.ts / validate.ts / index.ts）
         ├── cert/               # SSL/TLS証明書デコーダ（types.ts / detect.ts / parse.ts / sct.ts / chain.ts / index.ts）
         ├── key/                # 鍵フォーマット変換（types.ts / detect.ts / convert.ts / index.ts）
+        ├── har/                # HARビューア＆サニタイザ（types.ts / rules.ts / parse.ts / sanitize.ts / index.ts、__tests__ colocated）
         ├── dataTransferSnapshot.ts  # DataTransfer 捕捉・フレーバー列挙（clipboard-inspector が利用）
         ├── sanitizeHtml.ts          # 許可リスト方式 HTML サニタイザ（clipboard-inspector が利用）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
@@ -327,6 +329,7 @@ devtools/
 | 23  | クリップボードインスペクタ        | `clipboard-inspector` | 貼り付け・ドラッグ&ドロップの DataTransfer を捕捉し、全 MIME フレーバー（text/plain・text/html・カスタム型・画像・ファイル）の種別と中身を可視化。HTML はサニタイズ後 sandbox iframe プレビュー付き。追加依存なし（DOMParser・Web API のみ）    |
 | 24  | DSN/接続文字列ビルダ              | `dsn-builder`         | 接続文字列（DSN）をフォームと URI で双方向編集。パスワードをマスクした共有用 URI も生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応。自前パーサで percent-encode を自動処理。外部ライブラリなし                                           |
 | 26  | 鍵フォーマット変換                | `key-converter`       | RSA / ECDSA（P-256/P-384/P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK で相互変換。入力形式と鍵種別を自動判定。Web Crypto API 主体で asn1js による OID 判定。全処理ブラウザ内完結                                                          |
+| 27  | HARビューア＆サニタイザ           | `har-viewer`          | HAR ファイルをリクエスト/レスポンス一覧・詳細表示し、Cookie・認証ヘッダ・機密クエリ・POST ボディを構造的に redact。scrubText で本文の取りこぼしを追加検出。一貫トークン化（同一値=同一プレースホルダ）。全処理ブラウザ内完結・新規ライブラリなし   |
 
 ---
 
@@ -1170,6 +1173,31 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.27 HARビューア＆サニタイザ（`har-viewer`）
+
+**概要:** ブラウザ DevTools が出力する HAR（HTTP Archive 1.2）ファイルをブラウザ内で読み込み、リクエスト/レスポンスを一覧・詳細表示する。Cookie・認証ヘッダ・機密クエリパラメータ・POST ボディを構造的に redact し、`scrubText` で本文の取りこぼしを補完した「共有用 HAR」を JSON 出力（ダウンロード/コピー）する。全処理ブラウザ内完結・外部送信なし。
+
+**入力:** HAR ファイル（ドラッグ&ドロップ / ファイル選択、最大 25MB）。`.har` / `.json` 拡張子を許可。
+
+**redact 仕様:** 構造的 redact（フィールド名辞書ベース・確実な処理）と `scrubText`（自由テキスト走査・補完）の二段構え。
+- COOKIE: `request.cookies[].value` / `response.cookies[].value` / `Cookie` ヘッダ / `Set-Cookie` ヘッダを一貫トークン化
+- AUTH_HEADER: `Authorization` / `Proxy-Authorization` / `x-api-key` / `x-auth-token` / `x-csrf-token` / `x-xsrf-token` ヘッダ値を一貫トークン化
+- QUERY: 機密クエリパラメータ（`token` / `access_token` / `password` 等の辞書）の値と URL 内対応箇所を redact
+- BODY: `postData.params[].value` の機密名と `postData.text` への `scrubText` 適用
+- BODY_SCAN: `response.content.text` への `scrubText` 適用（API キー・JWT 等を追加検出）
+
+一貫トークン化: `[REDACTED:COOKIE_1]` 等。同一値は HAR 全体で同一プレースホルダを割り当てる。
+
+**UI:** redact カテゴリを `ToggleChips`（件数バッジ付き・既定すべて ON）で個別 ON/OFF。エントリ一覧テーブル（メソッド / URL / ステータス / サイズ / 時間）・行クリックで詳細パネル展開。サマリ（総リクエスト数・redact 件数）。
+
+**モジュール構成:** `src/utils/har/`（`types.ts` HAR 1.2 サブセット型 / `rules.ts` redact カテゴリ定義・辞書 / `parse.ts` JSON パース＋最小スキーマ検証 / `sanitize.ts` 構造的 redact＋scrubText 純関数 / `index.ts`）/ `src/components/tools/HarViewer.tsx`（親）/ `HarEntryList.tsx`（一覧）/ `HarEntryDetail.tsx`（詳細）
+
+**追加依存:** なし（既存の `secret-scrubber` の `scrubText` / `DEFAULT_ENABLED` を再利用）
+
+**スコープ外（v1 非対応）:** ウォーターフォール（タイミング可視化）・Web Worker による大型 HAR の非同期パース・辞書外の独自ヘッダ名の完全 redact
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1334,6 +1362,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] DSN/接続文字列ビルダ（`dsn-builder`）
   - [x] SSL/TLS証明書デコーダ（`cert-decoder`）
   - [x] 鍵フォーマット変換（`key-converter`）
+  - [x] HARビューア＆サニタイザ（`har-viewer`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
