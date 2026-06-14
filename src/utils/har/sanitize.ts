@@ -111,6 +111,23 @@ function redactUrl(
   return result;
 }
 
+/**
+ * value に scrubText を適用し、findings 件数を counts[category] に加算して
+ * redact 済み文字列を返す（findings が無ければ原文を返す）。
+ */
+function scrubInto(
+  value: string,
+  counts: Record<HarRedactCategory, number>,
+  category: HarRedactCategory
+): string {
+  const r = scrubText(value, DEFAULT_ENABLED);
+  if (r.findings.length > 0) {
+    counts[category] += r.findings.length;
+    return r.output;
+  }
+  return value;
+}
+
 function redactHeaders(
   headers: HarNameValue[],
   enabled: Record<HarRedactCategory, boolean>,
@@ -206,11 +223,7 @@ export function sanitizeHar(
           }
         }
         if (typeof request.postData.text === 'string') {
-          const r = scrubText(request.postData.text, DEFAULT_ENABLED);
-          if (r.findings.length > 0) {
-            request.postData.text = r.output;
-            counts.BODY += r.findings.length;
-          }
+          request.postData.text = scrubInto(request.postData.text, counts, 'BODY');
         }
       }
     }
@@ -239,11 +252,7 @@ export function sanitizeHar(
         typeof content.text === 'string' &&
         content.encoding !== 'base64'
       ) {
-        const r = scrubText(content.text, DEFAULT_ENABLED);
-        if (r.findings.length > 0) {
-          content.text = r.output;
-          counts.BODY_SCAN += r.findings.length;
-        }
+        content.text = scrubInto(content.text, counts, 'BODY_SCAN');
       }
     }
 
