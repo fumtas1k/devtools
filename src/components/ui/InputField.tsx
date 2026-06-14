@@ -23,6 +23,8 @@ interface Props {
   onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement | HTMLInputElement>;
   /** multiline（textarea）時に aria-busy を付与する。debounce 中の表明など。既定 false。 */
   busy?: boolean;
+  /** ブラウザの autofill / 保存挙動の制御（例: "off"）。秘密鍵など hardening が必要な欄で指定する。 */
+  autoComplete?: string;
 }
 
 export function InputField({
@@ -44,6 +46,7 @@ export function InputField({
   resize = false,
   onKeyDown,
   busy = false,
+  autoComplete,
 }: Props) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -95,6 +98,7 @@ export function InputField({
           aria-describedby={describedBy}
           aria-invalid={!!error}
           aria-busy={busy || undefined}
+          autoComplete={autoComplete}
           className={inputClass}
         />
       ) : (
@@ -110,6 +114,7 @@ export function InputField({
           inputMode={inputMode}
           aria-describedby={describedBy}
           aria-invalid={!!error}
+          autoComplete={autoComplete}
           className={inputClass}
         />
       )}

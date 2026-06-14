@@ -156,6 +156,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                 rows={4}
                 mono
                 readOnly
+                autoComplete="off"
                 headerRight={<CopyButton text={privateKeyJwkStr} label="コピー" />}
               />
               <InputField
@@ -167,6 +168,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                 rows={4}
                 mono
                 readOnly
+                autoComplete="off"
                 headerRight={<CopyButton text={publicKeyJwkStr} label="コピー" />}
               />
             </div>
