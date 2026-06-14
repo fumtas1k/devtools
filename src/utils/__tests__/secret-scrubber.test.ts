@@ -552,6 +552,57 @@ describe('ReDoS 回帰防止 — scrubText の線形時間性（#688）', () => 
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// #690 L-3: 既存プレースホルダとの採番衝突回避
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('#690 L-3: 既存プレースホルダとの採番衝突回避', () => {
+  it('陽性対照（衝突回避）: 入力中に [REDACTED:EMAIL_1] があると実メールは _2 以降になる', () => {
+    // 既に [REDACTED:EMAIL_1] リテラルが含まれる文字列に新しいメールを追加した場合、
+    // 採番修正がなければ実メールにも [REDACTED:EMAIL_1] が付いて同一トークンが 2 つ並ぶ。
+    // reservedMax により _1 を超える番号（_2）が割り当てられることを確認する。
+    // 【実機確認済み】採番修正（reservedMax ロジック）を外すと実メールが [REDACTED:EMAIL_1]
+    // になり、toContain('[REDACTED:EMAIL_1]') が fail せず toBe の比較で区別できなくなる
+    // — つまり「重複しない」assert が fail する。
+    const input = 'prev=[REDACTED:EMAIL_1] email=alice@example.com';
+    const enabled = onlyEnabled(['EMAIL']);
+    const result = scrubText(input, enabled);
+    // 実メールのプレースホルダが _1 ではない（衝突しない）
+    expect(result.output).not.toContain('alice@example.com');
+    expect(result.output).not.toMatch(/\[REDACTED:EMAIL_2\].*\[REDACTED:EMAIL_2\]/); // 重複自体も無い
+    // 実メールには _2 以降の番号が振られる
+    expect(result.output).toContain('[REDACTED:EMAIL_1]'); // 元リテラルは保持
+    expect(result.output).toContain('[REDACTED:EMAIL_2]'); // 実メールは _2
+    // 出力に同一トークンが重複しない（_1 が 2 つ存在しない）
+    const tokens = result.output.match(/\[REDACTED:EMAIL_\d+\]/g) ?? [];
+    const unique = new Set(tokens);
+    expect(unique.size).toBe(tokens.length);
+  });
+
+  it('退行対照: 既存プレースホルダが無い通常入力は従来どおり _1 から採番される', () => {
+    // 衝突回避ロジックが通常ケースを壊していないことを確認する退行対照
+    const result = scrubText('contact: alice@example.com', onlyEnabled(['EMAIL']));
+    expect(result.output).toBe('contact: [REDACTED:EMAIL_1]');
+    expect(result.counts.EMAIL).toBe(1);
+  });
+
+  it('退行対照: 複数の既存プレースホルダがあるとき最大値を超えて採番される', () => {
+    // [EMAIL_3] まで存在する入力で新メールが _4 になることを確認
+    const input = '[REDACTED:EMAIL_1] [REDACTED:EMAIL_2] [REDACTED:EMAIL_3] bob@example.com';
+    const result = scrubText(input, onlyEnabled(['EMAIL']));
+    expect(result.output).toContain('[REDACTED:EMAIL_4]');
+    expect(result.output).not.toContain('bob@example.com');
+  });
+
+  it('退行対照: カテゴリが異なる既存プレースホルダは採番に影響しない', () => {
+    // [REDACTED:IP_5] があっても EMAIL の採番は _1 から始まる
+    const input = '[REDACTED:IP_5] alice@example.com';
+    const result = scrubText(input, onlyEnabled(['EMAIL', 'IP']));
+    expect(result.output).toContain('[REDACTED:EMAIL_1]'); // IP の番号に引きずられない
+    expect(result.output).not.toContain('alice@example.com');
+  });
+});
+
 describe('resolveMaskRange — d フラグ fail-safe（#690 M-1）', () => {
   it('indices が取れない場合はマッチ全体を over-mask する（漏えい方向に倒さない）', () => {
     // d フラグ非対応環境を模した、.indices を持たないマッチ

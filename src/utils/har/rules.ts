@@ -5,10 +5,12 @@
 
 export type HarRedactCategory =
   | 'COOKIE' // request/response の cookies[] と Cookie/Set-Cookie ヘッダ
-  | 'AUTH_HEADER' // Authorization 等の認証ヘッダ
-  | 'QUERY' // 機密クエリパラメータ
+  | 'AUTH_HEADER' // Authorization 等の認証ヘッダ辞書（AUTH_HEADER_NAMES）に一致するヘッダ値のトークン化
+  | 'QUERY' // 機密クエリパラメータ辞書（SENSITIVE_PARAM_NAMES）一致 + URL basic-auth の構造的 redact
   | 'BODY' // postData（params 機密名 + text への scrubText）
-  | 'BODY_SCAN'; // レスポンスボディ等への scrubText 適用
+  | 'BODY_SCAN' // レスポンスボディ等への scrubText 適用
+  | 'HEADER_SCAN' // 辞書外ヘッダ値への scrubText 自由走査（#694: AUTH_HEADER から分離）
+  | 'PATH_SCAN'; // URL パス以降（path/query/fragment）への scrubText 自由走査（#694: QUERY から分離）
 
 export const HAR_REDACT_CATEGORIES: HarRedactCategory[] = [
   'COOKIE',
@@ -16,6 +18,8 @@ export const HAR_REDACT_CATEGORIES: HarRedactCategory[] = [
   'QUERY',
   'BODY',
   'BODY_SCAN',
+  'HEADER_SCAN',
+  'PATH_SCAN',
 ];
 
 export const HAR_REDACT_LABEL: Record<HarRedactCategory, string> = {
@@ -24,6 +28,8 @@ export const HAR_REDACT_LABEL: Record<HarRedactCategory, string> = {
   QUERY: '機密クエリ',
   BODY: 'POSTボディ',
   BODY_SCAN: '本文スキャン',
+  HEADER_SCAN: 'ヘッダ走査',
+  PATH_SCAN: 'URL走査',
 };
 
 export const HAR_REDACT_DEFAULT: Record<HarRedactCategory, boolean> = {
@@ -32,6 +38,8 @@ export const HAR_REDACT_DEFAULT: Record<HarRedactCategory, boolean> = {
   QUERY: true,
   BODY: true,
   BODY_SCAN: true,
+  HEADER_SCAN: true,
+  PATH_SCAN: true,
 };
 
 export function emptyRedactCounts(): Record<HarRedactCategory, number> {

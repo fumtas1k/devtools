@@ -25,11 +25,19 @@ export interface SanitizeResult {
   counts: Record<HarRedactCategory, number>;
 }
 
+/**
+ * 既にプレースホルダ化済みの値を検出する正規表現（前後完全一致）。
+ * makeTokenizer の冪等化（#690 L-3）に使用する。
+ */
+const PLACEHOLDER_EXACT_RE = /^\[REDACTED:[A-Z_]+_\d+\]$/;
+
 /** 一貫トークン発行器。カテゴリ別カウンタと値→トークンの Map を保持する。 */
 function makeTokenizer(counts: Record<HarRedactCategory, number>) {
   const map = new Map<string, string>();
   const counter: Partial<Record<HarRedactCategory, number>> = {};
   return (category: HarRedactCategory, value: string): string => {
+    // 既にプレースホルダ化済みの値は再サニタイズで二重計上しない（#690 L-3・冪等性）
+    if (PLACEHOLDER_EXACT_RE.test(value)) return value;
     const key = `${category}:${value}`;
     let token = map.get(key);
     if (!token) {
@@ -76,14 +84,15 @@ function redactPairString(
  * クエリ/フラグメント全体を scrubText に渡すと CREDENTIAL_ASSIGN の値クラスが
  * 区切り `&` を越えて隣の param まで飲み込む（非機密 param を破壊する）ため、
  * value 単位で走査して取りこぼし無く・破壊無く redact する。
+ * カテゴリは PATH_SCAN（URL自由走査）で計上する（#694: QUERY から分離）。
  */
 function scrubPairValues(s: string, counts: Record<HarRedactCategory, number>): string {
   return s
     .split('&')
     .map((pair) => {
       const eq = pair.indexOf('=');
-      if (eq === -1) return scrubInto(pair, counts, 'QUERY');
-      return pair.slice(0, eq + 1) + scrubInto(pair.slice(eq + 1), counts, 'QUERY');
+      if (eq === -1) return scrubInto(pair, counts, 'PATH_SCAN');
+      return pair.slice(0, eq + 1) + scrubInto(pair.slice(eq + 1), counts, 'PATH_SCAN');
     })
     .join('&');
 }
@@ -94,8 +103,14 @@ function scrubPairValues(s: string, counts: Record<HarRedactCategory, number>): 
  * 辞書外クエリ名の JWT/API キーを redact する。
  * - path: そのまま scrubText（`key=value&` 構造を持たないため安全）
  * - query / fragment: param value 単位で scrubText（`&` 越えの飲み込みを防ぐ）
+ * カテゴリは PATH_SCAN で計上する（#694: QUERY から分離）。
  */
 function scrubUrlPath(url: string, counts: Record<HarRedactCategory, number>): string {
+  // data: URL は base64/テキストの自己完結ペイロードを持ち、scrubText（特に
+  // HIGH_ENTROPY_BASE64）がペイロードを破壊してデコード不能にする（#695）。
+  // #690 M-2 で本文に対し回避した破壊クラスと同型。原文を返して破壊を防ぐ。
+  if (/^data:/i.test(url)) return url;
+
   const schemeMatch = url.match(/^[a-z][a-z0-9+.-]{0,31}:\/\//i);
   let authorityEnd: number;
   if (schemeMatch) {
@@ -121,7 +136,7 @@ function scrubUrlPath(url: string, counts: Record<HarRedactCategory, number>): s
   const path = qIndex !== -1 ? beforeHash.slice(0, qIndex) : beforeHash;
   const query = qIndex !== -1 ? beforeHash.slice(qIndex + 1) : '';
 
-  let result = head + scrubInto(path, counts, 'QUERY');
+  let result = head + scrubInto(path, counts, 'PATH_SCAN');
   if (qIndex !== -1) result += '?' + scrubPairValues(query, counts);
   if (hashIndex !== -1) result += '#' + scrubPairValues(fragment, counts);
   return result;
@@ -168,7 +183,8 @@ function redactUrl(
 
   // パス以降（path?query#fragment）に scrubText を適用（host は保持）。
   // 構造的クエリ redact（SENSITIVE_PARAM_NAMES）の後に走らせ、placeholder は再マッチしない。
-  if (enabled.QUERY) {
+  // PATH_SCAN（自由走査）で独立制御する（#694: QUERY から分離）。
+  if (enabled.PATH_SCAN) {
     result = scrubUrlPath(result, counts);
   }
 
@@ -236,14 +252,17 @@ function redactHeaders(
       }
     } else if (enabled.AUTH_HEADER && AUTH_HEADER_NAMES.has(lower)) {
       h.value = tokenize('AUTH_HEADER', h.value);
-    } else if (enabled.QUERY && URL_HEADER_NAMES.has(lower)) {
+    } else if ((enabled.QUERY || enabled.PATH_SCAN) && URL_HEADER_NAMES.has(lower)) {
       // Referer / Origin / Location 等は URL を運ぶため URL と同じ redact を適用する。
       // （URL のクエリだけ redact しても同じ秘密値がこれらのヘッダに残るのを防ぐ）
+      // 構造的 redact（QUERY）・自由走査（PATH_SCAN）のどちらかが ON なら URL 処理に入れる
+      // （redactUrl 内部で各ステップが個別ゲートされるため安全）。#694
       h.value = redactUrl(h.value, enabled, counts, tokenize);
-    } else if (enabled.AUTH_HEADER) {
-      // 辞書外ヘッダ値に含まれる機密（JWT / API キー等）を scrubText で拾う。
-      // 認証ヘッダトグルの意味的拡張（ヘッダ値の機密走査）として AUTH_HEADER で計上。
-      h.value = scrubInto(h.value, counts, 'AUTH_HEADER');
+    } else if (enabled.HEADER_SCAN && !AUTH_HEADER_NAMES.has(lower)) {
+      // 辞書外ヘッダ値に含まれる機密（JWT / API キー等）を scrubText で自由走査する。
+      // AUTH_HEADER_NAMES に一致するヘッダは辞書ベース（AUTH_HEADER）の担当なので除外する。
+      // AUTH_HEADER が OFF でも HEADER_SCAN が意図せず辞書内ヘッダを処理しないよう分離する（#694）。
+      h.value = scrubInto(h.value, counts, 'HEADER_SCAN');
     }
   }
 }
@@ -334,8 +353,13 @@ export function sanitizeHar(
         }
       }
 
-      // リダイレクト先 URL（Location ヘッダと同じく URL を運ぶ独立フィールド）
-      if (enabled.QUERY && typeof response.redirectURL === 'string' && response.redirectURL) {
+      // リダイレクト先 URL（Location ヘッダと同じく URL を運ぶ独立フィールド）。
+      // 構造的 redact（QUERY）・自由走査（PATH_SCAN）のどちらかが ON なら URL 処理に入れる（#694）。
+      if (
+        (enabled.QUERY || enabled.PATH_SCAN) &&
+        typeof response.redirectURL === 'string' &&
+        response.redirectURL
+      ) {
         response.redirectURL = redactUrl(response.redirectURL, enabled, counts, tokenize);
       }
 
