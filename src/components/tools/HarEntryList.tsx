@@ -35,19 +35,19 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
         <caption className="sr-only">HTTP リクエスト一覧</caption>
         <thead>
           <tr className="bg-subtle text-left">
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
               メソッド
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
               URL
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
               ステータス
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
               サイズ
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
               時間
             </th>
           </tr>
@@ -55,7 +55,7 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
         <tbody>
           {entries.map((e, i) => (
             <tr key={i} className={selectedIndex === i ? 'bg-active' : undefined}>
-              <td className="px-3 py-1.5 font-mono">{e.request.method}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 font-mono">{e.request.method}</td>
               <td className="px-3 py-1.5">
                 <button
                   type="button"
@@ -66,11 +66,11 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
                   {shortUrl(e.request.url)}
                 </button>
               </td>
-              <td className="px-3 py-1.5 font-mono">{e.response.status}</td>
-              <td className="px-3 py-1.5 font-mono">
+              <td className="whitespace-nowrap px-3 py-1.5 font-mono">{e.response.status}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 font-mono">
                 {formatSize(e.response.content?.size ?? e.response.bodySize)}
               </td>
-              <td className="px-3 py-1.5 font-mono">{formatTime(e.time)}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 font-mono">{formatTime(e.time)}</td>
             </tr>
           ))}
         </tbody>
