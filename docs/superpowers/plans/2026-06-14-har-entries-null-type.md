@@ -24,6 +24,7 @@
 ### Task 1: 中核型と境界 prop 型を null 要素対応に変更
 
 **Files:**
+
 - Modify: `src/utils/har/types.ts:69`
 - Modify: `src/components/tools/HarEntryList.tsx:4`
 
@@ -61,6 +62,7 @@ Expected: `src/utils/har/__tests__/sanitize.test.ts` と `src/utils/har/__tests_
 ### Task 2: テストの非 null アクセスに `!` を付与
 
 **Files:**
+
 - Modify: `src/utils/har/__tests__/sanitize.test.ts`
 - Modify: `src/utils/har/__tests__/parse.test.ts`
 
@@ -87,6 +89,7 @@ expect(har.log.entries[0]!.request.postData!.text)...
 ```
 
 注意:
+
 - `entries[0]` 直後にのみ `!` を挿入する。`.request` / `.response` 以降の既存 `!`（`postData!` / `redirectURL!` 等）は維持する。
 - `entries[0]` を経由しないアクセス（例: `out.log.entries.length` のような配列メソッド）は変更しない。
 - これは挙動不変の機械的変更。fixture は必ず該当インデックスの entry を持つため `!` は安全。
