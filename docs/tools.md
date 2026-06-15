@@ -639,14 +639,16 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - エントリ一覧（`HarEntryList`）は全件描画する。フリーズの主因は描画ではなく sanitize であり Worker 化で解消したため、ページングは導入しない（実 HAR の検証でエントリ数は数百件程度で、その規模の `<tr>` 描画は問題にならないことを確認。`loadSeq` は新規読込時の選択リセット判定にのみ使い、トグル時は選択を保持する）
 - 出力 HAR の `JSON.stringify(.., null, 2)` はコピー/ダウンロード押下時のみ遅延生成する（`CopyButton` の `text` prop は `string | (() => string)` を受け付け、関数はクリック時に評価される）。毎レンダリングでの数 MB 直列化を避ける
 - `sanitize.ts` は worker の依存グラフに含まれるため `@/` ではなく相対 import を使う（Vite の worker Rollup サブビルドに tsconfig paths が伝播しないため。詳細はファイル冒頭コメント参照）
+- **ウォーターフォール（タイミング可視化）**: `computeWaterfall`（`src/utils/har/waterfall.ts`）が `HarEntry[]` から全体タイムライン基準の配置モデルを計算する。各エントリの `startedDateTime`（ISO 文字列）を epoch ms に変換して起点を求め、`timings`（blocked / dns / connect / ssl / send / wait / receive）をフェーズ別セグメントに分解する。**HAR 1.2 仕様に従い `ssl` は `connect` の部分時間**として扱うため、`connect` セグメント ms = `connect - ssl`（下限 0）に補正し、ssl を別セグメントとして並べる（二重計上防止）。値が `-1`・未定義・`0` のフェーズはセグメント化しない。`WaterfallRow.offsetRatio` は `(start - t0) / totalMs`、`widthRatio` は `durationMs / totalMs` で全体タイムライン基準の相対配置を表す。一覧テーブルの「タイミング」列（スマホでは `hidden md:table-cell` で非表示）に `HarWaterfallBar` が横棒を描画し、詳細パネル（`HarEntryDetail` 内 `TimingBreakdown`）にフェーズ別内訳テーブルとミニバーを表示する。動的な幅・オフセットは `useDynamicStyleSheet`（Constructable Stylesheets）で CSS カスタムプロパティ（`--bar-left` / `--bar-width` / `--seg-width` / `--mini-width`）として注入する（CSP `style-src` 制約により inline style は使用しない、decisions [067]）。`computeWaterfall` は `HarViewer` で `useMemo` 化して `entries` 変化時のみ再計算する
 
 #### 準拠仕様
 
 - HAR 1.2 仕様（http://www.softwareishard.com/blog/har-12-spec/）の必要サブセットを型定義（完全検証は不要なため `log.entries` 配列の存在のみを確認）
+- ウォーターフォールの `ssl` / `connect` 処理は HAR 1.2 spec の「ssl timings are included in the connect timings」に準拠
 
 #### 制限・エッジケース
 
-- ウォーターフォール（タイミング可視化）は v1 非対応。別 issue で引き継ぐ
+- ウォーターフォール: `timings` を持たないエントリはバーを非表示にして degrade する（`—` を表示）。`startedDateTime` の欠落時も同様。スマホ（390px）では一覧のタイミング列を非表示にし、詳細パネルで内訳を確認できる
 - ファイルサイズ上限 25MB（メモリ防御ガード）。読み込み時のフリーズは sanitize の Web Worker 化で解消済みのため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。大きな HAR は worker 上で時間がかかる（実測 ~6MB/5000 エントリで約 2.6 秒、~18MB/10000 エントリで約 17 秒）が、メインスレッドは固まらず進捗バーを表示する。redact トグルのたびに全エントリを再 sanitize する（worker 上のため非ブロッキング。差分 sanitize は将来課題）
 - 辞書に無い独自ヘッダ名・独自名のクエリ/フォームパラメータは `scrubText` が拾える範囲のみ redact される（任意名のセッショントークン等は残りうる。完全な網羅は保証せず、出力は共有前の目視確認が前提）
 - レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする。`HIGH_ENTROPY_BASE64` ルールが base64 ブロック自体にマッチして本文を破壊し、デコード不能な HAR を出力するのを防ぐため（その代わり base64 本文内の秘密は検出されない）

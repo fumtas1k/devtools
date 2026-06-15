@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ToggleChips } from '@/components/ui/ToggleChips';
 import { FileInputButton } from '@/components/ui/FileInputButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
@@ -16,6 +16,7 @@ import {
   HAR_REDACT_LABEL,
   HAR_REDACT_DEFAULT,
   type HarRedactCategory,
+  computeWaterfall,
 } from '@/utils/har';
 
 // メモリ防御ガード。読み込み時のフリーズ（同期 sanitize）は Web Worker 化で解消したため
@@ -75,6 +76,8 @@ export function HarViewer() {
     setSelectedIndex(null);
     setFileError(null);
   }, [reset]);
+
+  const waterfall = useMemo(() => computeWaterfall(result ? result.har.log.entries : []), [result]);
 
   const totalRedacted = result ? Object.values(result.counts).reduce((a, b) => a + b, 0) : 0;
   const selectedEntry =
@@ -153,6 +156,7 @@ export function HarViewer() {
           {/* エントリ一覧（全件描画。フリーズの主因は sanitize でありそれは Worker 化で解消済み） */}
           <HarEntryList
             entries={result.har.log.entries}
+            waterfall={waterfall}
             selectedIndex={selectedIndex}
             onSelect={setSelectedIndex}
           />

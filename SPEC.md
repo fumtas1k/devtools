@@ -1189,13 +1189,15 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 一貫トークン化: `[REDACTED:COOKIE_1]` 等。同一値は HAR 全体で同一プレースホルダを割り当てる。
 
-**UI:** redact カテゴリを `ToggleChips`（件数バッジ付き・既定すべて ON）で個別 ON/OFF。エントリ一覧テーブル（メソッド / URL / ステータス / サイズ / 時間）・行クリックで詳細パネル展開。サマリ（総リクエスト数・redact 件数）。
+**UI:** redact カテゴリを `ToggleChips`（件数バッジ付き・既定すべて ON）で個別 ON/OFF。エントリ一覧テーブル（メソッド / URL / ステータス / サイズ / 時間 / **タイミング**）・行クリックで詳細パネル展開。サマリ（総リクエスト数・redact 件数）。
 
-**モジュール構成:** `src/utils/har/`（`types.ts` HAR 1.2 サブセット型 / `rules.ts` redact カテゴリ定義・辞書 / `parse.ts` JSON パース＋最小スキーマ検証 / `sanitize.ts` 構造的 redact＋scrubText 純関数 / `index.ts`）/ `src/components/tools/HarViewer.tsx`（親）/ `HarEntryList.tsx`（一覧）/ `HarEntryDetail.tsx`（詳細）
+**ウォーターフォール（タイミング可視化、issue #674）:** `computeWaterfall`（`src/utils/har/waterfall.ts`）が全エントリの `startedDateTime` + `timings` から全体タイムライン基準の配置モデルを計算する。一覧の「タイミング」列（PC のみ、スマホは `hidden md:table-cell` で非表示）に `HarWaterfallBar` でフェーズ別色分け横棒を描画。詳細パネル（`HarEntryDetail` 内 `TimingBreakdown`）でフェーズ別内訳テーブルを表示（スマホでの担保）。HAR 1.2 の `ssl` は `connect` の部分時間のため `connect - ssl` で二重計上を防ぐ。`timings` 欠落エントリはバー非表示で degrade。
+
+**モジュール構成:** `src/utils/har/`（`types.ts` HAR 1.2 サブセット型 + `HarTimings` / `rules.ts` redact カテゴリ定義・辞書 / `parse.ts` JSON パース＋最小スキーマ検証 / `sanitize.ts` 構造的 redact＋scrubText 純関数 / `waterfall.ts` `computeWaterfall` 純関数 / `index.ts`）/ `src/components/tools/HarViewer.tsx`（親）/ `HarEntryList.tsx`（一覧）/ `HarEntryDetail.tsx`（詳細）/ `HarWaterfallBar.tsx`（横棒セル）
 
 **追加依存:** なし（既存の `secret-scrubber` の `scrubText` / `DEFAULT_ENABLED` を再利用）
 
-**スコープ外（v1 非対応）:** ウォーターフォール（タイミング可視化）・Web Worker による大型 HAR の非同期パース・辞書外の独自名ヘッダ/クエリパラメータの完全 redact・base64 本文内の秘密検出
+**スコープ外:** 列ソート・フィルタ（タイミング順並び替え等）・バーのドラッグズーム・超大型 HAR でのバー描画の仮想化（動的 stylesheet のルール数が行数×フェーズ数で増えるため、将来は描画行数の上限/仮想化を検討余地）・`timings` を持たない HAR の補完推定・辞書外の独自名ヘッダ/クエリパラメータの完全 redact・base64 本文内の秘密検出
 
 ---
 

@@ -8,6 +8,7 @@ export type {
   HarCookie,
   HarPostData,
   HarContent,
+  HarTimings,
 } from './types';
 export { parseHar } from './parse';
 export type { ParseResult } from './parse';
@@ -20,3 +21,5 @@ export {
   HAR_REDACT_DEFAULT,
   emptyRedactCounts,
 } from './rules';
+export { computeWaterfall, PHASE_ORDER } from './waterfall';
+export type { HarPhase, WaterfallSegment, WaterfallRow, WaterfallModel } from './waterfall';
