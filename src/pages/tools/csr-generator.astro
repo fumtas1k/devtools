@@ -12,32 +12,28 @@ const tool = tools.find((t) => t.slug === 'csr-generator')!;
 
   <ToolInfoSection>
     <p class="tool-info-body">
-      RSA / ECDSA の鍵ペアを生成し、PKCS#10 形式の CSR（証明書署名要求）を出力します。Subject DN（CN / O /
-      OU / C / ST / L / emailAddress）と SAN（DNS / IP / Email）を自由に設定できます。既存の CSR
-      を貼り付けると Subject・SAN・公開鍵情報・署名アルゴリズムを抽出し、自己署名の整合性を検証します。
-      全処理はブラウザ内で完結するため、秘密鍵は外部サーバーに送信されません。
+      ブラウザ内で RSA / ECDSA の鍵ペアを生成し、PKCS#10 CSR（証明書署名要求）を出力します。Subject（CN / O
+      / OU / C / ST / L / emailAddress）と SAN（DNS / IP / email）を指定でき、秘密鍵は PKCS#8
+      PEM で出力されます。全処理はブラウザ内で完結するため、生成した秘密鍵は外部サーバーに送信されません。既存
+      CSR の貼り付け解析（Subject / SAN / 公開鍵 / 署名検証）にも対応します。
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">対応アルゴリズム</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
-      <li>RSA（2048 bit / 4096 bit、SHA-256 署名）</li>
-      <li>ECDSA P-256（SHA-256 署名）</li>
-      <li>ECDSA P-384（SHA-384 署名）</li>
+      <li>RSA（2048 / 3072 / 4096 bit、SHA-256 署名）</li>
+      <li>ECDSA（P-256 / P-384 / P-521、曲線に応じた SHA-256/384/512 署名）</li>
     </ul>
-    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <h3 class="mb-2 mt-4 tool-info-heading">準拠仕様</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
-      <li>Let's Encrypt / ACME などの CA に提出する CSR をブラウザで生成する</li>
-      <li>社内 CA・プライベート PKI 向け CSR の作成（秘密鍵が外に出ない）</li>
-      <li>既存 CSR の Subject・SAN が正しく設定されているか確認する</li>
-      <li>CSR の署名改竄検出（自己署名の整合性検証）</li>
-      <li>開発・テスト環境向けの CSR をコマンドラインツールなしに素早く生成する</li>
+      <li>RFC 2986（PKCS#10 Certification Request）</li>
+      <li>RFC 5280（X.509 SAN 拡張 id-ce-subjectAltName）</li>
+      <li>PKCS#8（秘密鍵エクスポート）</li>
     </ul>
-    <h3 class="mb-2 mt-4 tool-info-heading">制限事項</h3>
+    <h3 class="mb-2 mt-4 tool-info-heading">制限事項（v1 非対応）</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
-      <li>IP アドレス SAN は IPv4 のみ対応（IPv6 は DNS SAN での代替を推奨）</li>
       <li>Ed25519 / Ed448（EdDSA）は非対応</li>
-      <li>暗号化秘密鍵（ENCRYPTED PRIVATE KEY）の出力は非対応</li>
-      <li>CSR への属性拡張（challengePassword 等）は非対応</li>
-      <li>生成した秘密鍵はダウンロード後に安全な場所で管理してください</li>
+      <li>暗号化 PKCS#8（パスフレーズ付き秘密鍵）でのエクスポートは非対応（平文 PKCS#8 のみ）</li>
+      <li>SAN の IP は IPv4 のみ対応</li>
+      <li>challengePassword 属性・KeyUsage / ExtendedKeyUsage 等のカスタム拡張編集は非対応</li>
     </ul>
   </ToolInfoSection>
 </ToolLayout>
