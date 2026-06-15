@@ -44,13 +44,27 @@ describe('HarEntryList 壊れた entry のガード', () => {
   it('壊れた entry を含んでも throw せず描画できる', () => {
     const waterfall = computeWaterfall(entries);
     expect(() =>
-      render(<HarEntryList entries={entries} waterfall={waterfall} selectedIndex={null} onSelect={() => {}} />)
+      render(
+        <HarEntryList
+          entries={entries}
+          waterfall={waterfall}
+          selectedIndex={null}
+          onSelect={() => {}}
+        />
+      )
     ).not.toThrow();
   });
 
   it('正常 entry の method と URL を描画する', () => {
     const waterfall = computeWaterfall(entries);
-    render(<HarEntryList entries={entries} waterfall={waterfall} selectedIndex={null} onSelect={() => {}} />);
+    render(
+      <HarEntryList
+        entries={entries}
+        waterfall={waterfall}
+        selectedIndex={null}
+        onSelect={() => {}}
+      />
+    );
     expect(screen.getByText('GET')).toBeTruthy();
     // shortUrl は host + pathname
     expect(screen.getByRole('button', { name: 'example.com/api/ok' })).toBeTruthy();
@@ -58,7 +72,14 @@ describe('HarEntryList 壊れた entry のガード', () => {
 
   it('壊れた entry 行はプレースホルダ文言の button を描画する', () => {
     const waterfall = computeWaterfall(entries);
-    render(<HarEntryList entries={entries} waterfall={waterfall} selectedIndex={null} onSelect={() => {}} />);
+    render(
+      <HarEntryList
+        entries={entries}
+        waterfall={waterfall}
+        selectedIndex={null}
+        onSelect={() => {}}
+      />
+    );
     // 「（壊れたエントリ）」プレースホルダが request 欠落行に出る（{} と null の 2 行）
     expect(screen.getAllByText('（壊れたエントリ）').length).toBeGreaterThanOrEqual(2);
     // url を持つ行（ok / noresp）と壊れ行（{} / null）すべてが button（計 4 つ）
@@ -70,7 +91,14 @@ describe('HarEntryList 壊れた entry のガード', () => {
   it('壊れた entry 行クリックでその index の onSelect が呼ばれる（再選択可能）', () => {
     const onSelect = vi.fn();
     const waterfall = computeWaterfall(entries);
-    render(<HarEntryList entries={entries} waterfall={waterfall} selectedIndex={null} onSelect={onSelect} />);
+    render(
+      <HarEntryList
+        entries={entries}
+        waterfall={waterfall}
+        selectedIndex={null}
+        onSelect={onSelect}
+      />
+    );
     // 壊れ行は {} (index 1) と null (index 2)。先頭の壊れ行をクリック。
     const brokenButtons = screen.getAllByRole('button', { name: '（壊れたエントリ）' });
     brokenButtons[0].click();

@@ -77,10 +77,7 @@ export function HarViewer() {
     setFileError(null);
   }, [reset]);
 
-  const waterfall = useMemo(
-    () => computeWaterfall(result ? result.har.log.entries : []),
-    [result]
-  );
+  const waterfall = useMemo(() => computeWaterfall(result ? result.har.log.entries : []), [result]);
 
   const totalRedacted = result ? Object.values(result.counts).reduce((a, b) => a + b, 0) : 0;
   const selectedEntry =

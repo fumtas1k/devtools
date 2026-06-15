@@ -77,21 +77,21 @@ export type HarPhase = 'blocked' | 'dns' | 'connect' | 'ssl' | 'send' | 'wait' |
 
 export interface WaterfallSegment {
   phase: HarPhase;
-  ms: number;          // フェーズ所要時間（ms、> 0）
-  widthRatio: number;  // バー内相対幅（ms / totalMs、0..1）。flex セグメント幅に使う
+  ms: number; // フェーズ所要時間（ms、> 0）
+  widthRatio: number; // バー内相対幅（ms / totalMs、0..1）。flex セグメント幅に使う
 }
 
 export interface WaterfallRow {
-  hasTimeline: boolean;        // 起点・timings から描画可能か
-  offsetRatio: number;         // 全体起点からの相対開始位置（(start - t0) / globalTotal、0..1）
-  widthRatio: number;          // バー全体幅（durationMs / globalTotal、0..1）
-  totalMs: number;             // このエントリの所要時間（フェーズ合計）
+  hasTimeline: boolean; // 起点・timings から描画可能か
+  offsetRatio: number; // 全体起点からの相対開始位置（(start - t0) / globalTotal、0..1）
+  widthRatio: number; // バー全体幅（durationMs / globalTotal、0..1）
+  totalMs: number; // このエントリの所要時間（フェーズ合計）
   segments: WaterfallSegment[];
 }
 
 export interface WaterfallModel {
-  totalMs: number;             // 全体タイムラインの総時間（ms）
-  rows: WaterfallRow[];        // entries と同じ長さ・同じ順序
+  totalMs: number; // 全体タイムラインの総時間（ms）
+  rows: WaterfallRow[]; // entries と同じ長さ・同じ順序
 }
 ```
 
@@ -121,11 +121,11 @@ className に直書きしない原則に従い、CSS 変数経由で指定）。
 ```css
 @theme {
   --color-har-blocked: #9ca3af; /* neutral-400: 待機・キュー */
-  --color-har-dns:     #854d0e; /* amber-800 系: 名前解決 */
+  --color-har-dns: #854d0e; /* amber-800 系: 名前解決 */
   --color-har-connect: #15803d; /* green-700: TCP 接続 */
-  --color-har-ssl:     #7c3aed; /* violet-600: TLS ハンドシェイク */
-  --color-har-send:    #0e3293; /* tertiary: 送信 */
-  --color-har-wait:    #1a56db; /* primary: TTFB（最重要フェーズ） */
+  --color-har-ssl: #7c3aed; /* violet-600: TLS ハンドシェイク */
+  --color-har-send: #0e3293; /* tertiary: 送信 */
+  --color-har-wait: #1a56db; /* primary: TTFB（最重要フェーズ） */
   --color-har-receive: #2563eb; /* blue-600: 受信 */
 }
 ```
@@ -135,13 +135,27 @@ className に直書きしない原則に従い、CSS 変数経由で指定）。
 
 ```css
 @layer components {
-  .har-phase-blocked { background: var(--color-har-blocked); }
-  .har-phase-dns     { background: var(--color-har-dns); }
-  .har-phase-connect { background: var(--color-har-connect); }
-  .har-phase-ssl     { background: var(--color-har-ssl); }
-  .har-phase-send    { background: var(--color-har-send); }
-  .har-phase-wait    { background: var(--color-har-wait); }
-  .har-phase-receive { background: var(--color-har-receive); }
+  .har-phase-blocked {
+    background: var(--color-har-blocked);
+  }
+  .har-phase-dns {
+    background: var(--color-har-dns);
+  }
+  .har-phase-connect {
+    background: var(--color-har-connect);
+  }
+  .har-phase-ssl {
+    background: var(--color-har-ssl);
+  }
+  .har-phase-send {
+    background: var(--color-har-send);
+  }
+  .har-phase-wait {
+    background: var(--color-har-wait);
+  }
+  .har-phase-receive {
+    background: var(--color-har-receive);
+  }
 }
 ```
 

@@ -32,6 +32,7 @@
 ## Task 1: 型拡張（HarTimings）とサニタイズ非破壊テスト
 
 **Files:**
+
 - Modify: `src/utils/har/types.ts`
 - Modify: `src/utils/har/index.ts`
 - Test: `src/utils/har/__tests__/sanitize.test.ts`
@@ -150,6 +151,7 @@ git commit -m "feat: HarEntry に timings 型を追加しサニタイズ非破�
 ## Task 2: computeWaterfall 純関数（陽性対照テスト先行・TDD）
 
 **Files:**
+
 - Create: `src/utils/har/waterfall.ts`
 - Modify: `src/utils/har/index.ts`
 - Test: `src/utils/har/__tests__/waterfall.test.ts`
@@ -167,7 +169,13 @@ function entry(over: Partial<HarEntry>): HarEntry {
   return {
     startedDateTime: '2026-06-15T00:00:00.000Z',
     time: 100,
-    request: { method: 'GET', url: 'https://example.com/', headers: [], queryString: [], cookies: [] },
+    request: {
+      method: 'GET',
+      url: 'https://example.com/',
+      headers: [],
+      queryString: [],
+      cookies: [],
+    },
     response: { status: 200, headers: [], cookies: [], content: { size: 0 } },
     ...over,
   };
@@ -176,7 +184,9 @@ function entry(over: Partial<HarEntry>): HarEntry {
 describe('computeWaterfall', () => {
   it('既知 timings をフェーズ別 widthRatio に分解する', () => {
     const model = computeWaterfall([
-      entry({ timings: { blocked: 10, dns: 20, connect: 30, ssl: 10, send: 5, wait: 30, receive: 5 } }),
+      entry({
+        timings: { blocked: 10, dns: 20, connect: 30, ssl: 10, send: 5, wait: 30, receive: 5 },
+      }),
     ]);
     expect(model.totalMs).toBe(100);
     const row = model.rows[0];
@@ -240,7 +250,10 @@ describe('computeWaterfall', () => {
   });
 
   it('有効なタイムラインが 1 つも無くても例外を投げない', () => {
-    const model = computeWaterfall([null, entry({ startedDateTime: undefined, timings: undefined })]);
+    const model = computeWaterfall([
+      null,
+      entry({ startedDateTime: undefined, timings: undefined }),
+    ]);
     expect(model.rows.every((r) => r.hasTimeline === false)).toBe(true);
   });
 });
@@ -342,7 +355,11 @@ export function computeWaterfall(entries: (HarEntry | null)[]): WaterfallModel {
   // 1st pass: 各エントリの起点とフェーズ列・所要時間を求める。
   const pre = entries.map((entry) => {
     if (!entry || typeof entry !== 'object') {
-      return { start: null as number | null, phases: [] as { phase: HarPhase; ms: number }[], durationMs: 0 };
+      return {
+        start: null as number | null,
+        phases: [] as { phase: HarPhase; ms: number }[],
+        durationMs: 0,
+      };
     }
     const start = parseStart(entry.startedDateTime);
     const phases = buildPhaseMs(entry.timings);
@@ -365,7 +382,13 @@ export function computeWaterfall(entries: (HarEntry | null)[]): WaterfallModel {
   const rows: WaterfallRow[] = pre.map((p) => {
     const hasTimeline = hasGlobal && p.start != null && p.phases.length > 0;
     if (!hasTimeline) {
-      return { hasTimeline: false, offsetRatio: 0, widthRatio: 0, totalMs: p.durationMs, segments: [] };
+      return {
+        hasTimeline: false,
+        offsetRatio: 0,
+        widthRatio: 0,
+        totalMs: p.durationMs,
+        segments: [],
+      };
     }
     const offsetRatio = (p.start! - t0) / totalMs;
     const widthRatio = p.durationMs / totalMs;
@@ -412,6 +435,7 @@ git commit -m "feat: computeWaterfall でタイミング配置モデルを算出
 ## Task 3: フェーズ配色トークンと CSS クラス
 
 **Files:**
+
 - Modify: `src/styles/global.css`
 
 - [ ] **Step 1: `@theme` にフェーズ色トークンを追加**
@@ -420,14 +444,14 @@ git commit -m "feat: computeWaterfall でタイミング配置モデルを算出
 `--color-info-bg` 行のあたり）に追加:
 
 ```css
-  /* HAR ウォーターフォール フェーズ色（質的パレット・primitive 直書き回避のためトークン化） */
-  --color-har-blocked: #9ca3af; /* neutral-400: 待機/キュー */
-  --color-har-dns: #854d0e; /* amber-800: 名前解決 */
-  --color-har-connect: #15803d; /* green-700: TCP 接続 */
-  --color-har-ssl: #7c3aed; /* violet-600: TLS */
-  --color-har-send: #0e3293; /* tertiary: 送信 */
-  --color-har-wait: #1a56db; /* primary: TTFB（最重要） */
-  --color-har-receive: #2563eb; /* blue-600: 受信 */
+/* HAR ウォーターフォール フェーズ色（質的パレット・primitive 直書き回避のためトークン化） */
+--color-har-blocked: #9ca3af; /* neutral-400: 待機/キュー */
+--color-har-dns: #854d0e; /* amber-800: 名前解決 */
+--color-har-connect: #15803d; /* green-700: TCP 接続 */
+--color-har-ssl: #7c3aed; /* violet-600: TLS */
+--color-har-send: #0e3293; /* tertiary: 送信 */
+--color-har-wait: #1a56db; /* primary: TTFB（最重要） */
+--color-har-receive: #2563eb; /* blue-600: 受信 */
 ```
 
 - [ ] **Step 2: `@layer components` にウォーターフォール用クラスを追加**
@@ -437,59 +461,73 @@ git commit -m "feat: computeWaterfall でタイミング配置モデルを算出
 （ここでは参照のみ）。フォールバック値を付け、stylesheet 適用前（FOUC 1 frame）も破綻させない:
 
 ```css
-  /* HAR ウォーターフォール */
-  .har-track {
-    position: relative;
-    width: 100%;
-    min-width: 8rem;
-    height: 0.75rem;
-    background: var(--color-bg-subtle);
-    border-radius: 9999px;
-    overflow: hidden;
-  }
-  .har-bar {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: var(--bar-left, 0%);
-    width: var(--bar-width, 0%);
-    display: flex;
-    min-width: 1px;
-  }
-  .har-seg {
-    height: 100%;
-    width: var(--seg-width, 0%);
-    min-width: 1px;
-  }
-  .har-phase-blocked { background: var(--color-har-blocked); }
-  .har-phase-dns { background: var(--color-har-dns); }
-  .har-phase-connect { background: var(--color-har-connect); }
-  .har-phase-ssl { background: var(--color-har-ssl); }
-  .har-phase-send { background: var(--color-har-send); }
-  .har-phase-wait { background: var(--color-har-wait); }
-  .har-phase-receive { background: var(--color-har-receive); }
-  /* 詳細パネルのミニバー（1 行 1 フェーズ） */
-  .har-mini-track {
-    position: relative;
-    height: 0.5rem;
-    width: 100%;
-    background: var(--color-bg-subtle);
-    border-radius: 9999px;
-    overflow: hidden;
-  }
-  .har-mini-fill {
-    height: 100%;
-    width: var(--mini-width, 0%);
-    min-width: 1px;
-  }
-  /* フェーズ色チップ（詳細パネルの凡例） */
-  .har-chip {
-    display: inline-block;
-    width: 0.75rem;
-    height: 0.75rem;
-    border-radius: 0.125rem;
-    vertical-align: middle;
-  }
+/* HAR ウォーターフォール */
+.har-track {
+  position: relative;
+  width: 100%;
+  min-width: 8rem;
+  height: 0.75rem;
+  background: var(--color-bg-subtle);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.har-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--bar-left, 0%);
+  width: var(--bar-width, 0%);
+  display: flex;
+  min-width: 1px;
+}
+.har-seg {
+  height: 100%;
+  width: var(--seg-width, 0%);
+  min-width: 1px;
+}
+.har-phase-blocked {
+  background: var(--color-har-blocked);
+}
+.har-phase-dns {
+  background: var(--color-har-dns);
+}
+.har-phase-connect {
+  background: var(--color-har-connect);
+}
+.har-phase-ssl {
+  background: var(--color-har-ssl);
+}
+.har-phase-send {
+  background: var(--color-har-send);
+}
+.har-phase-wait {
+  background: var(--color-har-wait);
+}
+.har-phase-receive {
+  background: var(--color-har-receive);
+}
+/* 詳細パネルのミニバー（1 行 1 フェーズ） */
+.har-mini-track {
+  position: relative;
+  height: 0.5rem;
+  width: 100%;
+  background: var(--color-bg-subtle);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.har-mini-fill {
+  height: 100%;
+  width: var(--mini-width, 0%);
+  min-width: 1px;
+}
+/* フェーズ色チップ（詳細パネルの凡例） */
+.har-chip {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.125rem;
+  vertical-align: middle;
+}
 ```
 
 - [ ] **Step 3: ビルドでクラスが出力されることを確認**
@@ -512,6 +550,7 @@ git commit -m "feat: HAR ウォーターフォールのフェーズ色トーク�
 ## Task 4: HarWaterfallBar コンポーネント（表示専用）
 
 **Files:**
+
 - Create: `src/components/tools/HarWaterfallBar.tsx`
 - Test: `src/components/tools/__tests__/HarWaterfallBar.test.tsx`
 
@@ -553,7 +592,13 @@ describe('HarWaterfallBar', () => {
   });
 
   it('hasTimeline=false ではダッシュを表示しバーを描画しない', () => {
-    const empty: WaterfallRow = { hasTimeline: false, offsetRatio: 0, widthRatio: 0, totalMs: 0, segments: [] };
+    const empty: WaterfallRow = {
+      hasTimeline: false,
+      offsetRatio: 0,
+      widthRatio: 0,
+      totalMs: 0,
+      segments: [],
+    };
     const { container } = render(<HarWaterfallBar row={empty} rowIndex={0} />);
     expect(container.querySelector('.har-bar')).toBeNull();
     expect(screen.getByText('—')).toBeInTheDocument();
@@ -640,6 +685,7 @@ git commit -m "feat: HarWaterfallBar で一覧用タイミング横棒を描画 
 ## Task 5: HarEntryList にタイミング列と動的 stylesheet を追加
 
 **Files:**
+
 - Modify: `src/components/tools/HarEntryList.tsx`
 
 `computeWaterfall` の結果（`WaterfallModel`）を props で受け取り、新列にバーを描画する。
@@ -711,7 +757,10 @@ export function HarEntryList({ entries, waterfall, selectedIndex, onSelect }: Pr
             <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
               時間
             </th>
-            <th scope="col" className="hidden whitespace-nowrap px-3 py-2 font-medium md:table-cell">
+            <th
+              scope="col"
+              className="hidden whitespace-nowrap px-3 py-2 font-medium md:table-cell"
+            >
               タイミング
             </th>
           </tr>
@@ -788,6 +837,7 @@ git commit -m "feat: 一覧テーブルにタイミング列を追加（スマ�
 ## Task 6: HarViewer で computeWaterfall を配線
 
 **Files:**
+
 - Modify: `src/components/tools/HarViewer.tsx`
 
 - [ ] **Step 1: import と useMemo を追加**
@@ -812,21 +862,18 @@ import { computeWaterfall } from '@/utils/har';
 `const totalRedacted = ...` の直後あたりに追加:
 
 ```tsx
-  const waterfall = useMemo(
-    () => computeWaterfall(result ? result.har.log.entries : []),
-    [result]
-  );
+const waterfall = useMemo(() => computeWaterfall(result ? result.har.log.entries : []), [result]);
 ```
 
 `<HarEntryList ... />` の呼び出しに `waterfall` props を追加:
 
 ```tsx
-          <HarEntryList
-            entries={result.har.log.entries}
-            waterfall={waterfall}
-            selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
-          />
+<HarEntryList
+  entries={result.har.log.entries}
+  waterfall={waterfall}
+  selectedIndex={selectedIndex}
+  onSelect={setSelectedIndex}
+/>
 ```
 
 - [ ] **Step 3: 型チェック・ユニットテスト**
@@ -849,6 +896,7 @@ git commit -m "feat: HarViewer で computeWaterfall を配線 (#674)"
 ## Task 7: HarEntryDetail にフェーズ別内訳セクションを追加
 
 **Files:**
+
 - Modify: `src/components/tools/HarEntryDetail.tsx`
 
 スマホで一覧のバー列が消える分、ここがタイミング情報の主担保。1 エントリのみ描画のため
@@ -1003,22 +1051,54 @@ Run: `npm run dev`（バックグラウンド）。`http://localhost:4321/tools/
 正の値を持たせる）。手元に無ければ次の最小 HAR を `/tmp/claude/sample.har` に作って読み込む:
 
 ```json
-{ "log": { "version": "1.2", "entries": [
-  { "startedDateTime": "2026-06-15T00:00:00.000Z", "time": 100,
-    "timings": { "blocked": 5, "dns": 10, "connect": 20, "ssl": 8, "send": 2, "wait": 55, "receive": 8 },
-    "request": { "method": "GET", "url": "https://example.com/a", "headers": [], "queryString": [], "cookies": [] },
-    "response": { "status": 200, "headers": [], "cookies": [], "content": { "size": 0 } } },
-  { "startedDateTime": "2026-06-15T00:00:00.060Z", "time": 80,
-    "timings": { "blocked": 2, "dns": -1, "connect": -1, "send": 1, "wait": 70, "receive": 7 },
-    "request": { "method": "POST", "url": "https://example.com/b", "headers": [], "queryString": [], "cookies": [] },
-    "response": { "status": 201, "headers": [], "cookies": [], "content": { "size": 0 } } }
-] } }
+{
+  "log": {
+    "version": "1.2",
+    "entries": [
+      {
+        "startedDateTime": "2026-06-15T00:00:00.000Z",
+        "time": 100,
+        "timings": {
+          "blocked": 5,
+          "dns": 10,
+          "connect": 20,
+          "ssl": 8,
+          "send": 2,
+          "wait": 55,
+          "receive": 8
+        },
+        "request": {
+          "method": "GET",
+          "url": "https://example.com/a",
+          "headers": [],
+          "queryString": [],
+          "cookies": []
+        },
+        "response": { "status": 200, "headers": [], "cookies": [], "content": { "size": 0 } }
+      },
+      {
+        "startedDateTime": "2026-06-15T00:00:00.060Z",
+        "time": 80,
+        "timings": { "blocked": 2, "dns": -1, "connect": -1, "send": 1, "wait": 70, "receive": 7 },
+        "request": {
+          "method": "POST",
+          "url": "https://example.com/b",
+          "headers": [],
+          "queryString": [],
+          "cookies": []
+        },
+        "response": { "status": 201, "headers": [], "cookies": [], "content": { "size": 0 } }
+      }
+    ]
+  }
+}
 ```
 
 - [ ] **Step 2: PC（1280x800）で確認**
 
 Playwright で `caches.delete` + `localStorage.clear` + `sessionStorage.clear` → navigate →
 resize 1280x800 → screenshot。確認:
+
 - タイミング列に各行の横棒が表示され、2 行目が 1 行目より右にオフセットしている
 - フェーズが色分けされ、バーにホバー（または title）で内訳が出る
 - 行クリックで詳細パネルにタイミング内訳テーブルとミニバーが出る
@@ -1026,6 +1106,7 @@ resize 1280x800 → screenshot。確認:
 - [ ] **Step 3: スマホ（390x844）で確認**
 
 resize 390x844 → screenshot。確認:
+
 - タイミング列が消えている（横スクロールが過度に発生しない）
 - 行クリックで詳細パネルのタイミング内訳は表示される
 - ボタン・レイアウトの破綻が無い
@@ -1037,6 +1118,7 @@ resize 390x844 → screenshot。確認:
 ## Task 9: E2E と最終検証
 
 **Files:**
+
 - 必要なら `tests/e2e/` に har-viewer のタイミング確認を追加（既存 har-viewer E2E があれば拡張）
 
 - [ ] **Step 1: 既存 har-viewer E2E の有無を確認**
@@ -1082,6 +1164,7 @@ git commit -m "test: HAR ウォーターフォールの E2E を追加 (#674)"
 ## Task 10: ドキュメント更新
 
 **Files:**
+
 - Modify: `docs/tools.md`
 - Modify: `docs/decisions.md`
 - Modify: `SPEC.md`
@@ -1095,6 +1178,7 @@ HAR ビューアの該当節に、`timings`（blocked/dns/connect/ssl/send/wait/
 - [ ] **Step 2: `docs/decisions.md` を更新**
 
 `[116]` に追補するか新規番号で、ウォーターフォール実装方針を記録:
+
 - 全体タイムライン基準の相対配置
 - ssl/connect 二重計上の控除
 - 配色は `@theme` フェーズトークン + `@layer components` クラス（primitive 直書き回避）

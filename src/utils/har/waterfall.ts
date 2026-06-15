@@ -84,7 +84,11 @@ export function computeWaterfall(entries: (HarEntry | null)[]): WaterfallModel {
   // 1st pass: 各エントリの起点とフェーズ列・所要時間を求める。
   const pre = entries.map((entry) => {
     if (!entry || typeof entry !== 'object') {
-      return { start: null as number | null, phases: [] as { phase: HarPhase; ms: number }[], durationMs: 0 };
+      return {
+        start: null as number | null,
+        phases: [] as { phase: HarPhase; ms: number }[],
+        durationMs: 0,
+      };
     }
     const start = parseStart(entry.startedDateTime);
     const phases = buildPhaseMs(entry.timings);
@@ -107,7 +111,13 @@ export function computeWaterfall(entries: (HarEntry | null)[]): WaterfallModel {
   const rows: WaterfallRow[] = pre.map((p) => {
     const hasTimeline = hasGlobal && p.start != null && p.phases.length > 0;
     if (!hasTimeline) {
-      return { hasTimeline: false, offsetRatio: 0, widthRatio: 0, totalMs: p.durationMs, segments: [] };
+      return {
+        hasTimeline: false,
+        offsetRatio: 0,
+        widthRatio: 0,
+        totalMs: p.durationMs,
+        segments: [],
+      };
     }
     const offsetRatio = (p.start! - t0) / totalMs;
     const widthRatio = p.durationMs / totalMs;

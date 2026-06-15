@@ -33,7 +33,13 @@ describe('HarWaterfallBar', () => {
   });
 
   it('hasTimeline=false ではダッシュを表示しバーを描画しない', () => {
-    const empty: WaterfallRow = { hasTimeline: false, offsetRatio: 0, widthRatio: 0, totalMs: 0, segments: [] };
+    const empty: WaterfallRow = {
+      hasTimeline: false,
+      offsetRatio: 0,
+      widthRatio: 0,
+      totalMs: 0,
+      segments: [],
+    };
     const { container } = render(<HarWaterfallBar row={empty} rowIndex={0} />);
     expect(container.querySelector('.har-bar')).toBeNull();
     expect(screen.getByText('—')).toBeTruthy();

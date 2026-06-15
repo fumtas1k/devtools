@@ -73,7 +73,10 @@ export function HarEntryList({ entries, waterfall, selectedIndex, onSelect }: Pr
             <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
               時間
             </th>
-            <th scope="col" className="hidden whitespace-nowrap px-3 py-2 font-medium md:table-cell">
+            <th
+              scope="col"
+              className="hidden whitespace-nowrap px-3 py-2 font-medium md:table-cell"
+            >
               タイミング
             </th>
           </tr>

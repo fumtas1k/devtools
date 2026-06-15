@@ -1259,13 +1259,27 @@
     width: var(--seg-width, 0%);
     min-width: 1px;
   }
-  .har-phase-blocked { background: var(--color-har-blocked); }
-  .har-phase-dns { background: var(--color-har-dns); }
-  .har-phase-connect { background: var(--color-har-connect); }
-  .har-phase-ssl { background: var(--color-har-ssl); }
-  .har-phase-send { background: var(--color-har-send); }
-  .har-phase-wait { background: var(--color-har-wait); }
-  .har-phase-receive { background: var(--color-har-receive); }
+  .har-phase-blocked {
+    background: var(--color-har-blocked);
+  }
+  .har-phase-dns {
+    background: var(--color-har-dns);
+  }
+  .har-phase-connect {
+    background: var(--color-har-connect);
+  }
+  .har-phase-ssl {
+    background: var(--color-har-ssl);
+  }
+  .har-phase-send {
+    background: var(--color-har-send);
+  }
+  .har-phase-wait {
+    background: var(--color-har-wait);
+  }
+  .har-phase-receive {
+    background: var(--color-har-receive);
+  }
   /* 詳細パネルのミニバー（1 行 1 フェーズ） */
   .har-mini-track {
     position: relative;

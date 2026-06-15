@@ -6,7 +6,13 @@ function entry(over: Partial<HarEntry>): HarEntry {
   return {
     startedDateTime: '2026-06-15T00:00:00.000Z',
     time: 100,
-    request: { method: 'GET', url: 'https://example.com/', headers: [], queryString: [], cookies: [] },
+    request: {
+      method: 'GET',
+      url: 'https://example.com/',
+      headers: [],
+      queryString: [],
+      cookies: [],
+    },
     response: { status: 200, headers: [], cookies: [], content: { size: 0 } },
     ...over,
   };
@@ -15,7 +21,9 @@ function entry(over: Partial<HarEntry>): HarEntry {
 describe('computeWaterfall', () => {
   it('既知 timings をフェーズ別 widthRatio に分解する', () => {
     const model = computeWaterfall([
-      entry({ timings: { blocked: 10, dns: 20, connect: 30, ssl: 10, send: 5, wait: 30, receive: 5 } }),
+      entry({
+        timings: { blocked: 10, dns: 20, connect: 30, ssl: 10, send: 5, wait: 30, receive: 5 },
+      }),
     ]);
     expect(model.totalMs).toBe(100);
     const row = model.rows[0];
@@ -79,7 +87,10 @@ describe('computeWaterfall', () => {
   });
 
   it('有効なタイムラインが 1 つも無くても例外を投げない', () => {
-    const model = computeWaterfall([null, entry({ startedDateTime: undefined, timings: undefined })]);
+    const model = computeWaterfall([
+      null,
+      entry({ startedDateTime: undefined, timings: undefined }),
+    ]);
     expect(model.rows.every((r) => r.hasTimeline === false)).toBe(true);
   });
 });
