@@ -56,11 +56,24 @@ export interface HarResponse {
   [key: string]: unknown;
 }
 
+export interface HarTimings {
+  blocked?: number;
+  dns?: number;
+  connect?: number;
+  send?: number;
+  wait?: number;
+  receive?: number;
+  ssl?: number;
+  comment?: string;
+  [key: string]: unknown;
+}
+
 export interface HarEntry {
   startedDateTime?: string;
   time?: number;
   request: HarRequest;
   response: HarResponse;
+  timings?: HarTimings;
   [key: string]: unknown;
 }
 

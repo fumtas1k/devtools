@@ -8,6 +8,7 @@ export type {
   HarCookie,
   HarPostData,
   HarContent,
+  HarTimings,
 } from './types';
 export { parseHar } from './parse';
 export type { ParseResult } from './parse';

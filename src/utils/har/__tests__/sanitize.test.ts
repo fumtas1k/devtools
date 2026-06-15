@@ -511,6 +511,42 @@ describe('sanitizeHar', () => {
     const { har } = sanitizeHar(broken, ALL_ON);
     expect(har.log.entries).toHaveLength(3);
   });
+
+  it('timings フィールドをサニタイズで破壊・改変しない', () => {
+    const timings = {
+      blocked: 10,
+      dns: 20,
+      connect: 30,
+      ssl: 10,
+      send: 5,
+      wait: 30,
+      receive: 5,
+    };
+    const input = {
+      log: {
+        version: '1.2',
+        entries: [
+          {
+            startedDateTime: '2026-06-15T00:00:00.000Z',
+            time: 100,
+            timings: { ...timings },
+            request: {
+              method: 'GET',
+              url: 'https://example.com/',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: { size: 0 } },
+          },
+        ],
+      },
+    };
+    const { har } = sanitizeHar(input, HAR_REDACT_DEFAULT);
+    expect(har.log.entries[0]!.timings).toEqual(timings);
+    // 入力非破壊
+    expect(input.log.entries[0]!.timings).toEqual(timings);
+  });
 });
 
 // ── #695: data: URL 破壊回避 ──
