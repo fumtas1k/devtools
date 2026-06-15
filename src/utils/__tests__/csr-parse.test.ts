@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateCsr } from '@/utils/csr/generate';
 import { parseCsr } from '@/utils/csr/parse';
+import { SAMPLE_CSR } from '@/components/tools/csrGeneratorSample';
 
 async function makeValidCsrPem(): Promise<string> {
   const r = await generateCsr({
@@ -46,6 +47,14 @@ describe('parseCsr（陰性対照: 正常系）', () => {
   it('CSR でない入力は error を返す', async () => {
     const result = await parseCsr('not a csr');
     expect(result.error).toBeDefined();
+  });
+});
+
+describe('parseCsr（同梱サンプル CSR）', () => {
+  it('同梱サンプル CSR は error なく解析できる', async () => {
+    const r = await parseCsr(SAMPLE_CSR);
+    expect(r.error).toBeUndefined();
+    expect(r.signatureValid).toBe(true);
   });
 });
 
