@@ -212,6 +212,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'えいちえーあーるびゅーあ',
   },
+  {
+    slug: 'csr-generator',
+    name: 'CSR・鍵ペアジェネレータ',
+    description:
+      'RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力します。既存 CSR の Subject/SAN/署名検証にも対応。秘密鍵はブラウザ外に送信しません',
+    category: 'generate',
+    yomi: 'しーえすあーるかぎぺあじぇねれーた',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる
