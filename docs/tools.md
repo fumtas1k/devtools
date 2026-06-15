@@ -576,6 +576,10 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - JDBC（`jdbc:postgresql` / `jdbc:mysql`）は credential を userinfo でなく
   `?user=&password=` クエリプロパティに置く JDBC 標準の流儀に従う。パース時はプロパティを
   ユーザー名・パスワードのフォーム欄へ移し、シリアライズ時にプロパティ列の先頭へ戻す
+- JDBC URL に userinfo（`jdbc:postgresql://user:pass@host/db`）を含めて貼り付けた場合は、
+  userinfo を専用フィールドへ取り込み、再シリアライズ時に `?user=&password=` プロパティ形式へ
+  正規化する（JDBC ドライバは userinfo を解釈しないため。専用フィールドが空のときのみ
+  プロパティ側から引き取る）
 
 #### 準拠仕様・RFC
 

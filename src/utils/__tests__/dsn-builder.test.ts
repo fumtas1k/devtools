@@ -225,6 +225,38 @@ describe('JDBC（PostgreSQL / MySQL）', () => {
       'jdbc:mysql://db.example.com:3306/app_db?user=root&password=****&useSSL=true'
     );
   });
+
+  it('userinfo 形式の JDBC URL を property 形式へ正規化する', () => {
+    const model = mustParse('jdbc:postgresql://u:p@db.example.com:5432/app_db');
+    expect(model.user).toBe('u');
+    expect(model.password).toBe('p');
+    expect(serializeDsn(model)).toBe(
+      'jdbc:postgresql://db.example.com:5432/app_db?user=u&password=p'
+    );
+  });
+
+  it('credential 専用フィールドと params 側の user/password 重複を排除する', () => {
+    // userinfo（→ 専用フィールド）と property の両方に credential を含む病的入力。
+    // 専用フィールドが優先され、params 側の user/password は出力で重複しない。
+    const model = mustParse(
+      'jdbc:postgresql://u:p@host:5432/db?user=dup&password=dup&sslmode=require'
+    );
+    expect(serializeDsn(model)).toBe(
+      'jdbc:postgresql://host:5432/db?user=u&password=p&sslmode=require'
+    );
+  });
+
+  it('専用フィールドが空なら params 側の user/password は保持する（データ消失なし）', () => {
+    const model: DsnModel = {
+      scheme: 'jdbc:mysql',
+      user: '',
+      password: '',
+      hosts: [{ host: 'host', port: '3306' }],
+      database: 'db',
+      params: [{ key: 'user', value: 'fromParam' }],
+    };
+    expect(serializeDsn(model)).toBe('jdbc:mysql://host:3306/db?user=fromParam');
+  });
 });
 
 describe('maskDsn', () => {

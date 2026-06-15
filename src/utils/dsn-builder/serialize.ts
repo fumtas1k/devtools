@@ -40,7 +40,12 @@ export function serializeDsn(model: DsnModel, options: SerializeOptions = {}): s
     const credParams: DsnParam[] = [];
     if (user !== '') credParams.push({ key: 'user', value: user });
     if (password !== '') credParams.push({ key: 'password', value: maskedPassword });
-    return `${scheme}://${authority}${path}${formatQuery([...credParams, ...params])}`;
+    // credParams が担当するキー（user/password）が params 側にも残っていると
+    // `?user=...&password=...&user=...` と重複するため除外する。専用フィールドが空で
+    // params 側にのみ存在する場合は credParams に積まれないため、ここでも保持される。
+    const credKeys = new Set(credParams.map((p) => p.key));
+    const rest = params.filter((p) => !credKeys.has(p.key));
+    return `${scheme}://${authority}${path}${formatQuery([...credParams, ...rest])}`;
   }
 
   let userinfo = '';

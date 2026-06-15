@@ -4423,6 +4423,7 @@ URL パス / 辞書外ヘッダへの `scrubText` 適用で、パスやヘッダ
 - **決定**: JDBC 対応は **PostgreSQL（`jdbc:postgresql`）/ MySQL（`jdbc:mysql`）の 2 ドライバに限定**する。SQL Server・Oracle は対象外。
 - **credential の置き場所**: JDBC は user / password を userinfo（`user:pass@host`）でなく **`?user=&password=` クエリプロパティ**として入出力する（JDBC 標準の流儀。`DriverManager.getConnection(url, user, pass)` 別渡しが本来だが URL に含める場合はプロパティが一般的）。
 - **モデル設計**: 既存 `DsnModel` を拡張せず、`Dialect.jdbc` フラグで分岐する。scheme 文字列自体を `jdbc:postgresql` とすることで `${scheme}://` がそのまま `jdbc:` プレフィックスを満たす。パース時はプロパティの `user` / `password` を専用フィールドへ移し、シリアライズ時にプロパティ列の先頭へ戻す（往復一致を保証）。
+- **userinfo → property 正規化**: JDBC URL に userinfo（`jdbc:postgresql://u:p@host/db`）を含めて貼った場合は専用フィールドへ取り込み、再シリアライズで `?user=&password=` プロパティ形式へ正規化する（JDBC ドライバは userinfo を解釈しないため意図した変換）。専用フィールドが空のときのみプロパティ側から引き取り、シリアライズ側でも専用フィールドが担当するキーを params から除外して `user` / `password` の重複出力を防ぐ。
 
 ### 却下した選択肢
 
