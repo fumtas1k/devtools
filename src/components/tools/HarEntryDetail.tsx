@@ -1,4 +1,7 @@
 import type { HarEntry, HarNameValue } from '@/utils/har';
+import { computeWaterfall } from '@/utils/har';
+import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
+import { cx } from '@/utils/cx';
 
 interface Props {
   entry: HarEntry | null | undefined;
@@ -17,6 +20,76 @@ function NameValueTable({ rows, label }: { rows: HarNameValue[]; label: string }
               <td className="break-all px-2 py-1 font-mono">{r.value}</td>
             </tr>
           ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const PHASE_LABEL: Record<string, string> = {
+  blocked: '待機(blocked)',
+  dns: 'DNS',
+  connect: '接続(connect)',
+  ssl: 'TLS(ssl)',
+  send: '送信(send)',
+  wait: '待ち(wait)',
+  receive: '受信(receive)',
+};
+
+const PHASE_CLASS: Record<string, string> = {
+  blocked: 'har-phase-blocked',
+  dns: 'har-phase-dns',
+  connect: 'har-phase-connect',
+  ssl: 'har-phase-ssl',
+  send: 'har-phase-send',
+  wait: 'har-phase-wait',
+  receive: 'har-phase-receive',
+};
+
+/** 詳細パネルのタイミング内訳（フェーズ名・色チップ・ms・ミニバー）。 */
+function TimingBreakdown({ entry }: { entry: HarEntry }) {
+  // 単一エントリのフェーズ分解には computeWaterfall を再利用する（ssl 控除等を一元化）。
+  const model = computeWaterfall([entry]);
+  const row = model.rows[0];
+  const dynClassName = useDynamicStyleSheet((className) => {
+    if (!row || !row.hasTimeline) return '';
+    return row.segments
+      .map(
+        (seg, j) =>
+          `.${className} [data-har-mini="${j}"] { --mini-width: ${(seg.widthRatio * 100).toFixed(4)}%; }`
+      )
+      .join('\n');
+  });
+
+  if (!row || !row.hasTimeline || row.segments.length === 0) return null;
+
+  // PHASE_ORDER 順に並べる（segments は既にこの順）。
+  return (
+    <div className={dynClassName}>
+      <h4 className="mb-1 mt-3 font-medium">タイミング</h4>
+      <table className="w-full border-collapse text-sm">
+        <tbody>
+          {row.segments.map((seg, j) => (
+            <tr key={seg.phase} className="align-middle">
+              <td className="whitespace-nowrap px-2 py-1">
+                <span className={cx('har-chip', PHASE_CLASS[seg.phase])} aria-hidden="true" />{' '}
+                {PHASE_LABEL[seg.phase] ?? seg.phase}
+              </td>
+              <td className="whitespace-nowrap px-2 py-1 text-right font-mono">
+                {Math.round(seg.ms)} ms
+              </td>
+              <td className="w-1/2 px-2 py-1">
+                <span className="har-mini-track">
+                  <span className={cx('har-mini-fill', PHASE_CLASS[seg.phase])} data-har-mini={j} />
+                </span>
+              </td>
+            </tr>
+          ))}
+          <tr className="align-middle font-medium">
+            <td className="px-2 py-1">合計</td>
+            <td className="px-2 py-1 text-right font-mono">{Math.round(row.totalMs)} ms</td>
+            <td className="px-2 py-1" />
+          </tr>
         </tbody>
       </table>
     </div>
@@ -71,6 +144,7 @@ export function HarEntryDetail({ entry }: Props) {
           </div>
         )}
       </div>
+      <TimingBreakdown entry={entry} />
     </div>
   );
 }
