@@ -40,7 +40,7 @@
 
 - ドライバ別パラメータ辞書（sslmode 等の選択式編集・説明表示）→ 付加機能の選択で見送り
 - `.env` / 環境変数形式出力 → 同上
-- JDBC・SQL Server 等の追加スキーム
+- JDBC・SQL Server 等の追加スキーム（※ 後日 PostgreSQL / MySQL の JDBC 対応のみ追加。経緯は `docs/decisions.md [119]`。SQL Server / Oracle は引き続き対象外）
 - 実接続テスト（ブラウザから不可能）
 
 ## 3. アーキテクチャ

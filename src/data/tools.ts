@@ -184,7 +184,7 @@ const toolEntries: Tool[] = [
     slug: 'dsn-builder',
     name: 'DSN/接続文字列ビルダ',
     description:
-      '接続文字列（DSN）をフォームとURIで双方向編集します。パスワードをマスクした共有用URIも生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応',
+      '接続文字列（DSN）をフォームとURIで双方向編集します。パスワードをマスクした共有用URIも生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応（PostgreSQL・MySQL は JDBC URL も対応）',
     category: 'convert',
     yomi: 'でぃーえすえぬせつぞくもじれつびるだ',
   },

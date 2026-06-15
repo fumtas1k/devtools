@@ -571,20 +571,29 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - userinfo・パス・クエリは percent-decode してフォームに表示し、URI 生成時に
   `encodeURIComponent` で再エンコードする（パスワード中の `@ : /` 等の手動エンコード不要）
 - スキーム方言辞書（`src/utils/dsn-builder/dialects.ts`）が既定ポート・複数ホスト可否・
-  パス部の意味（DB 名 / DB 番号 / vhost）・SRV 制約を定義する
+  パス部の意味（DB 名 / DB 番号 / vhost）・SRV 制約・JDBC 形式可否を定義する
 - パスワードを `****` に置換した共有用 URI を常時導出する（同期不要の純粋関数）
+- JDBC（`jdbc:postgresql` / `jdbc:mysql`）は credential を userinfo でなく
+  `?user=&password=` クエリプロパティに置く JDBC 標準の流儀に従う。パース時はプロパティを
+  ユーザー名・パスワードのフォーム欄へ移し、シリアライズ時にプロパティ列の先頭へ戻す
+- JDBC URL に userinfo（`jdbc:postgresql://user:pass@host/db`）を含めて貼り付けた場合は、
+  userinfo を専用フィールドへ取り込み、再シリアライズ時に `?user=&password=` プロパティ形式へ
+  正規化する（JDBC ドライバは userinfo を解釈しないため。専用フィールドが空のときのみ
+  プロパティ側から引き取る）
 
 #### 準拠仕様・RFC
 
 - RFC 3986（URI 構文・percent-encoding）
 - libpq 接続 URI（PostgreSQL 複数ホスト）・MongoDB Connection String・RabbitMQ URI Specification
+- JDBC URL（PostgreSQL / MySQL ドライバの `jdbc:postgresql` / `jdbc:mysql` 形式）
 
 #### 制限・エッジケース
 
 - 実接続テストは不可（ブラウザの制約）
 - クエリパラメータの意味的妥当性（sslmode の値等）は検証しない
 - 過剰エンコードされた入力（例: `%41` = `A`）は decode → 再 encode で正規化される
-- JDBC / ADO.NET（`Server=...;`）形式は対象外
+- JDBC は PostgreSQL / MySQL のみ対応。SQL Server（`;` 区切り）・Oracle（`@host:port:SID`）・
+  ADO.NET（`Server=...;`）形式は文法が大きく異なるため対象外
 
 ### 鍵フォーマット変換
 
