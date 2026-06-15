@@ -4318,7 +4318,15 @@ HAR は `JSON.parse` でパース可能で専用ライブラリのメリット�
 - ✅ 一貫トークン化により HAR 全体で同一値には同一プレースホルダが割り当てられる。
 - ✅ 純関数・入力非破壊設計により `useMemo` でトグル変更時に差分再計算できる。
 - ⚠️ 辞書外の独自ヘッダ名・パラメータ名は本文スキャンが拾える範囲のみの redact（完全網羅は保証しない）。
-- ⚠️ ウォーターフォールは v1 非対応。別 issue（#674）で継続。
+- ✅ ウォーターフォールは issue #674 で実装完了（2026-06-15）。
+
+**[116] 追補: ウォーターフォール実装方針（2026-06-15）**
+
+- **全体タイムライン基準の相対配置**: 有効な `startedDateTime` を持つエントリの最小起点 `t0` を基準に、各エントリの `offsetRatio = (start - t0) / totalMs`、`widthRatio = durationMs / totalMs` で配置。`rows` は入力 `entries` と同じ index 対応（壊れたエントリも `hasTimeline=false` で埋める）
+- **ssl/connect 二重計上の控除**: HAR 1.2 仕様では ssl は connect の部分時間。`connect` セグメント ms = `connect - ssl`（下限 0）として ssl を別セグメントに分離し、合計での二重計上を防ぐ（`computeWaterfall` で一元化、`HarEntryDetail.TimingBreakdown` も同関数を再利用）
+- **配色は `@theme` フェーズトークン + `@layer components` クラス**: 7フェーズを `--color-har-*` トークンで `@theme` に登録し、`.har-phase-*` クラス経由で色を付ける。Tailwind primitive scale の直書き禁止原則に準拠
+- **inline style 禁止 → `useDynamicStyleSheet`**: CSP `style-src` 制約（decisions [067]）により `style={{ width }}` も `style={{ '--bar-width': ... }}` も不可。`HarEntryList` で 1 回だけ `useDynamicStyleSheet` を呼び全行・全セグメント分の CSS ルールを 1 文字列で生成して Constructable Stylesheets に注入する（hook をループ内・行ごとに呼ぶと sheet を量産するため禁止）
+- **スマホはタイミング列非表示・詳細パネルで内訳担保**: 一覧の「タイミング」列は `hidden md:table-cell` で 768px 未満で非表示。詳細パネル（`HarEntryDetail`）の `TimingBreakdown` セクションがスマホでタイミング情報の主担保となる
 
 ## [117] HAR ビューア パフォーマンス改善: sanitize の Web Worker 化（+ 出力の遅延生成）
 
