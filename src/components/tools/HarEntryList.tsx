@@ -1,7 +1,11 @@
-import type { HarEntry } from '@/utils/har';
+import type { HarEntry, WaterfallModel } from '@/utils/har';
+import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
+import { cx } from '@/utils/cx';
+import { HarWaterfallBar } from './HarWaterfallBar';
 
 interface Props {
   entries: (HarEntry | null)[];
+  waterfall: WaterfallModel;
   selectedIndex: number | null;
   onSelect: (index: number) => void;
 }
@@ -28,9 +32,28 @@ function formatTime(ms: number | undefined): string {
   return `${Math.round(ms)} ms`;
 }
 
-export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
+export function HarEntryList({ entries, waterfall, selectedIndex, onSelect }: Props) {
+  // 全行・全セグメントの幅/オフセットを 1 枚の stylesheet にまとめて注入する。
+  // inline style / setProperty は CSP style-src 制約により使用しない（decisions [067]）。
+  // 行ごとに hook を呼ぶと sheet を量産するため、必ずここで 1 回だけ呼ぶ。
+  const dynClassName = useDynamicStyleSheet((className) => {
+    const rules: string[] = [];
+    waterfall.rows.forEach((row, i) => {
+      if (!row.hasTimeline) return;
+      rules.push(
+        `.${className} [data-har-bar="${i}"] { --bar-left: ${(row.offsetRatio * 100).toFixed(4)}%; --bar-width: ${(row.widthRatio * 100).toFixed(4)}%; }`
+      );
+      row.segments.forEach((seg, j) => {
+        rules.push(
+          `.${className} [data-har-seg="${i}-${j}"] { --seg-width: ${(seg.widthRatio * 100).toFixed(4)}%; }`
+        );
+      });
+    });
+    return rules.join('\n');
+  });
+
   return (
-    <div className="overflow-x-auto rounded border border-default">
+    <div className={cx('overflow-x-auto rounded border border-default', dynClassName)}>
       <table className="w-full border-collapse text-sm">
         <caption className="sr-only">HTTP リクエスト一覧</caption>
         <thead>
@@ -49,6 +72,9 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
             </th>
             <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
               時間
+            </th>
+            <th scope="col" className="hidden whitespace-nowrap px-3 py-2 font-medium md:table-cell">
+              タイミング
             </th>
           </tr>
         </thead>
@@ -90,6 +116,9 @@ export function HarEntryList({ entries, selectedIndex, onSelect }: Props) {
                   {formatSize(response?.content?.size ?? response?.bodySize)}
                 </td>
                 <td className="whitespace-nowrap px-3 py-1.5 font-mono">{formatTime(e?.time)}</td>
+                <td className="hidden px-3 py-1.5 md:table-cell">
+                  <HarWaterfallBar row={waterfall.rows[i]!} rowIndex={i} />
+                </td>
               </tr>
             );
           })}
