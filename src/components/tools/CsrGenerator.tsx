@@ -1,28 +1,30 @@
-/**
- * CsrGenerator.tsx
- *
- * CSR（証明書署名要求）・鍵ペアジェネレータ。
- * - 生成モード: RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR を出力する。
- * - 解析モード: 既存 CSR を解析して Subject/SAN/公開鍵/署名検証結果を表示する。
- * 秘密鍵はブラウザ外に一切送信しない。
- */
-import { useState, useCallback, useId } from 'react';
+// src/components/tools/CsrGenerator.tsx
+import { useState, useCallback } from 'react';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
-import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
+import { FileInputButton } from '@/components/ui/FileInputButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { ChipLabel } from '@/components/ui/ChipLabel';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
-import { generateCsr, parseCsr } from '@/utils/csr';
-import type { GenerateParams, GenerateResult, CsrParseResult, SanEntry, SubjectDn } from '@/utils/csr';
+import { ChipLabel } from '@/components/ui/ChipLabel';
+import { generateCsr } from '@/utils/csr/generate';
+import { parseCsr } from '@/utils/csr/parse';
+import type {
+  GenerateParams,
+  GenerateResult,
+  CsrParseResult,
+  SubjectDn,
+  SanEntry,
+  KeyAlgorithm,
+} from '@/utils/csr/types';
 import { SAMPLE_CSR } from './csrGeneratorSample';
 
-// ---- ダウンロードヘルパー ----
+type Mode = 'generate' | 'parse';
 
-function downloadText(filename: string, text: string): void {
-  const blob = new Blob([text], { type: 'text/plain' });
+function downloadText(filename: string, text: string) {
+  const blob = new Blob([text], { type: 'application/x-pem-file' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -31,387 +33,283 @@ function downloadText(filename: string, text: string): void {
   URL.revokeObjectURL(url);
 }
 
-// ---- 状態型 ----
+const EMPTY_SUBJECT: SubjectDn = {
+  commonName: '',
+  organization: '',
+  organizationalUnit: '',
+  country: '',
+  state: '',
+  locality: '',
+  email: '',
+};
 
-type Mode = 'generate' | 'parse';
-type KeyAlg = 'RSA' | 'ECDSA';
-type RsaLen = '2048' | '4096';
-type EcCurve = 'P-256' | 'P-384';
-
-type GenerateState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'done'; result: GenerateResult }
-  | { status: 'error'; message: string };
-
-type ParseState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'done'; result: CsrParseResult }
-  | { status: 'error'; message: string };
-
-// ---- SAN エントリ入力コンポーネント ----
-
-interface SanRowProps {
-  entry: SanEntry & { id: string };
-  onChange: (id: string, field: 'type' | 'value', val: string) => void;
-  onRemove: (id: string) => void;
-}
-
-function SanRow({ entry, onChange, onRemove }: SanRowProps) {
-  return (
-    <div className="flex items-center gap-2">
-      <ToggleGroup
-        options={[
-          { value: 'dns', label: 'DNS' },
-          { value: 'ip', label: 'IP' },
-          { value: 'email', label: 'Email' },
-        ]}
-        value={entry.type}
-        onChange={(v) => onChange(entry.id, 'type', v)}
-        ariaLabel="SAN タイプ"
-        size="sm"
-      />
-      <input
-        type="text"
-        value={entry.value}
-        onChange={(e) => onChange(entry.id, 'value', e.target.value)}
-        placeholder={
-          entry.type === 'dns'
-            ? 'example.com'
-            : entry.type === 'ip'
-              ? '192.0.2.1'
-              : 'user@example.com'
-        }
-        className="caption flex-1 min-w-0 rounded-lg px-3 py-2 border border-input bg-default text-default"
-        aria-label="SAN 値"
-      />
-      <button
-        type="button"
-        className="caption btn-remove-card shrink-0"
-        onClick={() => onRemove(entry.id)}
-        aria-label="この SAN エントリを削除"
-      >
-        ✕
-      </button>
-    </div>
-  );
-}
-
-// ---- メインコンポーネント ----
+const SUBJECT_FIELDS: { key: keyof SubjectDn; label: string; placeholder?: string }[] = [
+  { key: 'commonName', label: 'CN（コモンネーム）', placeholder: 'example.jp' },
+  { key: 'organization', label: 'O（組織名）' },
+  { key: 'organizationalUnit', label: 'OU（部門名）' },
+  { key: 'country', label: 'C（国コード・2文字）', placeholder: 'JP' },
+  { key: 'state', label: 'ST（都道府県）' },
+  { key: 'locality', label: 'L（市区町村）' },
+  { key: 'email', label: 'emailAddress' },
+];
 
 export function CsrGenerator() {
-  const uid = useId();
-
-  // ---- モード ----
   const [mode, setMode] = useState<Mode>('generate');
 
-  // ---- 生成モード ----
-  const [keyAlg, setKeyAlg] = useState<KeyAlg>('RSA');
-  const [rsaLen, setRsaLen] = useState<RsaLen>('2048');
-  const [ecCurve, setEcCurve] = useState<EcCurve>('P-256');
-  const [subject, setSubject] = useState<SubjectDn>({
-    commonName: '',
-    organization: '',
-    organizationalUnit: '',
-    country: '',
-    state: '',
-    locality: '',
-    email: '',
-  });
-  const [sanEntries, setSanEntries] = useState<Array<SanEntry & { id: string }>>([
-    { id: `san-0`, type: 'dns', value: '' },
-  ]);
-  const [genState, setGenState] = useState<GenerateState>({ status: 'idle' });
+  // --- 生成モードの状態 ---
+  const [algorithm, setAlgorithm] = useState<KeyAlgorithm>('RSA');
+  const [rsaBits, setRsaBits] = useState<GenerateParams['rsaModulusLength']>(2048);
+  const [ecCurve, setEcCurve] = useState<GenerateParams['ecCurve']>('P-256');
+  const [subject, setSubject] = useState<SubjectDn>(EMPTY_SUBJECT);
+  const [san, setSan] = useState<SanEntry[]>([{ type: 'dns', value: '' }]);
+  const [genResult, setGenResult] = useState<GenerateResult | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
-  // ---- 解析モード ----
+  // --- 解析モードの状態 ---
   const [parseInput, setParseInput] = useState('');
-  const [parseState, setParseState] = useState<ParseState>({ status: 'idle' });
+  const [parseResult, setParseResult] = useState<CsrParseResult | null>(null);
 
-  // ---- SAN 操作 ----
-  const handleSanChange = useCallback(
-    (id: string, field: 'type' | 'value', val: string) => {
-      setSanEntries((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, [field]: val as SanEntry['type'] } : e))
-      );
-    },
-    []
-  );
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    // モード切替で入力・結果をリセット（操作種別が変わるため。ui-conventions.md 2.4）
+    setGenResult(null);
+    setGenError(null);
+    setParseResult(null);
+    setParseInput('');
+  };
 
-  const handleSanAdd = useCallback(() => {
-    setSanEntries((prev) => [
-      ...prev,
-      { id: `san-${Date.now()}`, type: 'dns', value: '' },
-    ]);
-  }, []);
+  const canGenerate =
+    subject.commonName.trim() !== '' || san.some((e) => e.value.trim() !== '');
 
-  const handleSanRemove = useCallback((id: string) => {
-    setSanEntries((prev) => prev.filter((e) => e.id !== id));
-  }, []);
-
-  // ---- 生成 ----
   const handleGenerate = useCallback(async () => {
-    setGenState({ status: 'loading' });
+    setGenerating(true);
+    setGenError(null);
+    setGenResult(null);
     try {
       const params: GenerateParams = {
-        algorithm: keyAlg,
-        rsaModulusLength: Number(rsaLen) as 2048 | 4096,
-        ecCurve: ecCurve as 'P-256' | 'P-384',
+        algorithm,
+        rsaModulusLength: rsaBits,
+        ecCurve,
         subject,
-        san: sanEntries.map(({ type, value }) => ({ type, value })),
+        san: san.filter((e) => e.value.trim() !== ''),
       };
       const result = await generateCsr(params);
-      setGenState({ status: 'done', result });
+      setGenResult(result);
     } catch (err) {
-      setGenState({
-        status: 'error',
-        message: err instanceof Error ? err.message : 'CSR の生成中にエラーが発生しました',
-      });
+      setGenError(err instanceof Error ? err.message : '生成中にエラーが発生しました。');
+    } finally {
+      setGenerating(false);
     }
-  }, [keyAlg, rsaLen, ecCurve, subject, sanEntries]);
+  }, [algorithm, rsaBits, ecCurve, subject, san]);
 
-  // ---- 解析 ----
-  const handleParse = useCallback(async (pem?: string) => {
-    const input = pem ?? parseInput;
-    if (!input.trim()) {
-      setParseState({ status: 'error', message: 'CSR を入力してください。' });
+  const handleParse = useCallback(async (text: string) => {
+    setParseInput(text);
+    if (!text.trim()) {
+      setParseResult(null);
       return;
     }
-    if (pem !== undefined) setParseInput(pem);
-    setParseState({ status: 'loading' });
-    try {
-      const result = await parseCsr(input);
-      if (result.error) {
-        setParseState({ status: 'error', message: result.error });
-      } else {
-        setParseState({ status: 'done', result });
-      }
-    } catch (err) {
-      setParseState({
-        status: 'error',
-        message: err instanceof Error ? err.message : 'CSR の解析中にエラーが発生しました',
-      });
-    }
-  }, [parseInput]);
+    const result = await parseCsr(text);
+    setParseResult(result);
+  }, []);
 
-  const genResult = genState.status === 'done' ? genState.result : null;
-  const parseResult = parseState.status === 'done' ? parseState.result : null;
+  const handleFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      await handleParse(text);
+      e.target.value = '';
+    },
+    [handleParse]
+  );
+
+  const updateSan = (index: number, patch: Partial<SanEntry>) => {
+    setSan((prev) => prev.map((e, i) => (i === index ? { ...e, ...patch } : e)));
+  };
 
   return (
     <div className="space-y-6">
-      {/* モード切り替え */}
-      <ToggleGroup
+      {/* モード切替 */}
+      <ToggleGroup<Mode>
+        ariaLabel="動作モード"
         options={[
-          { value: 'generate', label: '生成' },
-          { value: 'parse', label: '解析' },
+          { value: 'generate', label: 'CSR を生成' },
+          { value: 'parse', label: '既存 CSR を解析' },
         ]}
         value={mode}
-        onChange={(v) => {
-          setMode(v);
-          setGenState({ status: 'idle' });
-          setParseState({ status: 'idle' });
-        }}
-        ariaLabel="動作モード"
+        onChange={switchMode}
       />
 
-      {/* ========== 生成モード ========== */}
       {mode === 'generate' && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* アルゴリズム選択 */}
-          <div className="space-y-3">
-            <p className="body-emphasis text-default">鍵アルゴリズム</p>
-            <ToggleGroup
+          <div className="space-y-2">
+            <span className="caption font-semibold">鍵アルゴリズム</span>
+            <ToggleGroup<KeyAlgorithm>
+              ariaLabel="鍵アルゴリズム"
+              layout="wrap"
               options={[
                 { value: 'RSA', label: 'RSA' },
                 { value: 'ECDSA', label: 'ECDSA' },
               ]}
-              value={keyAlg}
-              onChange={(v) => setKeyAlg(v)}
-              ariaLabel="鍵アルゴリズム"
+              value={algorithm}
+              onChange={setAlgorithm}
             />
-            {keyAlg === 'RSA' && (
-              <ToggleGroup
+            {algorithm === 'RSA' ? (
+              <ToggleGroup<string>
+                ariaLabel="RSA 鍵長"
+                layout="wrap"
                 options={[
                   { value: '2048', label: '2048 bit' },
+                  { value: '3072', label: '3072 bit' },
                   { value: '4096', label: '4096 bit' },
                 ]}
-                value={rsaLen}
-                onChange={(v) => setRsaLen(v)}
-                ariaLabel="RSA 鍵長"
-                size="sm"
+                value={String(rsaBits)}
+                onChange={(v) => setRsaBits(Number(v) as GenerateParams['rsaModulusLength'])}
               />
-            )}
-            {keyAlg === 'ECDSA' && (
-              <ToggleGroup
+            ) : (
+              <ToggleGroup<GenerateParams['ecCurve']>
+                ariaLabel="ECDSA 曲線"
+                layout="wrap"
                 options={[
                   { value: 'P-256', label: 'P-256' },
                   { value: 'P-384', label: 'P-384' },
+                  { value: 'P-521', label: 'P-521' },
                 ]}
                 value={ecCurve}
-                onChange={(v) => setEcCurve(v)}
-                ariaLabel="EC 曲線"
-                size="sm"
+                onChange={setEcCurve}
               />
             )}
           </div>
 
           {/* Subject DN */}
-          <div className="space-y-3">
-            <p className="body-emphasis text-default">Subject（識別名）</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            {SUBJECT_FIELDS.map((f) => (
               <InputField
-                id={`${uid}-cn`}
-                label="CN（コモンネーム）"
-                value={subject.commonName}
-                onChange={(v) => setSubject((s) => ({ ...s, commonName: v }))}
-                placeholder="example.com"
-                hint="ドメイン名・サービス名など。SAN を指定する場合はオプション。"
+                key={f.key}
+                id={`csr-subject-${f.key}`}
+                label={f.label}
+                value={subject[f.key]}
+                onChange={(v) => setSubject((prev) => ({ ...prev, [f.key]: v }))}
+                placeholder={f.placeholder}
+                maxLength={f.key === 'country' ? 2 : undefined}
               />
-              <InputField
-                id={`${uid}-o`}
-                label="O（組織名）"
-                value={subject.organization}
-                onChange={(v) => setSubject((s) => ({ ...s, organization: v }))}
-                placeholder="Example Corp."
-              />
-              <InputField
-                id={`${uid}-ou`}
-                label="OU（組織単位）"
-                value={subject.organizationalUnit}
-                onChange={(v) => setSubject((s) => ({ ...s, organizationalUnit: v }))}
-                placeholder="Engineering"
-              />
-              <InputField
-                id={`${uid}-c`}
-                label="C（国コード）"
-                value={subject.country}
-                onChange={(v) => setSubject((s) => ({ ...s, country: v }))}
-                placeholder="JP"
-                maxLength={2}
-              />
-              <InputField
-                id={`${uid}-st`}
-                label="ST（都道府県）"
-                value={subject.state}
-                onChange={(v) => setSubject((s) => ({ ...s, state: v }))}
-                placeholder="Tokyo"
-              />
-              <InputField
-                id={`${uid}-l`}
-                label="L（市区町村）"
-                value={subject.locality}
-                onChange={(v) => setSubject((s) => ({ ...s, locality: v }))}
-                placeholder="Chiyoda-ku"
-              />
-              <InputField
-                id={`${uid}-email`}
-                label="emailAddress"
-                value={subject.email}
-                onChange={(v) => setSubject((s) => ({ ...s, email: v }))}
-                placeholder="admin@example.com"
-                inputMode="email"
-              />
-            </div>
+            ))}
           </div>
 
           {/* SAN */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="body-emphasis text-default">SAN（Subject Alternative Name）</p>
-              <button
-                type="button"
-                className="caption text-link-plain btn-link-plain"
-                onClick={handleSanAdd}
-              >
-                + 追加
-              </button>
-            </div>
-            {sanEntries.length > 0 ? (
-              <div className="space-y-2">
-                {sanEntries.map((entry) => (
-                  <SanRow
-                    key={entry.id}
-                    entry={entry}
-                    onChange={handleSanChange}
-                    onRemove={handleSanRemove}
+          <fieldset className="space-y-2">
+            <legend className="caption font-semibold">SAN（Subject Alternative Name）</legend>
+            {san.map((entry, i) => (
+              <div key={i} className="flex flex-wrap items-end gap-2">
+                <ToggleGroup<SanEntry['type']>
+                  ariaLabel="SAN 種別"
+                  size="sm"
+                  layout="wrap"
+                  options={[
+                    { value: 'dns', label: 'DNS' },
+                    { value: 'ip', label: 'IP' },
+                    { value: 'email', label: 'email' },
+                  ]}
+                  value={entry.type}
+                  onChange={(t) => updateSan(i, { type: t })}
+                />
+                <div className="w-full md:flex-1 min-w-0">
+                  <InputField
+                    id={`csr-san-${i}`}
+                    label={`SAN ${i + 1}`}
+                    value={entry.value}
+                    onChange={(v) => updateSan(i, { value: v })}
+                    placeholder={entry.type === 'ip' ? '10.0.0.1' : 'example.jp'}
                   />
-                ))}
+                </div>
+                {san.length > 1 && (
+                  <button
+                    type="button"
+                    className="caption btn-remove-card leading-none"
+                    aria-label={`SAN ${i + 1} を削除`}
+                    onClick={() => setSan((prev) => prev.filter((_, idx) => idx !== i))}
+                  >
+                    削除
+                  </button>
+                )}
               </div>
-            ) : (
-              <p className="caption text-muted">
-                SAN なし（CN のみが識別子になります）
-              </p>
-            )}
-          </div>
+            ))}
+            <button
+              type="button"
+              className="caption text-link-plain btn-link-plain"
+              onClick={() => setSan((prev) => [...prev, { type: 'dns', value: '' }])}
+            >
+              ＋ SAN を追加
+            </button>
+          </fieldset>
 
-          {/* 生成ボタン */}
           <ActionButton
             variant="primary"
             onClick={handleGenerate}
-            loading={genState.status === 'loading'}
+            disabled={!canGenerate}
+            loading={generating}
           >
-            {genState.status === 'loading' ? '生成中…' : 'CSR・鍵ペアを生成'}
+            {generating ? '生成中…' : 'CSR と鍵ペアを生成'}
           </ActionButton>
-
-          {/* エラー */}
-          {genState.status === 'error' && (
-            <ErrorMessage message={genState.message} variant="block" />
+          {!canGenerate && (
+            <p className="caption text-muted">CN または SAN を1つ以上入力してください。</p>
           )}
 
-          {/* 生成結果 */}
+          {genError && <ErrorMessage message={genError} variant="block" />}
+
           {genResult && (
             <div className="space-y-4">
+              <NotificationBanner variant="info" title="秘密鍵はブラウザ外に送信されません">
+                このツールの全処理はブラウザ内で完結します。生成した秘密鍵データは外部サーバーに送信されません。
+              </NotificationBanner>
               <OutputField
-                id={`${uid}-csr-output`}
+                id="csr-output"
                 label="CSR（PKCS#10 / PEM）"
                 value={genResult.csrPem}
                 rows={8}
                 mono
                 rightSlot={
                   <DownloadButton
-                    onClick={() => downloadText('csr.pem', genResult.csrPem)}
-                    label="ダウンロード"
-                    aria-label="CSR PEM をダウンロード"
+                    label="保存"
+                    aria-label="CSR をダウンロード"
+                    onClick={() => downloadText('request.csr', genResult.csrPem)}
                   />
                 }
               />
               <OutputField
-                id={`${uid}-privkey-output`}
+                id="csr-key-output"
                 label="秘密鍵（PKCS#8 / PEM）"
                 value={genResult.privateKeyPem}
                 rows={8}
                 mono
                 rightSlot={
                   <DownloadButton
-                    onClick={() => downloadText('private_key.pem', genResult.privateKeyPem)}
-                    label="ダウンロード"
-                    aria-label="秘密鍵 PEM をダウンロード"
+                    label="保存"
+                    aria-label="秘密鍵をダウンロード"
+                    onClick={() => downloadText('private.key', genResult.privateKeyPem)}
                   />
                 }
               />
-              <NotificationBanner variant="warning" title="秘密鍵の取り扱いに注意">
-                秘密鍵はブラウザ外に送信されていません。ダウンロード後は安全な場所に保管し、
-                他者と共有しないでください。
-              </NotificationBanner>
             </div>
           )}
         </div>
       )}
 
-      {/* ========== 解析モード ========== */}
       {mode === 'parse' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <InputField
-            id={`${uid}-csr-input`}
-            label="CSR（PEM）"
+            id="csr-parse-input"
+            label="CSR を貼り付け"
             value={parseInput}
-            onChange={(v) => {
-              setParseInput(v);
-              setParseState({ status: 'idle' });
-            }}
-            placeholder={'-----BEGIN CERTIFICATE REQUEST-----\n...\n-----END CERTIFICATE REQUEST-----'}
+            onChange={handleParse}
+            placeholder={
+              '-----BEGIN CERTIFICATE REQUEST-----\nMIIC...\n-----END CERTIFICATE REQUEST-----'
+            }
+            hint="対応形式: PEM（CERTIFICATE REQUEST）/ DER の Base64"
             multiline
-            rows={8}
+            rows={7}
             mono
             resize
             headerRight={
@@ -424,98 +322,50 @@ export function CsrGenerator() {
               </button>
             }
           />
+          <div className="flex flex-wrap items-center gap-3">
+            <FileInputButton accept=".csr,.pem,.der" onChange={handleFile}>
+              ファイルを選択
+            </FileInputButton>
+            <span className="caption text-muted">.csr / .pem / .der</span>
+          </div>
 
-          <ActionButton
-            variant="primary"
-            onClick={() => handleParse()}
-            loading={parseState.status === 'loading'}
-          >
-            {parseState.status === 'loading' ? '解析中…' : '解析'}
-          </ActionButton>
+          {parseResult?.error && <ErrorMessage message={parseResult.error} variant="block" />}
 
-          {/* エラー */}
-          {parseState.status === 'error' && (
-            <ErrorMessage message={parseState.message} variant="block" />
-          )}
-
-          {/* 解析結果 */}
-          {parseResult && (
-            <div className="space-y-4">
-              {/* 署名検証バナー */}
-              {parseResult.signatureValid === true && (
-                <NotificationBanner variant="success" title="署名検証: 正常">
-                  CSR の自己署名が検証されました。改竄は検出されていません。
-                </NotificationBanner>
-              )}
-              {parseResult.signatureValid === false && (
-                <NotificationBanner variant="error" title="署名検証: 失敗">
-                  CSR の署名が不正です。CSR が改竄されているか、破損している可能性があります。
-                </NotificationBanner>
-              )}
-              {parseResult.signatureValid === null && (
-                <NotificationBanner variant="warning" title="署名検証: 不可">
-                  署名アルゴリズムが未対応のため検証できませんでした。
-                </NotificationBanner>
-              )}
-
-              {/* Subject */}
-              <div className="space-y-2">
-                <p className="body-emphasis text-default">Subject</p>
-                {parseResult.subjectAttributes.length > 0 ? (
-                  <table className="caption text-default w-full border-collapse">
-                    <tbody>
-                      {parseResult.subjectAttributes.map((attr, i) => (
-                        <tr key={i} className="border-b border-default last:border-0">
-                          <td className="py-1.5 pr-4 font-semibold text-muted w-24 shrink-0">
-                            {attr.type}
-                          </td>
-                          <td className="py-1.5 break-all">{attr.value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="caption text-muted">Subject なし</p>
+          {parseResult && !parseResult.error && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <ChipLabel tone="neutral">{parseResult.publicKey.algorithm}</ChipLabel>
+                {parseResult.publicKey.keySizeBits && (
+                  <ChipLabel tone="neutral">{parseResult.publicKey.keySizeBits} bit</ChipLabel>
                 )}
-              </div>
-
-              {/* SAN */}
-              <div className="space-y-2">
-                <p className="body-emphasis text-default">SAN（Subject Alternative Name）</p>
-                {parseResult.san.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {parseResult.san.map((s, i) => (
-                      <ChipLabel key={i} tone="info">
-                        {s}
-                      </ChipLabel>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="caption text-muted">SAN なし</p>
+                {parseResult.publicKey.namedCurve && (
+                  <ChipLabel tone="neutral">{parseResult.publicKey.namedCurve}</ChipLabel>
                 )}
-              </div>
-
-              {/* 公開鍵情報 */}
-              <div className="space-y-2">
-                <p className="body-emphasis text-default">公開鍵</p>
-                <div className="flex flex-wrap gap-2">
-                  <ChipLabel tone="neutral">{parseResult.publicKey.algorithm}</ChipLabel>
-                  {parseResult.publicKey.keySizeBits && (
-                    <ChipLabel tone="neutral">
-                      {parseResult.publicKey.keySizeBits} bit
-                    </ChipLabel>
-                  )}
-                  {parseResult.publicKey.namedCurve && (
-                    <ChipLabel tone="neutral">{parseResult.publicKey.namedCurve}</ChipLabel>
-                  )}
-                </div>
-              </div>
-
-              {/* 署名アルゴリズム */}
-              <div className="space-y-2">
-                <p className="body-emphasis text-default">署名アルゴリズム</p>
                 <ChipLabel tone="neutral">{parseResult.signatureAlgorithm}</ChipLabel>
+                <ChipLabel tone={parseResult.signatureValid ? 'info' : 'error'}>
+                  {parseResult.signatureValid === null
+                    ? '署名検証: 不能'
+                    : parseResult.signatureValid
+                      ? '署名検証: OK'
+                      : '署名検証: NG'}
+                </ChipLabel>
               </div>
+              <OutputField
+                id="csr-parse-subject"
+                label="Subject"
+                value={parseResult.subjectFull}
+                rows={2}
+                mono
+              />
+              {parseResult.san.length > 0 && (
+                <OutputField
+                  id="csr-parse-san"
+                  label="SAN"
+                  value={parseResult.san.join('\n')}
+                  rows={Math.min(parseResult.san.length + 1, 6)}
+                  mono
+                />
+              )}
             </div>
           )}
         </div>
