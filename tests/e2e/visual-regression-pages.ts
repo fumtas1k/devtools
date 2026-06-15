@@ -43,6 +43,7 @@ export const PAGES = [
   '/tools/cert-decoder',
   '/tools/key-converter',
   '/tools/har-viewer',
+  '/tools/csr-generator',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy', '/404']);
