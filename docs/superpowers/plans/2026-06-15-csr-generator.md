@@ -22,27 +22,28 @@
 
 ## ファイル構成
 
-| ファイル | 責務 |
-| --- | --- |
-| `src/utils/csr/types.ts`（新規） | 型定義（KeyAlgorithm / SubjectDn / SanEntry / GenerateParams / GenerateResult / CsrParseResult） |
-| `src/utils/csr/generate.ts`（新規） | 鍵生成 + CSR 構築 + PEM 出力 |
-| `src/utils/csr/parse.ts`（新規） | 既存 CSR の解析 + 署名検証 |
-| `src/utils/csr/index.ts`（新規） | re-export |
-| `src/components/tools/csrGeneratorSample.ts`（新規） | 解析モード用サンプル CSR |
-| `src/components/tools/CsrGenerator.tsx`（新規） | UI（生成/解析モード切替） |
-| `src/pages/tools/csr-generator.astro`（新規） | ルーティング |
-| `src/utils/__tests__/csr-generate.test.ts`（新規） | generate ユニットテスト |
-| `src/utils/__tests__/csr-parse.test.ts`（新規） | parse ユニットテスト（陽性対照含む） |
-| `tests/e2e/csr-generator.spec.ts`（新規） | E2E |
-| `src/data/tools.ts`（変更） | toolEntries にエントリ追加 |
-| `tests/e2e/visual-regression-pages.ts`（変更） | PAGES に `/tools/csr-generator` 追加 |
-| `README.md` / `SPEC.md` / `docs/decisions.md` / `docs/tools.md` / `docs/tool-candidates.md`（変更） | ドキュメント更新 |
+| ファイル                                                                                            | 責務                                                                                             |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `src/utils/csr/types.ts`（新規）                                                                    | 型定義（KeyAlgorithm / SubjectDn / SanEntry / GenerateParams / GenerateResult / CsrParseResult） |
+| `src/utils/csr/generate.ts`（新規）                                                                 | 鍵生成 + CSR 構築 + PEM 出力                                                                     |
+| `src/utils/csr/parse.ts`（新規）                                                                    | 既存 CSR の解析 + 署名検証                                                                       |
+| `src/utils/csr/index.ts`（新規）                                                                    | re-export                                                                                        |
+| `src/components/tools/csrGeneratorSample.ts`（新規）                                                | 解析モード用サンプル CSR                                                                         |
+| `src/components/tools/CsrGenerator.tsx`（新規）                                                     | UI（生成/解析モード切替）                                                                        |
+| `src/pages/tools/csr-generator.astro`（新規）                                                       | ルーティング                                                                                     |
+| `src/utils/__tests__/csr-generate.test.ts`（新規）                                                  | generate ユニットテスト                                                                          |
+| `src/utils/__tests__/csr-parse.test.ts`（新規）                                                     | parse ユニットテスト（陽性対照含む）                                                             |
+| `tests/e2e/csr-generator.spec.ts`（新規）                                                           | E2E                                                                                              |
+| `src/data/tools.ts`（変更）                                                                         | toolEntries にエントリ追加                                                                       |
+| `tests/e2e/visual-regression-pages.ts`（変更）                                                      | PAGES に `/tools/csr-generator` 追加                                                             |
+| `README.md` / `SPEC.md` / `docs/decisions.md` / `docs/tools.md` / `docs/tool-candidates.md`（変更） | ドキュメント更新                                                                                 |
 
 ---
 
 ## Task 1: 型定義（`src/utils/csr/types.ts`）
 
 **Files:**
+
 - Create: `src/utils/csr/types.ts`
 
 - [ ] **Step 1: 型を定義する**
@@ -144,6 +145,7 @@ git commit -m "feat: csr-generator の型定義を追加"
 ## Task 2: CSR 生成ロジック（`src/utils/csr/generate.ts`）
 
 **Files:**
+
 - Create: `src/utils/csr/generate.ts`
 - Test: `src/utils/__tests__/csr-generate.test.ts`
 
@@ -213,13 +215,9 @@ describe('generateCsr（陰性対照: 正常系 round-trip）', () => {
     const result = await generateCsr(baseParams);
     const der = pemToDer(result.privateKeyPem);
     await expect(
-      crypto.subtle.importKey(
-        'pkcs8',
-        der,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-        true,
-        ['sign']
-      )
+      crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, true, [
+        'sign',
+      ])
     ).resolves.toBeDefined();
   });
 
@@ -459,6 +457,7 @@ git commit -m "feat: csr-generator の CSR 生成ロジックを追加"
 ## Task 3: CSR 解析ロジック（`src/utils/csr/parse.ts`）+ test-gates 陽性対照
 
 **Files:**
+
 - Create: `src/utils/csr/parse.ts`
 - Test: `src/utils/__tests__/csr-parse.test.ts`
 
@@ -504,9 +503,7 @@ describe('parseCsr（陰性対照: 正常系）', () => {
     const pem = await makeValidCsrPem();
     const result = await parseCsr(pem);
     expect(result.error).toBeUndefined();
-    expect(result.subjectAttributes.find((a) => a.type === 'CN')?.value).toBe(
-      'parse.example.test'
-    );
+    expect(result.subjectAttributes.find((a) => a.type === 'CN')?.value).toBe('parse.example.test');
     expect(result.san).toContain('DNS:alt.example.test');
     expect(result.publicKey.algorithm).toBe('RSA');
     expect(result.publicKey.keySizeBits).toBe(2048);
@@ -710,7 +707,8 @@ export async function parseCsr(input: string): Promise<CsrParseResult> {
   } catch {
     return {
       ...empty,
-      error: 'CSR の解析に失敗しました。PEM（CERTIFICATE REQUEST）または DER の Base64 を入力してください。',
+      error:
+        'CSR の解析に失敗しました。PEM（CERTIFICATE REQUEST）または DER の Base64 を入力してください。',
     };
   }
 
@@ -762,6 +760,7 @@ git commit -m "test: csr-generator の CSR 解析ロジックと署名検証の�
 ## Task 4: re-export（`src/utils/csr/index.ts`）
 
 **Files:**
+
 - Create: `src/utils/csr/index.ts`
 
 - [ ] **Step 1: index を書く**
@@ -790,6 +789,7 @@ git commit -m "feat: csr-generator の utils re-export を追加"
 ## Task 5: サンプル CSR（`src/components/tools/csrGeneratorSample.ts`）
 
 **Files:**
+
 - Create: `src/components/tools/csrGeneratorSample.ts`
 
 - [ ] **Step 1: サンプルを生成する**
@@ -842,6 +842,7 @@ git commit -m "feat: csr-generator の解析モード用サンプル CSR を追�
 ## Task 6: UI コンポーネント（`src/components/tools/CsrGenerator.tsx`）
 
 **Files:**
+
 - Create: `src/components/tools/CsrGenerator.tsx`
 
 参照する共通コンポーネント: `ToggleGroup` / `InputField` / `OutputField` / `ActionButton` / `DownloadButton` / `FileInputButton` / `ErrorMessage` / `NotificationBanner` / `ChipLabel`。スタイルは primitive Tailwind カラー禁止・semantic class のみ（common.md 7章 / ui-conventions.md）。
@@ -930,8 +931,7 @@ export function CsrGenerator() {
     setParseInput('');
   };
 
-  const canGenerate =
-    subject.commonName.trim() !== '' || san.some((e) => e.value.trim() !== '');
+  const canGenerate = subject.commonName.trim() !== '' || san.some((e) => e.value.trim() !== '');
 
   const handleGenerate = useCallback(async () => {
     setGenerating(true);
@@ -1096,7 +1096,12 @@ export function CsrGenerator() {
             </button>
           </fieldset>
 
-          <ActionButton variant="primary" onClick={handleGenerate} disabled={!canGenerate} loading={generating}>
+          <ActionButton
+            variant="primary"
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            loading={generating}
+          >
             CSR と鍵ペアを生成
           </ActionButton>
           {!canGenerate && (
@@ -1150,7 +1155,9 @@ export function CsrGenerator() {
             label="CSR を貼り付け"
             value={parseInput}
             onChange={handleParse}
-            placeholder={'-----BEGIN CERTIFICATE REQUEST-----\nMIIC...\n-----END CERTIFICATE REQUEST-----'}
+            placeholder={
+              '-----BEGIN CERTIFICATE REQUEST-----\nMIIC...\n-----END CERTIFICATE REQUEST-----'
+            }
             hint="対応形式: PEM（CERTIFICATE REQUEST）/ DER の Base64"
             multiline
             rows={7}
@@ -1194,7 +1201,13 @@ export function CsrGenerator() {
                       : '署名検証: NG'}
                 </ChipLabel>
               </div>
-              <OutputField id="csr-parse-subject" label="Subject" value={parseResult.subjectFull} rows={2} mono />
+              <OutputField
+                id="csr-parse-subject"
+                label="Subject"
+                value={parseResult.subjectFull}
+                rows={2}
+                mono
+              />
               {parseResult.san.length > 0 && (
                 <OutputField
                   id="csr-parse-san"
@@ -1214,6 +1227,7 @@ export function CsrGenerator() {
 ```
 
 > 注意:
+>
 > - `btn-remove-card` / `btn-link-plain` / `text-link-plain` は既存の `global.css @layer components` クラス。存在を `grep -n "btn-remove-card\|btn-link-plain\|text-link-plain" src/styles/global.css` で確認してから使う。無ければ既存ツール（KeyConverter は `btn-link-plain text-link-plain` を使用）で使われているクラスに合わせる。
 > - `ChipLabel` の tone は `'error' | 'info' | 'neutral'`（ui-conventions.md）。署名 OK は `info`、NG は `error`。
 > - `ActionButton` に `loading` prop がある前提（`src/components/ui/ActionButton.tsx` で確認）。無い場合は `disabled={generating || !canGenerate}` に変更。
@@ -1240,6 +1254,7 @@ git commit -m "feat: csr-generator の UI コンポーネントを追加"
 ## Task 7: Astro ページ（`src/pages/tools/csr-generator.astro`）
 
 **Files:**
+
 - Create: `src/pages/tools/csr-generator.astro`
 - Modify: `src/pages/tools/key-converter.astro:57`（クロスリファレンス更新）
 
@@ -1260,9 +1275,10 @@ const tool = tools.find((t) => t.slug === 'csr-generator')!;
 
   <ToolInfoSection>
     <p class="tool-info-body">
-      ブラウザ内で RSA / ECDSA の鍵ペアを生成し、PKCS#10 CSR（証明書署名要求）を出力します。Subject（CN / O
-      / OU / C / ST / L / emailAddress）と SAN（DNS / IP / email）を指定でき、秘密鍵は PKCS#8
-      PEM で出力されます。全処理はブラウザ内で完結するため、生成した秘密鍵は外部サーバーに送信されません。既存
+      ブラウザ内で RSA / ECDSA の鍵ペアを生成し、PKCS#10
+      CSR（証明書署名要求）を出力します。Subject（CN / O / OU / C / ST / L / emailAddress）と
+      SAN（DNS / IP / email）を指定でき、秘密鍵は PKCS#8 PEM
+      で出力されます。全処理はブラウザ内で完結するため、生成した秘密鍵は外部サーバーに送信されません。既存
       CSR の貼り付け解析（Subject / SAN / 公開鍵 / 署名検証）にも対応します。
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">対応アルゴリズム</h3>
@@ -1313,6 +1329,7 @@ git commit -m "feat: csr-generator のページを追加"
 ## Task 8: tools.ts エントリ追加
 
 **Files:**
+
 - Modify: `src/data/tools.ts`（`toolEntries` 配列に追加）
 
 - [ ] **Step 1: エントリを追加する**
@@ -1347,6 +1364,7 @@ git commit -m "feat: csr-generator をツール一覧に登録"
 ## Task 9: VRT ページ登録
 
 **Files:**
+
 - Modify: `tests/e2e/visual-regression-pages.ts`（`PAGES` 配列に追加）
 
 - [ ] **Step 1: PAGES に追加する**
@@ -1370,6 +1388,7 @@ git commit -m "test: csr-generator を VRT 対象ページに登録"
 ## Task 10: E2E テスト
 
 **Files:**
+
 - Create: `tests/e2e/csr-generator.spec.ts`
 
 - [ ] **Step 1: 既存 E2E の形式を確認する**
@@ -1421,6 +1440,7 @@ git commit -m "test: csr-generator の E2E を追加"
 ## Task 11: ドキュメント更新
 
 **Files:**
+
 - Modify: `README.md`（ツール一覧）
 - Modify: `SPEC.md`（2.3 / 2.4 / 4 / 5 / 9 章）
 - Modify: `docs/decisions.md`（選定理由）

@@ -13,12 +13,14 @@ CSR 生成は通常 `openssl` CLI か CA のフォームで行うが、後者は
 ## スコープ
 
 ### 含むもの
+
 - **生成モード**: フォーム入力 → 鍵ペア生成（Web Crypto）→ PKCS#10 CSR 構築（pkijs）→ CSR PEM ＋ 秘密鍵 PKCS#8 PEM 出力
 - **解析モード**: 既存 CSR（PEM/DER）を貼り付け/ファイル選択 → Subject / SAN / 公開鍵情報 / 署名アルゴリズム / 署名自己検証結果を表示
 - 対応アルゴリズム: **RSA**（2048/3072/4096 bit）/ **ECDSA**（P-256 / P-384 / P-521）
 - 秘密鍵エクスポート: **平文 PKCS#8 PEM のみ**
 
 ### 含まないもの（v1 スコープ外）
+
 - Ed25519 / Ed448（Web Crypto のブラウザサポート差・pkijs 署名生成の追加検証が必要で High 化するため）
 - 暗号化 PKCS#8（PBES2）でのエクスポート（WebCrypto 単体では困難で pkijs 追加実装が必要）
 - challengePassword 属性、カスタム拡張（KeyUsage / ExtendedKeyUsage 等）の編集 UI
@@ -62,15 +64,15 @@ src/pages/tools/csr-generator.astro
 
 ### Subject DN の OID 対応表
 
-| フィールド | OID |
-| --- | --- |
-| CN (commonName) | 2.5.4.3 |
-| O (organizationName) | 2.5.4.10 |
-| OU (organizationalUnitName) | 2.5.4.11 |
-| C (countryName) | 2.5.4.6 |
-| ST (stateOrProvinceName) | 2.5.4.8 |
-| L (localityName) | 2.5.4.7 |
-| emailAddress | 1.2.840.113549.1.9.1 |
+| フィールド                  | OID                  |
+| --------------------------- | -------------------- |
+| CN (commonName)             | 2.5.4.3              |
+| O (organizationName)        | 2.5.4.10             |
+| OU (organizationalUnitName) | 2.5.4.11             |
+| C (countryName)             | 2.5.4.6              |
+| ST (stateOrProvinceName)    | 2.5.4.8              |
+| L (localityName)            | 2.5.4.7              |
+| emailAddress                | 1.2.840.113549.1.9.1 |
 
 文字種: countryName は PrintableString、emailAddress は IA5String、その他は UTF8String。
 

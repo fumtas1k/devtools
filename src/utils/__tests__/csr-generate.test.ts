@@ -60,13 +60,9 @@ describe('generateCsr（陰性対照: 正常系 round-trip）', () => {
     const result = await generateCsr(baseParams);
     const der = pemToDer(result.privateKeyPem);
     await expect(
-      crypto.subtle.importKey(
-        'pkcs8',
-        der,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-        true,
-        ['sign']
-      )
+      crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, true, [
+        'sign',
+      ])
     ).resolves.toBeDefined();
   });
 

@@ -35,9 +35,7 @@ describe('parseCsr（陰性対照: 正常系）', () => {
     const pem = await makeValidCsrPem();
     const result = await parseCsr(pem);
     expect(result.error).toBeUndefined();
-    expect(result.subjectAttributes.find((a) => a.type === 'CN')?.value).toBe(
-      'parse.example.test'
-    );
+    expect(result.subjectAttributes.find((a) => a.type === 'CN')?.value).toBe('parse.example.test');
     expect(result.san).toContain('DNS:alt.example.test');
     expect(result.publicKey.algorithm).toBe('RSA');
     expect(result.publicKey.keySizeBits).toBe(2048);

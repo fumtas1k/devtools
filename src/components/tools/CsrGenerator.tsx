@@ -79,8 +79,7 @@ export function CsrGenerator() {
     setParseInput('');
   };
 
-  const canGenerate =
-    subject.commonName.trim() !== '' || san.some((e) => e.value.trim() !== '');
+  const canGenerate = subject.commonName.trim() !== '' || san.some((e) => e.value.trim() !== '');
 
   const handleGenerate = useCallback(async () => {
     setGenerating(true);

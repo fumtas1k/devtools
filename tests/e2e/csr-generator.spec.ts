@@ -71,9 +71,7 @@ test.describe('CSR・鍵ペアジェネレータ（production CSP 適用）', ()
     });
   });
 
-  test('CN も SAN も空のとき生成ボタンが disabled になる（CSP 違反なし）', async ({
-    browser,
-  }) => {
+  test('CN も SAN も空のとき生成ボタンが disabled になる（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/csr-generator', async (page) => {
       // 初期状態では CN も SAN も空 → ボタン disabled
       const generateBtn = page.getByRole('button', { name: 'CSR と鍵ペアを生成' });
@@ -83,9 +81,7 @@ test.describe('CSR・鍵ペアジェネレータ（production CSP 適用）', ()
     });
   });
 
-  test('解析モードに切り替えてサンプル CSR を解析できる（CSP 違反なし）', async ({
-    browser,
-  }) => {
+  test('解析モードに切り替えてサンプル CSR を解析できる（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/csr-generator', async (page) => {
       // 解析モードに切り替え
       await page.getByRole('button', { name: '既存 CSR を解析' }).click();

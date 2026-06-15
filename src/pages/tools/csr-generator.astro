@@ -12,9 +12,10 @@ const tool = tools.find((t) => t.slug === 'csr-generator')!;
 
   <ToolInfoSection>
     <p class="tool-info-body">
-      ブラウザ内で RSA / ECDSA の鍵ペアを生成し、PKCS#10 CSR（証明書署名要求）を出力します。Subject（CN / O
-      / OU / C / ST / L / emailAddress）と SAN（DNS / IP / email）を指定でき、秘密鍵は PKCS#8
-      PEM で出力されます。全処理はブラウザ内で完結するため、生成した秘密鍵は外部サーバーに送信されません。既存
+      ブラウザ内で RSA / ECDSA の鍵ペアを生成し、PKCS#10
+      CSR（証明書署名要求）を出力します。Subject（CN / O / OU / C / ST / L / emailAddress）と
+      SAN（DNS / IP / email）を指定でき、秘密鍵は PKCS#8 PEM
+      で出力されます。全処理はブラウザ内で完結するため、生成した秘密鍵は外部サーバーに送信されません。既存
       CSR の貼り付け解析（Subject / SAN / 公開鍵 / 署名検証）にも対応します。
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">対応アルゴリズム</h3>

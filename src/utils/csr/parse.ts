@@ -158,7 +158,8 @@ export async function parseCsr(input: string): Promise<CsrParseResult> {
   } catch {
     return {
       ...empty,
-      error: 'CSR の解析に失敗しました。PEM（CERTIFICATE REQUEST）または DER の Base64 を入力してください。',
+      error:
+        'CSR の解析に失敗しました。PEM（CERTIFICATE REQUEST）または DER の Base64 を入力してください。',
     };
   }
 
