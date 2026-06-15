@@ -78,6 +78,46 @@ test.describe('DSN/接続文字列ビルダ', () => {
     );
   });
 
+  test('JDBC URL を貼り付けると user/password プロパティがフォームに分解される', async ({
+    page,
+  }) => {
+    await page
+      .getByLabel('接続 URI')
+      .fill(
+        'jdbc:postgresql://db.example.com:5432/app_db?user=app&password=s3cret&sslmode=require'
+      );
+    await expect(page.getByLabel('ユーザー名')).toHaveValue('app');
+    await expect(page.getByLabel('パスワード')).toHaveValue('s3cret');
+    await expect(page.getByLabel('ホスト 1', { exact: true })).toHaveValue('db.example.com');
+    await expect(page.getByLabel('データベース名')).toHaveValue('app_db');
+    // credential は params から除去され、残りのみ表示される
+    await expect(page.getByLabel('パラメータ名 1')).toHaveValue('sslmode');
+    await expect(page.getByLabel('パラメータ値 1')).toHaveValue('require');
+  });
+
+  test('JDBC スキームではフォーム編集が credential を property として URI 化する', async ({
+    page,
+  }) => {
+    await page.getByLabel('スキーム').selectOption('jdbc:mysql');
+    await page.getByLabel('ユーザー名').fill('root');
+    await page.getByLabel('パスワード').fill('p@ss/w0rd');
+    await page.getByLabel('ホスト 1', { exact: true }).fill('db.example.com');
+    await page.getByLabel('ポート 1', { exact: true }).fill('3306');
+    await page.getByLabel('データベース名').fill('app_db');
+    await expect(page.getByLabel('接続 URI')).toHaveValue(
+      'jdbc:mysql://db.example.com:3306/app_db?user=root&password=p%40ss%2Fw0rd'
+    );
+  });
+
+  test('JDBC のマスク済み URI は password プロパティのみ伏せる', async ({ page }) => {
+    await page
+      .getByLabel('接続 URI')
+      .fill('jdbc:postgresql://db.example.com:5432/app_db?user=app&password=s3cret');
+    await expect(page.getByLabel('マスク済み URI（共有用）')).toHaveValue(
+      'jdbc:postgresql://db.example.com:5432/app_db?user=app&password=****'
+    );
+  });
+
   test('ポート入力済み→mongodb+srv 切替でポートが自動クリアされエラーが出ない', async ({
     page,
   }) => {

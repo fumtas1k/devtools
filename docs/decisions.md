@@ -4409,3 +4409,28 @@ URL パス / 辞書外ヘッダへの `scrubText` 適用で、パスやヘッダ
 
 - **#694 自由テキスト走査の独立カテゴリ化**: 辞書ベースの確実 redact（`AUTH_HEADER` / `QUERY`）と自由テキスト走査（`HEADER_SCAN` / `PATH_SCAN`）を別トグル・別カテゴリに分離した。ユーザーが「辞書外ヘッダ走査のみ ON」「URL パス走査のみ ON」と細かく制御できるようになり、件数表示も意味的に正確になった。
 - **#695 `data:` URL 破壊回避**: `scrubUrlPath` の冒頭で `data:` スキーム（大文字小文字無視）を検出したら scrubText を一切適用せず原文を返す。`HIGH_ENTROPY_BASE64` が base64 ペイロードを `[REDACTED]` に置換してデコード不能にする #690 M-2 と同型の破壊クラスを回避する。
+
+## [119] dsn-builder: JDBC URL 対応を PostgreSQL / MySQL に限定し credential を query property で表現
+
+**2026-06-15 | ステータス: 採用**
+
+### 背景
+
+[110] で導入した dsn-builder は当初設計（`docs/superpowers/specs/2026-06-13-dsn-builder-design.md`）で JDBC を「やらないこと（YAGNI）」としていた。その後ユーザー要望により JDBC URL 対応を追加することになった。JDBC URL はドライバごとに文法が大きく異なる（PostgreSQL / MySQL は RFC 3986 系に近いが、SQL Server は `;` 区切り、Oracle は `@host:port:SID` という独自構文）。
+
+### 決断
+
+- **決定**: JDBC 対応は **PostgreSQL（`jdbc:postgresql`）/ MySQL（`jdbc:mysql`）の 2 ドライバに限定**する。SQL Server・Oracle は対象外。
+- **credential の置き場所**: JDBC は user / password を userinfo（`user:pass@host`）でなく **`?user=&password=` クエリプロパティ**として入出力する（JDBC 標準の流儀。`DriverManager.getConnection(url, user, pass)` 別渡しが本来だが URL に含める場合はプロパティが一般的）。
+- **モデル設計**: 既存 `DsnModel` を拡張せず、`Dialect.jdbc` フラグで分岐する。scheme 文字列自体を `jdbc:postgresql` とすることで `${scheme}://` がそのまま `jdbc:` プレフィックスを満たす。パース時はプロパティの `user` / `password` を専用フィールドへ移し、シリアライズ時にプロパティ列の先頭へ戻す（往復一致を保証）。
+
+### 却下した選択肢
+
+- **主要 4 ドライバ（SQL Server / Oracle 含む）対応**: `;` 区切り・SID/service 等で parse/serialize にドライバ別分岐と `DsnModel` 拡張が必要になり工数が大きい。需要が確認できた 2 ドライバに絞り YAGNI を維持。
+- **userinfo 形式での credential 保持**: PostgreSQL JDBC ドライバは URL userinfo を解釈しないため、互換性のあるプロパティ形式を採用。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし。既存パーサ・バリデータ（単一 `validateModel`）をそのまま JDBC でも経由する。
+- ✅ JDBC でも範囲外ポート・不正 percent-encoding・未対応サブスキームを拒否する陽性対照テストを同梱（test-gates 準拠）。検証経路が jdbc を素通りしないことを保証。
+- ⚠️ SQL Server / Oracle は対象外のまま。将来必要になれば別途ドライバ別分岐を設計する。

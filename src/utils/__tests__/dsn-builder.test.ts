@@ -128,6 +128,22 @@ describe('parseDsn: 陽性対照（不正入力を必ずエラーにする）', 
   it('カンマ前後の空ホストを拒否する', () => {
     expect(parseDsn('mongodb://a.example.com,,b.example.com/db').ok).toBe(false);
   });
+
+  it('JDBC でも範囲外ポートを拒否する（検証経路が jdbc を素通りしない）', () => {
+    const result = parseDsn('jdbc:postgresql://host:99999/db?user=u&password=p');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('ポート');
+  });
+
+  it('JDBC でも不正な percent-encoding を拒否する', () => {
+    expect(parseDsn('jdbc:mysql://host:3306/db?user=u&password=p%ZZ').ok).toBe(false);
+  });
+
+  it('未対応の JDBC サブスキーム（jdbc:oracle）を拒否する', () => {
+    const result = parseDsn('jdbc:oracle://host:1521/SID');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('未対応のスキーム');
+  });
 });
 
 describe('serializeDsn / ラウンドトリップ', () => {
@@ -152,6 +168,62 @@ describe('serializeDsn / ラウンドトリップ', () => {
   it('パラメータの順序を保持する', () => {
     const uri = 'mongodb://h.example.com/db?b=2&a=1';
     expect(serializeDsn(mustParse(uri))).toBe(uri);
+  });
+});
+
+describe('JDBC（PostgreSQL / MySQL）', () => {
+  it('jdbc:postgresql の credential を ?user=&password= から専用フィールドへ移す', () => {
+    const model = mustParse(
+      'jdbc:postgresql://db.example.com:5432/app_db?user=app_user&password=p%40ss%2Fw0rd&sslmode=require'
+    );
+    expect(model.scheme).toBe('jdbc:postgresql');
+    expect(model.user).toBe('app_user');
+    expect(model.password).toBe('p@ss/w0rd'); // percent-decode 済み
+    expect(model.hosts).toEqual([{ host: 'db.example.com', port: '5432' }]);
+    expect(model.database).toBe('app_db');
+    // user / password は params から除去され、残りのみ保持する
+    expect(model.params).toEqual([{ key: 'sslmode', value: 'require' }]);
+  });
+
+  it('jdbc:mysql も同様に credential を抽出する', () => {
+    const model = mustParse(
+      'jdbc:mysql://db.example.com:3306/app_db?user=root&password=secret&useSSL=true'
+    );
+    expect(model.scheme).toBe('jdbc:mysql');
+    expect(model.user).toBe('root');
+    expect(model.password).toBe('secret');
+    expect(model.params).toEqual([{ key: 'useSSL', value: 'true' }]);
+  });
+
+  it('credential を userinfo でなく query property として再構成する', () => {
+    const model: DsnModel = {
+      scheme: 'jdbc:postgresql',
+      user: 'app',
+      password: 'p@ss/w0rd',
+      hosts: [{ host: 'db.example.com', port: '5432' }],
+      database: 'app_db',
+      params: [{ key: 'sslmode', value: 'require' }],
+    };
+    expect(serializeDsn(model)).toBe(
+      'jdbc:postgresql://db.example.com:5432/app_db?user=app&password=p%40ss%2Fw0rd&sslmode=require'
+    );
+  });
+
+  it('複数ホスト（フェイルオーバ）を受理する', () => {
+    const model = mustParse('jdbc:postgresql://a.example.com:5432,b.example.com:5432/app_db');
+    expect(model.hosts).toEqual([
+      { host: 'a.example.com', port: '5432' },
+      { host: 'b.example.com', port: '5432' },
+    ]);
+  });
+
+  it('maskDsn は password プロパティのみ **** に置換する', () => {
+    const model = mustParse(
+      'jdbc:mysql://db.example.com:3306/app_db?user=root&password=secret&useSSL=true'
+    );
+    expect(maskDsn(model)).toBe(
+      'jdbc:mysql://db.example.com:3306/app_db?user=root&password=****&useSSL=true'
+    );
   });
 });
 

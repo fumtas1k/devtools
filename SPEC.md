@@ -327,7 +327,7 @@ devtools/
 | 21  | CIDR/サブネット計算機             | `cidr-calculator`     | CIDR 記法でアドレスを入力しネットワーク情報を計算。IPv4/IPv6 対応。ネットワーク・ブロードキャスト・ホスト範囲・サブネットマスク・利用可能ホスト数を表示。BigInt による 128bit 統一処理。外部ライブラリなし                                       |
 | 22  | シークレットスクラバー            | `secret-scrubber`     | ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換。全処理ブラウザ内完結・外部ライブラリなし                                                                                  |
 | 23  | クリップボードインスペクタ        | `clipboard-inspector` | 貼り付け・ドラッグ&ドロップの DataTransfer を捕捉し、全 MIME フレーバー（text/plain・text/html・カスタム型・画像・ファイル）の種別と中身を可視化。HTML はサニタイズ後 sandbox iframe プレビュー付き。追加依存なし（DOMParser・Web API のみ）     |
-| 24  | DSN/接続文字列ビルダ              | `dsn-builder`         | 接続文字列（DSN）をフォームと URI で双方向編集。パスワードをマスクした共有用 URI も生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応。自前パーサで percent-encode を自動処理。外部ライブラリなし                                            |
+| 24  | DSN/接続文字列ビルダ              | `dsn-builder`         | 接続文字列（DSN）をフォームと URI で双方向編集。パスワードをマスクした共有用 URI も生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応（PostgreSQL・MySQL は JDBC URL も対応）。自前パーサで percent-encode を自動処理。外部ライブラリなし    |
 | 26  | 鍵フォーマット変換                | `key-converter`       | RSA / ECDSA（P-256/P-384/P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK で相互変換。入力形式と鍵種別を自動判定。Web Crypto API 主体で asn1js による OID 判定。全処理ブラウザ内完結                                                           |
 | 27  | HARビューア＆サニタイザ           | `har-viewer`          | HAR ファイルをリクエスト/レスポンス一覧・詳細表示し、Cookie・認証ヘッダ・機密クエリ・POST ボディを構造的に redact。scrubText で本文の取りこぼしを追加検出。一貫トークン化（同一値=同一プレースホルダ）。全処理ブラウザ内完結・新規ライブラリなし |
 
@@ -1120,7 +1120,9 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 **概要:** データベース・ミドルウェアの接続文字列（DSN）をフォーム ⇄ URI で双方向編集し、パスワードをマスクした共有用 URI を生成するツール。
 
-**対応スキーム:** postgresql / postgres / mysql / mongodb / mongodb+srv / redis / rediss / amqp / amqps（9スキーム）
+**対応スキーム:** postgresql / postgres / mysql / mongodb / mongodb+srv / redis / rediss / amqp / amqps / jdbc:postgresql / jdbc:mysql（11スキーム）
+
+**JDBC URL:** PostgreSQL / MySQL のみ `jdbc:` プレフィックス形式に対応。credential（user / password）は userinfo（`user:pass@host`）ではなく `?user=&password=` クエリプロパティとして入出力する（JDBC 標準の流儀）。パース時はプロパティから専用フィールドへ移し、シリアライズ時にプロパティ先頭へ戻す。SQL Server（`;` 区切り）・Oracle（`@host:port:SID`）は文法が大きく異なるため対象外。
 
 **双方向同期:**
 
