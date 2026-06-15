@@ -39,7 +39,10 @@ const DN_ORDER: (keyof SubjectDn)[] = [
 ];
 
 /** DN フィールドの ASN.1 文字種を返す（countryName=Printable, email=IA5, それ以外=UTF8） */
-function dnAsn1Value(field: keyof SubjectDn, value: string): asn1js.BaseBlock {
+function dnAsn1Value(
+  field: keyof SubjectDn,
+  value: string
+): asn1js.Utf8String | asn1js.PrintableString | asn1js.IA5String {
   if (field === 'country') return new asn1js.PrintableString({ value });
   if (field === 'email') return new asn1js.IA5String({ value });
   return new asn1js.Utf8String({ value });
@@ -87,7 +90,7 @@ function buildGeneralNames(san: SanEntry[]): GeneralNames {
         names.push(
           new GeneralName({
             type: 7,
-            value: new asn1js.OctetString({ valueHex: octets.buffer }),
+            value: new asn1js.OctetString({ valueHex: octets.buffer as ArrayBuffer }),
           })
         );
       }
