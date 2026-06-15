@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { CopyButton } from '@/components/ui/CopyButton';
+import { cx } from '@/utils/cx';
 
 interface OutputFieldProps {
   /** textarea の id（label との関連付けに使用） */
@@ -54,7 +55,7 @@ export function OutputField({
   const fillStatusClass = fill ? 'md:flex md:flex-1 md:min-h-0' : '';
   const fillTextareaClass = fill ? 'md:block md:h-full md:min-h-0' : '';
   return (
-    <div className={`w-full ${fillContainerClass}`.trim()}>
+    <div className={cx('w-full', fillContainerClass)}>
       <div className="flex items-center justify-between mb-3 min-h-8">
         <label htmlFor={id} className="body-emphasis text-default">
           {label}
@@ -77,7 +78,13 @@ export function OutputField({
           readOnly
           value={value}
           rows={rows}
-          className={`caption ${monoClass} ${resizeClass} w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide ${fillTextareaClass}`.trim()}
+          className={cx(
+            'caption',
+            monoClass,
+            resizeClass,
+            'w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide',
+            fillTextareaClass
+          )}
           aria-label={ariaLabel ?? label}
         />
       </div>

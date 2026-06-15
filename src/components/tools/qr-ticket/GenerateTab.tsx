@@ -1,3 +1,4 @@
+import { cx } from '@/utils/cx';
 import { ChevronIcon } from '@/components/ui/ChevronIcon';
 import { CloseIcon } from '@/components/ui/CloseIcon';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -146,36 +147,30 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
 
           {privateKeyJwkStr && (
             <div className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="caption font-semibold text-default">秘密鍵（主催者が保管）</span>
-                  <CopyButton text={privateKeyJwkStr} label="コピー" />
-                </div>
-                <textarea
-                  readOnly
-                  value={privateKeyJwkStr}
-                  rows={4}
-                  className="caption font-mono w-full px-3 py-2 rounded-lg border border-input bg-surface text-default resize-none"
-                  aria-label="秘密鍵（主催者が保管）"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="caption font-semibold text-default">
-                    公開鍵（検証スタッフへ共有）
-                  </span>
-                  <CopyButton text={publicKeyJwkStr} label="コピー" />
-                </div>
-                <textarea
-                  readOnly
-                  value={publicKeyJwkStr}
-                  rows={4}
-                  className="caption font-mono w-full px-3 py-2 rounded-lg border border-input bg-surface text-default resize-none"
-                  aria-label="公開鍵（検証スタッフへ共有）"
-                  autoComplete="off"
-                />
-              </div>
+              <InputField
+                id="qr-ticket-private-key"
+                label="秘密鍵（主催者が保管）"
+                value={privateKeyJwkStr}
+                onChange={() => {}}
+                multiline
+                rows={4}
+                mono
+                readOnly
+                autoComplete="off"
+                headerRight={<CopyButton text={privateKeyJwkStr} label="コピー" />}
+              />
+              <InputField
+                id="qr-ticket-public-key"
+                label="公開鍵（検証スタッフへ共有）"
+                value={publicKeyJwkStr}
+                onChange={() => {}}
+                multiline
+                rows={4}
+                mono
+                readOnly
+                autoComplete="off"
+                headerRight={<CopyButton text={publicKeyJwkStr} label="コピー" />}
+              />
             </div>
           )}
         </div>
@@ -234,9 +229,10 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
               return (
                 <div
                   key={row._key}
-                  className={`flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-(--color-border) md:border-b-0 ${
-                    i === tickets.length - 1 ? 'border-none' : ''
-                  }`}
+                  className={cx(
+                    'flex flex-col md:flex-row gap-2 items-stretch md:items-center mb-6 md:mb-0 pb-4 md:pb-0 border-b border-default md:border-b-0',
+                    i === tickets.length - 1 && 'border-none'
+                  )}
                 >
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <span className="md:hidden caption text-muted font-semibold leading-none">
@@ -278,7 +274,10 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                   <div className="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
                     <span className="md:hidden caption text-muted font-semibold">合計データ量</span>
                     <span
-                      className={`w-auto md:w-15 caption text-right ${isOver ? 'text-error font-semibold' : 'text-muted'}`}
+                      className={cx(
+                        'w-auto md:w-15 caption text-right',
+                        isOver ? 'text-error font-semibold' : 'text-muted'
+                      )}
                       title="QRコードに埋め込まれる全データ（署名・時間含む）の合計バイト数"
                     >
                       {byteSize} B

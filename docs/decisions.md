@@ -4216,6 +4216,7 @@ cert-decoder（issue #643）で「鍵フォーマット変換（PEM/DER/JWK）�
 - ✅ 陽性対照テストにより「不正入力が必ず error になる」ことを CI で継続検証（test-gates 準拠）。
 - ⚠️ `asn1js` の valueBlock API は未型付けで直接辿るため脆弱性がある。Web Crypto の `importKey` 失敗で catch → error 返却でカバー。
 - ⚠️ PKCS#1/SEC1 のレガシー PEM を直接変換したい場合は別途 openssl が必要（v1 の既知制限として UI で案内）。
+- 🔧 **追補（2026-06-14）**: JWK import を鍵素材のみの取り込みに変更（`alg`/`key_ops`/`use`/`ext` を除去）し、`RS384`/`RS512`/`PS256` 等を宣言した署名鍵の import 失敗を解消。出力 JWK は Web Crypto 注入の advisory フィールドを除去し、入力 JWK のメタデータを allowlist（`kid`/`use`/`alg`/`key_ops`）で復元する（JWKS 用途で `kid` が失われる問題を修正）。`x5c`/`x5t#S256` 等の X.509 連携フィールドはスコープ外で往復時に脱落する。
 
 ## [113] 2026-06-13 — frontend-design もプラグイン運用から `npx skills add` vendor 方式へ移行
 
@@ -4268,3 +4269,143 @@ cert-decoder v1（decision [111]）では PKCS#12 をスコープ外としてい
 - ✅ 全処理ブラウザ内完結。秘密鍵が外部送信される経路がない。
 - ✅ 陽性対照テストにより誤パスワード・非 p12・レガシー暗号の検知能力を CI で継続検証。
 - ⚠️ RC2/3DES 保護の既存 .pfx は再エクスポートが必要（既知制限として UI で案内済み）。
+
+## [115] ESLint 導入 — react/button-has-type のみに限定 + CI enforce
+
+**2026-06-14 | ステータス: 採用**
+
+### 背景
+
+#271（親）のフォローアップ #569。`<button>` は `type` 省略時にデフォルト submit 化し、`<form>` 内で意図しない送信を招く事故クラスがある。本プロジェクトには ESLint が未導入だったため、ゼロから最小構成で導入する。
+
+### 決断
+
+- **ルールを `react/button-has-type` 1 本に限定**: recommended ルールセットは有効化しない。最小 blast radius で受け入れ基準を満たし、既存コードの大量違反リスクを排除する（将来のルール追加は別 issue）。
+- **依存最小化**: `eslint`（^9） + `@typescript-eslint/parser`（^8, .tsx パース用） + `eslint-plugin-react`（^7）のみ。typescript-eslint の recommended プラグインは入れない。
+- **バージョン固定**: eslint-plugin-react@7.37.5 の peer が `eslint ^9.7` までのため eslint は `^9` 系に固定（eslint 10 は peer conflict）。
+- **`.astro` は対象外**: HTML button は全件 type 付与済み（#566 等）で、`react/button-has-type` は JSX 専用。astro 用 parser/plugin の追加は YAGNI。
+- **CI enforce（CLAUDE.md §9.2 準拠の CI 設定変更）**: `test.yml` の test job に `npm run lint` step を追加。lint は OS 非依存のため test job 1 箇所のみ（e2e job には追加しない）。
+- **test-gates 準拠**: `tests/meta/eslint-button-has-type.test.ts` で ESLint API による陽性/陰性対照を併設し、検知能力ゼロで green になる事故を防止する。
+
+### 結果・トレードオフ
+
+- ✅ button type 漏れを CI で恒久的に機械検出。陽性対照で検知能力を継続検証。
+- ✅ ルール 1 本限定で導入時の既存違反・レビュー負荷が最小。
+- ⚠️ 他の lint 観点（hooks 依存配列・未使用変数等）は未カバー。必要になれば別 issue で recommended 化を検討する。
+
+## [116] HARビューア: 新規ライブラリ不採用・secret-scrubber 再利用・ウォーターフォール分離
+
+**2026-06-14 | ステータス: 採用**
+
+### 背景
+
+HAR（HTTP Archive）ファイルは JSON 形式のため専用パーサライブラリは不要。サニタイズには既存の `scrubText`（secret-scrubber）が再利用できる。ウォーターフォール（タイミング可視化）はデザイン工数が読めないため v1 対象外とした。
+
+### 決断
+
+**新規ライブラリ不採用・`scrubText` 再利用**
+HAR は `JSON.parse` でパース可能で専用ライブラリのメリットがない。secret-scrubber の `scrubText` / `DEFAULT_ENABLED` を本文走査に再利用し、依存追加ゼロで API キー・JWT・メール等を検出できる。
+
+**構造的 redact + scrubText 二段構え**
+フィールド名辞書ベースの構造的 redact（確実・高精度）と `scrubText`（自由テキスト走査・補完）を組み合わせた。構造的 redact のみでは本文内の取りこぼしが生じ、scrubText のみでは Cookie ヘッダや認証ヘッダのフィールド名ベース検出に限界がある。両者の補完関係により redact の漏えいリスクを低減する。
+
+**ウォーターフォール v1 から分離**
+ウォーターフォールはタイムライン描画・レイアウト設計が複雑で工数が読めないため、v1 スコープから除外し別 issue（#674）で引き継ぐ。閲覧・サニタイズ機能の価値は独立して提供できる。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし。既存 scrubText のルール更新が HAR サニタイザにも自動反映される。
+- ✅ 一貫トークン化により HAR 全体で同一値には同一プレースホルダが割り当てられる。
+- ✅ 純関数・入力非破壊設計により `useMemo` でトグル変更時に差分再計算できる。
+- ⚠️ 辞書外の独自ヘッダ名・パラメータ名は本文スキャンが拾える範囲のみの redact（完全網羅は保証しない）。
+- ✅ ウォーターフォールは issue #674 で実装完了（2026-06-15）。
+
+**[116] 追補: ウォーターフォール実装方針（2026-06-15）**
+
+- **全体タイムライン基準の相対配置**: 有効な `startedDateTime` を持つエントリの最小起点 `t0` を基準に、各エントリの `offsetRatio = (start - t0) / totalMs`、`widthRatio = durationMs / totalMs` で配置。`rows` は入力 `entries` と同じ index 対応（壊れたエントリも `hasTimeline=false` で埋める）
+- **ssl/connect 二重計上の控除**: HAR 1.2 仕様では ssl は connect の部分時間。`connect` セグメント ms = `connect - ssl`（下限 0）として ssl を別セグメントに分離し、合計での二重計上を防ぐ（`computeWaterfall` で一元化、`HarEntryDetail.TimingBreakdown` も同関数を再利用）
+- **配色は `@theme` フェーズトークン + `@layer components` クラス**: 7フェーズを `--color-har-*` トークンで `@theme` に登録し、`.har-phase-*` クラス経由で色を付ける。Tailwind primitive scale の直書き禁止原則に準拠
+- **inline style 禁止 → `useDynamicStyleSheet`**: CSP `style-src` 制約（decisions [067]）により `style={{ width }}` も `style={{ '--bar-width': ... }}` も不可。`HarEntryList` で 1 回だけ `useDynamicStyleSheet` を呼び全行・全セグメント分の CSS ルールを 1 文字列で生成して Constructable Stylesheets に注入する（hook をループ内・行ごとに呼ぶと sheet を量産するため禁止）
+- **スマホはタイミング列非表示・詳細パネルで内訳担保**: 一覧の「タイミング」列は `hidden md:table-cell` で 768px 未満で非表示。詳細パネル（`HarEntryDetail`）の `TimingBreakdown` セクションがスマホでタイミング情報の主担保となる
+
+## [117] HAR ビューア パフォーマンス改善: sanitize の Web Worker 化（+ 出力の遅延生成）
+
+**2026-06-14 | ステータス: 採用**
+
+### 背景
+
+7.8MB の HAR を読み込むとタブが固まり「ページが応答しません」になるという user 報告（issue #677）。UI / docs の「最大 25MB」表記が実態の処理能力と乖離し、誤解を招いていた。
+
+issue の root-cause 表は「白画面の主因は DOM ノード爆発（`HarEntryList` の全件 `<tr>` 描画）」と推定していたが、**実プロファイル未実施**との但し書きがあった。実装着手後の user 実機検証で**主因は同期 sanitize である**ことが判明した: まず `sanitizeHar` がメインスレッドを数秒〜十数秒固め（「ページが応答しません」発生）、その後ようやく描画に入ってさらに時間がかかる、という順序。バイト数 cap の調整やページングだけでは読み込み時のフリーズは解消しない。
+
+### 決断
+
+**parse + sanitize の Web Worker 化（フリーズの根治）**
+`sanitizeHar`（`structuredClone` + 全 response body の正規表現スキャン）を `src/workers/harSanitizer.worker.ts` で実行し、メインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する。フック `useHarSanitizer` が worker ライフサイクル・メッセージングを担い、`requestId` で最新リクエストのみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` に `onProgress` コールバックを追加し、処理済みエントリ数を逐次 worker → メインへ通知して `ProgressBar` で進捗表示する。処理時間自体は変わらないが UI が固まらず進捗が見える。
+
+**リスト描画は全件描画（ページングは導入しない）**
+当初は「描画フェーズの最適化」としてページング（`PAGE_SIZE = 100`）を入れたが、user の実 HAR 検証でエントリ数が数百件程度と判明。数百行の `<tr>` 描画はフリーズ要因にならず、ページングはこのケースで無価値（むしろ 100 件超で不要なページャが出て全件閲覧に「次へ」が必要になる）。フリーズの主因は sanitize でありそれは Worker 化で解消済みのため、ページングは撤去して全件描画に戻した。ページングが効くのは「数千エントリの巨大 HAR」だけだが、その場合も固まるのではなく長いリストになるだけで致命的でなく、YAGNI として不採用。`loadSeq` は新規読込時の選択リセット判定にのみ残す。
+
+**`outputJson` の遅延生成（`JSON.stringify` を copy/DL 押下時のみ）**
+毎レンダリングで数 MB を直列化する `useMemo` を廃止。`CopyButton` の `text` prop を `string | (() => string)` に拡張し、クリック時のみコールバックを評価する（後方互換）。
+
+**`MAX_BYTES` は 25MB を維持（メモリ防御ガード）**
+読み込み時のフリーズは Worker 化で解消したため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。実測（~6MB/5000 エントリで sanitize 約 2.6s、~18MB/10000 エントリで約 17s）では大きな HAR ほど時間がかかるが、worker 上のためメインスレッドは固まらず進捗バーで状況が分かる。
+
+### 実装上の注意
+
+- `sanitize.ts` は worker の依存グラフに含まれるため `@/` ではなく**相対 import** を使う。Vite の worker Rollup サブビルドには tsconfig paths / `@/` エイリアスが伝播せず、`@/utils/...` 形式だと worker ビルドが解決に失敗する（build5 で確認）。`secret-scrubber/*` は内部が相対 import のため、`sanitize.ts` の 2 行を相対化するだけで worker グラフ全体が alias-free になる。
+- 本番 CSP（`src/utils/csp.ts`）には既に `worker-src 'self'` があり、同一オリジンの module worker は許可される。
+
+### 却下した選択肢
+
+- **ページング / バイト cap 調整のみ（sanitize 非同期化を別 issue へ分離）**: 初版 PR の方針。しかし user 実機検証で主因が同期 sanitize と判明し、これでは見出しの症状（読み込み時フリーズ）が消えないため撤回。Worker 化を本 PR に取り込んだ。
+- **メインスレッドで chunk 分割 async**: Worker より単純だが完全な off-thread ではなく、長い同期区間が残りうる。確実にフリーズを消す Worker を採用。
+- **ページング / 仮想スクロールで描画を抑制**: 当初ページングを入れたが、実 HAR の主因は描画ではなく sanitize であり、エントリ数も数百件で描画は軽い。撤去して全件描画に戻した（YAGNI）。
+
+### 教訓（検証の重要性）
+
+issue の root-cause 表（「DOM 描画が最有力」）は**実プロファイル未実施の推定**だった。その推定を鵜呑みにしてページングを主軸に実装したが、実際のボトルネックは sanitize であり、ページングは報告ケース（数百エントリ）では無価値だった。**推定された root-cause は実機計測で確定してから実装方針を決めるべき**。今回は user の実機検証で軌道修正できたが、着手前に小さく計測（sanitize 単体の所要時間 / エントリ数 vs body サイズの切り分け）すべきだった。
+
+### 結果・トレードオフ
+
+- ✅ 読み込み時の「ページが応答しません」を解消（sanitize がメインスレッドを固めない）。
+- ✅ 大きな HAR でも進捗バーで処理状況が見える。
+- ✅ `JSON.stringify` が copy/DL 時のみ実行され、毎レンダリングの数 MB 直列化を排除。
+- ⚠️ 差分 sanitize（トグル時に変更カテゴリのみ再処理）は未対応。大きな HAR ではトグルのたびに全件再 sanitize するが、worker 上のため UI は固まらない（進捗表示）。将来課題。
+- ⚠️ worker 化で parse/sanitize は非同期になり、結果反映前に短時間ローディング状態を経由する（E2E は `toBeVisible` の auto-retry で吸収）。
+- ⚠️ 全件描画のため、数千エントリ級の巨大 HAR では DOM 行数が多くなる（固まりはしないが描画が重くなりうる）。その規模が問題になれば仮想スクロール等を別途検討する。
+- ⚠️ 進捗バーの粒度はエントリ件数基準（`PROGRESS_INTERVAL = 100`）。実ボトルネックである「少数エントリ × 巨大レスポンスボディの正規表現スキャン」では 1 ボディの scan 中は進捗が進まず、数百件規模だとバーがほとんど動かないことがある（固着ではない）。バイト基準の進捗化は将来課題。
+- 堅牢性: worker の `onmessage` を try/catch で包み、`useHarSanitizer` に `worker.onerror` を設定。プロトコル外の例外でも `error` 状態に落とし、`busy` が永久 true で固着するのを防ぐ（PR #680 レビュー反映）。`reset()` は worker に `{ type: 'reset' }` を post して保持中 HAR（最大 25MB）を解放する。
+
+## [118] HAR サニタイザ: サニタイズ監査由来の堅牢化（漏れ修正・ReDoS 解消・カバレッジ拡張）
+
+**2026-06-14 | ステータス: 採用**
+
+### 背景
+
+HAR ビューア＆サニタイザのサニタイズ処理を多角的に監査し（サブエージェント2系統 + 実機裏取り）、機密が出力に残る漏れ・URL 破壊バグ・ReDoS による実質 DoS など6件（#685〜#690）を検出した。根幹機能のため段階的に修正する。設計詳細は `docs/superpowers/specs/2026-06-14-har-sanitizer-hardening-design.md`。
+
+### 決断
+
+3 PR に分割し、ReDoS 攻撃面の拡大を避けるため **PR-A（検出エンジン強化）→ PR-C（ReDoS 対策）→ PR-B（カバレッジ拡張）** の順で実装:
+
+- **PR-A**: JSON ボディの `"password":"value"` 漏れ（CREDENTIAL_ASSIGN の引用符許容）、`redactUrl` の URL 破壊・断片漏れ（共有 `url-credential.ts` ビルダーに一本化）、`d` フラグ非対応時の fail-open 反転、JWT 多セグメント化等。
+- **PR-C**: `scrubText` の O(n²) ReDoS。真因は `HIGH_ENTROPY` ではなく **EMAIL / URL scheme / JWT** の「上限なし greedy + 後続必須トークン」構造（実機計測で特定）。RFC 準拠の量化子上限で O(n) 化。当初案の `HIGH_ENTROPY` 上限化は 512 字超で逆に O(n²) を生むため不採用。
+- **PR-B**: 辞書外ヘッダ値・URL パス・`response.redirectURL`・辞書外クエリへ `scrubText` を拡張し、base64 バイナリ本文（mimeType 判定）はスキャンをスキップ。
+
+### over-masking の許容（PR-B）
+
+URL パス / 辞書外ヘッダへの `scrubText` 適用で、パスやヘッダ内の IP・メール・高エントロピー文字列も redact されうる。これは **漏えい方向ではなく安全側（over-masking）** であり、URL の `scheme://authority`（host）は保持して可読性を維持するため許容する。クエリ/フラグメントは構造を壊さないよう **param value 単位で走査**する（CREDENTIAL_ASSIGN の値クラスが区切り `&` を越えて隣の非機密 param を飲み込む破壊を防ぐ）。
+
+### 既知の残存リスク
+
+- `CREDENTIAL_ASSIGN` の値クラス `[^\s'",;]{6,}` 由来で 6 文字未満・空白入り値は取りこぼす（誤検出とのトレードオフのため一律緩和せず）。
+- JWT セグメント上限 `{1,1024}` 超の巨大トークンは全体マッチしないが、各セグメントを `HIGH_ENTROPY_BASE64` が拾う安全網がある（エントロピー条件付き）。
+- mimeType 欠落かつ base64 本文のケースは完全には防げない。
+- ~~トークン衝突（入力中の既存 `[REDACTED:...]` リテラル）は #690 L-3 として据置（漏えいではなく安全側）~~ → **#690 L-3 対応済み**（`claude/issues-690-694-695-uowikg`）: `scrubText` に `PLACEHOLDER_RE` pre-scan による `reservedMax` 採番考慮を追加し、`makeTokenizer` に `PLACEHOLDER_EXACT_RE` 完全一致による冪等化ガードを追加。
+
+### フォローアップ対応済み（#694 / #695）
+
+- **#694 自由テキスト走査の独立カテゴリ化**: 辞書ベースの確実 redact（`AUTH_HEADER` / `QUERY`）と自由テキスト走査（`HEADER_SCAN` / `PATH_SCAN`）を別トグル・別カテゴリに分離した。ユーザーが「辞書外ヘッダ走査のみ ON」「URL パス走査のみ ON」と細かく制御できるようになり、件数表示も意味的に正確になった。
+- **#695 `data:` URL 破壊回避**: `scrubUrlPath` の冒頭で `data:` スキーム（大文字小文字無視）を検出したら scrubText を一切適用せず原文を返す。`HIGH_ENTROPY_BASE64` が base64 ペイロードを `[REDACTED]` に置換してデコード不能にする #690 M-2 と同型の破壊クラスを回避する。

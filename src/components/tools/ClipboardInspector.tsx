@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { cx } from '@/utils/cx';
 import { Section } from '@/components/ui/Section';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -213,9 +214,10 @@ export function ClipboardInspectorTool() {
           setIsDragOver(true);
         }}
         onDragLeave={() => setIsDragOver(false)}
-        className={`caret-transparent rounded-xl border-2 border-dashed border-default p-8 text-center ${
-          isDragOver ? 'bg-subtle' : ''
-        }`}
+        className={cx(
+          'caret-transparent rounded-xl border-2 border-dashed border-default p-8 text-center',
+          isDragOver && 'bg-subtle'
+        )}
       >
         <p className="body-emphasis text-default m-0">
           このページで Ctrl+V / Cmd+V
@@ -242,6 +244,9 @@ export function ClipboardInspectorTool() {
             </div>
             <ClearButton
               onClick={() => {
+                // in-flight キャプチャの resolve を破棄する（クリア後に古い getAsString が
+                // 解決して snapshot を復活させるのを防ぐ）。capture の seq ガードと一貫させる
+                captureSeqRef.current++;
                 setSnapshot(null);
                 setAnnouncement('クリアしました');
               }}
@@ -255,31 +260,35 @@ export function ClipboardInspectorTool() {
             </p>
           )}
 
-          {snapshot.strings.map((flavor, i) => (
-            <Section
-              key={`${flavor.type}-${i}`}
-              title={<code className="font-mono">{flavor.type}</code>}
-              headerSlot={
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="caption text-muted leading-none">
-                    {[...flavor.content].length.toLocaleString('ja-JP')} 文字 /{' '}
-                    {flavor.byteSize.toLocaleString('ja-JP')} バイト
-                  </span>
-                  <CopyButton text={flavor.content} ariaLabel={`${flavor.type} の内容をコピー`} />
-                </div>
-              }
-            >
-              {flavor.type === 'text/html' ? (
-                <HtmlFlavorBody
-                  html={flavor.content}
-                  view={htmlViews[i] ?? 'source'}
-                  onViewChange={(v) => setHtmlViews((prev) => ({ ...prev, [i]: v }))}
-                />
-              ) : (
-                <FlavorPre content={flavor.content} />
-              )}
-            </Section>
-          ))}
+          {snapshot.strings.map((flavor, i) => {
+            // 空 type のフォールバックは表示タイトルと SR 向け aria-label で揃える
+            const typeLabel = flavor.type || '(type 不明)';
+            return (
+              <Section
+                key={`${flavor.type}-${i}`}
+                title={<code className="font-mono">{typeLabel}</code>}
+                headerSlot={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="caption text-muted leading-none">
+                      {[...flavor.content].length.toLocaleString('ja-JP')} 文字 /{' '}
+                      {flavor.byteSize.toLocaleString('ja-JP')} バイト
+                    </span>
+                    <CopyButton text={flavor.content} ariaLabel={`${typeLabel} の内容をコピー`} />
+                  </div>
+                }
+              >
+                {flavor.type === 'text/html' ? (
+                  <HtmlFlavorBody
+                    html={flavor.content}
+                    view={htmlViews[i] ?? 'source'}
+                    onViewChange={(v) => setHtmlViews((prev) => ({ ...prev, [i]: v }))}
+                  />
+                ) : (
+                  <FlavorPre content={flavor.content} />
+                )}
+              </Section>
+            );
+          })}
 
           {snapshot.files.map((entry, i) => (
             <FileFlavorCard key={`${entry.name}-${i}`} entry={entry} />

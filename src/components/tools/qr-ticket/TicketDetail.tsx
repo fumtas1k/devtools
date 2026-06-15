@@ -1,4 +1,5 @@
 import { formatTimestamp, type TicketPayload } from '@/utils/qr-ticket';
+import { cx } from '@/utils/cx';
 
 const MONO_LABELS = ['チケットID', 'イベントID'];
 
@@ -17,9 +18,7 @@ export function TicketDetail({ ticket }: { ticket: TicketPayload }) {
         {rows.map(({ label, value }) => (
           <tr key={label}>
             <td className="caption text-muted pr-4 pb-1 whitespace-nowrap">{label}</td>
-            <td
-              className={`caption text-default ${MONO_LABELS.includes(label) ? 'font-mono' : ''}`}
-            >
+            <td className={cx('caption text-default', MONO_LABELS.includes(label) && 'font-mono')}>
               {value}
             </td>
           </tr>

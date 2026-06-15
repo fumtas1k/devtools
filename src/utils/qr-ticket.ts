@@ -2,10 +2,10 @@
  * QRチケット: ECDSA P-256署名付きチケットの生成・検証ユーティリティ
  *
  * 暗号処理はすべてWeb Crypto API（ブラウザ組み込み）を使用。
- * QR生成はqrcode-generator（既存依存）を使用。
+ * QR生成は createQrSvg (@/utils/qrcode) 経由で qrcode-generator を使用。
  */
 
-import qrcode from '@/utils/qrcode';
+import { createQrSvg } from '@/utils/qrcode';
 import { base64UrlToBuffer, bufferToBase64Url } from '@/utils/base64url';
 
 // ─── 定数 ───────────────────────────────────────────────
@@ -247,10 +247,7 @@ export function ticketToQrString(ticket: SignedTicket): string {
 export function generateQrSvg(data: string): string | null {
   if (!data) return null;
   try {
-    const qr = qrcode(0, 'M');
-    qr.addData(data);
-    qr.make();
-    return qr.createSvgTag({ scalable: true });
+    return createQrSvg(data, 'M');
   } catch {
     return null;
   }

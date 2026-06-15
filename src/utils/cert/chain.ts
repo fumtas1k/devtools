@@ -55,64 +55,76 @@ function isExpired(cert: ParsedCert, now: Date): boolean {
   return now < cert.notBefore || now > cert.notAfter;
 }
 
+/** subject.full → そのDNを持つ全 index のリスト */
+function buildSubjectMap(certs: ParsedCert[]): Map<string, number[]> {
+  const map = new Map<string, number[]>();
+  for (let i = 0; i < certs.length; i++) {
+    const key = certs[i].subject.full;
+    const list = map.get(key);
+    if (list) list.push(i);
+    else map.set(key, [i]);
+  }
+  return map;
+}
+
+/**
+ * cert の親（issuer に該当する集合内 index）を解決する。
+ *
+ * - 自己署名（subject==issuer）→ null
+ * - DN 一致候補なし（自分自身を除く）→ null
+ * - AKI あり: SKI 一致候補を優先。一致が無く、かつ SKI を持つ候補が存在 → null（不一致確定）。
+ *            SKI を持つ候補が皆無 → DN 先頭候補にフォールバック（比較不能・後方互換）。
+ * - AKI なし: DN 先頭候補を採用。
+ */
+function resolveParentIndex(
+  cert: ParsedCert,
+  idx: number,
+  certs: ParsedCert[],
+  subjectMap: Map<string, number[]>
+): number | null {
+  if (cert.subject.full === cert.issuer.full) return null;
+
+  const candidates = (subjectMap.get(cert.issuer.full) ?? []).filter((c) => c !== idx);
+  if (candidates.length === 0) return null;
+
+  if (cert.authorityKeyId !== undefined) {
+    const matched = candidates.find((c) => certs[c].subjectKeyId === cert.authorityKeyId);
+    if (matched !== undefined) return matched;
+    const anyHasSki = candidates.some((c) => certs[c].subjectKeyId !== undefined);
+    if (anyHasSki) return null;
+  }
+
+  return candidates[0];
+}
+
 /**
  * issuer→subject 順に並べ替えたインデックス列を構築する。
- *
- * アルゴリズム:
- * 1. 自己署名（subject.full === issuer.full）を root 候補とする
- * 2. root → child と辿って order を構築
- * 3. 環状参照や孤立 cert は末尾に追記
+ * 親関係は resolveParentIndex を単一の真実源とする（buildChain と整合）。
  */
-function buildOrder(certs: ParsedCert[]): number[] {
+function buildOrder(certs: ParsedCert[], subjectMap: Map<string, number[]>): number[] {
   const n = certs.length;
   if (n === 0) return [];
   if (n === 1) return [0];
 
-  // subject.full → index の逆引きマップ
-  const subjectMap = new Map<string, number>();
-  for (let i = 0; i < n; i++) {
-    subjectMap.set(certs[i].subject.full, i);
-  }
-
-  // 各証明書の親インデックスを求める（DN 一致ベース）
   const parentOf = new Map<number, number | null>();
   for (let i = 0; i < n; i++) {
-    const cert = certs[i];
-    const isSelfSigned = cert.subject.full === cert.issuer.full;
-    if (isSelfSigned) {
-      parentOf.set(i, null);
-    } else {
-      const parentIdx = subjectMap.get(cert.issuer.full);
-      parentOf.set(i, parentIdx !== undefined ? parentIdx : null);
-    }
+    parentOf.set(i, resolveParentIndex(certs[i], i, certs, subjectMap));
   }
 
-  // 深さ優先で root から並べる
-  // root = 親が null（かつ自己署名）または 集合内に親が存在しない
+  // root = 親が null（自己署名 or 親不明 or AKI/SKI 不一致）
   const roots: number[] = [];
   for (let i = 0; i < n; i++) {
-    const p = parentOf.get(i);
-    if (p === null) {
-      // 自己署名 or 明示的に null
-      roots.push(i);
-    } else if (p === undefined) {
-      // 親が集合内に見つからない
-      roots.push(i);
-    }
+    if (parentOf.get(i) === null) roots.push(i);
   }
-
-  // root が無ければ index 0 を仮 root にする
   if (roots.length === 0) roots.push(0);
 
   const order: number[] = [];
   const visited = new Set<number>();
 
-  // root → 子 → 孫 の順で追加
   function traverse(idx: number): void {
     if (visited.has(idx)) return;
     visited.add(idx);
     order.push(idx);
-    // children: この証明書を親とするもの
     for (let j = 0; j < n; j++) {
       if (!visited.has(j) && parentOf.get(j) === idx) {
         traverse(j);
@@ -148,16 +160,9 @@ export async function buildChain(certs: ParsedCert[]): Promise<ChainResult> {
     return { order: [], links: [] };
   }
 
-  // subject.full → index の逆引きマップ（親候補検索用）
-  const subjectMap = new Map<string, number>();
-  for (let i = 0; i < n; i++) {
-    subjectMap.set(certs[i].subject.full, i);
-  }
+  const subjectMap = buildSubjectMap(certs);
+  const order = buildOrder(certs, subjectMap);
 
-  // 並び順を構築
-  const order = buildOrder(certs);
-
-  // 各証明書について ChainLink を構築（署名検証は非同期）
   const links: ChainLink[] = await Promise.all(
     certs.map(async (cert, idx): Promise<ChainLink> => {
       const expired = isExpired(cert, now);
@@ -179,33 +184,15 @@ export async function buildChain(certs: ParsedCert[]): Promise<ChainResult> {
         return { subjectIndex: idx, issuerIndex: null, signatureValid, expired };
       }
 
-      // 親を subject DN で検索
-      const issuerIdx = subjectMap.get(cert.issuer.full);
-
-      if (issuerIdx === undefined) {
-        // 親が集合内にない
+      const issuerIdx = resolveParentIndex(cert, idx, certs, subjectMap);
+      if (issuerIdx === null) {
         return { subjectIndex: idx, issuerIndex: null, signatureValid: null, expired };
       }
 
-      // AKI/SKI による絞り込み（あれば精度向上）
-      let resolvedIssuerIdx = issuerIdx;
-      if (cert.authorityKeyId !== undefined && certs[issuerIdx].subjectKeyId !== undefined) {
-        if (cert.authorityKeyId !== certs[issuerIdx].subjectKeyId) {
-          // AKI/SKI が不一致の場合は親なし扱い
-          return { subjectIndex: idx, issuerIndex: null, signatureValid: null, expired };
-        }
-      }
-
       // 署名検証（改ざん検出含む）
-      // cert.der / certs[resolvedIssuerIdx].der を DER から直接 pkijs 再構築して検証
-      const signatureValid = await verifySignature(cert.der, certs[resolvedIssuerIdx].der);
+      const signatureValid = await verifySignature(cert.der, certs[issuerIdx].der);
 
-      return {
-        subjectIndex: idx,
-        issuerIndex: resolvedIssuerIdx,
-        signatureValid,
-        expired,
-      };
+      return { subjectIndex: idx, issuerIndex: issuerIdx, signatureValid, expired };
     })
   );
 

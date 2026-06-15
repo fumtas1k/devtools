@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { parseCertificates } from '@/utils/cert/parse';
+import { parseCertificates, extractAttributeValue, formatIpAddress } from '@/utils/cert/parse';
 import { makeTestChain, makeRsaCert, type TestChain } from './cert-fixtures';
 
 let chain: TestChain;
@@ -51,5 +51,70 @@ describe('parseCertificates', () => {
   it('EC 証明書の曲線を P-256 として返す', async () => {
     const r = await parseCertificates(chain.leafPem);
     expect(r.certs[0].publicKey.namedCurve).toBe('P-256');
+  });
+
+  it('1 MiB を超える入力は topLevelError を返す（#1b 入力長ガード・陽性対照）', async () => {
+    const tooLarge = 'a'.repeat(1024 * 1024 + 1);
+    const r = await parseCertificates(tooLarge);
+    expect(r.certs).toHaveLength(0);
+    expect(r.topLevelError).toBeTruthy();
+  });
+
+  it('上限直下の正常な PEM は通常どおりパースできる（陰性対照）', async () => {
+    const r = await parseCertificates(chain.leafPem);
+    expect(r.certs).toHaveLength(1);
+    expect(r.certs[0].error).toBeUndefined();
+  });
+});
+
+describe('extractAttributeValue（#4 DN 値の整形）', () => {
+  it('valueBlock.value が文字列ならそのまま返す', () => {
+    expect(extractAttributeValue({ valueBlock: { value: 'example.test' } })).toBe('example.test');
+  });
+
+  it('文字列でなく valueHexView を持つ場合は hex にフォールバックする', () => {
+    expect(
+      extractAttributeValue({
+        valueBlock: { valueHexView: new Uint8Array([0xde, 0xad, 0xbe, 0xef]) },
+      })
+    ).toBe('deadbeef');
+  });
+
+  it('値が取り出せない場合は空文字を返す（[object Object] にしない）', () => {
+    expect(extractAttributeValue(null)).toBe('');
+    expect(extractAttributeValue({})).toBe('');
+  });
+});
+
+describe('formatIpAddress（#6 IPv6 圧縮）', () => {
+  it('IPv4（4 byte）はドット表記', () => {
+    expect(formatIpAddress(new Uint8Array([192, 168, 0, 1]))).toBe('192.168.0.1');
+  });
+
+  it('IPv6 のゼロ連続を :: に圧縮する', () => {
+    const bytes = new Uint8Array([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+    expect(formatIpAddress(bytes)).toBe('2001:db8::1');
+  });
+
+  it('全ゼロは :: になる', () => {
+    expect(formatIpAddress(new Uint8Array(16))).toBe('::');
+  });
+
+  it('ループバック ::1', () => {
+    const bytes = new Uint8Array(16);
+    bytes[15] = 1;
+    expect(formatIpAddress(bytes)).toBe('::1');
+  });
+
+  it('長さ1のゼロ群は圧縮しない', () => {
+    // 2001:0:1:0:1:1:1:1（各ゼロ群は長さ1）
+    const bytes = new Uint8Array([0x20, 0x01, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1]);
+    expect(formatIpAddress(bytes)).toBe('2001:0:1:0:1:1:1:1');
+  });
+
+  it('複数のゼロ連続がある場合は最長を圧縮する', () => {
+    // 0:0:1:0:0:0:0:1 → 後半の長さ4を圧縮 → 0:0:1::1
+    const bytes = new Uint8Array([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+    expect(formatIpAddress(bytes)).toBe('0:0:1::1');
   });
 });

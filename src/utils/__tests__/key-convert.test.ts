@@ -409,6 +409,79 @@ describe('陽性対照: 不正入力を検知して error を返す', () => {
 });
 
 // ===========================================================================
+// JWK 変換の堅牢化・メタデータ忠実化（PR: key-converter JWK fidelity）
+// ===========================================================================
+
+describe('JWK import の堅牢化（制約フィールド非依存）', () => {
+  it('alg:"RS512" を宣言した RSA 公開鍵 JWK でも error なく変換できる', async () => {
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.alg = 'RS512';
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    expect(result.algorithm).toBe('RSA');
+  });
+
+  it('use:"enc" を宣言した RSA 公開鍵 JWK でも error なく変換でき、use / key_ops を保持する', async () => {
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.use = 'enc';
+    jwk.key_ops = ['encrypt'];
+    delete jwk.alg;
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    expect(out.use).toBe('enc');
+    expect(out.key_ops).toEqual(['encrypt']);
+  });
+});
+
+describe('出力 JWK のメタデータ忠実化', () => {
+  it('入力 JWK の kid / use を出力 JWK に保持する', async () => {
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.kid = 'my-key-2026';
+    jwk.use = 'sig';
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    expect(out.kid).toBe('my-key-2026');
+    expect(out.use).toBe('sig');
+  });
+
+  it('入力 JWK の alg を出力 JWK に保持する', async () => {
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.alg = 'RS512';
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    expect(out.alg).toBe('RS512');
+  });
+
+  it('PEM 入力の出力 JWK には alg / ext を付与しない（アルゴリズムを詐称しない）', async () => {
+    const result = await convertKey(rsaPublic.pem);
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    expect('alg' in out).toBe(false);
+    expect('ext' in out).toBe(false);
+  });
+
+  it('メタデータ復元は allowlist 限定で、x5c など X.509 連携フィールドは出力に残さない', async () => {
+    // 復元対象は kid / use / alg / key_ops のみ。x5c / x5t#S256 等の証明書連携
+    // フィールドは v1 スコープ外であり、往復で脱落する現挙動を固定する。
+    const jwk = JSON.parse(rsaPublic.jwkText) as Record<string, unknown>;
+    jwk.kid = 'with-cert';
+    jwk.x5c = ['MIIDfake...'];
+    jwk['x5t#S256'] = 'abc123';
+    const result = await convertKey(JSON.stringify(jwk));
+    expect(result.error).toBeUndefined();
+    const out = JSON.parse(result.jwk!) as Record<string, unknown>;
+    // allowlist 内は保持
+    expect(out.kid).toBe('with-cert');
+    // allowlist 外は脱落
+    expect('x5c' in out).toBe(false);
+    expect('x5t#S256' in out).toBe(false);
+  });
+});
+
+// ===========================================================================
 // detectKeyInput の単体テスト（陽性対照：検知機能の確認）
 // ===========================================================================
 

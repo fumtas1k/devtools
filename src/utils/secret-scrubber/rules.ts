@@ -4,6 +4,7 @@
  */
 
 import { shannonEntropy } from './entropy';
+import { makeUrlCredentialRegex } from './url-credential';
 
 export type ScrubCategory =
   | 'API_KEY'
@@ -193,21 +194,19 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'CREDENTIAL_ASSIGN',
     category: 'CREDENTIAL',
-    // キー名は残し、値部分のみマスク（グループ 1）。日本語キー名・全角コロンにも対応
+    // キー名は残し、値部分のみマスク（グループ 1）。日本語キー名・全角コロン/イコール・JSON 形式にも対応
     pattern:
-      /(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|credential|パスワード|シークレット|トークン|秘密鍵|認証キー)\s*[:=：]\s*['"]?([^\s'",;]{6,})/dgi,
+      /(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|credential|パスワード|シークレット|トークン|秘密鍵|認証キー)(?:["'])?\s*[:=：＝]\s*['"]?([^\s'",;]{6,})/dgi,
     maskGroup: 1,
     priority: 80,
   },
   {
     id: 'CREDENTIAL_URL',
     category: 'CREDENTIAL',
-    // URL 認証情報: パスワード部（グループ 1）のみマスク。
-    // ホスト部までフルマッチに含めることで、`パスワード@ホスト` がメール形式に
-    // 誤マッチしても「考慮済み領域内」として重複解決で破棄される（ホスト保持）。
-    // ホストはブラケット形式 IPv6（`[::1]` 等）にも対応（PR #631 再レビュー指摘）
-    pattern: /[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:([^@/\s]+)@(?:\[[^\]\s]+\]|[\w.-]+)/dgi,
-    maskGroup: 1,
+    // URL 認証情報: パスワード部（グループ 2）のみマスク。共有ビルダーで sanitize.ts と一本化。
+    // 自由テキスト走査では scheme を必須にして非 URL 断片の誤検出を防ぐ（requireScheme: true）。
+    pattern: makeUrlCredentialRegex({ flags: 'dgi', requireScheme: true }),
+    maskGroup: 2,
     priority: 80,
   },
   {
@@ -224,7 +223,12 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'JWT_TOKEN',
     category: 'JWT',
-    pattern: /\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/g,
+    // 3セグメント JWT に加え、4〜5セグメントの JWE も末尾まで全体マッチする。
+    // 各セグメントを {1,1024} で bound し、`.` の無い `-eyJ` 反復等での catastrophic
+    // backtracking（O(n²) ReDoS, #688）を防ぐ。1024 超の巨大セグメントを持つ稀なトークンは
+    // 全体マッチしないが、各セグメント（高エントロピー base64url ≥24字）が HIGH_ENTROPY_BASE64
+    // で redact されるため漏えいしない（安全網）。
+    pattern: /\beyJ[\w-]{1,1024}(?:\.[\w-]{1,1024}){2,}\b/g,
     priority: 85,
   },
 
@@ -232,8 +236,10 @@ export const SCRUB_RULES: ScrubRule[] = [
   {
     id: 'EMAIL',
     category: 'EMAIL',
-    // ドメインは「.+セグメント」の繰り返しで終端し、文末ピリオドを巻き込まない
-    pattern: /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,
+    // local part ≤64 / label ≤63（RFC 上限）で量化子を bound し、@ 無し長語連での
+    // catastrophic backtracking（O(n²) ReDoS, #688）を防ぐ。ドメインは「.+セグメント」の
+    // 繰り返しで終端し文末ピリオドを巻き込まない。上限超過のメール風文字列は RFC 上無効。
+    pattern: /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63})+/g,
     priority: 60,
   },
 

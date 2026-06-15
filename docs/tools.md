@@ -2,18 +2,41 @@
 
 各ツールが内部でどう動くかを開発者向けに解説する。README のツール一覧は「何ができるか」、本ドキュメントは「どう動くか」を扱う。ライブラリの採用理由や設計判断の経緯は [docs/decisions.md](decisions.md) を参照。
 
-各ツールは原則 3 小節（仕組み・アルゴリズム / 準拠仕様・RFC / 制限・エッジケース）で構成する。該当しない小節は省略する。本ドキュメントはまず代表的なツールから記述し、残りは順次追記する。
+各ツールは原則 3 小節（仕組み・アルゴリズム / 準拠仕様・RFC / 制限・エッジケース）で構成する。該当しない小節は省略する。`src/data/tools.ts` に登録された全ツールを網羅することを原則とし、新規ツール追加時は本ドキュメントに節を追加する（`.agents/rules/common.md` 4 章のドキュメント更新ルール参照）。
 
 ## 目次
 
 - [生成](#生成)
+  - [ULID生成](#ulid生成)
+  - [UUID v7 生成](#uuid-v7-生成)
+  - [ダミーテキスト生成](#ダミーテキスト生成)
+  - [TOTP/HOTP ジェネレータ](#totphotp-ジェネレータ)
 - [コード・バーコード](#コードバーコード)
+  - [QRコード生成](#qrコード生成)
+  - [JANコード生成](#janコード生成)
+  - [GS1 DataBar 生成](#gs1-databar-生成)
+  - [QRチケット](#qrチケット)
+  - [QRリーダー](#qrリーダー)
 - [エンコード・デコード](#エンコードデコード)
+  - [URLエンコード/デコード](#urlエンコードデコード)
+  - [Base64 エンコード/デコード](#base64-エンコードデコード)
+  - [JWTデコーダー](#jwtデコーダー)
   - [SSL/TLS証明書デコーダ](#ssltls証明書デコーダ)
 - [変換・解析](#変換解析)
+  - [JSON / XML 変換](#json--xml-変換)
+  - [JSON / CSV 変換](#json--csv-変換)
+  - [文字コード判定・変換](#文字コード判定変換)
+  - [設定ファイル相互変換](#設定ファイル相互変換)
+  - [文字カウント](#文字カウント)
+  - [SQL整形・パラメータ埋め込み](#sql整形パラメータ埋め込み)
+  - [正規表現ビジュアライザ＆ReDoS検出](#正規表現ビジュアライザredos検出)
+  - [JSON整形・ビューア](#json整形ビューア)
   - [CIDR/サブネット計算機](#cidrサブネット計算機)
+  - [シークレットスクラバー](#シークレットスクラバー)
+  - [クリップボードインスペクタ](#クリップボードインスペクタ)
   - [DSN/接続文字列ビルダ](#dsn接続文字列ビルダ)
   - [鍵フォーマット変換](#鍵フォーマット変換)
+  - [HARビューア＆サニタイザ](#harビューアサニタイザ)
 
 ## 生成
 
@@ -205,6 +228,7 @@ ECDSA 署名付きチケットを生成し、公開鍵でオフライン検証�
 カメラまたは画像ファイルから QR コードを読み取る。デコードは `jsQR`。
 
 - **画像ファイル**: `URL.createObjectURL` → `Image` → `<canvas>` に描画 → `getImageData` → `jsQR` でデコードする（`decodeQrFromFile`）。長辺が `maxDim`（既定 1600px）を超える画像はアスペクト比を保ってダウンスケールしてから処理する。各 `await` ポイントで `AbortSignal` を確認し、処理中のキャンセルに対応する。
+- **ファイル検証**: アップロード前に `validateFile`（`@/utils/file-validation`）で検証する。画像判定は `file.type`（OS / browser 由来の advisory 値で拡張子偽装を検知できない）に依存せず、先頭バイトの magic number（PNG / JPEG / GIF / WebP）で行う。SVG はバイナリ magic を持たないため先頭テキストを sniff（`<svg>` 始まり、または `<?xml>` 始まり かつ `<svg>` 出現）する。拡張子だけ画像に偽装した非画像ファイルは canvas 到達前に拒否される。
 - **カメラ**: `useQrCamera` フックでライブ映像から読み取る。
 - **結果判定**: デコード文字列を `detectQrContent` で解析し、`http:` / `https:` の URL ならホスト名付きの URL として、それ以外はテキストとして表示する。
 
@@ -569,6 +593,8 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 入力種別を `key/detect.ts` で判定する。テキストが `{` 始まりで JSON parse 可能かつ `kty` を持つ → JWK、`-----BEGIN ... -----` マッチ → PEM、Uint8Array または base64-only テキスト（先頭 `0x30` DER SEQUENCE）→ DER の優先順で判別する
 - DER / PEM の場合は `asn1js.fromBER` でトップレベル SEQUENCE を解析し、第1要素が INTEGER（version=0）→ PKCS#8 秘密鍵、第1要素が SEQUENCE（AlgorithmIdentifier）→ SPKI 公開鍵と判定する。AlgorithmIdentifier の OID で RSA（`1.2.840.113549.1.1.1`）/ EC（`1.2.840.10045.2.1`）を識別し、EC の場合は params の named curve OID（P-256=`1.2.840.10045.3.1.7` / P-384=`1.3.132.0.34` / P-521=`1.3.132.0.35`）から曲線名を取得する
 - JWK の場合は `kty` / `crv` フィールドとプライベートキーフィールド（`d` の有無）で鍵種別を判定する
+- JWK の import は鍵素材（RSA: `n`/`e`/`d`…、EC: `x`/`y`/`d`）のみを取り込み、入力 JWK の `alg` / `key_ops` / `use` / `ext` は import 前に除去する。これにより `RS384` / `RS512` / `PS256` を宣言した署名鍵や用途宣言付きの鍵も鍵素材の形式変換として扱える（hash・用途は変換結果に影響しないため）
+- 出力 JWK は Web Crypto が付与する `ext` / `key_ops` / `alg` を除去したうえで、入力が JWK の場合のみ元の `kid` / `use` / `alg` / `key_ops` を復元する。PEM / DER 入力では鍵素材から導けない `alg` を付与せず、アルゴリズムを詐称しない
 - 変換は `crypto.subtle.importKey`（`extractable: true`）→ `exportKey` の流れで全形式を生成する。RSA は `RSASSA-PKCS1-v1_5 / SHA-256`、EC は `ECDSA / namedCurve` をアルゴリズムパラメータとして使用する（hash は変換用の便宜値で実際の署名/検証には使用しない）
 - PEM は DER を base64 化し 64 文字折返しで構築する。JWK は `JSON.stringify(jwk, null, 2)` でインデント付き出力する
 - PKCS#1（RSA PUBLIC KEY / RSA PRIVATE KEY）/ SEC1（EC PRIVATE KEY）/ ENCRYPTED PRIVATE KEY などの未対応形式は `detectKeyInput` が `unsupported` を返し、UI で openssl 変換コマンドを案内する
@@ -587,4 +613,43 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 暗号化秘密鍵（ENCRYPTED PRIVATE KEY・パスフレーズ付き PEM）は非対応。`openssl pkcs8 -in key.pem -nocrypt -out key_plain.pem` で復号してから変換する
 - Ed25519 / Ed448（EdDSA、`kty: OKP`）は非対応
 - 秘密鍵からの公開鍵抽出は非対応
+- JWK 出力で復元する入力メタデータは allowlist 限定（`kid` / `use` / `alg` / `key_ops`）。`x5c` / `x5t` / `x5t#S256` / `x5u` などの X.509 連携フィールドは v1 スコープ外で、JWK→JWK の往復では脱落する。`kty` が RSA / EC 以外（`OKP` 等）は引き続き非対応
 - 全処理はブラウザ内で完結し、秘密鍵データは外部に送信しない
+
+### HARビューア＆サニタイザ
+
+#### 仕組み・アルゴリズム
+
+- HAR（HTTP Archive）は JSON 形式のため `JSON.parse` でパースし、`log.entries` が配列であることを最小スキーマ検証する（`src/utils/har/parse.ts`）
+- サニタイズは二段階。①構造的 redact（`src/utils/har/sanitize.ts`）: フィールド名辞書で確実に処理。②`scrubText`（`src/utils/secret-scrubber/scrub.ts`）: 本文の取りこぼしを自由テキスト走査で補完
+- 構造的 redact の対象: `request.cookies[].value` / `response.cookies[].value` / Cookie・Set-Cookie ヘッダ値（COOKIE カテゴリ）/ Authorization 等の認証ヘッダ値（AUTH_HEADER）/ `request.queryString[]` の機密名エントリ（QUERY）/ `request.url` のクエリパラメータと basic-auth パスワード（QUERY）/ URL を運ぶヘッダ `Referer`・`Origin`・`Location`・`Content-Location` への URL redact 適用（QUERY。URL から消した値が他ヘッダに残る漏洩を防ぐ）/ `postData.params[]` の機密名エントリと `postData.text` への scrubText（BODY）/ `response.content.text` への scrubText（BODY_SCAN）
+- カバレッジ拡張（#687/#689/#690/#694/#695）:
+  - **辞書外ヘッダ値**にも `scrubText` フォールバックを適用（**HEADER_SCAN** カテゴリ）。`x-amz-security-token` 等の認証ヘッダ辞書も拡充。**認証ヘッダ（AUTH_HEADER）は辞書ベースの確実な redact、ヘッダ走査（HEADER_SCAN）は辞書外ヘッダへの自由テキスト走査**と役割が分離されており、それぞれ独立トグルで制御できる（#694）
+  - **URL のパス以降**（path?query#fragment）に `scrubText` を適用（**PATH_SCAN** カテゴリ）。`scheme://authority`（host・port・basic-auth）は保持し、パス内トークン（`/reset/<jwt>`）や辞書外クエリ名の JWT/API キーを redact する。クエリ/フラグメントは `&` 越えの飲み込みを防ぐため param value 単位で走査する。**機密クエリ（QUERY）は辞書一致クエリ/POST param + basic-auth の構造的 redact、URL走査（PATH_SCAN）はパス以降への自由テキスト走査**と役割が分離されている（#694）
+  - **`response.redirectURL`** にも URL redact を適用（QUERY / PATH_SCAN）
+  - **`data:` URL は scrubText を適用しない**（#695）。`data:image/png;base64,...` のようなペイロードに `HIGH_ENTROPY_BASE64` が誤マッチして base64 を `[REDACTED]` に置換しデコード不能にする破壊を防ぐ
+  - over-masking 方針: パス/ヘッダ内の IP・メール・高エントロピー文字列も redact されうるが、host は保持され漏えい方向ではなく安全側。詳細は `docs/decisions.md`
+  - **本文スキャンのスキップ拡張**: `encoding === 'base64'` に加え、`content.mimeType` がバイナリ系（`image/*`・`audio/*`・`video/*`・`font/*`・`application/octet-stream`・`pdf`・`zip` 等）なら encoding 欄が無くてもスキップし、`HIGH_ENTROPY_BASE64` による本文破壊を防ぐ
+- 防御的処理: JSON として妥当でも `request`/`response` を欠く壊れた entry は例外を投げずスキップする（`sanitizeHar` はレンダリング中の `useMemo` で走るため、throw すると画面が落ちる）。一覧（`HarEntryList`）では壊れた行を「（壊れたエントリ）」プレースホルダのクリック可能 button として描画し、クリックすると詳細パネルにプレースホルダを表示する（正常 entry 選択後に壊れた行を再クリックしても詳細が切り替わる、issue #701）
+- 一貫トークン化: `makeTokenizer` がカテゴリ × 値 → `[REDACTED:COOKIE_1]` 等のプレースホルダを発行する。同一値には同一プレースホルダを割り当て、HAR 全体で値の同一性が保たれる。**ただしこの HAR 全体一貫性は構造的 redact（tokenize 由来）に限る**。`scrubText` 由来の redaction（本文・辞書外ヘッダ・URLパス等）は呼び出しごとに採番されるため、異なるフィールドに跨る同一秘密値の一貫トークン化は保証されない（安全側であり漏えいはしない）
+- 純関数・入力非破壊: `structuredClone` でディープコピーしてから処理するため元オブジェクトを mutate しない
+- parse + sanitize は **Web Worker**（`src/workers/harSanitizer.worker.ts`）で実行する。`sanitizeHar` は `structuredClone` + 全 response body の正規表現スキャンで中規模 HAR でも数秒かかり、メインスレッド同期実行だと「ページが応答しません」になる（issue #677）。worker に逃がしメインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する
+- フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` の `onProgress` コールバックで処理済みエントリ数を逐次受け取り、`ProgressBar` で進捗表示する
+- カテゴリ別の redact 件数は worker が返す `counts` を `ToggleChips` のバッジに表示する
+- エントリ一覧（`HarEntryList`）は全件描画する。フリーズの主因は描画ではなく sanitize であり Worker 化で解消したため、ページングは導入しない（実 HAR の検証でエントリ数は数百件程度で、その規模の `<tr>` 描画は問題にならないことを確認。`loadSeq` は新規読込時の選択リセット判定にのみ使い、トグル時は選択を保持する）
+- 出力 HAR の `JSON.stringify(.., null, 2)` はコピー/ダウンロード押下時のみ遅延生成する（`CopyButton` の `text` prop は `string | (() => string)` を受け付け、関数はクリック時に評価される）。毎レンダリングでの数 MB 直列化を避ける
+- `sanitize.ts` は worker の依存グラフに含まれるため `@/` ではなく相対 import を使う（Vite の worker Rollup サブビルドに tsconfig paths が伝播しないため。詳細はファイル冒頭コメント参照）
+- **ウォーターフォール（タイミング可視化）**: `computeWaterfall`（`src/utils/har/waterfall.ts`）が `HarEntry[]` から全体タイムライン基準の配置モデルを計算する。各エントリの `startedDateTime`（ISO 文字列）を epoch ms に変換して起点を求め、`timings`（blocked / dns / connect / ssl / send / wait / receive）をフェーズ別セグメントに分解する。**HAR 1.2 仕様に従い `ssl` は `connect` の部分時間**として扱うため、`connect` セグメント ms = `connect - ssl`（下限 0）に補正し、ssl を別セグメントとして並べる（二重計上防止）。値が `-1`・未定義・`0` のフェーズはセグメント化しない。`WaterfallRow.offsetRatio` は `(start - t0) / totalMs`、`widthRatio` は `durationMs / totalMs` で全体タイムライン基準の相対配置を表す。一覧テーブルの「タイミング」列（スマホでは `hidden md:table-cell` で非表示）に `HarWaterfallBar` が横棒を描画し、詳細パネル（`HarEntryDetail` 内 `TimingBreakdown`）にフェーズ別内訳テーブルとミニバーを表示する。動的な幅・オフセットは `useDynamicStyleSheet`（Constructable Stylesheets）で CSS カスタムプロパティ（`--bar-left` / `--bar-width` / `--seg-width` / `--mini-width`）として注入する（CSP `style-src` 制約により inline style は使用しない、decisions [067]）。`computeWaterfall` は `HarViewer` で `useMemo` 化して `entries` 変化時のみ再計算する
+
+#### 準拠仕様
+
+- HAR 1.2 仕様（http://www.softwareishard.com/blog/har-12-spec/）の必要サブセットを型定義（完全検証は不要なため `log.entries` 配列の存在のみを確認）
+- ウォーターフォールの `ssl` / `connect` 処理は HAR 1.2 spec の「ssl timings are included in the connect timings」に準拠
+
+#### 制限・エッジケース
+
+- ウォーターフォール: `timings` を持たないエントリはバーを非表示にして degrade する（`—` を表示）。`startedDateTime` の欠落時も同様。スマホ（390px）では一覧のタイミング列を非表示にし、詳細パネルで内訳を確認できる
+- ファイルサイズ上限 25MB（メモリ防御ガード）。読み込み時のフリーズは sanitize の Web Worker 化で解消済みのため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。大きな HAR は worker 上で時間がかかる（実測 ~6MB/5000 エントリで約 2.6 秒、~18MB/10000 エントリで約 17 秒）が、メインスレッドは固まらず進捗バーを表示する。redact トグルのたびに全エントリを再 sanitize する（worker 上のため非ブロッキング。差分 sanitize は将来課題）
+- 辞書に無い独自ヘッダ名・独自名のクエリ/フォームパラメータは `scrubText` が拾える範囲のみ redact される（任意名のセッショントークン等は残りうる。完全な網羅は保証せず、出力は共有前の目視確認が前提）
+- レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする。`HIGH_ENTROPY_BASE64` ルールが base64 ブロック自体にマッチして本文を破壊し、デコード不能な HAR を出力するのを防ぐため（その代わり base64 本文内の秘密は検出されない）
+- 全処理はブラウザ内で完結し、HAR データは外部に送信しない

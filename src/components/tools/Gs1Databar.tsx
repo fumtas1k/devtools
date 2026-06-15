@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useId, useRef, useMemo } from 'react';
+import { cx } from '@/utils/cx';
 import { createPortal } from 'react-dom';
 import { getErrorMessage } from '@/utils/errors';
 import bwipjs from 'bwip-js';
@@ -475,7 +476,6 @@ export function Gs1DatabarTool() {
       })),
     // cardSvgs が変わるたびに validEntries も変わるため cardSvgs を依存に含める。
     // printXdim が変わると factor が変わるため明示。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [cardSvgs, printXdim]
   );
 
@@ -585,7 +585,7 @@ export function Gs1DatabarTool() {
       {mounted &&
         createPortal(
           <div className="print-area" aria-hidden="true">
-            <div className={`print-grid print-grid--cols-${printCols}`}>
+            <div className={cx('print-grid', `print-grid--cols-${printCols}`)}>
               {printEntries.map((e) => (
                 <div
                   key={e.gtin}

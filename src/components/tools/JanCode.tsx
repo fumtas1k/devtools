@@ -172,7 +172,7 @@ export function JanCodeTool() {
 
           {/* バーコードプレビュー */}
           <div className="rounded-lg flex flex-col items-center gap-4 p-4 border border-default bg-default">
-            <svg ref={svgRef} aria-label={`JANコード ${result.fullCode} のバーコード`} />
+            <svg ref={svgRef} role="img" aria-label={`JANコード ${result.fullCode} のバーコード`} />
             <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
           </div>
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
 import { assertCssLength } from '@/utils/css-length';
+import { cx } from '@/utils/cx';
 
 export interface TableColumn<T> {
   key: string;
@@ -86,7 +87,7 @@ export function ResultTable<T>({
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className={`w-full border-collapse result-table ${dynClassName}`}>
+        <table className={cx('w-full border-collapse result-table', dynClassName)}>
           <colgroup>
             {columns.map((col) => (
               <col key={col.key} />
@@ -98,7 +99,11 @@ export function ResultTable<T>({
                 <th
                   key={col.key}
                   scope="col"
-                  className={`caption text-muted font-semibold whitespace-nowrap ${paddingClass()} ${alignClass(col.headerAlign)}`}
+                  className={cx(
+                    'caption text-muted font-semibold whitespace-nowrap',
+                    paddingClass(),
+                    alignClass(col.headerAlign)
+                  )}
                 >
                   {col.header}
                 </th>
@@ -132,7 +137,12 @@ export function ResultTable<T>({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`caption text-default ${paddingClass(col.cellPadding)} ${alignClass(col.cellAlign)} ${col.className ?? ''}`}
+                      className={cx(
+                        'caption text-default',
+                        paddingClass(col.cellPadding),
+                        alignClass(col.cellAlign),
+                        col.className
+                      )}
                     >
                       {col.render(row, i)}
                     </td>

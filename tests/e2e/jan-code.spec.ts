@@ -65,6 +65,20 @@ test.describe('JANコード生成（production CSP 適用）', () => {
     });
   });
 
+  // a11y 陽性対照: バーコード SVG に role="img" と accessible name が付与されることを検証。
+  // role="img" が外れると getByRole('img', ...) が取得できず fail する。
+  test('JAN-13: バーコード SVG が role="img" を持ち accessible name にバーコードを含む（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/jan-code', async (page) => {
+      await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      await expect(page.getByText('完成コード', { exact: true })).toBeVisible();
+      // role="img" と aria-label="JANコード ... のバーコード" が付与されていることを確認
+      const barcodeSvg = page.getByRole('img', { name: /バーコード/ });
+      await expect(barcodeSvg).toBeVisible();
+    });
+  });
+
   // issue #392: downloadPngFromSvgElement Promise 化の陽性対照 E2E。
   // Image 読み込みを強制 onerror させ、async downloadPng の catch 経路で
   // ErrorMessage が表示されることを観測可能な振る舞いとして assert する

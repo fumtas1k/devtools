@@ -13,7 +13,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { parseCertificates } from '@/utils/cert/parse';
 import { buildChain } from '@/utils/cert/chain';
-import { makeTestChain, makeExpiredCert, type TestChain } from './cert-fixtures';
+import {
+  makeTestChain,
+  makeExpiredCert,
+  makeDuplicateDnChain,
+  type TestChain,
+} from './cert-fixtures';
 import { SAMPLE_CERT_CHAIN_PEM } from '@/components/tools/certDecoderSample';
 
 /** DER → PEM 変換ヘルパー */
@@ -154,5 +159,37 @@ describe('SAMPLE_CERT_CHAIN_PEM', () => {
     expect(verifiable.length).toBeGreaterThanOrEqual(2);
     expect(verifiable.every((l) => l.signatureValid === true)).toBe(true);
     expect(r.links.every((l) => l.expired === false)).toBe(true);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// DN 重複時の AKI/SKI による親解決（#3）と order/links の整合（#5）
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('buildChain — DN 重複時の親解決（#3 / #5）', () => {
+  it('同一 Subject DN の CA が複数ある場合、leaf の AKI に一致する SKI を持つ CA を親に選ぶ', async () => {
+    const dup = await makeDuplicateDnChain();
+    // 入力順は AKI 一致の caB を「先」に、不一致の caA を「後」に置く。
+    // 旧実装の subjectMap 後勝ち（最後の caA が勝つ）では親を取り違えるため、
+    // この順序で修正の discriminating power を担保する。
+    const { certs } = await parseCertificates(`${dup.caBPem}\n${dup.caAPem}\n${dup.leafPem}`);
+    expect(certs).toHaveLength(3);
+
+    const r = await buildChain(certs);
+
+    const leafIdx = certs.findIndex((c) => c.subject.full.includes('dup-leaf.test'));
+    const leafLink = r.links.find((l) => l.subjectIndex === leafIdx);
+    expect(leafLink).toBeDefined();
+
+    // 親が SKI=skiB を持つ CA（caB）であること
+    expect(leafLink!.issuerIndex).not.toBeNull();
+    expect(certs[leafLink!.issuerIndex!].subjectKeyId).toBe(dup.skiBHex);
+
+    // 正しい親を選んだので署名検証が成功する
+    expect(leafLink!.signatureValid).toBe(true);
+
+    // #5: order と links の整合 — 親は order 上で leaf より前に並ぶ
+    const posOf = (i: number) => r.order.indexOf(i);
+    expect(posOf(leafLink!.issuerIndex!)).toBeLessThan(posOf(leafIdx));
   });
 });

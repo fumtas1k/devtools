@@ -10,6 +10,15 @@
 
 import { SCRUB_RULES, emptyCounts, type ScrubCategory } from './rules';
 
+/**
+ * プレースホルダ [REDACTED:CAT_n] 形式の正規表現（単一の真実源）。
+ * scrubText の採番衝突回避（#690 L-3）と har/sanitize.ts の makeTokenizer 冪等化で共有する。
+ * - PLACEHOLDER_RE: 入力中の既存プレースホルダを走査しカテゴリ・番号を capture する（g フラグ）
+ * - PLACEHOLDER_EXACT_RE: 値が前後余白なしの単体プレースホルダか判定する（完全一致）
+ */
+export const PLACEHOLDER_RE = /\[REDACTED:([A-Z_]+)_(\d+)\]/g;
+export const PLACEHOLDER_EXACT_RE = /^\[REDACTED:[A-Z_]+_\d+\]$/;
+
 export interface ScrubFinding {
   category: ScrubCategory;
   ruleId: string;
@@ -42,6 +51,22 @@ interface RawMatch {
 }
 
 /**
+ * maskGroup ルールのマスク範囲を解決する。
+ * d フラグ（match indices）が取れない環境では、マッチ全体を over-mask する
+ * fail-safe に倒す（漏えい方向のフェイルを安全方向へ反転する）。#690 M-1。
+ */
+export function resolveMaskRange(
+  m: RegExpExecArray,
+  maskGroup: number
+): { value: string; start: number; end: number } {
+  const groupRange = m.indices?.[maskGroup];
+  if (groupRange && m[maskGroup] != null) {
+    return { value: m[maskGroup], start: groupRange[0], end: groupRange[1] };
+  }
+  return { value: m[0], start: m.index, end: m.index + m[0].length };
+}
+
+/**
  * テキストを検査して機密情報を [REDACTED:<CATEGORY>_<n>] に置換する。
  * 純関数・入力非破壊。
  */
@@ -62,13 +87,12 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
       let maskEnd: number;
 
       if (rule.maskGroup != null) {
-        // グループのみマスク（キー名・URLホストは残す）。
-        // 位置は d フラグの indices から取る（indexOf による探索は
-        // キー名と値が同一文字列のとき値側を取り違えて漏えいするため不可）
-        const groupRange = m.indices?.[rule.maskGroup];
-        if (!groupRange) continue;
-        maskValue = m[rule.maskGroup];
-        [maskStart, maskEnd] = groupRange;
+        // グループのみマスク（キー名・URLホストは残す）。位置は d フラグの indices から取る。
+        // indices が取れない環境では resolveMaskRange がマッチ全体に倒す（fail-safe over-mask）。
+        const range = resolveMaskRange(m, rule.maskGroup);
+        maskValue = range.value;
+        maskStart = range.start;
+        maskEnd = range.end;
       } else {
         maskValue = m[0];
         maskStart = m.index;
@@ -153,13 +177,25 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
   // カテゴリ別のカウンタ
   const categoryCounter: Partial<Record<ScrubCategory, number>> = {};
 
+  // 入力中に既に存在する [REDACTED:CAT_n] リテラルのカテゴリ別最大 n を求め、
+  // 新規採番がそれを超えるようにして同一トークンの衝突を防ぐ（#690 L-3）。
+  const reservedMax: Record<string, number> = {};
+  PLACEHOLDER_RE.lastIndex = 0;
+  for (let pm; (pm = PLACEHOLDER_RE.exec(input)); ) {
+    const cat = pm[1];
+    const n = Number(pm[2]);
+    if (n > (reservedMax[cat] ?? 0)) reservedMax[cat] = n;
+  }
+  PLACEHOLDER_RE.lastIndex = 0;
+
   const findings: ScrubFinding[] = [];
 
   for (const m of resolved) {
     const key = `${m.category}:${m.value}`;
     let placeholder = tokenMap.get(key);
     if (!placeholder) {
-      const n = (categoryCounter[m.category] ?? 0) + 1;
+      const base = Math.max(categoryCounter[m.category] ?? 0, reservedMax[m.category] ?? 0);
+      const n = base + 1;
       categoryCounter[m.category] = n;
       placeholder = `[REDACTED:${m.category}_${n}]`;
       tokenMap.set(key, placeholder);

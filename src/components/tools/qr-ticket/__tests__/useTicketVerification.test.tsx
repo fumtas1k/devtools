@@ -29,7 +29,7 @@ vi.mock('@/utils/qr-ticket', () => ({
 }));
 
 vi.mock('@/utils/file-validation', () => ({
-  validateFile: vi.fn(() => ({ ok: true, message: '' })),
+  validateFile: vi.fn(async () => ({ ok: true, message: '' })),
 }));
 
 vi.mock('@/utils/qr-reader', () => ({
@@ -148,7 +148,7 @@ describe('useTicketVerification — handleImageUpload', () => {
 
   it('ファイルバリデーション失敗時は setCameraError が呼ばれる', async () => {
     const { validateFile } = await import('@/utils/file-validation');
-    vi.mocked(validateFile).mockReturnValueOnce({
+    vi.mocked(validateFile).mockResolvedValueOnce({
       ok: false,
       code: 'WRONG_TYPE',
       message: 'ファイルが不正です',

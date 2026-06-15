@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from 'react';
+import { cx } from '@/utils/cx';
 
 interface Props extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -38,7 +39,13 @@ export function BareInput({
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`caption rounded-md border ${borderClass} ${monoClass} bg-default text-default w-full px-2 py-1.5 ${extraClass}`.trim()}
+      className={cx(
+        'caption rounded-md border',
+        borderClass,
+        monoClass,
+        'bg-default text-default w-full px-2 py-1.5',
+        extraClass
+      )}
       {...rest}
     />
   );
