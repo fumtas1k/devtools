@@ -255,6 +255,63 @@ test.describe('HAR ビューア', () => {
     await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
   });
 
+  test('タイミング列が PC 幅で表示され詳細パネルにタイミング内訳が出る', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/tools/har-viewer');
+
+    // timings を持つ 2 件の HAR（2 件目は起点をずらして相対配置を確認）
+    const json = JSON.stringify({
+      log: {
+        version: '1.2',
+        creator: { name: 'test', version: '1.0' },
+        entries: [
+          {
+            startedDateTime: '2026-06-15T00:00:00.000Z',
+            time: 100,
+            timings: { blocked: 5, dns: 10, connect: 20, ssl: 8, send: 2, wait: 55, receive: 8 },
+            request: {
+              method: 'GET',
+              url: 'https://example.com/a',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 200, headers: [], cookies: [], content: { size: 0 } },
+          },
+          {
+            startedDateTime: '2026-06-15T00:00:00.060Z',
+            time: 80,
+            timings: { blocked: 2, send: 1, wait: 70, receive: 7 },
+            request: {
+              method: 'POST',
+              url: 'https://example.com/b',
+              headers: [],
+              queryString: [],
+              cookies: [],
+            },
+            response: { status: 201, headers: [], cookies: [], content: { size: 0 } },
+          },
+        ],
+      },
+    });
+    await uploadHar(page, json);
+
+    // PC 幅では「タイミング」列見出しが表示される（陽性対照: hidden md:table-cell が効く）
+    await expect(page.getByRole('button', { name: /\/a$/ })).toBeVisible({ timeout: 10000 });
+    // th 要素を直接取得（hidden md:table-cell は display:none→table-cell 切替のため
+    // accessibility tree から除外されることがある。DOM 存在 + 可視性を CSS で確認する）
+    const timingHeader = page.locator('th', { hasText: 'タイミング' });
+    await expect(timingHeader).toBeVisible();
+
+    // 1 件目をクリックして詳細パネルにタイミング内訳が出ることを確認
+    await page.getByRole('button', { name: /\/a$/ }).click();
+    // 詳細パネルの「タイミング」見出し（h4）を特定（th との重複を避けるため heading role を使う）
+    await expect(page.getByRole('heading', { name: 'タイミング' })).toBeVisible();
+    // フェーズラベルが詳細パネルに出る
+    await expect(page.getByText('待ち(wait)')).toBeVisible();
+    await expect(page.getByText('合計')).toBeVisible();
+  });
+
   test('正常 entry 選択後も壊れた行を再クリックして詳細プレースホルダを再表示できる', async ({
     page,
   }) => {
