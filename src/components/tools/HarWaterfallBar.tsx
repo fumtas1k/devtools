@@ -31,7 +31,7 @@ export function HarWaterfallBar({ row, rowIndex }: Props) {
     `, 合計 ${Math.round(row.totalMs)}ms`;
   return (
     <div className="har-track">
-      <div className="har-bar" data-har-bar={rowIndex} aria-label={label} title={label}>
+      <div className="har-bar" data-har-bar={rowIndex} role="img" aria-label={label} title={label}>
         {row.segments.map((s, j) => (
           <span
             key={j}

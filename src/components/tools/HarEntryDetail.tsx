@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { HarEntry, HarNameValue } from '@/utils/har';
 import { computeWaterfall } from '@/utils/har';
 import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
@@ -49,7 +50,7 @@ const PHASE_CLASS: Record<string, string> = {
 /** 詳細パネルのタイミング内訳（フェーズ名・色チップ・ms・ミニバー）。 */
 function TimingBreakdown({ entry }: { entry: HarEntry }) {
   // 単一エントリのフェーズ分解には computeWaterfall を再利用する（ssl 控除等を一元化）。
-  const model = computeWaterfall([entry]);
+  const model = useMemo(() => computeWaterfall([entry]), [entry]);
   const row = model.rows[0];
   const dynClassName = useDynamicStyleSheet((className) => {
     if (!row || !row.hasTimeline) return '';
