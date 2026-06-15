@@ -134,6 +134,10 @@ test.describe('CSR・鍵ペアジェネレータ（production CSP 適用）', ()
       // 解析モードに切り替え → 結果が消える
       await page.getByRole('button', { name: '既存 CSR を解析' }).click();
       await expect(page.getByLabel('CSR（PKCS#10 / PEM）')).not.toBeVisible();
+
+      // 生成モードに戻す → 結果はリセットされたまま
+      await page.getByRole('button', { name: 'CSR を生成' }).click();
+      await expect(page.getByLabel('CSR（PKCS#10 / PEM）')).not.toBeVisible();
     });
   });
 
