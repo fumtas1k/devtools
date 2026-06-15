@@ -184,7 +184,8 @@ devtools/
     │       ├── dsn-builder.astro
     │       ├── cert-decoder.astro
     │       ├── key-converter.astro
-    │       └── har-viewer.astro
+    │       ├── har-viewer.astro
+    │       └── csr-generator.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -212,6 +213,7 @@ devtools/
         ├── cert/               # SSL/TLS証明書デコーダ（types.ts / detect.ts / parse.ts / sct.ts / chain.ts / index.ts）
         ├── key/                # 鍵フォーマット変換（types.ts / detect.ts / convert.ts / index.ts）
         ├── har/                # HARビューア＆サニタイザ（types.ts / rules.ts / parse.ts / sanitize.ts / index.ts、__tests__ colocated）
+        ├── csr/                # CSR・鍵ペアジェネレータ（types.ts / generate.ts / parse.ts / index.ts）
         ├── dataTransferSnapshot.ts  # DataTransfer 捕捉・フレーバー列挙（clipboard-inspector が利用）
         ├── sanitizeHtml.ts          # 許可リスト方式 HTML サニタイザ（clipboard-inspector が利用）
         ├── download.ts         # バイナリファイルダウンロードユーティリティ
@@ -292,6 +294,7 @@ devtools/
 | 2   | UUID v7 生成           | `uuid-v7`        | 生成数を指定（1〜100）して一括生成。タイムスタンプ・フィールド分解表示付き                               |
 | 3   | ダミーテキスト生成     | `dummy-text`     | 文字種（全角ひらがな/カタカナ/漢字混じり/半角英数）と文字数を指定して生成                                |
 | 4   | TOTP/HOTP ジェネレータ | `totp-hotp`      | TOTP（RFC 6238）・HOTP（RFC 4226）のワンタイムコードを生成・検証。シークレット鍵はブラウザ外に送信しない |
+| 28  | CSR・鍵ペアジェネレータ | `csr-generator`  | RSA（2048/3072/4096 bit）/ ECDSA（P-256/P-384/P-521）の鍵ペアを生成し PKCS#10 CSR を出力。Subject DN・SAN 設定対応。既存 CSR の解析・署名検証にも対応。全処理ブラウザ内完結 |
 
 ### カテゴリ B: コード・バーコードツール（`code`）
 
@@ -330,6 +333,7 @@ devtools/
 | 24  | DSN/接続文字列ビルダ              | `dsn-builder`         | 接続文字列（DSN）をフォームと URI で双方向編集。パスワードをマスクした共有用 URI も生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応（PostgreSQL・MySQL は JDBC URL も対応）。自前パーサで percent-encode を自動処理。外部ライブラリなし    |
 | 26  | 鍵フォーマット変換                | `key-converter`       | RSA / ECDSA（P-256/P-384/P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK で相互変換。入力形式と鍵種別を自動判定。Web Crypto API 主体で asn1js による OID 判定。全処理ブラウザ内完結                                                           |
 | 27  | HARビューア＆サニタイザ           | `har-viewer`          | HAR ファイルをリクエスト/レスポンス一覧・詳細表示し、Cookie・認証ヘッダ・機密クエリ・POST ボディを構造的に redact。scrubText で本文の取りこぼしを追加検出。一貫トークン化（同一値=同一プレースホルダ）。全処理ブラウザ内完結・新規ライブラリなし |
+| 28  | CSR・鍵ペアジェネレータ           | `csr-generator`       | RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力。Subject DN（CN/O/OU/C/ST/L/email）と SAN（DNS/IP/email）を設定可能。既存 CSR の Subject/SAN/公開鍵/署名アルゴリズム抽出と自己署名検証に対応。pkijs + Web Crypto。全処理ブラウザ内完結 |
 
 ---
 
@@ -1203,6 +1207,26 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.28 CSR・鍵ペアジェネレータ（`csr-generator`）
+
+**概要:** ブラウザ内で RSA / ECDSA の鍵ペアを生成し、PKCS#10 CSR（証明書署名要求）を出力する。秘密鍵は PKCS#8 PEM で出力し、外部サーバーには一切送信しない。既存 CSR の解析（Subject/SAN/公開鍵/署名検証）にも対応。
+
+**入力（生成モード）:** Subject DN（CN / O / OU / C / ST / L / emailAddress）、SAN（DNS / IP / email）、鍵アルゴリズム（RSA 2048/3072/4096 bit / ECDSA P-256/P-384/P-521）
+
+**入力（解析モード）:** CSR の PEM（`-----BEGIN CERTIFICATE REQUEST-----` ヘッダ）または Base64（DER 直接）。ファイル選択（.csr / .pem / .der）にも対応。
+
+**出力（生成モード）:** CSR（PKCS#10 / PEM）、秘密鍵（PKCS#8 / PEM）。各フィールドに個別ダウンロードボタン付き。
+
+**出力（解析モード）:** Subject 属性一覧・SAN 一覧・公開鍵情報（アルゴリズム・鍵長/曲線）・署名アルゴリズム・署名検証結果（OK / NG / 不能）
+
+**モジュール構成:** `src/utils/csr/`（`types.ts` / `generate.ts` / `parse.ts` / `index.ts`）/ `src/components/tools/CsrGenerator.tsx` / `src/components/tools/csrGeneratorSample.ts`
+
+**追加依存:** なし（既存 `pkijs` / `asn1js` / `src/utils/cert/engine.ts` を再利用）
+
+**スコープ外（v1 非対応）:** Ed25519/Ed448（EdDSA）、暗号化 PKCS#8（PBES2 / パスフレーズ付き秘密鍵）、SAN の IPv6、challengePassword 属性、KeyUsage / ExtendedKeyUsage 等のカスタム拡張編集
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1368,6 +1392,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] SSL/TLS証明書デコーダ（`cert-decoder`）
   - [x] 鍵フォーマット変換（`key-converter`）
   - [x] HARビューア＆サニタイザ（`har-viewer`）
+  - [x] CSR・鍵ペアジェネレータ（`csr-generator`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）

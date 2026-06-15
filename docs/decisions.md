@@ -4435,3 +4435,28 @@ URL パス / 辞書外ヘッダへの `scrubText` 適用で、パスやヘッダ
 - ✅ 追加ライブラリなし。既存パーサ・バリデータ（単一 `validateModel`）をそのまま JDBC でも経由する。
 - ✅ JDBC でも範囲外ポート・不正 percent-encoding・未対応サブスキームを拒否する陽性対照テストを同梱（test-gates 準拠）。検証経路が jdbc を素通りしないことを保証。
 - ⚠️ SQL Server / Oracle は対象外のまま。将来必要になれば別途ドライバ別分岐を設計する。
+
+## [120] csr-generator: cert-decoder の「作る側」、全処理ブラウザ内完結で秘密鍵を非送信
+
+**2026-06-15 | ステータス: 採用**
+
+### 背景
+
+cert-decoder（第1回 S-2、decision [111]）は証明書を「読む側」のツールで、v1 から「CSR 生成は別ツール」と明示していた。CSR 生成は通常 `openssl` CLI か CA 提供フォームで行うが、後者は秘密鍵がサーバ側生成になりがちで、社内 CA・本番系では秘密鍵を外部に出せない要件がある。全処理ブラウザ内完結という差別化要因は cert-decoder / key-converter と同じ設計方針。
+
+### 決断
+
+- **技術スタック**: pkijs（cert-decoder / key-converter で既存依存）+ Web Crypto API。追加ライブラリ不要
+- **アーキテクチャ**: `src/utils/csr/`（types / generate / parse / index）にロジックを分離。pkijs エンジン初期化は既存 `src/utils/cert/engine.ts` の `ensureCryptoEngine()` を再利用（重複初期化回避）
+- **v1 スコープ**: RSA（2048/3072/4096 bit）/ ECDSA（P-256/P-384/P-521）に限定。平文 PKCS#8 のみエクスポート
+- **スコープ外（v1）**: Ed25519/Ed448（Web Crypto ブラウザサポート差・pkijs 追加検証必要）、暗号化 PKCS#8（WebCrypto 単体困難）、challengePassword 属性・カスタム拡張編集、SAN IPv6
+
+### test-gates 対応
+
+署名検証は「改竄を検出する validator」に該当するため、`csr-parse.test.ts` に陽性対照（署名を改竄した CSR は `signatureValid=false` を返す）を必須で併設。陰性対照のみでは空回り実装と区別不能（PR #233 事故と同型）。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし。pkijs / asn1js の既存依存のみで完結
+- ✅ 秘密鍵がブラウザ外に一切送信されない設計
+- ⚠️ Ed25519 / 暗号化 PKCS#8 は v1 スコープ外。需要が出れば別 PR で対応

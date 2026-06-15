@@ -662,3 +662,30 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 辞書に無い独自ヘッダ名・独自名のクエリ/フォームパラメータは `scrubText` が拾える範囲のみ redact される（任意名のセッショントークン等は残りうる。完全な網羅は保証せず、出力は共有前の目視確認が前提）
 - レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする。`HIGH_ENTROPY_BASE64` ルールが base64 ブロック自体にマッチして本文を破壊し、デコード不能な HAR を出力するのを防ぐため（その代わり base64 本文内の秘密は検出されない）
 - 全処理はブラウザ内で完結し、HAR データは外部に送信しない
+
+### CSR・鍵ペアジェネレータ
+
+#### 仕組み・アルゴリズム
+
+- **生成モード**: `crypto.subtle.generateKey` で RSA（RSASSA-PKCS1-v1_5）または ECDSA（P-256 / P-384 / P-521）の鍵ペアを生成し、pkijs の `CertificationRequest` に Subject DN と SAN 拡張を設定して PKCS#10 CSR を構築する
+  - Subject DN フィールドの文字種は OID ごとに制御: countryName は `PrintableString`、emailAddress は `IA5String`、その他は `UTF8String`
+  - SAN（Subject Alternative Name）は `pkcs-9-at-extensionRequest`（OID `1.2.840.113549.1.9.14`）属性内の `id-ce-subjectAltName`（OID `2.5.29.17`）拡張として設定する
+  - `pkcs10.sign(privateKey, hashAlg)` で自己署名。RSA は SHA-256 固定、ECDSA は P-256=SHA-256 / P-384=SHA-384 / P-521=SHA-512
+  - CSR は `pkcs10.toSchema(true).toBER()` → DER → 64 文字折返し PEM 化（`-----BEGIN CERTIFICATE REQUEST-----`）
+  - 秘密鍵は `crypto.subtle.exportKey('pkcs8', ...)` でエクスポートし PEM 化（`-----BEGIN PRIVATE KEY-----`）。平文 PKCS#8 のみ対応
+- **解析モード**: PEM（`-----BEGIN CERTIFICATE REQUEST-----` ヘッダを抽出）または Base64（DER 直接）を受け取り、`asn1js.fromBER` + `pkijs.CertificationRequest` でパース。Subject の `typesAndValues` から OID→ラベル変換し、`extensionRequest` 属性から SAN を抽出する。`pkcs10.verify()` で署名自己整合性を検証する（改竄検出）
+- pkijs の Web Crypto エンジン初期化には既存 `src/utils/cert/engine.ts` の `ensureCryptoEngine()` を再利用する
+
+#### 準拠仕様
+
+- RFC 2986（PKCS#10 Certification Request Syntax Specification）
+- RFC 5280（X.509 SAN 拡張 id-ce-subjectAltName = 2.5.29.17）
+- PKCS#8（秘密鍵のエクスポート形式）
+
+#### 制限・エッジケース
+
+- Ed25519 / Ed448（EdDSA）は非対応（Web Crypto のブラウザサポート差・pkijs の追加検証が必要）
+- 暗号化 PKCS#8（PBES2 / パスフレーズ付き秘密鍵）でのエクスポートは非対応
+- SAN の IP アドレスは IPv4（4 オクテット）のみ対応。IPv6 は DNS SAN での代替を推奨
+- challengePassword 属性・KeyUsage / ExtendedKeyUsage 等のカスタム拡張編集は非対応
+- 全処理はブラウザ内で完結し、秘密鍵は外部サーバーに送信しない
