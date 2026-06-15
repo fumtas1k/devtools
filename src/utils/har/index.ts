@@ -21,3 +21,5 @@ export {
   HAR_REDACT_DEFAULT,
   emptyRedactCounts,
 } from './rules';
+export { computeWaterfall, PHASE_ORDER } from './waterfall';
+export type { HarPhase, WaterfallSegment, WaterfallRow, WaterfallModel } from './waterfall';
