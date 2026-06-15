@@ -61,6 +61,15 @@
   --color-info: #1d4ed8; /* blue-700: 白背景でコントラスト 4.5:1 以上 */
   --color-info-bg: #eff6ff; /* blue-50 */
 
+  /* HAR ウォーターフォール フェーズ色（質的パレット・primitive 直書き回避のためトークン化） */
+  --color-har-blocked: #9ca3af; /* neutral-400: 待機/キュー */
+  --color-har-dns: #854d0e; /* amber-800: 名前解決 */
+  --color-har-connect: #15803d; /* green-700: TCP 接続 */
+  --color-har-ssl: #7c3aed; /* violet-600: TLS */
+  --color-har-send: #0e3293; /* tertiary: 送信 */
+  --color-har-wait: #1a56db; /* primary: TTFB（最重要） */
+  --color-har-receive: #2563eb; /* blue-600: 受信 */
+
   /* === 機能カラー === */
   --color-link: #2563eb;
   --color-link-visited: #7c3aed;
@@ -1224,6 +1233,60 @@
   .chip-label--neutral {
     border-color: var(--color-border);
     color: var(--color-muted);
+  }
+
+  /* HAR ウォーターフォール */
+  .har-track {
+    position: relative;
+    width: 100%;
+    min-width: 8rem;
+    height: 0.75rem;
+    background: var(--color-bg-subtle);
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+  .har-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--bar-left, 0%);
+    width: var(--bar-width, 0%);
+    display: flex;
+    min-width: 1px;
+  }
+  .har-seg {
+    height: 100%;
+    width: var(--seg-width, 0%);
+    min-width: 1px;
+  }
+  .har-phase-blocked { background: var(--color-har-blocked); }
+  .har-phase-dns { background: var(--color-har-dns); }
+  .har-phase-connect { background: var(--color-har-connect); }
+  .har-phase-ssl { background: var(--color-har-ssl); }
+  .har-phase-send { background: var(--color-har-send); }
+  .har-phase-wait { background: var(--color-har-wait); }
+  .har-phase-receive { background: var(--color-har-receive); }
+  /* 詳細パネルのミニバー（1 行 1 フェーズ） */
+  .har-mini-track {
+    position: relative;
+    height: 0.5rem;
+    width: 100%;
+    background: var(--color-bg-subtle);
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+  .har-mini-fill {
+    height: 100%;
+    width: var(--mini-width, 0%);
+    min-width: 1px;
+  }
+  /* フェーズ色チップ（詳細パネルの凡例） */
+  .har-chip {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 0.125rem;
+    vertical-align: middle;
   }
 }
 
