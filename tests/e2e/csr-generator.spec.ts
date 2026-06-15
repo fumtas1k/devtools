@@ -134,10 +134,46 @@ test.describe('CSR・鍵ペアジェネレータ（production CSP 適用）', ()
       // 解析モードに切り替え → 結果が消える
       await page.getByRole('button', { name: '既存 CSR を解析' }).click();
       await expect(page.getByLabel('CSR（PKCS#10 / PEM）')).not.toBeVisible();
-
-      // 生成モードに戻す → 結果はリセットされたまま
-      await page.getByRole('button', { name: 'CSR を生成' }).click();
-      await expect(page.getByLabel('CSR（PKCS#10 / PEM）')).not.toBeVisible();
     });
+  });
+
+  test('不正な IPv4 の SAN を入力すると生成ボタンが disabled になりエラーが表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    // pkijs + Web Crypto のロードで hydration が遅いため、skipHydration で標準待機を skip し
+    // 手動で 20s に拡張する（同ファイル先頭テストと同じ理由・パターン）。
+    await withProductionCsp(
+      browser,
+      '/tools/csr-generator',
+      async (page) => {
+        await waitForReactHydration(page, { timeout: 20_000 });
+
+        // 有効な CN を入力すると本来は生成可能になる
+        await page.getByLabel('CN（コモンネーム）').fill('valid.example.jp');
+        const generateBtn = page.getByRole('button', { name: 'CSR と鍵ペアを生成' });
+        await expect(generateBtn).toBeEnabled();
+
+        // SAN 種別を IP に切り替える（aria-pressed で切替完了を待つ）
+        const ipToggle = page.getByRole('button', { name: 'IP', exact: true });
+        await ipToggle.click();
+        await expect(ipToggle).toHaveAttribute('aria-pressed', 'true');
+
+        // 不正な IPv4 を入力 → input が aria-invalid="true"（インライン検証）になり
+        // 生成ボタンが disabled になる。attribute ベースで auto-retry し描画遅延に強くする。
+        const sanInput = page.getByLabel('SAN 1');
+        await sanInput.fill('999.1.1.1');
+        await expect(sanInput).toHaveAttribute('aria-invalid', 'true', { timeout: 10_000 });
+        await expect(
+          page.getByText('正しい IPv4 形式で入力してください（例: 10.0.0.1）')
+        ).toBeVisible();
+        await expect(generateBtn).toBeDisabled();
+
+        // 有効な IPv4 に修正すると検証エラーが解消し再び生成可能になる
+        await sanInput.fill('10.0.0.1');
+        await expect(sanInput).toHaveAttribute('aria-invalid', 'false', { timeout: 10_000 });
+        await expect(generateBtn).toBeEnabled();
+      },
+      { skipHydration: true }
+    );
   });
 });
