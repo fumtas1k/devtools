@@ -26,6 +26,9 @@ const tool = tools.find((t) => t.slug === 'har-viewer')!;
       <li>Cookie / 認証ヘッダ / 機密クエリ / POST ボディをフィールド名ベースで確実に redact</li>
       <li>本文スキャンは secret-scrubber の検出ルールで API キー・JWT・メール等を追加検出</li>
       <li>同一値は同一プレースホルダ（[REDACTED:COOKIE_1] 等）で一貫トークン化</li>
+      <li>
+        各リクエストの所要時間を、全体タイムライン基準のウォーターフォール（フェーズ別色分けの横棒）で可視化（一覧の「タイミング」列・詳細パネルの内訳）
+      </li>
     </ul>
     <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
@@ -34,7 +37,13 @@ const tool = tools.find((t) => t.slug === 'har-viewer')!;
     </ul>
     <h3 class="mb-2 mt-4 tool-info-heading">制限事項</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
-      <li>ウォーターフォール（タイミング可視化）は今後対応予定</li>
+      <li>
+        ウォーターフォール（タイミング可視化）は <code
+          class="rounded px-1 font-mono bg-subtle text-sm">timings</code
+        > を持たないエントリではバーを表示しません（<code
+          class="rounded px-1 font-mono bg-subtle text-sm">—</code
+        > 表示）。スマホでは一覧のタイミング列を非表示にし、詳細パネルで内訳を確認できます
+      </li>
       <li>大きな HAR（25MB 超）は読み込めません</li>
       <li>
         サニタイズ（redact）は Web Worker 上で実行するため画面は固まりませんが、大きな HAR
