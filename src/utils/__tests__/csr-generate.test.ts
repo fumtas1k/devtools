@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import * as asn1js from 'asn1js';
 import { CertificationRequest } from 'pkijs';
 import { generateCsr } from '@/utils/csr/generate';
+import { parseCsr } from '@/utils/csr/parse';
 import type { GenerateParams } from '@/utils/csr/types';
 
 function pemToDer(pem: string): ArrayBuffer {
@@ -72,6 +73,40 @@ describe('generateCsr（陰性対照: 正常系 round-trip）', () => {
         ...baseParams,
         subject: { ...baseParams.subject, commonName: '' },
         san: [],
+      })
+    ).rejects.toThrow();
+  });
+
+  it('IP SAN は生成→再解析で IPv4 表記が復元される（IP オクテット往復）', async () => {
+    const result = await generateCsr({
+      ...baseParams,
+      san: [{ type: 'ip', value: '10.0.0.1' }],
+    });
+    const parsed = await parseCsr(result.csrPem);
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.san).toContain('IP:10.0.0.1');
+  });
+});
+
+// 陽性対照（test-gates）: SAN IP の入力 validator。
+// 旧実装は不正 IP を無言ドロップして resolve していたため、このテストは旧実装に当てると fail する
+// （= 不正検知能力そのものの証明）。陰性対照（上の round-trip）と別 describe に分離する。
+describe('generateCsr（陽性対照: 不正 SAN IP の拒否 / test-gates）', () => {
+  it('非空だが不正な IPv4 の SAN は例外を投げる（無言ドロップしない）', async () => {
+    await expect(
+      generateCsr({
+        ...baseParams,
+        san: [{ type: 'ip', value: '999.1.1.1' }],
+      })
+    ).rejects.toThrow();
+  });
+
+  it('CN が空で唯一の SAN が不正 IP のとき空の SAN 拡張を作らず例外を投げる', async () => {
+    await expect(
+      generateCsr({
+        ...baseParams,
+        subject: { ...baseParams.subject, commonName: '' },
+        san: [{ type: 'ip', value: 'not-an-ip' }],
       })
     ).rejects.toThrow();
   });

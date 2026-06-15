@@ -9,7 +9,7 @@ import { FileInputButton } from '@/components/ui/FileInputButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { ChipLabel } from '@/components/ui/ChipLabel';
-import { generateCsr } from '@/utils/csr/generate';
+import { generateCsr, isValidIpv4 } from '@/utils/csr/generate';
 import { parseCsr } from '@/utils/csr/parse';
 import type {
   GenerateParams,
@@ -79,7 +79,13 @@ export function CsrGenerator() {
     setParseInput('');
   };
 
-  const canGenerate = subject.commonName.trim() !== '' || san.some((e) => e.value.trim() !== '');
+  // 非空だが不正な IPv4 の SAN エントリがあると生成をブロックする
+  const hasInvalidIpSan = san.some(
+    (e) => e.type === 'ip' && e.value.trim() !== '' && !isValidIpv4(e.value.trim())
+  );
+  const canGenerate =
+    (subject.commonName.trim() !== '' || san.some((e) => e.value.trim() !== '')) &&
+    !hasInvalidIpSan;
 
   const handleGenerate = useCallback(async () => {
     setGenerating(true);
@@ -221,6 +227,13 @@ export function CsrGenerator() {
                     value={entry.value}
                     onChange={(v) => updateSan(i, { value: v })}
                     placeholder={entry.type === 'ip' ? '10.0.0.1' : 'example.jp'}
+                    error={
+                      entry.type === 'ip' &&
+                      entry.value.trim() !== '' &&
+                      !isValidIpv4(entry.value.trim())
+                        ? '正しい IPv4 形式で入力してください（例: 10.0.0.1）'
+                        : undefined
+                    }
                   />
                 </div>
                 {san.length > 1 && (
@@ -341,7 +354,15 @@ export function CsrGenerator() {
                   <ChipLabel tone="neutral">{parseResult.publicKey.namedCurve}</ChipLabel>
                 )}
                 <ChipLabel tone="neutral">{parseResult.signatureAlgorithm}</ChipLabel>
-                <ChipLabel tone={parseResult.signatureValid ? 'info' : 'error'}>
+                <ChipLabel
+                  tone={
+                    parseResult.signatureValid === null
+                      ? 'neutral'
+                      : parseResult.signatureValid
+                        ? 'info'
+                        : 'error'
+                  }
+                >
                   {parseResult.signatureValid === null
                     ? '署名検証: 不能'
                     : parseResult.signatureValid

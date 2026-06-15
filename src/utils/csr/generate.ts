@@ -74,7 +74,16 @@ function ipv4ToOctets(value: string): Uint8Array | null {
   return octets;
 }
 
-/** SAN エントリ群を pkijs GeneralNames に変換する */
+/** 値が有効な IPv4 ドット表記かを返す（UI のインライン検証で再利用する） */
+export function isValidIpv4(value: string): boolean {
+  return ipv4ToOctets(value) !== null;
+}
+
+/**
+ * SAN エントリ群を pkijs GeneralNames に変換する。
+ * 値が非空の IP エントリが不正な IPv4 の場合は throw する
+ * （無言ドロップによる空 subjectAltName 拡張の生成を防ぐ）。
+ */
 function buildGeneralNames(san: SanEntry[]): GeneralNames {
   const names: GeneralName[] = [];
   for (const entry of san) {
@@ -86,14 +95,17 @@ function buildGeneralNames(san: SanEntry[]): GeneralNames {
       names.push(new GeneralName({ type: 1, value: v }));
     } else if (entry.type === 'ip') {
       const octets = ipv4ToOctets(v);
-      if (octets) {
-        names.push(
-          new GeneralName({
-            type: 7,
-            value: new asn1js.OctetString({ valueHex: octets.buffer as ArrayBuffer }),
-          })
+      if (!octets) {
+        throw new Error(
+          `SAN の IP アドレス「${v}」が不正です。IPv4 のドット表記（例: 10.0.0.1）で入力してください。`
         );
       }
+      names.push(
+        new GeneralName({
+          type: 7,
+          value: new asn1js.OctetString({ valueHex: octets.buffer as ArrayBuffer }),
+        })
+      );
     }
   }
   return new GeneralNames({ names });

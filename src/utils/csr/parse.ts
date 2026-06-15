@@ -176,7 +176,9 @@ export async function parseCsr(input: string): Promise<CsrParseResult> {
   try {
     signatureValid = await pkcs10.verify();
   } catch {
-    signatureValid = false;
+    // verify が throw するのは未対応アルゴリズム等で「検証不能」の場合。
+    // 署名不正(false=NG) と区別するため null（検証: 不能）にマップする。
+    signatureValid = null;
   }
 
   return {
