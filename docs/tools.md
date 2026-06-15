@@ -571,20 +571,29 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - userinfo・パス・クエリは percent-decode してフォームに表示し、URI 生成時に
   `encodeURIComponent` で再エンコードする（パスワード中の `@ : /` 等の手動エンコード不要）
 - スキーム方言辞書（`src/utils/dsn-builder/dialects.ts`）が既定ポート・複数ホスト可否・
-  パス部の意味（DB 名 / DB 番号 / vhost）・SRV 制約を定義する
+  パス部の意味（DB 名 / DB 番号 / vhost）・SRV 制約・JDBC 形式可否を定義する
 - パスワードを `****` に置換した共有用 URI を常時導出する（同期不要の純粋関数）
+- JDBC（`jdbc:postgresql` / `jdbc:mysql`）は credential を userinfo でなく
+  `?user=&password=` クエリプロパティに置く JDBC 標準の流儀に従う。パース時はプロパティを
+  ユーザー名・パスワードのフォーム欄へ移し、シリアライズ時にプロパティ列の先頭へ戻す
+- JDBC URL に userinfo（`jdbc:postgresql://user:pass@host/db`）を含めて貼り付けた場合は、
+  userinfo を専用フィールドへ取り込み、再シリアライズ時に `?user=&password=` プロパティ形式へ
+  正規化する（JDBC ドライバは userinfo を解釈しないため。専用フィールドが空のときのみ
+  プロパティ側から引き取る）
 
 #### 準拠仕様・RFC
 
 - RFC 3986（URI 構文・percent-encoding）
 - libpq 接続 URI（PostgreSQL 複数ホスト）・MongoDB Connection String・RabbitMQ URI Specification
+- JDBC URL（PostgreSQL / MySQL ドライバの `jdbc:postgresql` / `jdbc:mysql` 形式）
 
 #### 制限・エッジケース
 
 - 実接続テストは不可（ブラウザの制約）
 - クエリパラメータの意味的妥当性（sslmode の値等）は検証しない
 - 過剰エンコードされた入力（例: `%41` = `A`）は decode → 再 encode で正規化される
-- JDBC / ADO.NET（`Server=...;`）形式は対象外
+- JDBC は PostgreSQL / MySQL のみ対応。SQL Server（`;` 区切り）・Oracle（`@host:port:SID`）・
+  ADO.NET（`Server=...;`）形式は文法が大きく異なるため対象外
 
 ### 鍵フォーマット変換
 
@@ -653,3 +662,30 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 辞書に無い独自ヘッダ名・独自名のクエリ/フォームパラメータは `scrubText` が拾える範囲のみ redact される（任意名のセッショントークン等は残りうる。完全な網羅は保証せず、出力は共有前の目視確認が前提）
 - レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする。`HIGH_ENTROPY_BASE64` ルールが base64 ブロック自体にマッチして本文を破壊し、デコード不能な HAR を出力するのを防ぐため（その代わり base64 本文内の秘密は検出されない）
 - 全処理はブラウザ内で完結し、HAR データは外部に送信しない
+
+### CSR・鍵ペアジェネレータ
+
+#### 仕組み・アルゴリズム
+
+- **生成モード**: `crypto.subtle.generateKey` で RSA（RSASSA-PKCS1-v1_5）または ECDSA（P-256 / P-384 / P-521）の鍵ペアを生成し、pkijs の `CertificationRequest` に Subject DN と SAN 拡張を設定して PKCS#10 CSR を構築する
+  - Subject DN フィールドの文字種は OID ごとに制御: countryName は `PrintableString`、emailAddress は `IA5String`、その他は `UTF8String`
+  - SAN（Subject Alternative Name）は `pkcs-9-at-extensionRequest`（OID `1.2.840.113549.1.9.14`）属性内の `id-ce-subjectAltName`（OID `2.5.29.17`）拡張として設定する
+  - `pkcs10.sign(privateKey, hashAlg)` で自己署名。RSA は SHA-256 固定、ECDSA は P-256=SHA-256 / P-384=SHA-384 / P-521=SHA-512
+  - CSR は `pkcs10.toSchema(true).toBER()` → DER → 64 文字折返し PEM 化（`-----BEGIN CERTIFICATE REQUEST-----`）
+  - 秘密鍵は `crypto.subtle.exportKey('pkcs8', ...)` でエクスポートし PEM 化（`-----BEGIN PRIVATE KEY-----`）。平文 PKCS#8 のみ対応
+- **解析モード**: PEM（`-----BEGIN CERTIFICATE REQUEST-----` ヘッダを抽出）または Base64（DER 直接）を受け取り、`asn1js.fromBER` + `pkijs.CertificationRequest` でパース。Subject の `typesAndValues` から OID→ラベル変換し、`extensionRequest` 属性から SAN を抽出する。`pkcs10.verify()` で署名自己整合性を検証する（改竄検出）
+- pkijs の Web Crypto エンジン初期化には既存 `src/utils/cert/engine.ts` の `ensureCryptoEngine()` を再利用する
+
+#### 準拠仕様
+
+- RFC 2986（PKCS#10 Certification Request Syntax Specification）
+- RFC 5280（X.509 SAN 拡張 id-ce-subjectAltName = 2.5.29.17）
+- PKCS#8（秘密鍵のエクスポート形式）
+
+#### 制限・エッジケース
+
+- Ed25519 / Ed448（EdDSA）は非対応（Web Crypto のブラウザサポート差・pkijs の追加検証が必要）
+- 暗号化 PKCS#8（PBES2 / パスフレーズ付き秘密鍵）でのエクスポートは非対応
+- SAN の IP アドレスは IPv4（4 オクテット）のみ対応。IPv6 は DNS SAN での代替を推奨
+- challengePassword 属性・KeyUsage / ExtendedKeyUsage 等のカスタム拡張編集は非対応
+- 全処理はブラウザ内で完結し、秘密鍵は外部サーバーに送信しない

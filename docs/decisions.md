@@ -4409,3 +4409,54 @@ URL パス / 辞書外ヘッダへの `scrubText` 適用で、パスやヘッダ
 
 - **#694 自由テキスト走査の独立カテゴリ化**: 辞書ベースの確実 redact（`AUTH_HEADER` / `QUERY`）と自由テキスト走査（`HEADER_SCAN` / `PATH_SCAN`）を別トグル・別カテゴリに分離した。ユーザーが「辞書外ヘッダ走査のみ ON」「URL パス走査のみ ON」と細かく制御できるようになり、件数表示も意味的に正確になった。
 - **#695 `data:` URL 破壊回避**: `scrubUrlPath` の冒頭で `data:` スキーム（大文字小文字無視）を検出したら scrubText を一切適用せず原文を返す。`HIGH_ENTROPY_BASE64` が base64 ペイロードを `[REDACTED]` に置換してデコード不能にする #690 M-2 と同型の破壊クラスを回避する。
+
+## [119] dsn-builder: JDBC URL 対応を PostgreSQL / MySQL に限定し credential を query property で表現
+
+**2026-06-15 | ステータス: 採用**
+
+### 背景
+
+[110] で導入した dsn-builder は当初設計（`docs/superpowers/specs/2026-06-13-dsn-builder-design.md`）で JDBC を「やらないこと（YAGNI）」としていた。その後ユーザー要望により JDBC URL 対応を追加することになった。JDBC URL はドライバごとに文法が大きく異なる（PostgreSQL / MySQL は RFC 3986 系に近いが、SQL Server は `;` 区切り、Oracle は `@host:port:SID` という独自構文）。
+
+### 決断
+
+- **決定**: JDBC 対応は **PostgreSQL（`jdbc:postgresql`）/ MySQL（`jdbc:mysql`）の 2 ドライバに限定**する。SQL Server・Oracle は対象外。
+- **credential の置き場所**: JDBC は user / password を userinfo（`user:pass@host`）でなく **`?user=&password=` クエリプロパティ**として入出力する（JDBC 標準の流儀。`DriverManager.getConnection(url, user, pass)` 別渡しが本来だが URL に含める場合はプロパティが一般的）。
+- **モデル設計**: 既存 `DsnModel` を拡張せず、`Dialect.jdbc` フラグで分岐する。scheme 文字列自体を `jdbc:postgresql` とすることで `${scheme}://` がそのまま `jdbc:` プレフィックスを満たす。パース時はプロパティの `user` / `password` を専用フィールドへ移し、シリアライズ時にプロパティ列の先頭へ戻す（往復一致を保証）。
+- **userinfo → property 正規化**: JDBC URL に userinfo（`jdbc:postgresql://u:p@host/db`）を含めて貼った場合は専用フィールドへ取り込み、再シリアライズで `?user=&password=` プロパティ形式へ正規化する（JDBC ドライバは userinfo を解釈しないため意図した変換）。専用フィールドが空のときのみプロパティ側から引き取り、シリアライズ側でも専用フィールドが担当するキーを params から除外して `user` / `password` の重複出力を防ぐ。
+
+### 却下した選択肢
+
+- **主要 4 ドライバ（SQL Server / Oracle 含む）対応**: `;` 区切り・SID/service 等で parse/serialize にドライバ別分岐と `DsnModel` 拡張が必要になり工数が大きい。需要が確認できた 2 ドライバに絞り YAGNI を維持。
+- **userinfo 形式での credential 保持**: PostgreSQL JDBC ドライバは URL userinfo を解釈しないため、互換性のあるプロパティ形式を採用。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし。既存パーサ・バリデータ（単一 `validateModel`）をそのまま JDBC でも経由する。
+- ✅ JDBC でも範囲外ポート・不正 percent-encoding・未対応サブスキームを拒否する陽性対照テストを同梱（test-gates 準拠）。検証経路が jdbc を素通りしないことを保証。
+- ⚠️ SQL Server / Oracle は対象外のまま。将来必要になれば別途ドライバ別分岐を設計する。
+
+## [120] csr-generator: cert-decoder の「作る側」、全処理ブラウザ内完結で秘密鍵を非送信
+
+**2026-06-15 | ステータス: 採用**
+
+### 背景
+
+cert-decoder（第1回 S-2、decision [111]）は証明書を「読む側」のツールで、v1 から「CSR 生成は別ツール」と明示していた。CSR 生成は通常 `openssl` CLI か CA 提供フォームで行うが、後者は秘密鍵がサーバ側生成になりがちで、社内 CA・本番系では秘密鍵を外部に出せない要件がある。全処理ブラウザ内完結という差別化要因は cert-decoder / key-converter と同じ設計方針。
+
+### 決断
+
+- **技術スタック**: pkijs（cert-decoder / key-converter で既存依存）+ Web Crypto API。追加ライブラリ不要
+- **アーキテクチャ**: `src/utils/csr/`（types / generate / parse / index）にロジックを分離。pkijs エンジン初期化は既存 `src/utils/cert/engine.ts` の `ensureCryptoEngine()` を再利用（重複初期化回避）
+- **v1 スコープ**: RSA（2048/3072/4096 bit）/ ECDSA（P-256/P-384/P-521）に限定。平文 PKCS#8 のみエクスポート
+- **スコープ外（v1）**: Ed25519/Ed448（Web Crypto ブラウザサポート差・pkijs 追加検証必要）、暗号化 PKCS#8（WebCrypto 単体困難）、challengePassword 属性・カスタム拡張編集、SAN IPv6
+
+### test-gates 対応
+
+署名検証は「改竄を検出する validator」に該当するため、`csr-parse.test.ts` に陽性対照（署名を改竄した CSR は `signatureValid=false` を返す）を必須で併設。陰性対照のみでは空回り実装と区別不能（PR #233 事故と同型）。
+
+### 結果・トレードオフ
+
+- ✅ 追加ライブラリなし。pkijs / asn1js の既存依存のみで完結
+- ✅ 秘密鍵がブラウザ外に一切送信されない設計
+- ⚠️ Ed25519 / 暗号化 PKCS#8 は v1 スコープ外。需要が出れば別 PR で対応

@@ -39,7 +39,8 @@ function splitHostPort(raw: string): { host: string; port: string } | null {
 export function parseDsn(input: string): ParseResult {
   const uri = input.trim();
 
-  const schemeMatch = /^([a-z][a-z0-9+.-]*):\/\//i.exec(uri);
+  // `jdbc:postgresql://` のような JDBC 亜種も 1 トークンの scheme として捕捉する
+  const schemeMatch = /^(jdbc:[a-z][a-z0-9+.-]*|[a-z][a-z0-9+.-]*):\/\//i.exec(uri);
   if (!schemeMatch) {
     return fail('「スキーム://」で始まる接続文字列を入力してください');
   }
@@ -109,7 +110,27 @@ export function parseDsn(input: string): ParseResult {
     }
   }
 
-  const model: DsnModel = { scheme: scheme as DsnScheme, user, password, hosts, database, params };
+  // JDBC は credential を `?user=&password=` プロパティに持つ。専用フィールドへ移し、
+  // 残りのパラメータだけをクエリとして保持する（userinfo が併記されていればそれを優先）。
+  let finalParams = params;
+  if (DIALECTS[scheme as DsnScheme].jdbc) {
+    const remaining: DsnParam[] = [];
+    for (const p of params) {
+      if (p.key === 'user' && user === '') user = p.value;
+      else if (p.key === 'password' && password === '') password = p.value;
+      else remaining.push(p);
+    }
+    finalParams = remaining;
+  }
+
+  const model: DsnModel = {
+    scheme: scheme as DsnScheme,
+    user,
+    password,
+    hosts,
+    database,
+    params: finalParams,
+  };
   const validationError = validateModel(model);
   if (validationError !== null) return fail(validationError);
   return { ok: true, model };

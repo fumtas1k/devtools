@@ -184,7 +184,7 @@ const toolEntries: Tool[] = [
     slug: 'dsn-builder',
     name: 'DSN/接続文字列ビルダ',
     description:
-      '接続文字列（DSN）をフォームとURIで双方向編集します。パスワードをマスクした共有用URIも生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応',
+      '接続文字列（DSN）をフォームとURIで双方向編集します。パスワードをマスクした共有用URIも生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応（PostgreSQL・MySQL は JDBC URL も対応）',
     category: 'convert',
     yomi: 'でぃーえすえぬせつぞくもじれつびるだ',
   },
@@ -211,6 +211,14 @@ const toolEntries: Tool[] = [
       'HARファイルを一覧・詳細表示し、Cookie・認証ヘッダ・トークン類を自動redactした共有用HARを出力します。ファイルはブラウザ外に送信しません',
     category: 'convert',
     yomi: 'えいちえーあーるびゅーあ',
+  },
+  {
+    slug: 'csr-generator',
+    name: 'CSR・鍵ペアジェネレータ',
+    description:
+      'RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力します。既存 CSR の Subject/SAN/署名検証にも対応。秘密鍵はブラウザ外に送信しません',
+    category: 'generate',
+    yomi: 'しーえすあーるかぎぺあじぇねれーた',
   },
 ];
 

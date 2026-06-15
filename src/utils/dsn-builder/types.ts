@@ -1,4 +1,4 @@
-/** 対応スキーム（TLS / SRV 亜種を含む） */
+/** 対応スキーム（TLS / SRV 亜種・JDBC 亜種を含む） */
 export type DsnScheme =
   | 'postgresql'
   | 'postgres'
@@ -8,7 +8,9 @@ export type DsnScheme =
   | 'redis'
   | 'rediss'
   | 'amqp'
-  | 'amqps';
+  | 'amqps'
+  | 'jdbc:postgresql'
+  | 'jdbc:mysql';
 
 /** ホスト 1 件分。port は編集途中を表現できるよう文字列で保持（'' = 未指定） */
 export interface DsnHost {
