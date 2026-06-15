@@ -77,13 +77,14 @@ export type HarPhase = 'blocked' | 'dns' | 'connect' | 'ssl' | 'send' | 'wait' |
 
 export interface WaterfallSegment {
   phase: HarPhase;
-  ms: number;       // フェーズ所要時間（ms、>= 0）
-  ratio: number;    // 全体幅に対する割合（0..1）
+  ms: number;          // フェーズ所要時間（ms、> 0）
+  widthRatio: number;  // バー内相対幅（ms / totalMs、0..1）。flex セグメント幅に使う
 }
 
 export interface WaterfallRow {
   hasTimeline: boolean;        // 起点・timings から描画可能か
-  offsetRatio: number;         // 全体起点からの相対開始位置（0..1）
+  offsetRatio: number;         // 全体起点からの相対開始位置（(start - t0) / globalTotal、0..1）
+  widthRatio: number;          // バー全体幅（durationMs / globalTotal、0..1）
   totalMs: number;             // このエントリの所要時間（フェーズ合計）
   segments: WaterfallSegment[];
 }
@@ -106,7 +107,8 @@ export interface WaterfallModel {
      二重計上を避けるため、`ssl >= 0` のとき `connect` セグメントを
      `connect - ssl`（下限 0）と `ssl` の 2 セグメントに分割し、色は connect→ssl の順で並べる
    - 値が `-1`（該当なし）/ 未定義 / `0` のフェーズはセグメント化しない
-4. 各セグメントの `ratio = ms / totalMs`、`offsetRatio = (start - t0) / totalMs`。
+4. エントリ毎: `offsetRatio = (start - t0) / globalTotal`、`widthRatio(bar) = durationMs / globalTotal`。
+   各セグメントの `widthRatio = ms / durationMs`（バー内相対。flex で横並びにする）。
 5. `rows` は入力 `entries` と同じ index 対応（壊れたエントリも `hasTimeline=false` で埋める）。
 
 純関数・入力非破壊。`entries` を読むのみで mutate しない。
