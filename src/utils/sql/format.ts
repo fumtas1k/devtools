@@ -58,6 +58,8 @@ export function formatSql(
       keywordCase: 'upper',
       tabWidth: 2,
       indentStyle: 'standard',
+      // 先頭カンマスタイルでは文末セミコロンも単独行にして縦の区切りを揃える
+      newlineBeforeSemicolon: commaPosition === 'before',
     });
   } catch {
     throw new Error('SQL を整形できませんでした。構文を確認してください');

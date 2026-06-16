@@ -53,6 +53,20 @@ describe('formatSql', () => {
       expect(lines.some((l) => l.endsWith(','))).toBe(false);
     });
 
+    it('before では文末セミコロンを単独行にする', () => {
+      const result = formatSql('select id from users;', 'mysql', 'before');
+      const lines = result.split('\n');
+      // セミコロンだけの行が存在する
+      expect(lines).toContain(';');
+    });
+
+    it('after（既定）では文末セミコロンを単独行にしない', () => {
+      const result = formatSql('select id from users;', 'mysql');
+      const lines = result.split('\n');
+      // セミコロン単独行は作らない（直前トークンと同じ行に付く）
+      expect(lines).not.toContain(';');
+    });
+
     it('before でも文字列リテラル内のカンマは変換しない', () => {
       const result = formatSql("select id from t where tag = 'a,b'", 'mysql', 'before');
       // 文字列内のカンマはそのまま保持される
