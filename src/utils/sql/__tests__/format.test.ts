@@ -33,4 +33,32 @@ describe('formatSql', () => {
       'SQL を整形できませんでした'
     );
   });
+
+  describe('カンマ位置（commaPosition）', () => {
+    it('既定（after）は行末カンマで整形する', () => {
+      const result = formatSql('select id, name from users', 'mysql');
+      const lines = result.split('\n');
+      // カラム行が行末カンマで終わる（先頭カンマ行は存在しない）
+      expect(lines).toContain('  id,');
+      expect(lines.some((l) => /^\s*,/.test(l))).toBe(false);
+    });
+
+    it('before 指定で行末カンマを次行の先頭へ移動する', () => {
+      const result = formatSql('select id, name, email from users', 'mysql', 'before');
+      const lines = result.split('\n');
+      // 先頭カンマスタイル: カラム行の先頭にカンマが付き、行末カンマは消える
+      expect(lines).toContain('  id');
+      expect(lines).toContain('  , name');
+      expect(lines).toContain('  , email');
+      expect(lines.some((l) => l.endsWith(','))).toBe(false);
+    });
+
+    it('before でも文字列リテラル内のカンマは変換しない', () => {
+      const result = formatSql("select id from t where tag = 'a,b'", 'mysql', 'before');
+      // 文字列内のカンマはそのまま保持される
+      expect(result).toContain("'a,b'");
+      // 'a,b' を先頭カンマに割ってしまっていないこと
+      expect(result).not.toContain(", b'");
+    });
+  });
 });

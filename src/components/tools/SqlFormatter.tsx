@@ -6,7 +6,7 @@ import { OutputField } from '@/components/ui/OutputField';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
-import { formatSql, embedParams, type SqlDialect } from '@/utils/sql';
+import { formatSql, embedParams, type SqlDialect, type CommaPosition } from '@/utils/sql';
 import { useCodec } from '@/hooks/useCodec';
 
 type Mode = 'format' | 'embed';
@@ -18,6 +18,11 @@ const DIALECT_OPTIONS: { value: SqlDialect; label: string }[] = [
   { value: 'sqlserver', label: 'SQL Server' },
 ];
 
+const COMMA_OPTIONS: { value: CommaPosition; label: string }[] = [
+  { value: 'after', label: '行末' },
+  { value: 'before', label: '先頭' },
+];
+
 const FORMAT_SAMPLE =
   "select u.id, u.name, u.email from users u join orders o on o.user_id = u.id where u.status = 'active' and o.created_at > '2024-01-01' order by o.created_at desc limit 10";
 const EMBED_SQL_SAMPLE = 'SELECT * FROM users WHERE id = ? AND status = ?';
@@ -26,15 +31,19 @@ const EMBED_PARAMS_SAMPLE = '[123, "active"]';
 export function SqlFormatterTool() {
   const [mode, setMode] = useState<Mode>('format');
   const [dialect, setDialect] = useState<SqlDialect>('mysql');
+  const [commaPosition, setCommaPosition] = useState<CommaPosition>('after');
 
   // 整形タブ
-  const format = useCodec((text) => formatSql(text, dialect), [dialect]);
+  const format = useCodec(
+    (text) => formatSql(text, dialect, commaPosition),
+    [dialect, commaPosition]
+  );
 
   // 埋め込みタブ（SQL は useCodec が、パラメータは別 state が保持）
   const [params, setParams] = useState('');
   const embed = useCodec(
-    (sql) => formatSql(embedParams(sql, params, dialect), dialect),
-    [params, dialect]
+    (sql) => formatSql(embedParams(sql, params, dialect), dialect, commaPosition),
+    [params, dialect, commaPosition]
   );
 
   const handleEmbedClear = () => {
@@ -54,12 +63,23 @@ export function SqlFormatterTool() {
         ariaLabel="モード"
       />
 
-      {/* 方言セレクタ（両タブ共通） */}
-      <div className="max-w-xs">
-        <label htmlFor="sql-dialect" className="body-emphasis text-default block mb-2">
-          SQL 方言
-        </label>
-        <Select id="sql-dialect" options={DIALECT_OPTIONS} value={dialect} onChange={setDialect} />
+      {/* 方言・カンマ位置（両タブ共通） */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="w-full sm:max-w-xs">
+          <label htmlFor="sql-dialect" className="body-emphasis text-default block mb-2">
+            SQL 方言
+          </label>
+          <Select id="sql-dialect" options={DIALECT_OPTIONS} value={dialect} onChange={setDialect} />
+        </div>
+        <div>
+          <span className="body-emphasis text-default block mb-2">カンマ位置</span>
+          <ToggleGroup
+            options={COMMA_OPTIONS}
+            value={commaPosition}
+            onChange={(v) => setCommaPosition(v as CommaPosition)}
+            ariaLabel="カンマ位置"
+          />
+        </div>
       </div>
 
       {mode === 'format' ? (
