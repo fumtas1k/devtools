@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
+import { BareInput } from '@/components/ui/BareInput';
 import { OutputField } from '@/components/ui/OutputField';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
@@ -206,48 +207,60 @@ export function CsrGenerator() {
           {/* SAN */}
           <fieldset className="space-y-2">
             <legend className="caption font-semibold">SAN（Subject Alternative Name）</legend>
-            {san.map((entry, i) => (
-              <div key={i} className="flex flex-wrap items-end gap-2">
-                <ToggleGroup<SanEntry['type']>
-                  ariaLabel="SAN 種別"
-                  size="sm"
-                  layout="wrap"
-                  options={[
-                    { value: 'dns', label: 'DNS' },
-                    { value: 'ip', label: 'IP' },
-                    { value: 'email', label: 'email' },
-                  ]}
-                  value={entry.type}
-                  onChange={(t) => updateSan(i, { type: t })}
-                />
-                <div className="w-full md:flex-1 min-w-0">
-                  <InputField
-                    id={`csr-san-${i}`}
-                    label={`SAN ${i + 1}`}
-                    value={entry.value}
-                    onChange={(v) => updateSan(i, { value: v })}
-                    placeholder={entry.type === 'ip' ? '10.0.0.1' : 'example.jp'}
-                    error={
-                      entry.type === 'ip' &&
-                      entry.value.trim() !== '' &&
-                      !isValidIpv4(entry.value.trim())
-                        ? '正しい IPv4 形式で入力してください（例: 10.0.0.1）'
-                        : undefined
-                    }
-                  />
+            {san.map((entry, i) => {
+              const ipError =
+                entry.type === 'ip' &&
+                entry.value.trim() !== '' &&
+                !isValidIpv4(entry.value.trim());
+              const errorId = `csr-san-${i}-error`;
+              return (
+                <div key={i} className="space-y-1">
+                  <span className="caption font-semibold text-default">{`SAN ${i + 1}`}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ToggleGroup<SanEntry['type']>
+                      ariaLabel="SAN 種別"
+                      size="sm"
+                      layout="wrap"
+                      options={[
+                        { value: 'dns', label: 'DNS' },
+                        { value: 'ip', label: 'IP' },
+                        { value: 'email', label: 'email' },
+                      ]}
+                      value={entry.type}
+                      onChange={(t) => updateSan(i, { type: t })}
+                    />
+                    <div className="w-full md:flex-1 min-w-0">
+                      <BareInput
+                        id={`csr-san-${i}`}
+                        value={entry.value}
+                        onChange={(v) => updateSan(i, { value: v })}
+                        placeholder={entry.type === 'ip' ? '10.0.0.1' : 'example.jp'}
+                        error={ipError}
+                        aria-label={`SAN ${i + 1}`}
+                        aria-invalid={ipError}
+                        aria-describedby={ipError ? errorId : undefined}
+                      />
+                    </div>
+                    {san.length > 1 && (
+                      <button
+                        type="button"
+                        className="caption btn-remove-card leading-none"
+                        aria-label={`SAN ${i + 1} を削除`}
+                        onClick={() => setSan((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        削除
+                      </button>
+                    )}
+                  </div>
+                  {ipError && (
+                    <ErrorMessage
+                      id={errorId}
+                      message="正しい IPv4 形式で入力してください（例: 10.0.0.1）"
+                    />
+                  )}
                 </div>
-                {san.length > 1 && (
-                  <button
-                    type="button"
-                    className="caption btn-remove-card leading-none"
-                    aria-label={`SAN ${i + 1} を削除`}
-                    onClick={() => setSan((prev) => prev.filter((_, idx) => idx !== i))}
-                  >
-                    削除
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })}
             <button
               type="button"
               className="caption text-link-plain btn-link-plain"
