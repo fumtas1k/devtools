@@ -69,7 +69,12 @@ export function SqlFormatterTool() {
           <label htmlFor="sql-dialect" className="body-emphasis text-default block mb-2">
             SQL 方言
           </label>
-          <Select id="sql-dialect" options={DIALECT_OPTIONS} value={dialect} onChange={setDialect} />
+          <Select
+            id="sql-dialect"
+            options={DIALECT_OPTIONS}
+            value={dialect}
+            onChange={setDialect}
+          />
         </div>
         <div>
           <span className="body-emphasis text-default block mb-2">カンマ位置</span>
