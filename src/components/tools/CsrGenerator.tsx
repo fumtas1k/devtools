@@ -215,7 +215,10 @@ export function CsrGenerator() {
               const errorId = `csr-san-${i}-error`;
               return (
                 <div key={i} className="space-y-1">
-                  <span className="caption font-semibold text-default">{`SAN ${i + 1}`}</span>
+                  <label
+                    htmlFor={`csr-san-${i}`}
+                    className="caption font-semibold text-default"
+                  >{`SAN ${i + 1}`}</label>
                   <div className="flex flex-wrap items-center gap-2">
                     <ToggleGroup<SanEntry['type']>
                       ariaLabel="SAN 種別"
