@@ -74,5 +74,42 @@ describe('formatSql', () => {
       // 'a,b' を先頭カンマに割ってしまっていないこと
       expect(result).not.toContain(", b'");
     });
+
+    // 以下は行ベースの素朴な後処理だと SQL を壊すケースの回帰ガード（陽性対照）。
+    // 旧実装（行末が `,` かだけで判定）に当てると壊れて fail する。
+    it('before で行末コメントのカンマ（-- foo,）を行末カンマと誤認しない', () => {
+      const result = formatSql(
+        'select id, name from t -- ok\n-- foo,\nwhere id = 1',
+        'mysql',
+        'before'
+      );
+      const lines = result.split('\n');
+      // コメント内の `,` を剥がして次行へ差し込んだ不正な行が無い
+      expect(lines).toContain('  -- foo,');
+      expect(lines.some((l) => /^\s*,\s*WHERE/i.test(l))).toBe(false);
+    });
+
+    it('before で # 行コメントのカンマも誤認しない', () => {
+      const result = formatSql('select id, name from t # foo,\nwhere id = 1', 'mysql', 'before');
+      expect(result).toContain('# foo,');
+      expect(result.split('\n').some((l) => /^\s*,\s*WHERE/i.test(l))).toBe(false);
+    });
+
+    it('before で複数行にまたがる文字列リテラルを壊さない', () => {
+      const result = formatSql("select id from t where note = 'line1,\nline2'", 'mysql', 'before');
+      // 文字列の中身（line1, を含む）がそのまま保持される
+      expect(result).toContain("'line1,");
+      expect(result).toContain("line2'");
+      // 文字列内 `,` を行末カンマと誤認して先頭カンマ行を作っていない
+      expect(result.split('\n').some((l) => /^\s*,\s*line2/.test(l))).toBe(false);
+    });
+
+    it('before で最終行の行末カンマを欠落させない', () => {
+      // 整形器が末尾カンマを出す稀なケースでもカンマを失わない
+      const result = formatSql('select a, b,', 'mysql', 'before');
+      // 移動できた a→,b に加え、最終行の末尾カンマが保持されている
+      expect(result).toContain(', b');
+      expect(result.replace(/[^,]/g, '').length).toBe(2);
+    });
   });
 });

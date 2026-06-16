@@ -64,8 +64,8 @@ export function SqlFormatterTool() {
       />
 
       {/* 方言・カンマ位置（両タブ共通。デスクトップでは半々で並べる） */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="w-full sm:flex-1 min-w-0">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="w-full md:flex-1 min-w-0">
           <label htmlFor="sql-dialect" className="body-emphasis text-default block mb-2">
             SQL 方言
           </label>
@@ -76,7 +76,7 @@ export function SqlFormatterTool() {
             onChange={setDialect}
           />
         </div>
-        <div className="w-full sm:flex-1 min-w-0">
+        <div className="w-full md:flex-1 min-w-0">
           <span className="body-emphasis text-default block mb-2">カンマ位置</span>
           <ToggleGroup
             options={COMMA_OPTIONS}
