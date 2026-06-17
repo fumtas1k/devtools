@@ -2,11 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, cleanup, screen, fireEvent } from '@testing-library/react';
 import { act } from 'react';
-import {
-  SAMPLE_SECRET_BASE32,
-  DEFAULTS,
-  TotpHotpGeneratorTool,
-} from '../TotpHotpGenerator';
+import { SAMPLE_SECRET_BASE32, DEFAULTS, TotpHotpGeneratorTool } from '../TotpHotpGenerator';
 import { base32Decode } from '@/utils/totp-hotp';
 
 // TOTP の setInterval tick が async crypto (crypto.subtle) を叩いて RTL テストを汚すのを避けるため、
@@ -55,9 +51,7 @@ describe('DEFAULTS', () => {
   it('DEFAULTS でサンプル secret を使って totp を生成できる', async () => {
     // このケースは実物の totp が必要 (モックは固定 '000000' を返すため)。
     // importActual で実装を直接取得して検証する。
-    const actual = await vi.importActual<typeof import('@/utils/totp-hotp')>(
-      '@/utils/totp-hotp',
-    );
+    const actual = await vi.importActual<typeof import('@/utils/totp-hotp')>('@/utils/totp-hotp');
     const secretBytes = actual.base32Decode(SAMPLE_SECRET_BASE32);
     const code = await actual.totp(secretBytes, { ...DEFAULTS, timestamp: 1234567890 * 1000 });
     expect(code).toHaveLength(DEFAULTS.digits);
