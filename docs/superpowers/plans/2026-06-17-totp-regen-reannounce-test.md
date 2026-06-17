@@ -21,6 +21,7 @@
 ## Task 1: テストファイルを .tsx 化し既存テストを維持
 
 **Files:**
+
 - Rename: `src/components/tools/__tests__/TotpHotpGenerator.test.ts` → `src/components/tools/__tests__/TotpHotpGenerator.test.tsx`
 
 - [ ] **Step 1: git mv でリネーム**
@@ -46,6 +47,7 @@ git commit -m "test: TotpHotpGenerator テストを .tsx へリネーム (#538)"
 ## Task 2: 連打 re-announce の RTL テストを追加
 
 **Files:**
+
 - Modify: `src/components/tools/__tests__/TotpHotpGenerator.test.tsx`
 
 - [ ] **Step 1: ファイル全体を以下に書き換える（既存定数テスト維持 + RTL ブロック追加）**
@@ -61,11 +63,7 @@ git commit -m "test: TotpHotpGenerator テストを .tsx へリネーム (#538)"
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, cleanup, screen, fireEvent } from '@testing-library/react';
 import { act } from 'react';
-import {
-  SAMPLE_SECRET_BASE32,
-  DEFAULTS,
-  TotpHotpGeneratorTool,
-} from '../TotpHotpGenerator';
+import { SAMPLE_SECRET_BASE32, DEFAULTS, TotpHotpGeneratorTool } from '../TotpHotpGenerator';
 import { base32Decode } from '@/utils/totp-hotp';
 
 // TOTP の setInterval tick が async crypto (crypto.subtle) を叩いて RTL テストを汚すのを避けるため、
@@ -114,9 +112,7 @@ describe('DEFAULTS', () => {
   it('DEFAULTS でサンプル secret を使って totp を生成できる', async () => {
     // このケースは実物の totp が必要 (モックは固定 '000000' を返すため)。
     // importActual で実装を直接取得して検証する。
-    const actual = await vi.importActual<typeof import('@/utils/totp-hotp')>(
-      '@/utils/totp-hotp',
-    );
+    const actual = await vi.importActual<typeof import('@/utils/totp-hotp')>('@/utils/totp-hotp');
     const secretBytes = actual.base32Decode(SAMPLE_SECRET_BASE32);
     const code = await actual.totp(secretBytes, { ...DEFAULTS, timestamp: 1234567890 * 1000 });
     expect(code).toHaveLength(DEFAULTS.digits);
@@ -206,6 +202,7 @@ git commit -m "test: TOTP連打時のre-announce(unmount→remount)を守るテ�
 ## Task 3: 陽性対照の証跡（dance 退行で fail することを確認）
 
 **Files:**
+
 - Temporarily modify (then revert): `src/components/tools/TotpHotpGenerator.tsx:179-192`
 
 - [ ] **Step 1: 実装の dance を一時的に 1 行へ退行させる**
@@ -213,11 +210,11 @@ git commit -m "test: TOTP連打時のre-announce(unmount→remount)を守るテ�
 `handleRegenerateSecret` の dance 部分を一時的に次へ置換（**この変更はコミットしない**）:
 
 ```tsx
-  const handleRegenerateSecret = () => {
-    replaceSecret(generateRandomBase32Secret());
-    setCounterStr('0');
-    setRegenFlash(true);
-  };
+const handleRegenerateSecret = () => {
+  replaceSecret(generateRandomBase32Secret());
+  setCounterStr('0');
+  setRegenFlash(true);
+};
 ```
 
 - [ ] **Step 2: 追加テストが fail することを確認**
@@ -233,6 +230,7 @@ Expected: 新規ケース `flash 表示中に再 click すると announce span �
 git restore src/components/tools/TotpHotpGenerator.tsx
 git diff --stat src/components/tools/TotpHotpGenerator.tsx
 ```
+
 Expected: diff なし（実装は元の dance のまま）。
 
 - [ ] **Step 4: 退行を戻した状態でテストが再び pass することを確認**
