@@ -61,6 +61,11 @@ describe('DEFAULTS', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // #538: ランダム生成 連打時の re-announce（unmount→remount dance）を守る陽性対照
+//
+// 本テストは現行の実装メカニズム（rAF dance による announce span の unmount→remount）に
+// 意図的に密結合している。「dance を 1 行 setRegenFlash(true) に潰す退行を検知する」のが
+// 目的のため。将来 key={nonce} 等で再 announce を保ったままメカニズムを変える正当な
+// リファクタを行う場合は、本テストを削除せず「新メカニズムを assert するよう更新」すること。
 // ─────────────────────────────────────────────────────────────────────────────
 describe('TotpHotpGenerator — ランダム生成 連打の re-announce (#538)', () => {
   // requestAnimationFrame を蓄積式 stub にして決定論的に flush する。
@@ -89,7 +94,10 @@ describe('TotpHotpGenerator — ランダム生成 連打の re-announce (#538)'
 
     const regen = screen.getByRole('button', { name: REGEN_LABEL });
 
-    // 1 回目: rAF flush 前は span 未 mount、flush 後に mount される
+    // 1 回目 click: dance は announce を次フレームへ遅延させるため、rAF flush 前は span 未 mount。
+    // ← この pre-flush の null check が「announce を即時 mount しない（= 次フレーム遅延）」挙動の
+    // 実質的な番人。1 行 setRegenFlash(true) へ退行させると同期 mount するため、退行時はまずここが
+    // 最初に FAIL する（次の flush 後に mount されることと合わせて遅延 announce を担保）。
     act(() => {
       fireEvent.click(regen);
     });
@@ -98,8 +106,8 @@ describe('TotpHotpGenerator — ランダム生成 連打の re-announce (#538)'
     const firstSpan = screen.getByText(ANNOUNCE);
     expect(firstSpan).toBeTruthy();
 
-    // 2 回目（flash 表示中 = 1200ms setTimeout 前）: setRegenFlash(false) で span が一旦消える。
-    // ← これが退行検知の要。1 行 setRegenFlash(true) 実装では span が消えずこの assert が fail する。
+    // 2 回目 click（flash 表示中 = 1200ms setTimeout 前）: setRegenFlash(false) で span が一旦消える。
+    // 連打時も unmount→remount を経て再 announce されることを担保する（同期実装ではここも消えない）。
     act(() => {
       fireEvent.click(regen);
     });
