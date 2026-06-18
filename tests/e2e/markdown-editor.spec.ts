@@ -9,7 +9,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
   }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
       await waitForReactHydration(page);
-      await page.getByLabel('markdown入力エリア').fill('# 見出し1');
+      await page.getByLabel('markdown入力').fill('# 見出し1');
       // ページタイトルの h1 と重複しないようプレビュー内にスコープする
       const preview = page.locator('.markdown-preview');
       await expect(preview.getByRole('heading', { level: 1 })).toBeVisible();
@@ -37,8 +37,15 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     });
   });
 
-  test('陰性対照: HTMLをコピーボタンが存在する（CSP 違反なし）', async ({ browser }) => {
+  test('陰性対照: 入力するとHTMLをコピーボタンが表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
+      await waitForReactHydration(page);
+      // 空入力時はコピーボタンを表示しない（空文字コピーを防ぐ）
+      await expect(page.getByRole('button', { name: 'HTMLをコピー' })).toHaveCount(0);
+      // 入力するとコピーボタンが表示される
+      await page.getByLabel('markdown入力').fill('# 見出し');
       await expect(page.getByRole('button', { name: 'HTMLをコピー' })).toBeVisible();
     });
   });
@@ -55,7 +62,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
-      await page.getByLabel('markdown入力エリア').fill('**太字テスト**');
+      await page.getByLabel('markdown入力').fill('**太字テスト**');
       await expect(page.locator('.markdown-preview strong')).toContainText('太字テスト');
     });
   });
@@ -63,7 +70,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
   test('陰性対照: GFM 表 → table がプレビューに反映される（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
       const tableMarkdown = '| A | B |\n| --- | --- |\n| 1 | 2 |';
-      await page.getByLabel('markdown入力エリア').fill(tableMarkdown);
+      await page.getByLabel('markdown入力').fill(tableMarkdown);
       await expect(page.locator('.markdown-preview table')).toBeVisible();
     });
   });
@@ -76,7 +83,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
-      await page.getByLabel('markdown入力エリア').fill('<script>alert(1)</script>通常テキスト');
+      await page.getByLabel('markdown入力').fill('<script>alert(1)</script>通常テキスト');
       // プレビューが表示されるまで待つ
       await expect(page.locator('.markdown-preview')).toContainText('通常テキスト');
       // <script> 要素が DOM に存在しないことを確認（観測可能な振る舞い）
@@ -89,7 +96,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
-      await page.getByLabel('markdown入力エリア').fill('[クリック](javascript:alert(1))');
+      await page.getByLabel('markdown入力').fill('[クリック](javascript:alert(1))');
       // リンクが表示されるまで待つ
       await expect(page.locator('.markdown-preview a')).toBeVisible();
       // href に javascript: が含まれないことを確認

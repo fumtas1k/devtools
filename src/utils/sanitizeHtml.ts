@@ -1,9 +1,15 @@
 /**
  * クリップボード由来 HTML の許可リスト方式サニタイザ。
  *
- * 防御は二重構造（本サニタイザでの除去 ＋ 表示側の sandbox iframe）であり、
- * ここでの見落としが直ちにスクリプト実行に繋がらない設計だが、
+ * ClipboardInspector では防御は二重構造（本サニタイザでの除去 ＋ 表示側の
+ * sandbox iframe）であり、ここでの見落としが直ちにスクリプト実行に繋がらない設計。
  * 拒否リストではなく許可リスト方式で堅く守る。
+ *
+ * ⚠️ 利用箇所による防御層数の違い: MarkdownEditor のようにインライン
+ * `dangerouslySetInnerHTML` で描画する consumer では iframe 層が無く、
+ * 本サニタイザが唯一の防御層になる（単層防御）。許可リスト方式のため実用上の
+ * リスクは低いが、本ファイルの許可リスト緩和は単層 consumer の表示に直接影響する点に
+ * 注意（背景: docs/decisions.md [121]）。
  *
  * style 属性 / style 要素は本番 CSP（style-src strict, unsafe-inline なし）で
  * srcdoc iframe にも違反として継承されるため許可しない。

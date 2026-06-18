@@ -707,7 +707,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 
 #### 準拠仕様・RFC
 
-- **CommonMark**: `marked` v15 は CommonMark 0.31 に準拠する基盤を持つ
+- **CommonMark**: `marked`（本プロジェクトでは v18 を使用）は CommonMark に準拠する基盤を持つ
 - **GitHub Flavored Markdown (GFM)**: `gfm: true` で GFM 拡張（表・取り消し線・コードブロックの言語記法）を有効化。GFM は CommonMark のスーパーセット仕様（[https://github.github.com/gfm/](https://github.github.com/gfm/)）
 
 #### 制限・エッジケース

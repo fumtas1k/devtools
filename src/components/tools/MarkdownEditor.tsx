@@ -61,7 +61,9 @@ export function MarkdownEditor() {
         >
           サンプルを入力
         </button>
-        <CopyButton text={html} label="HTMLをコピー" ariaLabel="プレビューのHTMLをコピー" />
+        {input.length > 0 && (
+          <CopyButton text={html} label="HTMLをコピー" ariaLabel="プレビューのHTMLをコピー" />
+        )}
         <DownloadButton
           onClick={handleDownload}
           label=".mdダウンロード"
@@ -84,7 +86,6 @@ export function MarkdownEditor() {
             onChange={(e) => setInput(e.target.value)}
             placeholder={`# 見出し\n\n**太字** や *斜体*、\`コード\` が使えます。`}
             rows={20}
-            aria-label="markdown入力エリア"
           />
         </div>
 
