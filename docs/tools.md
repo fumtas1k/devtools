@@ -37,6 +37,8 @@
   - [DSN/接続文字列ビルダ](#dsn接続文字列ビルダ)
   - [鍵フォーマット変換](#鍵フォーマット変換)
   - [HARビューア＆サニタイザ](#harビューアサニタイザ)
+  - [CSR・鍵ペアジェネレータ](#csr鍵ペアジェネレータ)
+  - [markdownエディタ](#markdownエディタ)
 
 ## 生成
 
@@ -690,3 +692,28 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - SAN の IP アドレスは IPv4（4 オクテット）のみ対応。IPv6 は DNS SAN での代替を推奨
 - challengePassword 属性・KeyUsage / ExtendedKeyUsage 等のカスタム拡張編集は非対応
 - 全処理はブラウザ内で完結し、秘密鍵は外部サーバーに送信しない
+
+---
+
+### markdownエディタ
+
+#### 仕組み・アルゴリズム
+
+- **markdown パース**: `marked` ライブラリの `marked.parse(md, { gfm: true, breaks: true, async: false })` で GFM 準拠の HTML 文字列を生成する。`gfm: true` で表・取り消し線・コードブロックを有効化、`breaks: true` で改行を `<br>` に変換する（一般的なエディタ体験に合わせる）。
+- **XSS 対策**: 生成 HTML は必ず既存の `sanitizeHtml(html)` に通してから返す（`src/utils/sanitizeHtml.ts`）。許可リスト方式（`<script>` / style / 危険属性 / `javascript:` URL を除去）でガード。新規サニタイザは導入せず既存資産を再利用。
+- **描画**: `sanitizeHtml` 済みの HTML 文字列を `<div className="markdown-preview" dangerouslySetInnerHTML={{ __html: sanitized }}>` でインライン描画する。`sanitizeHtml` が許可外要素・属性を全除去した後の文字列のみを渡すため XSS リスクはない。
+- **パフォーマンス**: `useMemo(() => renderMarkdown(input), [input])` で入力単位に memo 化し、毎レンダーでのパース再実行を回避する。
+- **スタイリング**: `sanitizeHtml` は `class` 属性を除去するため、生成要素にクラスを付けられない。`global.css` の `@layer components` に `.markdown-preview` を定義し、子孫要素セレクタ（`.markdown-preview h1`、`.markdown-preview table` 等）で整形する。
+
+#### 準拠仕様・RFC
+
+- **CommonMark**: `marked`（本プロジェクトでは v18 を使用）は CommonMark に準拠する基盤を持つ
+- **GitHub Flavored Markdown (GFM)**: `gfm: true` で GFM 拡張（表・取り消し線・コードブロックの言語記法）を有効化。GFM は CommonMark のスーパーセット仕様（[https://github.github.com/gfm/](https://github.github.com/gfm/)）
+
+#### 制限・エッジケース
+
+- **GFM タスクリストの `<input type=checkbox>`**: `sanitizeHtml` の `DROP_WITH_CHILDREN` リストに `input` が含まれるため、チェックボックス要素が除去される。テキスト部分（`[ ] TODO` 等）は `<li>` のテキストとして残る。
+- **コードブロックの `class="language-xxx"`**: `sanitizeHtml` が `class` 属性を許可しないため除去される。シンタックスハイライトはスコープ外のため影響なし。
+- **見出しの `id` アンカー**: `id` 属性は許可リストに含まれないため除去される。見出しリンクは機能しない。
+- **`img` の外部 URL**: `sanitizeHtml` は `img src` に `data:image/` の raster 形式のみを許可し、`https://` 等の外部 URL は除去する（本番 CSP `img-src 'self' data: blob:` との整合、および「外部送信なし」建前の維持）。
+- **全処理はブラウザ内で完結し、入力 markdown を外部サーバーに送信しない**

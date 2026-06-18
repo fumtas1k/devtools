@@ -4460,3 +4460,35 @@ cert-decoder（第1回 S-2、decision [111]）は証明書を「読む側」の�
 - ✅ 追加ライブラリなし。pkijs / asn1js の既存依存のみで完結
 - ✅ 秘密鍵がブラウザ外に一切送信されない設計
 - ⚠️ Ed25519 / 暗号化 PKCS#8 は v1 スコープ外。需要が出れば別 PR で対応
+
+## [121] markdown-editor: `marked` 採用・インライン描画 + 既存サニタイザ方式
+
+**2026-06-17 | ステータス: 採用**
+
+### 背景
+
+markdown を 2 ペインでリアルタイムプレビューするツール。GFM（表・取り消し線・コードブロック）対応が必須。
+
+### `marked` 採用理由
+
+- **GFM 対応**: `gfm: true` オプションで GitHub Flavored Markdown を有効化できる
+- **軽量・高速**: CommonMark 準拠のシンプルな実装で Tree-shaking 可能
+- **メンテ状況良好**: 活発にメンテされており、セキュリティ対応も迅速
+- **API シンプル**: `marked.parse(md, options)` の同期呼び出しで文字列を返す（`async: false` 明示）
+
+### プレビュー描画: インライン描画 + 既存サニタイザを採用、sandbox iframe は不採用
+
+- **採用**: `dangerouslySetInnerHTML` + `sanitizeHtml()` によるインライン描画
+  - `src/styles/global.css` の `@layer components` に `.markdown-preview` を定義し、子孫要素セレクタで整形
+  - 色は CSS 変数 / semantic token のみ（primitive scale 直書き禁止）
+- **不採用**: sandbox iframe（ClipboardInspector 方式）
+  - 本番 CSP（`style-src` strict、`unsafe-inline` なし）下では srcdoc iframe 内でもインラインスタイル / class が無効化され、素の UA スタイル表示になる
+  - 整形プレビューというツールの主目的（見やすいプレビューを見せる）を損なうため不採用
+- **安全性**: `sanitizeHtml` の許可リスト方式（`<script>` / `style` / 危険属性 / `javascript:` URL を除去）でガード。入力は基本ユーザー自身の文章であり、許可リスト 1 層で実用上十分と判断
+
+### 結果・トレードオフ
+
+- ✅ `marked` 1 ライブラリ追加のみ。新規サニタイザは不要（既存 `sanitizeHtml` 再利用）
+- ✅ インライン描画のため CSS 変数・semantic token でプレビューを整形できる
+- ⚠️ GFM タスクリストの checkbox・コードブロックの class・見出し id は sanitizeHtml で除去される（制限として docs/tools.md に明記）
+- ⚠️ iframe 方式と異なり、sanitizeHtml の見落としが直ちに表示に影響しうる。ただし許可リスト方式のため見落としリスクは低く、単体テストに陽性対照（script 除去・javascript: href 除去）を同梱して保証

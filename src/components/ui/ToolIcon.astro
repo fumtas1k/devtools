@@ -430,3 +430,16 @@ const attrs = {
     </svg>
   )
 }
+{
+  slug === 'markdown-editor' && (
+    <svg {...attrs}>
+      {/* 文書外枠 */}
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      {/* M 字（markdown の頭文字を表す） */}
+      <polyline points="7 15 7 9 10 12 13 9 13 15" />
+      {/* ダウン矢印（プレビュー変換を表す）: 縦ステム + 左右対称の矢印ヘッド */}
+      <line x1="16" y1="9" x2="16" y2="15" />
+      <polyline points="14 13 16 15 18 13" />
+    </svg>
+  )
+}
