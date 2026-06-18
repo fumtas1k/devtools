@@ -116,7 +116,10 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
       await waitForReactHydration(page);
 
       // プレビューが入力欄より明確に高くなるよう、十分に長い markdown を入力する
-      const longMarkdown = Array.from({ length: 40 }, (_, i) => `## 見出し${i + 1}\n\n本文テキスト${i + 1}`).join('\n\n');
+      const longMarkdown = Array.from(
+        { length: 40 },
+        (_, i) => `## 見出し${i + 1}\n\n本文テキスト${i + 1}`
+      ).join('\n\n');
       await page.getByLabel('markdown入力').fill(longMarkdown);
 
       const input = page.getByLabel('markdown入力');

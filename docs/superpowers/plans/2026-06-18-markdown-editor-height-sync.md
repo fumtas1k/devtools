@@ -29,6 +29,7 @@
 ## Task 1: 高さ一致 E2E ガードを追加（先に失敗させる）
 
 **Files:**
+
 - Test: `tests/e2e/markdown-editor.spec.ts`（既存ファイル末尾の `test.describe` 内に追加）
 
 このテストは「長文を入力したとき入力欄 textarea とプレビュー箱の高さがほぼ一致する」ことを検証する。
@@ -39,32 +40,35 @@
 `tests/e2e/markdown-editor.spec.ts` の `test.describe('markdownエディタ（production CSP 適用）', () => { ... })` ブロック内（既存テスト群の後ろ、閉じ `});` の直前）に以下を追加する。先頭の import 行 `import { test, expect } from '@playwright/test';` は既存のまま流用する。
 
 ```ts
-  // ─── 高さ一致ガード: 入力欄とプレビューの縦幅が揃うことを担保 ──────────
-  // プレビューが青天井に伸びる（items-stretch / fill 欠落）と高さ差が広がり fail する。
-  test('高さガード: 長文入力時に入力欄とプレビューの高さがほぼ一致する（PC 幅）', async ({
-    browser,
-  }) => {
-    await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
-      // 左右 2 カラムが横並びになる PC 幅で検証する（md ブレークポイント >= 768px）
-      await page.setViewportSize({ width: 1280, height: 800 });
-      await waitForReactHydration(page);
+// ─── 高さ一致ガード: 入力欄とプレビューの縦幅が揃うことを担保 ──────────
+// プレビューが青天井に伸びる（items-stretch / fill 欠落）と高さ差が広がり fail する。
+test('高さガード: 長文入力時に入力欄とプレビューの高さがほぼ一致する（PC 幅）', async ({
+  browser,
+}) => {
+  await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
+    // 左右 2 カラムが横並びになる PC 幅で検証する（md ブレークポイント >= 768px）
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await waitForReactHydration(page);
 
-      // プレビューが入力欄より明確に高くなるよう、十分に長い markdown を入力する
-      const longMarkdown = Array.from({ length: 40 }, (_, i) => `## 見出し${i + 1}\n\n本文テキスト${i + 1}`).join('\n\n');
-      await page.getByLabel('markdown入力').fill(longMarkdown);
+    // プレビューが入力欄より明確に高くなるよう、十分に長い markdown を入力する
+    const longMarkdown = Array.from(
+      { length: 40 },
+      (_, i) => `## 見出し${i + 1}\n\n本文テキスト${i + 1}`
+    ).join('\n\n');
+    await page.getByLabel('markdown入力').fill(longMarkdown);
 
-      const input = page.getByLabel('markdown入力');
-      const preview = page.locator('.markdown-preview');
-      await expect(preview).toBeVisible();
+    const input = page.getByLabel('markdown入力');
+    const preview = page.locator('.markdown-preview');
+    await expect(preview).toBeVisible();
 
-      const inputBox = await input.boundingBox();
-      const previewBox = await preview.boundingBox();
-      if (!inputBox || !previewBox) throw new Error('boundingBox が取得できませんでした');
+    const inputBox = await input.boundingBox();
+    const previewBox = await preview.boundingBox();
+    if (!inputBox || !previewBox) throw new Error('boundingBox が取得できませんでした');
 
-      // flexbox stretch で両者の高さは一致する。border/padding 差の許容差は数 px。
-      expect(Math.abs(inputBox.height - previewBox.height)).toBeLessThanOrEqual(5);
-    });
+    // flexbox stretch で両者の高さは一致する。border/padding 差の許容差は数 px。
+    expect(Math.abs(inputBox.height - previewBox.height)).toBeLessThanOrEqual(5);
   });
+});
 ```
 
 - [ ] **Step 2: テストを実行して fail を確認**
@@ -86,6 +90,7 @@ git commit -m "test: markdownエディタの入力／プレビュー高さ一致
 ## Task 2: MarkdownEditor を fill 高さ同期 + 変換系ツールの見た目に統一
 
 **Files:**
+
 - Modify: `src/components/tools/MarkdownEditor.tsx`（全面書き換え）
 
 import 追加を伴うため、規約 §9.3 に従いファイル全体を書き直す。
@@ -180,11 +185,7 @@ export function MarkdownEditor() {
             <div className="flex items-center justify-between mb-3 min-h-8">
               <span className="body-emphasis text-default">プレビュー</span>
               {input.length > 0 && (
-                <CopyButton
-                  text={html}
-                  label="HTMLをコピー"
-                  ariaLabel="プレビューのHTMLをコピー"
-                />
+                <CopyButton text={html} label="HTMLをコピー" ariaLabel="プレビューのHTMLをコピー" />
               )}
             </div>
             {input.length === 0 ? (
@@ -253,6 +254,7 @@ git commit -m "fix: markdownエディタの入力とプレビューの高さを�
 ## Task 3: 最終検証（ユニット・型・ビルド・目視）と VRT 注記
 
 **Files:**
+
 - 変更なし（検証のみ）
 
 - [ ] **Step 1: ユニットテスト**
@@ -273,6 +275,7 @@ Expected: 成功。
 - [ ] **Step 4: 目視確認（PC / スマホ）**
 
 `npm run preview` を起動し `/tools/markdown-editor` を開く。`.agents/rules/ui-conventions.md` §3.2 手順で:
+
 - PC 1280x800: 入力欄とプレビューの上端・下端が揃い、長文入力でプレビューが内部スクロールする。入力欄を手動リサイズするとプレビューも追従する。
 - スマホ 390x844: 縦積みで崩れない。サンプル／コピー／ダウンロードの導線が見える。
 
@@ -294,4 +297,7 @@ web セッションは `actions: write` 不可のため、PR 本文に「`Update
   - 型 / lint / build / 目視 → Task 2・Task 3。
 - **Placeholder scan:** code ステップは全て実コードを記載。TBD/TODO なし。
 - **Type consistency:** `CopyButton`（`text` / `label` / `ariaLabel`）、`DownloadButton`（`onClick` / `label` / `variant` / `disabled`）、`InputField`（`multiline` / `mono` / `resize` / `rows` / `onSampleClick`）はいずれも既存シグネチャと一致。
+
+```
+
 ```
