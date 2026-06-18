@@ -104,4 +104,31 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
       expect(href ?? '').not.toContain('javascript:');
     });
   });
+
+  // ─── 高さ一致ガード: 入力欄とプレビューの縦幅が揃うことを担保 ──────────
+  // プレビューが青天井に伸びる（items-stretch / fill 欠落）と高さ差が広がり fail する。
+  test('高さガード: 長文入力時に入力欄とプレビューの高さがほぼ一致する（PC 幅）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
+      // 左右 2 カラムが横並びになる PC 幅で検証する（md ブレークポイント >= 768px）
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await waitForReactHydration(page);
+
+      // プレビューが入力欄より明確に高くなるよう、十分に長い markdown を入力する
+      const longMarkdown = Array.from({ length: 40 }, (_, i) => `## 見出し${i + 1}\n\n本文テキスト${i + 1}`).join('\n\n');
+      await page.getByLabel('markdown入力').fill(longMarkdown);
+
+      const input = page.getByLabel('markdown入力');
+      const preview = page.locator('.markdown-preview');
+      await expect(preview).toBeVisible();
+
+      const inputBox = await input.boundingBox();
+      const previewBox = await preview.boundingBox();
+      if (!inputBox || !previewBox) throw new Error('boundingBox が取得できませんでした');
+
+      // flexbox stretch で両者の高さは一致する。border/padding 差の許容差は数 px。
+      expect(Math.abs(inputBox.height - previewBox.height)).toBeLessThanOrEqual(5);
+    });
+  });
 });
