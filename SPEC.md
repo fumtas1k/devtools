@@ -90,6 +90,7 @@
 | `jmespath`                  | JMESPath クエリ評価（eval 非使用・CSP 安全）。フィルタ・射影に対応                                                 | JSON整形・ビューア          |
 | `pkijs`                     | X.509 証明書・PKCS#7 のパースと署名検証（Web Crypto エンジン経由）                                                 | SSL/TLS証明書デコーダ       |
 | `asn1js`                    | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ       |
+| `marked`                    | Markdown パース・HTML 変換（GFM 対応。`gfm: true`, `breaks: true`）。出力は既存 `sanitizeHtml` でサニタイズ        | markdownエディタ            |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -185,7 +186,8 @@ devtools/
     │       ├── cert-decoder.astro
     │       ├── key-converter.astro
     │       ├── har-viewer.astro
-    │       └── csr-generator.astro
+    │       ├── csr-generator.astro
+    │       └── markdown-editor.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -334,6 +336,7 @@ devtools/
 | 26  | 鍵フォーマット変換                | `key-converter`       | RSA / ECDSA（P-256/P-384/P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK で相互変換。入力形式と鍵種別を自動判定。Web Crypto API 主体で asn1js による OID 判定。全処理ブラウザ内完結                                                                  |
 | 27  | HARビューア＆サニタイザ           | `har-viewer`          | HAR ファイルをリクエスト/レスポンス一覧・詳細表示し、Cookie・認証ヘッダ・機密クエリ・POST ボディを構造的に redact。scrubText で本文の取りこぼしを追加検出。一貫トークン化（同一値=同一プレースホルダ）。全処理ブラウザ内完結・新規ライブラリなし        |
 | 28  | CSR・鍵ペアジェネレータ           | `csr-generator`       | RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力。Subject DN（CN/O/OU/C/ST/L/email）と SAN（DNS/IP/email）を設定可能。既存 CSR の Subject/SAN/公開鍵/署名アルゴリズム抽出と自己署名検証に対応。pkijs + Web Crypto。全処理ブラウザ内完結 |
+| 29  | markdownエディタ                  | `markdown-editor`     | markdown を 2 ペインでリアルタイム HTML プレビュー。GFM（表・取り消し線・コードブロック）対応。`marked` で HTML 変換後に既存 `sanitizeHtml` でサニタイズ。HTML クリップボードコピー・.md ダウンロード。全処理ブラウザ内完結                             |
 
 ---
 
@@ -1227,6 +1230,29 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.29 markdownエディタ（`markdown-editor`）
+
+**概要:** markdown テキストを入力するとリアルタイムに HTML プレビューを表示する 2 ペインエディタ。GFM（GitHub Flavored Markdown）に対応し、表・取り消し線・コードブロック・引用を記述できる。全処理ブラウザ内完結。
+
+**入力:** `<textarea>` への markdown テキスト直接入力。サンプル投入ボタンで GFM 機能を網羅したサンプルを挿入。
+
+**出力:** リアルタイムの HTML プレビュー（右ペイン）。HTML クリップボードコピー（`CopyButton`）。入力 markdown 原文の `.md` ファイルダウンロード（`DownloadButton`）。
+
+**データフロー:** `textarea` 入力 → `useMemo(renderMarkdown(input))` → `marked.parse(md, { gfm: true, breaks: true })` → `sanitizeHtml(html)` → `<div className="markdown-preview" dangerouslySetInnerHTML>` によるインライン描画。
+
+**モジュール構成:** `src/utils/markdown.ts`（`renderMarkdown` 純関数）/ `src/components/tools/MarkdownEditor.tsx` / `src/pages/tools/markdown-editor.astro`
+
+**追加依存:** `marked`（GFM 対応 Markdown パーサ）。出力は既存 `sanitizeHtml` でサニタイズ（新規サニタイザなし）。
+
+**既知の制限:**
+- GFM タスクリストの `<input type=checkbox>`: `sanitizeHtml` の `DROP_WITH_CHILDREN` で除去（チェックボックスは消えるがテキストは残る）
+- コードブロックの `class="language-xxx"`: `class` 属性は除去される（シンタックスハイライトはスコープ外）
+- 見出しの `id` アンカー: `id` 属性は許可外で除去される
+
+**スコープ外:** 書式ツールバー / シンタックスハイライト / 目次生成 / `.html` ダウンロード / localStorage 自動保存
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1393,6 +1419,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] 鍵フォーマット変換（`key-converter`）
   - [x] HARビューア＆サニタイザ（`har-viewer`）
   - [x] CSR・鍵ペアジェネレータ（`csr-generator`）
+  - [x] markdownエディタ（`markdown-editor`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）

@@ -44,6 +44,7 @@ export const PAGES = [
   '/tools/key-converter',
   '/tools/har-viewer',
   '/tools/csr-generator',
+  '/tools/markdown-editor',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy', '/404']);
