@@ -10,6 +10,11 @@
 
 設計書: `docs/superpowers/specs/2026-06-18-markdown-editor-height-sync-design.md`
 
+> **実装時の方針修正（重要）**: 本計画の Task 2 は当初 `items-stretch` + `fill` 機構を採用していたが、
+> 実装・E2E 検証でプレビュー（コンテンツ依存 `div`）の高さが青天井に伸びて機能しないことが判明し、
+> **固定高 28rem + 内部スクロール方式**（`.md-preview-box` クラス、`JsonFormatter` の `.json-tree-box` と同方式、
+> 入力は `InputField rows={18}`）へ変更した。最終コードと根拠は設計書 §2 と実装コミットを参照。
+
 ---
 
 ## File Structure
