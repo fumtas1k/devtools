@@ -119,19 +119,19 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
       const longMarkdown = Array.from({ length: 40 }, (_, i) => `## 見出し${i + 1}\n\n本文テキスト${i + 1}`).join('\n\n');
       await page.getByLabel('markdown入力').fill(longMarkdown);
 
-      await expect(page.locator('.markdown-preview')).toBeVisible();
+      const input = page.getByLabel('markdown入力');
+      const preview = page.locator('.markdown-preview');
+      await expect(preview).toBeVisible();
 
-      // ペイン wrapper の高さを比較する。
-      // items-stretch により左右の wrapper は同じ高さに揃えられる。
-      // 旧実装（items-start）ではプレビューペインが大きくなり diff が広がり fail する。
-      const inputColumn = page.locator('[data-testid="md-input-column"]');
-      const previewColumn = page.locator('[data-testid="md-preview-column"]');
-
-      const inputBox = await inputColumn.boundingBox();
-      const previewBox = await previewColumn.boundingBox();
+      // 実際に見えている箱どうし（入力 textarea とプレビュー箱）の高さを比較する。
+      // wrapper 同士の比較は items-stretch で常に一致してしまい、プレビュー箱が
+      // wrapper をはみ出すなどの真の不揃いを検出できないため、可視要素を直接比較する。
+      // 旧実装（items-start・プレビューが青天井に伸びる）では diff が広がり fail する。
+      const inputBox = await input.boundingBox();
+      const previewBox = await preview.boundingBox();
       if (!inputBox || !previewBox) throw new Error('boundingBox が取得できませんでした');
 
-      // flexbox stretch で両ペインの高さは一致する。許容差は数 px。
+      // flexbox stretch で両者の高さは一致する。border/padding 差の許容差は数 px。
       expect(Math.abs(inputBox.height - previewBox.height)).toBeLessThanOrEqual(5);
     });
   });

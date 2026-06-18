@@ -1448,6 +1448,14 @@
   .markdown-preview > *:first-child {
     margin-top: 0;
   }
+  /* プレビュー箱 / 入力待ち箱の固定高。入力 textarea（InputField rows=18, mono,
+     実測 ≒ 446px ≒ 28rem。JsonFormatter / .json-tree-box と同設定）と外形を揃え、
+     超過分は overflow: auto で枠内スクロールさせる。左右ペインの縦幅を一致させる要。
+     textarea 側の rows/font-size/line-height を変えた場合はこの値も追従させること。 */
+  .md-preview-box {
+    height: 28rem;
+    overflow: auto;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────
