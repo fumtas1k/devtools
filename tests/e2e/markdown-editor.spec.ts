@@ -119,15 +119,19 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
       const longMarkdown = Array.from({ length: 40 }, (_, i) => `## 見出し${i + 1}\n\n本文テキスト${i + 1}`).join('\n\n');
       await page.getByLabel('markdown入力').fill(longMarkdown);
 
-      const input = page.getByLabel('markdown入力');
-      const preview = page.locator('.markdown-preview');
-      await expect(preview).toBeVisible();
+      await expect(page.locator('.markdown-preview')).toBeVisible();
 
-      const inputBox = await input.boundingBox();
-      const previewBox = await preview.boundingBox();
+      // ペイン wrapper の高さを比較する。
+      // items-stretch により左右の wrapper は同じ高さに揃えられる。
+      // 旧実装（items-start）ではプレビューペインが大きくなり diff が広がり fail する。
+      const inputColumn = page.locator('[data-testid="md-input-column"]');
+      const previewColumn = page.locator('[data-testid="md-preview-column"]');
+
+      const inputBox = await inputColumn.boundingBox();
+      const previewBox = await previewColumn.boundingBox();
       if (!inputBox || !previewBox) throw new Error('boundingBox が取得できませんでした');
 
-      // flexbox stretch で両者の高さは一致する。border/padding 差の許容差は数 px。
+      // flexbox stretch で両ペインの高さは一致する。許容差は数 px。
       expect(Math.abs(inputBox.height - previewBox.height)).toBeLessThanOrEqual(5);
     });
   });
