@@ -76,25 +76,25 @@ export function MarkdownEditor() {
             rows={18}
             placeholder={`# 見出し\n\n**太字** や *斜体*、\`コード\` が使えます。`}
             onSampleClick={() => setInput(SAMPLE)}
-            // .md ダウンロードは入力 markdown 原文を保存するため入力ペインのヘッダに置く
-            headerRight={
-              input.length > 0 ? (
-                <DownloadButton
-                  onClick={handleDownload}
-                  label=".mdダウンロード"
-                  variant="secondary"
-                />
-              ) : undefined
-            }
           />
         </div>
 
         {/* 右ペイン: プレビュー（ラベル行は InputField / OutputField と同一構造で上端を揃える） */}
         <div className="w-full md:flex-1 min-w-0">
           <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
-            <span className="body-emphasis text-default">プレビュー</span>
+            {/* ラベルは truncate でヘッダを常に 1 行に保ち、入力ヘッダと高さ（=箱の上端）を揃える */}
+            <span className="body-emphasis text-default truncate min-w-0">プレビュー</span>
             {input.length > 0 && (
-              <CopyButton text={html} label="HTMLをコピー" ariaLabel="プレビューのHTMLをコピー" />
+              <div className="flex items-center gap-2 shrink-0">
+                {/* ダウンロード・コピーは結果（プレビュー）側ヘッダに置く（変換系ツールと同配置）。
+                    .md ダウンロードは入力 markdown 原文を保存する */}
+                <DownloadButton
+                  onClick={handleDownload}
+                  label=".mdダウンロード"
+                  variant="secondary"
+                />
+                <CopyButton text={html} label="HTMLコピー" ariaLabel="プレビューのHTMLコピー" />
+              </div>
             )}
           </div>
           {input.length === 0 ? (

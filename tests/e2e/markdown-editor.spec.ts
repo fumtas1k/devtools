@@ -37,16 +37,14 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     });
   });
 
-  test('陰性対照: 入力するとHTMLをコピーボタンが表示される（CSP 違反なし）', async ({
-    browser,
-  }) => {
+  test('陰性対照: 入力するとHTMLコピーボタンが表示される（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
       await waitForReactHydration(page);
       // 空入力時はコピーボタンを表示しない（空文字コピーを防ぐ）
-      await expect(page.getByRole('button', { name: 'HTMLをコピー' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'HTMLコピー' })).toHaveCount(0);
       // 入力するとコピーボタンが表示される
       await page.getByLabel('markdown入力').fill('# 見出し');
-      await expect(page.getByRole('button', { name: 'HTMLをコピー' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'HTMLコピー' })).toBeVisible();
     });
   });
 
@@ -73,11 +71,11 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
       await waitForReactHydration(page);
       await page.getByLabel('markdown入力').fill('# 見出し');
-      await expect(page.getByRole('button', { name: 'HTMLをコピー' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'HTMLコピー' })).toBeVisible();
       // クリアで入力が空になり、出力系ボタンと案内テキストが初期状態へ戻る
       await page.getByRole('button', { name: 'クリア' }).click();
       await expect(page.getByLabel('markdown入力')).toHaveValue('');
-      await expect(page.getByRole('button', { name: 'HTMLをコピー' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'HTMLコピー' })).toHaveCount(0);
       await expect(page.getByText('markdown を入力するとプレビューが表示されます')).toBeVisible();
     });
   });
