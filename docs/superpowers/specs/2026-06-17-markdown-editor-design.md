@@ -21,11 +21,11 @@ markdown を入力すると、リアルタイムに整形済み HTML プレビ�
 
 ### 3.1 ユニット分割
 
-| ユニット | 役割 | 依存 |
-| --- | --- | --- |
-| `src/utils/markdown.ts` | `renderMarkdown(md: string): string`。`marked` で HTML 化 → 既存 `sanitizeHtml()` に通して安全な HTML 文字列を返す純粋関数 | `marked`（新規）, `@/utils/sanitizeHtml` |
-| `src/components/tools/MarkdownEditor.tsx` | 2 ペイン UI。入力 state 管理、`renderMarkdown` の memo 化、コピー / ダウンロード / サンプル | `@/utils/markdown`, 共通 UI |
-| `src/pages/tools/markdown-editor.astro` | `client:load` でコンポーネントをマウント | BaseLayout |
+| ユニット                                  | 役割                                                                                                                       | 依存                                     |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `src/utils/markdown.ts`                   | `renderMarkdown(md: string): string`。`marked` で HTML 化 → 既存 `sanitizeHtml()` に通して安全な HTML 文字列を返す純粋関数 | `marked`（新規）, `@/utils/sanitizeHtml` |
+| `src/components/tools/MarkdownEditor.tsx` | 2 ペイン UI。入力 state 管理、`renderMarkdown` の memo 化、コピー / ダウンロード / サンプル                                | `@/utils/markdown`, 共通 UI              |
+| `src/pages/tools/markdown-editor.astro`   | `client:load` でコンポーネントをマウント                                                                                   | BaseLayout                               |
 
 ### 3.2 データフロー
 
@@ -55,6 +55,7 @@ HTML コピーは `sanitized`（プレビューと同一文字列）を対象に
 `marked` の標準出力タグ（`h1`-`h6`, `p`, `ul`/`ol`/`li`, `blockquote`, `pre`, `code`, `em`, `strong`, `del`, `a`, `img`, `hr`, `br`, `table`/`thead`/`tbody`/`tr`/`th`/`td`）は**すべて既存 `ALLOWED_TAGS` 内**。サニタイザ拡張は不要。
 
 既知の制限（プレビューに反映されない）:
+
 - GFM タスクリストの `<input type=checkbox>`: `sanitizeHtml` の `DROP_WITH_CHILDREN` で除去される（チェックボックスは消えるがテキストは残る）。
 - コードブロックの `class="language-xxx"`: `class` 属性は除去される（ハイライトはスコープ外なので影響なし）。
 - 見出しの `id` アンカー: `id` 属性は許可外で除去される。

@@ -61,11 +61,7 @@ export function MarkdownEditor() {
         >
           サンプルを入力
         </button>
-        <CopyButton
-          text={html}
-          label="HTMLをコピー"
-          ariaLabel="プレビューのHTMLをコピー"
-        />
+        <CopyButton text={html} label="HTMLをコピー" ariaLabel="プレビューのHTMLをコピー" />
         <DownloadButton
           onClick={handleDownload}
           label=".mdダウンロード"

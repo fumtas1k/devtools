@@ -33,9 +33,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
-      await expect(
-        page.getByText('markdown を入力するとプレビューが表示されます')
-      ).toBeVisible();
+      await expect(page.getByText('markdown を入力するとプレビューが表示されます')).toBeVisible();
     });
   });
 
@@ -62,9 +60,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     });
   });
 
-  test('陰性対照: GFM 表 → table がプレビューに反映される（CSP 違反なし）', async ({
-    browser,
-  }) => {
+  test('陰性対照: GFM 表 → table がプレビューに反映される（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
       const tableMarkdown = '| A | B |\n| --- | --- |\n| 1 | 2 |';
       await page.getByLabel('markdown入力エリア').fill(tableMarkdown);

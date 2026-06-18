@@ -22,12 +22,15 @@ GFM 対応・HTML コピー・`.md` ダウンロード・サンプル投入。�
 ## タスク（順に実施）
 
 ### 1. 依存追加
+
 ```
 npm install marked
 ```
+
 `package.json` / `package-lock.json` の差分を確認。
 
 ### 2. `src/utils/markdown.ts`
+
 ```ts
 import { marked } from 'marked';
 import { sanitizeHtml } from '@/utils/sanitizeHtml';
@@ -38,15 +41,18 @@ export function renderMarkdown(md: string): string {
   return sanitizeHtml(html);
 }
 ```
+
 - `marked.parse` の戻り型が `string | Promise<string>` のため `async: false` を明示し `as string`。型チェックを通すこと。
 
 ### 3. `src/utils/__tests__/markdown.test.ts`（陽性対照必須）
+
 - 見出し `# H1` → `<h1>`、`**bold**` → `<strong>`、リスト → `<ul><li>`。
 - GFM 表（`| a | b |` 行）→ `<table>` を含む。
 - **陽性対照（除去されることの検証）**: `<script>alert(1)</script>` がプレビュー HTML に**残らない**、`[x](javascript:alert(1))` の `href="javascript:..."` が**除去**される。陰性対照（正常入力）だけにしない。
 - `test-gates` skill の趣旨（検出能力ゼロで green を防ぐ）に従う。
 
 ### 4. `src/components/tools/MarkdownEditor.tsx`
+
 - `export function MarkdownEditor()`（json-formatter と同じ named export 形式に合わせる）。
 - state: `input`（markdown 文字列）。初期値は空 or サンプル無しの空。
 - `const html = useMemo(() => renderMarkdown(input), [input]);`
@@ -58,16 +64,20 @@ export function renderMarkdown(md: string): string {
 - 既存ツールの aria 属性パターン（ラベル紐付け等）を踏襲。
 
 ### 5. `src/styles/global.css` の `@layer components` に `.markdown-preview`
+
 - ラッパに付与し、**子要素を要素セレクタで整形**（`class` は sanitize で消えるため）。
   - 例: `.markdown-preview h1`, `.markdown-preview h2`, `.markdown-preview p`, `.markdown-preview ul`, `.markdown-preview ol`, `.markdown-preview blockquote`, `.markdown-preview pre`, `.markdown-preview code`, `.markdown-preview table`/`th`/`td`, `.markdown-preview a`, `.markdown-preview img`。
 - 色は `var(--color-*)` / semantic token。border・余白・角丸は既存スケールに合わせる。
 - variant prefix（`hover:` 等）を `@layer components` 手書きクラスに付けない（Tailwind v4 制約）。必要な hover は擬似クラスで直接書く。
 
 ### 6. `src/pages/tools/markdown-editor.astro`
+
 - `json-formatter.astro` を雛形に。`ToolLayout` + `client:load` + `ToolInfoSection`（特長・ユースケースを日本語で記述）。
 
 ### 7. `src/data/tools.ts`
+
 - `toolEntries` に追加:
+
 ```ts
 {
   slug: 'markdown-editor',
@@ -79,15 +89,18 @@ export function renderMarkdown(md: string): string {
 ```
 
 ### 8. VRT 登録
+
 - `tests/e2e/visual-regression-pages.ts` の `PAGES` に `'/tools/markdown-editor'` を追加。
 
 ### 9. E2E テスト
+
 - `tests/e2e/` の既存ツール spec を雛形に、`getByRole`/`getByLabel`/`getByText` で:
   - textarea に `# 見出し` を入力 → プレビューに `<h1>見出し</h1>` 相当（`getByRole('heading')`）が出る。
   - コピー / ダウンロードボタンが存在し操作できる。
 - 属性セレクタ（`locator('[role=…]')`）禁止。`expect` のオートリトライを使う。
 
 ### 10. ドキュメント更新
+
 - `README.md`: ツール一覧に追加。
 - `SPEC.md`: 2.3（`marked` 追加）/ 2.4 / 4 / 5 / 9 章。
 - `docs/tools.md`: 「変換・解析」セクションに節追加（仕組み・準拠 GFM/CommonMark・制限: タスクリスト input 除去 / コード class 除去 / 見出し id 除去）。目次にも追加。

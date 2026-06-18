@@ -1245,6 +1245,7 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 **追加依存:** `marked`（GFM 対応 Markdown パーサ）。出力は既存 `sanitizeHtml` でサニタイズ（新規サニタイザなし）。
 
 **既知の制限:**
+
 - GFM タスクリストの `<input type=checkbox>`: `sanitizeHtml` の `DROP_WITH_CHILDREN` で除去（チェックボックスは消えるがテキストは残る）
 - コードブロックの `class="language-xxx"`: `class` 属性は除去される（シンタックスハイライトはスコープ外）
 - 見出しの `id` アンカー: `id` 属性は許可外で除去される
