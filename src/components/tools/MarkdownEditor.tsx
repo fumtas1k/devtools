@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
+import { ClearButton } from '@/components/ui/ClearButton';
 import { renderMarkdown } from '@/utils/markdown';
 import { downloadText } from '@/utils/download';
 
@@ -75,12 +76,22 @@ export function MarkdownEditor() {
             rows={18}
             placeholder={`# 見出し\n\n**太字** や *斜体*、\`コード\` が使えます。`}
             onSampleClick={() => setInput(SAMPLE)}
+            // .md ダウンロードは入力 markdown 原文を保存するため入力ペインのヘッダに置く
+            headerRight={
+              input.length > 0 ? (
+                <DownloadButton
+                  onClick={handleDownload}
+                  label=".mdダウンロード"
+                  variant="secondary"
+                />
+              ) : undefined
+            }
           />
         </div>
 
         {/* 右ペイン: プレビュー（ラベル行は InputField / OutputField と同一構造で上端を揃える） */}
         <div className="w-full md:flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-3 min-h-8">
+          <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
             <span className="body-emphasis text-default">プレビュー</span>
             {input.length > 0 && (
               <CopyButton text={html} label="HTMLをコピー" ariaLabel="プレビューのHTMLをコピー" />
@@ -105,14 +116,9 @@ export function MarkdownEditor() {
         </div>
       </div>
 
-      {/* 下部アクション行（変換系ツールと同じ配置） */}
+      {/* 下部アクション行（変換系ツールと同じ配置。クリアで入力をリセット） */}
       <div className="flex justify-end gap-2">
-        <DownloadButton
-          onClick={handleDownload}
-          label=".mdダウンロード"
-          variant="secondary"
-          disabled={input.length === 0}
-        />
+        <ClearButton onClick={() => setInput('')} />
       </div>
     </div>
   );

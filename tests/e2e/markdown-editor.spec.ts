@@ -50,11 +50,35 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
     });
   });
 
-  test('陰性対照: .mdダウンロードボタンが存在する（CSP 違反なし）', async ({ browser }) => {
+  test('陰性対照: 入力すると.mdダウンロードボタンが表示される（CSP 違反なし）', async ({
+    browser,
+  }) => {
     await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
+      await waitForReactHydration(page);
+      // 空入力時はダウンロードボタンを表示しない（空ファイル DL を防ぐ）
+      await expect(page.getByRole('button', { name: '.mdダウンロード', exact: false })).toHaveCount(
+        0
+      );
+      // 入力するとダウンロードボタンが表示される
+      await page.getByLabel('markdown入力').fill('# 見出し');
       await expect(
         page.getByRole('button', { name: '.mdダウンロード', exact: false })
       ).toBeVisible();
+    });
+  });
+
+  test('陰性対照: クリアボタンで入力と出力ボタンがリセットされる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/markdown-editor', async (page) => {
+      await waitForReactHydration(page);
+      await page.getByLabel('markdown入力').fill('# 見出し');
+      await expect(page.getByRole('button', { name: 'HTMLをコピー' })).toBeVisible();
+      // クリアで入力が空になり、出力系ボタンと案内テキストが初期状態へ戻る
+      await page.getByRole('button', { name: 'クリア' }).click();
+      await expect(page.getByLabel('markdown入力')).toHaveValue('');
+      await expect(page.getByRole('button', { name: 'HTMLをコピー' })).toHaveCount(0);
+      await expect(page.getByText('markdown を入力するとプレビューが表示されます')).toBeVisible();
     });
   });
 
