@@ -128,7 +128,8 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
   });
 
   // ─── 高さ一致ガード: 入力欄とプレビューの縦幅が揃うことを担保 ──────────
-  // プレビューが青天井に伸びる（items-stretch / fill 欠落）と高さ差が広がり fail する。
+  // 入力 textarea(rows=18 ≒ 28rem) とプレビュー箱(.md-preview-box = 固定高 28rem) を揃える設計。
+  // 旧実装（プレビューが青天井に伸長）では高さ差が広がり fail する。
   test('高さガード: 長文入力時に入力欄とプレビューの高さがほぼ一致する（PC 幅）', async ({
     browser,
   }) => {
@@ -149,14 +150,13 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
       await expect(preview).toBeVisible();
 
       // 実際に見えている箱どうし（入力 textarea とプレビュー箱）の高さを比較する。
-      // wrapper 同士の比較は items-stretch で常に一致してしまい、プレビュー箱が
-      // wrapper をはみ出すなどの真の不揃いを検出できないため、可視要素を直接比較する。
-      // 旧実装（items-start・プレビューが青天井に伸びる）では diff が広がり fail する。
+      // wrapper 同士の比較では「箱が wrapper をはみ出す」等の真の不揃いを検出できないため、
+      // 可視要素を直接比較する。旧実装（プレビューが青天井に伸びる）では diff が広がり fail する。
       const inputBox = await input.boundingBox();
       const previewBox = await preview.boundingBox();
       if (!inputBox || !previewBox) throw new Error('boundingBox が取得できませんでした');
 
-      // flexbox stretch で両者の高さは一致する。border/padding 差の許容差は数 px。
+      // 固定高 28rem 同士のため両者の高さは一致する。border/padding 差の許容差は数 px。
       expect(Math.abs(inputBox.height - previewBox.height)).toBeLessThanOrEqual(5);
     });
   });

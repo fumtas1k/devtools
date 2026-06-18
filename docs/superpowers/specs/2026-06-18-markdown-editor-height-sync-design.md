@@ -52,9 +52,12 @@ div 結果を textarea 入力に揃える既存の確立パターンを踏襲す
 
 ### 3.2 プレビューペイン
 
-- `OutputField` のラベル行構造を踏襲（`flex items-center justify-between mb-3 min-h-8`）。
-  - 左: `body-emphasis text-default` の「プレビュー」見出し。
-  - 右: 入力が空でないとき `CopyButton`（HTMLをコピー / aria 説明付き）。
+- `OutputField` のラベル行構造を踏襲（`flex items-center justify-between mb-3 min-h-8 gap-2`）。
+  - 左: `body-emphasis text-default truncate min-w-0` の「プレビュー」見出し（狭い md 幅でも
+    ヘッダを 1 行に保ち、入力ヘッダと上端＝箱の上端を一致させるため truncate）。
+  - 右: 入力が空でないとき、`shrink-0` の群として `DownloadButton`（.mdダウンロード）+
+    `CopyButton`（HTMLコピー / aria 説明付き）を並べる（結果ペインのヘッダに DL＋コピー、
+    変換系ツールと同配置）。
 - 箱本体は `.markdown-preview .md-preview-box` + 角丸・border。`.md-preview-box` が固定高 28rem +
   `overflow: auto` を担う。`dangerouslySetInnerHTML` で sanitize 済み HTML を描画（既存どおり）。
 - **空状態**: 入力が空のときは `.md-preview-box`（同じ 28rem）の中に「markdown を入力すると
@@ -62,9 +65,13 @@ div 結果を textarea 入力に揃える既存の確立パターンを踏襲す
 
 ### 3.3 アクション行
 
-- `.md`ダウンロードは下部 `flex justify-end` のアクション行へ移設（`DownloadButton` secondary、
-  入力が空のとき `disabled`）。変換系ツールの下部アクション領域と同じ配置。
-- 上部の独立ボタンバーは廃止（サンプル → 入力ラベル行 / コピー → プレビューラベル行 / ダウンロード → 下部）。
+- **ダウンロード／コピーはプレビュー（結果）側ヘッダ**に置く（変換系ツールの標準配置に準拠）。
+  `.md`ダウンロードは入力 markdown 原文を保存する。いずれも入力が空のときは非表示。
+- **下部 `flex justify-end` のアクション行には共通 `ClearButton`** を置き、入力をリセットする
+  （`onClick={() => setInput('')}`）。変換系ツールの下部アクション領域と同じ配置。常時表示
+  （json/csv 変換等の `ClearButton` と同様、空入力時は no-op）。
+- 上部の独立ボタンバーは廃止（サンプル → 入力ラベル行 / ダウンロード・コピー → プレビューラベル行 /
+  クリア → 下部）。
 
 ## 4. レイアウト構造（確定形）
 
@@ -76,14 +83,14 @@ div 結果を textarea 入力に揃える既存の確立パターンを踏襲す
                   onSampleClick=... label="markdown入力" />      // rows=18 ≒ 28rem
     </div>
     <div class="w-full md:flex-1 min-w-0">                       // プレビュー列
-      <label行 min-h-8>プレビュー + (CopyButton)</label行>
+      <label行 min-h-8 gap-2>プレビュー(truncate) + (DownloadButton + CopyButton)</label行>
       <div class="markdown-preview md-preview-box ...">          // .md-preview-box = height:28rem; overflow:auto
         {空 ? .md-preview-box 案内テキスト : dangerouslySetInnerHTML}
       </div>
     </div>
   </div>
   <div class="flex justify-end gap-2">                            // 下部アクション
-    <DownloadButton .mdダウンロード disabled={input.length===0} />
+    <ClearButton onClick={() => setInput('')} />
   </div>
 </div>
 ```
@@ -98,10 +105,10 @@ div 結果を textarea 入力に揃える既存の確立パターンを踏襲す
 
 - **高さ一致のリグレッション防止（陽性ガード）**: 長文 markdown を入力し、PC 幅（≥768px）で
   入力欄 textarea とプレビュー箱の `boundingBox().height` が一定許容差内で一致することを assert。
-  - 高さ同期が壊れる（items-stretch / fill 欠落）と差が広がり fail する。
+  - 旧実装（プレビューが青天井に伸長）では差が広がり fail する。固定高 28rem 同士で一致する設計。
   - 比較対象は入力 textarea と `.markdown-preview` 箱。許容差は border/padding 差を考慮し数 px。
-- 既存の陰性対照（変換反映）・陽性対照（XSS 除去）は維持。ボタン移設に伴うロケータ
-  （サンプル / コピー / ダウンロード）の取得経路を更新。
+- 既存の陰性対照（変換反映）・陽性対照（XSS 除去）は維持。ボタン構成変更に伴うロケータ
+  （サンプル / コピー名「HTMLコピー」/ ダウンロード / クリア）の取得経路を更新・追加。
 
 ### 5.2 VRT
 
@@ -117,14 +124,17 @@ div 結果を textarea 入力に揃える既存の確立パターンを踏襲す
 ## 6. スコープ外（YAGNI）
 
 - 分割比のドラッグ可変（スプリッタ）・スクロール同期（入力↔プレビュー連動スクロール）。
-- クリアボタン新設（現状ツールに無く本件と無関係）。
 - プレビューの内容・サニタイズ・marked 設定の変更（高さ問題と無関係）。
+
+> 補足: `ClearButton`（入力リセット）は当初スコープ外としていたが、レビュー要望により
+> 変換系ツールと UI を揃える一環として本 PR に含めた（下部アクション行に配置、§3.3）。
 
 ## 7. ドキュメント更新
 
 - 高さ揃えは UI 内部実装の調整であり、ツール仕様・一覧・準拠仕様に影響しないため
   `README.md` / `SPEC.md` / `docs/tools.md` の機能記述更新は不要。
-- 必要に応じ `docs/decisions.md` に「プレビューを `fill` 機構で高さ同期した」判断を 1 項追記。
+- 必要に応じ `docs/decisions.md` に「プレビューを固定高（`.md-preview-box`）で高さ同期した」
+  判断を 1 項追記。
 
 ## 8. 完了条件
 
