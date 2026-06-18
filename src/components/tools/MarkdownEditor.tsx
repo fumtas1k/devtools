@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { InputField } from '@/components/ui/InputField';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { renderMarkdown } from '@/utils/markdown';
@@ -37,6 +38,11 @@ function hello(name: string): string {
 /**
  * markdownエディタ — 2ペインのライブプレビューツール。
  * 左ペイン: textarea 入力 / 右ペイン: sanitizeHtml済みHTMLプレビュー。
+ *
+ * 高さ揃え: 親行を items-stretch にし、入力 textarea を高さドライバ、プレビュー列を
+ * OutputField の fill 機構（md:flex md:h-full md:flex-col + 箱を md:flex-1 md:min-h-0
+ * overflow-auto）でミラーして追従させる。flexbox stretch のみで実現し、手動リサイズにも
+ * 追従する（インライン style 不使用・CSP / 規約準拠）。
  */
 export function MarkdownEditor() {
   const [input, setInput] = useState('');
@@ -52,63 +58,66 @@ export function MarkdownEditor() {
 
   return (
     <div className="space-y-4">
-      {/* ボタン群 */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="caption text-link-plain btn-link-plain"
-          onClick={() => setInput(SAMPLE)}
-        >
-          サンプルを入力
-        </button>
-        {input.length > 0 && (
-          <CopyButton text={html} label="HTMLをコピー" ariaLabel="プレビューのHTMLをコピー" />
-        )}
+      {/* 2ペインレイアウト（PC横並び・スマホ縦積み）。items-stretch で左右の高さを揃える */}
+      <div className="flex flex-col md:flex-row gap-4 items-stretch">
+        {/* 左ペイン: 入力（高さドライバ） */}
+        <div className="w-full md:flex-1 min-w-0" data-testid="md-input-column">
+          <InputField
+            id="md-input"
+            label="markdown入力"
+            value={input}
+            onChange={setInput}
+            multiline
+            mono
+            resize
+            rows={16}
+            placeholder={`# 見出し\n\n**太字** や *斜体*、\`コード\` が使えます。`}
+            onSampleClick={() => setInput(SAMPLE)}
+          />
+        </div>
+
+        {/* 右ペイン: プレビュー（OutputField の fill 機構をミラーして高さ追従） */}
+        <div className="w-full md:flex-1 min-w-0 md:flex md:self-stretch" data-testid="md-preview-column">
+          <div className="w-full md:flex md:flex-col md:flex-1 md:min-h-0">
+            {/* ラベル行（OutputField と同一構造で上端と高さを揃える） */}
+            <div className="flex items-center justify-between mb-3 min-h-8">
+              <span className="body-emphasis text-default">プレビュー</span>
+              {input.length > 0 && (
+                <CopyButton
+                  text={html}
+                  label="HTMLをコピー"
+                  ariaLabel="プレビューのHTMLをコピー"
+                />
+              )}
+            </div>
+            {input.length === 0 ? (
+              <div
+                className="w-full rounded-lg border border-input p-3 min-h-96 md:min-h-0 md:flex-1 caption text-muted flex items-center justify-center"
+                aria-label="プレビューエリア（入力待ち）"
+              >
+                markdown を入力するとプレビューが表示されます
+              </div>
+            ) : (
+              <div
+                className="markdown-preview w-full rounded-lg border border-input p-4 min-h-96 md:min-h-0 md:flex-1 overflow-auto"
+                // sanitizeHtml 済みの HTML を dangerouslySetInnerHTML で描画する。
+                // renderMarkdown が必ず sanitizeHtml に通してから返すため XSS は発生しない。
+                dangerouslySetInnerHTML={{ __html: html }}
+                aria-label="markdownプレビュー"
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 下部アクション行（変換系ツールと同じ配置） */}
+      <div className="flex justify-end gap-2">
         <DownloadButton
           onClick={handleDownload}
           label=".mdダウンロード"
           variant="secondary"
           disabled={input.length === 0}
         />
-      </div>
-
-      {/* 2ペインレイアウト（PC横並び・スマホ縦積み） */}
-      <div className="flex flex-col md:flex-row gap-4 items-start">
-        {/* 左ペイン: 入力 */}
-        <div className="w-full md:flex-1 min-w-0 flex flex-col gap-1">
-          <label htmlFor="md-input" className="caption text-muted">
-            markdown入力
-          </label>
-          <textarea
-            id="md-input"
-            className="w-full rounded-lg border border-input p-3 font-mono text-sm text-default bg-default resize-y min-h-96"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={`# 見出し\n\n**太字** や *斜体*、\`コード\` が使えます。`}
-            rows={20}
-          />
-        </div>
-
-        {/* 右ペイン: プレビュー */}
-        <div className="w-full md:flex-1 min-w-0 flex flex-col gap-1">
-          <span className="caption text-muted">プレビュー</span>
-          {input.length === 0 ? (
-            <div
-              className="w-full rounded-lg border border-input p-3 min-h-96 caption text-muted flex items-center justify-center"
-              aria-label="プレビューエリア（入力待ち）"
-            >
-              markdown を入力するとプレビューが表示されます
-            </div>
-          ) : (
-            <div
-              className="markdown-preview w-full rounded-lg border border-input p-4 min-h-96 overflow-auto"
-              // sanitizeHtml 済みの HTML を dangerouslySetInnerHTML で描画する。
-              // renderMarkdown が必ず sanitizeHtml に通してから返すため XSS は発生しない。
-              dangerouslySetInnerHTML={{ __html: html }}
-              aria-label="markdownプレビュー"
-            />
-          )}
-        </div>
       </div>
     </div>
   );
