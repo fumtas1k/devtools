@@ -45,17 +45,23 @@ onCollapseAll?: () => void;
 [結果  全展開 全折りたたみ] .......... [ダウンロード コピー]
 ```
 
-- 左: `<div className="flex items-center gap-3">` で `結果` ラベルとボタン群をまとめる。
-- ボタン群は `tree`（非 null）かつ `onExpandAll` / `onCollapseAll` がある時のみ描画。`tooLarge` 時・無効 JSON 時は出さない（現状の `view==='tree' && hasResult && !treeTooLarge` と等価。`tree` が非 null なら描画対象が存在する）。
-- 右: 現状どおり `rightSlot` + `CopyButton`。
-- 外側コンテナは `flex items-center justify-between mb-3 min-h-8 gap-2` を踏襲しつつ、スマホ安全網として `flex-wrap gap-y-2` を付与。
-- ボタンの class は現状踏襲: `caption text-link-plain btn-link-plain`。
+- 左: `結果` ラベル（`shrink-0`）のみ。
+- 右: `全展開` / `全折りたたみ`（リンクボタン）→ `rightSlot`（ダウンロード）→ `CopyButton` を 1 つの `<div className="flex items-center gap-2">` に**横一列**でまとめる。
+- 展開/折りたたみは `tree`（非 null）かつ `onExpandAll` / `onCollapseAll` がある時のみ描画。`tooLarge` 時・無効 JSON 時は出さない（現状の `view==='tree' && hasResult && !treeTooLarge` と等価。`tree` が非 null なら描画対象が存在する）。
+- 外側コンテナは `flex items-center justify-between mb-3 min-h-8 gap-2`。**折り返しは禁止**（`flex-wrap` を付けない）。ヘッダを単一行 `min-h-8` に固定し、入力欄ヘッダとの上端揃えを保つ（ユーザー要望: 入力と結果の高さを揃える）。
+- ボタンの class は現状踏襲: `caption text-link-plain btn-link-plain whitespace-nowrap`。
+
+### 横幅対策（実測に基づく）
+
+結果カラムのヘッダ実効幅は、コンテンツ最大幅キャップとサイドバー表示の影響で desktop（1280〜1920）で約 404px に収束する（1024〜1280 はサイドバー表示でむしろ狭くなる）。右側 4 要素（全展開 + 全折りたたみ + ダウンロード + コピー）はそのままだと約 373px 必要で、ラベル + gap を足すと約 418px となり ~404px を超え、`結果` ラベルが 2 行に折り返してしまう。
+
+対策として **ツリー結果のコピーボタンを `compact`（アイコンのみ）** にし、右側グループ幅を約 327px に削減する。これにより 1280〜1920 で十分な余裕（約 32px）を持って単一行に収まり、960/1100/1024/390 でもヘッダ高さ 32px（単一行）を維持することを Playwright で実測確認した。`全展開` / `全折りたたみ` / `ダウンロード` のテキストラベルは保持する。
 
 ### デザイン崩れの検証根拠
 
-- **PC (md+)**: 結果パネルは入力/結果行（`flex md:flex-row`）の約半幅。左右4要素は十分収まり折り返さない。`min-h-8` 単一行を保ち、入力欄ヘッダとの上端揃え（既存コメントの懸念）を維持する。
-- **スマホ (390px)**: 入力/結果行は `flex-col` で縦積みになるため、入力↔結果の上端揃え制約自体が消える。ヘッダが万一折り返しても破綻しないよう `flex-wrap gap-y-2` を安全網として付与。
-- **VRT**: ページ既定は text 表示で、両ボタンは text 表示では元々非表示。よって既定スクショは不変の見込み（実装時に Playwright で確認）。
+- **PC（サイドバー有無を跨ぐ各幅）**: ヘッダは単一行 `min-h-8`（実測 32px）を維持し、入力欄ヘッダと上端が揃う。
+- **スマホ (390px)**: 入力/結果行は `flex-col` で縦積みになり上端揃え制約は消える。ヘッダは 390px でも単一行に収まる（実測）。
+- **VRT**: ページ既定は text 表示で、両ボタンは text 表示では元々非表示。よって既定スクショは不変（PR #725 の CI で VRT 66 件 pass を確認済み）。
 
 ### `JsonFormatter` 側の変更
 
