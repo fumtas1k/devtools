@@ -28,6 +28,10 @@ interface Props {
   tooLarge?: boolean;
   /** 「ツリーを表示」押下時（ガードを解除して構築させる）。 */
   onForceRender?: () => void;
+  /** 全展開ハンドラ。ツリー描画時にヘッダへ「全展開」ボタンを出す。 */
+  onExpandAll?: () => void;
+  /** 全折りたたみハンドラ。同上で「全折りたたみ」ボタンを出す。 */
+  onCollapseAll?: () => void;
 }
 
 /**
@@ -42,6 +46,8 @@ export function JsonTreeResult({
   rightSlot,
   tooLarge,
   onForceRender,
+  onExpandAll,
+  onCollapseAll,
 }: Props) {
   const hasResult = output !== '';
   const boxRef = useRef<HTMLDivElement>(null);
@@ -52,8 +58,28 @@ export function JsonTreeResult({
   );
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
-        <span className="body-emphasis text-default">結果</span>
+      <div className="flex flex-wrap items-center justify-between mb-3 min-h-8 gap-2 gap-y-2">
+        <div className="flex items-center gap-3">
+          <span className="body-emphasis text-default">結果</span>
+          {tree && onExpandAll && onCollapseAll && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="caption text-link-plain btn-link-plain"
+                onClick={onExpandAll}
+              >
+                全展開
+              </button>
+              <button
+                type="button"
+                className="caption text-link-plain btn-link-plain"
+                onClick={onCollapseAll}
+              >
+                全折りたたみ
+              </button>
+            </div>
+          )}
+        </div>
         {hasResult && (
           <div className="flex items-center gap-2">
             {rightSlot}
