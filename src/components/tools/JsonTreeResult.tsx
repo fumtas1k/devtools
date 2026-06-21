@@ -28,6 +28,10 @@ interface Props {
   tooLarge?: boolean;
   /** 「ツリーを表示」押下時（ガードを解除して構築させる）。 */
   onForceRender?: () => void;
+  /** 全展開ハンドラ。ツリー描画時にヘッダへ「全展開」ボタンを出す。 */
+  onExpandAll?: () => void;
+  /** 全折りたたみハンドラ。同上で「全折りたたみ」ボタンを出す。 */
+  onCollapseAll?: () => void;
 }
 
 /**
@@ -42,6 +46,8 @@ export function JsonTreeResult({
   rightSlot,
   tooLarge,
   onForceRender,
+  onExpandAll,
+  onCollapseAll,
 }: Props) {
   const hasResult = output !== '';
   const boxRef = useRef<HTMLDivElement>(null);
@@ -52,12 +58,33 @@ export function JsonTreeResult({
   );
   return (
     <div className="w-full">
+      {/* ヘッダは折り返さず単一行（min-h-8）に固定し、入力欄ヘッダと上端を揃える。
+          全展開/全折りたたみ・ダウンロード・コピーは結果ラベル右側に一列で並べる。
+          コピーは横幅を抑えるためツリー結果ではアイコンのみ（compact）にする。 */}
       <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
-        <span className="body-emphasis text-default">結果</span>
+        <span className="body-emphasis text-default shrink-0">結果</span>
         {hasResult && (
           <div className="flex items-center gap-2">
+            {tree && onExpandAll && onCollapseAll && (
+              <>
+                <button
+                  type="button"
+                  className="caption text-link-plain btn-link-plain whitespace-nowrap"
+                  onClick={onExpandAll}
+                >
+                  全展開
+                </button>
+                <button
+                  type="button"
+                  className="caption text-link-plain btn-link-plain whitespace-nowrap"
+                  onClick={onCollapseAll}
+                >
+                  全折りたたみ
+                </button>
+              </>
+            )}
             {rightSlot}
-            <CopyButton text={output} ariaLabel="整形結果をコピー" />
+            <CopyButton text={output} ariaLabel="整形結果をコピー" compact />
           </div>
         )}
       </div>
