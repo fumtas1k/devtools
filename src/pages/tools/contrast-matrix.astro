@@ -1,0 +1,39 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { ContrastMatrixTool } from '@/components/tools/ContrastMatrix';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'contrast-matrix')!;
+---
+
+<ToolLayout tool={tool}>
+  <ContrastMatrixTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      入力した色の全組合せ（行＝前景色、列＝背景色）について、WCAG 2.x のコントラスト比と
+      AA/AAA の合否、APCA の Lc 値を一覧表示します。ブランドカラーやデザイントークンの
+      可読性を一度に点検できます。計算はすべてブラウザ内で完結し、入力した色は外部に送信されません。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">WCAG コントラスト比</h3>
+    <p class="tool-info-body">
+      相対輝度から算出する 1:1〜21:1 の比です。AA は通常テキスト 4.5:1・大きいテキスト 3:1、
+      AAA は通常テキスト 7:1・大きいテキスト 4.5:1 を基準とします。前景と背景を入替えても同じ値です。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">APCA Lc</h3>
+    <p class="tool-info-body">
+      WCAG 3 で検討中の知覚均等なコントラスト指標です。前景（テキスト）と背景の順序に依存し、
+      符号は極性（明背景＝正、暗背景＝負）を表します。本ツールは APCA-W3 0.1.9 の公式
+      アルゴリズムを実装しています。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">制限</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>不透明色のみ対応。アルファ付き（半透明）色は非対応です</li>
+      <li>入力形式は HEX（#rgb / #rrggbb）と rgb() です</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>
