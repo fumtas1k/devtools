@@ -34,6 +34,21 @@ test.describe('コントラスト比マトリクス', () => {
     });
   });
 
+  test('エラー表示時も HEX 欄とラベル欄の上端が揃う（段差防止）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
+      // 先頭行の HEX を不正値にしてエラー文言を表示させる
+      await page.getByLabel('色').first().fill('notacolor');
+      await expect(page.getByText('不正な色').first()).toBeVisible();
+      // items-start により、エラーで HEX 列が縦に伸びても入力ボックスの上端は揃う。
+      // 同一行の HEX 欄とラベル欄の top 座標が一致することを検証（段差の回帰ガード）。
+      const hexBox = await page.getByLabel('色').first().boundingBox();
+      const labelBox = await page.getByLabel('ラベル').first().boundingBox();
+      expect(hexBox).not.toBeNull();
+      expect(labelBox).not.toBeNull();
+      expect(Math.abs((hexBox?.y ?? 0) - (labelBox?.y ?? 0))).toBeLessThanOrEqual(1);
+    });
+  });
+
   test('AAA フィルタに切り替えると aria-pressed が更新される（CSP 違反なし）', async ({
     browser,
   }) => {

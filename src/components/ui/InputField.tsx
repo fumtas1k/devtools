@@ -4,6 +4,10 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage';
 interface Props {
   id: string;
   label: ReactNode;
+  /** ラベル行を視覚的に隠す（sr-only 化）。同一カラムの見出しを上部に 1 つだけ置く
+      表形式レイアウトで、2 行目以降の重複ラベルを視覚的に省きつつ
+      `<label htmlFor>` によるアクセシブル名は維持する用途。既定 true。 */
+  labelVisible?: boolean;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -30,6 +34,7 @@ interface Props {
 export function InputField({
   id,
   label,
+  labelVisible = true,
   value,
   onChange,
   placeholder,
@@ -65,7 +70,9 @@ export function InputField({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3 min-h-8">
+      <div
+        className={`flex items-center justify-between mb-3 min-h-8${labelVisible ? '' : ' sr-only'}`}
+      >
         <label htmlFor={id} className="body-emphasis text-default">
           {label}
         </label>

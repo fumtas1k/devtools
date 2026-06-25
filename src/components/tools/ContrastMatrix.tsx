@@ -102,31 +102,44 @@ export function ContrastMatrixTool() {
     <div className="space-y-6">
       <section className="space-y-3">
         <h2 className="body-emphasis text-default">色の一覧</h2>
+        {/* 列見出しは行ごとに繰り返さず、独立したヘッダ行に一度だけ表示する。
+           各入力には sr-only ラベルがあるため、このヘッダは装飾扱い（aria-hidden）にして
+           支援技術での重複読み上げを防ぐ。データ行と同じ flex 構造で各列幅を一致させる。 */}
+        <div className="flex items-end gap-2" aria-hidden="true">
+          <span className="w-12 shrink-0" />
+          <span className="body-emphasis text-default min-w-0 max-w-32 flex-1">色</span>
+          <span className="body-emphasis text-default min-w-0 max-w-40 flex-1">ラベル</span>
+          <span className="caption btn-remove-card shrink-0 rounded px-3 py-2 invisible">削除</span>
+        </div>
         {rows.map((row) => {
           const invalid = parseColor(row.hex) === null;
           return (
-            <div key={row.id} className="flex flex-wrap items-end gap-3">
+            // items-start: エラー文言で HEX 列が縦に伸びても入力ボックスの上端が揃い、
+            // 隣のラベル欄・カラーピッカー・削除ボタンが押し下げられて段差にならない。
+            <div key={row.id} className="flex items-start gap-2">
               <input
                 type="color"
                 aria-label={`${row.label || '色'}のカラーピッカー`}
                 value={parseColor(row.hex) ? toHex(row.hex) : '#000000'}
                 onChange={(e) => updateRow(row.id, { hex: e.target.value })}
-                className="h-10 w-12 rounded border border-input"
+                className="h-10 w-12 shrink-0 rounded border border-input"
               />
-              <div className="w-32">
+              <div className="min-w-0 max-w-32 flex-1">
                 <InputField
                   id={`hex-${row.id}`}
                   label="色"
+                  labelVisible={false}
                   value={row.hex}
                   onChange={(v) => updateRow(row.id, { hex: v })}
                   error={invalid ? '不正な色' : undefined}
                   mono
                 />
               </div>
-              <div className="w-40">
+              <div className="min-w-0 max-w-40 flex-1">
                 <InputField
                   id={`label-${row.id}`}
                   label="ラベル"
+                  labelVisible={false}
                   value={row.label}
                   onChange={(v) => updateRow(row.id, { label: v })}
                   placeholder="任意"
@@ -136,7 +149,7 @@ export function ContrastMatrixTool() {
                 type="button"
                 onClick={() => removeRow(row.id)}
                 disabled={rows.length <= 2}
-                className="caption btn-remove-card rounded px-3 py-2"
+                className="caption btn-remove-card shrink-0 rounded px-3 py-2"
               >
                 削除
               </button>
