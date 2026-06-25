@@ -1,0 +1,47 @@
+<!-- @dsCard group="Gov Portal" viewport="1280x900" name="行政手続きポータル" subtitle="Interactive gov-services portal — home, services, and a 3-step online application." -->
+<!-- @startingPoint section="Gov Portal" subtitle="Government online-services portal — home, search, and multi-step application flow" viewport="1280x900" -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>デジタル庁デザインシステム — 行政手続きポータル</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; background: #fff; color: var(--text-body); }
+  .kit-container { width: 100%; max-width: 1160px; margin: 0 auto; padding-left: 24px; padding-right: 24px; box-sizing: border-box; }
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 4px solid var(--color-black); outline-offset: 2px; box-shadow: 0 0 0 2px var(--color-focus-yellow);
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="../../lib/dads.jsx"></script>
+<script type="text/babel" src="Chrome.jsx"></script>
+<script type="text/babel" src="Home.jsx"></script>
+<script type="text/babel" src="Services.jsx"></script>
+<script type="text/babel" src="Apply.jsx"></script>
+<script type="text/babel">
+  const { useState } = React;
+  function App() {
+    const [route, setRoute] = useState('home');
+    const nav = (r) => { setRoute(r); window.scrollTo({ top: 0 }); };
+    return (
+      <>
+        <Header onNav={nav} current={route} />
+        {route === 'home' && <Home onNav={nav} />}
+        {route === 'services' && <Services onNav={nav} mode="services" />}
+        {route === 'help' && <Services onNav={nav} mode="help" />}
+        {route === 'apply' && <Apply onNav={nav} />}
+        <Footer />
+      </>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

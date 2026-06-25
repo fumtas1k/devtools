@@ -1,0 +1,25 @@
+<!-- @dsCard group="Spacing" viewport="700x150" name="Spacing scale" subtitle="4px base grid. Tokens --space-1 (4px) through --space-24 (96px)." -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-page); display: flex; align-items: flex-end; gap: 14px; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .bar { background: var(--color-blue-700); border-radius: var(--radius-4); width: 100%; }
+  .lab { font: 400 11px/1 var(--font-mono); color: var(--text-subtle); }
+</style>
+</head>
+<body id="b">
+  <script>
+    const steps = [[1,4],[2,8],[3,12],[4,16],[5,20],[6,24],[8,32],[10,40],[12,48],[16,64],[24,96]];
+    const b = document.getElementById('b');
+    steps.forEach(([t,px]) => {
+      const i=document.createElement('div'); i.className='item'; i.style.width=px+'px';
+      i.innerHTML = `<div class="bar" style="height:${px}px"></div><div class="lab">${px}</div>`;
+      b.appendChild(i);
+    });
+  </script>
+</body>
+</html>

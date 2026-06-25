@@ -1,0 +1,23 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Elevation" subtitle="Eight paired drop shadows (ambient + key light) for layering depth." -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 28px 24px; background: var(--surface-subtle); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .box { width: 60px; height: 60px; background: #fff; border-radius: var(--radius-12); }
+  .lab { font: 400 12px/1 var(--font-mono); color: var(--text-subtle); }
+</style>
+</head>
+<body id="b">
+  <script>
+    for (let i=1;i<=8;i++){
+      const it=document.createElement('div'); it.className='item';
+      it.innerHTML = `<div class="box" style="box-shadow:var(--elevation-${i})"></div><div class="lab">${i}</div>`;
+      document.getElementById('b').appendChild(it);
+    }
+  </script>
+</body>
+</html>

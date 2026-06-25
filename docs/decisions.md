@@ -4492,3 +4492,23 @@ markdown を 2 ペインでリアルタイムプレビューするツール。GF
 - ✅ インライン描画のため CSS 変数・semantic token でプレビューを整形できる
 - ⚠️ GFM タスクリストの checkbox・コードブロックの class・見出し id は sanitizeHtml で除去される（制限として docs/tools.md に明記）
 - ⚠️ iframe 方式と異なり、sanitizeHtml の見落としが直ちに表示に影響しうる。ただし許可リスト方式のため見落としリスクは低く、単体テストに陽性対照（script 除去・javascript: href 除去）を同梱して保証
+
+## [122] 2026-06-11 — DADS 忠実再現デザインシステムを `dads-design` スキルとして導入
+
+**2026-06-11 | ステータス: 採用**
+
+### 背景
+
+Claude Design (claude.ai/design) で公式リポジトリ（digital-go-jp/design-system-example-components-react、design-tokens 等）から作成した DADS v2 忠実再現バンドル（公式トークン CSS・React コンポーネント 13 種・ガイドライン specimen・行政ポータル UI キット）を、Claude Code から再利用できるよう SKILL 化したいという要望。
+
+### 決断
+
+- **既存 `dads-design-system` スキルとは統合せず、別スキル `dads-design` として併設**: 既存スキルは devtools 本体の適応値（`--color-primary: #1a56db`、`src/styles/global.css` と整合）が正本。バンドルは公式値（`blue-900 #0017c1` 等）であり、統合すると本体実装と矛盾するトークン値が混入する。両 SKILL.md に役割分担表を明記し相互参照させてドリフトを防止。
+- **用途の切り分け**: プロトタイプ / モック / デザインアセット生成・公式値の正確な参照 → `dads-design`。devtools 本体（`src/`）の UI 実装 → `dads-design-system` + CLAUDE.md §7。
+- **デザインツール生成物は除外**: コンパイラ生成物（`_ds_bundle.js` / `_ds_manifest.json` / `_adherence.oxlintrc.json`）と、bundle 注入前提で単体動作しない `*.card.html` は持ち込まない。UI キット `index.html` は同梱の `lib/dads.jsx`（スタンドアロン版コンポーネント定義）+ CDN React でブラウザ直開きで動作する。
+
+### 結果・トレードオフ
+
+- ✅ DADS 準拠のモック・アセット生成時に公式トークン・コンポーネント実装パターンへ即アクセスできる。
+- ⚠️ ロゴはプレースホルダー、フォントは Google Fonts CDN 依存（バンドル由来の caveat をそのまま引き継ぎ。SKILL.md に明記）。
+- ⚠️ DADS 本家の更新には自動追従しない。精度が必要な場合は公式 `figma/tokens.json` と照合する（readme.md の Sources 参照）。

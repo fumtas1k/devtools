@@ -1,0 +1,39 @@
+<!-- @dsCard group="Colors" viewport="700x180" name="Semantic colors" subtitle="Success, Error and Warning — each a two-step pair for fill vs text." -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--surface-page); display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .item { display: flex; flex-direction: column; gap: 8px; }
+  .pair { display: flex; border-radius: var(--radius-8); overflow: hidden; box-shadow: var(--elevation-1); height: 64px; }
+  .pair > div { flex: 1; display: flex; align-items: flex-end; padding: 6px; }
+  .pair span { font: 700 11px/1 var(--font-mono); color: #fff; }
+  .name { font: 700 14px/1 var(--font-sans); color: var(--text-heading); }
+  .hex { font: 400 11px/1.4 var(--font-mono); color: var(--text-subtle); }
+</style>
+</head>
+<body>
+  <div class="item">
+    <div class="name">Success</div>
+    <div class="pair"><div style="background:var(--color-success-1)"><span>1</span></div><div style="background:var(--color-success-2)"><span>2</span></div></div>
+    <div class="hex">#259d63 · #197a4b</div>
+  </div>
+  <div class="item">
+    <div class="name">Error</div>
+    <div class="pair"><div style="background:var(--color-error-1)"><span>1</span></div><div style="background:var(--color-error-2)"><span>2</span></div></div>
+    <div class="hex">#ec0000 · #ce0000</div>
+  </div>
+  <div class="item">
+    <div class="name">Warning · Yellow</div>
+    <div class="pair"><div style="background:var(--color-warning-yellow-1)"><span>1</span></div><div style="background:var(--color-warning-yellow-2)"><span>2</span></div></div>
+    <div class="hex">#b78f00 · #927200</div>
+  </div>
+  <div class="item">
+    <div class="name">Warning · Orange</div>
+    <div class="pair"><div style="background:var(--color-warning-orange-1)"><span>1</span></div><div style="background:var(--color-warning-orange-2)"><span>2</span></div></div>
+    <div class="hex">#fb5b01 · #c74700</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,55 @@
+/* =============================================================
+   DADS — Base layer
+   Minimal, accessible defaults. DADS favours HTML/CSS-native
+   behaviour, so this stays light: typography defaults, a
+   consistent focus-visible treatment, and a few helpers.
+   ============================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-body);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The DADS focus indicator: yellow ring banded by a black
+   outline, applied consistently to every interactive element. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 4px solid var(--color-black);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-focus-yellow);
+  border-radius: var(--radius-4);
+}
+
+:where(h1, h2, h3, h4, h5, h6, p, figure) {
+  margin: 0;
+}
+
+::selection {
+  background: var(--color-blue-200);
+}
+
+/* ---- A couple of structural helpers reused across cards ---- */
+.dads-stack {
+  display: flex;
+  flex-direction: column;
+}
+.dads-row {
+  display: flex;
+  align-items: center;
+}
