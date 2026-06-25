@@ -1304,7 +1304,7 @@
   }
 
   /* === ContrastMatrix: セルプレビュー色・淡色化 ===
-     セルの動的前景/背景色は useDynamicStyleSheet 経由の CSS 変数で注入する
+     セルの動的前景/背景色は useDynamicStyleSheet 経由の CSS ルールで注入する
      (inline style は CSP `style-src 'unsafe-inline'` 削除済みのため使用不可)。
      §7.1 の variant prefix 非対応制約により :hover 等は擬似クラスで直接定義する。 */
 
@@ -1314,7 +1314,7 @@
   }
 
   /* CellPreview ラッパ: プレビュー色の受け口。実際の前景/背景色は
-     useDynamicStyleSheet が .cell-fg / .cell-bg に CSS 変数として注入する。 */
+     useDynamicStyleSheet が .cell-fg / .cell-bg への CSS ルールとして注入する。 */
   .cell-preview-wrap {
     min-width: 4rem;
   }

@@ -44,19 +44,37 @@ test.describe('コントラスト比マトリクス', () => {
     });
   });
 
-  test('色を 1 つにするとマトリクスが非表示になり案内文が出る（CSP 違反なし）', async ({
+  test('有効な色が 2 つ未満になると案内文を表示しマトリクスを隠す（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
-      // 削除ボタンが 2 つ以上残るまで削除してみる（最低 2 色は保持される）
-      // 最初の色以外を削除ボタンで削除する
-      // rows.length <= 2 で disabled になるため、3色目・4色目を削除
+      // 削除では最低 2 行が保持され UI 上 1 色には到達できないため、
+      // 全行の HEX 欄に無効値を入力して validColors.length < 2 の分岐へ到達させる
+      const hexInputs = page.getByLabel('色');
+      const count = await hexInputs.count();
+      for (let i = 0; i < count; i++) {
+        await hexInputs.nth(i).fill('notacolor');
+      }
+      // 案内文が表示され、マトリクスのテーブルは消える
+      await expect(page.getByText('有効な色を 2 つ以上')).toBeVisible();
+      await expect(page.getByRole('table')).toHaveCount(0);
+    });
+  });
+
+  test('最低 2 色は保持され 2 色時の削除ボタンが無効化される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
+      // 初期 4 行から enabled な削除ボタンを押して 2 行まで減らす
       const deleteButtons = page.getByRole('button', { name: '削除' });
-      // 初期 4 行中、enabled な削除ボタンをクリック
       await deleteButtons.first().click();
       await deleteButtons.first().click();
-      // まだ 2 色あるのでテーブルは表示されている
+      // 2 色残るのでテーブルは表示され、残る削除ボタンは全て無効
       await expect(page.getByRole('table')).toBeVisible();
+      const remaining = page.getByRole('button', { name: '削除' });
+      await expect(remaining).toHaveCount(2);
+      await expect(remaining.first()).toBeDisabled();
+      await expect(remaining.last()).toBeDisabled();
     });
   });
 });

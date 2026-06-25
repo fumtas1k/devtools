@@ -5,7 +5,8 @@
  *
  * CSP 対応: style-src 'unsafe-inline' 撤去済みのため inline style は使用不可。
  * セルのプレビュー色（ユーザー入力の任意色）は useDynamicStyleSheet で
- * per-component scoped CSS 変数を注入し、@layer components の class で適用する。
+ * per-instance scoped な CSS ルール（.cell-fg / .cell-bg への color / background）を
+ * 注入して適用する。
  * 淡色化フィルタは .cell-dimmed class（opacity: 0.3）で表現する。
  */
 import { useMemo, useState } from 'react';
