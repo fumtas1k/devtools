@@ -21,7 +21,8 @@
     "pretest:e2e:ui": "lsof -ti:4321 | xargs kill -9 2>/dev/null || true",
     "test:e2e:ui": "playwright test --ui",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@astrojs/react": "5.0.3",
@@ -34,6 +35,7 @@
     "@types/papaparse": "5.5.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "asn1js": "3.0.10",
     "astro": "6.1.5",
     "bwip-js": "^4.9.0",
     "encoding-japanese": "2.2.0",
@@ -43,7 +45,9 @@
     "jsonc-parser": "3.3.1",
     "jsqr": "1.4.0",
     "jszip": "^3.10.1",
+    "marked": "18.0.5",
     "papaparse": "5.5.3",
+    "pkijs": "3.4.0",
     "qrcode-generator": "^2.0.4",
     "react": "19.2.5",
     "react-dom": "19.2.5",
@@ -64,7 +68,10 @@
     "@types/jmespath": "0.15.2",
     "@types/jsbarcode": "^3.11.4",
     "@types/uuid": "10.0.0",
+    "@typescript-eslint/parser": "8.61.0",
     "@vitest/coverage-v8": "4.1.4",
+    "eslint": "9.39.4",
+    "eslint-plugin-react": "7.37.5",
     "img-comparison-slider": "8.0.7",
     "jsdom": "^26.1.0",
     "lint-staged": "16.4.0",

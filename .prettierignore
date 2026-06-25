@@ -6,6 +6,21 @@ package-lock.json
 
 # vendored skill（skills-lock.json で hash 管理。upstream 整形を保持するため除外）
 .agents/skills/vercel-react-best-practices/
+.agents/skills/brainstorming/
+.agents/skills/dispatching-parallel-agents/
+.agents/skills/executing-plans/
+.agents/skills/finishing-a-development-branch/
+.agents/skills/frontend-design/
+.agents/skills/receiving-code-review/
+.agents/skills/requesting-code-review/
+.agents/skills/subagent-driven-development/
+.agents/skills/systematic-debugging/
+.agents/skills/test-driven-development/
+.agents/skills/using-git-worktrees/
+.agents/skills/using-superpowers/
+.agents/skills/verification-before-completion/
+.agents/skills/writing-plans/
+.agents/skills/writing-skills/
 
-# Claude Design エクスポートバンドル（decisions [104]。エクスポート元との diff 容易性のため整形除外）
+# Claude Design エクスポートバンドル（decisions [122]。エクスポート元との diff 容易性のため整形除外）
 .agents/skills/dads-design/

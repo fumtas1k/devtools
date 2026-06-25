@@ -137,6 +137,69 @@ test.describe('正規表現ビジュアライザ', () => {
     });
   });
 
+  // a11y 陽性対照: マッチハイライト <mark> が role="button" を持ちキーボード操作できることを検証。
+  // role="button" が外れると getByRole('button', { name: /マッチ/ }) が取得できず fail する。
+  // aria-pressed=false → Enter で aria-pressed=true に変わることで onKeyDown の動作も証明する。
+  test('マッチハイライトが role="button" を持ちキーボード（Enter）で選択できる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      // g フラグを有効化して複数マッチを出す
+      await page.getByRole('button', { name: 'g: 全マッチ' }).click();
+      await page.getByLabel('正規表現').fill('\\d+');
+      await page.getByLabel('テスト文字列').fill('a1 b22');
+
+      // マッチ件数の表示が出るまで待つ（マッチ処理完了の確認）
+      await expect(page.getByText(/2 件マッチ/)).toBeVisible();
+
+      // 1 件目のハイライトが role="button" として取得でき、未選択（aria-pressed=false）
+      const firstMatch = page.getByRole('button', { name: /マッチ 1/ }).first();
+      await expect(firstMatch).toBeVisible();
+      await expect(firstMatch).toHaveAttribute('aria-pressed', 'false');
+
+      // Enter キーで選択 → aria-pressed=true に変わること（onKeyDown 経路の陽性対照）
+      await firstMatch.focus();
+      await firstMatch.press('Enter');
+      await expect(firstMatch).toHaveAttribute('aria-pressed', 'true');
+    });
+  });
+
+  // a11y 陽性対照: roving tabindex で tab stop を 1 つに集約していることを検証。
+  // 旧実装（全マッチ tabindex=0）に当てると「非 roving 要素が tabindex=-1」が偽になり fail する。
+  test('マッチハイライトが roving tabindex で 1 つの tab stop に集約される（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByRole('button', { name: 'g: 全マッチ' }).click();
+      await page.getByLabel('正規表現').fill('\\d+');
+      await page.getByLabel('テスト文字列').fill('a1 b22');
+
+      await expect(page.getByText(/2 件マッチ/)).toBeVisible();
+
+      const m1 = page.getByRole('button', { name: /マッチ 1/ }).first();
+      const m2 = page.getByRole('button', { name: /マッチ 2/ }).first();
+
+      // roving 初期状態: 1 件目だけ tab stop（0）、2 件目は -1（旧実装＝両方 0 と区別）
+      await expect(m1).toHaveAttribute('tabindex', '0');
+      await expect(m2).toHaveAttribute('tabindex', '-1');
+
+      // 1 件目に focus → ArrowRight で 2 件目へ roving（focus と tabindex が移動）
+      await m1.focus();
+      await m1.press('ArrowRight');
+      await expect(m2).toBeFocused();
+      await expect(m2).toHaveAttribute('tabindex', '0');
+      await expect(m1).toHaveAttribute('tabindex', '-1');
+
+      // 末尾で ArrowRight → 先頭へ wrap
+      await m2.press('ArrowRight');
+      await expect(m1).toBeFocused();
+
+      // Enter は focus 移動ではなく選択（aria-pressed=true）
+      await m1.press('Enter');
+      await expect(m1).toHaveAttribute('aria-pressed', 'true');
+    });
+  });
+
   // ReDoS ゲートの陽性対照（本番 CSP 下・実 recheck 経路）: 既知の脆弱パターンで
   // マッチ実行が無効化されることを確認する。ゲートが空回りすると入力欄が出てこの assert が落ちる。
   test('vulnerable な正規表現ではマッチ実行が無効化される', async ({ browser }) => {

@@ -5,6 +5,7 @@
 @.agents/rules/common.md
 @.agents/rules/ui-conventions.md
 @.claude/rules/git-and-fs.md
+@.claude/rules/github-web-session.md
 
 ---
 
@@ -13,6 +14,7 @@
 Claude Code 固有の補足は `.claude/rules/` 配下に分割し、上記 `@import` で読み込んでいます。
 
 - `.claude/rules/git-and-fs.md`: 一時ファイル / sandbox 制約 / git 操作
+- `.claude/rules/github-web-session.md`: web セッションの GitHub 連携トークン制約（`workflow_dispatch` 不可等）
 
 （注: 上記は Claude 固有。Codex は `.codex/rules/`、Gemini CLI は `docs/setup/gemini-policy.md` を参照）
 
@@ -22,13 +24,13 @@ Claude Code 固有の補足は `.claude/rules/` 配下に分割し、上記 `@im
 
 このプロジェクトは以下の Claude Code プラグインを前提に運用しています。`.claude/settings.json` の `enabledPlugins` で宣言済み。
 
-| プラグイン                                | 用途                                                              |
-| :---------------------------------------- | :---------------------------------------------------------------- |
-| `superpowers@claude-plugins-official`     | 設計・計画・実装支援スキル群（writing-plans, debugging, TDD 等）  |
-| `frontend-design@claude-plugins-official` | 高品質なフロントエンド UI 生成                                    |
-| `context7@claude-plugins-official`        | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
+| プラグイン                         | 用途                                                              |
+| :--------------------------------- | :---------------------------------------------------------------- |
+| `context7@claude-plugins-official` | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
 
-CLI / Desktop は `.claude/settings.json` から自動 install を prompt します。**Web (claude.ai/code) は silent skip される既知制約**があり、各環境で 1 回だけ手動 install が必要です。
+**superpowers / frontend-design はプラグインではなく `npx skills add` でリポジトリ内に vendor 済み**（`.agents/skills/` + `skills-lock.json` 管理）。Web セッションでプラグイン install が効かない問題の回避のため移行した。frontend-design は単一スキルで MCP を同梱しないため skill 化できる（context7 は MCP server 同梱のためプラグインのまま）。出典・ライセンスは `.agents/skills/README.md` を参照。
+
+CLI / Desktop は `.claude/settings.json` から自動 install を prompt します。**Web (claude.ai/code) は trust dialog 非発火で silent skip される既知制約**があるため、SessionStart hook（`.claude/scripts/session-install.sh`）が web セッションで自動 install します（新規コンテナの初回セッションのみ未反映、同一環境の次セッション以降で有効）。
 
 セットアップ手順・トラブルシュート・context7 API キー設定 → **`docs/setup/plugins.md`**
 

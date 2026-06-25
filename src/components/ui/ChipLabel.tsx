@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 
 interface Props {
   tone: 'error' | 'info' | 'neutral';
@@ -9,7 +10,7 @@ interface Props {
 
 export function ChipLabel({ tone, children, icon, className = '' }: Props) {
   return (
-    <span className={`chip-label chip-label--${tone}${className ? ` ${className}` : ''}`}>
+    <span className={cx('chip-label', `chip-label--${tone}`, className)}>
       {icon}
       {children}
     </span>

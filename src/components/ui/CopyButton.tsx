@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { copyToClipboard } from '@/utils/clipboard';
 import { COMPACT_BUTTON_SHAPE_CLASSES } from './_compactButton';
+import { cx } from '@/utils/cx';
 
 function ClipboardIcon() {
   return (
@@ -49,7 +50,8 @@ function CopyAnnounce({ copied }: { copied: boolean }) {
 }
 
 interface Props {
-  text: string;
+  /** コピーするテキスト、または遅延生成用のコールバック（クリック時に評価される）。後方互換: string もそのまま動作。 */
+  text: string | (() => string);
   label?: string;
   /**
    * スクリーンリーダー向けのアクセシブル名。可視テキスト（label）を短くしつつ
@@ -64,6 +66,9 @@ interface Props {
 
 /**
  * クリップボードコピー用ボタン。
+ *
+ * `text` prop に string または遅延生成用のコールバック（`() => string`）を渡せる。
+ * コールバック形式はクリック時のみ評価されるため、大きなデータの逐次 stringify に使用できる。
  *
  * style: global.css `@layer components` の `.btn-copy` / `.btn-copy.is-copied` /
  * `.btn-copy.is-compact` を参照。状態は `is-copied` / `is-compact` className で切替。
@@ -89,7 +94,8 @@ export function CopyButton({
   }, []);
 
   const handleClick = async () => {
-    const ok = await copyToClipboard(text);
+    const value = typeof text === 'function' ? text() : text;
+    const ok = await copyToClipboard(value);
     if (ok) {
       if (timerRef.current !== null) clearTimeout(timerRef.current);
       setCopied(true);
@@ -105,7 +111,11 @@ export function CopyButton({
         type="button"
         onClick={handleClick}
         aria-label={accessibleName}
-        className={`btn-copy is-compact ${stateClass} rounded-md inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap`.trim()}
+        className={cx(
+          'btn-copy is-compact',
+          stateClass,
+          'rounded-md inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap'
+        )}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
         <CopyAnnounce copied={copied} />
@@ -118,7 +128,14 @@ export function CopyButton({
       type="button"
       onClick={handleClick}
       aria-label={accessibleName}
-      className={`btn-copy ${stateClass} caption inline-flex items-center gap-1.5 ${COMPACT_BUTTON_SHAPE_CLASSES} tracking-wide whitespace-nowrap ${className}`.trim()}
+      className={cx(
+        'btn-copy',
+        stateClass,
+        'caption inline-flex items-center gap-1.5',
+        COMPACT_BUTTON_SHAPE_CLASSES,
+        'tracking-wide whitespace-nowrap',
+        className
+      )}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}
       {label}

@@ -1,0 +1,47 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { ClipboardInspectorTool } from '@/components/tools/ClipboardInspector';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'clipboard-inspector')!;
+---
+
+<ToolLayout tool={tool}>
+  <ClipboardInspectorTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      貼り付け（Ctrl+V /
+      Cmd+V、スマホは受付領域を長押ししてペースト）またはドラッグ&ドロップした瞬間の
+      <code class="rounded px-1 font-mono bg-subtle text-sm">DataTransfer</code>
+      を検査し、クリップボード上の全 MIME フレーバー（テキスト・HTML・カスタム型・画像・ファイル）の種別と中身を表示します。クリップボードの内容はブラウザ内でのみ処理され、外部に送信されません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">仕組み</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>paste / drop イベントの DataTransferItemList を列挙し、全フレーバーを取得</li>
+      <li>
+        text/html は許可リスト方式サニタイザでスクリプト・危険属性を除去したうえで、sandbox 属性付き
+        iframe（スクリプト実行不許可）に描画する二重防御
+      </li>
+      <li>画像ファイルはブラウザ内 blob URL でプレビュー</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>リッチテキストエディタ開発で「貼り付けで何が来るか」を確認するデバッグ</li>
+      <li>Excel / Word / ブラウザからのコピーが持つ HTML 構造の調査</li>
+      <li>同じデータでも貼り付けとドロップでフレーバーがどう違うかの比較</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">制限事項</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>
+        OS
+        のクリップボードにあってもブラウザが公開しないフレーバー（独自アプリ形式等）は表示できません
+      </li>
+      <li>
+        サニタイズ後プレビューはセキュリティポリシー（CSP）の制約によりインラインスタイルが反映されず、構造とテキスト中心の表示になります
+      </li>
+      <li>Async Clipboard API（ボタンクリックでの読み取り）には対応していません</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>

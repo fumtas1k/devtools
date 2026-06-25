@@ -164,6 +164,70 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'しーあいでぃーあーるさぶねっとけいさんき',
   },
+  {
+    slug: 'secret-scrubber',
+    name: 'シークレットスクラバー',
+    description:
+      'ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換',
+    category: 'convert',
+    yomi: 'しーくれっとすくらばー',
+  },
+  {
+    slug: 'clipboard-inspector',
+    name: 'クリップボードインスペクタ',
+    description:
+      '貼り付け・ドラッグ&ドロップしたデータの全 MIME フレーバー（テキスト・HTML・画像・ファイル）と中身を可視化します。HTML はサニタイズ後プレビュー付き',
+    category: 'convert',
+    yomi: 'くりっぷぼーどいんすぺくた',
+  },
+  {
+    slug: 'dsn-builder',
+    name: 'DSN/接続文字列ビルダ',
+    description:
+      '接続文字列（DSN）をフォームとURIで双方向編集します。パスワードをマスクした共有用URIも生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応（PostgreSQL・MySQL は JDBC URL も対応）',
+    category: 'convert',
+    yomi: 'でぃーえすえぬせつぞくもじれつびるだ',
+  },
+  {
+    slug: 'cert-decoder',
+    name: 'SSL/TLS証明書デコーダ',
+    description:
+      'PEM/DER/PKCS#7 の証明書を解析し、Subject/SAN/有効期限/署名アルゴリズム/SCT を表示します。チェーンの署名検証にも対応。データはブラウザ外に送信しません',
+    category: 'encode',
+    yomi: 'えすえすえるてぃーえるえすしょうめいしょでこーだ',
+  },
+  {
+    slug: 'key-converter',
+    name: '鍵フォーマット変換',
+    description:
+      'RSA / ECDSA の公開鍵・秘密鍵を PEM / DER / JWK 形式で相互変換します。形式と鍵種別を自動判定。全処理ブラウザ内完結で秘密鍵も外部送信しません',
+    category: 'convert',
+    yomi: 'かぎふぉーまっとへんかん',
+  },
+  {
+    slug: 'har-viewer',
+    name: 'HARビューア＆サニタイザ',
+    description:
+      'HARファイルを一覧・詳細表示し、Cookie・認証ヘッダ・トークン類を自動redactした共有用HARを出力します。ファイルはブラウザ外に送信しません',
+    category: 'convert',
+    yomi: 'えいちえーあーるびゅーあ',
+  },
+  {
+    slug: 'csr-generator',
+    name: 'CSR・鍵ペアジェネレータ',
+    description:
+      'RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力します。既存 CSR の Subject/SAN/署名検証にも対応。秘密鍵はブラウザ外に送信しません',
+    category: 'generate',
+    yomi: 'しーえすあーるかぎぺあじぇねれーた',
+  },
+  {
+    slug: 'markdown-editor',
+    name: 'markdownエディタ',
+    description:
+      'markdownをリアルタイムにHTMLプレビューします。GFM（表・取り消し線・コードブロック）対応。HTMLコピー・.mdダウンロード対応',
+    category: 'convert',
+    yomi: 'まーくだうんえでぃた',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる

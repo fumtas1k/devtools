@@ -1,0 +1,60 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { KeyConverter as KeyConverterTool } from '@/components/tools/KeyConverter';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'key-converter')!;
+---
+
+<ToolLayout tool={tool}>
+  <KeyConverterTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      RSA / ECDSA（P-256 / P-384 / P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK
+      形式で相互変換します。入力形式（PEM テキスト / DER バイナリ・Base64 / JWK
+      JSON）と鍵種別（公開鍵 /
+      秘密鍵）を自動判定し、3形式を同時出力します。全処理はブラウザ内で完結するため、秘密鍵も外部サーバーに送信されません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">対応形式</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>PEM（PUBLIC KEY / PRIVATE KEY ヘッダ、SPKI / PKCS#8 構造）</li>
+      <li>DER バイナリ（.der / .cer ファイル選択、または Base64 テキスト貼り付け）</li>
+      <li>
+        JWK（JSON Web Key、RFC 7517）。入力 JWK の <code>kid</code> / <code>use</code> / <code
+          >alg</code
+        > は出力に保持されます
+      </li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">対応鍵種別</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>RSA 公開鍵 / 秘密鍵（SPKI / PKCS#8 形式）</li>
+      <li>ECDSA 公開鍵 / 秘密鍵（P-256 / P-384 / P-521 曲線）</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>PEM 形式の鍵を JWK（JSON Web Key Set 等）に変換する</li>
+      <li>JWT ライブラリが要求する JWK 形式の鍵を PEM から生成する</li>
+      <li>DER バイナリの鍵ファイルを PEM テキストに変換してサーバー設定に使う</li>
+      <li>鍵の種別（RSA / EC / 公開 / 秘密）を素早く確認する</li>
+    </ul>
+    <h3 class="mb-2 mt-4 tool-info-heading">制限事項（v1 非対応）</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>
+        PKCS#1 形式（RSA PUBLIC KEY / RSA PRIVATE KEY）・SEC1 形式（EC PRIVATE KEY）のレガシー PEM
+        は非対応。<code>openssl pkcs8 -topk8 -nocrypt</code>
+        でPKCS#8へ変換してください
+      </li>
+      <li>
+        暗号化秘密鍵（ENCRYPTED PRIVATE KEY / パスフレーズ付き PEM）は非対応。<code
+          >openssl pkcs8 -in key.pem -nocrypt -out key_plain.pem</code
+        > で復号してから変換してください
+      </li>
+      <li>Ed25519 / Ed448（EdDSA）は非対応</li>
+      <li>秘密鍵からの公開鍵抽出は非対応</li>
+      <li>cert-decoder との連携・証明書からの鍵抽出は非対応</li>
+      <li>鍵ペア生成・CSR 作成は csr-generator（CSR・鍵ペアジェネレータ）で対応</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>

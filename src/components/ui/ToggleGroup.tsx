@@ -1,4 +1,5 @@
 import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
+import { cx } from '@/utils/cx';
 
 interface Option<T> {
   value: T;
@@ -43,7 +44,7 @@ export function ToggleGroup<T extends string>({
 
   const containerClass = isWrap
     ? 'bg-subtle rounded-lg border border-input p-1 flex flex-wrap gap-1 w-max max-w-full'
-    : `bg-subtle rounded-lg border border-input p-1 toggle-grid ${dynClassName}`;
+    : cx('bg-subtle rounded-lg border border-input p-1 toggle-grid', dynClassName);
   const buttonSizeClass = size === 'sm' ? 'px-2.5 py-0.5' : 'px-3 py-1.5';
 
   return (
@@ -54,7 +55,10 @@ export function ToggleGroup<T extends string>({
           type="button"
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
-          className={`caption font-semibold btn-toggle rounded-lg whitespace-nowrap ${buttonSizeClass}`}
+          className={cx(
+            'caption font-semibold btn-toggle rounded-lg whitespace-nowrap',
+            buttonSizeClass
+          )}
         >
           {opt.label}
         </button>

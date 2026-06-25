@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { cx } from '@/utils/cx';
 import { v7 as uuidv7 } from 'uuid';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
@@ -77,7 +78,10 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
               {f.key} <span className="uuid-field-bits">({f.bits})</span>
             </span>
             <code
-              className={`font-mono whitespace-nowrap rounded px-1.5 py-0.5 bg-default border border-default caption ${f.className}`}
+              className={cx(
+                'font-mono whitespace-nowrap rounded px-1.5 py-0.5 bg-default border border-default caption',
+                f.className
+              )}
             >
               {f.value}
             </code>

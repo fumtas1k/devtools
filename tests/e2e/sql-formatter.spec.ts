@@ -27,6 +27,21 @@ test.describe('SQL整形（production CSP 適用）', () => {
     });
   });
 
+  test('カンマ位置を先頭に切り替えると先頭カンマで整形する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/sql-formatter', async (page) => {
+      await page.getByLabel('SQL 入力').fill('select id, name, email from users');
+      // 既定（行末）では行末カンマ
+      await expect(page.getByLabel('整形結果')).toHaveValue(/id,/);
+
+      await page.getByRole('group', { name: 'カンマ位置' }).getByText('先頭').click();
+      // 先頭カンマスタイル: 行頭にカンマが付き、行末カンマは消える
+      await expect(page.getByLabel('整形結果')).toHaveValue(/\n\s*, name/);
+      await expect(page.getByLabel('整形結果')).not.toHaveValue(/id,/);
+    });
+  });
+
   test('整形不能な入力でエラーを表示する（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/sql-formatter', async (page) => {
       await page.getByLabel('SQL 入力').fill("select * from t where name = 'unterminated");

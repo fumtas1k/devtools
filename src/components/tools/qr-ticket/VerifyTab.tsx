@@ -4,8 +4,10 @@ import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Section } from '@/components/ui/Section';
 import { ActionButton } from '@/components/ui/ActionButton';
+import { FileInputButton } from '@/components/ui/FileInputButton';
 import type { VerificationResult } from '@/utils/qr-ticket';
 import { TicketDetail } from './TicketDetail';
+import { cx } from '@/utils/cx';
 import { SCAN_OPTIONS } from './index';
 
 interface CameraProps {
@@ -90,7 +92,7 @@ export function VerifyTab({
                 ref={camera.videoRef}
                 playsInline
                 muted
-                className="w-full max-w-[400px] rounded-lg bg-black block"
+                className="w-full max-w-[400px] rounded-lg qr-video-preview block"
                 hidden={!camera.cameraActive}
                 aria-label="カメラプレビュー"
               />
@@ -106,20 +108,13 @@ export function VerifyTab({
               <p className="caption text-muted">
                 QRコードが写った画像（PNG・JPG等）をアップロードしてください
               </p>
-              <label
-                data-enabled={Boolean(verifyPubKeyStr.trim())}
-                className="caption font-semibold inline-block px-4 py-2 rounded-lg border qr-file-picker-label"
+              <FileInputButton
+                accept="image/*"
+                onChange={onImageUpload}
+                disabled={!verifyPubKeyStr.trim()}
               >
                 画像を選択
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={onImageUpload}
-                  disabled={!verifyPubKeyStr.trim()}
-                  aria-label="画像を選択"
-                />
-              </label>
+              </FileInputButton>
               <p className="hint-xs text-muted mt-1">
                 対応形式: PNG / JPEG / WebP / GIF / SVG・最大 15 MB
               </p>
@@ -152,10 +147,17 @@ export function VerifyTab({
             ) : verificationResult ? (
               <div className="space-y-3">
                 <div
-                  className={`rounded-lg p-4 border ${verificationResult.valid ? 'alert-success' : 'alert-error'}`}
+                  className={cx(
+                    'rounded-lg p-4 border',
+                    verificationResult.valid ? 'alert-success' : 'alert-error'
+                  )}
                 >
                   <p
-                    className={`body-emphasis ${verificationResult.valid ? 'text-success' : 'text-error'} ${verificationResult.ticket ? 'mb-3' : ''}`}
+                    className={cx(
+                      'body-emphasis',
+                      verificationResult.valid ? 'text-success' : 'text-error',
+                      verificationResult.ticket && 'mb-3'
+                    )}
                   >
                     {verificationResult.valid ? (
                       <span className="inline-flex items-center gap-2">

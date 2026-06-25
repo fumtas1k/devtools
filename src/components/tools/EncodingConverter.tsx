@@ -171,7 +171,7 @@ export function EncodingConverterTool() {
     e.target.value = '';
     if (!file) return;
 
-    const validation = validateFile(file, {
+    const validation = await validateFile(file, {
       kind: 'text',
       maxBytes: 10 * 1024 * 1024,
       acceptExtensions: ACCEPTED_EXTENSIONS,

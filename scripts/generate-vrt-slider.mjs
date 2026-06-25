@@ -170,10 +170,14 @@ export function generateHTML(comparisons) {
     header{background:#1e3a8a;color:#fff;padding:1rem 1.5rem}
     header h1{margin:0;font-size:1.2rem}
     header p{margin:.25rem 0 0;font-size:.85rem;opacity:.85}
-    nav{background:#fff;border-bottom:1px solid #e5e7eb;padding:.6rem 1.5rem;position:sticky;top:0;z-index:10}
-    nav ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:.4rem}
+    nav{background:#fff;border-bottom:1px solid #e5e7eb;padding:.6rem 1.5rem;position:sticky;top:0;z-index:10;max-height:50vh;overflow-y:auto}
+    nav ul{margin:.5rem 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:.4rem}
     nav a{font-size:.75rem;color:#1e40af;text-decoration:none;background:#eff6ff;padding:.2rem .45rem;border-radius:4px}
     nav a:hover{background:#dbeafe}
+    .nav-details>summary{cursor:pointer;color:#374151;font-size:.8rem;font-weight:600;list-style:none;display:flex;align-items:center;gap:.35rem}
+    .nav-details>summary::-webkit-details-marker{display:none}
+    .nav-details>summary::before{content:"▼";font-size:.65rem;color:#6b7280;transition:transform .15s ease}
+    .nav-details:not([open])>summary::before{transform:rotate(-90deg)}
     main{max-width:1200px;margin:0 auto;padding:1.5rem}
     .badge{display:inline-block;background:#dc2626;color:#fff;font-size:.75rem;font-weight:600;padding:.2rem .5rem;border-radius:4px;margin-bottom:1rem}
     .card{background:#fff;border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
@@ -195,14 +199,32 @@ export function generateHTML(comparisons) {
   <p>中央の <strong>⇆ ハンドル</strong> を左右に drag して比較 &nbsp;|&nbsp; 左半分: <strong>Baseline（期待値）</strong> &nbsp; 右半分: <strong>Actual（実際）</strong></p>
 </header>
 <nav>
-  <ul>
+  <details class="nav-details" open>
+    <summary>差分ファイル一覧（${comparisons.length} 件）</summary>
+    <ul>
       ${navItems}
-  </ul>
+    </ul>
+  </details>
 </nav>
 <main>
   <p class="badge">${comparisons.length} 件の差分</p>
   ${cards}
 </main>
+<script>
+  // スマホ幅では画像表示スペースを優先するため、ファイル一覧を折りたたむ。
+  // (open 属性は media query で切り替えられないため JS で制御する)
+  // リサイズにも追従し、スマホ幅では閉じ・デスクトップ幅では開く。
+  (function () {
+    const nav = document.querySelector('.nav-details');
+    if (!nav) return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const apply = () => {
+      nav.open = !mq.matches;
+    };
+    apply();
+    mq.addEventListener('change', apply);
+  })();
+</script>
 </body>
 </html>`;
 }
