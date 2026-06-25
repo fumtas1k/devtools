@@ -102,8 +102,11 @@ export function ContrastMatrixTool() {
     <div className="space-y-6">
       <section className="space-y-3">
         <h2 className="body-emphasis text-default">色の一覧</h2>
-        {rows.map((row) => {
+        {rows.map((row, rowIdx) => {
           const invalid = parseColor(row.hex) === null;
+          // 見出し（色 / ラベル）は先頭行のみ視覚表示し、2 行目以降は sr-only 化して
+          // 重複を避ける（各入力のアクセシブル名は label で維持される）。
+          const showLabels = rowIdx === 0;
           return (
             <div key={row.id} className="flex items-end gap-2">
               <input
@@ -117,6 +120,7 @@ export function ContrastMatrixTool() {
                 <InputField
                   id={`hex-${row.id}`}
                   label="色"
+                  labelVisible={showLabels}
                   value={row.hex}
                   onChange={(v) => updateRow(row.id, { hex: v })}
                   error={invalid ? '不正な色' : undefined}
@@ -127,6 +131,7 @@ export function ContrastMatrixTool() {
                 <InputField
                   id={`label-${row.id}`}
                   label="ラベル"
+                  labelVisible={showLabels}
                   value={row.label}
                   onChange={(v) => updateRow(row.id, { label: v })}
                   placeholder="任意"
