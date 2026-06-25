@@ -14,22 +14,23 @@
 
 ## File Structure
 
-| ファイル | 責務 |
-| --- | --- |
-| `src/utils/contrast.ts` | 色パース・WCAG・APCA の純関数（新規） |
-| `src/utils/__tests__/contrast.test.ts` | 上記の参照値テスト（新規） |
-| `src/components/tools/ContrastMatrix.tsx` | React 本体（新規） |
-| `src/pages/tools/contrast-matrix.astro` | ページ（新規） |
-| `src/data/tools.ts` | ツール登録（修正） |
-| `tests/e2e/visual-regression-pages.ts` | VRT 対象登録（修正） |
-| `tests/e2e/contrast-matrix.spec.ts` | E2E（新規） |
-| `README.md` / `SPEC.md` / `docs/tools.md` / `docs/decisions.md` / `docs/tool-candidates.md` | ドキュメント（修正） |
+| ファイル                                                                                    | 責務                                  |
+| ------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `src/utils/contrast.ts`                                                                     | 色パース・WCAG・APCA の純関数（新規） |
+| `src/utils/__tests__/contrast.test.ts`                                                      | 上記の参照値テスト（新規）            |
+| `src/components/tools/ContrastMatrix.tsx`                                                   | React 本体（新規）                    |
+| `src/pages/tools/contrast-matrix.astro`                                                     | ページ（新規）                        |
+| `src/data/tools.ts`                                                                         | ツール登録（修正）                    |
+| `tests/e2e/visual-regression-pages.ts`                                                      | VRT 対象登録（修正）                  |
+| `tests/e2e/contrast-matrix.spec.ts`                                                         | E2E（新規）                           |
+| `README.md` / `SPEC.md` / `docs/tools.md` / `docs/decisions.md` / `docs/tool-candidates.md` | ドキュメント（修正）                  |
 
 ---
 
 ### Task 1: 色パース（`contrast.ts`）
 
 **Files:**
+
 - Create: `src/utils/contrast.ts`
 - Test: `src/utils/__tests__/contrast.test.ts`
 
@@ -127,6 +128,7 @@ git commit -m "feat: コントラスト比計算の色パースを追加"
 ### Task 2: WCAG 相対輝度・コントラスト比・合否（`contrast.ts`）
 
 **Files:**
+
 - Modify: `src/utils/contrast.ts`
 - Test: `src/utils/__tests__/contrast.test.ts`
 
@@ -144,9 +146,7 @@ describe('relativeLuminance', () => {
 
 describe('contrastRatio', () => {
   it('黒×白は 21:1', () => {
-    expect(
-      contrastRatio({ r: 0, g: 0, b: 0 }, { r: 255, g: 255, b: 255 })
-    ).toBeCloseTo(21, 1);
+    expect(contrastRatio({ r: 0, g: 0, b: 0 }, { r: 255, g: 255, b: 255 })).toBeCloseTo(21, 1);
   });
   it('同色は 1:1', () => {
     const c = { r: 18, g: 52, b: 86 };
@@ -158,9 +158,10 @@ describe('contrastRatio', () => {
     expect(contrastRatio(a, b)).toBeCloseTo(contrastRatio(b, a), 5);
   });
   it('#767676 × 白は約 4.54:1（AA 通常の境界）', () => {
-    expect(
-      contrastRatio({ r: 0x76, g: 0x76, b: 0x76 }, { r: 255, g: 255, b: 255 })
-    ).toBeCloseTo(4.54, 1);
+    expect(contrastRatio({ r: 0x76, g: 0x76, b: 0x76 }, { r: 255, g: 255, b: 255 })).toBeCloseTo(
+      4.54,
+      1
+    );
   });
 });
 
@@ -255,6 +256,7 @@ git commit -m "feat: WCAGコントラスト比と合否判定を追加"
 ### Task 3: APCA Lc（`contrast.ts`）
 
 **Files:**
+
 - Modify: `src/utils/contrast.ts`
 - Test: `src/utils/__tests__/contrast.test.ts`
 
@@ -364,6 +366,7 @@ git commit -m "feat: APCA Lc値の算出を追加"
 行＝前景、列＝背景の全ペアを一括計算するヘルパを追加し、UI を薄く保つ。
 
 **Files:**
+
 - Modify: `src/utils/contrast.ts`
 - Test: `src/utils/__tests__/contrast.test.ts`
 
@@ -451,6 +454,7 @@ git commit -m "feat: コントラストマトリクスの派生データ生成�
 ### Task 5: React コンポーネント — 色リスト編集（`ContrastMatrix.tsx`）
 
 **Files:**
+
 - Create: `src/components/tools/ContrastMatrix.tsx`
 
 既存パターン（`CidrCalculator.tsx`）と共通 UI（`InputField` / `ToggleGroup` / `StatusBadge` / `NotificationBanner`）に準拠。色は CSS 変数 / semantic token utility のみ。`@layer components` 手書き class への variant prefix は使わない。
@@ -502,8 +506,7 @@ export function ContrastMatrixTool() {
 
   const updateRow = (id: string, patch: Partial<ColorRow>) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  const addRow = () =>
-    setRows((rs) => [...rs, { id: nextId(), label: '', hex: '#000000' }]);
+  const addRow = () => setRows((rs) => [...rs, { id: nextId(), label: '', hex: '#000000' }]);
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
   // パース済みの有効色のみマトリクス対象にする
@@ -571,7 +574,8 @@ export function ContrastMatrixTool() {
       </section>
 
       <NotificationBanner variant="info" title="不透明色のみ対応">
-        アルファ付き（半透明）の色は v1 では非対応です。HEX（#rgb / #rrggbb）と rgb() を入力できます。
+        アルファ付き（半透明）の色は v1 では非対応です。HEX（#rgb / #rrggbb）と rgb()
+        を入力できます。
       </NotificationBanner>
 
       {/* マトリクスは Task 6 で追加 */}
@@ -613,73 +617,76 @@ git commit -m "feat: コントラスト比マトリクスの色リスト編集UI
 ### Task 6: React コンポーネント — マトリクス描画＋フィルタ
 
 **Files:**
+
 - Modify: `src/components/tools/ContrastMatrix.tsx`
 
 - [ ] **Step 1: マトリクス table を実装し `{/* マトリクスは Task 6 で追加 */}` を置換**
 
 ```tsx
-{validColors.length < 2 ? (
-  <p className="caption text-muted">有効な色を 2 つ以上入力するとマトリクスが表示されます。</p>
-) : (
-  <div className="overflow-x-auto">
-    <table className="border-collapse">
-      <caption className="sr-only">行が前景色、列が背景色のコントラスト比マトリクス</caption>
-      <thead>
-        <tr>
-          <th className="caption text-muted p-2 text-left">前景 \ 背景</th>
-          {validColors.map((bg) => (
-            <th key={bg.id} className="caption p-2 text-left">
-              {bg.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {validColors.map((fg, rowIdx) => (
-          <tr key={fg.id}>
-            <th scope="row" className="caption p-2 text-left whitespace-nowrap">
-              {fg.label}
-            </th>
-            {validColors.map((bg, colIdx) => {
-              const cell = matrix[rowIdx][colIdx];
-              const dimmed =
-                (filter === 'aa' && !cell.levels.aaNormal) ||
-                (filter === 'aaa' && !cell.levels.aaaNormal);
-              if (cell.sameColor) {
-                return <td key={bg.id} className="bg-subtle p-2" aria-hidden="true" />;
-              }
-              return (
-                <td
-                  key={bg.id}
-                  className="p-2 align-top border border-input"
-                  style={{ opacity: dimmed ? 0.3 : 1 }}
-                >
-                  <div className="rounded p-2" data-cell-preview>
-                    <span style={{ color: rgbToCss(fg.rgb) }}>
-                      <span style={{ background: rgbToCss(bg.rgb) }} className="rounded px-1">
-                        サンプル
-                      </span>
-                    </span>
-                  </div>
-                  <div className="caption font-mono mt-1">{cell.ratio.toFixed(2)}:1</div>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    <StatusBadge tone={cell.levels.aaNormal ? 'success' : 'error'}>
-                      AA {cell.levels.aaNormal ? '○' : '×'}
-                    </StatusBadge>
-                    <StatusBadge tone={cell.levels.aaaNormal ? 'success' : 'error'}>
-                      AAA {cell.levels.aaaNormal ? '○' : '×'}
-                    </StatusBadge>
-                  </div>
-                  <div className="caption text-muted mt-1">Lc {cell.apca.toFixed(1)}</div>
-                </td>
-              );
-            })}
+{
+  validColors.length < 2 ? (
+    <p className="caption text-muted">有効な色を 2 つ以上入力するとマトリクスが表示されます。</p>
+  ) : (
+    <div className="overflow-x-auto">
+      <table className="border-collapse">
+        <caption className="sr-only">行が前景色、列が背景色のコントラスト比マトリクス</caption>
+        <thead>
+          <tr>
+            <th className="caption text-muted p-2 text-left">前景 \ 背景</th>
+            {validColors.map((bg) => (
+              <th key={bg.id} className="caption p-2 text-left">
+                {bg.label}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-)}
+        </thead>
+        <tbody>
+          {validColors.map((fg, rowIdx) => (
+            <tr key={fg.id}>
+              <th scope="row" className="caption p-2 text-left whitespace-nowrap">
+                {fg.label}
+              </th>
+              {validColors.map((bg, colIdx) => {
+                const cell = matrix[rowIdx][colIdx];
+                const dimmed =
+                  (filter === 'aa' && !cell.levels.aaNormal) ||
+                  (filter === 'aaa' && !cell.levels.aaaNormal);
+                if (cell.sameColor) {
+                  return <td key={bg.id} className="bg-subtle p-2" aria-hidden="true" />;
+                }
+                return (
+                  <td
+                    key={bg.id}
+                    className="p-2 align-top border border-input"
+                    style={{ opacity: dimmed ? 0.3 : 1 }}
+                  >
+                    <div className="rounded p-2" data-cell-preview>
+                      <span style={{ color: rgbToCss(fg.rgb) }}>
+                        <span style={{ background: rgbToCss(bg.rgb) }} className="rounded px-1">
+                          サンプル
+                        </span>
+                      </span>
+                    </div>
+                    <div className="caption font-mono mt-1">{cell.ratio.toFixed(2)}:1</div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <StatusBadge tone={cell.levels.aaNormal ? 'success' : 'error'}>
+                        AA {cell.levels.aaNormal ? '○' : '×'}
+                      </StatusBadge>
+                      <StatusBadge tone={cell.levels.aaaNormal ? 'success' : 'error'}>
+                        AAA {cell.levels.aaaNormal ? '○' : '×'}
+                      </StatusBadge>
+                    </div>
+                    <div className="caption text-muted mt-1">Lc {cell.apca.toFixed(1)}</div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 ```
 
 > ⚠️ **重要 — CSP 制約**: 本プロジェクトは `style-src 'unsafe-inline'` を撤去済み（issue #176 B 案）。上記の `style={{...}}` は**そのままでは使えない**。セルプレビューの動的色（ユーザー入力の任意色）は CSS 変数 + `useDynamicStyleSheet`（`ToggleGroup.tsx` の用例参照）で per-cell scoped rule を注入して適用すること。`opacity` の淡色化は条件 `className`（例: `.cell-dimmed { opacity: .3 }` を `@layer components` に定義）で表現する。実装時に `src/hooks/useDynamicStyleSheet.ts` と `docs/decisions.md [067]` を必ず読み、inline style を使わない形に落とすこと。`rgbToCss` は `rgb(r g b)` を返すヘルパとして `contrast.ts` か component 内に用意する。
@@ -705,6 +712,7 @@ git commit -m "feat: コントラスト比マトリクスの表示と閾値フ�
 ### Task 7: ページ作成＋ツール登録＋VRT 登録
 
 **Files:**
+
 - Create: `src/pages/tools/contrast-matrix.astro`
 - Modify: `src/data/tools.ts`
 - Modify: `tests/e2e/visual-regression-pages.ts`
@@ -739,15 +747,15 @@ const tool = tools.find((t) => t.slug === 'contrast-matrix')!;
 
   <ToolInfoSection>
     <p class="tool-info-body">
-      入力した色の全組合せ（行＝前景色、列＝背景色）について、WCAG 2.x のコントラスト比と
-      AA/AAA の合否、APCA の Lc 値を一覧表示します。ブランドカラーやデザイントークンの
+      入力した色の全組合せ（行＝前景色、列＝背景色）について、WCAG 2.x のコントラスト比と AA/AAA
+      の合否、APCA の Lc 値を一覧表示します。ブランドカラーやデザイントークンの
       可読性を一度に点検できます。計算はすべてブラウザ内で完結し、入力した色は外部に送信されません。
     </p>
 
     <h3 class="mb-2 mt-4 tool-info-heading">WCAG コントラスト比</h3>
     <p class="tool-info-body">
-      相対輝度から算出する 1:1〜21:1 の比です。AA は通常テキスト 4.5:1・大きいテキスト 3:1、
-      AAA は通常テキスト 7:1・大きいテキスト 4.5:1 を基準とします。前景と背景を入替えても同じ値です。
+      相対輝度から算出する 1:1〜21:1 の比です。AA は通常テキスト 4.5:1・大きいテキスト 3:1、 AAA
+      は通常テキスト 7:1・大きいテキスト 4.5:1 を基準とします。前景と背景を入替えても同じ値です。
     </p>
 
     <h3 class="mb-2 mt-4 tool-info-heading">APCA Lc</h3>
@@ -791,6 +799,7 @@ git commit -m "feat: コントラスト比マトリクスのページとツー�
 ### Task 8: E2E テスト
 
 **Files:**
+
 - Create: `tests/e2e/contrast-matrix.spec.ts`
 
 既存 spec（`tests/e2e/cidr-calculator.spec.ts` 等）のスタイルに合わせ、`getByRole` / `getByLabel` を使う。
@@ -848,6 +857,7 @@ git commit -m "test: コントラスト比マトリクスのE2Eを追加"
 ### Task 9: ドキュメント更新
 
 **Files:**
+
 - Modify: `README.md`（ツール一覧）
 - Modify: `SPEC.md`（2.4 / 4 / 5 / 9 章。新規ライブラリなしのため 2.3 は変更不要）
 - Modify: `docs/tools.md`（仕組み・準拠仕様・制限）

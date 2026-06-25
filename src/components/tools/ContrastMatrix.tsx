@@ -62,9 +62,7 @@ interface CellPreviewProps {
 
 function CellPreview({ fgCss, bgCss }: CellPreviewProps) {
   const dynClass = useDynamicStyleSheet(
-    (cls) =>
-      `.${cls} .cell-fg { color: ${fgCss}; }` +
-      `.${cls} .cell-bg { background: ${bgCss}; }`
+    (cls) => `.${cls} .cell-fg { color: ${fgCss}; }` + `.${cls} .cell-bg { background: ${bgCss}; }`
   );
 
   return (
@@ -82,8 +80,7 @@ export function ContrastMatrixTool() {
 
   const updateRow = (id: string, patch: Partial<ColorRow>) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  const addRow = () =>
-    setRows((rs) => [...rs, { id: nextId(), label: '', hex: '#000000' }]);
+  const addRow = () => setRows((rs) => [...rs, { id: nextId(), label: '', hex: '#000000' }]);
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
   // パース済みの有効色のみマトリクス対象にする
@@ -151,7 +148,8 @@ export function ContrastMatrixTool() {
       </section>
 
       <NotificationBanner variant="info" title="不透明色のみ対応">
-        アルファ付き（半透明）の色は v1 では非対応です。HEX（#rgb / #rrggbb）と rgb() を入力できます。
+        アルファ付き（半透明）の色は v1 では非対応です。HEX（#rgb / #rrggbb）と rgb()
+        を入力できます。
       </NotificationBanner>
 
       <ToggleGroup
@@ -162,7 +160,9 @@ export function ContrastMatrixTool() {
       />
 
       {validColors.length < 2 ? (
-        <p className="caption text-muted">有効な色を 2 つ以上入力するとマトリクスが表示されます。</p>
+        <p className="caption text-muted">
+          有効な色を 2 つ以上入力するとマトリクスが表示されます。
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="border-collapse">
@@ -196,10 +196,7 @@ export function ContrastMatrixTool() {
                         key={bg.id}
                         className={`p-2 align-top border border-input${dimmed ? ' cell-dimmed' : ''}`}
                       >
-                        <CellPreview
-                          fgCss={rgbToCss(fg.rgb)}
-                          bgCss={rgbToCss(bg.rgb)}
-                        />
+                        <CellPreview fgCss={rgbToCss(fg.rgb)} bgCss={rgbToCss(bg.rgb)} />
                         <div className="caption font-mono mt-1">{cell.ratio.toFixed(2)}:1</div>
                         <div className="mt-1 flex flex-wrap gap-1">
                           <StatusBadge tone={cell.levels.aaNormal ? 'success' : 'error'}>

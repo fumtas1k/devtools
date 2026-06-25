@@ -31,12 +31,12 @@
 
 ロジック（純関数）と UI を分離する（既存ツールの慣習に準拠）。
 
-| ファイル | 役割 |
-| --- | --- |
-| `src/utils/contrast.ts` | 色パース・WCAG 相対輝度・コントラスト比・APCA Lc・合否判定の純関数 |
-| `src/utils/__tests__/contrast.test.ts` | 既知の参照値（WCAG / APCA 公式例）で検証。合格例＋不合格例の両対照 |
-| `src/components/tools/ContrastMatrix.tsx` | React 本体（色リスト編集 ＋ N×N マトリクス ＋ 閾値フィルタ） |
-| `src/pages/tools/contrast-matrix.astro` | `client:load` で React をマウントするページ |
+| ファイル                                  | 役割                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------ |
+| `src/utils/contrast.ts`                   | 色パース・WCAG 相対輝度・コントラスト比・APCA Lc・合否判定の純関数 |
+| `src/utils/__tests__/contrast.test.ts`    | 既知の参照値（WCAG / APCA 公式例）で検証。合格例＋不合格例の両対照 |
+| `src/components/tools/ContrastMatrix.tsx` | React 本体（色リスト編集 ＋ N×N マトリクス ＋ 閾値フィルタ）       |
+| `src/pages/tools/contrast-matrix.astro`   | `client:load` で React をマウントするページ                        |
 
 - カテゴリ: `convert`（変換・解析）。`cidr-calculator` と同列。
 - `src/data/tools.ts` に slug `contrast-matrix` / name `コントラスト比マトリクス` / yomi `こんとらすとひまとりくす` を追加。

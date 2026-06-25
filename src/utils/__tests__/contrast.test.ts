@@ -40,9 +40,7 @@ describe('relativeLuminance', () => {
 
 describe('contrastRatio', () => {
   it('黒×白は 21:1', () => {
-    expect(
-      contrastRatio({ r: 0, g: 0, b: 0 }, { r: 255, g: 255, b: 255 })
-    ).toBeCloseTo(21, 1);
+    expect(contrastRatio({ r: 0, g: 0, b: 0 }, { r: 255, g: 255, b: 255 })).toBeCloseTo(21, 1);
   });
   it('同色は 1:1', () => {
     const c = { r: 18, g: 52, b: 86 };
@@ -54,9 +52,10 @@ describe('contrastRatio', () => {
     expect(contrastRatio(a, b)).toBeCloseTo(contrastRatio(b, a), 5);
   });
   it('#767676 × 白は約 4.54:1（AA 通常の境界）', () => {
-    expect(
-      contrastRatio({ r: 0x76, g: 0x76, b: 0x76 }, { r: 255, g: 255, b: 255 })
-    ).toBeCloseTo(4.54, 1);
+    expect(contrastRatio({ r: 0x76, g: 0x76, b: 0x76 }, { r: 255, g: 255, b: 255 })).toBeCloseTo(
+      4.54,
+      1
+    );
   });
 });
 
