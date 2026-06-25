@@ -228,6 +228,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'まーくだうんえでぃた',
   },
+  {
+    slug: 'contrast-matrix',
+    name: 'コントラスト比マトリクス',
+    description:
+      '任意の N 色の全組合せ（N×N）のコントラスト比を一覧表示します。WCAG 2.x の AA/AAA 合否と APCA Lc を併記。計算はブラウザ内で完結します',
+    category: 'convert',
+    yomi: 'こんとらすとひまとりくす',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる

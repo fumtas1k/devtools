@@ -20,7 +20,7 @@ Agent Teams によるブレインストーミング（2026-04-29）の結果を�
 | A-1 | ✅ #490 | **正規表現ビジュアライザ＆ReDoS検出** | `regex-visualizer` | Railroad図表示・複数テストケース実行・catastrophic backtracking検出を一体化  | `regexp-tree` で AST→SVG、ReDoS 静的解析。PII含む文字列でも安全                           |
 | A-2 | ✅ #133 | **設定ファイル相互変換**              | `config-converter` | YAML⇄JSON⇄TOML⇄.env⇄HCL を相互変換。コメント保持・`$schema` 検証対応         | IaC時代の必需品。本番設定・Terraform変数を外部送信不可の現場向け                          |
 | A-3 |         | **Cron式プレイグラウンド**            | `cron-playground`  | Cron式を日本語翻訳、自然言語から生成、N回分の発火時刻を任意TZで一覧表示      | `cron-parser` + `cronstrue`（i18n）。5/6/7フィールド・Quartz/AWS EventBridge方言・JST対応 |
-| A-4 |         | **コントラスト比マトリクス**          | `contrast-matrix`  | 任意のN色の全組合せ（N×N）コントラスト比を表示。WCAG 2.2 AA/AAA と APCA 併記 | 純粋計算（CIE Luminance, APCA公式アルゴリズム）。ブランドカラー外部送信不要               |
+| A-4 | ✅ #728 | **コントラスト比マトリクス**          | `contrast-matrix`  | 任意のN色の全組合せ（N×N）コントラスト比を表示。WCAG 2.2 AA/AAA と APCA 併記 | 純粋計算（CIE Luminance, APCA公式アルゴリズム）。ブランドカラー外部送信不要               |
 | A-5 | ✅ #422 | **TOTP/HOTP ジェネレータ＆検証**      | `totp-hotp`        | TOTP/HOTPコードの生成・検証。2FA実装のデバッグ補助                           | Web Crypto API（HMAC-SHA1/SHA-256/SHA-512）。TOTP seedを外部送信しない必然性が高い        |
 
 ## B tier ― 独自性・実用性あり

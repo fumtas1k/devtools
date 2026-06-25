@@ -1303,6 +1303,22 @@
     vertical-align: middle;
   }
 
+  /* === ContrastMatrix: セルプレビュー色・淡色化 ===
+     セルの動的前景/背景色は useDynamicStyleSheet 経由の CSS ルールで注入する
+     (inline style は CSP `style-src 'unsafe-inline'` 削除済みのため使用不可)。
+     §7.1 の variant prefix 非対応制約により :hover 等は擬似クラスで直接定義する。 */
+
+  /* フィルタで未達と判定されたセルの淡色化。条件 className で付与する。 */
+  .cell-dimmed {
+    opacity: 0.3;
+  }
+
+  /* CellPreview ラッパ: プレビュー色の受け口。実際の前景/背景色は
+     useDynamicStyleSheet が .cell-fg / .cell-bg への CSS ルールとして注入する。 */
+  .cell-preview-wrap {
+    min-width: 4rem;
+  }
+
   /* === MarkdownEditor: プレビューペイン整形 ===
      sanitizeHtml は class 属性を除去するため、生成要素にクラスは付けられない。
      ラッパ div (.markdown-preview) + 子孫要素セレクタで整形する。

@@ -168,7 +168,6 @@ export function JsonFormatter() {
 
   const effectiveOutput =
     view === 'type' ? typeOutput : view === 'mask' ? maskOutput : displayOutput;
-  const hasResult = effectiveOutput !== '';
 
   const handleClear = () => {
     reset();
@@ -196,7 +195,7 @@ export function JsonFormatter() {
 
   // 入力欄（InputField）と結果欄（OutputField / ツリー）はどちらも min-h-8 + mb-3 の
   // 単一行ヘッダを持たせ、入力前後で上端がずれない（がたつかない）ようにする。
-  // 表示切替・全展開/全折りたたみはヘッダではなく上部のオプション行に置く。
+  // 表示切替は上部オプション行に置く。ツリーの全展開/全折りたたみは結果ヘッダ内（結果ラベル右隣）に置く。
   const downloadButton = (
     <DownloadButton
       onClick={handleDownload}
@@ -208,7 +207,7 @@ export function JsonFormatter() {
 
   return (
     <div className="space-y-6">
-      {/* オプション行（上端配置。表示切替・ツリー操作もここに集約してヘッダ高さを固定する） */}
+      {/* オプション行（上端配置。表示切替をここに置きヘッダ高さを固定する） */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex items-center gap-2">
           <span className="caption text-muted">インデント</span>
@@ -252,24 +251,6 @@ export function JsonFormatter() {
             layout="wrap"
           />
         </div>
-        {view === 'tree' && hasResult && !treeTooLarge && (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="caption text-link-plain btn-link-plain"
-              onClick={expandAll}
-            >
-              全展開
-            </button>
-            <button
-              type="button"
-              className="caption text-link-plain btn-link-plain"
-              onClick={collapseAll}
-            >
-              全折りたたみ
-            </button>
-          </div>
-        )}
       </div>
 
       {/* クエリ欄（JMESPath） */}
@@ -351,6 +332,8 @@ export function JsonFormatter() {
               rightSlot={downloadButton}
               tooLarge={treeTooLarge}
               onForceRender={() => setTreeForced(true)}
+              onExpandAll={expandAll}
+              onCollapseAll={collapseAll}
             />
           )}
         </div>
