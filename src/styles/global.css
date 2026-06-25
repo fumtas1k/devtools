@@ -814,6 +814,25 @@
     letter-spacing: 0.01em;
   }
 
+  /* トップページ hero セクションの背景 + 下境界線 (index.astro)。
+     arbitrary value (`bg-[var(--color-background)]` / `border-[var(--color-blue-100)]`) を
+     semantic class へ移行 (#289 の inline/arbitrary 撤去方針を継続)。
+     `.footer-bar` 同様に section 固有の bg + border をまとめて bake-in する。値は従来から不変。 */
+  .hero-section {
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-blue-100);
+  }
+
+  /* hero サブタイトル (index.astro): 本文サイズ + neutral-600。
+     arbitrary value (`text-[var(--color-neutral-600)]` + `leading-[1.7]` + `tracking-[0.02em]`) を
+     typography + color baked-in の semantic class へ移行 (`.text-body` の先例に追従)。値は従来から不変。 */
+  .hero-lead {
+    font-size: 1rem;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+    color: var(--color-neutral-600);
+  }
+
   /* ページ h1 見出し: about/privacy/404 の静的ページ共通 (1.75rem)。
      .section-heading (h2, 1.125rem) より一段大きい page タイトル用。
      color は .section-heading と同様 class に含めず consumer 側で text-default を併用 (issue #535)。 */
