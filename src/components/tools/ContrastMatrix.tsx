@@ -105,15 +105,15 @@ export function ContrastMatrixTool() {
         {rows.map((row) => {
           const invalid = parseColor(row.hex) === null;
           return (
-            <div key={row.id} className="flex flex-wrap items-end gap-3">
+            <div key={row.id} className="flex items-end gap-2">
               <input
                 type="color"
                 aria-label={`${row.label || '色'}のカラーピッカー`}
                 value={parseColor(row.hex) ? toHex(row.hex) : '#000000'}
                 onChange={(e) => updateRow(row.id, { hex: e.target.value })}
-                className="h-10 w-12 rounded border border-input"
+                className="h-10 w-12 shrink-0 rounded border border-input"
               />
-              <div className="w-32">
+              <div className="min-w-0 max-w-32 flex-1">
                 <InputField
                   id={`hex-${row.id}`}
                   label="色"
@@ -123,7 +123,7 @@ export function ContrastMatrixTool() {
                   mono
                 />
               </div>
-              <div className="w-40">
+              <div className="min-w-0 max-w-40 flex-1">
                 <InputField
                   id={`label-${row.id}`}
                   label="ラベル"
@@ -136,7 +136,7 @@ export function ContrastMatrixTool() {
                 type="button"
                 onClick={() => removeRow(row.id)}
                 disabled={rows.length <= 2}
-                className="caption btn-remove-card rounded px-3 py-2"
+                className="caption btn-remove-card shrink-0 rounded px-3 py-2"
               >
                 削除
               </button>
