@@ -187,7 +187,8 @@ devtools/
     │       ├── key-converter.astro
     │       ├── har-viewer.astro
     │       ├── csr-generator.astro
-    │       └── markdown-editor.astro
+    │       ├── markdown-editor.astro
+    │       └── contrast-matrix.astro
     ├── data/
     │   └── tools.ts
     ├── hooks/
@@ -337,6 +338,7 @@ devtools/
 | 27  | HARビューア＆サニタイザ           | `har-viewer`          | HAR ファイルをリクエスト/レスポンス一覧・詳細表示し、Cookie・認証ヘッダ・機密クエリ・POST ボディを構造的に redact。scrubText で本文の取りこぼしを追加検出。一貫トークン化（同一値=同一プレースホルダ）。全処理ブラウザ内完結・新規ライブラリなし        |
 | 28  | CSR・鍵ペアジェネレータ           | `csr-generator`       | RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力。Subject DN（CN/O/OU/C/ST/L/email）と SAN（DNS/IP/email）を設定可能。既存 CSR の Subject/SAN/公開鍵/署名アルゴリズム抽出と自己署名検証に対応。pkijs + Web Crypto。全処理ブラウザ内完結 |
 | 29  | markdownエディタ                  | `markdown-editor`     | markdown を 2 ペインでリアルタイム HTML プレビュー。GFM（表・取り消し線・コードブロック）対応。`marked` で HTML 変換後に既存 `sanitizeHtml` でサニタイズ。HTML クリップボードコピー・.md ダウンロード。全処理ブラウザ内完結                             |
+| 30  | コントラスト比マトリクス          | `contrast-matrix`     | 任意の N 色の全組合せ（N×N）のコントラスト比を一覧表示。WCAG 2.x の AA/AAA 合否と APCA-W3 0.1.9 の Lc 値を併記。HEX / rgb() 形式の不透明色に対応。外部ライブラリなし・全処理ブラウザ内完結                                                              |
 
 ---
 
@@ -1254,6 +1256,39 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.30 コントラスト比マトリクス（`contrast-matrix`）
+
+任意の N 色の全組合せ（行＝前景色、列＝背景色）のコントラスト比を N×N テーブルで一覧表示。WCAG 2.x の AA/AAA 合否と APCA Lc を各セルに併記する。計算はすべてブラウザ内で完結し、入力した色は外部に送信されない。
+
+**計算ロジック（`src/utils/contrast.ts`）:**
+
+- **色パース（`parseColor`）:** HEX（`#rgb` / `#rrggbb`）と `rgb()` 形式の不透明色をパース。アルファ付き（`#rrggbbaa` / `rgba()`）は v1 非対応で `null` 返却。
+- **WCAG 相対輝度（`relativeLuminance`）:** sRGB ガンマ展開（`c <= 0.03928 ? c/12.92 : ((c+0.055)/1.055)^2.4`）後に `L = 0.2126*R + 0.7152*G + 0.0722*B`。
+- **コントラスト比（`contrastRatio`）:** `(max(L1,L2)+0.05) / (min(L1,L2)+0.05)`。対称。
+- **合否判定（`wcagLevels`）:** AA 通常 4.5 / AA 大 3.0 / AAA 通常 7.0 / AAA 大 4.5。
+- **APCA Lc（`apcaLc`）:** APCA-W3 0.1.9 公式アルゴリズムを自前実装。前景・背景の Y を指数 2.4 べきで算出後、ソフトクランプ・極性別指数（normBG=0.56/normTXT=0.57/revBG=0.65/revTXT=0.62）・scale=1.14・offset=0.027 を適用。符号は極性（明背景＝正、暗背景＝負）を保持。非対称（前景背景を入替えると符号が変わる）。
+- **マトリクス生成（`buildMatrix`）:** `ColorEntry[]` から N×N の `MatrixCell[][]` を一括計算。
+
+**UI（`src/components/tools/ContrastMatrix.tsx`）:**
+
+- 色リスト編集: HEX テキスト入力 + ネイティブ `<input type="color">` + 任意ラベル。行の追加（最大制限なし）・削除（最低 2 色を保持）。
+- マトリクス: `<table>` で N×N 描画。各セルにコントラスト比・AA/AAA バッジ（`StatusBadge`）・APCA Lc・実色プレビュー（前景色文字×背景色）。対角（同色）は `aria-hidden` グレーアウト。
+- 閾値フィルタ: `ToggleGroup`（すべて / AA 以上 / AAA 以上）で未達セルを `.cell-dimmed`（opacity: 0.3）で淡色化。
+- CSP 対応: セルの動的色（ユーザー入力の任意色）は `useDynamicStyleSheet` で per-cell scoped CSS 変数を注入（`style-src 'unsafe-inline'` 撤去済みのため inline style 不可）。
+
+**モジュール構成:** `src/utils/contrast.ts`（純関数）/ `src/components/tools/ContrastMatrix.tsx` / `src/pages/tools/contrast-matrix.astro`
+
+**追加依存:** なし（純粋計算）。
+
+**既知の制限:**
+
+- 不透明色のみ対応。アルファ付き（半透明）色は非対応
+- 入力形式は HEX（`#rgb` / `#rrggbb`）と `rgb()` のみ
+
+**スコープ外:** アルファ色の合成・HSL/OKLCH/名前付き色の入力・パレットの保存/共有 URL/エクスポート
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1421,6 +1456,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] HARビューア＆サニタイザ（`har-viewer`）
   - [x] CSR・鍵ペアジェネレータ（`csr-generator`）
   - [x] markdownエディタ（`markdown-editor`）
+  - [x] コントラスト比マトリクス（`contrast-matrix`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）

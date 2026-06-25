@@ -443,3 +443,18 @@ const attrs = {
     </svg>
   )
 }
+{
+  slug === 'contrast-matrix' && (
+    <svg {...attrs}>
+      {/* N×N マトリクスと色のコントラストを表現する 2×2 グリッド */}
+      {/* 左上: 塗りなし（明色セル） */}
+      <rect x="3" y="3" width="8" height="8" rx="1" />
+      {/* 右上: 塗りあり（暗色セル） */}
+      <rect x="13" y="3" width="8" height="8" rx="1" fill="currentColor" stroke="none" />
+      {/* 左下: 塗りあり（暗色セル） */}
+      <rect x="3" y="13" width="8" height="8" rx="1" fill="currentColor" stroke="none" />
+      {/* 右下: 塗りなし（明色セル） */}
+      <rect x="13" y="13" width="8" height="8" rx="1" />
+    </svg>
+  )
+}
