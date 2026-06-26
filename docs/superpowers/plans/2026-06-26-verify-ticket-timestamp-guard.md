@@ -13,9 +13,11 @@
 ### Task 1: timestamp 0・負値の回帰テストを追加
 
 **Files:**
+
 - Modify: `src/utils/__tests__/qr-ticket.test.ts`（`signTicket / verifyTicket` describe の末尾、現状 `297` 行目 `});` の直前に追加）
 
 **前提確認（コードは既に揃っている）:**
+
 - `qr-ticket.test.ts` 冒頭で `generateKeyPair`, `signTicket`, `verifyTicket`, `ticketToQrString`, `type TicketPayload` が import 済み。
 - describe `'signTicket / verifyTicket'` 内に正常系テスト（`valid: true`、陽性対照）が既存。
 
@@ -24,21 +26,21 @@
 `src/utils/__tests__/qr-ticket.test.ts` の `describe('signTicket / verifyTicket', ...)` ブロック内、最後の `it(...)`（`'任意フィールド（n, p）付きチケットの署名・検証が正しく動作する'`）の直後・describe 閉じ `});` の直前に以下を挿入する:
 
 ```ts
-  it('timestamp が 0 の署名済みチケットは verifyTicket で valid: false になる', async () => {
-    const pair = await generateKeyPair();
-    const zeroTs: TicketPayload = { e: 'ev', t: 'T-1', timestamp: 0 };
-    const signed = await signTicket(zeroTs, pair.privateKey);
-    const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
-    expect(result.valid).toBe(false);
-  });
+it('timestamp が 0 の署名済みチケットは verifyTicket で valid: false になる', async () => {
+  const pair = await generateKeyPair();
+  const zeroTs: TicketPayload = { e: 'ev', t: 'T-1', timestamp: 0 };
+  const signed = await signTicket(zeroTs, pair.privateKey);
+  const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
+  expect(result.valid).toBe(false);
+});
 
-  it('timestamp が負値の署名済みチケットは verifyTicket で valid: false になる', async () => {
-    const pair = await generateKeyPair();
-    const negTs: TicketPayload = { e: 'ev', t: 'T-1', timestamp: -3600 };
-    const signed = await signTicket(negTs, pair.privateKey);
-    const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
-    expect(result.valid).toBe(false);
-  });
+it('timestamp が負値の署名済みチケットは verifyTicket で valid: false になる', async () => {
+  const pair = await generateKeyPair();
+  const negTs: TicketPayload = { e: 'ev', t: 'T-1', timestamp: -3600 };
+  const signed = await signTicket(negTs, pair.privateKey);
+  const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
+  expect(result.valid).toBe(false);
+});
 ```
 
 - [ ] **Step 2: テストを実行して green を確認**
