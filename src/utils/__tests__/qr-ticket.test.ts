@@ -295,4 +295,20 @@ describe('signTicket / verifyTicket', () => {
     expect(result.ticket?.n).toBe('山田 太郎');
     expect(result.ticket?.p).toBe('VIP');
   });
+
+  it('timestamp が 0 の署名済みチケットは verifyTicket で valid: false になる', async () => {
+    const pair = await generateKeyPair();
+    const zeroTs: TicketPayload = { e: 'ev', t: 'T-1', timestamp: 0 };
+    const signed = await signTicket(zeroTs, pair.privateKey);
+    const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
+    expect(result.valid).toBe(false);
+  });
+
+  it('timestamp が負値の署名済みチケットは verifyTicket で valid: false になる', async () => {
+    const pair = await generateKeyPair();
+    const negTs: TicketPayload = { e: 'ev', t: 'T-1', timestamp: -3600 };
+    const signed = await signTicket(negTs, pair.privateKey);
+    const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
+    expect(result.valid).toBe(false);
+  });
 });
