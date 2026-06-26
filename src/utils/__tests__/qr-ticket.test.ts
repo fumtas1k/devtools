@@ -302,6 +302,9 @@ describe('signTicket / verifyTicket', () => {
     const signed = await signTicket(zeroTs, pair.privateKey);
     const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
     expect(result.valid).toBe(false);
+    // timestamp<=0 ガード経路で弾かれたことを弁別する（expired フォールバックなら expired:true / ticket:payload になり通り道違いを検出できない）
+    expect(result.expired).toBe(false);
+    expect(result.ticket).toBeNull();
   });
 
   it('timestamp が負値の署名済みチケットは verifyTicket で valid: false になる', async () => {
@@ -310,5 +313,8 @@ describe('signTicket / verifyTicket', () => {
     const signed = await signTicket(negTs, pair.privateKey);
     const result = await verifyTicket(ticketToQrString(signed), pair.publicKey);
     expect(result.valid).toBe(false);
+    // timestamp<=0 ガード経路で弾かれたことを弁別する（expired フォールバックなら expired:true / ticket:payload になり通り道違いを検出できない）
+    expect(result.expired).toBe(false);
+    expect(result.ticket).toBeNull();
   });
 });
