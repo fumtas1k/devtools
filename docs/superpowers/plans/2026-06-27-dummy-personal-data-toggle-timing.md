@@ -27,6 +27,7 @@
 ## Task 1: 生成条件署名の純関数を追加（TDD）
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/generate.ts`（末尾に追加）
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`（末尾に追加）
 
@@ -115,6 +116,7 @@ git commit -m "feat: 生成条件署名 generationSignature を追加（stale �
 ## Task 2: コンポーネントを 2 セクションに再編し stale インジケータを追加
 
 **Files:**
+
 - Modify: `src/components/tools/DummyPersonalData.tsx`（ファイル全体を書き直す）
 
 > import 追加（`ChipLabel` / `generationSignature`）と JSX 構造変更を伴うため、CLAUDE.md 9.3 に従いファイル全体を書き直す。
@@ -447,6 +449,7 @@ git commit -m "feat: ダミー個人データ生成のトグルを生成条件/�
 ## Task 3: E2E テストを追加（陽性／陰性対照）
 
 **Files:**
+
 - Modify: `tests/e2e/dummy-personal-data.spec.ts`（既存 describe 内の末尾に追加）
 
 - [ ] **Step 1: E2E ケースを追加**
@@ -454,36 +457,36 @@ git commit -m "feat: ダミー個人データ生成のトグルを生成条件/�
 `tests/e2e/dummy-personal-data.spec.ts` の `test.describe('日本語ダミー個人データ生成', () => { ... })` の閉じ括弧の直前に、以下の 3 テストを追加する:
 
 ```ts
-  test('セクション見出し「生成条件」「出力の見せ方」が表示される', async ({ page }) => {
-    await expect(page.getByText('生成条件', { exact: true })).toBeVisible();
-    await expect(page.getByText('出力の見せ方', { exact: true })).toBeVisible();
-  });
+test('セクション見出し「生成条件」「出力の見せ方」が表示される', async ({ page }) => {
+  await expect(page.getByText('生成条件', { exact: true })).toBeVisible();
+  await expect(page.getByText('出力の見せ方', { exact: true })).toBeVisible();
+});
 
-  test('生成条件を変更すると未反映インジケータが出て、再生成で消える', async ({ page }) => {
-    await page.getByRole('button', { name: '生成' }).click();
-    await expect(page.getByRole('status')).toContainText('生成しました');
-    // 陰性対照: 生成直後は出ていない
-    await expect(page.getByText('生成条件が変更されました。再生成してください')).toHaveCount(0);
+test('生成条件を変更すると未反映インジケータが出て、再生成で消える', async ({ page }) => {
+  await page.getByRole('button', { name: '生成' }).click();
+  await expect(page.getByRole('status')).toContainText('生成しました');
+  // 陰性対照: 生成直後は出ていない
+  await expect(page.getByText('生成条件が変更されました。再生成してください')).toHaveCount(0);
 
-    // 陽性対照: 生成条件（人数）を変更すると出る
-    const count = page.getByLabel('出力する人数');
-    await count.fill('200');
-    await count.blur();
-    await expect(page.getByText('生成条件が変更されました。再生成してください')).toBeVisible();
+  // 陽性対照: 生成条件（人数）を変更すると出る
+  const count = page.getByLabel('出力する人数');
+  await count.fill('200');
+  await count.blur();
+  await expect(page.getByText('生成条件が変更されました。再生成してください')).toBeVisible();
 
-    // 陰性対照: 再生成すると消える
-    await page.getByRole('button', { name: '生成' }).click();
-    await expect(page.getByText('生成条件が変更されました。再生成してください')).toHaveCount(0);
-  });
+  // 陰性対照: 再生成すると消える
+  await page.getByRole('button', { name: '生成' }).click();
+  await expect(page.getByText('生成条件が変更されました。再生成してください')).toHaveCount(0);
+});
 
-  test('即時反映トグル（連番ID列）では未反映インジケータが出ない', async ({ page }) => {
-    await page.getByRole('button', { name: '生成' }).click();
-    await expect(page.getByRole('status')).toContainText('生成しました');
-    // 出力の見せ方トグルは即時反映なので stale にならない
-    await page.getByRole('button', { name: '連番ID列 (No.)' }).click();
-    await expect(page.getByRole('columnheader', { name: 'No.' })).toBeVisible();
-    await expect(page.getByText('生成条件が変更されました。再生成してください')).toHaveCount(0);
-  });
+test('即時反映トグル（連番ID列）では未反映インジケータが出ない', async ({ page }) => {
+  await page.getByRole('button', { name: '生成' }).click();
+  await expect(page.getByRole('status')).toContainText('生成しました');
+  // 出力の見せ方トグルは即時反映なので stale にならない
+  await page.getByRole('button', { name: '連番ID列 (No.)' }).click();
+  await expect(page.getByRole('columnheader', { name: 'No.' })).toBeVisible();
+  await expect(page.getByText('生成条件が変更されました。再生成してください')).toHaveCount(0);
+});
 ```
 
 > 補足: `getByLabel('出力する人数')` は `<label htmlFor="dpd-count">出力する人数</label>` と紐づく。
@@ -509,6 +512,7 @@ git commit -m "test: 未反映インジケータの陽性/陰性対照 E2E を�
 ## Task 4: ドキュメント更新（SPEC / tools / decisions）
 
 **Files:**
+
 - Modify: `SPEC.md`（5.31）
 - Modify: `docs/tools.md`（日本語ダミー個人データ生成）
 - Modify: `docs/decisions.md`（`[122]` 追記）
@@ -564,12 +568,14 @@ git commit -m "docs: トグル反映タイミング統一を SPEC/tools/decision
 - [ ] **Step 1: 全チェックを実行**
 
 Run（CLAUDE.md の push 前必須）:
+
 ```bash
 npm run test
 node_modules/.bin/astro check
 npm run lint
 npm run test:e2e -- dummy-personal-data
 ```
+
 Expected: すべて PASS / エラー 0
 
 - [ ] **Step 2: 差分の自己確認**

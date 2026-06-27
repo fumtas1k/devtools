@@ -117,8 +117,8 @@ export function generationSignature(p: GenerationParams): string;
 
 - `isStale` のとき、生成ボタンの近傍に未反映インジケータを表示する。
 - マークアップ: ライブ領域を**常時 DOM に置き**（空 → 内容挿入で SR が読み上げる）、`aria-live="polite"`
-  + `aria-atomic="true"` を付与する。**`role="status"` は付けない**。
-  - 理由: プレビュー側に既存の `role="status"`（「N 件…生成しました」アナウンス）があり、新インジケータにも
+  - `aria-atomic="true"` を付与する。**`role="status"` は付けない**。
+  * 理由: プレビュー側に既存の `role="status"`（「N 件…生成しました」アナウンス）があり、新インジケータにも
     `role="status"` を付けると status ロールが 2 つになって既存 E2E の `getByRole('status')`（単数 strict）が
     壊れる。`aria-live` のみなら status ロールにならず衝突しない。
 - 文言: 「生成条件が変更されました。再生成してください」。
