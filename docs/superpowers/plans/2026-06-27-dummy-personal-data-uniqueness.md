@@ -19,6 +19,7 @@
 - 一意化はガード/検出機構に類するため **test-gates skill を呼び陽性対照を併設**すること
 
 参照する既存ファイル:
+
 - `src/utils/dummy-personal-data/generate.ts`（`pickMobile` / `randomDigits` / `pickAddress` 等）
 - `src/utils/dummy-personal-data/serialize.ts`
 - `src/utils/dummy-personal-data/types.ts`
@@ -43,6 +44,7 @@
 ## Task 1: メールアドレス一意化ヘルパー
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/generate.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`
 
@@ -119,16 +121,14 @@ git commit -m "feat: ダミー個人データのメール一意化ヘルパー�
 ## Task 2: 再生成方式の一意化ヘルパー（汎用 + 固定電話）
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/generate.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`
 
 - [ ] **Step 1: 失敗するテストを書く**
 
 ```ts
-import {
-  makeUniqueByRegen,
-  regenPhoneKeepingAreaCode,
-} from '@/utils/dummy-personal-data/generate';
+import { makeUniqueByRegen, regenPhoneKeepingAreaCode } from '@/utils/dummy-personal-data/generate';
 
 describe('regenPhoneKeepingAreaCode（固定電話の市外局番保持再生成）', () => {
   it('市外局番を保持し全体 10 桁・先頭 0 を維持', () => {
@@ -222,6 +222,7 @@ git commit -m "feat: ダミー個人データの再生成方式一意化ヘル�
 ## Task 3: `generateRecords` に一意化後処理を組み込む（陽性対照込み）
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/generate.ts:155-198`（`GenerateOptions` と `generateRecords`）
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`
 
@@ -236,14 +237,22 @@ describe('generateRecords 一意化オプション', () => {
   const N = 3000;
 
   it('unique=true で email/phone/mobile が全件一意', () => {
-    const recs = generateRecords(N, { ageMin: 20, ageMax: 80, separator: ' ', unique: true }, today);
+    const recs = generateRecords(
+      N,
+      { ageMin: 20, ageMax: 80, separator: ' ', unique: true },
+      today
+    );
     expect(new Set(recs.map((r) => r.email)).size).toBe(N);
     expect(new Set(recs.map((r) => r.phone)).size).toBe(N);
     expect(new Set(recs.map((r) => r.mobile)).size).toBe(N);
   });
 
   it('一意化後も固定電話が市外局番整合・10 桁、携帯が非実在帯を維持', () => {
-    const recs = generateRecords(500, { ageMin: 20, ageMax: 80, separator: ' ', unique: true }, today);
+    const recs = generateRecords(
+      500,
+      { ageMin: 20, ageMax: 80, separator: ' ', unique: true },
+      today
+    );
     for (const r of recs) {
       expect(r.phone.replace(/-/g, '')).toMatch(/^0\d{9}$/);
       expect(isNonExistentMobile(r.mobile.replace(/-/g, ''))).toBe(true);
@@ -251,7 +260,11 @@ describe('generateRecords 一意化オプション', () => {
   });
 
   it('陽性対照: unique=false では重複が発生する（テストの検出能力を担保）', () => {
-    const recs = generateRecords(N, { ageMin: 20, ageMax: 80, separator: ' ', unique: false }, today);
+    const recs = generateRecords(
+      N,
+      { ageMin: 20, ageMax: 80, separator: ' ', unique: false },
+      today
+    );
     const emailUnique = new Set(recs.map((r) => r.email)).size === N;
     const nameUnique = new Set(recs.map((r) => r.name)).size === N;
     // 辞書規模 ≒1,200 に対し 3,000 件なので氏名は必ず重複する
@@ -301,7 +314,12 @@ export function generateRecords(
     const MAX_ATTEMPTS = 1000;
     for (const r of out) {
       r.email = makeUniqueEmail(r.email, emails);
-      r.phone = makeUniqueByRegen(r.phone, phones, () => regenPhoneKeepingAreaCode(r.phone), MAX_ATTEMPTS);
+      r.phone = makeUniqueByRegen(
+        r.phone,
+        phones,
+        () => regenPhoneKeepingAreaCode(r.phone),
+        MAX_ATTEMPTS
+      );
       r.mobile = makeUniqueByRegen(r.mobile, mobiles, pickMobile, MAX_ATTEMPTS);
     }
   }
@@ -331,6 +349,7 @@ git commit -m "feat: ダミー個人データ生成に一意化オプション�
 ## Task 4: シリアライズに連番(No.)列を追加
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/serialize.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/serialize.test.ts`
 
@@ -393,9 +412,7 @@ export function toCsv(records: PersonRecord[], fields: FieldKey[], withSeqId = f
 /** JSON 文字列（整形）。withSeqId 時は No. を数値で先頭キーに付与 */
 export function toJson(records: PersonRecord[], fields: FieldKey[], withSeqId = false): string {
   const projected = project(records, fields);
-  const out = withSeqId
-    ? projected.map((row, i) => ({ [SEQ_HEADER]: i + 1, ...row }))
-    : projected;
+  const out = withSeqId ? projected.map((row, i) => ({ [SEQ_HEADER]: i + 1, ...row })) : projected;
   return JSON.stringify(out, null, 2);
 }
 ```
@@ -419,6 +436,7 @@ git commit -m "feat: ダミー個人データ出力に連番(No.)列オプショ
 ## Task 5: UI にトグルとプレビュー No. 列を追加
 
 **Files:**
+
 - Modify: `src/components/tools/DummyPersonalData.tsx`
 
 - [ ] **Step 1: state とトグルを追加**
@@ -458,7 +476,9 @@ const download = useCallback(() => {
 「氏名の区切り」ブロックの後（出力項目 ToggleChips の前後どちらか、出力項目の直後）に追加:
 
 ```tsx
-{/* 出力オプション（連番列・一意化） */}
+{
+  /* 出力オプション（連番列・一意化） */
+}
 <div>
   <ToggleChips<'seqId' | 'unique'>
     legend="出力オプション"
@@ -469,7 +489,7 @@ const download = useCallback(() => {
     selected={(v) => (v === 'seqId' ? seqId : unique)}
     onToggle={(v) => (v === 'seqId' ? setSeqId((p) => !p) : setUnique((p) => !p))}
   />
-</div>
+</div>;
 ```
 
 - [ ] **Step 3: プレビュー表に No. 列を追加**
@@ -477,19 +497,21 @@ const download = useCallback(() => {
 `<thead>` の `<tr>` 内、`fields.map` の前に追加:
 
 ```tsx
-{seqId && (
-  <th scope="col" className="text-left px-3 py-2 border-b border-default whitespace-nowrap">
-    No.
-  </th>
-)}
+{
+  seqId && (
+    <th scope="col" className="text-left px-3 py-2 border-b border-default whitespace-nowrap">
+      No.
+    </th>
+  );
+}
 ```
 
 `<tbody>` の各行 `fields.map` の前に追加:
 
 ```tsx
-{seqId && (
-  <td className="px-3 py-2 border-b border-default whitespace-nowrap">{i + 1}</td>
-)}
+{
+  seqId && <td className="px-3 py-2 border-b border-default whitespace-nowrap">{i + 1}</td>;
+}
 ```
 
 - [ ] **Step 4: 型チェック**
@@ -514,6 +536,7 @@ git commit -m "feat: ダミー個人データ UI に連番列・一意化トグ�
 ## Task 6: Astro 解説セクションを更新
 
 **Files:**
+
 - Modify: `src/pages/tools/dummy-personal-data.astro`
 
 - [ ] **Step 1: 解説を追記**
@@ -523,7 +546,8 @@ git commit -m "feat: ダミー個人データ UI に連番列・一意化トグ�
 ```astro
 <h3 class="mb-2 mt-4 tool-info-heading">一意性オプション・連番列</h3>
 <p class="tool-info-body">
-  「メール・電話番号を一意化」を有効にすると、メールアドレス（ローカル部に連番付与）・固定電話・携帯番号が生成件数内で重複しないように調整されます。氏名は辞書規模の都合上、一意化の対象外です。「連番ID列 (No.)」を有効にすると、各レコードに 1 始まりの連番列が出力に付与されます。
+  「メール・電話番号を一意化」を有効にすると、メールアドレス（ローカル部に連番付与）・固定電話・携帯番号が生成件数内で重複しないように調整されます。氏名は辞書規模の都合上、一意化の対象外です。「連番ID列
+  (No.)」を有効にすると、各レコードに 1 始まりの連番列が出力に付与されます。
 </p>
 ```
 
@@ -544,6 +568,7 @@ git commit -m "docs: ダミー個人データの一意化・連番列の解説�
 ## Task 7: ドキュメント更新（SPEC / tools / decisions）
 
 **Files:**
+
 - Modify: `SPEC.md`（5.31 節 1296 行付近）
 - Modify: `docs/tools.md`（131 行付近）
 - Modify: `docs/decisions.md`（末尾に新エントリ）
@@ -564,9 +589,11 @@ git commit -m "docs: ダミー個人データの一意化・連番列の解説�
 ## [日本語ダミー個人データ生成] 一意化はメール連番付与・電話/携帯再生成・氏名は対象外
 
 ### 決定
+
 一意化オプション（issue #735）で、メールはローカル部への連番付与、固定電話・携帯は再生成方式で重複回避する。氏名・フリガナは一意化の対象外とする。
 
 ### 理由
+
 辞書規模が姓 30 × 名 40 ≒ 1,200 通りに対し最大 3,000 件生成できるため、氏名の完全一意化は原理的に不可能。メールは連番付与で必ず一意化でき、固定電話（市外局番を保持し加入者番号のみ再生成＝住所整合を維持）・携帯（非実在帯 090-0XXX を維持）は十分なエントロピーがあり再生成で実用上一意化できる。連番列は主キー用途のため JSON では数値で出力する。
 ```
 
@@ -582,6 +609,7 @@ git commit -m "docs: ダミー個人データ一意化オプションを各ド�
 ## Task 8: E2E に一意化・連番列ケースを追加
 
 **Files:**
+
 - Modify: `tests/e2e/dummy-personal-data.spec.ts`（既存あり）
 
 - [ ] **Step 1: テストを追加**
@@ -589,24 +617,21 @@ git commit -m "docs: ダミー個人データ一意化オプションを各ド�
 `tests/e2e/dummy-personal-data.spec.ts` の `test.describe` 内に追記:
 
 ```ts
-  test('連番ID列トグルでプレビューに No. 列が出る', async ({ page }) => {
-    await page.getByRole('button', { name: '連番ID列 (No.)' }).click();
-    await page.getByRole('button', { name: '生成' }).click();
-    await expect(page.getByRole('columnheader', { name: 'No.' })).toBeVisible();
-  });
+test('連番ID列トグルでプレビューに No. 列が出る', async ({ page }) => {
+  await page.getByRole('button', { name: '連番ID列 (No.)' }).click();
+  await page.getByRole('button', { name: '生成' }).click();
+  await expect(page.getByRole('columnheader', { name: 'No.' })).toBeVisible();
+});
 
-  test('一意化トグルでメールが重複しない', async ({ page }) => {
-    await page.getByRole('button', { name: 'メール・電話番号を一意化' }).click();
-    await page.getByRole('button', { name: '生成' }).click();
-    await expect(page.getByRole('status')).toContainText('生成しました');
-    // プレビュー（先頭 20 件）のメール列セルを集めて重複がないことを確認
-    const cells = await page
-      .getByRole('cell')
-      .filter({ hasText: '@example.' })
-      .allInnerTexts();
-    expect(cells.length).toBeGreaterThan(1);
-    expect(new Set(cells).size).toBe(cells.length);
-  });
+test('一意化トグルでメールが重複しない', async ({ page }) => {
+  await page.getByRole('button', { name: 'メール・電話番号を一意化' }).click();
+  await page.getByRole('button', { name: '生成' }).click();
+  await expect(page.getByRole('status')).toContainText('生成しました');
+  // プレビュー（先頭 20 件）のメール列セルを集めて重複がないことを確認
+  const cells = await page.getByRole('cell').filter({ hasText: '@example.' }).allInnerTexts();
+  expect(cells.length).toBeGreaterThan(1);
+  expect(new Set(cells).size).toBe(cells.length);
+});
 ```
 
 > 注: 既存テスト `項目 OFF でプレビュー列が消える` は `name: 'メールアドレス'` で field チップを押す。

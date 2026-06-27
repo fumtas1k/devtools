@@ -263,7 +263,12 @@ export function generateRecords(
     const MAX_ATTEMPTS = 1000;
     for (const r of out) {
       r.email = makeUniqueEmail(r.email, emails);
-      r.phone = makeUniqueByRegen(r.phone, phones, () => regenPhoneKeepingAreaCode(r.phone), MAX_ATTEMPTS);
+      r.phone = makeUniqueByRegen(
+        r.phone,
+        phones,
+        () => regenPhoneKeepingAreaCode(r.phone),
+        MAX_ATTEMPTS
+      );
       r.mobile = makeUniqueByRegen(r.mobile, mobiles, pickMobile, MAX_ATTEMPTS);
     }
   }

@@ -36,8 +36,6 @@ export function toCsv(records: PersonRecord[], fields: FieldKey[], withSeqId = f
 /** JSON 文字列（整形）。withSeqId 時は No. を数値で先頭キーに付与 */
 export function toJson(records: PersonRecord[], fields: FieldKey[], withSeqId = false): string {
   const projected = project(records, fields);
-  const out = withSeqId
-    ? projected.map((row, i) => ({ [SEQ_HEADER]: i + 1, ...row }))
-    : projected;
+  const out = withSeqId ? projected.map((row, i) => ({ [SEQ_HEADER]: i + 1, ...row })) : projected;
   return JSON.stringify(out, null, 2);
 }

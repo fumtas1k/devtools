@@ -206,14 +206,22 @@ describe('generateRecords 一意化オプション', () => {
   const N = 3000;
 
   it('unique=true で email/phone/mobile が全件一意', () => {
-    const recs = generateRecords(N, { ageMin: 20, ageMax: 80, separator: ' ', unique: true }, today);
+    const recs = generateRecords(
+      N,
+      { ageMin: 20, ageMax: 80, separator: ' ', unique: true },
+      today
+    );
     expect(new Set(recs.map((r) => r.email)).size).toBe(N);
     expect(new Set(recs.map((r) => r.phone)).size).toBe(N);
     expect(new Set(recs.map((r) => r.mobile)).size).toBe(N);
   });
 
   it('一意化後も固定電話が市外局番整合・10 桁、携帯が非実在帯を維持', () => {
-    const recs = generateRecords(500, { ageMin: 20, ageMax: 80, separator: ' ', unique: true }, today);
+    const recs = generateRecords(
+      500,
+      { ageMin: 20, ageMax: 80, separator: ' ', unique: true },
+      today
+    );
     for (const r of recs) {
       expect(r.phone.replace(/-/g, '')).toMatch(/^0\d{9}$/);
       expect(isNonExistentMobile(r.mobile.replace(/-/g, ''))).toBe(true);
@@ -221,7 +229,11 @@ describe('generateRecords 一意化オプション', () => {
   });
 
   it('陽性対照: unique=false では重複が発生する（テストの検出能力を担保）', () => {
-    const recs = generateRecords(N, { ageMin: 20, ageMax: 80, separator: ' ', unique: false }, today);
+    const recs = generateRecords(
+      N,
+      { ageMin: 20, ageMax: 80, separator: ' ', unique: false },
+      today
+    );
     const emailUnique = new Set(recs.map((r) => r.email)).size === N;
     const nameUnique = new Set(recs.map((r) => r.name)).size === N;
     // 辞書規模 ≒1,200 に対し 3,000 件なので氏名は必ず重複する

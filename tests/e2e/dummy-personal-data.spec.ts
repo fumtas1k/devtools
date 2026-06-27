@@ -37,10 +37,7 @@ test.describe('日本語ダミー個人データ生成', () => {
     await page.getByRole('button', { name: '生成' }).click();
     await expect(page.getByRole('status')).toContainText('生成しました');
     // プレビュー（先頭 20 件）のメール列セルを集めて重複がないことを確認
-    const cells = await page
-      .getByRole('cell')
-      .filter({ hasText: '@example.' })
-      .allInnerTexts();
+    const cells = await page.getByRole('cell').filter({ hasText: '@example.' }).allInnerTexts();
     expect(cells.length).toBeGreaterThan(1);
     expect(new Set(cells).size).toBe(cells.length);
   });
