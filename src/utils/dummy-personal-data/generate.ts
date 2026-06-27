@@ -152,10 +152,71 @@ export function pickEmail(surnameRomaji: string, givenRomaji: string): string {
   return `${local}@${pickRandom(EMAIL_DOMAINS)}`;
 }
 
+/**
+ * メールアドレスを一意化する。初出はそのまま、衝突時はローカル部（@ の前）へ
+ * 最小の整数サフィックスを付ける。付与後も衝突する場合はインクリメントして再試行。
+ */
+export function makeUniqueEmail(email: string, seen: Set<string>): string {
+  if (!seen.has(email)) {
+    seen.add(email);
+    return email;
+  }
+  const atIdx = email.lastIndexOf('@');
+  const local = email.slice(0, atIdx);
+  const domain = email.slice(atIdx);
+  let n = 1;
+  let candidate = `${local}${n}${domain}`;
+  while (seen.has(candidate)) {
+    n++;
+    candidate = `${local}${n}${domain}`;
+  }
+  seen.add(candidate);
+  return candidate;
+}
+
+/**
+ * 値を再生成方式で一意化する。初出はそのまま、衝突時は generator() を
+ * maxAttempts 回まで呼んで未出の値を採用する。枯渇時は元値を採用（現実的には起きない）。
+ */
+export function makeUniqueByRegen(
+  value: string,
+  seen: Set<string>,
+  generator: () => string,
+  maxAttempts: number
+): string {
+  if (!seen.has(value)) {
+    seen.add(value);
+    return value;
+  }
+  for (let i = 0; i < maxAttempts; i++) {
+    const c = generator();
+    if (!seen.has(c)) {
+      seen.add(c);
+      return c;
+    }
+  }
+  return value; // 枯渇時フォールバック（重複容認）
+}
+
+/**
+ * 固定電話を市外局番を保持したまま再生成する。文字列先頭の市外局番（最初の '-' まで）を
+ * 取り出し、加入者番号（市内局番 + 末尾 4 桁）のみ作り直す。全体 10 桁を維持する。
+ */
+export function regenPhoneKeepingAreaCode(phone: string): string {
+  const areaCode = phone.slice(0, phone.indexOf('-'));
+  const subscriberLen = 10 - areaCode.length;
+  const lastLen = 4;
+  const middleLen = subscriberLen - lastLen;
+  const middle = randomDigits(middleLen);
+  const last = randomDigits(lastLen);
+  return `${areaCode}-${middle}-${last}`;
+}
+
 export interface GenerateOptions {
   ageMin: number;
   ageMax: number;
   separator: string; // 氏名区切り
+  unique?: boolean; // メール・固定電話・携帯を一意化
 }
 
 /** 性別を確率的に決定（男/女 ≒ 各 49%、その他・不明 ≒ 2%） */
@@ -186,7 +247,38 @@ export function generateRecord(opts: GenerateOptions, today: Date = new Date()):
   };
 }
 
-/** count 件を生成 */
+/** 一意化で使う再生成器（テスト時に衝突を強制注入できるよう差し替え可能にする） */
+export interface UniquifyGenerators {
+  /** 固定電話の再生成器（既定: 市外局番保持で加入者番号のみ作り直す） */
+  regenPhone?: (phone: string) => string;
+  /** 携帯の再生成器（既定: pickMobile で非実在帯を維持して作り直す） */
+  regenMobile?: () => string;
+}
+
+/**
+ * レコード群のメール・固定電話・携帯を一意化する（後処理・破壊的にレコードを書き換える）。
+ * `generateRecords` から分離し、再生成器を注入して衝突を強制できるようにすることで、
+ * 「配線が正しいか（dedup を通しているか）」を決定論的に検証できる（test-gates 陽性対照用）。
+ */
+export function uniquifyRecords(
+  records: PersonRecord[],
+  gens: UniquifyGenerators = {}
+): PersonRecord[] {
+  const regenPhone = gens.regenPhone ?? regenPhoneKeepingAreaCode;
+  const regenMobile = gens.regenMobile ?? pickMobile;
+  const emails = new Set<string>();
+  const phones = new Set<string>();
+  const mobiles = new Set<string>();
+  const MAX_ATTEMPTS = 1000;
+  for (const r of records) {
+    r.email = makeUniqueEmail(r.email, emails);
+    r.phone = makeUniqueByRegen(r.phone, phones, () => regenPhone(r.phone), MAX_ATTEMPTS);
+    r.mobile = makeUniqueByRegen(r.mobile, mobiles, regenMobile, MAX_ATTEMPTS);
+  }
+  return records;
+}
+
+/** count 件を生成（unique 時はメール・固定電話・携帯を一意化） */
 export function generateRecords(
   count: number,
   opts: GenerateOptions,
@@ -194,5 +286,7 @@ export function generateRecords(
 ): PersonRecord[] {
   const out: PersonRecord[] = [];
   for (let i = 0; i < count; i++) out.push(generateRecord(opts, today));
+
+  if (opts.unique) uniquifyRecords(out);
   return out;
 }

@@ -28,11 +28,16 @@ const tool = tools.find((t) => t.slug === 'dummy-personal-data')!;
       が割り当てられないためです。
     </p>
 
+    <h3 class="mb-2 mt-4 tool-info-heading">一意性オプション・連番列</h3>
+    <p class="tool-info-body">
+      「メール・電話番号を一意化」を有効にすると、メールアドレス（ローカル部に連番付与）・固定電話・携帯番号が生成件数内で重複しないように調整されます。氏名は辞書規模の都合上、一意化の対象外です。「連番ID列
+      (No.)」を有効にすると、各レコードに 1 始まりの連番列が出力に付与されます。
+    </p>
+
     <h3 class="mb-2 mt-4 tool-info-heading">制限</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>生成されるデータはすべて架空であり、実在の個人・連絡先ではありません</li>
       <li>出力は CSV（UTF-8 BOM 付き）と JSON です。Excel 形式には非対応です</li>
-      <li>クレジットカード番号・マイナンバー・血液型・会社名は対象外です</li>
     </ul>
   </ToolInfoSection>
 </ToolLayout>

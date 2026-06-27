@@ -45,3 +45,27 @@ describe('toJson', () => {
     expect(parsed[0]).toEqual({ 氏名: '佐藤 大翔', メールアドレス: 'sato.haruto@example.com' });
   });
 });
+
+describe('連番(No.)列', () => {
+  it('toCsv: withSeqId=true で先頭に No. 列を付与', () => {
+    const csv = toCsv([rec, rec], ['name'], true);
+    const body = csv.slice(1); // BOM 除去
+    const lines = body.split(/\r?\n/);
+    expect(lines[0]).toBe('No.,氏名');
+    expect(lines[1].startsWith('1,')).toBe(true);
+    expect(lines[2].startsWith('2,')).toBe(true);
+  });
+
+  it('toCsv: withSeqId 省略時は No. 列なし（後方互換）', () => {
+    const csv = toCsv([rec], ['name']);
+    expect(csv.slice(1).split(/\r?\n/)[0]).toBe('氏名');
+  });
+
+  it('toJson: withSeqId=true で No. を数値として先頭キーに付与', () => {
+    const json = toJson([rec, rec], ['name'], true);
+    const parsed = JSON.parse(json);
+    expect(parsed[0]['No.']).toBe(1);
+    expect(parsed[1]['No.']).toBe(2);
+    expect(Object.keys(parsed[0])[0]).toBe('No.');
+  });
+});
