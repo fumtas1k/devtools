@@ -179,3 +179,31 @@ export async function parseDdl(sql: string, dialect: Dialect): Promise<ParseResu
 
   return { model: { tables, relations }, errors };
 }
+
+// Mermaid の属性 type/name トークンは英数と _ のみ安全。括弧・空白・カンマを _ に畳む
+function safeToken(s: string): string {
+  return s.replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'unknown';
+}
+
+export function toMermaid(model: SchemaModel): string {
+  const lines: string[] = ['erDiagram'];
+  for (const table of model.tables) {
+    lines.push(`  ${safeToken(table.name)} {`);
+    for (const col of table.columns) {
+      const type = safeToken(col.type || 'unknown');
+      const keys: string[] = [];
+      if (col.isPrimaryKey) keys.push('PK');
+      if (col.isForeignKey) keys.push('FK');
+      const suffix = keys.length ? ` ${keys.join(',')}` : '';
+      lines.push(`    ${type} ${safeToken(col.name)}${suffix}`);
+    }
+    lines.push('  }');
+  }
+  for (const rel of model.relations) {
+    // 多側(FK) }o--|| 一側(PK) の非識別リレーションで描画
+    lines.push(
+      `  ${safeToken(rel.fromTable)} }o--|| ${safeToken(rel.toTable)} : "${rel.fromColumn}"`
+    );
+  }
+  return lines.join('\n');
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDdl } from '../ddl-er-diagram';
+import { parseDdl, toMermaid } from '../ddl-er-diagram';
 
 describe('parseDdl', () => {
   it('単一テーブルのカラム・型・NULL可否・PKを抽出する', async () => {
@@ -63,5 +63,33 @@ describe('parseDdl', () => {
     const { model, errors } = await parseDdl(sql, 'postgresql');
     expect(model.tables).toHaveLength(1);
     expect(errors.some((e) => /users/.test(e.message))).toBe(true);
+  });
+});
+
+describe('toMermaid', () => {
+  it('erDiagramで始まりテーブル属性とリレーションを出力する', async () => {
+    const sql = `
+      CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL);
+      CREATE TABLE posts (id INT PRIMARY KEY, user_id INT,
+        CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES users(id));`;
+    const { model } = await parseDdl(sql, 'postgresql');
+    const out = toMermaid(model);
+    expect(out.startsWith('erDiagram')).toBe(true);
+    expect(out).toContain('users {');
+    expect(out).toContain('posts {');
+    // PK/FK マーカー
+    expect(out).toMatch(/INT id PK/);
+    expect(out).toMatch(/INT user_id FK/);
+    // リレーション行（posts が users を参照）
+    expect(out).toContain('posts }o--|| users : "user_id"');
+  });
+
+  it('型の括弧やスペースをMermaid属性名として安全な形に整形する', async () => {
+    const sql = 'CREATE TABLE t (amount DECIMAL(10,2));';
+    const { model } = await parseDdl(sql, 'postgresql');
+    const out = toMermaid(model);
+    // Mermaid 属性の型トークンに空白や ( ) を残さない（_ 等へ置換）
+    expect(out).not.toMatch(/DECIMAL\(10,2\)/);
+    expect(out).toContain('amount');
   });
 });
