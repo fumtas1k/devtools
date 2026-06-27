@@ -14,19 +14,19 @@
 
 ## ファイル構成
 
-| ファイル | 責務 |
-| --- | --- |
-| `src/utils/dummy-personal-data/types.ts` | `PersonRecord` 型・項目キー/ラベル定義・辞書エントリ型 |
-| `src/utils/dummy-personal-data/dictionaries.ts` | 姓/名（漢字・読み・ローマ字）、住所（郵便番号・都道府県・市区町村・市外局番）辞書 |
-| `src/utils/dummy-personal-data/generate.ts` | 乱数ヘルパー・各フィールド生成・整合性ロジック・1 レコード生成・検証関数 |
-| `src/utils/dummy-personal-data/serialize.ts` | CSV(BOM)/JSON シリアライズ |
-| `src/utils/dummy-personal-data/__tests__/generate.test.ts` | 生成・整合性・携帯番号の検証（陽性対照含む） |
-| `src/utils/dummy-personal-data/__tests__/serialize.test.ts` | シリアライズ検証 |
-| `src/components/tools/DummyPersonalData.tsx` | React 本体 |
-| `src/pages/tools/dummy-personal-data.astro` | ページ |
-| `src/data/tools.ts` | ツールエントリ登録（modify） |
-| `tests/e2e/visual-regression-pages.ts` | VRT 対象登録（modify） |
-| `tests/e2e/dummy-personal-data.spec.ts` | E2E |
+| ファイル                                                    | 責務                                                                              |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `src/utils/dummy-personal-data/types.ts`                    | `PersonRecord` 型・項目キー/ラベル定義・辞書エントリ型                            |
+| `src/utils/dummy-personal-data/dictionaries.ts`             | 姓/名（漢字・読み・ローマ字）、住所（郵便番号・都道府県・市区町村・市外局番）辞書 |
+| `src/utils/dummy-personal-data/generate.ts`                 | 乱数ヘルパー・各フィールド生成・整合性ロジック・1 レコード生成・検証関数          |
+| `src/utils/dummy-personal-data/serialize.ts`                | CSV(BOM)/JSON シリアライズ                                                        |
+| `src/utils/dummy-personal-data/__tests__/generate.test.ts`  | 生成・整合性・携帯番号の検証（陽性対照含む）                                      |
+| `src/utils/dummy-personal-data/__tests__/serialize.test.ts` | シリアライズ検証                                                                  |
+| `src/components/tools/DummyPersonalData.tsx`                | React 本体                                                                        |
+| `src/pages/tools/dummy-personal-data.astro`                 | ページ                                                                            |
+| `src/data/tools.ts`                                         | ツールエントリ登録（modify）                                                      |
+| `tests/e2e/visual-regression-pages.ts`                      | VRT 対象登録（modify）                                                            |
+| `tests/e2e/dummy-personal-data.spec.ts`                     | E2E                                                                               |
 
 > テストは vitest の `include: ['src/**/__tests__/**/*.test.{ts,tsx}']` に従い `src/utils/dummy-personal-data/__tests__/` に置く（colocation）。
 
@@ -35,6 +35,7 @@
 ## Task 1: 型定義
 
 **Files:**
+
 - Create: `src/utils/dummy-personal-data/types.ts`
 
 - [ ] **Step 1: 型ファイルを作成**
@@ -114,6 +115,7 @@ git commit -m "feat: ダミー個人データ生成の型定義を追加"
 ## Task 2: 辞書データ
 
 **Files:**
+
 - Create: `src/utils/dummy-personal-data/dictionaries.ts`
 
 - [ ] **Step 1: 辞書ファイルを作成**
@@ -243,6 +245,7 @@ git commit -m "feat: ダミー個人データ生成の辞書データを追加"
 ## Task 3: 乱数ヘルパー・氏名/性別生成（TDD）
 
 **Files:**
+
 - Create: `src/utils/dummy-personal-data/generate.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`
 
@@ -282,11 +285,7 @@ Expected: FAIL（`pickName` / `isConsistentName` が未定義）。
 - [ ] **Step 3: 最小実装**
 
 ```ts
-import {
-  SURNAMES,
-  GIVEN_NAMES,
-  ADDRESSES,
-} from './dictionaries';
+import { SURNAMES, GIVEN_NAMES, ADDRESSES } from './dictionaries';
 import type { Gender, PersonRecord, FieldKey } from './types';
 
 /** 配列から 1 要素をランダム選択 */
@@ -364,6 +363,7 @@ git commit -m "feat: 氏名・読みの整合生成と検証を実装"
 ## Task 4: 生年月日↔年齢の整合（TDD）
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/generate.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`（追記）
 
@@ -453,6 +453,7 @@ git commit -m "feat: 生年月日と年齢の整合生成を実装"
 ## Task 5: 住所↔郵便番号↔固定電話の整合（TDD）
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/generate.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`（追記）
 
@@ -466,7 +467,9 @@ describe('住所↔郵便番号↔固定電話', () => {
   it('郵便番号・都道府県・市区町村・市外局番が辞書の同一エントリ由来', () => {
     for (let i = 0; i < 200; i++) {
       const a = pickAddress();
-      const entry = ADDRESSES.find((e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` === a.postalCode);
+      const entry = ADDRESSES.find(
+        (e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` === a.postalCode
+      );
       expect(entry).toBeDefined();
       expect(a.address.startsWith(entry!.pref + entry!.city)).toBe(true);
       expect(a.phone.startsWith(entry!.areaCode + '-')).toBe(true);
@@ -481,9 +484,7 @@ describe('住所↔郵便番号↔固定電話', () => {
 
   it('陽性対照: 別エントリの郵便番号を差し替えると不整合になる', () => {
     const a = pickAddress();
-    const other = ADDRESSES.find(
-      (e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` !== a.postalCode
-    )!;
+    const other = ADDRESSES.find((e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` !== a.postalCode)!;
     const fakeZip = `${other.zip.slice(0, 3)}-${other.zip.slice(3)}`;
     const entry = ADDRESSES.find((e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` === fakeZip)!;
     expect(a.address.startsWith(entry.pref + entry.city)).toBe(false);
@@ -539,6 +540,7 @@ git commit -m "feat: 住所・郵便番号・固定電話の整合生成を実�
 ## Task 6: 実在しない携帯番号・メール（TDD）
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/generate.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`（追記）
 
@@ -634,6 +636,7 @@ git commit -m "feat: 実在しない携帯番号とメールアドレスの生�
 ## Task 7: レコード生成（全フィールド結合, TDD）
 
 **Files:**
+
 - Modify: `src/utils/dummy-personal-data/generate.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/generate.test.ts`（追記）
 
@@ -734,6 +737,7 @@ git commit -m "feat: 全フィールドのレコード生成を実装"
 ## Task 8: シリアライズ（CSV BOM / JSON, TDD）
 
 **Files:**
+
 - Create: `src/utils/dummy-personal-data/serialize.ts`
 - Test: `src/utils/dummy-personal-data/__tests__/serialize.test.ts`
 
@@ -839,6 +843,7 @@ git commit -m "feat: ダミー個人データの CSV/JSON シリアライズを�
 ## Task 9: React コンポーネント
 
 **Files:**
+
 - Create: `src/components/tools/DummyPersonalData.tsx`
 
 > 共通 UI（`InputField` 風の数値入力は `DummyText` の `<input type="number">` パターンを踏襲）・`ToggleGroup`・`ToggleChips`・`DownloadButton`・`NotificationBanner` を使用。色は semantic class / token utility 経由のみ（primitive scale 直書き禁止、`@layer components` 手書き class への variant prefix 禁止）。
@@ -1096,6 +1101,7 @@ git commit -m "feat: ダミー個人データ生成の UI コンポーネント�
 ## Task 10: ページ・ツール登録・VRT 登録
 
 **Files:**
+
 - Create: `src/pages/tools/dummy-personal-data.astro`
 - Modify: `src/data/tools.ts`
 - Modify: `tests/e2e/visual-regression-pages.ts`
@@ -1141,9 +1147,9 @@ const tool = tools.find((t) => t.slug === 'dummy-personal-data')!;
     <h3 class="mb-2 mt-4 tool-info-heading">携帯電話番号の扱い</h3>
     <p class="tool-info-body">
       携帯番号は、実在の番号に当たらない確度を高めるため <code>090-0XXX-XXXX</code> /
-      <code>070-0XXX-XXXX</code>（第 4
-      桁が 0）の形式で生成します。総務省の電気通信番号の種別では音声携帯番号の第 4
-      桁に 0 が割り当てられないためです。
+      <code>070-0XXX-XXXX</code>（第 4 桁が
+      0）の形式で生成します。総務省の電気通信番号の種別では音声携帯番号の第 4 桁に 0
+      が割り当てられないためです。
     </p>
 
     <h3 class="mb-2 mt-4 tool-info-heading">制限</h3>
@@ -1179,6 +1185,7 @@ git commit -m "feat: ダミー個人データ生成ツールのページを追�
 ## Task 11: E2E テスト
 
 **Files:**
+
 - Create: `tests/e2e/dummy-personal-data.spec.ts`
 
 > 既存 spec（例 `tests/e2e/dummy-text.spec.ts` があれば）を参照し、`getByRole` / `getByLabel` ベースで書く。属性セレクタ禁止。
@@ -1235,6 +1242,7 @@ git commit -m "test: ダミー個人データ生成の E2E を追加"
 ## Task 12: ドキュメント更新
 
 **Files:**
+
 - Modify: `README.md`, `SPEC.md`, `docs/tools.md`, `docs/decisions.md`, `docs/tool-candidates.md`
 
 - [ ] **Step 1: 各ドキュメントを更新**

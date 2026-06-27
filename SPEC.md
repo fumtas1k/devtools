@@ -57,40 +57,40 @@
 
 ### 2.3 主要ライブラリ（MVP で使用）
 
-| ライブラリ                  | 用途                                                                                                               | ツール                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| `ulidx`                     | ULID生成                                                                                                           | ULID生成                    |
-| `uuid`                      | UUID v7 生成（`v7()` 関数）                                                                                        | UUID v7 生成                |
-| 手動デコード（Base64URL）   | JWTデコード・署名検証                                                                                              | JWTデコーダー               |
-| `qrcode-generator`          | QRコード生成                                                                                                       | QRコード生成                |
-| `JsBarcode`                 | バーコード描画                                                                                                     | JANコード生成               |
-| `bwip-js`                   | GS1バーコード描画（SVG）                                                                                           | GS1 DataBar生成             |
-| `jszip`                     | 複数バーコードのZIPパッケージング                                                                                  | GS1 DataBar生成             |
-| `fast-xml-parser`           | JSON⇔XML 相互変換                                                                                                  | JSON/XML変換                |
-| `papaparse`                 | JSON⇔CSV 相互変換・パース（`dummy-personal-data` でも再利用）                                                     | JSON/CSV変換、日本語ダミー個人データ生成 |
-| `jsqr`                      | QRコードデコード（カメラ・画像）                                                                                   | QRチケット                  |
-| `@fontsource/noto-sans-jp`  | フォントセルフホスト                                                                                               | 全ページ共通                |
-| `@astrojs/check`            | Astro/TypeScript 型チェック（devDependency）                                                                       | 開発ツール共通              |
-| `typescript`                | TypeScript コンパイラ（devDependency）                                                                             | 開発ツール共通              |
-| `@playwright/test`          | E2Eリグレッションテスト（devDependency）                                                                           | 開発ツール共通              |
-| `@vitest/coverage-v8`       | テストカバレッジ測定（devDependency）                                                                              | 開発ツール共通              |
-| `lint-staged`               | コミット時の自動フォーマット (devDependency)                                                                       | 開発ツール共通              |
-| `eslint`                    | button type 漏れ検出の lint 本体（devDependency / #569）                                                           | 開発ツール共通              |
-| `eslint-plugin-react`       | `react/button-has-type` ルール提供（devDependency / #569）                                                         | 開発ツール共通              |
-| `@typescript-eslint/parser` | `.tsx` を ESLint でパースする parser（devDependency / #569）                                                       | 開発ツール共通              |
-| `encoding-japanese`         | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）                                                           | 文字コード判定・変換        |
-| `yaml`                      | YAML パース/シリアライズ。コメント保持（Document API）                                                             | 設定ファイル相互変換        |
-| `smol-toml`                 | TOML パース/シリアライズ（軽量、コメント保持なし）                                                                 | 設定ファイル相互変換        |
-| `ajv`                       | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード                                                   | 設定ファイル相互変換        |
-| `ajv-formats`               | ajv の format キーワード拡張（date-time 等）                                                                       | 設定ファイル相互変換        |
-| `sql-formatter`             | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0                                                 | SQL整形・パラメータ埋め込み |
-| `regexp-tree`               | 正規表現を位置情報付き AST へパース（CJS・純 JS・型同梱）                                                          | 正規表現ビジュアライザ      |
-| `recheck`                   | ReDoS 脆弱性検出。browser エントリ（`lib/browser.js`）を使用し `checkSync` で同期判定。型同梱・install script なし | 正規表現ビジュアライザ      |
-| `jsonc-parser`              | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア          |
-| `jmespath`                  | JMESPath クエリ評価（eval 非使用・CSP 安全）。フィルタ・射影に対応                                                 | JSON整形・ビューア          |
-| `pkijs`                     | X.509 証明書・PKCS#7 のパースと署名検証（Web Crypto エンジン経由）                                                 | SSL/TLS証明書デコーダ       |
-| `asn1js`                    | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ       |
-| `marked`                    | Markdown パース・HTML 変換（GFM 対応。`gfm: true`, `breaks: true`）。出力は既存 `sanitizeHtml` でサニタイズ        | markdownエディタ            |
+| ライブラリ                  | 用途                                                                                                               | ツール                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| `ulidx`                     | ULID生成                                                                                                           | ULID生成                                 |
+| `uuid`                      | UUID v7 生成（`v7()` 関数）                                                                                        | UUID v7 生成                             |
+| 手動デコード（Base64URL）   | JWTデコード・署名検証                                                                                              | JWTデコーダー                            |
+| `qrcode-generator`          | QRコード生成                                                                                                       | QRコード生成                             |
+| `JsBarcode`                 | バーコード描画                                                                                                     | JANコード生成                            |
+| `bwip-js`                   | GS1バーコード描画（SVG）                                                                                           | GS1 DataBar生成                          |
+| `jszip`                     | 複数バーコードのZIPパッケージング                                                                                  | GS1 DataBar生成                          |
+| `fast-xml-parser`           | JSON⇔XML 相互変換                                                                                                  | JSON/XML変換                             |
+| `papaparse`                 | JSON⇔CSV 相互変換・パース（`dummy-personal-data` でも再利用）                                                      | JSON/CSV変換、日本語ダミー個人データ生成 |
+| `jsqr`                      | QRコードデコード（カメラ・画像）                                                                                   | QRチケット                               |
+| `@fontsource/noto-sans-jp`  | フォントセルフホスト                                                                                               | 全ページ共通                             |
+| `@astrojs/check`            | Astro/TypeScript 型チェック（devDependency）                                                                       | 開発ツール共通                           |
+| `typescript`                | TypeScript コンパイラ（devDependency）                                                                             | 開発ツール共通                           |
+| `@playwright/test`          | E2Eリグレッションテスト（devDependency）                                                                           | 開発ツール共通                           |
+| `@vitest/coverage-v8`       | テストカバレッジ測定（devDependency）                                                                              | 開発ツール共通                           |
+| `lint-staged`               | コミット時の自動フォーマット (devDependency)                                                                       | 開発ツール共通                           |
+| `eslint`                    | button type 漏れ検出の lint 本体（devDependency / #569）                                                           | 開発ツール共通                           |
+| `eslint-plugin-react`       | `react/button-has-type` ルール提供（devDependency / #569）                                                         | 開発ツール共通                           |
+| `@typescript-eslint/parser` | `.tsx` を ESLint でパースする parser（devDependency / #569）                                                       | 開発ツール共通                           |
+| `encoding-japanese`         | 文字コード判定・相互変換（UTF-8/SJIS/EUC-JP/JIS/UTF-16）                                                           | 文字コード判定・変換                     |
+| `yaml`                      | YAML パース/シリアライズ。コメント保持（Document API）                                                             | 設定ファイル相互変換                     |
+| `smol-toml`                 | TOML パース/シリアライズ（軽量、コメント保持なし）                                                                 | 設定ファイル相互変換                     |
+| `ajv`                       | JSON Schema 検証（draft-04/07対応）。dynamic import で遅延ロード                                                   | 設定ファイル相互変換                     |
+| `ajv-formats`               | ajv の format キーワード拡張（date-time 等）                                                                       | 設定ファイル相互変換                     |
+| `sql-formatter`             | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0                                                 | SQL整形・パラメータ埋め込み              |
+| `regexp-tree`               | 正規表現を位置情報付き AST へパース（CJS・純 JS・型同梱）                                                          | 正規表現ビジュアライザ                   |
+| `recheck`                   | ReDoS 脆弱性検出。browser エントリ（`lib/browser.js`）を使用し `checkSync` で同期判定。型同梱・install script なし | 正規表現ビジュアライザ                   |
+| `jsonc-parser`              | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア                       |
+| `jmespath`                  | JMESPath クエリ評価（eval 非使用・CSP 安全）。フィルタ・射影に対応                                                 | JSON整形・ビューア                       |
+| `pkijs`                     | X.509 証明書・PKCS#7 のパースと署名検証（Web Crypto エンジン経由）                                                 | SSL/TLS証明書デコーダ                    |
+| `asn1js`                    | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ                    |
+| `marked`                    | Markdown パース・HTML 変換（GFM 対応。`gfm: true`, `breaks: true`）。出力は既存 `sanitizeHtml` でサニタイズ        | markdownエディタ                         |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -294,14 +294,14 @@ devtools/
 
 ### カテゴリ A: 生成ツール（`generate`）
 
-| #   | ツール名                    | slug                   | 概要                                                                                                                                                                        |
-| --- | --------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | ULID生成                    | `ulid-generator`       | 生成数を指定（1〜100）して一括生成。タイムスタンプ表示付き                                                                                                                  |
-| 2   | UUID v7 生成                | `uuid-v7`              | 生成数を指定（1〜100）して一括生成。タイムスタンプ・フィールド分解表示付き                                                                                                  |
-| 3   | ダミーテキスト生成          | `dummy-text`           | 文字種（全角ひらがな/カタカナ/漢字混じり/半角英数）と文字数を指定して生成                                                                                                   |
-| 4   | TOTP/HOTP ジェネレータ      | `totp-hotp`            | TOTP（RFC 6238）・HOTP（RFC 4226）のワンタイムコードを生成・検証。シークレット鍵はブラウザ外に送信しない                                                                    |
-| 28  | CSR・鍵ペアジェネレータ     | `csr-generator`        | RSA（2048/3072/4096 bit）/ ECDSA（P-256/P-384/P-521）の鍵ペアを生成し PKCS#10 CSR を出力。Subject DN・SAN 設定対応。既存 CSR の解析・署名検証にも対応。全処理ブラウザ内完結 |
-| 29  | 日本語ダミー個人データ生成  | `dummy-personal-data`  | 日本人の氏名（漢字＋フリガナ整合）・性別・生年月日・年齢・郵便番号・住所・固定電話・携帯・メールの架空データを指定件数生成し CSV/JSON で出力。全処理ブラウザ内完結          |
+| #   | ツール名                   | slug                  | 概要                                                                                                                                                                        |
+| --- | -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ULID生成                   | `ulid-generator`      | 生成数を指定（1〜100）して一括生成。タイムスタンプ表示付き                                                                                                                  |
+| 2   | UUID v7 生成               | `uuid-v7`             | 生成数を指定（1〜100）して一括生成。タイムスタンプ・フィールド分解表示付き                                                                                                  |
+| 3   | ダミーテキスト生成         | `dummy-text`          | 文字種（全角ひらがな/カタカナ/漢字混じり/半角英数）と文字数を指定して生成                                                                                                   |
+| 4   | TOTP/HOTP ジェネレータ     | `totp-hotp`           | TOTP（RFC 6238）・HOTP（RFC 4226）のワンタイムコードを生成・検証。シークレット鍵はブラウザ外に送信しない                                                                    |
+| 28  | CSR・鍵ペアジェネレータ    | `csr-generator`       | RSA（2048/3072/4096 bit）/ ECDSA（P-256/P-384/P-521）の鍵ペアを生成し PKCS#10 CSR を出力。Subject DN・SAN 設定対応。既存 CSR の解析・署名検証にも対応。全処理ブラウザ内完結 |
+| 29  | 日本語ダミー個人データ生成 | `dummy-personal-data` | 日本人の氏名（漢字＋フリガナ整合）・性別・生年月日・年齢・郵便番号・住所・固定電話・携帯・メールの架空データを指定件数生成し CSV/JSON で出力。全処理ブラウザ内完結          |
 
 ### カテゴリ B: コード・バーコードツール（`code`）
 

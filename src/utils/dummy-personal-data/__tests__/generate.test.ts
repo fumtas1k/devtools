@@ -66,7 +66,9 @@ describe('住所↔郵便番号↔固定電話', () => {
   it('郵便番号・都道府県・市区町村・市外局番が辞書の同一エントリ由来', () => {
     for (let i = 0; i < 200; i++) {
       const a = pickAddress();
-      const entry = ADDRESSES.find((e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` === a.postalCode);
+      const entry = ADDRESSES.find(
+        (e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` === a.postalCode
+      );
       expect(entry).toBeDefined();
       expect(a.address.startsWith(entry!.pref + entry!.city)).toBe(true);
       expect(a.phone.startsWith(entry!.areaCode + '-')).toBe(true);
@@ -81,9 +83,7 @@ describe('住所↔郵便番号↔固定電話', () => {
 
   it('陽性対照: 別エントリの郵便番号を差し替えると不整合になる', () => {
     const a = pickAddress();
-    const other = ADDRESSES.find(
-      (e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` !== a.postalCode
-    )!;
+    const other = ADDRESSES.find((e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` !== a.postalCode)!;
     const fakeZip = `${other.zip.slice(0, 3)}-${other.zip.slice(3)}`;
     const entry = ADDRESSES.find((e) => `${e.zip.slice(0, 3)}-${e.zip.slice(3)}` === fakeZip)!;
     expect(a.address.startsWith(entry.pref + entry.city)).toBe(false);

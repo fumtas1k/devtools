@@ -1,8 +1,4 @@
-import {
-  SURNAMES,
-  GIVEN_NAMES,
-  ADDRESSES,
-} from './dictionaries';
+import { SURNAMES, GIVEN_NAMES, ADDRESSES } from './dictionaries';
 import type { Gender, PersonRecord } from './types';
 
 /** 配列から 1 要素をランダム選択 */

@@ -50,16 +50,16 @@ UI:
 
 ロジック（純関数）と UI を分離する（既存ツールの慣習に準拠）。
 
-| ファイル                                                    | 役割                                                                        |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `src/utils/dummy-personal-data/dictionaries.ts`             | 姓/名（漢字＋読み）、住所（郵便番号＋都道府県＋市区町村＋市外局番）の辞書    |
+| ファイル                                                    | 役割                                                                                             |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `src/utils/dummy-personal-data/dictionaries.ts`             | 姓/名（漢字＋読み）、住所（郵便番号＋都道府県＋市区町村＋市外局番）の辞書                        |
 | `src/utils/dummy-personal-data/generate.ts`                 | 1 レコード生成・整合性ロジック（生年月日↔年齢・住所↔郵便番号↔市外局番・氏名↔読み・携帯番号生成） |
-| `src/utils/dummy-personal-data/serialize.ts`                | CSV（papaparse, UTF-8 BOM）/ JSON へのシリアライズ                           |
-| `src/utils/dummy-personal-data/types.ts`                    | `PersonRecord` 型・項目キー定義                                              |
-| `src/utils/dummy-personal-data/__tests__/generate.test.ts`  | 整合性ロジックの検証（陽性対照含む）                                         |
-| `src/utils/dummy-personal-data/__tests__/serialize.test.ts` | CSV/JSON シリアライズの検証                                                  |
-| `src/components/tools/DummyPersonalData.tsx`                 | React 本体（入力フォーム＋プレビュー＋DL）                                   |
-| `src/pages/tools/dummy-personal-data.astro`                 | `client:load` で React をマウントするページ                                 |
+| `src/utils/dummy-personal-data/serialize.ts`                | CSV（papaparse, UTF-8 BOM）/ JSON へのシリアライズ                                               |
+| `src/utils/dummy-personal-data/types.ts`                    | `PersonRecord` 型・項目キー定義                                                                  |
+| `src/utils/dummy-personal-data/__tests__/generate.test.ts`  | 整合性ロジックの検証（陽性対照含む）                                                             |
+| `src/utils/dummy-personal-data/__tests__/serialize.test.ts` | CSV/JSON シリアライズの検証                                                                      |
+| `src/components/tools/DummyPersonalData.tsx`                | React 本体（入力フォーム＋プレビュー＋DL）                                                       |
+| `src/pages/tools/dummy-personal-data.astro`                 | `client:load` で React をマウントするページ                                                      |
 
 - カテゴリ: `generate`（生成）。`dummy-text` と同列。
 - `src/data/tools.ts` に slug `dummy-personal-data` / name `日本語ダミー個人データ生成` / yomi `にほんごだみーこじんでーたせいせい` / category `generate` を追加。
