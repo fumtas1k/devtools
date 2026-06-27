@@ -69,7 +69,9 @@ NotificationBanner（架空データ警告・変更なし）
 ### 見出し・補足のスタイル
 
 - 既存のラベル表現を流用し、新規 Tailwind 色直書き（`text-blue-*` 等）は使わない。
-- セクション見出し: `body-emphasis text-default`
+- セクション見出しは **`<p className="body-emphasis text-default">`** で表現する（`<h2>`/`<h3>` は使わない）。
+  既存コンポーネント本体は全ラベルを `<p className="body-emphasis">` で統一しており、`ToolInfoSection` 側が
+  `h3` を使う構成なので、本体に見出し要素を足すと heading-order を乱す。視覚的見出しに留める。
 - 補足キャプション: `caption text-muted`
 - `@layer components` への新規クラス追加は不要（既存の意味クラス・semantic token のみで構成）。
 
@@ -114,9 +116,14 @@ export function generationSignature(p: GenerationParams): string;
 ### 表示
 
 - `isStale` のとき、生成ボタンの近傍に未反映インジケータを表示する。
-- マークアップ: `role="status"` + `aria-live="polite"` を付与し、SR に変更をライブ通知する。
+- マークアップ: ライブ領域を**常時 DOM に置き**（空 → 内容挿入で SR が読み上げる）、`aria-live="polite"`
+  + `aria-atomic="true"` を付与する。**`role="status"` は付けない**。
+  - 理由: プレビュー側に既存の `role="status"`（「N 件…生成しました」アナウンス）があり、新インジケータにも
+    `role="status"` を付けると status ロールが 2 つになって既存 E2E の `getByRole('status')`（単数 strict）が
+    壊れる。`aria-live` のみなら status ロールにならず衝突しない。
 - 文言: 「生成条件が変更されました。再生成してください」。
-- スタイル: 既存の `ChipLabel`（`tone="info"`）等の共通部品を用い、新規色クラスは追加しない。
+- スタイル: 既存の `ChipLabel`（`tone="info"`、`chip-label--info` は `global.css` に定義済み）を用い、
+  新規色クラスは追加しない。空のときレイアウトを動かさないよう、余白（`mt-2`）は `isStale` のときのみ付ける。
 - 即時反映トグル（`fields` / `seqId`）や出力形式変更では **表示しない**（署名に含めないため自然に満たす）。
 - 再生成すると `lastGenSig` が更新され、インジケータは消える。
 
@@ -133,13 +140,14 @@ export function generationSignature(p: GenerationParams): string;
 
 ### E2E（`tests/e2e/dummy-personal-data.spec.ts` へ追記）
 
-- **陽性対照**: 生成 → 人数を変更 → 「生成条件が変更されました」インジケータ（`role="status"`）が出現。
-- **陰性対照1**: 上記からさらに「生成」押下 → インジケータが消える。
+- **陽性対照**: 生成 → 人数を変更 → 「生成条件が変更されました。再生成してください」がテキストで出現
+  （`getByText`）。
+- **陰性対照1**: 上記からさらに「生成」押下 → インジケータが消える（`toHaveCount(0)` / `not.toBeVisible`）。
 - **陰性対照2**: 生成 → 連番ID列トグル（即時反映）押下 → インジケータが**出ない**（プレビューは即時変化）。
 - セクション見出し「生成条件」「出力の見せ方」が表示されることを確認。
 
-> 注: 既存の `role="status"`（生成完了アナウンス）とインジケータの `role="status"` が共存するため、
-> E2E ではテキスト内容（「変更されました」「生成しました」）で識別する。
+> 注: インジケータは `role="status"` を持たない（`aria-live` のみ）ため、既存の `getByRole('status')`
+> （生成完了アナウンス）と衝突しない。E2E ではテキスト内容（「変更されました」）で識別する。
 
 ## ドキュメント更新
 
