@@ -1304,8 +1304,9 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 - 住所↔郵便番号↔市外局番整合: 住所辞書（`{ zip, pref, city, areaCode }`）から 1 件選択すると郵便番号・都道府県・市区町村・市外局番が同時確定。固定電話は `areaCode-middle-last` 形式で全 10 桁。
 - 携帯電話番号: 先頭 `090` / `070` + 第 4 桁を `0` 固定（音声携帯割当対象外）の 11 桁。総務省の電気通信番号の種別「音声携帯は C≠0」に基づく実在回避方針。
 - メールアドレス: ローマ字姓名ベースのローカル部 + RFC 2606 予約ドメイン（`example.com` / `example.jp` / `example.net` / `example.org`）。
+- 一意化オプション（`unique`）: メールはローカル部への連番付与（`sato1@example.com` など）で必ず一意化。固定電話は市外局番を保持したまま加入者番号のみ再生成（住所整合を維持）。携帯は `pickMobile()` で再生成（非実在帯を維持）。氏名・フリガナは辞書規模（姓 30 × 名 40 ≒ 1,200 通り）の制約から一意化対象外。
 
-**シリアライズ（`src/utils/dummy-personal-data/serialize.ts`）:** CSV は `papaparse`（既存再利用）で生成し UTF-8 BOM（`﻿`）付加で Excel 互換。各セルに `escapeCsvFormula`（`@/utils/json-csv` 既存）で CSV 数式インジェクション対策。JSON は選択フィールドを日本語ラベルキーに変換して出力。
+**シリアライズ（`src/utils/dummy-personal-data/serialize.ts`）:** CSV は `papaparse`（既存再利用）で生成し UTF-8 BOM（`﻿`）付加で Excel 互換。各セルに `escapeCsvFormula`（`@/utils/json-csv` 既存）で CSV 数式インジェクション対策。JSON は選択フィールドを日本語ラベルキーに変換して出力。連番列オプション（`withSeqId`）が ON の場合、CSV/JSON 先頭に `No.`（1 始まり）を付与（JSON は数値型）。
 
 **モジュール構成:** `src/utils/dummy-personal-data/`（`types.ts` / `dictionaries.ts` / `generate.ts` / `serialize.ts` / `__tests__/generate.test.ts` / `__tests__/serialize.test.ts`）/ `src/components/tools/DummyPersonalData.tsx` / `src/pages/tools/dummy-personal-data.astro`
 
