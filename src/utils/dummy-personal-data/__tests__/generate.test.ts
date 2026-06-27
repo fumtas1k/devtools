@@ -15,6 +15,7 @@ import {
   makeUniqueByRegen,
   regenPhoneKeepingAreaCode,
   uniquifyRecords,
+  generationSignature,
 } from '@/utils/dummy-personal-data/generate';
 import { ADDRESSES } from '@/utils/dummy-personal-data/dictionaries';
 import type { PersonRecord } from '@/utils/dummy-personal-data/types';
@@ -286,5 +287,24 @@ describe('uniquifyRecords（一意化配線の陽性対照）', () => {
     expect(new Set(recs.map((r) => r.email)).size).toBe(n);
     expect(new Set(recs.map((r) => r.phone)).size).toBe(n);
     expect(new Set(recs.map((r) => r.mobile)).size).toBe(n);
+  });
+});
+
+// ── 生成条件署名（stale 検知用・issue #737） ──────────────────────────────────
+
+describe('generationSignature', () => {
+  const base = { count: 100, ageMin: 20, ageMax: 80, separator: ' ', unique: false };
+
+  it('同一の生成条件なら同一署名を返す（誤検知しない＝陰性対照）', () => {
+    expect(generationSignature({ ...base })).toBe(generationSignature({ ...base }));
+  });
+
+  it('生成条件のどのフィールドを変えても署名が変化する（検知能力＝陽性対照）', () => {
+    const sig = generationSignature(base);
+    expect(generationSignature({ ...base, count: 101 })).not.toBe(sig);
+    expect(generationSignature({ ...base, ageMin: 21 })).not.toBe(sig);
+    expect(generationSignature({ ...base, ageMax: 79 })).not.toBe(sig);
+    expect(generationSignature({ ...base, separator: '　' })).not.toBe(sig);
+    expect(generationSignature({ ...base, unique: true })).not.toBe(sig);
   });
 });
