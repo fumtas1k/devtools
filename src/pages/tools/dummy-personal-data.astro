@@ -1,0 +1,38 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { DummyPersonalDataTool } from '@/components/tools/DummyPersonalData';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'dummy-personal-data')!;
+---
+
+<ToolLayout tool={tool}>
+  <DummyPersonalDataTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      日本人の氏名（漢字とフリガナを整合させて生成）・性別・生年月日・年齢・郵便番号・住所・電話番号・携帯番号・メールアドレスの架空データを、指定した件数だけ生成します。生成・ダウンロードはすべてブラウザ内で完結します。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">整合性</h3>
+    <p class="tool-info-body">
+      氏名の漢字と読み、生年月日と年齢、住所・郵便番号・固定電話の市外局番は、それぞれ矛盾しないよう整合させて生成します。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">携帯電話番号の扱い</h3>
+    <p class="tool-info-body">
+      携帯番号は、実在の番号に当たらない確度を高めるため <code>090-0XXX-XXXX</code> /
+      <code>070-0XXX-XXXX</code>（第 4
+      桁が 0）の形式で生成します。総務省の電気通信番号の種別では音声携帯番号の第 4
+      桁に 0 が割り当てられないためです。
+    </p>
+
+    <h3 class="mb-2 mt-4 tool-info-heading">制限</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>生成されるデータはすべて架空であり、実在の個人・連絡先ではありません</li>
+      <li>出力は CSV（UTF-8 BOM 付き）と JSON です。Excel 形式には非対応です</li>
+      <li>クレジットカード番号・マイナンバー・血液型・会社名は対象外です</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>
