@@ -46,6 +46,7 @@ export const PAGES = [
   '/tools/csr-generator',
   '/tools/markdown-editor',
   '/tools/contrast-matrix',
+  '/tools/dummy-personal-data',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy', '/404']);

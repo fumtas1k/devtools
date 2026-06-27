@@ -236,6 +236,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'こんとらすとひまとりくす',
   },
+  {
+    slug: 'dummy-personal-data',
+    name: '日本語ダミー個人データ生成',
+    description:
+      '日本人の氏名（漢字＋フリガナ整合）・住所・電話番号・生年月日などの架空個人データを一括生成し CSV/JSON で出力します',
+    category: 'generate',
+    yomi: 'にほんごだみーこじんでーたせいせい',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる
