@@ -11,6 +11,9 @@ import {
   pickEmail,
   generateRecord,
   generateRecords,
+  makeUniqueEmail,
+  makeUniqueByRegen,
+  regenPhoneKeepingAreaCode,
 } from '@/utils/dummy-personal-data/generate';
 import { ADDRESSES } from '@/utils/dummy-personal-data/dictionaries';
 
@@ -149,5 +152,81 @@ describe('generateRecord / generateRecords', () => {
 
   it('指定件数を生成する', () => {
     expect(generateRecords(50, { ageMin: 20, ageMax: 80, separator: ' ' }, today)).toHaveLength(50);
+  });
+});
+
+// ── Task 1: メール一意化ヘルパー ──────────────────────────────────────────────
+
+describe('makeUniqueEmail（メール一意化）', () => {
+  it('初出はそのまま、衝突時にローカル部へ連番付与', () => {
+    const seen = new Set<string>();
+    expect(makeUniqueEmail('sato.haruto@example.com', seen)).toBe('sato.haruto@example.com');
+    expect(makeUniqueEmail('sato.haruto@example.com', seen)).toBe('sato.haruto1@example.com');
+    expect(makeUniqueEmail('sato.haruto@example.com', seen)).toBe('sato.haruto2@example.com');
+  });
+
+  it('ドメインは保持しローカル部のみに連番を付ける', () => {
+    const seen = new Set<string>();
+    makeUniqueEmail('a@example.jp', seen);
+    expect(makeUniqueEmail('a@example.jp', seen)).toBe('a1@example.jp');
+  });
+});
+
+// ── Task 2: 再生成方式一意化ヘルパー ─────────────────────────────────────────
+
+describe('regenPhoneKeepingAreaCode（固定電話の市外局番保持再生成）', () => {
+  it('市外局番を保持し全体 10 桁・先頭 0 を維持', () => {
+    for (let i = 0; i < 100; i++) {
+      const out = regenPhoneKeepingAreaCode('03-1234-5678');
+      expect(out.startsWith('03-')).toBe(true);
+      const digits = out.replace(/-/g, '');
+      expect(digits).toMatch(/^0\d{9}$/);
+    }
+    const out2 = regenPhoneKeepingAreaCode('0258-12-3456');
+    expect(out2.startsWith('0258-')).toBe(true);
+    expect(out2.replace(/-/g, '')).toMatch(/^0\d{9}$/);
+  });
+});
+
+describe('makeUniqueByRegen（再生成方式の一意化）', () => {
+  it('初出はそのまま、衝突時は generator で一意値を得る', () => {
+    const seen = new Set<string>();
+    let i = 0;
+    const gen = () => `v${i++}`;
+    expect(makeUniqueByRegen('orig', seen, gen, 1000)).toBe('orig');
+    // 'orig' を再投入 → generator が呼ばれて 'v0'
+    expect(makeUniqueByRegen('orig', seen, gen, 1000)).toBe('v0');
+  });
+});
+
+// ── Task 3: generateRecords 一意化オプション ──────────────────────────────────
+
+describe('generateRecords 一意化オプション', () => {
+  const today = new Date(2026, 5, 27);
+  const N = 3000;
+
+  it('unique=true で email/phone/mobile が全件一意', () => {
+    const recs = generateRecords(N, { ageMin: 20, ageMax: 80, separator: ' ', unique: true }, today);
+    expect(new Set(recs.map((r) => r.email)).size).toBe(N);
+    expect(new Set(recs.map((r) => r.phone)).size).toBe(N);
+    expect(new Set(recs.map((r) => r.mobile)).size).toBe(N);
+  });
+
+  it('一意化後も固定電話が市外局番整合・10 桁、携帯が非実在帯を維持', () => {
+    const recs = generateRecords(500, { ageMin: 20, ageMax: 80, separator: ' ', unique: true }, today);
+    for (const r of recs) {
+      expect(r.phone.replace(/-/g, '')).toMatch(/^0\d{9}$/);
+      expect(isNonExistentMobile(r.mobile.replace(/-/g, ''))).toBe(true);
+    }
+  });
+
+  it('陽性対照: unique=false では重複が発生する（テストの検出能力を担保）', () => {
+    const recs = generateRecords(N, { ageMin: 20, ageMax: 80, separator: ' ', unique: false }, today);
+    const emailUnique = new Set(recs.map((r) => r.email)).size === N;
+    const nameUnique = new Set(recs.map((r) => r.name)).size === N;
+    // 辞書規模 ≒1,200 に対し 3,000 件なので氏名は必ず重複する
+    expect(nameUnique).toBe(false);
+    // 一意化 OFF なら少なくとも氏名は重複（email も高確率で重複）
+    expect(emailUnique && nameUnique).toBe(false);
   });
 });

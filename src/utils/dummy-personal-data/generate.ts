@@ -152,10 +152,71 @@ export function pickEmail(surnameRomaji: string, givenRomaji: string): string {
   return `${local}@${pickRandom(EMAIL_DOMAINS)}`;
 }
 
+/**
+ * メールアドレスを一意化する。初出はそのまま、衝突時はローカル部（@ の前）へ
+ * 最小の整数サフィックスを付ける。付与後も衝突する場合はインクリメントして再試行。
+ */
+export function makeUniqueEmail(email: string, seen: Set<string>): string {
+  if (!seen.has(email)) {
+    seen.add(email);
+    return email;
+  }
+  const atIdx = email.lastIndexOf('@');
+  const local = email.slice(0, atIdx);
+  const domain = email.slice(atIdx);
+  let n = 1;
+  let candidate = `${local}${n}${domain}`;
+  while (seen.has(candidate)) {
+    n++;
+    candidate = `${local}${n}${domain}`;
+  }
+  seen.add(candidate);
+  return candidate;
+}
+
+/**
+ * 値を再生成方式で一意化する。初出はそのまま、衝突時は generator() を
+ * maxAttempts 回まで呼んで未出の値を採用する。枯渇時は元値を採用（現実的には起きない）。
+ */
+export function makeUniqueByRegen(
+  value: string,
+  seen: Set<string>,
+  generator: () => string,
+  maxAttempts: number
+): string {
+  if (!seen.has(value)) {
+    seen.add(value);
+    return value;
+  }
+  for (let i = 0; i < maxAttempts; i++) {
+    const c = generator();
+    if (!seen.has(c)) {
+      seen.add(c);
+      return c;
+    }
+  }
+  return value; // 枯渇時フォールバック（重複容認）
+}
+
+/**
+ * 固定電話を市外局番を保持したまま再生成する。文字列先頭の市外局番（最初の '-' まで）を
+ * 取り出し、加入者番号（市内局番 + 末尾 4 桁）のみ作り直す。全体 10 桁を維持する。
+ */
+export function regenPhoneKeepingAreaCode(phone: string): string {
+  const areaCode = phone.slice(0, phone.indexOf('-'));
+  const subscriberLen = 10 - areaCode.length;
+  const lastLen = 4;
+  const middleLen = subscriberLen - lastLen;
+  const middle = randomDigits(middleLen);
+  const last = randomDigits(lastLen);
+  return `${areaCode}-${middle}-${last}`;
+}
+
 export interface GenerateOptions {
   ageMin: number;
   ageMax: number;
   separator: string; // 氏名区切り
+  unique?: boolean; // メール・固定電話・携帯を一意化
 }
 
 /** 性別を確率的に決定（男/女 ≒ 各 49%、その他・不明 ≒ 2%） */
@@ -186,7 +247,7 @@ export function generateRecord(opts: GenerateOptions, today: Date = new Date()):
   };
 }
 
-/** count 件を生成 */
+/** count 件を生成（unique 時はメール・固定電話・携帯を一意化） */
 export function generateRecords(
   count: number,
   opts: GenerateOptions,
@@ -194,5 +255,17 @@ export function generateRecords(
 ): PersonRecord[] {
   const out: PersonRecord[] = [];
   for (let i = 0; i < count; i++) out.push(generateRecord(opts, today));
+
+  if (opts.unique) {
+    const emails = new Set<string>();
+    const phones = new Set<string>();
+    const mobiles = new Set<string>();
+    const MAX_ATTEMPTS = 1000;
+    for (const r of out) {
+      r.email = makeUniqueEmail(r.email, emails);
+      r.phone = makeUniqueByRegen(r.phone, phones, () => regenPhoneKeepingAreaCode(r.phone), MAX_ATTEMPTS);
+      r.mobile = makeUniqueByRegen(r.mobile, mobiles, pickMobile, MAX_ATTEMPTS);
+    }
+  }
   return out;
 }
