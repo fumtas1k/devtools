@@ -44,6 +44,8 @@ export function DummyPersonalDataTool() {
     () => new Set(FIELD_DEFS.map((f) => f.key))
   );
   const [records, setRecords] = useState<PersonRecord[]>([]);
+  const [seqId, setSeqId] = useState(false);
+  const [unique, setUnique] = useState(false);
 
   const fields = FIELD_DEFS.filter((f) => selected.has(f.key)).map((f) => f.key);
 
@@ -60,17 +62,17 @@ export function DummyPersonalDataTool() {
   const generate = useCallback(() => {
     const lo = Math.min(ageMin, ageMax);
     const hi = Math.max(ageMin, ageMax);
-    setRecords(generateRecords(count, { ageMin: lo, ageMax: hi, separator: SEP_MAP[sep] }));
-  }, [count, ageMin, ageMax, sep]);
+    setRecords(generateRecords(count, { ageMin: lo, ageMax: hi, separator: SEP_MAP[sep], unique }));
+  }, [count, ageMin, ageMax, sep, unique]);
 
   const download = useCallback(() => {
     if (records.length === 0) return;
     if (format === 'csv') {
-      downloadText(toCsv(records, fields), 'dummy-personal-data.csv', 'text/csv');
+      downloadText(toCsv(records, fields, seqId), 'dummy-personal-data.csv', 'text/csv');
     } else {
-      downloadText(toJson(records, fields), 'dummy-personal-data.json', 'application/json');
+      downloadText(toJson(records, fields, seqId), 'dummy-personal-data.json', 'application/json');
     }
-  }, [records, fields, format]);
+  }, [records, fields, format, seqId]);
 
   const preview = records.slice(0, PREVIEW_LIMIT);
 
@@ -159,6 +161,19 @@ export function DummyPersonalDataTool() {
         />
       </div>
 
+      {/* 出力オプション（連番列・一意化） */}
+      <div>
+        <ToggleChips<'seqId' | 'unique'>
+          legend="出力オプション"
+          options={[
+            { value: 'seqId', label: '連番ID列 (No.)' },
+            { value: 'unique', label: 'メール・電話番号を一意化' },
+          ]}
+          selected={(v) => (v === 'seqId' ? seqId : unique)}
+          onToggle={(v) => (v === 'seqId' ? setSeqId((p) => !p) : setUnique((p) => !p))}
+        />
+      </div>
+
       {/* 出力形式・操作 */}
       <div className="flex flex-wrap items-center gap-4">
         <ToggleGroup<Format>
@@ -196,6 +211,14 @@ export function DummyPersonalDataTool() {
             <table className="w-full caption text-default border-collapse">
               <thead>
                 <tr className="bg-subtle">
+                  {seqId && (
+                    <th
+                      scope="col"
+                      className="text-left px-3 py-2 border-b border-default whitespace-nowrap"
+                    >
+                      No.
+                    </th>
+                  )}
                   {fields.map((k) => (
                     <th
                       key={k}
@@ -210,6 +233,11 @@ export function DummyPersonalDataTool() {
               <tbody>
                 {preview.map((r, i) => (
                   <tr key={i}>
+                    {seqId && (
+                      <td className="px-3 py-2 border-b border-default whitespace-nowrap">
+                        {i + 1}
+                      </td>
+                    )}
                     {fields.map((k) => (
                       <td key={k} className="px-3 py-2 border-b border-default whitespace-nowrap">
                         {r[k]}
