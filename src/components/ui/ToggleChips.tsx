@@ -12,6 +12,8 @@ export interface ChipOption<T> {
   title?: string;
   /** >0 のとき件数バッジ表示（マスク用） */
   count?: number;
+  /** 操作不能（常時 ON で固定の項目等）。focus は残しつつ `aria-disabled` で伝える */
+  disabled?: boolean;
 }
 
 interface Props<T> {
@@ -53,9 +55,12 @@ export function ToggleChips<T>({
             key={i}
             type="button"
             aria-pressed={on}
+            aria-disabled={opt.disabled || undefined}
             aria-label={ariaLabel}
             title={opt.title}
-            onClick={() => onToggle(opt.value)}
+            onClick={() => {
+              if (!opt.disabled) onToggle(opt.value);
+            }}
             className="toggle-chip"
           >
             {opt.token != null && (

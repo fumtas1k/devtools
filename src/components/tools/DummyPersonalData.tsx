@@ -151,6 +151,7 @@ export function DummyPersonalDataTool() {
           options={FIELD_DEFS.map((f) => ({
             value: f.key,
             label: f.label,
+            disabled: REQUIRED_FIELDS.includes(f.key),
             title: REQUIRED_FIELDS.includes(f.key) ? '氏名は常に出力されます' : undefined,
           }))}
           selected={(v) => selected.has(v)}

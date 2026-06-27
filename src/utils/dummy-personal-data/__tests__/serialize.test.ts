@@ -25,6 +25,17 @@ describe('toCsv', () => {
     expect(body).toContain('佐藤 大翔');
     expect(body).not.toContain('さとう'); // kana は非選択
   });
+
+  it('陽性対照: CSV 数式インジェクション値は toCsv 経由でエスケープされる', () => {
+    // 先頭が = の値は escapeCsvFormula で ' を前置される（本シリアライズ経路での発火を担保）
+    const evil: PersonRecord = { ...rec, name: '=1+1' };
+    const csv = toCsv([evil], ['name']);
+    expect(csv).toContain("'=1+1");
+    // 通常値（先頭が記号でない）は素通し（過剰エスケープしない）
+    const normal = toCsv([rec], ['name']);
+    expect(normal).toContain('佐藤 大翔');
+    expect(normal).not.toContain("'佐藤");
+  });
 });
 
 describe('toJson', () => {
