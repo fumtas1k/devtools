@@ -14,8 +14,10 @@ import {
   makeUniqueEmail,
   makeUniqueByRegen,
   regenPhoneKeepingAreaCode,
+  uniquifyRecords,
 } from '@/utils/dummy-personal-data/generate';
 import { ADDRESSES } from '@/utils/dummy-personal-data/dictionaries';
+import type { PersonRecord } from '@/utils/dummy-personal-data/types';
 
 // ── Task 3: 氏名・読みの整合 ──────────────────────────────────────────────────
 
@@ -228,17 +230,61 @@ describe('generateRecords 一意化オプション', () => {
     }
   });
 
-  it('陽性対照: unique=false では重複が発生する（テストの検出能力を担保）', () => {
+  it('氏名は一意化対象外（unique でも辞書規模 ≒1,200 < 3,000 で必ず重複する）', () => {
     const recs = generateRecords(
       N,
-      { ageMin: 20, ageMax: 80, separator: ' ', unique: false },
+      { ageMin: 20, ageMax: 80, separator: ' ', unique: true },
       today
     );
-    const emailUnique = new Set(recs.map((r) => r.email)).size === N;
-    const nameUnique = new Set(recs.map((r) => r.name)).size === N;
-    // 辞書規模 ≒1,200 に対し 3,000 件なので氏名は必ず重複する
-    expect(nameUnique).toBe(false);
-    // 一意化 OFF なら少なくとも氏名は重複（email も高確率で重複）
-    expect(emailUnique && nameUnique).toBe(false);
+    // 仕様: 氏名・フリガナは一意化しない。unique=true でも氏名は重複が残る
+    expect(new Set(recs.map((r) => r.name)).size).toBeLessThan(N);
+  });
+});
+
+// ── uniquifyRecords: 一意化配線の検出力を担保する陽性対照 ──────────────────────
+//
+// generateRecords を N=3,000 で回す統合テストだけだと、固定電話 (~10^7) ・携帯 (~2×10^7)
+// の生成空間が広く「そもそも衝突しない」ため、仮に dedup を no-op にしても緑のまま
+// （= 検出力が空洞）。そこで衝突を強制注入できる uniquifyRecords を使い、
+// 「dedup を通さない入力は重複したまま (Set.size < N)」「uniquifyRecords 後は全件一意」
+// を別 test で示し、phone/mobile も含めて dedup 配線が効いていることを決定論的に保証する。
+describe('uniquifyRecords（一意化配線の陽性対照）', () => {
+  // email/phone/mobile が全件同一のレコード列（最悪ケースの衝突）を作る
+  const makeColliding = (n: number): PersonRecord[] =>
+    Array.from({ length: n }, () => ({
+      name: '佐藤 太郎',
+      kana: 'サトウ タロウ',
+      gender: '男' as const,
+      birthday: '2000年01月01日',
+      age: '26',
+      postalCode: '100-0001',
+      address: '東京都千代田区千代田1丁目1-1',
+      phone: '03-1234-5678',
+      mobile: '090-0123-4567',
+      email: 'sato.taro@example.com',
+    }));
+
+  it('陰性対照（入力）: dedup を通す前は email/phone/mobile が全件重複', () => {
+    const recs = makeColliding(50);
+    expect(new Set(recs.map((r) => r.email)).size).toBe(1);
+    expect(new Set(recs.map((r) => r.phone)).size).toBe(1);
+    expect(new Set(recs.map((r) => r.mobile)).size).toBe(1);
+  });
+
+  it('陽性対照: uniquifyRecords 後は email/phone/mobile が全件一意になる', () => {
+    const n = 50;
+    const recs = makeColliding(n);
+    // 再生成器は必ず未出の値を返すよう注入（空間枯渇による flaky を排除）。
+    // email は production の makeUniqueEmail（注入なし）で連番付与される。
+    let p = 0;
+    let m = 0;
+    uniquifyRecords(recs, {
+      regenPhone: () => `03-0000-${String(1000 + p++)}`,
+      regenMobile: () => `090-0000-${String(1000 + m++)}`,
+    });
+    // dedup 配線が phone/mobile を素通ししていれば Set.size は 1 のままで fail する
+    expect(new Set(recs.map((r) => r.email)).size).toBe(n);
+    expect(new Set(recs.map((r) => r.phone)).size).toBe(n);
+    expect(new Set(recs.map((r) => r.mobile)).size).toBe(n);
   });
 });

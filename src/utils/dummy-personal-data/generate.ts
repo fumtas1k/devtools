@@ -247,6 +247,37 @@ export function generateRecord(opts: GenerateOptions, today: Date = new Date()):
   };
 }
 
+/** 一意化で使う再生成器（テスト時に衝突を強制注入できるよう差し替え可能にする） */
+export interface UniquifyGenerators {
+  /** 固定電話の再生成器（既定: 市外局番保持で加入者番号のみ作り直す） */
+  regenPhone?: (phone: string) => string;
+  /** 携帯の再生成器（既定: pickMobile で非実在帯を維持して作り直す） */
+  regenMobile?: () => string;
+}
+
+/**
+ * レコード群のメール・固定電話・携帯を一意化する（後処理・破壊的にレコードを書き換える）。
+ * `generateRecords` から分離し、再生成器を注入して衝突を強制できるようにすることで、
+ * 「配線が正しいか（dedup を通しているか）」を決定論的に検証できる（test-gates 陽性対照用）。
+ */
+export function uniquifyRecords(
+  records: PersonRecord[],
+  gens: UniquifyGenerators = {}
+): PersonRecord[] {
+  const regenPhone = gens.regenPhone ?? regenPhoneKeepingAreaCode;
+  const regenMobile = gens.regenMobile ?? pickMobile;
+  const emails = new Set<string>();
+  const phones = new Set<string>();
+  const mobiles = new Set<string>();
+  const MAX_ATTEMPTS = 1000;
+  for (const r of records) {
+    r.email = makeUniqueEmail(r.email, emails);
+    r.phone = makeUniqueByRegen(r.phone, phones, () => regenPhone(r.phone), MAX_ATTEMPTS);
+    r.mobile = makeUniqueByRegen(r.mobile, mobiles, regenMobile, MAX_ATTEMPTS);
+  }
+  return records;
+}
+
 /** count 件を生成（unique 時はメール・固定電話・携帯を一意化） */
 export function generateRecords(
   count: number,
@@ -256,21 +287,6 @@ export function generateRecords(
   const out: PersonRecord[] = [];
   for (let i = 0; i < count; i++) out.push(generateRecord(opts, today));
 
-  if (opts.unique) {
-    const emails = new Set<string>();
-    const phones = new Set<string>();
-    const mobiles = new Set<string>();
-    const MAX_ATTEMPTS = 1000;
-    for (const r of out) {
-      r.email = makeUniqueEmail(r.email, emails);
-      r.phone = makeUniqueByRegen(
-        r.phone,
-        phones,
-        () => regenPhoneKeepingAreaCode(r.phone),
-        MAX_ATTEMPTS
-      );
-      r.mobile = makeUniqueByRegen(r.mobile, mobiles, pickMobile, MAX_ATTEMPTS);
-    }
-  }
+  if (opts.unique) uniquifyRecords(out);
   return out;
 }
