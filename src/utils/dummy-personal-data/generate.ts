@@ -18,9 +18,19 @@ export function randomDigits(n: number): string {
   return s;
 }
 
+/** ひらがな → カタカナ変換（長音符「ー」等はそのまま） */
+export function toKatakana(s: string): string {
+  return s.replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
+}
+
+/** カタカナ → ひらがな変換（長音符「ー」等はそのまま） */
+export function toHiragana(s: string): string {
+  return s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+}
+
 export interface PickedName {
   name: string; // 漢字（区切り適用済み）
-  kana: string; // 読み（同じ区切り適用済み）
+  kana: string; // フリガナ（カタカナ・同じ区切り適用済み）
   surnameRomaji: string;
   givenRomaji: string;
 }
@@ -34,7 +44,8 @@ export function pickName(gender: Gender, separator: string): PickedName {
   const mei = pickRandom(pool);
   return {
     name: `${sei.kanji}${separator}${mei.kanji}`,
-    kana: `${sei.yomi}${separator}${mei.yomi}`,
+    // 「フリガナ」ラベルに合わせてカタカナで出力（辞書はひらがな保持）
+    kana: `${toKatakana(sei.yomi)}${separator}${toKatakana(mei.yomi)}`,
     surnameRomaji: sei.romaji,
     givenRomaji: mei.romaji,
   };
@@ -42,13 +53,14 @@ export function pickName(gender: Gender, separator: string): PickedName {
 
 /**
  * 氏名（漢字）と読みが辞書のペアと整合するか検証する（テスト用ガード）。
- * 区切り文字（半角/全角スペース）を除去してから、姓・名それぞれが
- * 同一辞書エントリのペアであることを確認する。
+ * 区切り文字（半角/全角スペース）を除去し、読みはひらがなへ正規化してから
+ * （フリガナはカタカナ出力のため）、姓・名それぞれが同一辞書エントリの
+ * ペアであることを確認する。ひらがな・カタカナどちらの入力でも判定できる。
  */
 export function isConsistentName(name: string, kana: string): boolean {
   const stripSep = (s: string) => s.replace(/[\s　]/g, '');
   const n = stripSep(name);
-  const k = stripSep(kana);
+  const k = toHiragana(stripSep(kana));
   for (const sei of SURNAMES) {
     if (!n.startsWith(sei.kanji) || !k.startsWith(sei.yomi)) continue;
     const restN = n.slice(sei.kanji.length);

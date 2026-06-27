@@ -30,9 +30,18 @@ describe('pickName', () => {
     expect(r.name).not.toContain('　');
   });
 
+  it('フリガナはカタカナで出力する（ひらがなを含まない）', () => {
+    for (let i = 0; i < 100; i++) {
+      const r = pickName('男', '　');
+      // 区切り（全角スペース）以外はカタカナ・長音符のみ。ひらがなを含まない
+      expect(r.kana).not.toMatch(/[ぁ-ゖ]/);
+      expect(r.kana.replace(/[\s　]/g, '')).toMatch(/^[ァ-ヶー]+$/);
+    }
+  });
+
   it('陽性対照: 不整合な氏名↔読みは検出して false', () => {
-    // 辞書に存在しない組合せ（佐藤 + 別人の読み）
-    expect(isConsistentName('佐藤 大翔', 'さとう　れん')).toBe(false);
+    // 辞書に存在しない組合せ（佐藤 + 別人の読み・カタカナ）
+    expect(isConsistentName('佐藤 大翔', 'サトウ　レン')).toBe(false);
   });
 });
 
