@@ -92,14 +92,28 @@ export function DdlErDiagramTool() {
     if (!svg) return;
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
+    const fail = (msg: string) => {
+      URL.revokeObjectURL(url);
+      setErrors((prev) => [...prev, msg]);
+    };
     const img = new Image();
+    // 読み込み失敗時も blob URL を必ず revoke する（リーク防止）
+    img.onerror = () => fail('PNG の生成に失敗しました（画像の読み込みに失敗）。');
     img.onload = () => {
       const scale = 2;
+      // SVG に寸法が無い等で 0/NaN になった場合は描画せずエラー通知（リーク防止）
+      if (!(img.width > 0) || !(img.height > 0)) {
+        fail('PNG の生成に失敗しました（ER図のサイズを取得できません）。');
+        return;
+      }
       const canvas = document.createElement('canvas');
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!ctx) {
+        fail('PNG の生成に失敗しました（canvas を初期化できません）。');
+        return;
+      }
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.scale(scale, scale);
