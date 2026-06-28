@@ -421,9 +421,20 @@ export function toSvg(model: SchemaModel): string {
     // fromColumn ラベル（中点付近）
     const labelX = (x1 + x2) / 2;
     const labelY = (y1 + y2) / 2 - 6;
+    // ラベル背景: 等幅フォント前提で文字列幅を推定し、白背景 rect をラベル直前に描画する
+    const labelFontSize = FONT_SIZE - 3;
+    const labelW = rel.fromColumn.length * labelFontSize * 0.62;
+    const labelPadX = 3;
+    const labelPadY = 2;
+    const labelH = labelFontSize + labelPadY * 2;
+    parts.push(
+      `<rect x="${labelX - labelW / 2 - labelPadX}" y="${labelY - labelFontSize - labelPadY}" ` +
+      `width="${labelW + labelPadX * 2}" height="${labelH}" ` +
+      `fill="#ffffff" rx="2"/>`
+    );
     parts.push(
       `<text x="${labelX}" y="${labelY}" ` +
-      `font-family="monospace" font-size="${FONT_SIZE - 3}" ` +
+      `font-family="monospace" font-size="${labelFontSize}" ` +
       `fill="${C.subText}" text-anchor="middle">${escSvg(rel.fromColumn)}</text>`
     );
   }

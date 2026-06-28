@@ -182,6 +182,25 @@ describe('toSvg', () => {
     expect(svg).toContain('<path ');
   });
 
+  // 陽性対照: リレーションラベルの前に白背景 rect が出力されることを確認する
+  it('リレーションがある場合、ラベル <text の直前に白背景 <rect fill="#ffffff" が出力される（可読性ポリッシュ）', async () => {
+    const sql = `
+      CREATE TABLE users (id INT PRIMARY KEY);
+      CREATE TABLE posts (id INT, user_id INT,
+        CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES users(id));`;
+    const { model } = await parseDdl(sql, 'postgresql');
+    const svg = toSvg(model);
+    // 白背景 rect が存在すること（陽性対照）
+    expect(svg).toContain('fill="#ffffff"');
+    // ラベル <rect は <text の直前に現れる（rect → text の順で出力される）
+    const rectIdx = svg.lastIndexOf('<rect');
+    const textIdx = svg.lastIndexOf('<text');
+    // ラベル <text より前に白背景 rect が存在すること
+    expect(rectIdx).toBeLessThan(textIdx);
+    // style= が混入していないこと（CSP 陰性対照と整合する）
+    expect(svg).not.toContain('style=');
+  });
+
   it('参照先が存在しないリレーションは関係線（<path）を描かずスキップする', async () => {
     const sql = 'CREATE TABLE posts (id INT, user_id INT REFERENCES ghost_table(id));';
     const { model, errors } = await parseDdl(sql, 'postgresql');
