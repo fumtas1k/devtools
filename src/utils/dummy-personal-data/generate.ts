@@ -290,3 +290,27 @@ export function generateRecords(
   if (opts.unique) uniquifyRecords(out);
   return out;
 }
+
+/** stale 検知に使う生成条件。出力整形系（出力項目・連番列・出力形式）は含めない。 */
+export interface GenerationParams {
+  count: number;
+  ageMin: number;
+  ageMax: number;
+  separator: string; // 氏名区切り（SEP_MAP 適用後の文字）
+  unique: boolean;
+}
+
+/**
+ * 生成結果に影響する生成条件のみから決定論的な署名を作る（issue #737）。
+ * 「生成」押下後にこの署名が変化した場合、プレビューが生成条件と乖離している
+ * （＝再生成が必要）ことを UI が検知するために使う。出力項目・連番列・出力形式は
+ * 即時反映または出力時のみ作用するため署名に含めない。
+ */
+export function generationSignature(p: GenerationParams): string {
+  // 年齢は生成時に Math.min/Math.max で正規化されるため（generate 側と整合）、署名も
+  // 同様に正規化する。これにより「min/max を入れ替えただけ（生成結果は同一）」を
+  // stale と誤検知しない。
+  const ageLo = Math.min(p.ageMin, p.ageMax);
+  const ageHi = Math.max(p.ageMin, p.ageMax);
+  return JSON.stringify([p.count, ageLo, ageHi, p.separator, p.unique]);
+}

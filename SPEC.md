@@ -1308,6 +1308,8 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 **シリアライズ（`src/utils/dummy-personal-data/serialize.ts`）:** CSV は `papaparse`（既存再利用）で生成し UTF-8 BOM（`﻿`）付加で Excel 互換。各セルに `escapeCsvFormula`（`@/utils/json-csv` 既存）で CSV 数式インジェクション対策。JSON は選択フィールドを日本語ラベルキーに変換して出力。連番列オプション（`withSeqId`）が ON の場合、CSV/JSON 先頭に `No.`（1 始まり）を付与（JSON は数値型）。
 
+**UI 構成（反映タイミングの統一・issue #737）:** トグル類を 2 セクションに分離する。「生成条件」（出力する人数・年齢範囲・氏名の区切り・一意化）は変更しても「生成」を押し直すまでプレビューに反映されない。「出力の見せ方」（出力する項目・連番ID列）はプレビューに即時反映される。生成後に生成条件を変更すると、生成ボタン近傍の `aria-live` 領域に「生成条件が変更されました。再生成してください」を表示する（生成条件署名 `generationSignature` の一致判定で stale を検知）。
+
 **モジュール構成:** `src/utils/dummy-personal-data/`（`types.ts` / `dictionaries.ts` / `generate.ts` / `serialize.ts` / `__tests__/generate.test.ts` / `__tests__/serialize.test.ts`）/ `src/components/tools/DummyPersonalData.tsx` / `src/pages/tools/dummy-personal-data.astro`
 
 **追加依存:** なし（`papaparse` は既存）。辞書は自前データとしてリポジトリ内に保持。
