@@ -30,8 +30,22 @@ export function DdlErDiagramTool() {
   const [dialect, setDialect] = useState<Dialect>('mysql');
   const [mermaidCode, setMermaidCode] = useState('');
   const [svg, setSvg] = useState('');
+  const [svgUrl, setSvgUrl] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const renderSeq = useRef(0);
+
+  // SVG 文字列が変わるたびに blob URL を生成し、古い URL を revoke する
+  useEffect(() => {
+    if (!svg) {
+      setSvgUrl('');
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    setSvgUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [svg]);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +129,7 @@ export function DdlErDiagramTool() {
     setInput('');
     setMermaidCode('');
     setSvg('');
+    setSvgUrl('');
     setErrors([]);
   };
 
@@ -151,14 +166,16 @@ export function DdlErDiagramTool() {
         </div>
       )}
 
-      {svg && (
+      {svgUrl && (
         <div className="space-y-4">
-          {/* mermaid が生成した SVG を挿入（外部入力の生挿入ではなく、mermaid が組み立てた SVG）*/}
+          {/* SVG を blob URL 経由の img として表示。ページの CSP は img リソース内部には適用されないため
+              mermaid のインラインスタイルが正しく描画され、CSP 違反エラーも発生しない */}
           <div
             className="overflow-auto rounded border border-default bg-default p-4"
             data-testid="er-diagram"
-            dangerouslySetInnerHTML={{ __html: svg }}
-          />
+          >
+            <img src={svgUrl} alt="生成されたER図" className="max-w-none" data-testid="er-diagram-img" />
+          </div>
           <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
         </div>
       )}
