@@ -94,7 +94,8 @@ export function DdlErDiagramTool() {
     const url = URL.createObjectURL(blob);
     const fail = (msg: string) => {
       URL.revokeObjectURL(url);
-      setErrors((prev) => [...prev, msg]);
+      // 連続失敗で同一メッセージが重複表示されないよう既出はスキップ
+      setErrors((prev) => (prev.includes(msg) ? prev : [...prev, msg]));
     };
     const img = new Image();
     // 読み込み失敗時も blob URL を必ず revoke する（リーク防止）

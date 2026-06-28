@@ -64,6 +64,29 @@ describe('parseDdl', () => {
     expect(model.tables).toHaveLength(1);
     expect(errors.some((e) => /users/.test(e.message))).toBe(true);
   });
+
+  it('複合外部キーは列ごとにリレーションを生成し各列をFKにする', async () => {
+    const sql = `
+      CREATE TABLE a (x INT, y INT, PRIMARY KEY (x, y));
+      CREATE TABLE b (x INT, y INT,
+        CONSTRAINT fk FOREIGN KEY (x, y) REFERENCES a(x, y));`;
+    const { model } = await parseDdl(sql, 'mysql');
+    expect(model.relations).toEqual([
+      { fromTable: 'b', fromColumn: 'x', toTable: 'a', toColumn: 'x' },
+      { fromTable: 'b', fromColumn: 'y', toTable: 'a', toColumn: 'y' },
+    ]);
+    const b = model.tables.find((t) => t.name === 'b')!;
+    expect(b.columns.find((c) => c.name === 'x')?.isForeignKey).toBe(true);
+    expect(b.columns.find((c) => c.name === 'y')?.isForeignKey).toBe(true);
+  });
+
+  it('型修飾子（UNSIGNED 等）を型表記に含める', async () => {
+    const sql = 'CREATE TABLE t (a INT UNSIGNED, b BIGINT UNSIGNED ZEROFILL);';
+    const { model } = await parseDdl(sql, 'mysql');
+    const cols = model.tables[0].columns;
+    expect(cols.find((c) => c.name === 'a')?.type).toBe('INT UNSIGNED');
+    expect(cols.find((c) => c.name === 'b')?.type).toBe('BIGINT UNSIGNED ZEROFILL');
+  });
 });
 
 describe('toMermaid', () => {
@@ -91,6 +114,35 @@ describe('toMermaid', () => {
     // Mermaid 属性の型トークンに空白や ( ) を残さない（_ 等へ置換）
     expect(out).not.toMatch(/DECIMAL\(10,2\)/);
     expect(out).toContain('amount');
+  });
+
+  it('リレーションラベルの二重引用符を除去してMermaid構文の破壊を防ぐ', () => {
+    // fromColumn に " を含む（識別子に引用符が紛れたケース）
+    const model = {
+      tables: [
+        {
+          name: 'a',
+          columns: [
+            { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, isForeignKey: false },
+          ],
+        },
+        {
+          name: 'b',
+          columns: [
+            { name: 'q', type: 'INT', nullable: true, isPrimaryKey: false, isForeignKey: true },
+          ],
+        },
+      ],
+      relations: [{ fromTable: 'b', fromColumn: 'q"x', toTable: 'a', toColumn: 'id' }],
+    };
+    const out = toMermaid(model);
+    const relLine = out.split('\n').find((l) => l.includes('}o--||'))!;
+    // 生の " がラベル内に残っていない（残ると "q"x" でラベルが途中終端し構文が壊れる）
+    expect(relLine).not.toContain('q"x');
+    // ラベルはちょうど 1 組の二重引用符で囲まれている（開閉が崩れていない）
+    expect((relLine.match(/"/g) ?? []).length).toBe(2);
+    // 列名の中身（引用符以外）は保持される（" は空白へ置換）
+    expect(relLine).toContain('q x');
   });
 });
 

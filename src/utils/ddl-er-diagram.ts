@@ -70,11 +70,23 @@ function columnName(colDef: { column?: unknown }): string {
   return refName((colDef.column as { column?: unknown })?.column);
 }
 
-function formatType(def: { dataType?: string; length?: number; scale?: number }): string {
+function formatType(def: {
+  dataType?: string;
+  length?: number;
+  scale?: number;
+  suffix?: unknown[];
+}): string {
   if (!def?.dataType) return '';
   let t = def.dataType;
   if (typeof def.length === 'number') {
     t += def.scale != null ? `(${def.length},${def.scale})` : `(${def.length})`;
+  }
+  // UNSIGNED / ZEROFILL 等の型修飾子（node-sql-parser は suffix 配列で返す）
+  if (Array.isArray(def.suffix) && def.suffix.length) {
+    const mods = def.suffix
+      .map((s) => (typeof s === 'string' ? s : ((s as { value?: string })?.value ?? '')))
+      .filter(Boolean);
+    if (mods.length) t += ' ' + mods.join(' ');
   }
   return t;
 }
@@ -148,12 +160,18 @@ export async function parseDdl(sql: string, dialect: Dialect): Promise<ParseResu
           const ref = d.reference_definition as
             | { table?: { table: string }[]; definition?: unknown[] }
             | undefined;
-          const fromCol = refName((d.definition as unknown[])?.[0]);
-          relations.push({
-            fromTable: tableName,
-            fromColumn: fromCol,
-            toTable: ref?.table?.[0]?.table ?? '',
-            toColumn: refName(ref?.definition?.[0]),
+          const toTable = ref?.table?.[0]?.table ?? '';
+          const fromCols = (d.definition as unknown[]) ?? [];
+          const toCols = (ref?.definition as unknown[]) ?? [];
+          // 複合外部キー (FOREIGN KEY (x, y) REFERENCES a(x, y)) は列を index で対応付けて
+          // 各列ごとにリレーションを生成する
+          fromCols.forEach((fc, i) => {
+            relations.push({
+              fromTable: tableName,
+              fromColumn: refName(fc),
+              toTable,
+              toColumn: refName(toCols[i]),
+            });
           });
         }
       }
@@ -469,10 +487,10 @@ export function toMermaid(model: SchemaModel): string {
     lines.push('  }');
   }
   for (const rel of model.relations) {
+    // ラベルは Mermaid の二重引用符文字列に入るため、" と改行を除去して構文破壊を防ぐ
+    const label = rel.fromColumn.replace(/["\r\n]+/g, ' ').trim();
     // 多側(FK) }o--|| 一側(PK) の非識別リレーションで描画
-    lines.push(
-      `  ${safeToken(rel.fromTable)} }o--|| ${safeToken(rel.toTable)} : "${rel.fromColumn}"`
-    );
+    lines.push(`  ${safeToken(rel.fromTable)} }o--|| ${safeToken(rel.toTable)} : "${label}"`);
   }
   return lines.join('\n');
 }
