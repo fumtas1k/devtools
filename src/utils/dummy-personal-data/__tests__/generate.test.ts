@@ -307,4 +307,12 @@ describe('generationSignature', () => {
     expect(generationSignature({ ...base, separator: '　' })).not.toBe(sig);
     expect(generationSignature({ ...base, unique: true })).not.toBe(sig);
   });
+
+  it('年齢の min/max を入れ替えても署名は同一（生成結果が同じため誤検知しない）', () => {
+    // 生成は Math.min/Math.max で正規化するため、20〜80 と 80〜20 は同じ出力になる。
+    // 署名も正規化されていれば一致し、再生成不要なのに stale 表示が出る誤検知を防ぐ。
+    expect(generationSignature({ ...base, ageMin: 80, ageMax: 20 })).toBe(
+      generationSignature({ ...base, ageMin: 20, ageMax: 80 })
+    );
+  });
 });

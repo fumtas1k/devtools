@@ -97,9 +97,11 @@ export function DummyPersonalDataTool() {
       </NotificationBanner>
 
       {/* 生成条件（変更後は「生成」を押すまでプレビューに反映されない） */}
-      <section className="space-y-4">
+      <section className="space-y-4" aria-labelledby="dpd-sec-conditions">
         <div>
-          <p className="body-emphasis text-default">生成条件</p>
+          <p id="dpd-sec-conditions" className="body-emphasis text-default">
+            生成条件
+          </p>
           <p className="caption text-muted">
             変更したら「生成」を押し直すとプレビューに反映されます。
           </p>
@@ -179,9 +181,11 @@ export function DummyPersonalDataTool() {
       </section>
 
       {/* 出力の見せ方（プレビューに即時反映・生成し直し不要） */}
-      <section className="space-y-4">
+      <section className="space-y-4" aria-labelledby="dpd-sec-presentation">
         <div>
-          <p className="body-emphasis text-default">出力の見せ方</p>
+          <p id="dpd-sec-presentation" className="body-emphasis text-default">
+            出力の見せ方
+          </p>
           <p className="caption text-muted">
             プレビューに即時反映されます（生成し直しは不要です）。
           </p>

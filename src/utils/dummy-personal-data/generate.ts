@@ -307,5 +307,10 @@ export interface GenerationParams {
  * 即時反映または出力時のみ作用するため署名に含めない。
  */
 export function generationSignature(p: GenerationParams): string {
-  return JSON.stringify([p.count, p.ageMin, p.ageMax, p.separator, p.unique]);
+  // 年齢は生成時に Math.min/Math.max で正規化されるため（generate 側と整合）、署名も
+  // 同様に正規化する。これにより「min/max を入れ替えただけ（生成結果は同一）」を
+  // stale と誤検知しない。
+  const ageLo = Math.min(p.ageMin, p.ageMax);
+  const ageHi = Math.max(p.ageMin, p.ageMax);
+  return JSON.stringify([p.count, ageLo, ageHi, p.separator, p.unique]);
 }
