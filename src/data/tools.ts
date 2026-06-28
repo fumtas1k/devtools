@@ -244,6 +244,14 @@ const toolEntries: Tool[] = [
     category: 'generate',
     yomi: 'にほんごだみーこじんでーたせいせい',
   },
+  {
+    slug: 'ddl-er-diagram',
+    name: 'DDL → ER図ジェネレータ',
+    description:
+      'CREATE TABLE 文（MySQL / PostgreSQL）から ER 図を描画します。外部キーからリレーション線を自動生成し、Mermaid コード・SVG・PNG で出力。データはブラウザ外に送信しません',
+    category: 'convert',
+    yomi: 'でぃーでぃーえるいーあーるずせいせい',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる
