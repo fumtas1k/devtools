@@ -5,7 +5,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { parseDdl, toMermaid, type Dialect } from '@/utils/ddl-er-diagram';
+import { parseDdl, toMermaid, toSvg, type Dialect } from '@/utils/ddl-er-diagram';
 
 const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
   { value: 'mysql', label: 'MySQL' },
@@ -65,19 +65,12 @@ export function DdlErDiagramTool() {
         setSvg('');
         return;
       }
+      // toSvg・toMermaid はどちらも同期純関数。dynamic import 不要。
+      const svgStr = toSvg(model);
       const code = toMermaid(model);
+      if (cancelled || seq !== renderSeq.current) return;
+      setSvg(svgStr);
       setMermaidCode(code);
-      try {
-        const mermaid = (await import('mermaid')).default;
-        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral' });
-        const { svg: rendered } = await mermaid.render(`erd-${seq}`, code);
-        if (cancelled || seq !== renderSeq.current) return;
-        setSvg(rendered);
-      } catch (e) {
-        if (cancelled || seq !== renderSeq.current) return;
-        setSvg('');
-        setErrors((prev) => [...prev, `ER図の描画に失敗しました: ${(e as Error).message}`]);
-      }
     })();
     return () => {
       cancelled = true;
@@ -168,8 +161,6 @@ export function DdlErDiagramTool() {
 
       {svgUrl && (
         <div className="space-y-4">
-          {/* SVG を blob URL 経由の img として表示。ページの CSP は img リソース内部には適用されないため
-              mermaid のインラインスタイルが正しく描画され、CSP 違反エラーも発生しない */}
           <div
             className="overflow-auto rounded border border-default bg-default p-4"
             data-testid="er-diagram"
