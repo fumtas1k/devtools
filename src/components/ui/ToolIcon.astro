@@ -458,3 +458,27 @@ const attrs = {
     </svg>
   )
 }
+{
+  slug === 'dummy-personal-data' && (
+    <svg {...attrs}>
+      {/* 人物シルエット（個人データを表現） */}
+      <circle cx="9" cy="7" r="3" />
+      <path d="M3 20c0-4 3-7 6-7s6 3 6 7" />
+      {/* データ行（右側）: 個人データのフィールドを表現 */}
+      <line x1="16" y1="8" x2="22" y2="8" />
+      <line x1="16" y1="12" x2="22" y2="12" />
+      <line x1="16" y1="16" x2="20" y2="16" />
+    </svg>
+  )
+}
+{
+  slug === 'ddl-er-diagram' && (
+    <svg {...attrs}>
+      {/* 2 つのテーブル（エンティティ）とリレーション線で ER 図を表現 */}
+      <rect x="3" y="4" width="7" height="7" rx="1" />
+      <rect x="14" y="13" width="7" height="7" rx="1" />
+      {/* リレーション線（FK 接続を表現） */}
+      <path d="M10 8h4a2 2 0 0 1 2 2v3" />
+    </svg>
+  )
+}

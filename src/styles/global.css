@@ -905,12 +905,18 @@
   }
 
   /* hover/focus フィードバック。@layer components 手書きクラスは Tailwind の variant prefix
-     （hover: 等）に非対応のため擬似クラスごと定義する（§7.1）。hover は OFF 状態のみ。
-     focus リングは global の :focus-visible に委譲。 */
-  .toggle-chip:not([aria-pressed='true']):hover,
-  .toggle-chip:not([aria-pressed='true']):focus-visible {
+     （hover: 等）に非対応のため擬似クラスごと定義する（§7.1）。hover は OFF 状態かつ
+     操作可能（aria-disabled でない）チップのみ。focus リングは global の :focus-visible に委譲。 */
+  .toggle-chip:not([aria-pressed='true']):not([aria-disabled='true']):hover,
+  .toggle-chip:not([aria-pressed='true']):not([aria-disabled='true']):focus-visible {
     background: var(--color-bg-subtle);
     border-color: var(--color-border-input);
+  }
+
+  /* 操作不能（常時 ON 固定の項目等）。押下不能であることを淡色＋カーソルで伝える。 */
+  .toggle-chip[aria-disabled='true'] {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   /* 文字トークン（フラグの g/i/m/s… 等幅角丸バッジ）。OFF は薄グレー、ON は半透明白。 */

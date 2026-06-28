@@ -11,6 +11,7 @@
   - [UUID v7 生成](#uuid-v7-生成)
   - [ダミーテキスト生成](#ダミーテキスト生成)
   - [TOTP/HOTP ジェネレータ](#totphotp-ジェネレータ)
+  - [日本語ダミー個人データ生成](#日本語ダミー個人データ生成)
 - [コード・バーコード](#コードバーコード)
   - [QRコード生成](#qrコード生成)
   - [JANコード生成](#janコード生成)
@@ -39,6 +40,7 @@
   - [HARビューア＆サニタイザ](#harビューアサニタイザ)
   - [CSR・鍵ペアジェネレータ](#csr鍵ペアジェネレータ)
   - [markdownエディタ](#markdownエディタ)
+  - [DDL → ER図ジェネレータ](#ddl--er図ジェネレータ)
 
 ## 生成
 
@@ -126,6 +128,37 @@ UUID v7 の生成は `uuid` パッケージの `v7()` に委譲する。生成�
 - 検証の時刻ずれ許容は前後 ±1 ステップ（既定）。大きな時計ずれは検証に失敗する。
 - 不正な Base32 文字・長さはデコード時に throw する。
 - HMAC・乱数生成は Web Crypto API に依存するため、`crypto.subtle` が利用可能なセキュアコンテキスト（HTTPS / localhost）が前提。
+
+### 日本語ダミー個人データ生成
+
+#### 仕組み・アルゴリズム
+
+日本人向け架空個人データを自前辞書＋`Math.random()` で生成する（`faker` の ja ロケールはバンドル過大のため不採用）。
+
+- **氏名↔フリガナ整合**: 姓・名それぞれの辞書（`{ kanji, yomi, romaji }`）から 1 件ずつランダム選択し、漢字と読みが同一辞書エントリの組み合わせになることを保証する。辞書には姓 30 件・男名 20 件・女名 20 件を収録（`src/utils/dummy-personal-data/dictionaries.ts`）。辞書の読み（`yomi`）はひらがなで保持し、「フリガナ」列はカタカナに変換して出力する（ラベルとの整合）。
+- **生年月日↔年齢整合**: 指定年齢範囲 `[ageMin, ageMax]` から乱数で年齢を決定 → 基準日（生成時の現在日付）から `age 年前` の日付を基点に 0〜364 日さかのぼって生年月日を生成 → `computeAge(date, today)` で満年齢を再計算して age カラムに格納（端数日による 1 歳ずれを防ぐ往復確認）。
+- **住所↔郵便番号↔固定電話整合**: 住所辞書（`{ zip, pref, city, areaCode }`）から 1 件選択すると郵便番号・都道府県・市区町村・市外局番が同時確定。固定電話は `areaCode-middle-last` 形式で全 10 桁（先頭 `0` 含む）に整形。
+- **携帯電話番号の実在回避**: 先頭 `090` / `070` + 第 4 桁を `0` に固定した 11 桁を生成する。総務省「電気通信番号の種別」では音声携帯番号 `0X0CDEFGHJK` の C は「0 を除く」と規定されているため、第 4 桁 C=0 の帯域は音声携帯の割当対象外であり実在しない確度が高い。`0800`（フリーダイヤル）・`0600`（FMC 電話番号）は割当済みのため除外している。
+- **メールアドレス**: ローマ字姓名ベースのローカル部 + RFC 2606 予約ドメイン（`example.com` / `example.jp` / `example.net` / `example.org`）でランダム生成。実在ドメインは使わない。
+- **一意性オプション**: 「メール・電話番号を一意化」を有効にすると、メール（ローカル部への連番付与 `sato1@...`）・固定電話（市外局番を保持し加入者番号のみ再生成 → 住所整合を維持）・携帯（`pickMobile()` 再生成で非実在帯を維持）が生成件数内で重複しないよう後処理される。氏名・フリガナは辞書規模の制約（姓 30 × 名 40 ≒ 1,200 通り・最大 3,000 件）から一意化対象外。
+- **連番ID列**: 「連番ID列 (No.)」を有効にすると、出力（CSV/JSON）の先頭列/キーに 1 始まりの連番が付与される（JSON では数値型で出力）。主キー用途に使いやすいよう設計。
+- **反映タイミングの統一**: トグルを「生成条件」（人数・年齢範囲・氏名区切り・一意化＝変更後に再生成が必要）と「出力の見せ方」（出力項目・連番ID列＝プレビューに即時反映）の 2 セクションに分離して表示する。生成後に生成条件を変更すると「生成条件が変更されました。再生成してください」の注意表示（`aria-live` でスクリーンリーダーへも通知）を生成ボタン近傍に出し、再生成で消える。一意化は件数全体に作用する破壊的処理のため即時反映ではなく生成条件側に置く。
+
+**シリアライズ:** CSV は既存 `papaparse` で生成し先頭に UTF-8 BOM（U+FEFF）を付加することで Excel の文字化けを防ぐ。各セルに `escapeCsvFormula`（既存 `@/utils/json-csv`）で CSV 数式インジェクション（CWE-1236）対策を適用。JSON は選択フィールドを日本語ラベルキーに変換して `JSON.stringify` で出力。
+
+#### 準拠仕様
+
+- **携帯番号帯域方針**: 総務省「電話番号に関する情報」の「電気通信番号の種別」表（音声携帯は `0X0CDEFGHJK`、C は 0 を除く）を根拠とする。
+- **CSV 数式インジェクション対策**: OWASP CSVX CWE-1236 の先頭文字エスケープ方式（`=`, `+`, `-`, `@`, `\t`, `\r` の前にシングルクォートを付加）。
+- **予約ドメイン**: RFC 2606 §2「Reserved Example Second Level Domain Names」（`example.com` / `example.net` / `example.org`）および [IANA](https://www.iana.org/domains/reserved) に登録された `example.jp`。
+
+#### 制限・エッジケース
+
+- 辞書はサンプルセットのため多件数生成では同一データが繰り返し出やすい
+- 郵便番号の実在性・住所の正確性は保証しない（ダミー辞書）
+- クレジットカード番号・マイナンバー・血液型・会社名は対象外
+- Excel（.xlsx）出力は非対応（`xlsx` / `exceljs` のバンドル増を避けるため。CSV の BOM 付き出力で Excel 互換を確保）
+- **全処理はブラウザ内で完結し、生成データを外部サーバーに送信しない**
 
 ## コード・バーコード
 
@@ -740,3 +773,28 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **入力形式**: HEX（`#rgb` / `#rrggbb`）と `rgb()` のみ。HSL・OKLCH・名前付き色（`red` 等）は非対応
 - **最低 2 色**: マトリクス描画には有効な色が 2 つ以上必要。2 色未満の場合は案内文を表示
 - **全処理はブラウザ内で完結し、入力した色を外部サーバーに送信しない**
+
+### DDL → ER図ジェネレータ
+
+#### 仕組み・アルゴリズム
+
+`CREATE TABLE` 文（MySQL / PostgreSQL）を `node-sql-parser` でパースし、テーブル・カラム・FK 制約の中間モデルを構築する。中間モデルを 2 系統の出力に変換する。
+
+- **DDL パース（`parse.ts`）**: `node-sql-parser` の `Parser` を dynamic import で遅延ロードし、`astify(ddl, { database: dialect })` で AST を得る。AST からテーブル定義（カラム名・型・NOT NULL）と FK 制約（`FOREIGN KEY ... REFERENCES`・列定義内 `REFERENCES`）を正規化して中間モデル（`ErdTable[]`）に変換する。
+- **Mermaid 記法生成（`mermaid.ts`、`toMermaid`）**: 中間モデルから `erDiagram` 記法のテキストを生成する（mermaid ライブラリ不使用、テキスト出力のみ）。FK があるテーブル間に `||--o{` 等の関係線を出力する。
+- **自前 SVG レンダラ（`svg.ts`、`toSvg`）**: 中間モデルから直接 SVG を生成する純関数。等幅フォント幅推定で DOM 非依存。カラム行は `<rect>` + `<text>` の presentation 属性（`fill` / `stroke` / `font-size` 等）のみで描画し、`style=` 属性・`<style>` タグを一切使用しない（CSP `style-src 'unsafe-inline'` 不要）。FK リレーション線は `<line>` / `<path>` で描画。
+- **表示**: 生成した SVG を `URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))` で blob URL 化し、`<img src={blobUrl}>` で表示する。blob URL 経由の `<img>` はスクリプト実行の心配がなく、CSP 隔離も保たれる。
+- **PNG 変換**: blob URL を `<canvas>` で描画し `toBlob('image/png')` でダウンロード。
+
+#### 準拠仕様
+
+- MySQL / PostgreSQL の `CREATE TABLE` 構文（方言は `node-sql-parser` が吸収）。
+- FK 対象: `CONSTRAINT ... FOREIGN KEY (col) REFERENCES tbl(col)` および列定義の `col TYPE REFERENCES tbl(col)` 記法。
+- Mermaid ER 記法（[https://mermaid.js.org/syntax/entityRelationshipDiagram.html](https://mermaid.js.org/syntax/entityRelationshipDiagram.html)）。
+
+#### 制限・エッジケース
+
+- **`ALTER TABLE` FK 非対応**: `CREATE TABLE` 内の制約のみを対象とする。`ALTER TABLE ... ADD CONSTRAINT FOREIGN KEY` は未対応。
+- **命名規則推測なし**: `user_id → users.id` のような名前ベースの関係推測は行わない。明示的な FK 定義のみからリレーション線を生成する。
+- **mermaid ライブラリ不使用**: mermaid の `render()` は描画時に一時 DOM へインラインスタイルを挿入するため、本プロジェクトの strict CSP（`style-src 'unsafe-inline'` なし）と根本衝突する（詳細は `docs/decisions.md` [122]）。コピー用の Mermaid テキスト生成は自前実装で行い、描画は自前 SVG レンダラが担う。
+- **全処理はブラウザ内で完結し、入力 DDL を外部サーバーに送信しない**。

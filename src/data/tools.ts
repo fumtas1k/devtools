@@ -236,6 +236,22 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'こんとらすとひまとりくす',
   },
+  {
+    slug: 'dummy-personal-data',
+    name: '日本語ダミー個人データ生成',
+    description:
+      '日本人の氏名（漢字＋フリガナ整合）・住所・電話番号・生年月日などの架空個人データを一括生成し CSV/JSON で出力します',
+    category: 'generate',
+    yomi: 'にほんごだみーこじんでーたせいせい',
+  },
+  {
+    slug: 'ddl-er-diagram',
+    name: 'DDL → ER図ジェネレータ',
+    description:
+      'CREATE TABLE 文（MySQL / PostgreSQL）から ER 図を描画します。外部キーからリレーション線を自動生成し、Mermaid コード・SVG・PNG で出力。データはブラウザ外に送信しません',
+    category: 'convert',
+    yomi: 'でぃーでぃーえるいーあーるずせいせい',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる
