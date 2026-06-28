@@ -165,7 +165,12 @@ export function DdlErDiagramTool() {
             className="overflow-auto rounded border border-default bg-default p-4"
             data-testid="er-diagram"
           >
-            <img src={svgUrl} alt="生成されたER図" className="max-w-none" data-testid="er-diagram-img" />
+            <img
+              src={svgUrl}
+              alt="生成されたER図"
+              className="max-w-none"
+              data-testid="er-diagram-img"
+            />
           </div>
           <DownloadButtonGroup onDownloadSvg={downloadSvg} onDownloadPng={downloadPng} />
         </div>

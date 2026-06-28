@@ -125,7 +125,13 @@ export async function parseDdl(sql: string, dialect: Dialect): Promise<ParseResu
           | undefined;
         const isFk = !!ref;
         if (isPk) pkNames.add(name);
-        columns.push({ name, type: formatType(def), nullable, isPrimaryKey: isPk, isForeignKey: isFk });
+        columns.push({
+          name,
+          type: formatType(def),
+          nullable,
+          isPrimaryKey: isPk,
+          isForeignKey: isFk,
+        });
         if (ref) {
           relations.push({
             fromTable: tableName,
@@ -292,17 +298,13 @@ export function toSvg(model: SchemaModel): string {
   });
 
   // 全体サイズ
-  const totalW =
-    colOffsets[numCols - 1] + colWidths[numCols - 1] + GAP;
-  const totalH =
-    rowOffsets[numRows - 1] + rowHeights[numRows - 1] + GAP;
+  const totalW = colOffsets[numCols - 1] + colWidths[numCols - 1] + GAP;
+  const totalH = rowOffsets[numRows - 1] + rowHeights[numRows - 1] + GAP;
 
   const parts: string[] = [];
 
   // --- 背景 ---
-  parts.push(
-    `<rect width="${totalW}" height="${totalH}" fill="${C.background}"/>`
-  );
+  parts.push(`<rect width="${totalW}" height="${totalH}" fill="${C.background}"/>`);
 
   // --- テーブルカード ---
   for (let i = 0; i < tables.length; i++) {
@@ -314,30 +316,30 @@ export function toSvg(model: SchemaModel): string {
     // カード枠
     parts.push(
       `<rect x="${x}" y="${y}" width="${w}" height="${sz.h}" ` +
-      `fill="${C.bodyFill}" stroke="${C.border}" stroke-width="1" rx="4"/>`
+        `fill="${C.bodyFill}" stroke="${C.border}" stroke-width="1" rx="4"/>`
     );
 
     // ヘッダ背景
     parts.push(
       `<rect x="${x}" y="${y}" width="${w}" height="${HEADER_H}" ` +
-      `fill="${C.headerFill}" stroke="${C.border}" stroke-width="1" rx="4"/>`
+        `fill="${C.headerFill}" stroke="${C.border}" stroke-width="1" rx="4"/>`
     );
     // ヘッダ下辺の角丸を潰すための上書き矩形
     parts.push(
       `<rect x="${x}" y="${y + HEADER_H / 2}" width="${w}" height="${HEADER_H / 2}" ` +
-      `fill="${C.headerFill}" stroke="none"/>`
+        `fill="${C.headerFill}" stroke="none"/>`
     );
     // ヘッダ下辺ライン
     parts.push(
       `<line x1="${x}" y1="${y + HEADER_H}" x2="${x + w}" y2="${y + HEADER_H}" ` +
-      `stroke="${C.border}" stroke-width="1"/>`
+        `stroke="${C.border}" stroke-width="1"/>`
     );
 
     // ヘッダテキスト（テーブル名）
     parts.push(
       `<text x="${x + PAD_X}" y="${y + HEADER_H / 2 + 1}" ` +
-      `font-family="monospace" font-size="${FONT_SIZE}" font-weight="bold" ` +
-      `fill="${C.text}" dominant-baseline="middle">${escSvg(t.name)}</text>`
+        `font-family="monospace" font-size="${FONT_SIZE}" font-weight="bold" ` +
+        `fill="${C.text}" dominant-baseline="middle">${escSvg(t.name)}</text>`
     );
 
     // カラム行
@@ -350,7 +352,7 @@ export function toSvg(model: SchemaModel): string {
       if (ci > 0) {
         parts.push(
           `<line x1="${x}" y1="${rowY}" x2="${x + w}" y2="${rowY}" ` +
-          `stroke="${C.border}" stroke-width="0.5" stroke-dasharray="2,3"/>`
+            `stroke="${C.border}" stroke-width="0.5" stroke-dasharray="2,3"/>`
         );
       }
 
@@ -358,8 +360,8 @@ export function toSvg(model: SchemaModel): string {
       const mainText = `${col.name} : ${col.type || '?'}`;
       parts.push(
         `<text x="${x + PAD_X}" y="${textY}" ` +
-        `font-family="monospace" font-size="${FONT_SIZE - 1}" ` +
-        `fill="${C.text}" dominant-baseline="middle">${escSvg(mainText)}</text>`
+          `font-family="monospace" font-size="${FONT_SIZE - 1}" ` +
+          `fill="${C.text}" dominant-baseline="middle">${escSvg(mainText)}</text>`
       );
 
       // PK / FK バッジ（右寄せ）
@@ -372,12 +374,12 @@ export function toSvg(model: SchemaModel): string {
         bx -= bw + 2;
         parts.push(
           `<rect x="${bx}" y="${textY - (ROW_H / 2 - 3)}" width="${bw}" height="${ROW_H - 6}" ` +
-          `fill="${b.color}" rx="2"/>`
+            `fill="${b.color}" rx="2"/>`
         );
         parts.push(
           `<text x="${bx + bw / 2}" y="${textY}" ` +
-          `font-family="monospace" font-size="${FONT_SIZE - 3}" font-weight="bold" ` +
-          `fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${b.label}</text>`
+            `font-family="monospace" font-size="${FONT_SIZE - 3}" font-weight="bold" ` +
+            `fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${b.label}</text>`
         );
       }
     }
@@ -415,7 +417,7 @@ export function toSvg(model: SchemaModel): string {
     const mx = (x1 + x2) / 2;
     parts.push(
       `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" ` +
-      `fill="none" stroke="${C.line}" stroke-width="1.5"/>`
+        `fill="none" stroke="${C.line}" stroke-width="1.5"/>`
     );
 
     // fromColumn ラベル（中点付近）
@@ -429,13 +431,13 @@ export function toSvg(model: SchemaModel): string {
     const labelH = labelFontSize + labelPadY * 2;
     parts.push(
       `<rect x="${labelX - labelW / 2 - labelPadX}" y="${labelY - labelFontSize - labelPadY}" ` +
-      `width="${labelW + labelPadX * 2}" height="${labelH}" ` +
-      `fill="#ffffff" rx="2"/>`
+        `width="${labelW + labelPadX * 2}" height="${labelH}" ` +
+        `fill="#ffffff" rx="2"/>`
     );
     parts.push(
       `<text x="${labelX}" y="${labelY}" ` +
-      `font-family="monospace" font-size="${labelFontSize}" ` +
-      `fill="${C.subText}" text-anchor="middle">${escSvg(rel.fromColumn)}</text>`
+        `font-family="monospace" font-size="${labelFontSize}" ` +
+        `fill="${C.subText}" text-anchor="middle">${escSvg(rel.fromColumn)}</text>`
     );
   }
 

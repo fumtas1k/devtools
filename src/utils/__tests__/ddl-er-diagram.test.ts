@@ -144,7 +144,9 @@ describe('toSvg', () => {
       tables: [
         {
           name: '<script>alert(1)</script>',
-          columns: [{ name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, isForeignKey: false }],
+          columns: [
+            { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, isForeignKey: false },
+          ],
         },
       ],
       relations: [],
@@ -161,7 +163,9 @@ describe('toSvg', () => {
       tables: [
         {
           name: '<table>&"name"',
-          columns: [{ name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, isForeignKey: false }],
+          columns: [
+            { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, isForeignKey: false },
+          ],
         },
       ],
       relations: [],

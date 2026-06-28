@@ -34,15 +34,18 @@
 ## Task 1: 依存ライブラリの追加
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 
 - [ ] **Step 1: 依存を追加**
 
 Run:
+
 ```bash
 npm install node-sql-parser@5.4.0 mermaid@11.16.0 --cache "$TMPDIR/npm-cache" --no-audit --no-fund
 ```
+
 Expected: `package.json` の `dependencies` に両者が入り、`package-lock.json` が更新される。
 
 - [ ] **Step 2: lock 同期を確認**
@@ -62,12 +65,14 @@ git commit -m "build: node-sql-parser と mermaid を追加"
 ## Task 2: 純ロジック — 型定義と parseDdl（FK/PK/カラム抽出）
 
 **Files:**
+
 - Create: `src/utils/ddl-er-diagram.ts`
 - Test: `src/utils/__tests__/ddl-er-diagram.test.ts`
 
 - [ ] **Step 1: 失敗するテストを書く**
 
 `src/utils/__tests__/ddl-er-diagram.test.ts`:
+
 ```ts
 import { describe, it, expect } from 'vitest';
 import { parseDdl } from '../ddl-er-diagram';
@@ -146,6 +151,7 @@ Expected: FAIL（`parseDdl` 未定義）
 - [ ] **Step 3: 最小実装を書く**
 
 `src/utils/ddl-er-diagram.ts`:
+
 ```ts
 export type Dialect = 'mysql' | 'postgresql';
 
@@ -254,7 +260,13 @@ export async function parseDdl(sql: string, dialect: Dialect): Promise<ParseResu
           | undefined;
         const isFk = !!ref;
         if (isPk) pkNames.add(name);
-        columns.push({ name, type: formatType(def), nullable, isPrimaryKey: isPk, isForeignKey: isFk });
+        columns.push({
+          name,
+          type: formatType(def),
+          nullable,
+          isPrimaryKey: isPk,
+          isForeignKey: isFk,
+        });
         if (ref) {
           relations.push({
             fromTable: tableName,
@@ -332,12 +344,14 @@ git commit -m "feat: DDLをパースしてスキーマ中間モデルを生成�
 ## Task 3: 純ロジック — toMermaid（中間モデル→Mermaid記法）
 
 **Files:**
+
 - Modify: `src/utils/ddl-er-diagram.ts`
 - Modify: `src/utils/__tests__/ddl-er-diagram.test.ts`
 
 - [ ] **Step 1: 失敗するテストを追加**
 
 `src/utils/__tests__/ddl-er-diagram.test.ts` に追記:
+
 ```ts
 import { parseDdl, toMermaid } from '../ddl-er-diagram';
 
@@ -378,6 +392,7 @@ Expected: FAIL（`toMermaid` 未定義）
 - [ ] **Step 3: toMermaid を実装**
 
 `src/utils/ddl-er-diagram.ts` の末尾に追加:
+
 ```ts
 // Mermaid の属性 type/name トークンは英数と _ のみ安全。括弧・空白・カンマを _ に畳む
 function safeToken(s: string): string {
@@ -425,6 +440,7 @@ git commit -m "feat: スキーマモデルからMermaid ER記法を生成するt
 ## Task 4: UI コンポーネント DdlErDiagram
 
 **Files:**
+
 - Create: `src/components/tools/DdlErDiagram.tsx`
 
 mermaid 描画は `useEffect` 内で dynamic import → `mermaid.initialize` → `mermaid.render` で SVG 文字列を得て state に格納。`dangerouslySetInnerHTML` で SVG を挿入する（mermaid 生成 SVG のため。外部入力をそのまま挿入しない＝SVG は mermaid が組み立てたもの）。
@@ -432,6 +448,7 @@ mermaid 描画は `useEffect` 内で dynamic import → `mermaid.initialize` →
 - [ ] **Step 1: コンポーネントを作成**
 
 `src/components/tools/DdlErDiagram.tsx`:
+
 ```tsx
 import { useEffect, useRef, useState } from 'react';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
@@ -604,7 +621,10 @@ export function DdlErDiagramTool() {
             <span className="body-emphasis text-default">Mermaid コード</span>
             <CopyButton text={mermaidCode} />
           </div>
-          <pre className="overflow-auto rounded bg-subtle p-3 text-sm font-mono" data-testid="mermaid-code">
+          <pre
+            className="overflow-auto rounded bg-subtle p-3 text-sm font-mono"
+            data-testid="mermaid-code"
+          >
             {mermaidCode}
           </pre>
         </div>
@@ -637,12 +657,14 @@ git commit -m "feat: DDL→ER図ジェネレータのUIコンポーネントを�
 ## Task 5: Astro ページとツール登録
 
 **Files:**
+
 - Create: `src/pages/tools/ddl-er-diagram.astro`
 - Modify: `src/data/tools.ts`
 
 - [ ] **Step 1: ツールエントリを追加**
 
 `src/data/tools.ts` の `toolEntries` 配列に追加:
+
 ```ts
   {
     slug: 'ddl-er-diagram',
@@ -657,6 +679,7 @@ git commit -m "feat: DDL→ER図ジェネレータのUIコンポーネントを�
 - [ ] **Step 2: ページを作成**
 
 `src/pages/tools/ddl-er-diagram.astro`:
+
 ```astro
 ---
 import ToolLayout from '@/layouts/ToolLayout.astro';
@@ -672,8 +695,8 @@ const tool = tools.find((t) => t.slug === 'ddl-er-diagram')!;
 
   <ToolInfoSection>
     <p class="tool-info-body">
-      <code class="rounded px-1 font-mono bg-subtle text-sm">CREATE TABLE</code> 文（MySQL /
-      PostgreSQL）を貼り付けると ER 図を即描画します。明示的な外部キー制約（<code
+      <code class="rounded px-1 font-mono bg-subtle text-sm">CREATE TABLE</code> 文（MySQL / PostgreSQL）を貼り付けると
+      ER 図を即描画します。明示的な外部キー制約（<code
         class="rounded px-1 font-mono bg-subtle text-sm">FOREIGN KEY ... REFERENCES</code
       > および列定義内の <code class="rounded px-1 font-mono bg-subtle text-sm">REFERENCES</code
       >）からリレーション線を自動生成します。Mermaid 記法のコピー、ER 図の SVG / PNG
@@ -687,7 +710,11 @@ const tool = tools.find((t) => t.slug === 'ddl-er-diagram')!;
     </ul>
     <h3 class="mb-2 mt-4 tool-info-heading">制限</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
-      <li>対象は <code class="rounded px-1 font-mono bg-subtle text-sm">CREATE TABLE</code> 文内の制約のみ。<code class="rounded px-1 font-mono bg-subtle text-sm">ALTER TABLE</code> での外部キー追加には未対応</li>
+      <li>
+        対象は <code class="rounded px-1 font-mono bg-subtle text-sm">CREATE TABLE</code> 文内の制約のみ。<code
+          class="rounded px-1 font-mono bg-subtle text-sm">ALTER TABLE</code
+        > での外部キー追加には未対応
+      </li>
       <li>命名規則からの関係推測は行いません（明示的な外部キーのみ）</li>
     </ul>
   </ToolInfoSection>
@@ -711,6 +738,7 @@ git commit -m "feat: DDL→ER図ジェネレータのページとツール登録
 ## Task 6: E2E テストと VRT 登録
 
 **Files:**
+
 - Create: `tests/e2e/ddl-er-diagram.spec.ts`
 - Modify: `tests/e2e/visual-regression-pages.ts`
 
@@ -721,6 +749,7 @@ git commit -m "feat: DDL→ER図ジェネレータのページとツール登録
 - [ ] **Step 2: E2E テストを作成**
 
 `tests/e2e/ddl-er-diagram.spec.ts`（既存 spec のヘルパ・パターンに合わせて記述）:
+
 ```ts
 import { test, expect } from '@playwright/test';
 
@@ -750,9 +779,11 @@ test.describe('DDL → ER図ジェネレータ', () => {
 - [ ] **Step 3: ユニット・型・E2E を実行**
 
 Run:
+
 ```bash
 npm run test && node_modules/.bin/astro check && npm run test:e2e -- ddl-er-diagram
 ```
+
 Expected: ユニット・型 PASS。E2E はサンプル描画・エラー表示が PASS（VRT baseline 未生成分は CI で対応）。
 
 - [ ] **Step 4: meta テスト（VRT カバレッジ）確認**
@@ -772,6 +803,7 @@ git commit -m "test: DDL→ER図ジェネレータのE2EとVRT登録を追加"
 ## Task 7: ドキュメント更新
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `SPEC.md`
 - Modify: `docs/tools.md`
@@ -808,4 +840,7 @@ git commit -m "docs: DDL→ER図ジェネレータの追加に伴うドキュメ
 - [ ] `npm run test:e2e -- ddl-er-diagram` の機能テスト PASS（VRT baseline は CI で生成）
 - [ ] `npm run lint` / `npm run format:check` PASS
 - [ ] PC（1280x800）・スマホ（390x844）で目視確認（ER 図のはみ出し・横スクロール・ボタン重なりがないか）
+
+```
+
 ```
