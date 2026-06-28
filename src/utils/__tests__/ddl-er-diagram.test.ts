@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDdl, toMermaid } from '../ddl-er-diagram';
+import { parseDdl, toMermaid, toSvg } from '../ddl-er-diagram';
 
 describe('parseDdl', () => {
   it('単一テーブルのカラム・型・NULL可否・PKを抽出する', async () => {
@@ -91,5 +91,110 @@ describe('toMermaid', () => {
     // Mermaid 属性の型トークンに空白や ( ) を残さない（_ 等へ置換）
     expect(out).not.toMatch(/DECIMAL\(10,2\)/);
     expect(out).toContain('amount');
+  });
+});
+
+describe('toSvg', () => {
+  it('有効な SVG ルート要素と xmlns を含む', async () => {
+    const sql = 'CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255));';
+    const { model } = await parseDdl(sql, 'postgresql');
+    const svg = toSvg(model);
+    expect(svg).toMatch(/^<svg/);
+    expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
+  });
+
+  it('テーブル名とカラム名が SVG テキストに含まれる', async () => {
+    const sql = 'CREATE TABLE orders (order_id INT PRIMARY KEY, amount DECIMAL(10,2));';
+    const { model } = await parseDdl(sql, 'postgresql');
+    const svg = toSvg(model);
+    expect(svg).toContain('orders');
+    expect(svg).toContain('order_id');
+    expect(svg).toContain('amount');
+  });
+
+  // 陰性対照（CSP クリーン確認）: style= 属性・<style> 要素が含まれない
+  it('style= 属性を含まない（CSP 準拠・陰性対照）', async () => {
+    const sql = `
+      CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255));
+      CREATE TABLE posts (id INT, user_id INT,
+        CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES users(id));`;
+    const { model } = await parseDdl(sql, 'postgresql');
+    const svg = toSvg(model);
+    expect(svg).not.toContain('style=');
+    expect(svg).not.toMatch(/<style[\s>]/);
+  });
+
+  // 陽性対照: SVG が実際に描画内容（presentation 属性）を持つことを確認し、
+  // 「空文字列 or 空 SVG を返せば陰性対照が全部通る」誤実装を排除する
+  it('presentation 属性（fill / stroke 等）を含む（陽性対照: 実描画の確認）', async () => {
+    const sql = 'CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255));';
+    const { model } = await parseDdl(sql, 'postgresql');
+    const svg = toSvg(model);
+    // テーブルカードの背景 rect には fill が必須
+    expect(svg).toMatch(/fill="/);
+    // カード枠線には stroke が必須
+    expect(svg).toMatch(/stroke="/);
+    // テキスト要素が存在すること
+    expect(svg).toContain('<text');
+  });
+
+  // 陰性対照: 悪意ある識別子が生 HTML タグとして出力されない
+  it('テーブル名の特殊文字をエスケープする（XSS 防止・陰性対照）', async () => {
+    const model = {
+      tables: [
+        {
+          name: '<script>alert(1)</script>',
+          columns: [{ name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, isForeignKey: false }],
+        },
+      ],
+      relations: [],
+    };
+    const svg = toSvg(model);
+    expect(svg).not.toContain('<script>');
+    expect(svg).not.toContain('</script>');
+  });
+
+  // 陽性対照: エスケープ後の文字列が実際に SVG に含まれることを確認し、
+  // 「テーブル名を丸ごと除外する」逃げ実装を排除する
+  it('テーブル名がエスケープされた形で SVG に含まれる（陽性対照: エスケープ動作の確認）', async () => {
+    const model = {
+      tables: [
+        {
+          name: '<table>&"name"',
+          columns: [{ name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, isForeignKey: false }],
+        },
+      ],
+      relations: [],
+    };
+    const svg = toSvg(model);
+    // エスケープ後の文字が存在すること（どれか一つでも）
+    expect(svg).toMatch(/&lt;|&amp;|&quot;/);
+  });
+
+  it('リレーションがある場合 <path が出力される', async () => {
+    const sql = `
+      CREATE TABLE users (id INT PRIMARY KEY);
+      CREATE TABLE posts (id INT, user_id INT,
+        CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES users(id));`;
+    const { model } = await parseDdl(sql, 'postgresql');
+    const svg = toSvg(model);
+    // リレーション線は <path で描画される
+    expect(svg).toContain('<path ');
+  });
+
+  it('参照先が存在しないリレーションは関係線（<path）を描かずスキップする', async () => {
+    const sql = 'CREATE TABLE posts (id INT, user_id INT REFERENCES ghost_table(id));';
+    const { model, errors } = await parseDdl(sql, 'postgresql');
+    // ghost_table が存在しないため警告が出る
+    expect(errors.some((e) => /ghost_table/.test(e.message))).toBe(true);
+    // 参照先テーブルがないのでリレーション <path はなし（内部の <line は別物）
+    const svg = toSvg(model);
+    expect(svg).not.toContain('<path ');
+  });
+
+  it('テーブルが 0 件でも有効な SVG を返す', () => {
+    const svg = toSvg({ tables: [], relations: [] });
+    expect(svg).toMatch(/^<svg/);
+    expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
   });
 });
