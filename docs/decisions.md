@@ -4599,3 +4599,40 @@ issue #737（PR #736 レビュー由来）。`dummy-personal-data` は「生成�
 **方針3（一意化も即時反映）は不採用**。`uniquifyRecords` の即時流用は技術的には容易だが、一意化だけ即時化すると人数・年齢・区切りは依然「要再生成」のままで新たな不整合を生む。さらに一意化は生成件数全体に作用する破壊的処理で、プレビュー（先頭 20 件）だけに適用すると全体一意性と齟齬が出る。境界の明確化という本質的解決にならないため、構造分離（方針1）を優先した。
 
 未反映インジケータは `role="status"` を付けず `aria-live="polite"` のみとした。プレビュー側の既存 `role="status"`（生成完了アナウンス）と status ロールが二重になると `getByRole('status')` 単数 strict の既存 E2E が壊れるため。検知能力は `generationSignature` の陽性対照ユニットテスト（各生成条件フィールドを変えると署名が変化）と E2E（条件変更で出現・再生成で消滅・即時反映トグルでは出ない）で担保する。
+
+---
+
+## [123] ddl-er-diagram: mermaid 不採用・CSP 準拠の自前 SVG レンダラ採用
+
+**2026-06-28 | ステータス: 採用**
+
+### 背景
+
+DDL → ER図ジェネレータの描画ライブラリとして、当初は mermaid（`mermaid.render()`）によるクライアント描画を検討していた。テキスト出力（Mermaid ER 記法）には mermaid ライブラリは不要だが、ER 図プレビュー・SVG/PNG ダウンロードのために何らかの描画手段が必要。
+
+### 問題の発覚
+
+実機検証で、mermaid の `render()` が描画時に一時 DOM（コンテナ div）へインラインスタイル（`style=` 属性・`<style>` タグ）を大量に書き込むことが判明した。本プロジェクトの本番 CSP は `style-src 'unsafe-inline'` を含まない strict 設定（decisions [067][068] で確立）であり、`withProductionCsp` ガードを通すと mermaid のレンダリングごとに約 100 件の CSP 違反が発生して描画が失敗する。
+
+blob URL / srcdoc iframe 内での描画も検討したが、Chromium は親ドキュメントの CSP を blob: / srcdoc iframe の子コンテキストへ伝播する仕様のため回避できないことを確認した。
+
+### 決断
+
+**mermaid ライブラリを描画用途では採用しない。** 代わりに以下の構成を採用する。
+
+1. **Mermaid テキスト生成（`toMermaid`）**: mermaid ライブラリ不使用で、中間モデルから `erDiagram` 記法のテキストを自前生成する（コピー用途）。
+2. **自前 SVG レンダラ（`toSvg`）**: 中間モデルから直接 SVG を生成する純関数。等幅フォント幅推定で DOM 非依存。presentation 属性（`fill` / `stroke` / `font-size` 等）のみ使用し、`style=` 属性・`<style>` タグを完全に排除することで CSP 準拠を保証する。
+3. **blob URL `<img>` 表示**: 生成 SVG を `URL.createObjectURL` で blob URL 化し、`<img>` として表示する。スクリプト非実行・CSP 隔離が保たれる。
+
+### 却下した選択肢
+
+- **mermaid による描画**: CSP `style-src 'unsafe-inline'` と根本衝突。blob/srcdoc iframe でも Chromium の CSP 継承で回避不可。
+- **Graphviz/Viz.js**: WASM バンドルが大きく、初期ロードへの影響が大きい。
+- **D3.js**: 汎用グラフライブラリで ER 図に特化した機能がなく、自前実装量が変わらない。
+
+### 結果・トレードオフ
+
+- ✅ 本番 CSP（`style-src 'unsafe-inline'` なし）と完全に整合する
+- ✅ `withProductionCsp` ガートが通過する（CSP 違反ゼロ）
+- ✅ mermaid の追加バンドルなし（`node-sql-parser` のみ追加）
+- ⚠️ テーブルレイアウトのアルゴリズムは自前実装のため、複雑なスキーマでのレイアウト最適化に限界がある

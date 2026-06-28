@@ -91,6 +91,7 @@
 | `pkijs`                     | X.509 証明書・PKCS#7 のパースと署名検証（Web Crypto エンジン経由）                                                 | SSL/TLS証明書デコーダ                    |
 | `asn1js`                    | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ                    |
 | `marked`                    | Markdown パース・HTML 変換（GFM 対応。`gfm: true`, `breaks: true`）。出力は既存 `sanitizeHtml` でサニタイズ        | markdownエディタ                         |
+| `node-sql-parser`           | DDL（`CREATE TABLE`）のパース。dynamic import で遅延ロード                                                         | DDL → ER図ジェネレータ                   |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -290,7 +291,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全23ツール）
+## 4. ツール一覧（全31ツール）
 
 ### カテゴリ A: 生成ツール（`generate`）
 
@@ -343,6 +344,7 @@ devtools/
 | 28  | CSR・鍵ペアジェネレータ           | `csr-generator`       | RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力。Subject DN（CN/O/OU/C/ST/L/email）と SAN（DNS/IP/email）を設定可能。既存 CSR の Subject/SAN/公開鍵/署名アルゴリズム抽出と自己署名検証に対応。pkijs + Web Crypto。全処理ブラウザ内完結 |
 | 29  | markdownエディタ                  | `markdown-editor`     | markdown を 2 ペインでリアルタイム HTML プレビュー。GFM（表・取り消し線・コードブロック）対応。`marked` で HTML 変換後に既存 `sanitizeHtml` でサニタイズ。HTML クリップボードコピー・.md ダウンロード。全処理ブラウザ内完結                             |
 | 30  | コントラスト比マトリクス          | `contrast-matrix`     | 任意の N 色の全組合せ（N×N）のコントラスト比を一覧表示。WCAG 2.x の AA/AAA 合否と APCA-W3 0.1.9 の Lc 値を併記。HEX / rgb() 形式の不透明色に対応。外部ライブラリなし・全処理ブラウザ内完結                                                              |
+| 31  | DDL → ER図ジェネレータ            | `ddl-er-diagram`      | `CREATE TABLE` 文（MySQL/PostgreSQL）を貼り付けると ER 図を即描画。明示的な外部キー（`FOREIGN KEY ... REFERENCES` / 列定義内 `REFERENCES`）からリレーション線を自動生成。Mermaid ER 記法のコピー・SVG/PNG ダウンロード対応。全処理ブラウザ内完結        |
 
 ---
 
@@ -1324,6 +1326,41 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.32 DDL → ER図ジェネレータ（`ddl-er-diagram`）
+
+**概要:** `CREATE TABLE` 文（MySQL / PostgreSQL）を貼り付けると即座に ER 図を描画するツール。明示的な外部キー制約（`FOREIGN KEY ... REFERENCES` および列定義内の `REFERENCES`）からリレーション線を自動生成する。全処理ブラウザ内完結で、本番スキーマを外部サーバーへ送信しない。
+
+**入力:** `CREATE TABLE` 文を含む DDL テキスト（複数テーブル対応）。MySQL / PostgreSQL 方言を選択可。
+
+**出力:**
+
+- ER 図プレビュー（自前 SVG レンダラによる描画）
+- Mermaid ER 記法のテキスト出力（コピーボタン付き）
+- ER 図の SVG ダウンロード / PNG ダウンロード（`DownloadButtonGroup`）
+
+**処理:**
+
+1. `node-sql-parser`（dynamic import で遅延ロード）で DDL をパースし、テーブル・カラム・制約の中間モデルを構築する
+2. 中間モデルから Mermaid ER 記法テキスト（`toMermaid`）を生成する（テキスト出力・コピー用。mermaid ライブラリ不使用）
+3. 中間モデルから自前 SVG レンダラ（`toSvg`）で直接 SVG を生成する（presentation 属性のみ使用・`style=` / `<style>` タグ不使用で CSP 準拠）
+4. 生成 SVG を blob URL の `<img>` として表示（スクリプト非実行・CSP 隔離）
+
+**パース対象:** `CREATE TABLE` 内の制約（`PRIMARY KEY`・`FOREIGN KEY ... REFERENCES`・列定義内 `REFERENCES`）を対象とする。
+
+**モジュール構成:** `src/utils/ddl-er-diagram/`（`types.ts` / `parse.ts` DDL パース・中間モデル構築 / `mermaid.ts` Mermaid 記法生成 / `svg.ts` 自前 SVG レンダラ / `index.ts`）/ `src/components/tools/DdlErDiagram.tsx` / `src/pages/tools/ddl-er-diagram.astro`
+
+**追加依存:** `node-sql-parser`（DDL パース）。
+
+**既知の制限:**
+
+- `ALTER TABLE` で後付けする外部キーは未対応（`CREATE TABLE` 内の制約のみ対象）
+- 命名規則からの関係推測はしない（明示 FK のみ）
+- 全処理はブラウザ内で完結し、入力 DDL を外部サーバーに送信しない
+
+**スコープ外（v1）:** `ALTER TABLE` FK 対応・命名規則推測・テーブルの手動レイアウト変更・Graphviz/PlantUML 形式での出力
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1493,6 +1530,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] markdownエディタ（`markdown-editor`）
   - [x] コントラスト比マトリクス（`contrast-matrix`）
   - [x] 日本語ダミー個人データ生成（`dummy-personal-data`）
+  - [x] DDL → ER図ジェネレータ（`ddl-er-diagram`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
