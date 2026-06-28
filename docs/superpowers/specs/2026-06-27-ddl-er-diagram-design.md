@@ -38,10 +38,21 @@
   - AST を下記の中間モデルへ正規化
   - パース失敗時は `errors` に行・メッセージを格納して返す（throw しない）
 - `toMermaid(model: SchemaModel): string`
-  - 中間モデル → Mermaid `erDiagram` 記法の文字列へ変換
+  - 中間モデル → Mermaid `erDiagram` 記法の文字列へ変換（「Mermaid コードのコピー」機能用のテキスト出力）
   - テーブルごとに属性行（型 + PK/FK マーカー）、FK ごとにリレーション行を出力
+- `toSvg(model: SchemaModel): string`
+  - 中間モデル → 自前レイアウトの**自己完結 SVG 文字列**へ変換（アプリ内描画＋SVG/PNG ダウンロード用）
+  - **CSP 準拠の必須制約**: `style=` 属性・`<style>` 要素を一切使わず、SVG の **presentation 属性のみ**（`fill` / `stroke` / `x` / `y` / `width` / `font-size` / `font-family` / `text-anchor` 等）で描画する。presentation 属性は CSS ではないため `style-src` の対象外
+  - **純関数**（DOM 非依存・テスト可能）。テキスト幅は等幅フォント前提で文字数 × 係数で推定し、DOM 計測を不要にする（決定的出力 → VRT 安定）
+  - テキストは `<` `>` `&` `"` をエスケープして挿入（XSS / SVG 破壊防止、規約 9.5）
 
 `node-sql-parser` は dynamic import によりバンドルを当該ページに閉じ込める（既存の `recheck` / `jszip` と同パターン）。
+
+### 描画方式の決定（mermaid 不採用）
+
+当初は mermaid によるクライアント描画を予定したが、実機検証で **mermaid の `render()` が描画時に一時 DOM へインラインスタイルを当てるため、本プロジェクトの strict CSP（`style-src` に `unsafe-inline` なし、decisions [067][068]）と根本衝突**することが判明した。最終 SVG は `<img>` 経由で正常表示されるが、レンダリング毎に約 100 件の CSP 違反コンソールエラーが発生し、39/49 の E2E が依拠する `withProductionCsp`（`assertNoViolations`）ガートを通せない。blob/srcdoc iframe でも Chromium が親の CSP を子へ伝播するため回避不可。
+
+したがって **描画は mermaid を使わず、presentation 属性のみの自前 SVG レンダラ（`toSvg`）で行う**。`mermaid` 依存は撤去する（`toMermaid` は文字列生成のみで mermaid ライブラリ不要）。表示は生成 SVG を blob URL の `<img>` で行い（スクリプト非実行・CSP 隔離）、同じ SVG 文字列から SVG/PNG をダウンロードする。
 
 ### 中間モデル（well-defined interface）
 
@@ -150,9 +161,8 @@ interface ParseResult {
 ## 依存追加
 
 - `node-sql-parser`（CREATE TABLE パース、ブラウザ動作可・dynamic import）
-- `mermaid`（ER 図描画、dynamic import で当該ページに限定）
 
-両者とも `package.json` 追加時に `package-lock.json` の同期を確認する。
+`mermaid` は描画方式の決定（上記）により **不採用**。描画は自前 SVG レンダラで行い外部依存を増やさない。`package.json` 追加時は `package-lock.json` の同期を確認する。
 
 ## カテゴリ・メタ情報
 
