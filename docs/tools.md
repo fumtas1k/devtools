@@ -40,6 +40,7 @@
   - [HARビューア＆サニタイザ](#harビューアサニタイザ)
   - [CSR・鍵ペアジェネレータ](#csr鍵ペアジェネレータ)
   - [markdownエディタ](#markdownエディタ)
+  - [DDL → ER図ジェネレータ](#ddl--er図ジェネレータ)
 
 ## 生成
 
@@ -772,3 +773,28 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **入力形式**: HEX（`#rgb` / `#rrggbb`）と `rgb()` のみ。HSL・OKLCH・名前付き色（`red` 等）は非対応
 - **最低 2 色**: マトリクス描画には有効な色が 2 つ以上必要。2 色未満の場合は案内文を表示
 - **全処理はブラウザ内で完結し、入力した色を外部サーバーに送信しない**
+
+### DDL → ER図ジェネレータ
+
+#### 仕組み・アルゴリズム
+
+`CREATE TABLE` 文（MySQL / PostgreSQL）を `node-sql-parser` でパースし、テーブル・カラム・FK 制約の中間モデルを構築する。中間モデルを 2 系統の出力に変換する。
+
+- **DDL パース（`parse.ts`）**: `node-sql-parser` の `Parser` を dynamic import で遅延ロードし、`astify(ddl, { database: dialect })` で AST を得る。AST からテーブル定義（カラム名・型・NOT NULL）と FK 制約（`FOREIGN KEY ... REFERENCES`・列定義内 `REFERENCES`）を正規化して中間モデル（`ErdTable[]`）に変換する。
+- **Mermaid 記法生成（`mermaid.ts`、`toMermaid`）**: 中間モデルから `erDiagram` 記法のテキストを生成する（mermaid ライブラリ不使用、テキスト出力のみ）。FK があるテーブル間に `||--o{` 等の関係線を出力する。
+- **自前 SVG レンダラ（`svg.ts`、`toSvg`）**: 中間モデルから直接 SVG を生成する純関数。等幅フォント幅推定で DOM 非依存。カラム行は `<rect>` + `<text>` の presentation 属性（`fill` / `stroke` / `font-size` 等）のみで描画し、`style=` 属性・`<style>` タグを一切使用しない（CSP `style-src 'unsafe-inline'` 不要）。FK リレーション線は `<line>` / `<path>` で描画。
+- **表示**: 生成した SVG を `URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))` で blob URL 化し、`<img src={blobUrl}>` で表示する。blob URL 経由の `<img>` はスクリプト実行の心配がなく、CSP 隔離も保たれる。
+- **PNG 変換**: blob URL を `<canvas>` で描画し `toBlob('image/png')` でダウンロード。
+
+#### 準拠仕様
+
+- MySQL / PostgreSQL の `CREATE TABLE` 構文（方言は `node-sql-parser` が吸収）。
+- FK 対象: `CONSTRAINT ... FOREIGN KEY (col) REFERENCES tbl(col)` および列定義の `col TYPE REFERENCES tbl(col)` 記法。
+- Mermaid ER 記法（[https://mermaid.js.org/syntax/entityRelationshipDiagram.html](https://mermaid.js.org/syntax/entityRelationshipDiagram.html)）。
+
+#### 制限・エッジケース
+
+- **`ALTER TABLE` FK 非対応**: `CREATE TABLE` 内の制約のみを対象とする。`ALTER TABLE ... ADD CONSTRAINT FOREIGN KEY` は未対応。
+- **命名規則推測なし**: `user_id → users.id` のような名前ベースの関係推測は行わない。明示的な FK 定義のみからリレーション線を生成する。
+- **mermaid ライブラリ不使用**: mermaid の `render()` は描画時に一時 DOM へインラインスタイルを挿入するため、本プロジェクトの strict CSP（`style-src 'unsafe-inline'` なし）と根本衝突する（詳細は `docs/decisions.md` [122]）。コピー用の Mermaid テキスト生成は自前実装で行い、描画は自前 SVG レンダラが担う。
+- **全処理はブラウザ内で完結し、入力 DDL を外部サーバーに送信しない**。
