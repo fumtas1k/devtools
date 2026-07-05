@@ -23,13 +23,14 @@
 ## Task 1: スキル本体 SKILL.md を作成
 
 **Files:**
+
 - Create: `.agents/skills/retro/SKILL.md`
 
 参考にする既存フォーマット: `.agents/skills/test-gates/SKILL.md`（フロントマターは `name` + `description` の2キーのみ、`---` で囲む）。
 
 - [ ] **Step 1: `.agents/skills/retro/SKILL.md` を以下の内容で作成**
 
-````markdown
+```markdown
 ---
 name: retro
 description: PR マージ後の振り返り（retro / レトロ / 振り返り）。対象PRの作業から気づき（手戻り・レビュー指摘・つまずき）を、レビューコメント・docs/agent-lessons.md・会話履歴の3ソースから抽出し、CLAUDE.md 11章の基準で5分類に仕分けして、承認された分だけドキュメント改善PRを作る。ユーザーが `/retro`、「振り返り」「レトロ」「retro して」等と言ったとき発動。手動起動が主で、対象PRは引数指定または直近マージPR。
@@ -61,13 +62,13 @@ YAGNI 寄りに倒し、Step 4 で必ず停止してユーザー承認を挟む�
 各気づきを次の5分類に振り分ける。11章の「バッファ→昇格」モデルと二重化しないよう、
 **最終反映先へ直接**振り分ける（全部を agent-lessons バッファに通さない）。
 
-| 分類 | 反映先 | 判定基準 |
-|---|---|---|
-| (a) 再発防止に値する共通規約 | `.agents/rules/common.md` | 全エージェント・全開発に適用される |
-| (b) Claude 固有の運用改善 | `CLAUDE.md` / `.claude/rules/*` | Claude Code の harness 挙動・権限に紐づく |
-| (c) 手順が複雑・再利用性が高い | 新規 skill 化提案 | 3ステップ以上の定型手順、覚えにくいフラグ群 |
-| (d) 特定ツール紐付きの実装メモ | `docs/agent-lessons.md` 追記 | 個別コンポーネントのリスク・実装知見 |
-| (e) 一度限りの TIP／既に強制済み | 破棄 | コード・Hook・lint で既に担保 |
+| 分類                             | 反映先                          | 判定基準                                    |
+| -------------------------------- | ------------------------------- | ------------------------------------------- |
+| (a) 再発防止に値する共通規約     | `.agents/rules/common.md`       | 全エージェント・全開発に適用される          |
+| (b) Claude 固有の運用改善        | `CLAUDE.md` / `.claude/rules/*` | Claude Code の harness 挙動・権限に紐づく   |
+| (c) 手順が複雑・再利用性が高い   | 新規 skill 化提案               | 3ステップ以上の定型手順、覚えにくいフラグ群 |
+| (d) 特定ツール紐付きの実装メモ   | `docs/agent-lessons.md` 追記    | 個別コンポーネントのリスク・実装知見        |
+| (e) 一度限りの TIP／既に強制済み | 破棄                            | コード・Hook・lint で既に担保               |
 
 ## Step 4 — 提案の提示（ここで必ず停止）
 
@@ -86,7 +87,7 @@ YAGNI 寄りに倒し、Step 4 で必ず停止してユーザー承認を挟む�
 
 - マージ検知の自動化（PostToolUse フック等）は第1弾スコープ外。設計上の留保は
   `docs/superpowers/specs/2026-07-05-retro-skill-design.md` を参照。
-````
+```
 
 - [ ] **Step 2: フロントマターの妥当性を確認**
 
@@ -107,6 +108,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 2: Claude Code discovery 用 symlink を作成
 
 **Files:**
+
 - Create: `.claude/skills/retro` → `../../.agents/skills/retro`
 
 既存の symlink 実例: `.claude/skills/test-gates -> ../../.agents/skills/test-gates`（相対パス）。
@@ -123,6 +125,7 @@ ln -s ../../.agents/skills/retro .claude/skills/retro
 ls -l .claude/skills/retro
 cat .claude/skills/retro/SKILL.md | head -3
 ```
+
 Expected: `retro -> ../../.agents/skills/retro` と表示され、`head` が Task 1 のフロントマター（`name: retro`）を出力する（＝解決成功）。
 
 - [ ] **Step 3: コミット**
@@ -139,6 +142,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 3: 自作スキル出典表に retro を追記
 
 **Files:**
+
 - Modify: `.agents/skills/README.md`
 
 - [ ] **Step 1: 該当行を確認**

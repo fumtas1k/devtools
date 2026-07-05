@@ -42,16 +42,17 @@ PR マージ後に、そのPRの作業から得られた気づき（手戻り・
 
 ## 3. 配置と成果物
 
-| 部品 | パス | 説明 |
-|---|---|---|
-| スキル本体 | `.agents/skills/retro/SKILL.md` | 全エージェント共通の正本。手順・分類基準・停止ゲートを直書き |
-| symlink（必須） | `.claude/skills/retro → ../../.agents/skills/retro` | これが無いと Claude Code の Skill tool から見えない。既存自作スキル（test-gates 等）と同じ登録方式。git 管理対象 |
-| 出典表への追記 | `.agents/skills/README.md` | `dads-design-system / test-gates` の「本リポジトリ自作」行に `retro` を追記。`skills-lock.json` は外部由来専用なので登録不要 |
+| 部品            | パス                                                | 説明                                                                                                                         |
+| --------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| スキル本体      | `.agents/skills/retro/SKILL.md`                     | 全エージェント共通の正本。手順・分類基準・停止ゲートを直書き                                                                 |
+| symlink（必須） | `.claude/skills/retro → ../../.agents/skills/retro` | これが無いと Claude Code の Skill tool から見えない。既存自作スキル（test-gates 等）と同じ登録方式。git 管理対象             |
+| 出典表への追記  | `.agents/skills/README.md`                          | `dads-design-system / test-gates` の「本リポジトリ自作」行に `retro` を追記。`skills-lock.json` は外部由来専用なので登録不要 |
 
 **設計上の分離**: スキル本体（＝全エージェント共通の正本）と、将来のトリガー層（＝各エージェント固有）を分ける。
 これにより将来 Codex/Gemini 側の自動トリガーを足すときもスキル本体をそのまま再利用できる。
 
 同梱する無関係な設定変更（ユーザー承認済み・本PRに同梱）:
+
 - `.claude/settings.json`: `model: opusplan → opus[1m]`、`permissions.defaultMode: default → auto`
   （retro とは独立の設定変更。`defaultMode: auto` はリポジトリ全体の権限モードを変える点を承知のうえ同梱）
 
@@ -93,13 +94,13 @@ retro の手順（5ステップ＋分類表）はその分量に収まる。補�
 
 ### Step 3 — 仕分け判定（CLAUDE.md 11章準拠、最終反映先へ直接ルーティング）
 
-| 分類 | 反映先 | 判定基準 |
-|---|---|---|
-| (a) 再発防止に値する共通規約 | `.agents/rules/common.md` | 全エージェント・全開発に適用される |
-| (b) Claude 固有の運用改善 | `CLAUDE.md` / `.claude/rules/*` | Claude Code の harness 挙動・権限に紐づく |
-| (c) 手順が複雑・再利用性が高い | 新規 skill 化提案 | 3ステップ以上の定型手順、覚えにくいフラグ群 |
-| (d) 特定ツール紐付きの実装メモ | `docs/agent-lessons.md` 追記 | 個別コンポーネントのリスク・実装知見 |
-| (e) 一度限りの TIP／既に強制済み | 破棄 | コード・Hook・lint で既に担保 |
+| 分類                             | 反映先                          | 判定基準                                    |
+| -------------------------------- | ------------------------------- | ------------------------------------------- |
+| (a) 再発防止に値する共通規約     | `.agents/rules/common.md`       | 全エージェント・全開発に適用される          |
+| (b) Claude 固有の運用改善        | `CLAUDE.md` / `.claude/rules/*` | Claude Code の harness 挙動・権限に紐づく   |
+| (c) 手順が複雑・再利用性が高い   | 新規 skill 化提案               | 3ステップ以上の定型手順、覚えにくいフラグ群 |
+| (d) 特定ツール紐付きの実装メモ   | `docs/agent-lessons.md` 追記    | 個別コンポーネントのリスク・実装知見        |
+| (e) 一度限りの TIP／既に強制済み | 破棄                            | コード・Hook・lint で既に担保               |
 
 11章の「バッファ→昇格」モデルと二重化しないよう、retro は各気づきを**最終反映先へ直接**振り分ける
 （全部を agent-lessons バッファに通さない）。
