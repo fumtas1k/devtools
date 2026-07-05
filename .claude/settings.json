@@ -91,7 +91,7 @@
     }
   },
   "permissions": {
-    "defaultMode": "auto",
+    "defaultMode": "default",
     "allow": [
       "Read(./**)",
       "Read(~/.claude/**)",
