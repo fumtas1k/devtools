@@ -92,6 +92,7 @@
 | `asn1js`                    | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ                    |
 | `marked`                    | Markdown パース・HTML 変換（GFM 対応。`gfm: true`, `breaks: true`）。出力は既存 `sanitizeHtml` でサニタイズ        | markdownエディタ                         |
 | `node-sql-parser`           | DDL（`CREATE TABLE`）のパース。dynamic import で遅延ロード                                                         | DDL → ER図ジェネレータ                   |
+| `fflate`                    | SAML HTTP-Redirect binding の raw deflate 展開（`decompressSync` は raw deflate/zlib/gzip を自動判定）             | SAMLデコーダ                             |
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
@@ -220,6 +221,7 @@ devtools/
         ├── key/                # 鍵フォーマット変換（types.ts / detect.ts / convert.ts / index.ts）
         ├── har/                # HARビューア＆サニタイザ（types.ts / rules.ts / parse.ts / sanitize.ts / index.ts、__tests__ colocated）
         ├── csr/                # CSR・鍵ペアジェネレータ（types.ts / generate.ts / parse.ts / index.ts）
+        ├── saml/               # SAMLデコーダ（types.ts / decode.ts / parse.ts / checks.ts / format.ts / index.ts）
         ├── dummy-personal-data/ # 日本語ダミー個人データ生成（types.ts / dictionaries.ts / generate.ts / serialize.ts、__tests__ colocated）
         ├── dataTransferSnapshot.ts  # DataTransfer 捕捉・フレーバー列挙（clipboard-inspector が利用）
         ├── sanitizeHtml.ts          # 許可リスト方式 HTML サニタイザ（clipboard-inspector が利用）
@@ -291,7 +293,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全31ツール）
+## 4. ツール一覧（全32ツール）
 
 ### カテゴリ A: 生成ツール（`generate`）
 
@@ -322,6 +324,7 @@ devtools/
 | 11  | Base64エンコード/デコード | `base64`       | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                                                                                                                                                                                                       |
 | 12  | JWTデコーダー             | `jwt-decoder`  | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応                                                                                                                                                                                               |
 | 25  | SSL/TLS証明書デコーダ     | `cert-decoder` | PEM/DER/PKCS#7/PKCS#12（.pfx/.p12）証明書を解析し Subject/SAN/有効期限/署名アルゴリズム/SCT を表示。複数証明書のチェーン並べ替え・署名検証（pkijs + Web Crypto）対応。PKCS#12 はパスワード復号・秘密鍵（メタ情報常時／PKCS#8 PEM トグル開示）含む。全処理ブラウザ内完結 |
+| 32  | SAMLデコーダ              | `saml-decoder` | SSO の SAMLResponse / AuthnRequest を URL/URLエンコード/base64/base64+deflate/生XML の5形式から自動判定デコードし、Assertion の内容と Status・有効期限・Audience の定番チェックを表示。XMLDSig 署名検証・EncryptedAssertion 復号は非対応。全処理ブラウザ内完結          |
 
 ### カテゴリ D: 変換・解析ツール（`convert`）
 
@@ -1361,6 +1364,55 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.33 SAMLデコーダ（`saml-decoder`）
+
+**概要:** SSO の SAMLResponse / SAMLRequest（AuthnRequest）を貼り付けると入力形式を自動判定してデコードし、Assertion の構造表示と定番チェック（Status / 有効期間 / Audience / NameID）を行うツール。Assertion は氏名・メールアドレス等の PII を含むため、外部サービスに貼れない現場向けに全処理をブラウザ内で完結させる。
+
+**入力:** SAMLResponse / SAMLRequest のテキスト（URL 全体・URLエンコード済み・base64・base64+deflate・生 XML のいずれか）。SP entityID の任意入力欄（Audience 照合用）。
+
+**処理（自動判定デコードチェーン、`decodeSamlInput`）:**
+
+1. URL 全体の場合は `SAMLResponse` / `SAMLRequest` クエリパラメータを自前パースで抽出する（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から抽出し percent エンコードのまま保持する）
+2. 生 XML（`<` で始まる）ならそのまま採用
+3. `%xx` を含む場合は URL デコード（失敗時はそのまま続行）し、再度生 XML 判定
+4. base64 デコード
+5. UTF-8 として XML と解釈できれば HTTP-POST binding と判定
+6. 解釈できなければ `fflate` の `decompressSync`（raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定
+
+適用した変換ステップを UI に表示する。
+
+**パース（`parseSamlXml`）:** `DOMParser` で名前空間 URI ベース（`getElementsByTagNameNS` 等）に解決し prefix 非依存でパースする。Response は Issuer / Status（StatusMessage 含む）/ Destination / InResponseTo / IssueInstant と、Assertion ごとの NameID・属性テーブル・Conditions・AuthnStatement・SubjectConfirmationData を構造化する。AuthnRequest は Issuer / Destination / AssertionConsumerServiceURL / ProtocolBinding / NameIDPolicy / RequestedAuthnContext を構造化する。Response・Assertion 直下の `ds:Signature` 有無、`EncryptedAssertion` の件数も検出する（署名検証・復号は非対応、存在表示のみ）。
+
+**定番チェック（`runResponseChecks`、Response のみ・現在時刻基準）:**
+
+1. Status が Success か（Success 以外はエラー表示 + StatusMessage）
+2. Conditions の NotBefore / NotOnOrAfter が有効期間内か（`NotOnOrAfter` は仕様通り排他境界として判定）。タイムゾーン指定（`Z` / `±hh:mm`）のない日時はこの端末のローカル時刻として解釈し警告を付記する。パース不能な日時は「有効期間内」と誤判定せず警告表示に倒す
+3. Audience / Recipient の値表示。SP entityID 入力時のみ厳密一致で照合結果を表示
+4. NameID の有無
+
+各項目を成功/警告/エラー/情報で色分け表示（`StatusBadge` / `NotificationBanner`）。
+
+**出力:**
+
+- 適用した変換ステップの表示
+- Response/AuthnRequest のサマリと定番チェックリスト（Response のみ）
+- Assertion ごとの構造表示（NameID・属性テーブル・Conditions・AuthnStatement・SubjectConfirmationData）
+- 整形済み生 XML の折りたたみ表示 + `CopyButton`
+
+**モジュール構成:** `src/utils/saml/`（`types.ts` 型定義 / `decode.ts` 自動判定デコードチェーン / `parse.ts` XML → 構造化モデル / `checks.ts` 定番チェックリスト / `format.ts` XML 整形 / `index.ts`）/ `src/components/tools/SamlDecoder.tsx` / `src/pages/tools/saml-decoder.astro`
+
+**追加依存:** `fflate`（raw deflate 展開）。
+
+**既知の制限:**
+
+- XMLDSig 署名検証・`EncryptedAssertion` の復号・LogoutRequest/LogoutResponse 等の他メッセージ型は非対応（署名・暗号化は存在の有無のみ表示）
+- ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
+- 全処理はブラウザ内で完結し、入力（Assertion に含まれる PII を含む）を外部サーバーに送信しない
+
+**スコープ外（v1）:** XMLDSig 署名検証（C14N 実装）・EncryptedAssertion 復号・LogoutRequest/LogoutResponse 等の他メッセージ型・共有用マスク出力（secret-scrubber 連携）
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1531,6 +1583,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] コントラスト比マトリクス（`contrast-matrix`）
   - [x] 日本語ダミー個人データ生成（`dummy-personal-data`）
   - [x] DDL → ER図ジェネレータ（`ddl-er-diagram`）
+  - [x] SAMLデコーダ（`saml-decoder`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
