@@ -62,14 +62,12 @@ test.describe('SAMLデコーダ', () => {
   });
 
   test('陽性対照: Status Responder はエラー表示になる', async ({ page }) => {
-    await page
-      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
-      .fill(
-        responseXml({
-          notOnOrAfterOffsetMs: 300_000,
-          statusCode: 'urn:oasis:names:tc:SAML:2.0:status:Responder',
-        })
-      );
+    await page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/).fill(
+      responseXml({
+        notOnOrAfterOffsetMs: 300_000,
+        statusCode: 'urn:oasis:names:tc:SAML:2.0:status:Responder',
+      })
+    );
     await expect(page.getByText('Success ではありません', { exact: false })).toBeVisible();
   });
 
