@@ -1,0 +1,83 @@
+import { decompressSync } from 'fflate';
+import type { DecodedInput } from './types';
+
+const utf8 = new TextDecoder('utf-8', { fatal: true });
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+/**
+ * SAML メッセージ入力の自動判定デコード。
+ * URL 全体 / URL エンコード base64 / base64（POST）/ base64+deflate（Redirect）/ 生 XML に対応。
+ */
+export function decodeSamlInput(raw: string): DecodedInput {
+  const steps: string[] = [];
+  let text = raw.trim();
+  if (!text) throw new Error('入力が空です');
+
+  // 1. URL 全体 → SAMLResponse / SAMLRequest パラメータ抽出（searchParams.get は URL デコード済みを返す）
+  if (/^https?:\/\//i.test(text)) {
+    let url: URL;
+    try {
+      url = new URL(text);
+    } catch {
+      throw new Error('URL として解釈できません');
+    }
+    const param = url.searchParams.get('SAMLResponse') ?? url.searchParams.get('SAMLRequest');
+    if (!param) throw new Error('URL に SAMLResponse / SAMLRequest パラメータが見つかりません');
+    steps.push('URL からパラメータ抽出');
+    text = param;
+  }
+
+  // 2. 生 XML
+  if (text.startsWith('<')) {
+    return { xml: text, steps: [...steps, '生 XML と判定'], binding: 'xml' };
+  }
+
+  // 3. URL エンコード解除（%xx を含む場合のみ。復号失敗はそのまま続行）
+  if (/%[0-9a-fA-F]{2}/.test(text)) {
+    try {
+      text = decodeURIComponent(text);
+      steps.push('URL デコード');
+    } catch {
+      /* %xx が偶然含まれる base64 の可能性があるため無視 */
+    }
+  }
+
+  // 4. base64
+  let bytes: Uint8Array;
+  try {
+    bytes = base64ToBytes(text.replace(/\s+/g, ''));
+  } catch {
+    throw new Error(
+      'base64 として解釈できません（SAMLResponse / SAMLRequest の値か確認してください）'
+    );
+  }
+  steps.push('base64 デコード');
+
+  // 5. そのまま XML → HTTP-POST binding
+  try {
+    const asText = utf8.decode(bytes);
+    if (asText.trimStart().startsWith('<')) {
+      return { xml: asText, steps, binding: 'post' };
+    }
+  } catch {
+    /* UTF-8 でない → deflate 圧縮の可能性 */
+  }
+
+  // 6. deflate 展開 → HTTP-Redirect binding（decompressSync は raw deflate / zlib / gzip を自動判定）
+  let inflated: string;
+  try {
+    inflated = utf8.decode(decompressSync(bytes));
+  } catch {
+    throw new Error('デコード結果が XML ではありません（deflate 展開にも失敗しました）');
+  }
+  if (!inflated.trimStart().startsWith('<')) {
+    throw new Error('デコード結果が XML ではありません（SAML メッセージか確認してください）');
+  }
+  return { xml: inflated, steps: [...steps, 'deflate 展開'], binding: 'redirect' };
+}
