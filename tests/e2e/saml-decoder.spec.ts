@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForReactHydration } from './helpers';
 
 /** 有効期間を現在時刻基準で生成する Response XML（E2E は実時刻でチェックが走るため動的に組む） */
 function responseXml(opts: { notOnOrAfterOffsetMs: number; statusCode?: string }): string {
@@ -32,8 +33,8 @@ test.describe('SAMLデコーダ', () => {
     await page.goto('/tools/saml-decoder');
     // client:load の Astro island hydration 完了前に fill() すると入力イベントが
     // React にバインドされておらず state 更新が発生しない（サンドボックス環境で
-    // 特に顕在化する race）。hydration 完了を待ってから操作する。
-    await page.waitForLoadState('networkidle');
+    // 特に顕在化する race）。hydration 完了を正典 helper で待ってから操作する。
+    await waitForReactHydration(page);
   });
 
   test('有効な Response を貼ると内容とチェックリストが表示される', async ({ page }) => {
