@@ -368,7 +368,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 #### 仕組み・アルゴリズム
 
 - 入力形式を `decode.ts` の `decodeSamlInput` で自動判定する。URL 全体なら `SAMLResponse` / `SAMLRequest` クエリパラメータを抽出（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から自前パースし percent エンコードのまま `+` を保持する）→ 生 XML 判定 → URL デコード → base64 デコード → UTF-8 として XML と解釈できれば HTTP-POST binding、できなければ `fflate` の `decompressSync`（raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定する。適用した変換ステップは UI に表示する
-- `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy を抽出する。`ds:Signature` の有無・`EncryptedAssertion` の件数も検出する（存在表示のみ、検証・復号はしない）
+- `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy/RequestedAuthnContext を抽出する。`ds:Signature` の有無・`EncryptedAssertion` の件数も検出する（存在表示のみ、検証・復号はしない）
 - `checks.ts` の `runResponseChecks` が Response の定番チェック（Status / 有効期間 / Audience・Recipient / NameID）を現在時刻基準で実行する。`NotOnOrAfter` は SAML 仕様どおりその時刻自体を含まない排他境界（`now >= notOnOrAfter` で期限切れ）として判定する
   - タイムゾーン指定（`Z` / `±hh:mm`）のない `NotBefore` / `NotOnOrAfter` はこの端末のローカル時刻として解釈されるため実行環境依存になる旨を警告として注記しつつ、判定自体は継続する
   - `Date` でパース不能な日時は「有効期間内」と誤って表示しないよう warning 扱いにする
