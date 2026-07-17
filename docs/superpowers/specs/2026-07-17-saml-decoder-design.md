@@ -55,15 +55,15 @@ POST / Redirect どちらのバインディング由来かが分かるように�
 
 ## 実装構成
 
-| 項目           | 内容                                                                                       |
-| :------------- | :----------------------------------------------------------------------------------------- |
-| ロジック       | `src/utils/saml.ts` — デコードチェーン（形式自動判定）+ パーサ                             |
-| UI             | `src/components/tools/SamlDecoder.tsx`                                                     |
-| ページ         | `src/pages/tools/saml-decoder.astro`（`client:load`）                                      |
-| カテゴリ       | `encode`（jwt-decoder / cert-decoder と同列）                                              |
-| yomi           | `さむるでこーだ`                                                                           |
-| 新規依存       | `fflate` のみ（raw deflate 展開用。pako より小さく TypeScript 型定義同梱）                 |
-| XML パース     | `DOMParser`。名前空間 URI ベース（`getElementsByTagNameNS` 等）で要素解決し prefix 非依存 |
+| 項目       | 内容                                                                                      |
+| :--------- | :---------------------------------------------------------------------------------------- |
+| ロジック   | `src/utils/saml.ts` — デコードチェーン（形式自動判定）+ パーサ                            |
+| UI         | `src/components/tools/SamlDecoder.tsx`                                                    |
+| ページ     | `src/pages/tools/saml-decoder.astro`（`client:load`）                                     |
+| カテゴリ   | `encode`（jwt-decoder / cert-decoder と同列）                                             |
+| yomi       | `さむるでこーだ`                                                                          |
+| 新規依存   | `fflate` のみ（raw deflate 展開用。pako より小さく TypeScript 型定義同梱）                |
+| XML パース | `DOMParser`。名前空間 URI ベース（`getElementsByTagNameNS` 等）で要素解決し prefix 非依存 |
 
 ### セキュリティ上の注意
 
