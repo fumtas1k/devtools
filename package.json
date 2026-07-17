@@ -40,6 +40,7 @@
     "bwip-js": "^4.9.0",
     "encoding-japanese": "2.2.0",
     "fast-xml-parser": "5.5.11",
+    "fflate": "0.8.3",
     "jmespath": "0.16.0",
     "jsbarcode": "^3.12.3",
     "jsonc-parser": "3.3.1",
