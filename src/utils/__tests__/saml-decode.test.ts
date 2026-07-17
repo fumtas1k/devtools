@@ -73,3 +73,23 @@ describe('decodeSamlInput', () => {
     expect(() => decodeSamlInput('   ')).toThrow(/入力が空/);
   });
 });
+
+describe('decodeSamlInput: レビュー指摘の回帰', () => {
+  it('URL クエリ中の生の "+" を含む base64 を破壊せずデコードする（陽性対照）', () => {
+    const b64 = toBase64(SAMPLE_RESPONSE_XML);
+    // フィクスチャの base64 表現が "+" を含むことを前提にしたテスト
+    // （searchParams.get は "+" を空白に変換して壊すため、含まれていないと検知能力が証明できない）
+    expect(b64).toContain('+');
+    const url = `https://sp.example.com/acs?SAMLResponse=${b64}`;
+    const r = decodeSamlInput(url);
+    expect(r.binding).toBe('post');
+    expect(r.xml).toContain('<samlp:Response');
+  });
+
+  it('URL エンコードされた生 XML は binding xml と判定する', () => {
+    const r = decodeSamlInput(encodeURIComponent(SAMPLE_RESPONSE_XML));
+    expect(r.binding).toBe('xml');
+    expect(r.xml).toBe(SAMPLE_RESPONSE_XML);
+    expect(r.steps).toEqual(['URL デコード', '生 XML と判定']);
+  });
+});

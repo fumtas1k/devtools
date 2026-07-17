@@ -19,7 +19,9 @@ export function decodeSamlInput(raw: string): DecodedInput {
   let text = raw.trim();
   if (!text) throw new Error('入力が空です');
 
-  // 1. URL 全体 → SAMLResponse / SAMLRequest パラメータ抽出（searchParams.get は URL デコード済みを返す）
+  // 1. URL 全体 → SAMLResponse / SAMLRequest パラメータ抽出
+  // searchParams.get() は "+" を空白に変換してしまい base64 を破壊するため、
+  // url.search の生クエリ文字列から自前でパラメータを取り出す（値は percent エンコードのまま保持）
   if (/^https?:\/\//i.test(text)) {
     let url: URL;
     try {
@@ -27,7 +29,17 @@ export function decodeSamlInput(raw: string): DecodedInput {
     } catch {
       throw new Error('URL として解釈できません');
     }
-    const param = url.searchParams.get('SAMLResponse') ?? url.searchParams.get('SAMLRequest');
+    const rawQuery = url.search.slice(1);
+    let param: string | undefined;
+    for (const pair of rawQuery.split('&')) {
+      const eq = pair.indexOf('=');
+      if (eq < 0) continue;
+      const key = pair.slice(0, eq);
+      if (key === 'SAMLResponse' || (key === 'SAMLRequest' && param === undefined)) {
+        param = pair.slice(eq + 1);
+        if (key === 'SAMLResponse') break;
+      }
+    }
     if (!param) throw new Error('URL に SAMLResponse / SAMLRequest パラメータが見つかりません');
     steps.push('URL からパラメータ抽出');
     text = param;
@@ -44,8 +56,13 @@ export function decodeSamlInput(raw: string): DecodedInput {
       text = decodeURIComponent(text);
       steps.push('URL デコード');
     } catch {
-      /* %xx が偶然含まれる base64 の可能性があるため無視 */
+      /* 不正な %-シーケンスの場合はそのまま続行 */
     }
+  }
+
+  // 3.1 URL エンコードされた生 XML の救済（URL デコード後に改めて判定）
+  if (text.startsWith('<')) {
+    return { xml: text, steps: [...steps, '生 XML と判定'], binding: 'xml' };
   }
 
   // 4. base64

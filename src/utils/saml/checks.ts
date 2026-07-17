@@ -58,26 +58,50 @@ export function runResponseChecks(res: SamlResponseData, opts: CheckOptions = {}
     }
     const notBefore = c.notBefore ? new Date(c.notBefore) : undefined;
     const notOnOrAfter = c.notOnOrAfter ? new Date(c.notOnOrAfter) : undefined;
+
+    if (
+      (notBefore && isNaN(notBefore.getTime())) ||
+      (notOnOrAfter && isNaN(notOnOrAfter.getTime()))
+    ) {
+      items.push({
+        id: `validity-${i}`,
+        label,
+        status: 'warning',
+        detail: `日時を解釈できません（NotBefore: ${c.notBefore ?? '-'} / NotOnOrAfter: ${c.notOnOrAfter ?? '-'}）`,
+      });
+      return;
+    }
+
+    // timezone designator（Z または ±hh:mm / ±hhmm）が無い場合、端末のローカル時刻として
+    // 解釈されるため判定が実行環境依存になる。判定自体は続行しつつ注記を付ける
+    const hasTimezone = (s: string) => /(?:Z|[+-]\d{2}:?\d{2})$/.test(s);
+    const missingTimezone =
+      (!!c.notBefore && !hasTimezone(c.notBefore)) ||
+      (!!c.notOnOrAfter && !hasTimezone(c.notOnOrAfter));
+    const tzNote = missingTimezone
+      ? '\n※ タイムゾーン指定がないため、この端末のローカル時刻として解釈しています'
+      : '';
+
     if (notBefore && now < notBefore) {
       items.push({
         id: `validity-${i}`,
         label,
         status: 'error',
-        detail: `有効期間前です（NotBefore: ${c.notBefore}）。IdP / SP の時刻ずれ（クロックスキュー）の可能性があります`,
+        detail: `有効期間前です（NotBefore: ${c.notBefore}）。IdP / SP の時刻ずれ（クロックスキュー）の可能性があります${tzNote}`,
       });
     } else if (notOnOrAfter && now >= notOnOrAfter) {
       items.push({
         id: `validity-${i}`,
         label,
         status: 'error',
-        detail: `期限切れです（NotOnOrAfter: ${c.notOnOrAfter}）`,
+        detail: `期限切れです（NotOnOrAfter: ${c.notOnOrAfter}）${tzNote}`,
       });
     } else {
       items.push({
         id: `validity-${i}`,
         label,
-        status: 'success',
-        detail: `有効期間内です（${c.notBefore ?? '-'} 〜 ${c.notOnOrAfter ?? '-'}）`,
+        status: missingTimezone ? 'warning' : 'success',
+        detail: `有効期間内です（${c.notBefore ?? '-'} 〜 ${c.notOnOrAfter ?? '-'}）${tzNote}`,
       });
     }
   });

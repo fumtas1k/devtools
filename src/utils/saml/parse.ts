@@ -46,7 +46,7 @@ export function parseSamlXml(xml: string): SamlMessage {
   if (root.namespaceURI === NS_P && root.localName === 'AuthnRequest')
     return parseAuthnRequest(root);
   throw new Error(
-    `対応していない SAML メッセージです（${root.localName}）。対応形式: Response / AuthnRequest`
+    `対応していない SAML メッセージです（${root.namespaceURI ?? '名前空間なし'} の ${root.localName}）。SAML 2.0 の Response / AuthnRequest のみ対応しています`
   );
 }
 

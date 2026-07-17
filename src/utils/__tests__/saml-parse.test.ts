@@ -96,4 +96,11 @@ describe('parseSamlXml: 異常系', () => {
       '<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_l1" Version="2.0" IssueInstant="2026-07-17T00:00:00Z"/>';
     expect(() => parseSamlXml(xml)).toThrow(/LogoutRequest/);
   });
+
+  it('SAML 1.1 namespace の Response は namespace URI と SAML 2.0 限定である旨をエラーに含む（陽性対照）', () => {
+    const xml =
+      '<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:1.0:protocol" ID="_r1" IssueInstant="2026-07-17T00:00:00Z"/>';
+    expect(() => parseSamlXml(xml)).toThrow(/urn:oasis:names:tc:SAML:1\.0:protocol/);
+    expect(() => parseSamlXml(xml)).toThrow(/SAML 2\.0/);
+  });
 });

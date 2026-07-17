@@ -117,3 +117,50 @@ describe('runResponseChecks: 陽性対照（fail 側の検知能力を実証）'
     expect(item.status).toBe('error');
   });
 });
+
+describe('runResponseChecks: レビュー指摘の回帰', () => {
+  // Conditions の NotOnOrAfter のみをパース不能な値に差し替える
+  // （SubjectConfirmationData 側の NotOnOrAfter はそのまま残す）
+  const INVALID_DATE_RESPONSE_XML = SAMPLE_RESPONSE_XML.replace(
+    'NotBefore="2026-07-16T23:55:00Z" NotOnOrAfter="2026-07-17T00:05:00Z"',
+    'NotBefore="2026-07-16T23:55:00Z" NotOnOrAfter="not-a-date"'
+  );
+
+  it('パース不能な NotOnOrAfter は success にならず warning になる（陽性対照）', () => {
+    const item = byId(
+      runResponseChecks(parseResponse(INVALID_DATE_RESPONSE_XML), { now: IN_WINDOW }),
+      'validity-0'
+    );
+    expect(item.status).toBe('warning');
+    expect(item.detail).toContain('日時を解釈できません');
+    expect(item.detail).toContain('not-a-date');
+  });
+
+  // NotBefore / NotOnOrAfter からタイムゾーン指定（Z）を除去
+  const NO_TZ_RESPONSE_XML = SAMPLE_RESPONSE_XML.replace(
+    'NotBefore="2026-07-16T23:55:00Z" NotOnOrAfter="2026-07-17T00:05:00Z"',
+    'NotBefore="2026-07-16T23:55:00" NotOnOrAfter="2026-07-17T00:05:00"'
+  );
+  // 同じ「タイムゾーン指定なし」形式で now を作ることで、実行環境の TZ に依存せず
+  // 「窓内」の関係性を保つ（notBefore と notOnOrAfter は共にローカル解釈されるため）
+  const NO_TZ_IN_WINDOW = new Date('2026-07-17T00:02:00');
+  const NO_TZ_AFTER_WINDOW = new Date('2026-07-17T01:00:00');
+
+  it('タイムゾーン指定なしの日時は期間内でも warning に降格し、ローカル時刻解釈の注記が付く（陽性対照）', () => {
+    const item = byId(
+      runResponseChecks(parseResponse(NO_TZ_RESPONSE_XML), { now: NO_TZ_IN_WINDOW }),
+      'validity-0'
+    );
+    expect(item.status).toBe('warning');
+    expect(item.detail).toContain('ローカル時刻');
+  });
+
+  it('タイムゾーン指定なしでも期限切れは error のままで、ローカル時刻解釈の注記が付く', () => {
+    const item = byId(
+      runResponseChecks(parseResponse(NO_TZ_RESPONSE_XML), { now: NO_TZ_AFTER_WINDOW }),
+      'validity-0'
+    );
+    expect(item.status).toBe('error');
+    expect(item.detail).toContain('ローカル時刻');
+  });
+});
