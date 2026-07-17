@@ -1021,7 +1021,7 @@ export { runResponseChecks, type CheckOptions } from './checks';
 - [ ] **Step 4: テストが通ることを確認**
 
 Run: `npm run test -- src/utils/__tests__/saml-checks.test.ts`
-Expected: PASS（陽性対照 8 ケース含む全ケース）
+Expected: PASS（陽性対照 7 ケース含む全ケース）
 
 - [ ] **Step 5: Commit**
 
