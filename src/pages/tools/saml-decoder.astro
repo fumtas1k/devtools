@@ -1,0 +1,28 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { SamlDecoderTool } from '@/components/tools/SamlDecoder';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((t) => t.slug === 'saml-decoder')!;
+---
+
+<ToolLayout tool={tool}>
+  <SamlDecoderTool client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      SSO の SAMLResponse / SAMLRequest（AuthnRequest）をデコードして内容を表示します。 URL
+      全体・URLエンコード・base64（HTTP-POST binding）・base64 + deflate（HTTP-Redirect
+      binding）・生 XML を自動判定します。Assertion には氏名・メールアドレス等の個人情報が
+      含まれますが、全処理はブラウザ内で完結し、データを外部へ送信しません。 XMLDSig 署名の検証と
+      EncryptedAssertion の復号には対応していません。
+    </p>
+    <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
+    <ul class="list-inside list-disc space-y-1 tool-info-list">
+      <li>SSO ログイン失敗時に IdP からの SAMLResponse の Status・有効期限を確認したい</li>
+      <li>Assertion に含まれる NameID・属性が SP の期待と一致しているか確認したい</li>
+      <li>Audience / Destination の設定ミス（entityID 不一致）を切り分けたい</li>
+    </ul>
+  </ToolInfoSection>
+</ToolLayout>
