@@ -4636,3 +4636,30 @@ blob URL / srcdoc iframe 内での描画も検討したが、Chromium は親ド�
 - ✅ `withProductionCsp` ガートが通過する（CSP 違反ゼロ）
 - ✅ mermaid の追加バンドルなし（`node-sql-parser` のみ追加）
 - ⚠️ テーブルレイアウトのアルゴリズムは自前実装のため、複雑なスキーマでのレイアウト最適化に限界がある
+
+---
+
+## [124] SAMLデコーダ: deflate 展開に fflate を採用
+
+**2026-07-17 | ステータス: 採用**
+
+### 背景
+
+SAMLデコーダの HTTP-Redirect binding では、SAMLResponse/SAMLRequest が raw deflate 圧縮 → base64 → URL エンコードの順で URL クエリに埋め込まれる（SAML 2.0 Bindings）。ブラウザの標準 API には deflate 展開手段がなく、展開用ライブラリの選定が必要だった。
+
+### 決断
+
+**deflate 展開ライブラリとして `fflate` を採用する。** 定番の `pako` と比較し、バンドルサイズが小さく TypeScript 型定義を同梱するため型定義用の追加パッケージが不要。`decompressSync` が raw deflate / zlib / gzip を自動判定するため、SAML の仕様上は raw deflate のみ想定されていても、仕様外の zlib ラッパー付き実装で送出する IdP にも耐性がある。
+
+XMLDSig 署名検証は C14N（正規化）の実装コストが大きく、初版スコープ外とした（詳細は `docs/superpowers/specs/2026-07-17-saml-decoder-design.md` 参照。第2版候補として別 issue 化）。
+
+### 却下した選択肢
+
+- **`pako`**: 実績のある定番だが、バンドルサイズが `fflate` より大きく、型定義は `@types/pako` を別途追加する必要がある
+- **XMLDSig 署名検証の同時実装**: C14N（正規化）の実装が山場で難度が高く、初版のスコープ（貼り付け→自動判定デコード→構造表示→定番チェック）に対して過大。EncryptedAssertion 復号・他メッセージ型対応と合わせて第2版候補とした
+
+### 結果・トレードオフ
+
+- ✅ 追加依存は `fflate` のみ。型定義同梱でパッケージ追加が最小限
+- ✅ zlib ラッパー付き実装の IdP にも `decompressSync` の自動判定で耐性がある
+- ⚠️ 署名検証・復号非対応のため、SAMLデコーダの出力はあくまで「中身の確認・トラブルシュート用」であり、正当性の証明には使えない（UI 上に非対応を明記）

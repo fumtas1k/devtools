@@ -23,6 +23,7 @@
   - [Base64 エンコード/デコード](#base64-エンコードデコード)
   - [JWTデコーダー](#jwtデコーダー)
   - [SSL/TLS証明書デコーダ](#ssltls証明書デコーダ)
+  - [SAMLデコーダ](#samlデコーダ)
 - [変換・解析](#変換解析)
   - [JSON / XML 変換](#json--xml-変換)
   - [JSON / CSV 変換](#json--csv-変換)
@@ -361,6 +362,27 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - 失効確認（CRL / OCSP）は行わない。署名検証はチェーン内の隣接ペアに対してのみで、信頼ストアとの照合（ルート CA の信頼性確認）は行わない
 - SCT はタイムスタンプ・ログ ID の表示のみで、署名の暗号検証はしない（best-effort）
 - 全処理はブラウザ内で完結し、入力（社内 CA・本番証明書・秘密鍵を含む）は外部に送信しない
+
+### SAMLデコーダ
+
+#### 仕組み・アルゴリズム
+
+- 入力形式を `decode.ts` の `decodeSamlInput` で自動判定する。URL 全体なら `SAMLResponse` / `SAMLRequest` クエリパラメータを抽出（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から自前パースし percent エンコードのまま `+` を保持する）→ 生 XML 判定 → URL デコード → base64 デコード → UTF-8 として XML と解釈できれば HTTP-POST binding、できなければ `fflate` の `decompressSync`（raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定する。適用した変換ステップは UI に表示する
+- `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy/RequestedAuthnContext を抽出する。`ds:Signature` の有無・`EncryptedAssertion` の件数も検出する（存在表示のみ、検証・復号はしない）
+- `checks.ts` の `runResponseChecks` が Response の定番チェック（Status / 有効期間 / Audience・Recipient / NameID）を現在時刻基準で実行する。`NotOnOrAfter` は SAML 仕様どおりその時刻自体を含まない排他境界（`now >= notOnOrAfter` で期限切れ）として判定する
+  - タイムゾーン指定（`Z` / `±hh:mm`）のない `NotBefore` / `NotOnOrAfter` はこの端末のローカル時刻として解釈されるため実行環境依存になる旨を警告として注記しつつ、判定自体は継続する
+  - `Date` でパース不能な日時は「有効期間内」と誤って表示しないよう warning 扱いにする
+- `format.ts` が表示用に生 XML を整形する
+
+#### 準拠仕様・RFC
+
+- SAML 2.0 Core / Bindings（HTTP-POST・HTTP-Redirect binding）
+
+#### 制限・エッジケース
+
+- XMLDSig 署名検証・EncryptedAssertion の復号・LogoutRequest/LogoutResponse 等の他メッセージ型は非対応（署名・暗号化は存在の有無のみ表示。第2版候補）
+- ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
+- 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない
 
 ## 変換・解析
 

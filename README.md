@@ -62,6 +62,7 @@
 | markdownエディタ                  | markdownをリアルタイムにHTMLプレビュー。GFM（表・取り消し線・コードブロック）対応。HTMLコピー・.mdダウンロード対応。全処理ブラウザ内完結                                                                                                                 |
 | コントラスト比マトリクス          | 任意の N 色の全組合せ（N×N）のコントラスト比を一覧表示。WCAG 2.x の AA/AAA 合否と APCA Lc を併記。計算はブラウザ内で完結                                                                                                                                 |
 | DDL → ER図ジェネレータ            | CREATE TABLE 文（MySQL/PostgreSQL）から ER 図を描画。外部キーからリレーション線を自動生成し、Mermaid コード・SVG・PNG で出力。全処理ブラウザ内完結                                                                                                       |
+| SAMLデコーダ                      | SSO の SAMLResponse / AuthnRequest を自動判定デコードし、Assertion の内容と Status・有効期限・Audience の定番チェックを表示                                                                                                                              |
 
 ## 技術スタック
 

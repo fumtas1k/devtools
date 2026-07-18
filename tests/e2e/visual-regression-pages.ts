@@ -48,6 +48,7 @@ export const PAGES = [
   '/tools/contrast-matrix',
   '/tools/dummy-personal-data',
   '/tools/ddl-er-diagram',
+  '/tools/saml-decoder',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy', '/404']);
