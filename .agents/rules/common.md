@@ -70,9 +70,10 @@ post-PR 代行は不要、CI が最終ゲート。
 1. `src/components/tools/ToolName.tsx` を作成
 2. `src/pages/tools/tool-slug.astro` を作成（`client:load` で React コンポーネントをマウント）
 3. `src/data/tools.ts` の `toolEntries` 配列にエントリを追加（slug / name / description / category / yomi）。`yomi` は並び替え用の読み仮名（ひらがな）で、表示順はこの `yomi` の五十音順に自動ソートされる（手動で位置を決める必要はない）
-4. `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列に `/tools/<slug>` を追加（VRT 対象に登録）。baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を `workflow_dispatch` trigger して生成（mac との font 描画差を回避するためローカル生成は不可）。**漏れた場合は `tests/meta/vrt-pages-coverage.test.ts` が `npm run test` で fail させる**ため CI で必ず検知される（issue #355 で導入）。※ この `workflow_dispatch` をエージェント自身が起動できるかは実行環境のトークン権限に依存する（Claude Code on the web では `actions: write` が無く起動不可・手動トリガー必須 → `.claude/rules/github-web-session.md`。他エージェントは各固有ルール参照）。
-5. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
-6. 候補リスト（`docs/tool-candidates.md`）由来のツールの場合、PR マージ時に該当行の「状態」列へ ✅ と PR 番号を記載する
+4. `src/components/ui/ToolIcon.astro` にツールアイコン（SVG）を追加する。既存アイコンと同じ `{...attrs}` 展開・`currentColor` 方式に従う。**漏れた場合は `tests/meta/tool-icon-coverage.test.ts` が `npm run test` で fail させる**（PR #746 で漏れが発生し手戻りになった実例あり）
+5. `tests/e2e/visual-regression-pages.ts` の `PAGES` 配列に `/tools/<slug>` を追加（VRT 対象に登録）。baseline は CI Linux runner で `Update Visual Regression Baseline` workflow を `workflow_dispatch` trigger して生成（mac との font 描画差を回避するためローカル生成は不可）。**漏れた場合は `tests/meta/vrt-pages-coverage.test.ts` が `npm run test` で fail させる**ため CI で必ず検知される（issue #355 で導入）。※ この `workflow_dispatch` をエージェント自身が起動できるかは実行環境のトークン権限に依存する（Claude Code on the web では `actions: write` が無く起動不可・手動トリガー必須 → `.claude/rules/github-web-session.md`。他エージェントは各固有ルール参照）。**baseline 生成 workflow は対象ブランチへ直接コミットを push する**ため、実行後にローカルから push する場合は先に `git pull --rebase origin <branch>` で取り込むこと（取り込まないと non-fast-forward で拒否される）
+6. 4 章「ドキュメント更新ルール」に従い `README.md` / `SPEC.md` / `docs/decisions.md` を更新
+7. 候補リスト（`docs/tool-candidates.md`）由来のツールの場合、PR マージ時に該当行の「状態」列へ ✅ と PR 番号を記載する
 
 新しい入力欄・ボタン・エラー表示等を実装する前に、`src/components/ui/` の既存共通コンポーネント（`InputField`, `CopyButton`, `DownloadButton` 等）を確認すること。一覧と用途は `.agents/rules/ui-conventions.md` を参照。
 
