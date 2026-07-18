@@ -12,7 +12,7 @@ conductor/
 .claude/*.bak
 .tmp/
 # sandbox セッションの作業キャッシュ（Playwright browsers 等 → .claude/rules/git-and-fs.md）
-tmp/
+/tmp/
 
 # Superpowers extension (Visual brainstorming artifacts and session info)
 .superpowers/

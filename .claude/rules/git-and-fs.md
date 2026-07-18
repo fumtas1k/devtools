@@ -17,7 +17,9 @@
 
 - `git -C <path>` は使わない。既に project dir に居る場合は素の `git` を使う（`git -C` は sandbox 除外パターンに合致せず SSH push が known_hosts 拒否で失敗する）。
 
-## Playwright / E2E の sandbox 制約
+## Playwright / E2E の sandbox 制約（macOS ローカルセッション向け）
+
+本節は macOS ローカルの sandbox-exec 環境で確認した制約。web セッション（claude.ai/code）は Chromium pre-install 済みのコンテナで動くため `playwright install` は不要で、`mach_port_rendezvous` の制約も該当しない。
 
 - ブラウザ未インストール環境では `PLAYWRIGHT_BROWSERS_PATH="$PWD/tmp/claude/ms-playwright"`（リポジトリ内の sandbox 書込可能経路）を指定して `npx playwright install chromium chromium-headless-shell` する。デフォルトの `~/Library/Caches` は書込 deny。キャッシュは未追跡のまま残してよい（次セッションで再利用可）。
 - `node` スクリプトから `chromium.launch()` を直接呼ぶと `mach_port_rendezvous ... Permission denied (1100)` で起動できない。**test runner（`npm run test:e2e` / `npx playwright test`）経由なら起動できる**。スクリーンショット撮影等の単発ブラウザ操作も、一時 spec + 専用 config（起動済みサーバを `baseURL` 参照、`webServer` なし）を作って runner 経由で実行する（一時 spec はコミットしない）。
