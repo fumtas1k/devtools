@@ -92,4 +92,26 @@ describe('decodeSamlInput: レビュー指摘の回帰', () => {
     expect(r.xml).toBe(SAMPLE_RESPONSE_XML);
     expect(r.steps).toEqual(['URL デコード', '生 XML と判定']);
   });
+
+  it('クエリ文字列断片（SAMLResponse=...&RelayState=...）だけの入力からパラメータを抽出する', () => {
+    const url = `SAMLResponse=${encodeURIComponent(toBase64(SAMPLE_RESPONSE_XML))}&RelayState=abc`;
+    const r = decodeSamlInput(url);
+    expect(r.binding).toBe('post');
+    expect(r.xml).toContain('<samlp:Response');
+    expect(r.steps).toContain('クエリ文字列からパラメータ抽出');
+  });
+
+  it('SAMLRequest= で始まるクエリ文字列断片も抽出する', () => {
+    const url = `SAMLRequest=${encodeURIComponent(deflateBase64(AUTHN_REQUEST_XML))}&RelayState=abc`;
+    const r = decodeSamlInput(url);
+    expect(r.binding).toBe('redirect');
+    expect(r.xml).toContain('<samlp:AuthnRequest');
+    expect(r.steps).toContain('クエリ文字列からパラメータ抽出');
+  });
+
+  it('SAMLResponse= / SAMLRequest= で始まらないクエリ断片は対象外（base64 として扱われエラーになる）', () => {
+    // 仕様: 実装を単純に保つため「SAMLResponse=」「SAMLRequest=」で始まる場合のみ救済する。
+    // RelayState= 等が先頭に来る断片は対象外とし、通常の base64 判定にフォールスルーする。
+    expect(() => decodeSamlInput('RelayState=abc&SAMLResponse=xyz')).toThrow();
+  });
 });

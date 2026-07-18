@@ -96,7 +96,9 @@ function CheckList({ items }: { items: CheckItem[] }) {
               </StatusBadge>
               <span className="caption text-default">{item.label}</span>
             </span>
-            <span className="caption break-all text-default">{item.detail}</span>
+            <span className="caption break-all whitespace-pre-line text-default">
+              {item.detail}
+            </span>
           </li>
         ))}
       </ul>
@@ -108,7 +110,9 @@ function CheckList({ items }: { items: CheckItem[] }) {
   );
 }
 
-const ATTR_COLUMNS: TableColumn<SamlAttribute>[] = [
+type KeyedSamlAttribute = SamlAttribute & { key: string };
+
+const ATTR_COLUMNS: TableColumn<KeyedSamlAttribute>[] = [
   {
     key: 'name',
     header: '属性名',
@@ -184,7 +188,11 @@ function AssertionSection({
       {assertion.attributes.length > 0 && (
         <div>
           <h4 className="caption text-muted mb-2">属性（{assertion.attributes.length} 件）</h4>
-          <ResultTable rows={assertion.attributes} columns={ATTR_COLUMNS} getKey={(a) => a.name} />
+          <ResultTable
+            rows={assertion.attributes.map((a, i) => ({ ...a, key: `${i}-${a.name}` }))}
+            columns={ATTR_COLUMNS}
+            getKey={(a) => a.key}
+          />
         </div>
       )}
     </section>
@@ -257,9 +265,9 @@ export function SamlDecoderTool() {
       )}
 
       {ok && (
-        <div className="space-y-4" role="status" aria-live="polite">
-          {/* デコード過程 */}
-          <p className="caption text-muted">
+        <div className="space-y-4">
+          {/* デコード過程（解析成功の簡潔なアナウンス。暗黙 polite のため aria-live は不要） */}
+          <p className="caption text-muted" role="status">
             変換: {ok.decoded.steps.join(' → ')}（{BINDING_LABEL[ok.decoded.binding]}）
           </p>
 
@@ -320,12 +328,7 @@ export function SamlDecoderTool() {
 
           {/* Assertion 詳細 */}
           {response?.assertions.map((a, i) => (
-            <AssertionSection
-              key={a.id ?? i}
-              assertion={a}
-              index={i}
-              total={response.assertions.length}
-            />
+            <AssertionSection key={i} assertion={a} index={i} total={response.assertions.length} />
           ))}
 
           {/* 生 XML */}

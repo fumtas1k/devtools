@@ -11,6 +11,26 @@ function base64ToBytes(b64: string): Uint8Array {
 }
 
 /**
+ * クエリ文字列（`key=value&key=value...` 形式）から SAMLResponse / SAMLRequest の値を抽出する。
+ * searchParams.get() は "+" を空白に変換してしまい base64 を破壊するため、
+ * 生のクエリ文字列から自前でパラメータを取り出す（値は percent エンコードのまま保持）。
+ * SAMLResponse を優先し、無ければ最初の SAMLRequest を採用する。
+ */
+function extractSamlParam(rawQuery: string): string | undefined {
+  let param: string | undefined;
+  for (const pair of rawQuery.split('&')) {
+    const eq = pair.indexOf('=');
+    if (eq < 0) continue;
+    const key = pair.slice(0, eq);
+    if (key === 'SAMLResponse' || (key === 'SAMLRequest' && param === undefined)) {
+      param = pair.slice(eq + 1);
+      if (key === 'SAMLResponse') break;
+    }
+  }
+  return param;
+}
+
+/**
  * SAML メッセージ入力の自動判定デコード。
  * URL 全体 / URL エンコード base64 / base64（POST）/ base64+deflate（Redirect）/ 生 XML に対応。
  */
@@ -20,8 +40,6 @@ export function decodeSamlInput(raw: string): DecodedInput {
   if (!text) throw new Error('入力が空です');
 
   // 1. URL 全体 → SAMLResponse / SAMLRequest パラメータ抽出
-  // searchParams.get() は "+" を空白に変換してしまい base64 を破壊するため、
-  // url.search の生クエリ文字列から自前でパラメータを取り出す（値は percent エンコードのまま保持）
   if (/^https?:\/\//i.test(text)) {
     let url: URL;
     try {
@@ -29,19 +47,18 @@ export function decodeSamlInput(raw: string): DecodedInput {
     } catch {
       throw new Error('URL として解釈できません');
     }
-    const rawQuery = url.search.slice(1);
-    let param: string | undefined;
-    for (const pair of rawQuery.split('&')) {
-      const eq = pair.indexOf('=');
-      if (eq < 0) continue;
-      const key = pair.slice(0, eq);
-      if (key === 'SAMLResponse' || (key === 'SAMLRequest' && param === undefined)) {
-        param = pair.slice(eq + 1);
-        if (key === 'SAMLResponse') break;
-      }
-    }
+    const param = extractSamlParam(url.search.slice(1));
     if (!param) throw new Error('URL に SAMLResponse / SAMLRequest パラメータが見つかりません');
     steps.push('URL からパラメータ抽出');
+    text = param;
+  } else if (/^SAML(Response|Request)=/.test(text)) {
+    // 1.1 クエリ文字列断片の救済（URL 全体ではなく `SAMLResponse=...&RelayState=...` のような
+    // クエリ部分だけを貼り付けた場合）。実装を単純に保つため「SAMLResponse=」「SAMLRequest=」
+    // で始まる場合のみを対象とし、それ以外の並び順（例: RelayState= が先頭）は対象外とする。
+    const param = extractSamlParam(text);
+    if (!param)
+      throw new Error('クエリ文字列に SAMLResponse / SAMLRequest パラメータが見つかりません');
+    steps.push('クエリ文字列からパラメータ抽出');
     text = param;
   }
 
