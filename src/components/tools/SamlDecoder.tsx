@@ -9,6 +9,8 @@ import {
   decodeSamlInput,
   parseSamlXml,
   runResponseChecks,
+  runLogoutRequestChecks,
+  runLogoutResponseChecks,
   formatXml,
   type CheckItem,
   type DecodedInput,
@@ -234,11 +236,15 @@ export function SamlDecoderTool() {
   const ok = result && !result.error ? (result as ParsedOk) : null;
   const response = ok && ok.message.type === 'response' ? ok.message : null;
   const authnRequest = ok && ok.message.type === 'authnRequest' ? ok.message : null;
+  const logoutRequest = ok && ok.message.type === 'logoutRequest' ? ok.message : null;
+  const logoutResponse = ok && ok.message.type === 'logoutResponse' ? ok.message : null;
 
-  const checks = useMemo(
-    () => (response ? runResponseChecks(response, { spEntityId }) : null),
-    [response, spEntityId]
-  );
+  const checks = useMemo(() => {
+    if (response) return runResponseChecks(response, { spEntityId });
+    if (logoutRequest) return runLogoutRequestChecks(logoutRequest);
+    if (logoutResponse) return runLogoutResponseChecks(logoutResponse);
+    return null;
+  }, [response, logoutRequest, logoutResponse, spEntityId]);
 
   const prettyXml = useMemo(() => (ok ? formatXml(ok.decoded.xml) : ''), [ok]);
 
@@ -283,7 +289,10 @@ export function SamlDecoderTool() {
           {/* サマリ */}
           <section className="rounded-lg p-4 bg-subtle">
             <h3 className="body-emphasis text-default mb-3">
-              {response ? 'Response サマリ' : 'AuthnRequest サマリ'}
+              {response && 'Response サマリ'}
+              {authnRequest && 'AuthnRequest サマリ'}
+              {logoutRequest && 'LogoutRequest サマリ'}
+              {logoutResponse && 'LogoutResponse サマリ'}
             </h3>
             {response && (
               <dl className="space-y-1">
@@ -323,9 +332,48 @@ export function SamlDecoderTool() {
                 />
               </dl>
             )}
+            {logoutRequest && (
+              <dl className="space-y-1">
+                <SummaryRow label="Issuer" value={logoutRequest.issuer} />
+                <SummaryRow label="Destination" value={logoutRequest.destination} />
+                <SummaryRow label="IssueInstant" value={logoutRequest.issueInstant} />
+                <SummaryRow label="NotOnOrAfter" value={logoutRequest.notOnOrAfter} />
+                <SummaryRow label="Reason" value={logoutRequest.reason} />
+                <SummaryRow
+                  label="NameID"
+                  value={
+                    logoutRequest.encryptedNameId ? '（暗号化・表示不可）' : logoutRequest.nameId
+                  }
+                />
+                <SummaryRow label="NameID Format" value={logoutRequest.nameIdFormat} />
+                <SummaryRow
+                  label="SessionIndex"
+                  value={logoutRequest.sessionIndexes.join(', ') || undefined}
+                />
+                <SummaryRow
+                  label="署名"
+                  value={logoutRequest.signed ? 'あり（このツールでは検証しません）' : 'なし'}
+                />
+              </dl>
+            )}
+            {logoutResponse && (
+              <dl className="space-y-1">
+                <SummaryRow label="Issuer" value={logoutResponse.issuer} />
+                <SummaryRow label="Status" value={logoutResponse.statusCode} />
+                <SummaryRow label="Status (内側)" value={logoutResponse.statusSubCode} />
+                <SummaryRow label="StatusMessage" value={logoutResponse.statusMessage} />
+                <SummaryRow label="Destination" value={logoutResponse.destination} />
+                <SummaryRow label="InResponseTo" value={logoutResponse.inResponseTo} />
+                <SummaryRow label="IssueInstant" value={logoutResponse.issueInstant} />
+                <SummaryRow
+                  label="署名"
+                  value={logoutResponse.signed ? 'あり（このツールでは検証しません）' : 'なし'}
+                />
+              </dl>
+            )}
           </section>
 
-          {/* チェックリスト（Response のみ） */}
+          {/* チェックリスト（Response / Logout 2 型） */}
           {checks && <CheckList items={checks} />}
 
           {/* EncryptedAssertion 案内 */}
