@@ -22,6 +22,7 @@
 ### Task 1: dsn-builder.spec.ts に hydration 待ちを追加
 
 **Files:**
+
 - Modify: `tests/e2e/dsn-builder.spec.ts:1-8`
 
 - [ ] **Step 1: import と beforeEach を修正**
@@ -78,6 +79,7 @@ git commit -m "test(e2e): dsn-builder spec に hydration 待ちを追加"
 ### Task 2: dummy-personal-data.spec.ts に hydration 待ちを追加
 
 **Files:**
+
 - Modify: `tests/e2e/dummy-personal-data.spec.ts:1-6`
 
 - [ ] **Step 1: import と beforeEach を修正**
@@ -125,6 +127,7 @@ git commit -m "test(e2e): dummy-personal-data spec に hydration 待ちを追加
 ### Task 3: har-viewer.spec.ts にローカルヘルパー経由で hydration 待ちを追加
 
 **Files:**
+
 - Modify: `tests/e2e/har-viewer.spec.ts`
 
 **注意:** 2 つの test（135 行付近「固定文言カラム…」、258 行付近「タイミング列…」）は goto **前**に `setViewportSize` を呼ぶ。この順序を保つため `beforeEach` 集約はせず、ローカルヘルパーで置換する。
@@ -180,6 +183,7 @@ git commit -m "test(e2e): har-viewer spec に hydration 待ちを追加"
 ### Task 4: 漏れ防止 meta テストの追加
 
 **Files:**
+
 - Create: `tests/meta/e2e-hydration-wait-coverage.test.ts`
 
 - [ ] **Step 1: meta テストを作成**

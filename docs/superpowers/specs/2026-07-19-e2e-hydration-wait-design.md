@@ -14,15 +14,15 @@
 
 `waitForReactHydration` / `withProductionCsp` を参照しない spec は 7 件:
 
-| spec | React 操作 | 対応 |
-| --- | --- | --- |
-| `dsn-builder.spec.ts` | `fill` → onChange パース | **修正**（issue 対象） |
-| `dummy-personal-data.spec.ts` | `click` → React handler | **修正**（issue 対象） |
-| `har-viewer.spec.ts` | `setInputFiles` → onChange | **修正**（同一リスククラス） |
-| `custom-404.spec.ts` | なし（`/tools/*` 外・表示検証のみ） | 不要（検知対象外） |
-| `hydration-check.gate.spec.ts` | `/test-fixtures/*`・hydration 破壊を検証 | 不要（検知対象外） |
-| `hydration-check-dev.gate.spec.ts` | 同上 | 不要（検知対象外） |
-| `prefers-reduced-motion.spec.ts` | なし（computed style 読取のみ） | 不要（**allowlist 登録**） |
+| spec                               | React 操作                               | 対応                         |
+| ---------------------------------- | ---------------------------------------- | ---------------------------- |
+| `dsn-builder.spec.ts`              | `fill` → onChange パース                 | **修正**（issue 対象）       |
+| `dummy-personal-data.spec.ts`      | `click` → React handler                  | **修正**（issue 対象）       |
+| `har-viewer.spec.ts`               | `setInputFiles` → onChange               | **修正**（同一リスククラス） |
+| `custom-404.spec.ts`               | なし（`/tools/*` 外・表示検証のみ）      | 不要（検知対象外）           |
+| `hydration-check.gate.spec.ts`     | `/test-fixtures/*`・hydration 破壊を検証 | 不要（検知対象外）           |
+| `hydration-check-dev.gate.spec.ts` | 同上                                     | 不要（検知対象外）           |
+| `prefers-reduced-motion.spec.ts`   | なし（computed style 読取のみ）          | 不要（**allowlist 登録**）   |
 
 ## 設計
 
