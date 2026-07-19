@@ -29,7 +29,7 @@
 ### 1. hydration 待ちの追加（3 spec）
 
 - `dsn-builder.spec.ts` / `dummy-personal-data.spec.ts`: 既存 `beforeEach` の `page.goto(...)` 直後に `await waitForReactHydration(page);` を追加（`saml-decoder.spec.ts` 等の既存パターン踏襲）。
-- `har-viewer.spec.ts`: `beforeEach` が無く各 test 冒頭で同一 URL へ `page.goto('/tools/har-viewer')`（8 箇所）している。`test.describe` 内に `beforeEach`（goto + hydration 待ち）を新設し、各 test の重複 goto を削除して集約する。
+- `har-viewer.spec.ts`: `beforeEach` が無く各 test 冒頭で同一 URL へ `page.goto('/tools/har-viewer')`（8 箇所）している。うち 2 test は goto **前**に `setViewportSize` を実行しており `beforeEach` 集約では順序が変わるため、ローカルヘルパー `openHarViewer(page)`（goto + hydration 待ち）を定義して各 goto を置換する（順序保持 + DRY）。
 
 ### 2. 漏れ防止 meta テスト（`tests/meta/e2e-hydration-wait-coverage.test.ts`）
 
