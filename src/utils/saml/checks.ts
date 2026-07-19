@@ -204,10 +204,10 @@ export function runResponseChecks(res: SamlResponseData, opts: CheckOptions = {}
   return items;
 }
 
-/** LogoutRequest の定番チェックリストを実行する */
+/** LogoutRequest の定番チェックリストを実行する（spEntityId は無関係なため now のみ受ける） */
 export function runLogoutRequestChecks(
   req: SamlLogoutRequestData,
-  opts: CheckOptions = {}
+  opts: Pick<CheckOptions, 'now'> = {}
 ): CheckItem[] {
   const now = opts.now ?? new Date();
   const items: CheckItem[] = [];

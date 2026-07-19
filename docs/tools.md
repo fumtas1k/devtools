@@ -386,6 +386,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 #### 制限・エッジケース
 
 - XMLDSig 署名検証・EncryptedAssertion / EncryptedID の復号・ArtifactResolve 等のその他メッセージ型は非対応（署名・暗号化は存在の有無のみ表示。第2版候補）
+- LogoutRequest の主体識別子は `NameID` / `EncryptedID` のみ対応（SAML 2.0 Core 3.7.1 で許容される `BaseID` は非対応。実運用例がほぼ皆無なため。`BaseID` のみのリクエストは NameID チェックが error 表示になる）
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない
 - deflate 展開後のサイズが 32MB を超える入力はエラーにする（zip bomb 対策）
