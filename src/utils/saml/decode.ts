@@ -5,8 +5,14 @@ const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 /** 展開後サイズの上限（deflate 展開の zip bomb 対策） */
 const MAX_INFLATED_SIZE = 32 * 1024 * 1024;
-/** 圧縮データを与える単位（ストリーミング展開で上限超過を早期検知するため小さく刻む） */
-const INFLATE_CHUNK_SIZE = 64 * 1024;
+/**
+ * 圧縮データを与える単位（ストリーミング展開で上限超過を早期検知するため小さく刻む）。
+ * fflate の Decompress は 1 回の push から生成された展開結果を単一チャンクで ondata に渡すため、
+ * 上限チェックはチャンク割当後にしか走らない。圧縮チャンクを小さくすることで、
+ * 1 push あたりの最悪展開量（8KB × deflate 最大圧縮率 ~1032:1 ≒ ~8MB）を抑える。
+ * 正常系の SAML メッセージは数 KB 程度のため、この縮小による性能影響はない。
+ */
+const INFLATE_CHUNK_SIZE = 8 * 1024;
 
 /** 展開後サイズ上限超過を表す専用エラー（deflate 自体の失敗と区別するため） */
 class InflateLimitError extends Error {}
@@ -22,6 +28,10 @@ function base64ToBytes(b64: string): Uint8Array {
  * fflate のストリーミング Decompress で raw deflate / zlib / gzip を自動判定しつつ展開する。
  * decompressSync は展開後データを一括生成するため上限チェックが手遅れになる。
  * 圧縮データを小さいチャンクに分けて渡すことで、上限超過を検知した時点で残りの展開を打ち切れる。
+ *
+ * 実効ピークメモリの目安: 上限チェックは push 単位でしか走らないため、実効ピークは
+ * MAX_INFLATED_SIZE（32MB）+ 1 push あたりの最悪展開量（INFLATE_CHUNK_SIZE 分、~8MB）
+ * 程度になりうる。
  */
 function inflateWithLimit(bytes: Uint8Array): Uint8Array {
   const chunks: Uint8Array[] = [];

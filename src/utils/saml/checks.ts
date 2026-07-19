@@ -75,22 +75,27 @@ export function runResponseChecks(res: SamlResponseData, opts: CheckOptions = {}
     }
 
     // timezone designator（Z または ±hh / ±hh:mm / ±hhmm）が無い場合、端末のローカル時刻として
-    // 解釈されるため判定が実行環境依存になる。判定自体は続行しつつ注記を付ける
-    const hasTimezone = (s: string) => /(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(s);
-    // 日付のみ形式（YYYY-MM-DD）は ES 仕様上 UTC (00:00Z) 解釈が確定しているため、
-    // ローカル時刻注記の対象からは除外し、専用の注記を出す
-    const isDateOnly = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+    // 解釈されるため判定が実行環境依存になる。判定自体は続行しつつ注記を付ける。
+    // 時刻部（T または スペース区切りの hh:mm）の存在を前提とすることで、年月のみ形式
+    // （例: "2026-07"）の末尾ハイフンをタイムゾーンオフセットと誤認しないようにする
+    const hasTimezone = (s: string) =>
+      /[T ]\d{2}:\d{2}/.test(s) && /(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(s);
+    // 日付のみ形式（YYYY / YYYY-MM / YYYY-MM-DD）は ES 仕様上いずれも UTC (00:00Z) 解釈が
+    // 確定しているため、ローカル時刻注記の対象からは除外し、専用の注記を出す
+    const isDateOnly = (s: string) => /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/.test(s);
     const dateOnly =
       (!!c.notBefore && isDateOnly(c.notBefore)) ||
       (!!c.notOnOrAfter && isDateOnly(c.notOnOrAfter));
     const missingTimezone =
       (!!c.notBefore && !isDateOnly(c.notBefore) && !hasTimezone(c.notBefore)) ||
       (!!c.notOnOrAfter && !isDateOnly(c.notOnOrAfter) && !hasTimezone(c.notOnOrAfter));
-    const tzNote = dateOnly
-      ? '\n※ 日付のみのため、UTC (00:00Z) として解釈しています'
-      : missingTimezone
-        ? '\n※ タイムゾーン指定がないため、この端末のローカル時刻として解釈しています'
-        : '';
+    // dateOnly と missingTimezone は排他ではなく、Assertion 内の NotBefore / NotOnOrAfter が
+    // それぞれ異なる形式（例: 日付のみ + タイムゾーンなし日時）を持つ場合は両方該当しうるため、
+    // 該当する注記をすべて連結する
+    let tzNote = '';
+    if (dateOnly) tzNote += '\n※ 日付のみのため、UTC (00:00Z) として解釈しています';
+    if (missingTimezone)
+      tzNote += '\n※ タイムゾーン指定がないため、この端末のローカル時刻として解釈しています';
 
     if (notBefore && now < notBefore) {
       items.push({

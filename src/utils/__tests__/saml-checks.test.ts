@@ -213,6 +213,43 @@ describe('runResponseChecks: タイムゾーン判定の精度（陽性対照）
   });
 });
 
+describe('runResponseChecks: 年月のみ形式・混在注記（レビュー指摘の回帰、陽性対照）', () => {
+  // 年月のみ形式（YYYY-MM）に置換。末尾の "-07" が旧実装の hasTimezone 正規表現
+  // （時刻部の有無を問わず末尾 ±hh にマッチ）に誤マッチし、TZ ありと誤判定されていた
+  const YEAR_MONTH_RESPONSE_XML = SAMPLE_RESPONSE_XML.replace(
+    'NotBefore="2026-07-16T23:55:00Z" NotOnOrAfter="2026-07-17T00:05:00Z"',
+    'NotBefore="2026-07" NotOnOrAfter="2026-08"'
+  );
+  const YEAR_MONTH_IN_WINDOW = new Date('2026-07-16T12:00:00Z');
+
+  it('年月のみ形式（YYYY-MM）は UTC (00:00Z) 解釈の専用注記になる（旧実装では TZ あり誤判定で注記なしになり fail する）', () => {
+    const item = byId(
+      runResponseChecks(parseResponse(YEAR_MONTH_RESPONSE_XML), { now: YEAR_MONTH_IN_WINDOW }),
+      'validity-0'
+    );
+    expect(item.detail).toContain('UTC (00:00Z)');
+    expect(item.detail).not.toContain('ローカル時刻');
+  });
+
+  // NotBefore は日付のみ（dateOnly）、NotOnOrAfter はタイムゾーン指定なし日時（missingTimezone）
+  // という混在ケース。now は NotOnOrAfter と同じ「タイムゾーン指定なし」形式で組み立てることで、
+  // 実行環境の TZ に依存せず NotOnOrAfter との窓内関係を保つ（NO_TZ 系テストと同じ手法）
+  const MIXED_RESPONSE_XML = SAMPLE_RESPONSE_XML.replace(
+    'NotBefore="2026-07-16T23:55:00Z" NotOnOrAfter="2026-07-17T00:05:00Z"',
+    'NotBefore="2026-07-16" NotOnOrAfter="2026-07-17T00:05:00"'
+  );
+  const MIXED_IN_WINDOW = new Date('2026-07-17T00:02:00');
+
+  it('dateOnly と missingTimezone が混在する場合、UTC 注記とローカル時刻注記が両方付く（旧実装では排他分岐で UTC 注記のみになり fail する）', () => {
+    const item = byId(
+      runResponseChecks(parseResponse(MIXED_RESPONSE_XML), { now: MIXED_IN_WINDOW }),
+      'validity-0'
+    );
+    expect(item.detail).toContain('UTC (00:00Z)');
+    expect(item.detail).toContain('ローカル時刻');
+  });
+});
+
 describe('runResponseChecks: 複数 AudienceRestriction の AND 判定（陽性対照）', () => {
   // 2 restriction、両方に SP entityID を含む
   const TWO_RESTRICTIONS_BOTH_MATCH_XML = SAMPLE_RESPONSE_XML.replace(
