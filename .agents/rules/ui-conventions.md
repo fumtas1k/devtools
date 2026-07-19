@@ -138,3 +138,11 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 
 - `getByRole` / `getByText` / `getByLabel` を使う。`locator('[role="X"]')` のような属性セレクタは禁止（アクセシビリティ・国際化に弱く、リファクタリング耐性も低い）。
 - DOM 直接操作（`page.evaluate`）より `expect` のオートリトライを優先（React の再レンダータイミングで不安定になるため）。
+
+### 3.4 React island へ入力する E2E spec は hydration 待機が必須
+
+React island（`client:load` でマウントされるツール本体）に `fill` / `click` 等で入力する spec は、**`beforeEach` で `await waitForReactHydration(page);`（`tests/e2e/helpers.ts`）を必ず呼ぶ**。
+
+- hydration 完了前の `fill` は DOM の value だけを書き換え、React の `onChange` が発火しないため state が空のまま進む（例: URI 貼り付け分解で一部フィールドだけ空になる）
+- この race は **CI では顕在化しない**（`workers: 1` の直列実行で hydration が間に合う）が、ローカルの並列実行で flaky になる。「CI green だからテストは正しい」とは判断できない
+- 過去事例: issue #750（`dsn-builder.spec.ts` / `dummy-personal-data.spec.ts` が未呼び出しでローカル 8〜10 件 fail）

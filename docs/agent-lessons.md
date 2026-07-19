@@ -253,3 +253,26 @@ PR #450 で `databarlimitedcomposite` (GS1 DataBar Limited Composite) が以下 
 
 - PR #450（本件、`height` + `injectCompositeText` の 2 段修正）
 - `src/components/tools/Gs1Databar.tsx:113-117` （`bwip-js v4.9.0` の挙動依存をコメントで明示）
+
+---
+
+## [2026-07-19] 重量フィクスチャの陽性対照テストは CI ランナーで vitest デフォルト 5s を超過する
+
+### 現象
+
+PR #749 の deflate 展開上限（zip bomb 対策）の陽性対照テスト（ゼロ埋め 40MB を `zlibSync` 圧縮 → 展開で上限超過を検証）が、ローカルでは pass するのに CI runner で vitest デフォルトタイムアウト 5000ms を超過して fail した。
+
+### 対処（PR #749 の 4186b81 で実施した組み合わせ）
+
+1. **フィクスチャを上限超過の最小限に縮小**: 40MB → 34MB（上限 32MB を確実に超える最小級）
+2. **圧縮レベルを最小化**: `zlibSync(huge, { level: 1 })`（生成時間を短縮、圧縮率は検証に無関係）
+3. **明示タイムアウトを設定**: `it('...', { timeout: 30_000 }, () => ...)`（CI 実測に基づく余裕値）
+
+### 教訓
+
+- test-gates 系の陽性対照で MB 級データの生成・変換を伴う場合、ローカル pass だけで CI の時間予算を判断しない。**明示 timeout + フィクスチャ最小化**を最初から入れる
+- 検証したい境界（上限 32MB）に対しフィクスチャは「確実に超える最小」を選ぶ。余裕を盛るほど CI 時間を浪費する
+
+### 関連
+
+- PR #749（`src/utils/__tests__/saml-decode.test.ts` の deflate 上限テスト）
