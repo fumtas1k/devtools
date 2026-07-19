@@ -20,6 +20,11 @@ import { join } from 'node:path';
  *
  * 注意: 参照検出はソース文字列ベースの heuristic（コメント内の言及でも
  * 通過しうる）。厳密性より「新規 spec 作成時の完全な失念」の検知を目的とする。
+ * 既知の限界（false negative）:
+ * - 変数経由の goto（`const P = '/tools/x'; goto(P)`）は検知できない
+ * - `withProductionCsp` に `{ skipHydration: true }` を渡す spec は参照ありと
+ *   みなされるが、ラッパ内部の hydration 待ちは skip される（static page 用
+ *   オプションのため `/tools/` ページでの使用時は spec 側で待機を担保すること）
  */
 
 const E2E_DIR = join(__dirname, '../e2e');

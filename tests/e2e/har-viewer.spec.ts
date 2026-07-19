@@ -87,7 +87,7 @@ function buildCookieHar(entryCount: number): string {
  * client:load コンポーネントは hydrate 前にはイベントハンドラが未登録のため、
  * ネットワーク idle + ラベルボタンが visible になってから upload する。
  */
-async function uploadHar(page: import('@playwright/test').Page, json: string): Promise<void> {
+async function uploadHar(page: Page, json: string): Promise<void> {
   // ページリソース読み込み完了 + React hydrate 完了を待つ
   await page.waitForLoadState('networkidle');
   const fileInput = page.getByLabel('ファイルを選択');
