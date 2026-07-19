@@ -19,13 +19,15 @@ export function runResponseChecks(res: SamlResponseData, opts: CheckOptions = {}
     items.push({ id: 'status', label: 'Status', status: 'success', detail: 'Success' });
   } else {
     const code = res.statusCode?.split(':').pop() ?? '不明';
+    const subCode = res.statusSubCode?.split(':').pop();
+    const codeLabel = subCode ? `${code} / ${subCode}` : code;
     items.push({
       id: 'status',
       label: 'Status',
       status: 'error',
       detail: res.statusMessage
-        ? `${code}（StatusMessage: ${res.statusMessage}）`
-        : `${code}（Success ではありません）`,
+        ? `${codeLabel}（StatusMessage: ${res.statusMessage}）`
+        : `${codeLabel}（Success ではありません）`,
     });
   }
 
@@ -72,15 +74,23 @@ export function runResponseChecks(res: SamlResponseData, opts: CheckOptions = {}
       return;
     }
 
-    // timezone designator（Z または ±hh:mm / ±hhmm）が無い場合、端末のローカル時刻として
+    // timezone designator（Z または ±hh / ±hh:mm / ±hhmm）が無い場合、端末のローカル時刻として
     // 解釈されるため判定が実行環境依存になる。判定自体は続行しつつ注記を付ける
-    const hasTimezone = (s: string) => /(?:Z|[+-]\d{2}:?\d{2})$/.test(s);
+    const hasTimezone = (s: string) => /(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(s);
+    // 日付のみ形式（YYYY-MM-DD）は ES 仕様上 UTC (00:00Z) 解釈が確定しているため、
+    // ローカル時刻注記の対象からは除外し、専用の注記を出す
+    const isDateOnly = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+    const dateOnly =
+      (!!c.notBefore && isDateOnly(c.notBefore)) ||
+      (!!c.notOnOrAfter && isDateOnly(c.notOnOrAfter));
     const missingTimezone =
-      (!!c.notBefore && !hasTimezone(c.notBefore)) ||
-      (!!c.notOnOrAfter && !hasTimezone(c.notOnOrAfter));
-    const tzNote = missingTimezone
-      ? '\n※ タイムゾーン指定がないため、この端末のローカル時刻として解釈しています'
-      : '';
+      (!!c.notBefore && !isDateOnly(c.notBefore) && !hasTimezone(c.notBefore)) ||
+      (!!c.notOnOrAfter && !isDateOnly(c.notOnOrAfter) && !hasTimezone(c.notOnOrAfter));
+    const tzNote = dateOnly
+      ? '\n※ 日付のみのため、UTC (00:00Z) として解釈しています'
+      : missingTimezone
+        ? '\n※ タイムゾーン指定がないため、この端末のローカル時刻として解釈しています'
+        : '';
 
     if (notBefore && now < notBefore) {
       items.push({
@@ -107,7 +117,11 @@ export function runResponseChecks(res: SamlResponseData, opts: CheckOptions = {}
   });
 
   // 4. Audience（SP entityID 入力時のみ照合、未入力は表示のみ）
-  const audiences = [...new Set(res.assertions.flatMap((a) => a.conditions?.audiences ?? []))];
+  // restrictionGroups: AudienceRestriction ごとの Audience 列挙（外側 = AND、内側 = OR）
+  const restrictionGroups = res.assertions.flatMap((a) => a.conditions?.audienceRestrictions ?? []);
+  const audiences = [...new Set(restrictionGroups.flat())];
+  // 空の restriction（Audience 要素なし）は AND 判定の対象外とする
+  const nonEmptyRestrictions = restrictionGroups.filter((g) => g.length > 0);
   const sp = opts.spEntityId?.trim();
   if (audiences.length === 0) {
     items.push({
@@ -118,7 +132,7 @@ export function runResponseChecks(res: SamlResponseData, opts: CheckOptions = {}
     });
   } else if (!sp) {
     items.push({ id: 'audience', label: 'Audience', status: 'info', detail: audiences.join(', ') });
-  } else if (audiences.includes(sp)) {
+  } else if (nonEmptyRestrictions.every((g) => g.includes(sp))) {
     items.push({
       id: 'audience',
       label: 'Audience',

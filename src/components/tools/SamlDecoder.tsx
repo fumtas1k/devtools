@@ -59,6 +59,15 @@ function buildSampleInput(): string {
   return btoa(bin);
 }
 
+/** 複数 AudienceRestriction は AND 判定のため、2 件以上ならグループが分かる表記にする */
+function formatAudienceRestrictions(restrictions: string[][] | undefined): string | undefined {
+  if (!restrictions) return undefined;
+  const nonEmpty = restrictions.filter((g) => g.length > 0);
+  if (nonEmpty.length === 0) return undefined;
+  if (nonEmpty.length === 1) return nonEmpty[0].join(', ');
+  return nonEmpty.map((g) => `[${g.join(', ')}]`).join(' AND ');
+}
+
 function SummaryRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
@@ -156,7 +165,7 @@ function AssertionSection({
         <SummaryRow label="NotOnOrAfter" value={assertion.conditions?.notOnOrAfter} />
         <SummaryRow
           label="Audience"
-          value={assertion.conditions?.audiences.join(', ') || undefined}
+          value={formatAudienceRestrictions(assertion.conditions?.audienceRestrictions)}
         />
         {assertion.subjectConfirmations.map((sc, i) => (
           <SummaryRow
@@ -280,6 +289,7 @@ export function SamlDecoderTool() {
               <dl className="space-y-1">
                 <SummaryRow label="Issuer (IdP)" value={response.issuer} />
                 <SummaryRow label="Status" value={response.statusCode} />
+                <SummaryRow label="Status (内側)" value={response.statusSubCode} />
                 <SummaryRow label="StatusMessage" value={response.statusMessage} />
                 <SummaryRow label="Destination" value={response.destination} />
                 <SummaryRow label="InResponseTo" value={response.inResponseTo} />
@@ -334,13 +344,17 @@ export function SamlDecoderTool() {
           {/* 生 XML */}
           <details className="rounded-lg bg-subtle">
             <summary className="cursor-pointer p-4 body-emphasis text-default">
-              整形済み XML
+              整形済み XML（簡易整形）
             </summary>
             <div className="px-4 pb-4 space-y-2">
               <div className="flex justify-end">
                 <CopyButton text={prettyXml} label="コピー" />
               </div>
               <pre className="overflow-x-auto font-mono caption text-default">{prettyXml}</pre>
+              <p className="hint-xs text-muted">
+                簡易整形のため、タグ間に混在するテキスト（mixed
+                content）は表示されない場合があります。
+              </p>
             </div>
           </details>
 

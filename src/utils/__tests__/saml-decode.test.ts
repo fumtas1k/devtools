@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { deflateSync } from 'fflate';
+import { deflateSync, zlibSync } from 'fflate';
 import { decodeSamlInput } from '@/utils/saml';
 import { SAMPLE_RESPONSE_XML, AUTHN_REQUEST_XML, toBase64 } from './saml-fixtures';
 
@@ -113,5 +113,43 @@ describe('decodeSamlInput: レビュー指摘の回帰', () => {
     // 仕様: 実装を単純に保つため「SAMLResponse=」「SAMLRequest=」で始まる場合のみ救済する。
     // RelayState= 等が先頭に来る断片は対象外とし、通常の base64 判定にフォールスルーする。
     expect(() => decodeSamlInput('RelayState=abc&SAMLResponse=xyz')).toThrow();
+  });
+
+  it('percent エンコードされたクエリキー名（SAML%52esponse）も SAMLResponse として抽出する', () => {
+    const url = `https://sp.example.com/acs?SAML%52esponse=${encodeURIComponent(toBase64(SAMPLE_RESPONSE_XML))}`;
+    const r = decodeSamlInput(url);
+    expect(r.binding).toBe('post');
+    expect(r.xml).toContain('<samlp:Response');
+  });
+});
+
+describe('decodeSamlInput: base64url 入力の受容', () => {
+  it('base64url（- _ を含みパディングなし）を標準 base64 として解釈しデコードする', () => {
+    const std = toBase64(SAMPLE_RESPONSE_XML);
+    // フィクスチャの base64 表現が "+" を含むことを前提にしたテスト（含まれていないと
+    // "-" への変換が検知能力を証明できない）
+    expect(std).toContain('+');
+    const urlSafe = std.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const r = decodeSamlInput(urlSafe);
+    expect(r.binding).toBe('post');
+    expect(r.xml).toContain('<samlp:Response');
+    expect(r.steps).toContain('base64url を標準 base64 へ変換');
+  });
+
+  it('通常の base64（- _ を含まない）では変換ステップを追加しない', () => {
+    const r = decodeSamlInput(toBase64(SAMPLE_RESPONSE_XML));
+    expect(r.steps).not.toContain('base64url を標準 base64 へ変換');
+  });
+});
+
+describe('decodeSamlInput: deflate 展開サイズ上限（陽性対照）', () => {
+  it('展開後 32MB を超える入力はサイズ上限エラーになる', () => {
+    // ゼロ埋めは極めて高圧縮率になるため、数十 KB の入力で 40MB 超の展開結果を作れる
+    const huge = new Uint8Array(40 * 1024 * 1024);
+    const compressed = zlibSync(huge);
+    let bin = '';
+    for (const b of compressed) bin += String.fromCharCode(b);
+    const b64 = btoa(bin);
+    expect(() => decodeSamlInput(b64)).toThrow(/上限（32MB）/);
   });
 });

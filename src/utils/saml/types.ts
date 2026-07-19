@@ -17,7 +17,8 @@ export interface SamlAttribute {
 export interface SamlConditions {
   notBefore?: string;
   notOnOrAfter?: string;
-  audiences: string[];
+  /** AudienceRestriction ごとの Audience 列挙（外側 = AND、内側 = restriction 内の OR） */
+  audienceRestrictions: string[][];
 }
 
 export interface SamlSubjectConfirmation {
@@ -50,6 +51,8 @@ export interface SamlResponseData {
   type: 'response';
   issuer?: string;
   statusCode?: string;
+  /** 外側 StatusCode の直下にネストした内側 StatusCode の Value */
+  statusSubCode?: string;
   statusMessage?: string;
   destination?: string;
   inResponseTo?: string;
