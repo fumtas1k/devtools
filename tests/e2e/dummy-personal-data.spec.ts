@@ -1,8 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { waitForReactHydration } from './helpers';
 
 test.describe('日本語ダミー個人データ生成', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/tools/dummy-personal-data');
+    // click → React handler が hydration 完了前に走ると無反応になり
+    // flaky になるため、island の hydration 完了を待つ (issue #750)
+    await waitForReactHydration(page);
   });
 
   test('生成するとプレビュー表が表示される', async ({ page }) => {
