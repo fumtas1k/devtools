@@ -28,6 +28,14 @@ const AUTHN_REQUEST_XML = `<?xml version="1.0" encoding="UTF-8"?>
   <saml:Issuer>https://sp.example.com/metadata</saml:Issuer>
 </samlp:AuthnRequest>`;
 
+/** UTF-8 → base64url（パディングなし、`-`/`_` 表記） */
+function toBase64Url(xml: string): string {
+  const bytes = new TextEncoder().encode(xml);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 test.describe('SAMLデコーダ', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/tools/saml-decoder');
@@ -77,6 +85,16 @@ test.describe('SAMLデコーダ', () => {
       .fill(responseXml({ notOnOrAfterOffsetMs: 300_000 }));
     await page.getByLabel(/SP entityID/).fill('https://other.example.com/metadata');
     await expect(page.getByText('SP entityID と不一致です', { exact: false })).toBeVisible();
+  });
+
+  test('base64url（- _ を含みパディングなし）でエンコードした Response も正常にデコードされる', async ({
+    page,
+  }) => {
+    await page
+      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
+      .fill(toBase64Url(responseXml({ notOnOrAfterOffsetMs: 300_000 })));
+    await expect(page.getByText('Response サマリ')).toBeVisible();
+    await expect(page.getByText('taro@example.com').first()).toBeVisible();
   });
 
   test('AuthnRequest はサマリのみ表示されチェックリストは出ない', async ({ page }) => {

@@ -44,6 +44,51 @@ export const ENCRYPTED_ASSERTION_RESPONSE_XML = `<?xml version="1.0" encoding="U
   <saml:EncryptedAssertion><xenc:EncryptedData xmlns:xenc="http://www.w3.org/2001/04/xmlenc#"/></saml:EncryptedAssertion>
 </samlp:Response>`;
 
+export const NESTED_STATUS_RESPONSE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_resp5" Version="2.0" IssueInstant="2026-07-17T00:00:00Z">
+  <saml:Issuer>https://idp.example.com/metadata</saml:Issuer>
+  <samlp:Status>
+    <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Responder">
+      <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:RequestDenied"/>
+    </samlp:StatusCode>
+    <samlp:StatusMessage>Authentication failed</samlp:StatusMessage>
+  </samlp:Status>
+</samlp:Response>`;
+
+/** prefix なし（default xmlns）の Response。prefix 非依存パースの回帰確認用 */
+export const DEFAULT_NS_RESPONSE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<Response xmlns="urn:oasis:names:tc:SAML:2.0:protocol" ID="_resp6" Version="2.0" IssueInstant="2026-07-17T00:00:00Z" Destination="https://sp.example.com/acs">
+  <Issuer xmlns="urn:oasis:names:tc:SAML:2.0:assertion">https://idp.example.com/metadata</Issuer>
+  <Status><StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></Status>
+  <Assertion xmlns="urn:oasis:names:tc:SAML:2.0:assertion" ID="_a6" Version="2.0" IssueInstant="2026-07-17T00:00:00Z">
+    <Issuer>https://idp.example.com/metadata</Issuer>
+    <Subject>
+      <NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">taro.yamada@example.com</NameID>
+    </Subject>
+  </Assertion>
+</Response>`;
+
+/** Assertion 2 件の Response。有効期間ラベルの連番付与の回帰確認用 */
+export const TWO_ASSERTIONS_RESPONSE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_resp7" Version="2.0" IssueInstant="2026-07-17T00:00:00Z">
+  <saml:Issuer>https://idp.example.com/metadata</saml:Issuer>
+  <samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>
+  <saml:Assertion ID="_a7-1" Version="2.0" IssueInstant="2026-07-17T00:00:00Z">
+    <saml:Issuer>https://idp.example.com/metadata</saml:Issuer>
+    <saml:Subject><saml:NameID>user1@example.com</saml:NameID></saml:Subject>
+    <saml:Conditions NotBefore="2026-07-16T23:55:00Z" NotOnOrAfter="2026-07-17T00:05:00Z">
+      <saml:AudienceRestriction><saml:Audience>https://sp.example.com/metadata</saml:Audience></saml:AudienceRestriction>
+    </saml:Conditions>
+  </saml:Assertion>
+  <saml:Assertion ID="_a7-2" Version="2.0" IssueInstant="2026-07-17T00:00:00Z">
+    <saml:Issuer>https://idp.example.com/metadata</saml:Issuer>
+    <saml:Subject><saml:NameID>user2@example.com</saml:NameID></saml:Subject>
+    <saml:Conditions NotBefore="2026-07-16T23:55:00Z" NotOnOrAfter="2026-07-17T00:05:00Z">
+      <saml:AudienceRestriction><saml:Audience>https://sp.example.com/metadata</saml:Audience></saml:AudienceRestriction>
+    </saml:Conditions>
+  </saml:Assertion>
+</samlp:Response>`;
+
 export const AUTHN_REQUEST_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_req1" Version="2.0" IssueInstant="2026-07-17T00:00:00Z" Destination="https://idp.example.com/sso" AssertionConsumerServiceURL="https://sp.example.com/acs" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST">
   <saml:Issuer>https://sp.example.com/metadata</saml:Issuer>

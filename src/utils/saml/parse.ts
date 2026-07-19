@@ -52,10 +52,16 @@ export function parseSamlXml(xml: string): SamlMessage {
 
 function parseResponse(root: Element): SamlResponseData {
   const status = childNS(root, NS_P, 'Status');
+  const outerStatusCode = status ? childNS(status, NS_P, 'StatusCode') : undefined;
+  // 二段階ステータス（外側 StatusCode の子にもう1つ StatusCode）の内側コード
+  const innerStatusCode = outerStatusCode
+    ? childNS(outerStatusCode, NS_P, 'StatusCode')
+    : undefined;
   return {
     type: 'response',
     issuer: textOf(childNS(root, NS_A, 'Issuer')),
-    statusCode: status ? attrOf(childNS(status, NS_P, 'StatusCode'), 'Value') : undefined,
+    statusCode: attrOf(outerStatusCode, 'Value'),
+    statusSubCode: attrOf(innerStatusCode, 'Value'),
     statusMessage: status ? textOf(childNS(status, NS_P, 'StatusMessage')) : undefined,
     destination: attrOf(root, 'Destination'),
     inResponseTo: attrOf(root, 'InResponseTo'),
@@ -83,7 +89,7 @@ function parseAssertion(el: Element): SamlAssertion {
       ? {
           notBefore: attrOf(conditions, 'NotBefore'),
           notOnOrAfter: attrOf(conditions, 'NotOnOrAfter'),
-          audiences: childrenNS(conditions, NS_A, 'AudienceRestriction').flatMap((ar) =>
+          audienceRestrictions: childrenNS(conditions, NS_A, 'AudienceRestriction').map((ar) =>
             childrenNS(ar, NS_A, 'Audience').flatMap((a) => textOf(a) ?? [])
           ),
         }

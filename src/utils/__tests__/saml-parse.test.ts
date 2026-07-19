@@ -6,6 +6,9 @@ import {
   FAILED_STATUS_RESPONSE_XML,
   ENCRYPTED_ASSERTION_RESPONSE_XML,
   AUTHN_REQUEST_XML,
+  NESTED_STATUS_RESPONSE_XML,
+  DEFAULT_NS_RESPONSE_XML,
+  TWO_ASSERTIONS_RESPONSE_XML,
 } from './saml-fixtures';
 
 describe('parseSamlXml: Response', () => {
@@ -30,7 +33,7 @@ describe('parseSamlXml: Response', () => {
     expect(a.nameIdFormat).toBe('urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress');
     expect(a.conditions?.notBefore).toBe('2026-07-16T23:55:00Z');
     expect(a.conditions?.notOnOrAfter).toBe('2026-07-17T00:05:00Z');
-    expect(a.conditions?.audiences).toEqual(['https://sp.example.com/metadata']);
+    expect(a.conditions?.audienceRestrictions).toEqual([['https://sp.example.com/metadata']]);
     expect(a.authnStatements[0].sessionIndex).toBe('_s1');
     expect(a.authnStatements[0].authnContextClassRef).toContain('PasswordProtectedTransport');
     expect(a.subjectConfirmations[0].recipient).toBe('https://sp.example.com/acs');
@@ -63,6 +66,30 @@ describe('parseSamlXml: Response', () => {
     if (m.type !== 'response') throw new Error('response expected');
     expect(m.encryptedAssertionCount).toBe(1);
     expect(m.assertions).toHaveLength(0);
+  });
+
+  it('ネストした StatusCode の内側コードを statusSubCode として抽出する', () => {
+    const m = parseSamlXml(NESTED_STATUS_RESPONSE_XML);
+    if (m.type !== 'response') throw new Error('response expected');
+    expect(m.statusCode).toBe('urn:oasis:names:tc:SAML:2.0:status:Responder');
+    expect(m.statusSubCode).toBe('urn:oasis:names:tc:SAML:2.0:status:RequestDenied');
+  });
+
+  it('prefix なし（default xmlns）の Response も正常にパースする（回帰）', () => {
+    const m = parseSamlXml(DEFAULT_NS_RESPONSE_XML);
+    if (m.type !== 'response') throw new Error('response expected');
+    expect(m.issuer).toBe('https://idp.example.com/metadata');
+    expect(m.statusCode).toBe('urn:oasis:names:tc:SAML:2.0:status:Success');
+    expect(m.assertions).toHaveLength(1);
+    expect(m.assertions[0].nameId).toBe('taro.yamada@example.com');
+  });
+
+  it('Assertion 2 件をどちらも抽出する（回帰）', () => {
+    const m = parseSamlXml(TWO_ASSERTIONS_RESPONSE_XML);
+    if (m.type !== 'response') throw new Error('response expected');
+    expect(m.assertions).toHaveLength(2);
+    expect(m.assertions[0].nameId).toBe('user1@example.com');
+    expect(m.assertions[1].nameId).toBe('user2@example.com');
   });
 });
 
