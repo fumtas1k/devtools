@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { waitForReactHydration } from './helpers';
 
 /**
  * n 件のエントリを持つ最小 HAR を生成する。
@@ -98,9 +99,20 @@ async function uploadHar(page: import('@playwright/test').Page, json: string): P
   });
 }
 
+/**
+ * HAR ビューアを開き React island の hydration 完了まで待つ。
+ * setInputFiles → React onChange が hydration 前に走ると file が処理されず
+ * flaky になるため、各 test の goto はこのヘルパー経由に統一する (issue #750)。
+ * ※ viewport を変える test は本ヘルパー呼び出し前に setViewportSize すること。
+ */
+async function openHarViewer(page: Page): Promise<void> {
+  await page.goto('/tools/har-viewer');
+  await waitForReactHydration(page);
+}
+
 test.describe('HAR ビューア', () => {
   test('Web Worker 経由で読み込み、全エントリが描画される（ページャは無い）', async ({ page }) => {
-    await page.goto('/tools/har-viewer');
+    await openHarViewer(page);
 
     const json = buildTestHar(120);
     await uploadHar(page, json);
@@ -118,7 +130,7 @@ test.describe('HAR ビューア', () => {
   });
 
   test('entry クリックで詳細パネルにそのリクエストが表示される', async ({ page }) => {
-    await page.goto('/tools/har-viewer');
+    await openHarViewer(page);
 
     const json = buildTestHar(120);
     await uploadHar(page, json);
@@ -137,7 +149,7 @@ test.describe('HAR ビューア', () => {
   }) => {
     // スマホ相当の狭幅にしてカラムが squeeze される状況を再現
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/tools/har-viewer');
+    await openHarViewer(page);
 
     const json = buildTestHar(3);
     await uploadHar(page, json);
@@ -164,7 +176,7 @@ test.describe('HAR ビューア', () => {
   test('redact トグルで Web Worker の再 sanitize が走り redact 件数が変化する', async ({
     page,
   }) => {
-    await page.goto('/tools/har-viewer');
+    await openHarViewer(page);
 
     // 各エントリに Cookie ヘッダを持つ 5 件の HAR（COOKIE redact 件数 = 5）
     const json = buildCookieHar(5);
@@ -185,7 +197,7 @@ test.describe('HAR ビューア', () => {
   test('壊れた entry（request/response 欠落）を含んでもクラッシュせず描画する', async ({
     page,
   }) => {
-    await page.goto('/tools/har-viewer');
+    await openHarViewer(page);
 
     // 1 件目は正常、2 件目は request/response を欠く壊れた entry（issue #681 再現データ）
     const json = JSON.stringify({
@@ -221,7 +233,7 @@ test.describe('HAR ビューア', () => {
   });
 
   test('先頭 entry が null でも自動選択で詳細プレースホルダが表示される', async ({ page }) => {
-    await page.goto('/tools/har-viewer');
+    await openHarViewer(page);
 
     // 先頭 entry が null（index=0 が自動選択される）+ 2 件目は正常
     const json = JSON.stringify({
@@ -257,7 +269,7 @@ test.describe('HAR ビューア', () => {
 
   test('タイミング列が PC 幅で表示され詳細パネルにタイミング内訳が出る', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/tools/har-viewer');
+    await openHarViewer(page);
 
     // timings を持つ 2 件の HAR（2 件目は起点をずらして相対配置を確認）
     const json = JSON.stringify({
@@ -315,7 +327,7 @@ test.describe('HAR ビューア', () => {
   test('正常 entry 選択後も壊れた行を再クリックして詳細プレースホルダを再表示できる', async ({
     page,
   }) => {
-    await page.goto('/tools/har-viewer');
+    await openHarViewer(page);
 
     // 先頭が壊れた entry（{}）+ 2 件目は正常（issue #701 再現データ）
     const json = JSON.stringify({
