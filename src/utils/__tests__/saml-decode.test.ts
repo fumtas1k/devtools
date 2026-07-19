@@ -143,10 +143,13 @@ describe('decodeSamlInput: base64url 入力の受容', () => {
 });
 
 describe('decodeSamlInput: deflate 展開サイズ上限（陽性対照）', () => {
-  it('展開後 32MB を超える入力はサイズ上限エラーになる', () => {
-    // ゼロ埋めは極めて高圧縮率になるため、数十 KB の入力で 40MB 超の展開結果を作れる
-    const huge = new Uint8Array(40 * 1024 * 1024);
-    const compressed = zlibSync(huge);
+  // 34MB のゼロ埋め圧縮 + 32MB 展開は遅い CI ランナーで vitest デフォルト 5s を超えることが
+  // あるため（PR #749 の CI で実測）、明示タイムアウトを設定する
+  it('展開後 32MB を超える入力はサイズ上限エラーになる', { timeout: 30_000 }, () => {
+    // ゼロ埋めは極めて高圧縮率になるため、数十 KB の入力で上限超の展開結果を作れる。
+    // level 1 で圧縮時間を最小化しつつ、上限 32MB を確実に超える 34MB を展開させる
+    const huge = new Uint8Array(34 * 1024 * 1024);
+    const compressed = zlibSync(huge, { level: 1 });
     let bin = '';
     for (const b of compressed) bin += String.fromCharCode(b);
     const b64 = btoa(bin);
