@@ -17,6 +17,7 @@
 ### Task 1: パーサ拡張（types + parse + フィクスチャ）
 
 **Files:**
+
 - Modify: `src/utils/saml/types.ts`（union に 2 型追加）
 - Modify: `src/utils/saml/parse.ts`（ルート分岐 + `parseStatus` 抽出 + 2 パーサ追加）
 - Modify: `src/utils/__tests__/saml-fixtures.ts`（フィクスチャ追加）
@@ -359,6 +360,7 @@ Expected: astro check エラー 0 件（`SamlDecoder.tsx` は `SamlMessage` の 
 ### Task 2: チェックリスト拡張（checks + index 公開）
 
 **Files:**
+
 - Modify: `src/utils/saml/checks.ts`（`statusCheckItem` / `timezoneNote` 抽出 + 2 関数追加）
 - Modify: `src/utils/saml/index.ts`（export 追加）
 - Test: `src/utils/__tests__/saml-checks.test.ts`
@@ -548,14 +550,14 @@ function timezoneNote(...values: (string | undefined)[]): {
 `runResponseChecks` の Status ブロック（`// 1. Status` から最初の `}` まで）を差し替え:
 
 ```ts
-  // 1. Status
-  items.push(statusCheckItem(res));
+// 1. Status
+items.push(statusCheckItem(res));
 ```
 
 `runResponseChecks` の有効期間ループ内の `hasTimezone` / `isDateOnly` / `dateOnly` / `missingTimezone` / `tzNote` の組み立て（`const hasTimezone = ...` から `if (missingTimezone) ...` の行まで）を差し替え:
 
 ```ts
-    const { note: tzNote, missingTimezone } = timezoneNote(c.notBefore, c.notOnOrAfter);
+const { note: tzNote, missingTimezone } = timezoneNote(c.notBefore, c.notOnOrAfter);
 ```
 
 （以降の `${tzNote}` 参照と `missingTimezone ? 'warning' : 'success'` はそのまま）
@@ -628,7 +630,8 @@ export function runLogoutRequestChecks(
       id: 'nameid',
       label: 'NameID',
       status: 'error',
-      detail: 'NameID が含まれていません（LogoutRequest には NameID / EncryptedID のいずれかが必要です）',
+      detail:
+        'NameID が含まれていません（LogoutRequest には NameID / EncryptedID のいずれかが必要です）',
     });
   }
 
@@ -673,6 +676,7 @@ Expected: 全テスト PASS / astro check エラー 0 件
 ### Task 3: UI 拡張（SamlDecoder.tsx）
 
 **Files:**
+
 - Modify: `src/components/tools/SamlDecoder.tsx`
 
 - [ ] **Step 1: import と型別分岐を追加する**
@@ -699,15 +703,15 @@ import {
 `SamlDecoderTool` 内の型別変数と checks useMemo を差し替え（`const authnRequest = ...` の行の直後に 2 行追加し、`const checks = ...` を差し替え）:
 
 ```ts
-  const logoutRequest = ok && ok.message.type === 'logoutRequest' ? ok.message : null;
-  const logoutResponse = ok && ok.message.type === 'logoutResponse' ? ok.message : null;
+const logoutRequest = ok && ok.message.type === 'logoutRequest' ? ok.message : null;
+const logoutResponse = ok && ok.message.type === 'logoutResponse' ? ok.message : null;
 
-  const checks = useMemo(() => {
-    if (response) return runResponseChecks(response, { spEntityId });
-    if (logoutRequest) return runLogoutRequestChecks(logoutRequest);
-    if (logoutResponse) return runLogoutResponseChecks(logoutResponse);
-    return null;
-  }, [response, logoutRequest, logoutResponse, spEntityId]);
+const checks = useMemo(() => {
+  if (response) return runResponseChecks(response, { spEntityId });
+  if (logoutRequest) return runLogoutRequestChecks(logoutRequest);
+  if (logoutResponse) return runLogoutResponseChecks(logoutResponse);
+  return null;
+}, [response, logoutRequest, logoutResponse, spEntityId]);
 ```
 
 - [ ] **Step 2: サマリ見出しと型別 dl を追加する**
@@ -715,56 +719,58 @@ import {
 サマリセクションの見出しを差し替え:
 
 ```tsx
-            <h3 className="body-emphasis text-default mb-3">
-              {response && 'Response サマリ'}
-              {authnRequest && 'AuthnRequest サマリ'}
-              {logoutRequest && 'LogoutRequest サマリ'}
-              {logoutResponse && 'LogoutResponse サマリ'}
-            </h3>
+<h3 className="body-emphasis text-default mb-3">
+  {response && 'Response サマリ'}
+  {authnRequest && 'AuthnRequest サマリ'}
+  {logoutRequest && 'LogoutRequest サマリ'}
+  {logoutResponse && 'LogoutResponse サマリ'}
+</h3>
 ```
 
 `{authnRequest && (...)}` ブロックの直後（サマリ `</section>` の直前）に追加:
 
 ```tsx
-            {logoutRequest && (
-              <dl className="space-y-1">
-                <SummaryRow label="Issuer" value={logoutRequest.issuer} />
-                <SummaryRow label="Destination" value={logoutRequest.destination} />
-                <SummaryRow label="IssueInstant" value={logoutRequest.issueInstant} />
-                <SummaryRow label="NotOnOrAfter" value={logoutRequest.notOnOrAfter} />
-                <SummaryRow label="Reason" value={logoutRequest.reason} />
-                <SummaryRow
-                  label="NameID"
-                  value={
-                    logoutRequest.encryptedNameId ? '（暗号化・表示不可）' : logoutRequest.nameId
-                  }
-                />
-                <SummaryRow label="NameID Format" value={logoutRequest.nameIdFormat} />
-                <SummaryRow
-                  label="SessionIndex"
-                  value={logoutRequest.sessionIndexes.join(', ') || undefined}
-                />
-                <SummaryRow
-                  label="署名"
-                  value={logoutRequest.signed ? 'あり（このツールでは検証しません）' : 'なし'}
-                />
-              </dl>
-            )}
-            {logoutResponse && (
-              <dl className="space-y-1">
-                <SummaryRow label="Issuer" value={logoutResponse.issuer} />
-                <SummaryRow label="Status" value={logoutResponse.statusCode} />
-                <SummaryRow label="Status (内側)" value={logoutResponse.statusSubCode} />
-                <SummaryRow label="StatusMessage" value={logoutResponse.statusMessage} />
-                <SummaryRow label="Destination" value={logoutResponse.destination} />
-                <SummaryRow label="InResponseTo" value={logoutResponse.inResponseTo} />
-                <SummaryRow label="IssueInstant" value={logoutResponse.issueInstant} />
-                <SummaryRow
-                  label="署名"
-                  value={logoutResponse.signed ? 'あり（このツールでは検証しません）' : 'なし'}
-                />
-              </dl>
-            )}
+{
+  logoutRequest && (
+    <dl className="space-y-1">
+      <SummaryRow label="Issuer" value={logoutRequest.issuer} />
+      <SummaryRow label="Destination" value={logoutRequest.destination} />
+      <SummaryRow label="IssueInstant" value={logoutRequest.issueInstant} />
+      <SummaryRow label="NotOnOrAfter" value={logoutRequest.notOnOrAfter} />
+      <SummaryRow label="Reason" value={logoutRequest.reason} />
+      <SummaryRow
+        label="NameID"
+        value={logoutRequest.encryptedNameId ? '（暗号化・表示不可）' : logoutRequest.nameId}
+      />
+      <SummaryRow label="NameID Format" value={logoutRequest.nameIdFormat} />
+      <SummaryRow
+        label="SessionIndex"
+        value={logoutRequest.sessionIndexes.join(', ') || undefined}
+      />
+      <SummaryRow
+        label="署名"
+        value={logoutRequest.signed ? 'あり（このツールでは検証しません）' : 'なし'}
+      />
+    </dl>
+  );
+}
+{
+  logoutResponse && (
+    <dl className="space-y-1">
+      <SummaryRow label="Issuer" value={logoutResponse.issuer} />
+      <SummaryRow label="Status" value={logoutResponse.statusCode} />
+      <SummaryRow label="Status (内側)" value={logoutResponse.statusSubCode} />
+      <SummaryRow label="StatusMessage" value={logoutResponse.statusMessage} />
+      <SummaryRow label="Destination" value={logoutResponse.destination} />
+      <SummaryRow label="InResponseTo" value={logoutResponse.inResponseTo} />
+      <SummaryRow label="IssueInstant" value={logoutResponse.issueInstant} />
+      <SummaryRow
+        label="署名"
+        value={logoutResponse.signed ? 'あり（このツールでは検証しません）' : 'なし'}
+      />
+    </dl>
+  );
+}
 ```
 
 注: チェックリストの `{checks && <CheckList items={checks} />}` は既存のまま変更不要（checks の useMemo 差し替えで Logout 2 型にも表示される）。コメント `{/* チェックリスト（Response のみ） */}` は `{/* チェックリスト（Response / Logout 2 型） */}` に更新する。
@@ -785,6 +791,7 @@ Expected: astro check エラー 0 件 / 全テスト PASS
 ### Task 4: E2E テスト追加
 
 **Files:**
+
 - Modify: `tests/e2e/saml-decoder.spec.ts`
 
 - [ ] **Step 1: E2E spec を追加する**
@@ -820,32 +827,30 @@ const FAILED_LOGOUT_RESPONSE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 `test.describe('SAMLデコーダ', ...)` ブロック内の末尾に追加:
 
 ```ts
-  test('LogoutRequest を貼るとサマリとチェックリストが表示される', async ({ page }) => {
-    await page
-      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
-      .fill(logoutRequestXml({ notOnOrAfterOffsetMs: 300_000 }));
-    await expect(page.getByText('LogoutRequest サマリ')).toBeVisible();
-    await expect(page.getByText('https://sp.example.com/metadata').first()).toBeVisible();
-    await expect(page.getByText('_s1').first()).toBeVisible();
-    await expect(page.getByText('期限内です', { exact: false })).toBeVisible();
-    await expect(page.getByText('チェックリスト')).toBeVisible();
-  });
+test('LogoutRequest を貼るとサマリとチェックリストが表示される', async ({ page }) => {
+  await page
+    .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
+    .fill(logoutRequestXml({ notOnOrAfterOffsetMs: 300_000 }));
+  await expect(page.getByText('LogoutRequest サマリ')).toBeVisible();
+  await expect(page.getByText('https://sp.example.com/metadata').first()).toBeVisible();
+  await expect(page.getByText('_s1').first()).toBeVisible();
+  await expect(page.getByText('期限内です', { exact: false })).toBeVisible();
+  await expect(page.getByText('チェックリスト')).toBeVisible();
+});
 
-  test('陽性対照: 期限切れ LogoutRequest はエラー表示になる', async ({ page }) => {
-    await page
-      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
-      .fill(logoutRequestXml({ notOnOrAfterOffsetMs: -300_000 }));
-    await expect(page.getByText('期限切れです', { exact: false })).toBeVisible();
-  });
+test('陽性対照: 期限切れ LogoutRequest はエラー表示になる', async ({ page }) => {
+  await page
+    .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
+    .fill(logoutRequestXml({ notOnOrAfterOffsetMs: -300_000 }));
+  await expect(page.getByText('期限切れです', { exact: false })).toBeVisible();
+});
 
-  test('陽性対照: Status 失敗の LogoutResponse はエラー表示になる', async ({ page }) => {
-    await page
-      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
-      .fill(FAILED_LOGOUT_RESPONSE_XML);
-    await expect(page.getByText('LogoutResponse サマリ')).toBeVisible();
-    await expect(page.getByText('Responder / RequestDenied', { exact: false })).toBeVisible();
-    await expect(page.getByText('Session not found', { exact: false })).toBeVisible();
-  });
+test('陽性対照: Status 失敗の LogoutResponse はエラー表示になる', async ({ page }) => {
+  await page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/).fill(FAILED_LOGOUT_RESPONSE_XML);
+  await expect(page.getByText('LogoutResponse サマリ')).toBeVisible();
+  await expect(page.getByText('Responder / RequestDenied', { exact: false })).toBeVisible();
+  await expect(page.getByText('Session not found', { exact: false })).toBeVisible();
+});
 ```
 
 注: `beforeEach` の `waitForReactHydration(page)` は既存 spec で対応済みのため追加不要。
@@ -869,6 +874,7 @@ git commit -m "test(e2e): LogoutRequest/LogoutResponse の表示と陽性対照�
 ### Task 5: ドキュメント更新
 
 **Files:**
+
 - Modify: `docs/tools.md`（SAMLデコーダ節）
 
 - [ ] **Step 1: docs/tools.md を更新する**
@@ -884,7 +890,7 @@ git commit -m "test(e2e): LogoutRequest/LogoutResponse の表示と陽性対照�
 (2) `checks.ts` の段落の箇条書き（`- \`checks.ts\` の \`runResponseChecks\` が ...` のサブ項目群）の末尾に追加:
 
 ```markdown
-  - `runLogoutRequestChecks` は LogoutRequest の NotOnOrAfter（任意属性のため未指定は info、期限切れは error）と NameID の存在（EncryptedID は復号非対応のため warning、いずれもなしは仕様違反として error）を、`runLogoutResponseChecks` は Status を同じ規則で判定する
+- `runLogoutRequestChecks` は LogoutRequest の NotOnOrAfter（任意属性のため未指定は info、期限切れは error）と NameID の存在（EncryptedID は復号非対応のため warning、いずれもなしは仕様違反として error）を、`runLogoutResponseChecks` は Status を同じ規則で判定する
 ```
 
 (3) 「制限・エッジケース」の 1 つ目の箇条書きを差し替え:

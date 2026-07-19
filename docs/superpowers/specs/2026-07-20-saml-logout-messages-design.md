@@ -22,12 +22,12 @@ SAML デコーダ（`/tools/saml-decoder`）を LogoutRequest / LogoutResponse�
 ```ts
 interface SamlLogoutRequestData {
   type: 'logoutRequest';
-  issuer?: string;          // saml:Issuer（SP または IdP）
-  destination?: string;     // ルート属性
+  issuer?: string; // saml:Issuer（SP または IdP）
+  destination?: string; // ルート属性
   issueInstant?: string;
-  notOnOrAfter?: string;    // ルート属性（リクエスト自体の期限）
-  reason?: string;          // Reason 属性（URI）
-  nameId?: string;          // saml:NameID テキスト
+  notOnOrAfter?: string; // ルート属性（リクエスト自体の期限）
+  reason?: string; // Reason 属性（URI）
+  nameId?: string; // saml:NameID テキスト
   nameIdFormat?: string;
   encryptedNameId: boolean; // saml:EncryptedID の場合 true（内容は表示不可）
   sessionIndexes: string[]; // samlp:SessionIndex（複数可）
@@ -38,7 +38,7 @@ interface SamlLogoutResponseData {
   type: 'logoutResponse';
   issuer?: string;
   statusCode?: string;
-  statusSubCode?: string;   // Response と同じ二段階ステータス対応
+  statusSubCode?: string; // Response と同じ二段階ステータス対応
   statusMessage?: string;
   destination?: string;
   inResponseTo?: string;
