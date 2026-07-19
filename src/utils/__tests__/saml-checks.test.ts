@@ -1,12 +1,22 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { parseSamlXml, runResponseChecks } from '@/utils/saml';
-import type { SamlResponseData } from '@/utils/saml';
+import {
+  parseSamlXml,
+  runResponseChecks,
+  runLogoutRequestChecks,
+  runLogoutResponseChecks,
+} from '@/utils/saml';
+import type { SamlLogoutRequestData, SamlLogoutResponseData, SamlResponseData } from '@/utils/saml';
 import {
   SAMPLE_RESPONSE_XML,
   FAILED_STATUS_RESPONSE_XML,
   ENCRYPTED_ASSERTION_RESPONSE_XML,
   NESTED_STATUS_RESPONSE_XML,
+  LOGOUT_REQUEST_XML,
+  ENCRYPTED_ID_LOGOUT_REQUEST_XML,
+  NO_NAMEID_LOGOUT_REQUEST_XML,
+  LOGOUT_RESPONSE_XML,
+  FAILED_LOGOUT_RESPONSE_XML,
 } from './saml-fixtures';
 
 function parseResponse(xml: string): SamlResponseData {
@@ -285,5 +295,91 @@ describe('runResponseChecks: 複数 AudienceRestriction の AND 判定（陽性�
       'audience'
     );
     expect(item.status).toBe('error');
+  });
+});
+
+function parseLogoutRequest(xml: string): SamlLogoutRequestData {
+  const m = parseSamlXml(xml);
+  if (m.type !== 'logoutRequest') throw new Error('logoutRequest expected');
+  return m;
+}
+
+function parseLogoutResponse(xml: string): SamlLogoutResponseData {
+  const m = parseSamlXml(xml);
+  if (m.type !== 'logoutResponse') throw new Error('logoutResponse expected');
+  return m;
+}
+
+// LOGOUT_REQUEST_XML の NotOnOrAfter: 2026-07-17T00:05:00Z
+describe('runLogoutRequestChecks', () => {
+  const req = parseLogoutRequest(LOGOUT_REQUEST_XML);
+
+  it('期限内は success', () => {
+    const item = byId(runLogoutRequestChecks(req, { now: IN_WINDOW }), 'notOnOrAfter');
+    expect(item.status).toBe('success');
+  });
+
+  it('陽性対照: 期限切れは error', () => {
+    const item = byId(runLogoutRequestChecks(req, { now: AFTER_WINDOW }), 'notOnOrAfter');
+    expect(item.status).toBe('error');
+    expect(item.detail).toContain('期限切れ');
+  });
+
+  it('NotOnOrAfter なしは info（SAML 仕様上は任意属性）', () => {
+    const noLimit = parseLogoutRequest(NO_NAMEID_LOGOUT_REQUEST_XML);
+    expect(byId(runLogoutRequestChecks(noLimit, { now: IN_WINDOW }), 'notOnOrAfter').status).toBe(
+      'info'
+    );
+  });
+
+  it('パース不能な NotOnOrAfter は warning', () => {
+    const broken = { ...req, notOnOrAfter: 'not-a-date' };
+    expect(byId(runLogoutRequestChecks(broken, { now: IN_WINDOW }), 'notOnOrAfter').status).toBe(
+      'warning'
+    );
+  });
+
+  it('タイムゾーンなし日時は判定続行しつつ warning + 注記', () => {
+    const noTz = { ...req, notOnOrAfter: '2026-07-17T00:05:00' };
+    // now もタイムゾーン指定なしの同形式で組み立てることで、実行環境の TZ に依存せず
+    // 「期限前」の関係性を保つ（NO_TZ_IN_WINDOW と同じ手法。BEFORE_WINDOW は Z 付き絶対時刻の
+    // ため、TZ なし文字列と比較すると実行環境の TZ によって前後関係が反転してしまう）
+    const item = byId(
+      runLogoutRequestChecks(noTz, { now: new Date('2026-07-16T23:00:00') }),
+      'notOnOrAfter'
+    );
+    expect(item.status).toBe('warning');
+    expect(item.detail).toContain('ローカル時刻');
+  });
+
+  it('NameID ありは success', () => {
+    expect(byId(runLogoutRequestChecks(req, { now: IN_WINDOW }), 'nameid').status).toBe('success');
+  });
+
+  it('EncryptedID は warning（復号非対応）', () => {
+    const enc = parseLogoutRequest(ENCRYPTED_ID_LOGOUT_REQUEST_XML);
+    const item = byId(runLogoutRequestChecks(enc, { now: IN_WINDOW }), 'nameid');
+    expect(item.status).toBe('warning');
+    expect(item.detail).toContain('暗号化');
+  });
+
+  it('陽性対照: NameID / EncryptedID なしは error', () => {
+    const none = parseLogoutRequest(NO_NAMEID_LOGOUT_REQUEST_XML);
+    expect(byId(runLogoutRequestChecks(none, { now: IN_WINDOW }), 'nameid').status).toBe('error');
+  });
+});
+
+describe('runLogoutResponseChecks', () => {
+  it('Status Success は success', () => {
+    const res = parseLogoutResponse(LOGOUT_RESPONSE_XML);
+    expect(byId(runLogoutResponseChecks(res), 'status').status).toBe('success');
+  });
+
+  it('陽性対照: Status 失敗は error になり内側コードを併記する', () => {
+    const res = parseLogoutResponse(FAILED_LOGOUT_RESPONSE_XML);
+    const item = byId(runLogoutResponseChecks(res), 'status');
+    expect(item.status).toBe('error');
+    expect(item.detail).toContain('Responder / RequestDenied');
+    expect(item.detail).toContain('Session not found');
   });
 });
