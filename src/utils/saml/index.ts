@@ -8,3 +8,4 @@ export {
   type CheckOptions,
 } from './checks';
 export { formatXml } from './format';
+export { maskSamlXml, type SamlMaskResult } from './mask';
