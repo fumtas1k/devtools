@@ -378,6 +378,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
   - SP entityID 入力時の Audience 照合は、複数の `AudienceRestriction` がある場合、空でないすべての制約に entityID が含まれる場合のみ一致とする（AND 判定）
   - `runLogoutRequestChecks` は LogoutRequest の NotOnOrAfter（任意属性のため未指定は info、期限切れは error）と NameID の存在（EncryptedID は復号非対応のため warning、いずれもなしは仕様違反として error）を、`runLogoutResponseChecks` は Status を同じ規則で判定する
 - `format.ts` が表示用に生 XML を簡易整形する（要素・属性・テキストのみを再構成するため、タグ間に混在するテキスト（mixed content）は表示されない場合がある旨を UI に注記）
+- `mask.ts` の `maskSamlXml` が「共有用マスク XML」トグル用の 2 フェーズマスクを行う。フェーズ1（構造ベース）は再パースした DOM 上の `saml:NameID` / `saml:AttributeValue` のテキストを値ベース一貫トークン `[REDACTED:PII_n]`（同一値は同一トークン）に置換し、フェーズ2 は再シリアライズ後の文字列に `secret-scrubber` の `scrubText` を `HIGH_ENTROPY` カテゴリ除外で適用して URL クエリ埋め込みメール等の構造で拾えない残余を救済する。`HIGH_ENTROPY` を除外するのは `ds:SignatureValue` / `ds:X509Certificate` 等の base64（非 PII・公開情報）を over-mask しないため。署名値・証明書・タイムスタンプ・ID・要素名は構造情報としてそのまま残す
 
 #### 準拠仕様・RFC
 
@@ -390,6 +391,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない
 - deflate 展開後のサイズが 32MB を超える入力はエラーにする（zip bomb 対策）
+- 「共有用マスク XML」は構造上の PII フィールド（NameID・AttributeValue）と `secret-scrubber` の既知パターンの除去であり、完全な匿名化を保証するものではない。共有前に必ず目視で確認すること
 
 ## 変換・解析
 

@@ -1397,9 +1397,9 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 - 適用した変換ステップの表示
 - Response/AuthnRequest のサマリと定番チェックリスト（Response のみ）
 - Assertion ごとの構造表示（NameID・属性テーブル・Conditions・AuthnStatement・SubjectConfirmationData）
-- 整形済み生 XML の折りたたみ表示 + `CopyButton`
+- 整形済み生 XML の折りたたみ表示 + `CopyButton`。「生 XML」/「マスク XML（共有用）」の `ToggleGroup` 切替に対応し、マスク XML は `maskSamlXml` で NameID・全 AttributeValue を値ベース一貫トークン化 + `secret-scrubber`（`HIGH_ENTROPY` 除外）で URL 埋め込みメール等を除去した PII 削減版を表示・コピーできる
 
-**モジュール構成:** `src/utils/saml/`（`types.ts` 型定義 / `decode.ts` 自動判定デコードチェーン / `parse.ts` XML → 構造化モデル / `checks.ts` 定番チェックリスト / `format.ts` XML 整形 / `index.ts`）/ `src/components/tools/SamlDecoder.tsx` / `src/pages/tools/saml-decoder.astro`
+**モジュール構成:** `src/utils/saml/`（`types.ts` 型定義 / `decode.ts` 自動判定デコードチェーン / `parse.ts` XML → 構造化モデル / `checks.ts` 定番チェックリスト / `format.ts` XML 整形 / `mask.ts` 共有用マスク出力 / `index.ts`）/ `src/components/tools/SamlDecoder.tsx` / `src/pages/tools/saml-decoder.astro`
 
 **追加依存:** `fflate`（raw deflate 展開）。
 
@@ -1408,8 +1408,9 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 - XMLDSig 署名検証・`EncryptedAssertion` の復号・LogoutRequest/LogoutResponse 等の他メッセージ型は非対応（署名・暗号化は存在の有無のみ表示）
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる PII を含む）を外部サーバーに送信しない
+- 「共有用マスク XML」は構造上の PII フィールドと `secret-scrubber` の既知パターンの除去であり、完全な匿名化を保証しない（共有前の目視確認が必要）
 
-**スコープ外（v1）:** XMLDSig 署名検証（C14N 実装）・EncryptedAssertion 復号・LogoutRequest/LogoutResponse 等の他メッセージ型・共有用マスク出力（secret-scrubber 連携）
+**スコープ外（v1）:** XMLDSig 署名検証（C14N 実装）・EncryptedAssertion 復号・LogoutRequest/LogoutResponse 等の他メッセージ型
 
 ---
 
