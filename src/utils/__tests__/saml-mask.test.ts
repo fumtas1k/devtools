@@ -59,7 +59,9 @@ describe('maskSamlXml: フェーズ1 構造ベースマスク（陽性対照）'
 
   it('LogoutRequest の NameID もマスクされる', () => {
     const { xml, piiCount } = maskSamlXml(LOGOUT_REQUEST_XML);
-    expect(xml).not.toContain('taro@example.com');
+    // フィクスチャの NameID 実在値で検証する（空振り防止・陽性対照）
+    expect(xml).not.toContain('taro.yamada@example.com');
+    expect(xml).toContain('[REDACTED:PII_');
     expect(piiCount).toBeGreaterThanOrEqual(1);
   });
 });
