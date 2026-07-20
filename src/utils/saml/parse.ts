@@ -2,6 +2,8 @@ import type {
   SamlAssertion,
   SamlAttribute,
   SamlAuthnRequestData,
+  SamlLogoutRequestData,
+  SamlLogoutResponseData,
   SamlMessage,
   SamlResponseData,
 } from './types';
@@ -34,7 +36,7 @@ function hasDirectSignature(el: Element): boolean {
 
 /**
  * SAML XML を構造化モデルへパースする。
- * 対応: Response / AuthnRequest。それ以外の SAML メッセージ型はエラー。
+ * 対応: Response / AuthnRequest / LogoutRequest / LogoutResponse。それ以外の SAML メッセージ型はエラー。
  */
 export function parseSamlXml(xml: string): SamlMessage {
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
@@ -45,12 +47,23 @@ export function parseSamlXml(xml: string): SamlMessage {
   if (root.namespaceURI === NS_P && root.localName === 'Response') return parseResponse(root);
   if (root.namespaceURI === NS_P && root.localName === 'AuthnRequest')
     return parseAuthnRequest(root);
+  if (root.namespaceURI === NS_P && root.localName === 'LogoutRequest')
+    return parseLogoutRequest(root);
+  if (root.namespaceURI === NS_P && root.localName === 'LogoutResponse')
+    return parseLogoutResponse(root);
   throw new Error(
-    `対応していない SAML メッセージです（${root.namespaceURI ?? '名前空間なし'} の ${root.localName}）。SAML 2.0 の Response / AuthnRequest のみ対応しています`
+    `対応していない SAML メッセージです（${root.namespaceURI ?? '名前空間なし'} の ${root.localName}）。SAML 2.0 の Response / AuthnRequest / LogoutRequest / LogoutResponse のみ対応しています`
   );
 }
 
-function parseResponse(root: Element): SamlResponseData {
+interface ParsedStatus {
+  statusCode?: string;
+  statusSubCode?: string;
+  statusMessage?: string;
+}
+
+/** samlp:Status から外側/内側 StatusCode と StatusMessage を抽出する（Response / LogoutResponse 共通） */
+function parseStatus(root: Element): ParsedStatus {
   const status = childNS(root, NS_P, 'Status');
   const outerStatusCode = status ? childNS(status, NS_P, 'StatusCode') : undefined;
   // 二段階ステータス（外側 StatusCode の子にもう1つ StatusCode）の内側コード
@@ -58,11 +71,17 @@ function parseResponse(root: Element): SamlResponseData {
     ? childNS(outerStatusCode, NS_P, 'StatusCode')
     : undefined;
   return {
-    type: 'response',
-    issuer: textOf(childNS(root, NS_A, 'Issuer')),
     statusCode: attrOf(outerStatusCode, 'Value'),
     statusSubCode: attrOf(innerStatusCode, 'Value'),
     statusMessage: status ? textOf(childNS(status, NS_P, 'StatusMessage')) : undefined,
+  };
+}
+
+function parseResponse(root: Element): SamlResponseData {
+  return {
+    type: 'response',
+    issuer: textOf(childNS(root, NS_A, 'Issuer')),
+    ...parseStatus(root),
     destination: attrOf(root, 'Destination'),
     inResponseTo: attrOf(root, 'InResponseTo'),
     issueInstant: attrOf(root, 'IssueInstant'),
@@ -140,6 +159,36 @@ function parseAuthnRequest(root: Element): SamlAuthnRequestData {
     authnContextClassRefs: requestedCtx
       ? childrenNS(requestedCtx, NS_A, 'AuthnContextClassRef').flatMap((e) => textOf(e) ?? [])
       : [],
+    signed: hasDirectSignature(root),
+  };
+}
+
+function parseLogoutRequest(root: Element): SamlLogoutRequestData {
+  const nameId = childNS(root, NS_A, 'NameID');
+  return {
+    type: 'logoutRequest',
+    issuer: textOf(childNS(root, NS_A, 'Issuer')),
+    destination: attrOf(root, 'Destination'),
+    issueInstant: attrOf(root, 'IssueInstant'),
+    notOnOrAfter: attrOf(root, 'NotOnOrAfter'),
+    reason: attrOf(root, 'Reason'),
+    nameId: textOf(nameId),
+    nameIdFormat: attrOf(nameId, 'Format'),
+    encryptedNameId: childNS(root, NS_A, 'EncryptedID') !== undefined,
+    // SessionIndex は assertion 側ではなく protocol 名前空間の要素
+    sessionIndexes: childrenNS(root, NS_P, 'SessionIndex').flatMap((e) => textOf(e) ?? []),
+    signed: hasDirectSignature(root),
+  };
+}
+
+function parseLogoutResponse(root: Element): SamlLogoutResponseData {
+  return {
+    type: 'logoutResponse',
+    issuer: textOf(childNS(root, NS_A, 'Issuer')),
+    ...parseStatus(root),
+    destination: attrOf(root, 'Destination'),
+    inResponseTo: attrOf(root, 'InResponseTo'),
+    issueInstant: attrOf(root, 'IssueInstant'),
     signed: hasDirectSignature(root),
   };
 }

@@ -9,6 +9,13 @@ import {
   NESTED_STATUS_RESPONSE_XML,
   DEFAULT_NS_RESPONSE_XML,
   TWO_ASSERTIONS_RESPONSE_XML,
+  LOGOUT_REQUEST_XML,
+  ENCRYPTED_ID_LOGOUT_REQUEST_XML,
+  NO_NAMEID_LOGOUT_REQUEST_XML,
+  LOGOUT_RESPONSE_XML,
+  FAILED_LOGOUT_RESPONSE_XML,
+  DEFAULT_NS_LOGOUT_REQUEST_XML,
+  DEFAULT_NS_LOGOUT_RESPONSE_XML,
 } from './saml-fixtures';
 
 describe('parseSamlXml: Response', () => {
@@ -118,10 +125,10 @@ describe('parseSamlXml: 異常系', () => {
     expect(() => parseSamlXml('<root><child/></root>')).toThrow(/対応していない/);
   });
 
-  it('LogoutRequest は未対応としてエラー', () => {
+  it('ArtifactResolve など未対応の SAML メッセージ型はエラー', () => {
     const xml =
-      '<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_l1" Version="2.0" IssueInstant="2026-07-17T00:00:00Z"/>';
-    expect(() => parseSamlXml(xml)).toThrow(/LogoutRequest/);
+      '<samlp:ArtifactResolve xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_l1" Version="2.0" IssueInstant="2026-07-17T00:00:00Z"/>';
+    expect(() => parseSamlXml(xml)).toThrow(/ArtifactResolve/);
   });
 
   it('SAML 1.1 namespace の Response は namespace URI と SAML 2.0 限定である旨をエラーに含む（陽性対照）', () => {
@@ -129,5 +136,74 @@ describe('parseSamlXml: 異常系', () => {
       '<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:1.0:protocol" ID="_r1" IssueInstant="2026-07-17T00:00:00Z"/>';
     expect(() => parseSamlXml(xml)).toThrow(/urn:oasis:names:tc:SAML:1\.0:protocol/);
     expect(() => parseSamlXml(xml)).toThrow(/SAML 2\.0/);
+  });
+});
+
+describe('parseSamlXml: LogoutRequest', () => {
+  it('サマリ情報と複数 SessionIndex を抽出する', () => {
+    const m = parseSamlXml(LOGOUT_REQUEST_XML);
+    if (m.type !== 'logoutRequest') throw new Error('logoutRequest expected');
+    expect(m.issuer).toBe('https://sp.example.com/metadata');
+    expect(m.destination).toBe('https://idp.example.com/slo');
+    expect(m.issueInstant).toBe('2026-07-17T00:00:00Z');
+    expect(m.notOnOrAfter).toBe('2026-07-17T00:05:00Z');
+    expect(m.reason).toBe('urn:oasis:names:tc:SAML:2.0:logout:user');
+    expect(m.nameId).toBe('taro.yamada@example.com');
+    expect(m.nameIdFormat).toBe('urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress');
+    expect(m.encryptedNameId).toBe(false);
+    expect(m.sessionIndexes).toEqual(['_s1', '_s2']);
+    expect(m.signed).toBe(false);
+  });
+
+  it('EncryptedID を検出する', () => {
+    const m = parseSamlXml(ENCRYPTED_ID_LOGOUT_REQUEST_XML);
+    if (m.type !== 'logoutRequest') throw new Error('logoutRequest expected');
+    expect(m.nameId).toBeUndefined();
+    expect(m.encryptedNameId).toBe(true);
+  });
+
+  it('prefix なし（default xmlns）の LogoutRequest も正常にパースする（回帰）', () => {
+    const m = parseSamlXml(DEFAULT_NS_LOGOUT_REQUEST_XML);
+    if (m.type !== 'logoutRequest') throw new Error('logoutRequest expected');
+    expect(m.issuer).toBe('https://sp.example.com/metadata');
+    expect(m.nameId).toBe('taro.yamada@example.com');
+    expect(m.sessionIndexes).toEqual(['_s1']);
+  });
+
+  it('NameID / EncryptedID / NotOnOrAfter なしはいずれも undefined / false / 空になる', () => {
+    const m = parseSamlXml(NO_NAMEID_LOGOUT_REQUEST_XML);
+    if (m.type !== 'logoutRequest') throw new Error('logoutRequest expected');
+    expect(m.nameId).toBeUndefined();
+    expect(m.encryptedNameId).toBe(false);
+    expect(m.notOnOrAfter).toBeUndefined();
+    expect(m.sessionIndexes).toEqual([]);
+  });
+});
+
+describe('parseSamlXml: LogoutResponse', () => {
+  it('サマリ情報を抽出する', () => {
+    const m = parseSamlXml(LOGOUT_RESPONSE_XML);
+    if (m.type !== 'logoutResponse') throw new Error('logoutResponse expected');
+    expect(m.issuer).toBe('https://idp.example.com/metadata');
+    expect(m.statusCode).toBe('urn:oasis:names:tc:SAML:2.0:status:Success');
+    expect(m.destination).toBe('https://sp.example.com/slo');
+    expect(m.inResponseTo).toBe('_lreq1');
+    expect(m.signed).toBe(false);
+  });
+
+  it('二段階ステータスの内側コードと StatusMessage を抽出する', () => {
+    const m = parseSamlXml(FAILED_LOGOUT_RESPONSE_XML);
+    if (m.type !== 'logoutResponse') throw new Error('logoutResponse expected');
+    expect(m.statusCode).toBe('urn:oasis:names:tc:SAML:2.0:status:Responder');
+    expect(m.statusSubCode).toBe('urn:oasis:names:tc:SAML:2.0:status:RequestDenied');
+    expect(m.statusMessage).toBe('Session not found');
+  });
+
+  it('prefix なし（default xmlns）の LogoutResponse も正常にパースする（回帰）', () => {
+    const m = parseSamlXml(DEFAULT_NS_LOGOUT_RESPONSE_XML);
+    if (m.type !== 'logoutResponse') throw new Error('logoutResponse expected');
+    expect(m.issuer).toBe('https://idp.example.com/metadata');
+    expect(m.statusCode).toBe('urn:oasis:names:tc:SAML:2.0:status:Success');
+    expect(m.inResponseTo).toBe('_lreq4');
   });
 });

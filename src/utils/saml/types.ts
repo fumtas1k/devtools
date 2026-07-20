@@ -76,7 +76,42 @@ export interface SamlAuthnRequestData {
   signed: boolean;
 }
 
-export type SamlMessage = SamlResponseData | SamlAuthnRequestData;
+export interface SamlLogoutRequestData {
+  type: 'logoutRequest';
+  issuer?: string;
+  destination?: string;
+  issueInstant?: string;
+  /** ルート属性。リクエスト自体の有効期限（SAML 仕様上は任意） */
+  notOnOrAfter?: string;
+  /** Reason 属性（URI） */
+  reason?: string;
+  nameId?: string;
+  nameIdFormat?: string;
+  /** NameID が EncryptedID で暗号化されている場合 true（内容は表示不可・復号は非対応） */
+  encryptedNameId: boolean;
+  /** samlp:SessionIndex（複数可） */
+  sessionIndexes: string[];
+  signed: boolean;
+}
+
+export interface SamlLogoutResponseData {
+  type: 'logoutResponse';
+  issuer?: string;
+  statusCode?: string;
+  /** 外側 StatusCode の直下にネストした内側 StatusCode の Value */
+  statusSubCode?: string;
+  statusMessage?: string;
+  destination?: string;
+  inResponseTo?: string;
+  issueInstant?: string;
+  signed: boolean;
+}
+
+export type SamlMessage =
+  | SamlResponseData
+  | SamlAuthnRequestData
+  | SamlLogoutRequestData
+  | SamlLogoutResponseData;
 
 export type CheckStatus = 'success' | 'warning' | 'error' | 'info';
 
