@@ -23,6 +23,7 @@
   - [Base64 エンコード/デコード](#base64-エンコードデコード)
   - [JWTデコーダー](#jwtデコーダー)
   - [SSL/TLS証明書デコーダ](#ssltls証明書デコーダ)
+  - [SAMLデコーダ](#samlデコーダ)
 - [変換・解析](#変換解析)
   - [JSON / XML 変換](#json--xml-変換)
   - [JSON / CSV 変換](#json--csv-変換)
@@ -361,6 +362,36 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - 失効確認（CRL / OCSP）は行わない。署名検証はチェーン内の隣接ペアに対してのみで、信頼ストアとの照合（ルート CA の信頼性確認）は行わない
 - SCT はタイムスタンプ・ログ ID の表示のみで、署名の暗号検証はしない（best-effort）
 - 全処理はブラウザ内で完結し、入力（社内 CA・本番証明書・秘密鍵を含む）は外部に送信しない
+
+### SAMLデコーダ
+
+#### 仕組み・アルゴリズム
+
+- 入力形式を `decode.ts` の `decodeSamlInput` で自動判定する。URL 全体なら `SAMLResponse` / `SAMLRequest` クエリパラメータを抽出（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から自前パースし percent エンコードのまま `+` を保持する。クエリキー名が percent エンコードされている場合も比較前に `decodeURIComponent` を試みる）→ 生 XML 判定 → URL デコード → base64 デコード（`-`/`_` を含む base64url 表記は標準 base64 へ変換しパディングを補完してから decode）→ UTF-8 として XML と解釈できれば HTTP-POST binding、できなければ `fflate` の `Decompress`（ストリーミング API。raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定する。展開後サイズが 32MB を超えた場合は zip bomb 対策としてエラーにする（圧縮データを 64KB 単位のチャンクに分けて渡すことで、上限超過を検知した時点で残りの展開処理を打ち切る）。適用した変換ステップは UI に表示する
+- `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy/RequestedAuthnContext、LogoutRequest は Issuer/Destination/NotOnOrAfter/Reason/NameID（EncryptedID は存在検出のみ）/SessionIndex（複数可）、LogoutResponse は Issuer/Status/Destination/InResponseTo を抽出する。`ds:Signature` の有無・`EncryptedAssertion` の件数も検出する（存在表示のみ、検証・復号はしない）
+  - 二段階ステータス（外側 StatusCode の子にネストした内側 StatusCode）の内側コードも `statusSubCode` として抽出し、UI では Status 行の直後に表示する
+  - `AudienceRestriction` は要素ごとに `string[]`（AND される制約）として保持し、各制約内の `Audience` は OR 列挙として扱う
+- `checks.ts` の `runResponseChecks` が Response の定番チェック（Status / 有効期間 / Audience・Recipient / NameID）を現在時刻基準で実行する。`NotOnOrAfter` は SAML 仕様どおりその時刻自体を含まない排他境界（`now >= notOnOrAfter` で期限切れ）として判定する
+  - Status が失敗の場合、内側 StatusCode があれば `外側 / 内側`（例: `Responder / RequestDenied`）の形式で併記する
+  - タイムゾーン指定（`Z` / `±hh(:mm)`）のない `NotBefore` / `NotOnOrAfter` はこの端末のローカル時刻として解釈されるため実行環境依存になる旨を警告として注記しつつ、判定自体は継続する。日付のみ形式（`YYYY-MM-DD`）は ES 仕様上 UTC (00:00Z) 解釈が確定するため、ローカル時刻の注記ではなく専用の注記を表示する
+  - `Date` でパース不能な日時は「有効期間内」と誤って表示しないよう warning 扱いにする
+  - SP entityID 入力時の Audience 照合は、複数の `AudienceRestriction` がある場合、空でないすべての制約に entityID が含まれる場合のみ一致とする（AND 判定）
+  - `runLogoutRequestChecks` は LogoutRequest の NotOnOrAfter（任意属性のため未指定は info、期限切れは error）と NameID の存在（EncryptedID は復号非対応のため warning、いずれもなしは仕様違反として error）を、`runLogoutResponseChecks` は Status を同じ規則で判定する
+- `format.ts` が表示用に生 XML を簡易整形する（要素・属性・テキストのみを再構成するため、タグ間に混在するテキスト（mixed content）は表示されない場合がある旨を UI に注記）
+- `mask.ts` の `maskSamlXml` が「共有用マスク XML」トグル用の 2 フェーズマスクを行う。フェーズ1（構造ベース）は再パースした DOM 上の `saml:NameID` / `saml:AttributeValue` のテキストを値ベース一貫トークン `[REDACTED:PII_n]`（同一値は同一トークン）に置換し、フェーズ2 は再シリアライズ後の文字列に `secret-scrubber` の `scrubText` を `HIGH_ENTROPY` カテゴリ除外で適用して URL クエリ埋め込みメール等の構造で拾えない残余を救済する。`HIGH_ENTROPY` を除外するのは `ds:SignatureValue` / `ds:X509Certificate` 等の base64（非 PII・公開情報）を over-mask しないため。署名値・証明書・タイムスタンプ・ID・要素名は構造情報としてそのまま残す
+
+#### 準拠仕様・RFC
+
+- SAML 2.0 Core / Bindings（HTTP-POST・HTTP-Redirect binding）
+
+#### 制限・エッジケース
+
+- XMLDSig 署名検証・EncryptedAssertion / EncryptedID の復号・ArtifactResolve 等のその他メッセージ型は非対応（署名・暗号化は存在の有無のみ表示。第2版候補）
+- LogoutRequest の主体識別子は `NameID` / `EncryptedID` のみ対応（SAML 2.0 Core 3.7.1 で許容される `BaseID` は非対応。実運用例がほぼ皆無なため。`BaseID` のみのリクエストは NameID チェックが error 表示になる）
+- ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
+- 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない
+- deflate 展開後のサイズが 32MB を超える入力はエラーにする（zip bomb 対策）
+- 「共有用マスク XML」は構造上の PII フィールド（NameID・AttributeValue）と `secret-scrubber` の既知パターンの除去であり、完全な匿名化を保証するものではない。共有前に必ず目視で確認すること
 
 ## 変換・解析
 

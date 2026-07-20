@@ -252,6 +252,14 @@ const toolEntries: Tool[] = [
     category: 'convert',
     yomi: 'でぃーでぃーえるいーあーるずせいせい',
   },
+  {
+    slug: 'saml-decoder',
+    name: 'SAMLデコーダ',
+    description:
+      'SSO の SAMLResponse / AuthnRequest を base64・deflate 自動判定でデコードし、Assertion の内容と Status・有効期限・Audience の定番チェックを表示します。データはブラウザ外に送信しません',
+    category: 'encode',
+    yomi: 'さむるでこーだ',
+  },
 ];
 
 // 表示順は yomi（読み仮名）の五十音順。category 内 filter でも相対順序が保たれる

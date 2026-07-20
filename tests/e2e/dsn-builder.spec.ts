@@ -1,10 +1,14 @@
 import { test, expect } from '@playwright/test';
+import { waitForReactHydration } from './helpers';
 
 const PG_URI = 'postgresql://app:s3cret@db.example.com:5432/app_db?sslmode=require';
 
 test.describe('DSN/接続文字列ビルダ', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/tools/dsn-builder');
+    // fill → React onChange パースが hydration 完了前に走ると DOM のみ更新され
+    // flaky になるため、island の hydration 完了を待つ (issue #750)
+    await waitForReactHydration(page);
   });
 
   test('URI 貼り付けでフォームに分解される', async ({ page }) => {

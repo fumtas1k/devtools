@@ -105,6 +105,14 @@ input / textarea / button などのフォーカス可能要素の className に 
 | 操作の種類が変わる（エンコード/デコード等）  | する     | 入力の期待形式が変わる     |
 | 同じ操作のサブバリアント（標準/URL-safe 等） | しない   | 出力比較のために保持が便利 |
 
+### 2.5 live region（`aria-live` / `role="status"`）は小さい要素に限定する
+
+リアルタイム変換系ツールで **結果領域全体**（サマリ・詳細・テーブルを含む大きな div）に `aria-live` / `role="status"` を付けない。入力を 1 文字編集するたびに領域全体が変化し、スクリーンリーダーに膨大な再アナウンスが走る。
+
+- ✅ 推奨: 「変換ステップ行」「結果の 1 行要約」など**小さく安定した要素**だけを live region にし、詳細領域は通常のセクションにする
+- `role="status"` は暗黙で `aria-live="polite"` を持つため、両方を併記しない（冗長）
+- 過去事例: PR #746 のレビューで検出（JwtDecoder の既存パターンを踏襲した結果の再発。既存分の改修は別 issue 管理）
+
 ---
 
 ## 3. Playwright での確認手順
@@ -130,3 +138,11 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** 両方でスクリ
 
 - `getByRole` / `getByText` / `getByLabel` を使う。`locator('[role="X"]')` のような属性セレクタは禁止（アクセシビリティ・国際化に弱く、リファクタリング耐性も低い）。
 - DOM 直接操作（`page.evaluate`）より `expect` のオートリトライを優先（React の再レンダータイミングで不安定になるため）。
+
+### 3.4 React island へ入力する E2E spec は hydration 待機が必須
+
+React island（`client:load` でマウントされるツール本体）に `fill` / `click` 等で入力する spec は、**`beforeEach` で `await waitForReactHydration(page);`（`tests/e2e/helpers.ts`）を必ず呼ぶ**。
+
+- hydration 完了前の `fill` は DOM の value だけを書き換え、React の `onChange` が発火しないため state が空のまま進む（例: URI 貼り付け分解で一部フィールドだけ空になる）
+- この race は **CI では顕在化しない**（`workers: 1` の直列実行で hydration が間に合う）が、ローカルの並列実行で flaky になる。「CI green だからテストは正しい」とは判断できない
+- 過去事例: issue #750（`dsn-builder.spec.ts` / `dummy-personal-data.spec.ts` が未呼び出しでローカル 8〜10 件 fail）

@@ -1,5 +1,5 @@
 {
-  "model": "opusplan",
+  "model": "opus[1m]",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
@@ -91,7 +91,7 @@
     }
   },
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "auto",
     "allow": [
       "Read(./**)",
       "Read(~/.claude/**)",
@@ -106,12 +106,6 @@
       "Edit(/tmp/claude/**)",
       "Edit(/tmp/claude-[0-9a-f]*/**)",
       "Edit(/var/folders/*/*/T/**)",
-      "Write(./**)",
-      "Write(/private/tmp/claude/**)",
-      "Write(/private/tmp/claude-[0-9a-f]*/**)",
-      "Write(/tmp/claude/**)",
-      "Write(/tmp/claude-[0-9a-f]*/**)",
-      "Write(/var/folders/*/*/T/**)",
       "WebFetch(domain:ai.google.dev)",
       "WebFetch(domain:code.claude.com)",
       "WebFetch(domain:docs.anthropic.com)",
@@ -187,9 +181,7 @@
     ],
     "ask": [
       "Edit(**/.claude/{*.json,*.sh,hooks/**,agents/**,skills/**,commands/**,plugins/**})",
-      "Write(**/.claude/{*.json,*.sh,hooks/**,agents/**,skills/**,commands/**,plugins/**})",
       "Edit(./.gemini/**)",
-      "Write(./.gemini/**)",
       "Bash(git push*)",
       "Bash(git reset --hard*)",
       "Bash(git commit --amend*)",

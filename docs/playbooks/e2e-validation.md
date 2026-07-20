@@ -34,9 +34,12 @@
 | --- | --------------------- | ------------------------------------------------------------------------------------------ |
 | 0   | node_modules 整備     | `npm ci`（新規作成 worktree では必須。fresh worktree なら 5〜10 秒で完了。詳細は下記参照） |
 | 1   | develop ベース確認    | `git rev-parse origin/develop` と `git merge-base HEAD origin/develop` が一致              |
-| 2   | ユニットテスト全 pass | `npm run test`                                                                             |
-| 3   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                                |
-| 4   | E2E テスト            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ）             |
+| 2   | 整形チェック          | `npm run format:check`（CI の `test` ジョブが最初に走らせる。下記補足参照）                |
+| 3   | ユニットテスト全 pass | `npm run test`                                                                             |
+| 4   | 型チェック            | `node_modules/.bin/astro check`（0 errors）                                                |
+| 5   | E2E テスト            | `npm run test:e2e`（env 不備で走らない場合は未完了の旨を明記して親に引き継ぐ）             |
+
+> **`format:check` を push 前必須にする理由**: CI の `test` ジョブは `format:check`（`prettier --check .`）→ lint → 型 → vitest の順で実行するため、`npm run test`（vitest のみ）がローカルで green でも `format:check` 崩れで CI が赤になる。特に **`Write` / `Edit` ツールで新規作成・編集した Markdown（設計 doc・実装計画・docs）** は、サブエージェントが prettier をかけるコードと違い整形漏れが起きやすい（PR #753 で設計 doc / 実装計画の整形崩れにより CI 赤 → 修正 → 再 push のラウンドトリップが発生）。`prettier --check .` は数秒で完了するため push 前に必ず通す。
 
 > **ステップ 0 の補足**: fresh subagent isolation worktree では node_modules が存在しないため、素の `npm ci` のみで十分（過去の `scripts/agent-worktree-setup.sh` は不要と判明し、issue #241 / decisions [062] で廃止）。`.claude/settings.json` の SessionStart hook は session 開始時のみ fire するため、mid-session で `git worktree add` した worktree には適用されない。新規作成 worktree では作成直後に手動で `npm ci` を実行する必須ステップとして扱うこと。
 >
