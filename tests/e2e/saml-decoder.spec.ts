@@ -163,4 +163,25 @@ test.describe('SAMLデコーダ', () => {
       page.getByText('StatusMessage: Session not found', { exact: false })
     ).toBeVisible();
   });
+
+  test('マスク XML トグルで PII がトークン化されコピー対象も切替わる', async ({ page }) => {
+    await page.getByRole('button', { name: 'サンプル' }).click();
+    await expect(page.getByText('Response サマリ')).toBeVisible();
+
+    // 整形済み XML の details を開く
+    await page.getByText('整形済み XML（簡易整形）').click();
+
+    // 生 XML モードでは NameID のメールが表示される
+    const xmlBlock = page.locator('pre').last();
+    await expect(xmlBlock).toContainText('taro.yamada@example.com');
+
+    // マスク XML に切替
+    await page.getByRole('button', { name: 'マスク XML（共有用）' }).click();
+    await expect(xmlBlock).not.toContainText('taro.yamada@example.com');
+    await expect(xmlBlock).toContainText('[REDACTED:PII_');
+    await expect(xmlBlock).not.toContainText('山田 太郎');
+
+    // 件数バッジが表示される
+    await expect(page.getByText(/PII \d+ 件・機密 \d+ 件をマスク/)).toBeVisible();
+  });
 });
