@@ -8,9 +8,7 @@ import type {
   SamlResponseData,
 } from './types';
 
-const NS_P = 'urn:oasis:names:tc:SAML:2.0:protocol';
-const NS_A = 'urn:oasis:names:tc:SAML:2.0:assertion';
-const NS_DS = 'http://www.w3.org/2000/09/xmldsig#';
+import { NS_P, NS_A, NS_DS } from './ns';
 
 /** 直下の子要素のみを名前空間 URI + localName で探す（prefix 非依存・ネスト混入防止） */
 function childNS(el: Element, ns: string, local: string): Element | undefined {
