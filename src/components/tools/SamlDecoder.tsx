@@ -5,6 +5,7 @@ import { CopyButton } from '@/components/ui/CopyButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { ResultTable, type TableColumn } from '@/components/ui/ResultTable';
+import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import {
   decodeSamlInput,
   parseSamlXml,
@@ -12,6 +13,7 @@ import {
   runLogoutRequestChecks,
   runLogoutResponseChecks,
   formatXml,
+  maskSamlXml,
   type CheckItem,
   type DecodedInput,
   type SamlAssertion,
@@ -25,6 +27,8 @@ const BINDING_LABEL: Record<SamlBinding, string> = {
   post: 'HTTP-POST binding（base64）',
   xml: '生 XML',
 };
+
+type XmlView = 'raw' | 'masked';
 
 /** サンプル: 現在時刻を挟む有効期間の Response を POST binding（base64）で生成 */
 function buildSampleInput(): string {
@@ -222,6 +226,7 @@ interface ParsedNg {
 export function SamlDecoderTool() {
   const [input, setInput] = useState('');
   const [spEntityId, setSpEntityId] = useState('');
+  const [xmlView, setXmlView] = useState<XmlView>('raw');
 
   const result: ParsedOk | ParsedNg | null = useMemo(() => {
     if (!input.trim()) return null;
@@ -247,6 +252,9 @@ export function SamlDecoderTool() {
   }, [response, logoutRequest, logoutResponse, spEntityId]);
 
   const prettyXml = useMemo(() => (ok ? formatXml(ok.decoded.xml) : ''), [ok]);
+  const masked = useMemo(() => (ok ? maskSamlXml(ok.decoded.xml) : null), [ok]);
+  const maskedXml = useMemo(() => (masked ? formatXml(masked.xml) : ''), [masked]);
+  const displayedXml = xmlView === 'masked' ? maskedXml : prettyXml;
 
   return (
     <div className="space-y-6">
@@ -389,16 +397,40 @@ export function SamlDecoderTool() {
             <AssertionSection key={i} assertion={a} index={i} total={response.assertions.length} />
           ))}
 
-          {/* 生 XML */}
+          {/* 生 XML / マスク XML */}
           <details className="rounded-lg bg-subtle">
             <summary className="cursor-pointer p-4 body-emphasis text-default">
               整形済み XML（簡易整形）
             </summary>
             <div className="px-4 pb-4 space-y-2">
-              <div className="flex justify-end">
-                <CopyButton text={prettyXml} label="コピー" />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <ToggleGroup<XmlView>
+                  options={[
+                    { value: 'raw', label: '生 XML' },
+                    { value: 'masked', label: 'マスク XML（共有用）' },
+                  ]}
+                  value={xmlView}
+                  onChange={setXmlView}
+                  ariaLabel="XML 表示モード"
+                  size="sm"
+                  layout="wrap"
+                />
+                <CopyButton text={displayedXml} label="コピー" />
               </div>
-              <pre className="overflow-x-auto font-mono caption text-default">{prettyXml}</pre>
+              {xmlView === 'masked' && masked && (
+                <div className="space-y-1">
+                  <StatusBadge tone="info">
+                    {masked.piiCount + masked.secretCount > 0
+                      ? `PII ${masked.piiCount} 件・機密 ${masked.secretCount} 件をマスク`
+                      : 'マスク対象なし'}
+                  </StatusBadge>
+                  <p className="hint-xs text-muted">
+                    共有前に必ず目視で確認してください。構造上の PII
+                    フィールドと既知パターンの除去であり、完全な匿名化を保証するものではありません。
+                  </p>
+                </div>
+              )}
+              <pre className="overflow-x-auto font-mono caption text-default">{displayedXml}</pre>
               <p className="hint-xs text-muted">
                 簡易整形のため、タグ間に混在するテキスト（mixed
                 content）は表示されない場合があります。
@@ -420,6 +452,7 @@ export function SamlDecoderTool() {
             onClick={() => {
               setInput('');
               setSpEntityId('');
+              setXmlView('raw');
             }}
           />
         </div>
