@@ -20,7 +20,11 @@ Claude Code 固有の補足は `.claude/rules/` 配下に分割し、上記 `@im
 
 ### 前提モデル
 
-`.claude/settings.json` で `model: "opus[1m]"`（Claude Opus 5 / 1M context）を指定している。`.agents/rules/common.md` の出力量・委譲判断の規約はこの世代の既定挙動（応答と生成ドキュメントが長い / subagent 委譲に積極的）を前提に書かれている → [Prompting Claude Opus 5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
+`.claude/settings.json` で `model: "opus[1m]"` を指定している。`opus` は **現行世代の最新 Opus を指すエイリアス**（`[1m]` は 1M context 版）であり、世代が更新されれば解決先も移動する。
+
+`.agents/rules/common.md` の出力量・委譲判断の規約は、執筆時点の現行世代である Claude Opus 5 の既定挙動（応答と生成ドキュメントが長い / subagent 委譲に積極的）を前提にしている → [Prompting Claude Opus 5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
+
+**エイリアスの解決先が次世代に移ったら、本節と上記規約の前提を見直すこと**（世代番号を固定した記述は Currency ドリフトの発生源になる）。
 
 ---
 
