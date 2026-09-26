@@ -12,7 +12,7 @@
 
 - `denyWithinAllow` に含まれるファイルへの操作は Bash（`mkdir` / `rm` / `tee` / `sed -i` 等）経由では deny されるが、`Edit` / `Write` tool 経由は通る。操作前に必ず `Edit` / `Write` を先に試す（tool で完結できれば別ターミナル依頼は不要）。
 - `!` prefix は sandbox bypass にならない。blocked 操作の workaround として使わない。
-- `.claude/settings.json` の `sandbox.excludedCommands`（`git push` / `gh pr` / `gh issue` / `npm run test:e2e` 等）は **`cd ... &&` の前置や `| tail` 等のパイプを付けず単独で実行する**。付けるとパターンに一致せず sandbox 内で走り、SSH の proxy 拒否・`gh` の keyring / TLS エラー・`listen EPERM` として現れる（auto mode や設定の問題ではない。PR #764 のセッションで確認）。
+- `.claude/settings.json` の `sandbox.excludedCommands`（`git push` / `git fetch` / `gh pr` / `gh issue` / `npm run test:e2e` / `codex review` 等）は **単独で実行する**。`cd ... &&` の前置だけでなく、後ろへの `&&` / `;` 連結・パイプ・リダイレクト・ループも付けない。付けるとパターンに一致せず sandbox 内で走り、SSH の proxy 拒否・`gh` の keyring エラーや `tls: failed to verify certificate: x509: OSStatus -26276`・`listen EPERM` として現れる（auto mode や設定、`gh` の不安定さの問題ではない。curl への迂回も不要。PR #764 のセッションで確認）。
 
 ## git 操作
 

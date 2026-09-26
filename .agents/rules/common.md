@@ -51,7 +51,7 @@
 **E2E テストは実装と同時に書く**: バグ修正・UI 挙動の変更時はコミット前に該当ケースの E2E を追加する。後回し禁止。
 
 **push 前に必須**: `npm run format:check`（整形）／ `npm run test`（ユニット）／ `node_modules/.bin/astro check`（型）／ `npm run test:e2e`（E2E）。
-post-PR 代行は不要、CI が最終ゲート。**`format:check` を含める理由**: CI の `test` ジョブは `format:check` を最初に走らせるため、`npm run test` だけでは整形崩れ（特に `Write` / `Edit` で作成した Markdown）を検出できず CI が赤になる（PR #753 実例）。
+post-PR 代行は不要、CI が最終ゲート。**`astro check` は CI で errors / warnings / hints すべて 0 件を強制する**（ローカルは hint があっても exit 0 のため、非推奨 API の hint 等を「動作に影響しない」と先送りすると CI が赤になる。PR #764 実例）。**`format:check` を含める理由**: CI の `test` ジョブは `format:check` を最初に走らせるため、`npm run test` だけでは整形崩れ（特に `Write` / `Edit` で作成した Markdown）を検出できず CI が赤になる（PR #753 実例）。
 
 **ガード / バリデータ / 検知機構には陽性対照を必須**: 検出する・拒否する・違反したら fail させる仕組み（CSP 違反検知 / 入力 validator / lint / セキュリティヘッダ assert / E2E ガード / regex マッチ系）を追加 / 修正する場合は **`Skill` tool で `test-gates` skill を必ず呼ぶ**。陰性対照のみでは「検知能力ゼロで green」と区別不能（PR #233 `applyProductionCsp` 空回り事故）。詳細・チェックリストは skill 本体に集約してこの doc では肥大化させない。
 
