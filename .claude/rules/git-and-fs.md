@@ -12,6 +12,7 @@
 
 - `denyWithinAllow` に含まれるファイルへの操作は Bash（`mkdir` / `rm` / `tee` / `sed -i` 等）経由では deny されるが、`Edit` / `Write` tool 経由は通る。操作前に必ず `Edit` / `Write` を先に試す（tool で完結できれば別ターミナル依頼は不要）。
 - `!` prefix は sandbox bypass にならない。blocked 操作の workaround として使わない。
+- `.claude/settings.json` の `sandbox.excludedCommands`（`git push` / `git fetch` / `gh pr` / `gh issue` / `npm run test:e2e` / `codex review` 等）は **単独で実行する**。`cd ... &&` の前置だけでなく、後ろへの `&&` / `;` 連結・パイプ・リダイレクト・ループも付けない。付けるとパターンに一致せず sandbox 内で走り、SSH の proxy 拒否・`gh` の keyring エラーや `tls: failed to verify certificate: x509: OSStatus -26276`・`listen EPERM` として現れる（auto mode や設定、`gh` の不安定さの問題ではない。curl への迂回も不要。PR #764 のセッションで確認）。
 
 ## git 操作
 
@@ -25,5 +26,6 @@
 - `node` スクリプトから `chromium.launch()` を直接呼ぶと `mach_port_rendezvous ... Permission denied (1100)` で起動できない。**test runner（`npm run test:e2e` / `npx playwright test`）経由なら起動できる**。スクリーンショット撮影等の単発ブラウザ操作も、一時 spec + 専用 config（起動済みサーバを `baseURL` 参照、`webServer` なし）を作って runner 経由で実行する（一時 spec はコミットしない）。
 - 環境によっては `webServer` 自動起動が `listen EPERM ::1:4321`（IPv6 bind 拒否）で失敗することがある。その場合は `astro preview --host 127.0.0.1` を別途起動して `baseURL` で参照する。
 - さらに環境によっては loopback への **connect 自体が全面 deny** される（`astro preview` の起動・listen は成功するのに、node fetch / curl / バックグラウンドタスクからの `127.0.0.1` 接続がすべて EPERM / exit 000）。この状態では上記 workaround を含め **in-session E2E は実行不能**。接続 probe（`curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:<port>/` 等）が 2〜3 回失敗した時点で workaround 探索を打ち切り、「CI を E2E の最終ゲートにする」判断へ切り替えて PR 本文にローカル E2E 未実行の旨と理由を明示する。UI の目視確認は claude-in-chrome（ユーザーの実 Chrome、sandbox 外）で代替できる。
+- 調査目的で `astro dev` / `astro preview` を**手動起動しない**。astro 7 はエージェント検知時に自動で detached background 起動し、`astro dev stop` でも止まらず残ることがある。残存サーバがあるとローカル E2E は port 使用中エラー（`is already used`）で止まる（sandbox 内からの `kill` は不可）。残ってしまったら `npm run pretest:e2e:dev` を単独実行して 4321 / 4322 を空ける（`ignore-scripts=true` のため pretest は自動では走らない。PR #769 / #772）。
 
 （経緯: PR #746 のセッションで親・サブエージェント計 3 者が同じ制約に別々に遭遇したため記録。loopback connect 全面 deny は PR #749 のセッションで確認し、workaround 試行のラウンドトリップが無駄になったため追記）

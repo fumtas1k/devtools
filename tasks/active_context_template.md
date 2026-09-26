@@ -13,6 +13,7 @@
 - [ ] このセッションの Objective に書かれていないファイル一切
 - [ ] aria-\* / role= 属性の削除（明示的な許可なしには禁止）
 - [ ] issue 本文に記載のない機能追加・設計変更
+
 <!-- 具体例を追記: 例) src/components/ui/OutputField.tsx の a11y 属性 -->
 
 ## 🟢 Review & Feedback

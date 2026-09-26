@@ -2,7 +2,7 @@
 
 ## プロジェクト構成
 
-このリポジトリは、ブラウザ内で完結する開発者ツール集を提供する Astro 6 サイトです。主要コードは `src/` 配下にあります。ページは `src/pages`、共通レイアウトは `src/layouts`、React UI は `src/components`、hooks は `src/hooks`、ツール定義は `src/data`、純粋関数系の処理は `src/utils` に配置します。グローバル CSS は `src/styles/global.css`、静的アセットと配信ヘッダーは `public/` にあります。テストは Playwright のブラウザテストを `tests/e2e`、リポジトリ整合性チェックを `tests/meta` に置きます。設計判断や運用メモは `docs/`、Codex 設定は `.codex/`、agent skill 本体は `.agents/skills` に置き、`.claude/skills` は互換用 symlink として扱います。
+このリポジトリは、ブラウザ内で完結する開発者ツール集を提供する Astro 7 サイトです。主要コードは `src/` 配下にあります。ページは `src/pages`、共通レイアウトは `src/layouts`、React UI は `src/components`、hooks は `src/hooks`、ツール定義は `src/data`、純粋関数系の処理は `src/utils` に配置します。グローバル CSS は `src/styles/global.css`、静的アセットと配信ヘッダーは `public/` にあります。テストは Playwright のブラウザテストを `tests/e2e`、リポジトリ整合性チェックを `tests/meta` に置きます。設計判断や運用メモは `docs/`、Codex 設定は `.codex/`、agent skill 本体は `.agents/skills` に置き、`.claude/skills` は互換用 symlink として扱います。
 
 ## ビルド・テスト・開発コマンド
 

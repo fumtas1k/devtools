@@ -36,10 +36,10 @@
 
 | レイヤー           | 技術                         | 理由                                       |
 | ------------------ | ---------------------------- | ------------------------------------------ |
-| フレームワーク     | **Astro 6.1.3**              | 静的生成 + Islands Architecture でJS最小化 |
+| フレームワーク     | **Astro 7.3.3**              | 静的生成 + Islands Architecture でJS最小化 |
 | UIコンポーネント   | **React 19** (Astro Islands) | ツール部分のみインタラクティブ             |
 | スタイリング       | **Tailwind CSS 4**           | ユーティリティファーストで高速開発         |
-| ビルド             | Astro built-in (Vite 7)      | 高速ビルド                                 |
+| ビルド             | Astro built-in (Vite 8)      | 高速ビルド                                 |
 | テスト（ユニット） | **Vitest**                   | Vite 設定共有でゼロコンフィグ              |
 | テスト（E2E）      | **Playwright**               | ブラウザ上の実動作を検証するリグレッション |
 | パッケージ管理     | **npm**                      | 標準・安定                                 |
@@ -66,7 +66,8 @@
 | `JsBarcode`                 | バーコード描画                                                                                                     | JANコード生成                            |
 | `bwip-js`                   | GS1バーコード描画（SVG）                                                                                           | GS1 DataBar生成                          |
 | `jszip`                     | 複数バーコードのZIPパッケージング                                                                                  | GS1 DataBar生成                          |
-| `fast-xml-parser`           | JSON⇔XML 相互変換                                                                                                  | JSON/XML変換                             |
+| `fast-xml-parser`           | XML → JSON パース                                                                                                  | JSON/XML変換                             |
+| `fast-xml-builder`          | JSON → XML シリアライズ（`fast-xml-parser` から分離された `XMLBuilder`）                                           | JSON/XML変換                             |
 | `papaparse`                 | JSON⇔CSV 相互変換・パース（`dummy-personal-data` でも再利用）                                                      | JSON/CSV変換、日本語ダミー個人データ生成 |
 | `jsqr`                      | QRコードデコード（カメラ・画像）                                                                                   | QRチケット                               |
 | `@fontsource/noto-sans-jp`  | フォントセルフホスト                                                                                               | 全ページ共通                             |
@@ -628,7 +629,7 @@ devtools/
 - テキストエリア（JSON または XML テキスト）
 - モード切替: [JSON → XML] / [XML → JSON]
 
-**処理:**（`src/utils/json-xml.ts`、`fast-xml-parser` 使用）
+**処理:**（`src/utils/json-xml.ts`、`fast-xml-parser` / `fast-xml-builder` 使用）
 
 - **JSON → XML**:
   - `XMLBuilder` でシリアライズ

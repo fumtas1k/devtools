@@ -69,8 +69,7 @@ function parsePublicKeyInfo(pkcs10: CertificationRequest): CsrPublicKeyInfo {
   if (algName === 'EC') {
     try {
       const params = pkcs10.subjectPublicKeyInfo.algorithm.algorithmParams as
-        | { valueBlock?: { toString?: () => string } }
-        | undefined;
+        { valueBlock?: { toString?: () => string } } | undefined;
       if (params?.valueBlock?.toString) {
         const curveOid = params.valueBlock.toString();
         info.namedCurve = EC_NAMED_CURVE_OID[curveOid] ?? curveOid;

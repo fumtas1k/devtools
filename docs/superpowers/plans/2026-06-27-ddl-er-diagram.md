@@ -256,8 +256,7 @@ export async function parseDdl(sql: string, dialect: Dialect): Promise<ParseResu
         const nullable = !(d.nullable as { type?: string })?.type && !d.primary_key;
         const isPk = !!d.primary_key;
         const ref = d.reference_definition as
-          | { table?: { table: string }[]; definition?: unknown[] }
-          | undefined;
+          { table?: { table: string }[]; definition?: unknown[] } | undefined;
         const isFk = !!ref;
         if (isPk) pkNames.add(name);
         columns.push({
@@ -281,8 +280,7 @@ export async function parseDdl(sql: string, dialect: Dialect): Promise<ParseResu
           for (const c of (d.definition as unknown[]) ?? []) pkNames.add(refName(c));
         } else if (ctype === 'foreign key') {
           const ref = d.reference_definition as
-            | { table?: { table: string }[]; definition?: unknown[] }
-            | undefined;
+            { table?: { table: string }[]; definition?: unknown[] } | undefined;
           const fromCol = refName((d.definition as unknown[])?.[0]);
           relations.push({
             fromTable: tableName,

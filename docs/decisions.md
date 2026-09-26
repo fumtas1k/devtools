@@ -470,6 +470,10 @@ JSON/XML 相互変換ツールの追加にあたり、ブラウザ完結で動�
 - ✅ Vitest でのユニットテストが可能
 - ⚠️ XML 名前空間（xmlns）は現状未対応（仕様上スコープ外）
 
+### 追記（2026-09-26）: ビルダーを `fast-xml-builder` に移行
+
+`fast-xml-parser` 5.11 で `XMLBuilder` が `@deprecated` になり、`fast-xml-builder` パッケージの利用が推奨された。`fast-xml-parser` 側の `XMLBuilder` は `fast-xml-builder` の re-export であるため、import 元を差し替えるだけで挙動は変わらない。非推奨 hint が CI の `astro check`（hints 0 件強制）を落とすため、PR #764 で移行した。オプション体系は共通のまま。
+
 ---
 
 ## [015] JSON/CSV変換に papaparse を採用
@@ -2391,6 +2395,7 @@ PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で
 
 - **CI 実行時間**: build の重複実行がなくなり ~25s 短縮（cold start で計測）
 - **ローカル開発**: `npm run test:e2e` 実行ごとに incremental build が走る。手動 preview を別途起動した状態での E2E は port 衝突で失敗するため、`npm run pretest:e2e` で port 解放してから実行
+  - **追記（2026-09-26, #770）**: 実装が `reuseExistingServer: !isCI` となっており、本決断と逆（ローカル `true` / CI `false`）のまま運用されていたため `isCI` に修正した。ローカルで残存サーバを黙って使い回し、古い状態で誤った結果を出していた。また `.npmrc` の `ignore-scripts=true` により `pretest:*` は npm に自動実行されないため、`npm run pretest:e2e` は明示的に実行する
 - **fail-fast**: CI の env 由来失敗（webServer 起動不可等）が 30s で確定
 - **後続作業**: なし（独立完結）
 
@@ -4696,3 +4701,57 @@ SAMLデコーダのデコード結果 XML には NameID や属性値として社
 - ✅ 署名値・証明書等の非 PII base64 を over-mask しない
 - ✅ 値ベース一貫トークンにより NameID とメール属性等の相関が UI 上で確認できる
 - ⚠️ 構造外（要素名・属性名自体に PII が含まれる等の非定型なケース）は対象外。完全な匿名化は保証しない
+
+---
+
+## [126] Claude Code の実装後レビューに Codex（gpt-6-astra）を使い、`codex review` を sandbox 除外する
+
+**2026-09-26 | ステータス: 採用**
+
+### 背景
+
+solo dev 体制（[069]）では人間のレビュアーがいない。Claude Code の実装を別系統のモデルにレビューさせるため、Codex CLI の `codex review` をルーチン化する。ただし `codex review` は Claude Code の sandbox 内では `~/.codex` への書き込みと内部 app-server の起動が拒否され、実行できない。
+
+### 決断
+
+**`.claude/settings.json` の `sandbox.excludedCommands` に `codex review*` を追加する。** 実行コマンドとモデル・reasoning effort は `CLAUDE.md`「実装後の Codex レビュー」に定める。Claude では `.agents/rules/common.md` 6.9 節の reviewer subagent をこれで置き換える。
+
+### 安全性
+
+- 除外は `codex review` に限定し、任意の作業を実行できる `codex exec` や対話起動は含めない
+- `codex review` はレビュー結果の出力が目的で、作業ツリーを変更しない。Codex 側の sandbox 設定（`.codex/config.toml`）は引き続き有効
+- `allowUnsandboxedCommands: false` は維持する。sandbox 外で走るのは明示的に登録したコマンドだけ
+
+### 却下した選択肢
+
+- **reviewer subagent と併用**: 目的（実装者と別の目）が同じで、トークンと時間が二重にかかる
+- **ユーザーが別ターミナルで実行**: ルーチンとして毎回ユーザーの手を借りることになり、定着しない
+
+---
+
+## [127] astro 7（Vite 8）へ移行し、`vite` の固定を解除する
+
+**2026-09-26 | ステータス: 採用**
+
+### 背景
+
+astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経由の RCE、sharp、esbuild）が残っていた（#762）。astro 7 と `@astrojs/react` 6 は Vite 8 前提のため、astro 6 と Vite 8 の非互換を理由に入れていた `overrides.vite`（7 系固定）は維持できない。
+
+### 決断
+
+**astro 7.3.3 / `@astrojs/react` 6.0.6 に上げ、`overrides.vite` を削除する。** 7.3.5 は `.npmrc` の `min-release-age=7` に抵触するため、脆弱性修正（7.2.8 以降）を含む 7.3.3 を採用した。移行で見つかった問題には次のとおり対処した。
+
+- **`compressHTML` の既定値変更（`true` → `'jsx'`）**: 見た目の変更を移行に混ぜないため `compressHTML: true` を明示。#768 で `'jsx'` 移行を検討した結果、**`true` を恒久維持**する。両モードのビルド出力を全ページ比較すると、インライン要素前後の半角スペース（`末尾に = パディング` → `末尾に= パディング`、ツール一覧の `名前 — 説明` → `名前— 説明` 等）が複数ページで消える。得られるのは HTML 約 4% の縮小のみで、テンプレート全域に `{' '}` を入れて回り、以後も書き続ける保守コストに見合わない
+- **AI エージェント検知時の dev / preview 自動バックグラウンド化**: macOS / Linux でエージェントを検知すると `astro dev` / `astro preview` が detached で起動して即 exit し、Playwright が webServer の異常終了と判定する。`playwright.config.ts` の `webServer.env` で `ASTRO_DEV_BACKGROUND=0` / `ASTRO_PREVIEW_BACKGROUND=0` を渡してフォアグラウンドを強制する（CI はエージェント非検知のため影響なし）
+- **build が dev の依存キャッシュを production 版で上書きする**: `astro build` が `node_modules/.vite/deps` に production モードの pre-bundle を書き、後続の `astro dev` が `react/jsx-dev-runtime` の production 版（`jsxDEV` 未定義）を掴んで `_jsxDEV is not a function` で描画できなくなる。`optimizeDeps.include` を空にしても再現し、本リポジトリの設定起因ではない。`astro.config.mjs` で build 時だけ `vite.cacheDir` を `node_modules/.vite-build` に分離した（CI は build → dev E2E の順、ローカル E2E は build と dev が並走するため、`astro dev --force` では並走時の競合が残る）
+- **Vite 8 の minifier（oxc）が戻り値を捨てた組み込み関数呼び出しを削除する**: `try { decodeURIComponent(value); return ''; } catch {…}` の呼び出しが「副作用なし」として消え、URL デコードの不正入力エラーが出なくなった。戻り値を使う形に修正し、ソース全体で同形の呼び出しが他に無いことを確認した。**例外を投げること自体を検証に使う呼び出しは、必ず戻り値を使う形で書く**
+
+### 安全性
+
+- `npm audit` の脆弱性は 0 件
+- 本番 E2E（390 件、CSP 違反検知を含む）と dev hydration ゲート（陽性・陰性対照）が通過
+
+### 却下した選択肢
+
+- **上流修正まで astro 6 に留まる**: astro の XSS / RCE を含む脆弱性が残り続ける
+- **`dev` スクリプトを `astro dev --force` にする**: CI では効くが、ローカル E2E の build と dev の並走で上書き競合が残る

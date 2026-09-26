@@ -15,6 +15,19 @@
 
 - **コード内コメント**: 日本語を基本とする。
 
+### 1.1 出力量の規律
+
+現行世代のモデル（Claude Opus 5 等）は既定で会話応答も生成ドキュメントも長くなる。**長さは effort / thinking 設定では制御できない**（それらは思考量を変えるだけで可視出力の長さを縮めない）ため、規約で明示する。
+
+- **PR 本文**: 変更点・検証結果・スコープ外を簡潔に。同じ内容を「概要」と「詳細」で二度書かない。定型見出しを埋めるための水増し節を作らない
+- **plan / spec（`docs/superpowers/plans/` `specs/`）**: 判断と実装に必要な情報のみ。読み手が次に取る行動を変えない記述は落とす
+- **`docs/agent-lessons.md`**: 1 エントリは「現象 / 根本原因 / 対処 / 関連」に収める。試行錯誤の全経過ではなく、次回繰り返さないために必要な事実だけを残す（効かなかった対策は「効かない対策」として列挙するに留める）
+- **会話応答**: 結論を最初の 1 文に置き、根拠は後に置く。短さより読みやすさを優先し、削るなら情報の選別で削る（矢印連結・省略語・断片文への圧縮では削らない）
+
+**長い Markdown は `npm run format:check` の失敗確率も上げる**（3 章参照）。水増しを避けることは CI 赤の予防でもある。
+
+出典 → [Prompting Claude Opus 5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
+
 ---
 
 ## 2. コマンドリファレンス
@@ -38,7 +51,7 @@
 **E2E テストは実装と同時に書く**: バグ修正・UI 挙動の変更時はコミット前に該当ケースの E2E を追加する。後回し禁止。
 
 **push 前に必須**: `npm run format:check`（整形）／ `npm run test`（ユニット）／ `node_modules/.bin/astro check`（型）／ `npm run test:e2e`（E2E）。
-post-PR 代行は不要、CI が最終ゲート。**`format:check` を含める理由**: CI の `test` ジョブは `format:check` を最初に走らせるため、`npm run test` だけでは整形崩れ（特に `Write` / `Edit` で作成した Markdown）を検出できず CI が赤になる（PR #753 実例）。
+post-PR 代行は不要、CI が最終ゲート。**`astro check` は CI で errors / warnings / hints すべて 0 件を強制する**（ローカルは hint があっても exit 0 のため、非推奨 API の hint 等を「動作に影響しない」と先送りすると CI が赤になる。PR #764 実例）。**`format:check` を含める理由**: CI の `test` ジョブは `format:check` を最初に走らせるため、`npm run test` だけでは整形崩れ（特に `Write` / `Edit` で作成した Markdown）を検出できず CI が赤になる（PR #753 実例）。
 
 **ガード / バリデータ / 検知機構には陽性対照を必須**: 検出する・拒否する・違反したら fail させる仕組み（CSP 違反検知 / 入力 validator / lint / セキュリティヘッダ assert / E2E ガード / regex マッチ系）を追加 / 修正する場合は **`Skill` tool で `test-gates` skill を必ず呼ぶ**。陰性対照のみでは「検知能力ゼロで green」と区別不能（PR #233 `applyProductionCsp` 空回り事故）。詳細・チェックリストは skill 本体に集約してこの doc では肥大化させない。
 
@@ -167,6 +180,20 @@ VRT が小さい pixel diff (例: 0.07%) を検出しても「微小だから ba
 
 ### 6.9 サブエージェント運用の補足
 
+#### 委譲するかどうかの判断（委譲前）
+
+現行世代のモデルは subagent 委譲に積極的で、小さい作業でも委譲しがちである。委譲には「context の再構築 → 作業 → 報告 → 親が報告を再読」の往復コストが必ず乗るため、**次のケースでは委譲しない**:
+
+- 親が数回の tool 呼び出しで完結できる作業（数ファイルの read、単純な検索、単一ファイルの軽微な修正）
+- **検証・ダブルチェック目的の subagent**。検証は親のループ内で行う（3 章の必須チェックを親が実行する）
+- 1 体で足りる作業に複数体を並列投入すること。並列は「独立していて、かつそれぞれ相応の規模がある」トラックに限る
+
+**reviewer subagent（`requesting-code-review` skill）の適用範囲**: 本リポジトリでは **複数ファイルにまたがる機能追加 / セキュリティ関連の変更** に限定する。単一ファイルの修正・docs のみの変更・リファクタの小変更では使わない（skill 側の記述は「major feature 後 / merge 前は mandatory」だが、本リポジトリの適用方針はこちらが優先）。solo dev 体制（6.7 節）で人間レビューが存在しないため全廃はしないが、既定で回すものでもない。Claude Code は代わりに実装後の Codex レビューを必須とする（`CLAUDE.md`「実装後の Codex レビュー」）。
+
+**仕様は最初のプロンプトで完結させる**: 追加指示を小出しに送るより、初回プロンプトに目的・制約・完了条件・スコープ外を全部書いたほうが精度と token 効率がともに良い（下記「矛盾する設計指示を混ぜない」と同根の問題）。
+
+#### 委譲後の運用
+
 - **完了報告は項目別ステータス必須**: 親プロンプトのスコープ箇条書きを subagent が一部のみで「完了」と返すケースがあるため、完了報告フォーマットに「項目ごとに 実装 / 既存で十分 / スキップ理由 を明示する」チェックリスト形式を要求する。親側でも依頼項目数 vs 実装項目数の機械的突き合わせを行う（過去事例: PR #218 で 3 件依頼中 1 件のみ実装で完了報告された）。
 - **`package.json` 変更時は `package-lock.json` 同期確認**: subagent が deps を追加・更新した場合、`git diff origin/develop --name-only` に `package.json` が含まれる場合は必ず `package-lock.json` も含まれているか確認する。漏れていれば親で `npm install --package-lock-only --cache "$TMPDIR/npm-cache" --no-audit --no-fund` を実行し別コミットで lock 同期を push する（過去事例: PR #181 で lock 不整合のまま push される寸前で発覚）。
 - **PR 本文の更新は親で実行**: `gh pr edit --body-file` は `permissions.ask` のため subagent から非対話 deny される。subagent は完了報告に「PR 本文更新が必要」と明記し、親 (司令塔) が `gh pr edit` で引き取る（過去事例: PR #189 で subagent から呼べず指摘事項対応が止まった）。
@@ -265,6 +292,10 @@ npx astro check --filter <file>     # 特定ファイルのみ
 - 誤って削除した場合は即 `git restore <file>` してから push する
 
 > **なぜ**: これらの属性は支援技術（スクリーンリーダー等）が依存する意味論的マーカー。見た目上は「余計な属性」に見えても削除すると a11y E2E テストが CI で落ちる（過去に PR #175 追加分が PR #179 の refactor で削除されて発生）。
+
+### 9.7 例外で検証する呼び出しは戻り値を捨てない
+
+`try { decodeURIComponent(value); return ''; } catch { … }` のように、例外が投げられるかどうかだけで入力を検証する呼び出し（`decodeURIComponent` / `JSON.parse` / `new URL` / `new RegExp` 等）は、**必ず戻り値を使う形で書く**（例: 失敗時に `null` を返すヘルパーを作り `=== null` で判定する）。戻り値を捨てた呼び出しは Vite 8 の minifier に副作用なしとみなされて削除され、本番ビルドでだけ検証が効かなくなる。ユニットテストは minify 前のコードで走るため検出できない（PR #769 で URL デコードの不正入力エラーが本番で出なくなっていた実例）。
 
 ---
 
