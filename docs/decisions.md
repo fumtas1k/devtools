@@ -2395,6 +2395,7 @@ PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で
 
 - **CI 実行時間**: build の重複実行がなくなり ~25s 短縮（cold start で計測）
 - **ローカル開発**: `npm run test:e2e` 実行ごとに incremental build が走る。手動 preview を別途起動した状態での E2E は port 衝突で失敗するため、`npm run pretest:e2e` で port 解放してから実行
+  - **追記（2026-09-26, #770）**: 実装が `reuseExistingServer: !isCI` となっており、本決断と逆（ローカル `true` / CI `false`）のまま運用されていたため `isCI` に修正した。ローカルで残存サーバを黙って使い回し、古い状態で誤った結果を出していた。また `.npmrc` の `ignore-scripts=true` により `pretest:*` は npm に自動実行されないため、`npm run pretest:e2e` は明示的に実行する
 - **fail-fast**: CI の env 由来失敗（webServer 起動不可等）が 30s で確定
 - **後続作業**: なし（独立完結）
 
