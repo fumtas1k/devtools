@@ -4741,7 +4741,7 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 
 **astro 7.3.3 / `@astrojs/react` 6.0.6 に上げ、`overrides.vite` を削除する。** 7.3.5 は `.npmrc` の `min-release-age=7` に抵触するため、脆弱性修正（7.2.8 以降）を含む 7.3.3 を採用した。移行で見つかった問題には次のとおり対処した。
 
-- **`compressHTML` の既定値変更（`true` → `'jsx'`）**: 見た目の変更を移行に混ぜないため `compressHTML: true` を明示。`'jsx'` への移行は #768
+- **`compressHTML` の既定値変更（`true` → `'jsx'`）**: 見た目の変更を移行に混ぜないため `compressHTML: true` を明示。#768 で `'jsx'` 移行を検討した結果、**`true` を恒久維持**する。両モードのビルド出力を全ページ比較すると、インライン要素前後の半角スペース（`末尾に = パディング` → `末尾に= パディング`、ツール一覧の `名前 — 説明` → `名前— 説明` 等）が複数ページで消える。得られるのは HTML 約 4% の縮小のみで、テンプレート全域に `{' '}` を入れて回り、以後も書き続ける保守コストに見合わない
 - **AI エージェント検知時の dev / preview 自動バックグラウンド化**: macOS / Linux でエージェントを検知すると `astro dev` / `astro preview` が detached で起動して即 exit し、Playwright が webServer の異常終了と判定する。`playwright.config.ts` の `webServer.env` で `ASTRO_DEV_BACKGROUND=0` / `ASTRO_PREVIEW_BACKGROUND=0` を渡してフォアグラウンドを強制する（CI はエージェント非検知のため影響なし）
 - **build が dev の依存キャッシュを production 版で上書きする**: `astro build` が `node_modules/.vite/deps` に production モードの pre-bundle を書き、後続の `astro dev` が `react/jsx-dev-runtime` の production 版（`jsxDEV` 未定義）を掴んで `_jsxDEV is not a function` で描画できなくなる。`optimizeDeps.include` を空にしても再現し、本リポジトリの設定起因ではない。`astro.config.mjs` で build 時だけ `vite.cacheDir` を `node_modules/.vite-build` に分離した（CI は build → dev E2E の順、ローカル E2E は build と dev が並走するため、`astro dev --force` では並走時の競合が残る）
 - **Vite 8 の minifier（oxc）が戻り値を捨てた組み込み関数呼び出しを削除する**: `try { decodeURIComponent(value); return ''; } catch {…}` の呼び出しが「副作用なし」として消え、URL デコードの不正入力エラーが出なくなった。戻り値を使う形に修正し、ソース全体で同形の呼び出しが他に無いことを確認した。**例外を投げること自体を検証に使う呼び出しは、必ず戻り値を使う形で書く**
