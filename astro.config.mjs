@@ -13,8 +13,9 @@ const isBuild = process.argv.includes('build');
 export default defineConfig({
   site: 'https://devtools-d9w.pages.dev',
   integrations: [react(), sitemap(), injectSwBuildId()],
-  // astro 7 で既定値が 'jsx' に変わったが、移行 PR (#762) に見た目の変更を混ぜないため旧挙動を明示。
-  // 'jsx' への移行は #768 で VRT・目視を確認しながら行う。
+  // astro 7 の既定値 'jsx' は改行を含む要素間の空白を JSX 規則で除去し、インライン要素前後の
+  // 半角スペース（`末尾に = パディング` 等）が複数ページで消える。得られるのは HTML 約 4% 縮小のみで、
+  // テンプレート全域に `{' '}` を入れて回る保守コストに見合わないため旧挙動を恒久維持する（#768）。
   compressHTML: true,
   // #176 A-1: Astro built-in CSP で `<meta http-equiv="content-security-policy">` を各ページに注入し、
   // bundled scripts (Astro island loader 等の inline `<script type="module">` 含む) を自動で SHA-256 hash 化。
