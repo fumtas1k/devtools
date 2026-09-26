@@ -4696,3 +4696,28 @@ SAMLデコーダのデコード結果 XML には NameID や属性値として社
 - ✅ 署名値・証明書等の非 PII base64 を over-mask しない
 - ✅ 値ベース一貫トークンにより NameID とメール属性等の相関が UI 上で確認できる
 - ⚠️ 構造外（要素名・属性名自体に PII が含まれる等の非定型なケース）は対象外。完全な匿名化は保証しない
+
+---
+
+## [126] Claude Code の実装後レビューに Codex（gpt-6-astra）を使い、`codex review` を sandbox 除外する
+
+**2026-09-26 | ステータス: 採用**
+
+### 背景
+
+solo dev 体制（[069]）では人間のレビュアーがいない。Claude Code の実装を別系統のモデルにレビューさせるため、Codex CLI の `codex review` をルーチン化する。ただし `codex review` は Claude Code の sandbox 内では `~/.codex` への書き込みと内部 app-server の起動が拒否され、実行できない。
+
+### 決断
+
+**`.claude/settings.json` の `sandbox.excludedCommands` に `codex review*` を追加する。** 実行コマンドとモデル・reasoning effort は `CLAUDE.md`「実装後の Codex レビュー」に定める。Claude では `.agents/rules/common.md` 6.9 節の reviewer subagent をこれで置き換える。
+
+### 安全性
+
+- 除外は `codex review` に限定し、任意の作業を実行できる `codex exec` や対話起動は含めない
+- `codex review` はレビュー結果の出力が目的で、作業ツリーを変更しない。Codex 側の sandbox 設定（`.codex/config.toml`）は引き続き有効
+- `allowUnsandboxedCommands: false` は維持する。sandbox 外で走るのは明示的に登録したコマンドだけ
+
+### 却下した選択肢
+
+- **reviewer subagent と併用**: 目的（実装者と別の目）が同じで、トークンと時間が二重にかかる
+- **ユーザーが別ターミナルで実行**: ルーチンとして毎回ユーザーの手を借りることになり、定着しない
