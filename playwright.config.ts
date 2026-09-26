@@ -50,6 +50,10 @@ export default defineConfig({
     // text/structure mismatch のみ catch、dev は React dev build で attribute mismatch も
     // catch する 2 層構成。
     const isCI = !!process.env.CI;
+    // astro 7 は AI コーディングエージェント検知時（macOS / Linux）に dev / preview を
+    // 自動で detached background 起動し、コマンド自体は即 exit する。Playwright はこれを
+    // 「webServer exited early」と判定するため、フォアグラウンド起動を強制する（#762）。
+    const foregroundEnv = { ASTRO_DEV_BACKGROUND: '0', ASTRO_PREVIEW_BACKGROUND: '0' };
     return [
       {
         command: isCI
@@ -58,12 +62,14 @@ export default defineConfig({
         url: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321',
         timeout: isCI ? 30_000 : 120_000,
         reuseExistingServer: !isCI,
+        env: foregroundEnv,
       },
       {
         command: 'npm run dev -- --port 4322',
         url: 'http://localhost:4322',
         timeout: isCI ? 30_000 : 60_000,
         reuseExistingServer: !isCI,
+        env: foregroundEnv,
       },
     ];
   })(),
