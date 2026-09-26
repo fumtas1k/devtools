@@ -59,8 +59,7 @@ function buildKeyInfo(pki: PrivateKeyInfo): Pkcs12KeyInfo {
   if (algorithm === 'EC') {
     try {
       const params = pki.privateKeyAlgorithm.algorithmParams as
-        | { valueBlock?: { toString?: () => string } }
-        | undefined;
+        { valueBlock?: { toString?: () => string } } | undefined;
       if (params?.valueBlock?.toString) {
         const curveOid = params.valueBlock.toString();
         info.namedCurve = EC_NAMED_CURVE_OID[curveOid] ?? curveOid;

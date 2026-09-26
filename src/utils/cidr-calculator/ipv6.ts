@@ -170,7 +170,7 @@ export function formatIpv6(n: bigint): string {
 
   // 文字列組み立て
   const parts: string[] = [];
-  for (let i = 0; i < 8; ) {
+  for (let i = 0; i < 8;) {
     if (i === bestStart) {
       parts.push('');
       i += bestLen;

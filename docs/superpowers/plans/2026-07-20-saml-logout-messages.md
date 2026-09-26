@@ -217,10 +217,7 @@ export interface SamlLogoutResponseData {
 
 ```ts
 export type SamlMessage =
-  | SamlResponseData
-  | SamlAuthnRequestData
-  | SamlLogoutRequestData
-  | SamlLogoutResponseData;
+  SamlResponseData | SamlAuthnRequestData | SamlLogoutRequestData | SamlLogoutResponseData;
 ```
 
 - [ ] **Step 5: parse.ts を拡張する**

@@ -66,7 +66,8 @@
 | `JsBarcode`                 | バーコード描画                                                                                                     | JANコード生成                            |
 | `bwip-js`                   | GS1バーコード描画（SVG）                                                                                           | GS1 DataBar生成                          |
 | `jszip`                     | 複数バーコードのZIPパッケージング                                                                                  | GS1 DataBar生成                          |
-| `fast-xml-parser`           | JSON⇔XML 相互変換                                                                                                  | JSON/XML変換                             |
+| `fast-xml-parser`           | XML → JSON パース                                                                                                  | JSON/XML変換                             |
+| `fast-xml-builder`          | JSON → XML シリアライズ（`fast-xml-parser` から分離された `XMLBuilder`）                                           | JSON/XML変換                             |
 | `papaparse`                 | JSON⇔CSV 相互変換・パース（`dummy-personal-data` でも再利用）                                                      | JSON/CSV変換、日本語ダミー個人データ生成 |
 | `jsqr`                      | QRコードデコード（カメラ・画像）                                                                                   | QRチケット                               |
 | `@fontsource/noto-sans-jp`  | フォントセルフホスト                                                                                               | 全ページ共通                             |
@@ -628,7 +629,7 @@ devtools/
 - テキストエリア（JSON または XML テキスト）
 - モード切替: [JSON → XML] / [XML → JSON]
 
-**処理:**（`src/utils/json-xml.ts`、`fast-xml-parser` 使用）
+**処理:**（`src/utils/json-xml.ts`、`fast-xml-parser` / `fast-xml-builder` 使用）
 
 - **JSON → XML**:
   - `XMLBuilder` でシリアライズ

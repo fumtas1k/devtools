@@ -470,6 +470,10 @@ JSON/XML 相互変換ツールの追加にあたり、ブラウザ完結で動�
 - ✅ Vitest でのユニットテストが可能
 - ⚠️ XML 名前空間（xmlns）は現状未対応（仕様上スコープ外）
 
+### 追記（2026-09-26）: ビルダーを `fast-xml-builder` に移行
+
+`fast-xml-parser` 5.11 で `XMLBuilder` が `@deprecated` になり、`fast-xml-builder` パッケージの利用が推奨された。`fast-xml-parser` 側の `XMLBuilder` は `fast-xml-builder` の re-export であるため、import 元を差し替えるだけで挙動は変わらない。非推奨 hint が CI の `astro check`（hints 0 件強制）を落とすため、PR #764 で移行した。オプション体系は共通のまま。
+
 ---
 
 ## [015] JSON/CSV変換に papaparse を採用
