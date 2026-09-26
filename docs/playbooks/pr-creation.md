@@ -156,6 +156,8 @@ gh pr merge <PR> --squash --delete-branch \
 
 `--body-file` を使うのは、本文がほぼ常に複数行になるため（理由は `.agents/rules/common.md` 6.1 と同じ）。
 
+**失敗表示でも再実行しない**: `--delete-branch` 付きの `gh pr merge` は、マージ完了後のローカル後始末（detached HEAD の worktree で `could not determine current branch` 等）で失敗を返すことがある。この場合もマージ自体は完了しているため、再実行前に `gh pr view <PR> --json state` で `MERGED` か確認する（PR #765 実例）。
+
 ### リリース PR のマージ（develop → main）
 
 release PR（develop → main）は **`--merge`** を使う（squash しない）。develop に積み上げた squash コミット群をそのまま main に引き継ぐため。
