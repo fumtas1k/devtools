@@ -4725,3 +4725,32 @@ solo dev 体制（[069]）では人間のレビュアーがいない。Claude Co
 
 - **reviewer subagent と併用**: 目的（実装者と別の目）が同じで、トークンと時間が二重にかかる
 - **ユーザーが別ターミナルで実行**: ルーチンとして毎回ユーザーの手を借りることになり、定着しない
+
+---
+
+## [127] astro 7（Vite 8）へ移行し、`vite` の固定を解除する
+
+**2026-09-26 | ステータス: 採用**
+
+### 背景
+
+astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経由の RCE、sharp、esbuild）が残っていた（#762）。astro 7 と `@astrojs/react` 6 は Vite 8 前提のため、astro 6 と Vite 8 の非互換を理由に入れていた `overrides.vite`（7 系固定）は維持できない。
+
+### 決断
+
+**astro 7.3.3 / `@astrojs/react` 6.0.6 に上げ、`overrides.vite` を削除する。** 7.3.5 は `.npmrc` の `min-release-age=7` に抵触するため、脆弱性修正（7.2.8 以降）を含む 7.3.3 を採用した。移行で見つかった問題には次のとおり対処した。
+
+- **`compressHTML` の既定値変更（`true` → `'jsx'`）**: 見た目の変更を移行に混ぜないため `compressHTML: true` を明示。`'jsx'` への移行は #768
+- **AI エージェント検知時の dev / preview 自動バックグラウンド化**: macOS / Linux でエージェントを検知すると `astro dev` / `astro preview` が detached で起動して即 exit し、Playwright が webServer の異常終了と判定する。`playwright.config.ts` の `webServer.env` で `ASTRO_DEV_BACKGROUND=0` / `ASTRO_PREVIEW_BACKGROUND=0` を渡してフォアグラウンドを強制する（CI はエージェント非検知のため影響なし）
+- **build が dev の依存キャッシュを production 版で上書きする**: `astro build` が `node_modules/.vite/deps` に production モードの pre-bundle を書き、後続の `astro dev` が `react/jsx-dev-runtime` の production 版（`jsxDEV` 未定義）を掴んで `_jsxDEV is not a function` で描画できなくなる。`optimizeDeps.include` を空にしても再現し、本リポジトリの設定起因ではない。`astro.config.mjs` で build 時だけ `vite.cacheDir` を `node_modules/.vite-build` に分離した（CI は build → dev E2E の順、ローカル E2E は build と dev が並走するため、`astro dev --force` では並走時の競合が残る）
+- **Vite 8 の minifier（oxc）が戻り値を捨てた組み込み関数呼び出しを削除する**: `try { decodeURIComponent(value); return ''; } catch {…}` の呼び出しが「副作用なし」として消え、URL デコードの不正入力エラーが出なくなった。戻り値を使う形に修正し、ソース全体で同形の呼び出しが他に無いことを確認した。**例外を投げること自体を検証に使う呼び出しは、必ず戻り値を使う形で書く**
+
+### 安全性
+
+- `npm audit` の脆弱性は 0 件
+- 本番 E2E（390 件、CSP 違反検知を含む）と dev hydration ゲート（陽性・陰性対照）が通過
+
+### 却下した選択肢
+
+- **上流修正まで astro 6 に留まる**: astro の XSS / RCE を含む脆弱性が残り続ける
+- **`dev` スクリプトを `astro dev --force` にする**: CI では効くが、ローカル E2E の build と dev の並走で上書き競合が残る
