@@ -48,6 +48,7 @@
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
     "excludedCommands": [
+      "codex review*",
       "git push*",
       "git pull*",
       "git fetch*",

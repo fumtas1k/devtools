@@ -18,6 +18,10 @@ Claude Code 固有の補足は `.claude/rules/` 配下に分割し、上記 `@im
 
 （注: 上記は Claude 固有。Codex は `.codex/rules/`、Gemini CLI は `docs/setup/gemini-policy.md` を参照）
 
+### 実装後の Codex レビュー
+
+コード変更を伴う作業は、PR 作成前に `codex review --base origin/develop -c model="gpt-6-astra" -c model_reasoning_effort="high"` を**単独で**実行する（`cd` 前置・パイプ・リダイレクトを付けると `sandbox.excludedCommands` に一致せず起動に失敗する）。指摘は `receiving-code-review` skill の基準で精査して対応してから PR を作る。docs のみの変更は対象外。Claude では `.agents/rules/common.md` 6.9 節の reviewer subagent をこれで置き換える。
+
 ### 前提モデル
 
 `.claude/settings.json` で `model: "opus[1m]"` を指定している。`opus` は **現行世代の最新 Opus を指すエイリアス**（`[1m]` は 1M context 版）であり、世代が更新されれば解決先も移動する。
