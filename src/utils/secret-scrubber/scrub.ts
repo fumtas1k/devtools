@@ -181,7 +181,7 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
   // 新規採番がそれを超えるようにして同一トークンの衝突を防ぐ（#690 L-3）。
   const reservedMax: Record<string, number> = {};
   PLACEHOLDER_RE.lastIndex = 0;
-  for (let pm; (pm = PLACEHOLDER_RE.exec(input)); ) {
+  for (let pm; (pm = PLACEHOLDER_RE.exec(input));) {
     const cat = pm[1];
     const n = Number(pm[2]);
     if (n > (reservedMax[cat] ?? 0)) reservedMax[cat] = n;

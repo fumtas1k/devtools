@@ -108,10 +108,7 @@ export interface SamlLogoutResponseData {
 }
 
 export type SamlMessage =
-  | SamlResponseData
-  | SamlAuthnRequestData
-  | SamlLogoutRequestData
-  | SamlLogoutResponseData;
+  SamlResponseData | SamlAuthnRequestData | SamlLogoutRequestData | SamlLogoutResponseData;
 
 export type CheckStatus = 'success' | 'warning' | 'error' | 'info';
 

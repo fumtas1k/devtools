@@ -1,12 +1,10 @@
 import jsQR from 'jsqr';
 
 type QrContent =
-  | { kind: 'url'; raw: string; url: URL; hostname: string }
-  | { kind: 'text'; raw: string };
+  { kind: 'url'; raw: string; url: URL; hostname: string } | { kind: 'text'; raw: string };
 
 export type DecodeQrResult =
-  | { ok: true; data: string }
-  | { ok: false; reason: 'load-error' | 'not-found' };
+  { ok: true; data: string } | { ok: false; reason: 'load-error' | 'not-found' };
 
 export const DEFAULT_QR_MAX_DIM = 1600;
 
