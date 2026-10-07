@@ -639,7 +639,10 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
   `encodeURIComponent` で再エンコードする（パスワード中の `@ : /` 等の手動エンコード不要）
 - スキーム方言辞書（`src/utils/dsn-builder/dialects.ts`）が既定ポート・複数ホスト可否・
   パス部の意味（DB 名 / DB 番号 / vhost）・SRV 制約・JDBC 形式可否を定義する
-- パスワードを `****` に置換した共有用 URI を常時導出する（同期不要の純粋関数）
+- パスワードを `****` に置換した共有用 URI を常時導出する（同期不要の純粋関数）。userinfo の
+  パスワードに加え、クエリパラメータのうちキー（大文字小文字を区別しない）が `password` / `passwd` /
+  `pwd` / `secret` / `token` で終わるもの、`pass`、`authMechanismProperties`（MongoDB の
+  `AWS_SESSION_TOKEN` 等）の値も `****` にする。値が空のパラメータはそのまま
 - JDBC（`jdbc:postgresql` / `jdbc:mysql`）は credential を userinfo でなく
   `?user=&password=` クエリプロパティに置く JDBC 標準の流儀に従う。パース時はプロパティを
   ユーザー名・パスワードのフォーム欄へ移し、シリアライズ時にプロパティ列の先頭へ戻す

@@ -271,6 +271,103 @@ describe('maskDsn', () => {
   });
 });
 
+describe('maskDsn: クエリ形式の認証情報（陽性対照・issue #779）', () => {
+  it('非 JDBC のクエリ password を **** にする', () => {
+    const masked = maskDsn(mustParse('postgresql://db.example/app?user=alice&password=secret123'));
+    expect(masked).not.toContain('secret123');
+    expect(masked).toContain('password=****');
+  });
+
+  it('userinfo とクエリの両方のパスワードを伏せる', () => {
+    const masked = maskDsn(
+      mustParse('postgresql://alice:pw1secret@db.example/app?password=pw2secret')
+    );
+    expect(masked).not.toContain('pw1secret');
+    expect(masked).not.toContain('pw2secret');
+  });
+
+  it('キーの大文字小文字違い（PASSWORD / sslPassword）でも伏せる', () => {
+    const masked = maskDsn(
+      mustParse('postgresql://db.example/app?PASSWORD=upper123&sslPassword=ssl456')
+    );
+    expect(masked).not.toContain('upper123');
+    expect(masked).not.toContain('ssl456');
+    expect(masked).toContain('PASSWORD=****');
+    expect(masked).toContain('sslPassword=****');
+  });
+
+  it('percent-encoded のキー（pass%77ord）でも伏せる', () => {
+    const masked = maskDsn(mustParse('postgresql://db.example/app?pass%77ord=secret123'));
+    expect(masked).not.toContain('secret123');
+    expect(masked).toContain('password=****');
+  });
+
+  it('pass / token / client_secret など末尾一致・完全一致のキーを伏せる', () => {
+    const masked = maskDsn(
+      mustParse('redis://cache.example/0?pass=p1val&access_token=t2val&client_secret=s3val')
+    );
+    expect(masked).not.toContain('p1val');
+    expect(masked).not.toContain('t2val');
+    expect(masked).not.toContain('s3val');
+  });
+
+  it('JDBC で専用 password が空でも params の password を伏せる', () => {
+    const model: DsnModel = {
+      scheme: 'jdbc:mysql',
+      user: 'root',
+      password: '',
+      hosts: [{ host: 'db.example', port: '3306' }],
+      database: 'app',
+      params: [
+        { key: 'password', value: 'secret123' },
+        { key: 'trustCertificateKeyStorePassword', value: 'ks456' },
+      ],
+    };
+    const masked = maskDsn(model);
+    expect(masked).not.toContain('secret123');
+    expect(masked).not.toContain('ks456');
+    expect(masked).toContain('password=****');
+    expect(masked).toContain('trustCertificateKeyStorePassword=****');
+  });
+
+  it('mongodb の authMechanismProperties（AWS_SESSION_TOKEN）を値ごと伏せる', () => {
+    const masked = maskDsn(
+      mustParse('mongodb://db.example/app?authMechanismProperties=AWS_SESSION_TOKEN:abc123secret')
+    );
+    expect(masked).not.toContain('abc123secret');
+    expect(masked).toContain('authMechanismProperties=****');
+  });
+});
+
+describe('maskDsn: クエリ形式の認証情報（陰性対照・issue #779）', () => {
+  it('認証情報でないパラメータ（sslmode / useSSL）の値は変えない', () => {
+    expect(
+      maskDsn(mustParse('postgresql://db.example/app?sslmode=require&connect_timeout=10'))
+    ).toBe('postgresql://db.example/app?sslmode=require&connect_timeout=10');
+    expect(maskDsn(mustParse('jdbc:mysql://db.example:3306/app?user=root&useSSL=true'))).toBe(
+      'jdbc:mysql://db.example:3306/app?user=root&useSSL=true'
+    );
+  });
+
+  it('値が空の認証情報キーはそのまま', () => {
+    expect(maskDsn(mustParse('postgresql://db.example/app?password='))).toBe(
+      'postgresql://db.example/app?password='
+    );
+  });
+
+  it('serializeDsn（マスクなし）は従来どおりクエリの password を保持する', () => {
+    const uri = 'postgresql://db.example/app?user=alice&password=secret123';
+    expect(serializeDsn(mustParse(uri))).toBe(uri);
+  });
+
+  it('maskDsn は引数の model.params を書き換えない', () => {
+    const model = mustParse('postgresql://db.example/app?password=secret123&sslmode=require');
+    const before = structuredClone(model);
+    maskDsn(model);
+    expect(model).toEqual(before);
+  });
+});
+
 describe('validateModel: 陽性対照（フォーム編集起因の不整合）', () => {
   const base: DsnModel = {
     scheme: 'postgresql',
