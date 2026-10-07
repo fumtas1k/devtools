@@ -149,4 +149,51 @@ test.describe('シークレットスクラバー（production CSP 適用）', ()
       await expect(page.getByRole('textbox', { name: 'マスク済みテキスト' })).not.toBeVisible();
     });
   });
+
+  // ─── issue #780: 設定変更直後（debounce 中）のコピー ─────────────────────
+
+  test('陽性対照: メールのマスクを OFF → ON に戻した直後にコピーしても、クリップボードにメール平文が入らない（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/secret-scrubber', async (page) => {
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+      const output = page.getByRole('textbox', { name: 'マスク済みテキスト' });
+
+      await page.getByLabel('テキストを貼り付け').fill(`contact: ${DUMMY_EMAIL}`);
+      await expect(output).toContainText('[REDACTED:EMAIL_1]', { timeout: 5000 });
+
+      // OFF にして平文が出力に出ることを確認（これが「変更前の未マスク結果」になる）
+      await page.getByRole('button', { name: /メール/ }).click();
+      await expect(output).toContainText(DUMMY_EMAIL, { timeout: 5000 });
+
+      // ON に戻した直後（debounce 300ms を待たず）にコピーする。
+      // 修正前は表示中の古い出力（平文）がコピーされ、下の assert が fail する。
+      await page.getByRole('button', { name: /メール/ }).click();
+      await page.getByRole('button', { name: '出力テキストをコピー' }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
+
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).not.toContain(DUMMY_EMAIL);
+      expect(copied).toContain('[REDACTED:EMAIL_1]');
+    });
+  });
+
+  test('陰性対照: 設定を変えずにコピーすると、表示されている出力と同じ内容がコピーされる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/secret-scrubber', async (page) => {
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+      const output = page.getByRole('textbox', { name: 'マスク済みテキスト' });
+
+      await page.getByLabel('テキストを貼り付け').fill(`contact: ${DUMMY_EMAIL}`);
+      await expect(output).toContainText('[REDACTED:EMAIL_1]', { timeout: 5000 });
+      const displayed = await output.inputValue();
+
+      await page.getByRole('button', { name: '出力テキストをコピー' }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
+
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toBe(displayed);
+    });
+  });
 });

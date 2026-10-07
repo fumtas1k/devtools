@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { SecretScrubberTool } from '@/components/tools/SecretScrubber';
+import { copyToClipboard } from '@/utils/clipboard';
+
+// コピー内容の検証用にクリップボード書き込みをモックする
+vi.mock('@/utils/clipboard', () => ({
+  copyToClipboard: vi.fn().mockResolvedValue(true),
+}));
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,5 +181,72 @@ describe('SecretScrubber — クリアボタン', () => {
       fireEvent.click(screen.getByRole('button', { name: 'クリア' }));
     });
     expect((textarea as HTMLTextAreaElement).value).toBe('');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// コピー内容（issue #780: 設定変更直後の debounce 中に変更前の結果をコピーさせない）
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SecretScrubber — コピー内容', () => {
+  const email = 'user@example.com';
+
+  async function inputEmailAndWaitMasked() {
+    render(<SecretScrubberTool />);
+    act(() => {
+      fireEvent.change(screen.getByLabelText('テキストを貼り付け'), { target: { value: email } });
+    });
+    await waitFor(
+      () => {
+        const output = screen.getByLabelText('マスク済みテキスト') as HTMLTextAreaElement;
+        expect(output.value).toContain('[REDACTED:EMAIL_1]');
+      },
+      { timeout: 2000 }
+    );
+  }
+
+  it('陽性対照: マスクを OFF → ON に戻した直後（debounce 経過前）にコピーしても、マスク済みの結果がコピーされる', async () => {
+    await inputEmailAndWaitMasked();
+
+    // OFF にして、素通し（未マスク）の出力が表示されるまで待つ
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /メール/ }));
+    });
+    await waitFor(
+      () => {
+        const output = screen.getByLabelText('マスク済みテキスト') as HTMLTextAreaElement;
+        expect(output.value).toContain(email);
+      },
+      { timeout: 2000 }
+    );
+
+    // ON に戻した直後、debounce 経過を待たずにコピーする。
+    // この時点の表示（outputText）はまだ OFF 時点の未マスク結果のまま。
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /メール/ }));
+    });
+    const displayed = screen.getByLabelText('マスク済みテキスト') as HTMLTextAreaElement;
+    expect(displayed.value).toContain(email);
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: '出力テキストをコピー' }));
+    });
+
+    await waitFor(() => expect(copyToClipboard).toHaveBeenCalledTimes(1));
+    const copied = vi.mocked(copyToClipboard).mock.calls[0][0];
+    // 旧実装は表示中の古い出力をコピーするため、ここでメール平文が含まれて fail する
+    expect(copied).not.toContain(email);
+    expect(copied).toContain('[REDACTED:EMAIL_1]');
+  });
+
+  it('陰性対照: 設定を変えずにコピーすると、表示されている出力と同じ内容がコピーされる', async () => {
+    await inputEmailAndWaitMasked();
+    const displayed = screen.getByLabelText('マスク済みテキスト') as HTMLTextAreaElement;
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: '出力テキストをコピー' }));
+    });
+
+    await waitFor(() => expect(copyToClipboard).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(copyToClipboard).mock.calls[0][0]).toBe(displayed.value);
   });
 });

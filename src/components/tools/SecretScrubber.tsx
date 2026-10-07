@@ -127,7 +127,13 @@ export function SecretScrubberTool() {
           readOnly
           busy={isPending}
           headerRight={
-            <CopyButton text={outputText} label="コピー" ariaLabel="出力テキストをコピー" />
+            <CopyButton
+              // debounce 中は outputText が前回の入力・設定のままなので、クリック時点の
+              // 入力と設定から計算し直す（設定変更直後に変更前の結果をコピーさせない。issue #780）
+              text={() => (input.length > 0 ? scrubText(input, enabled).output : '')}
+              label="コピー"
+              ariaLabel="出力テキストをコピー"
+            />
           }
         />
       )}

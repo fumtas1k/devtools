@@ -78,4 +78,54 @@ describe('CopyButton', () => {
       expect(typeof calledWith).not.toBe('function');
     });
   });
+
+  // ─── disabled（issue #780: 再計算中に古い値をコピーさせない） ───────────
+  describe('disabled', () => {
+    it('陽性対照: disabled のときボタンが disabled 属性を持ち、クリックしても copyToClipboard が呼ばれない', async () => {
+      const textFn = vi.fn().mockReturnValue('変更前の結果');
+      render(<CopyButton text={textFn} label="コピー" disabled />);
+      const button = screen.getByRole('button', { name: 'コピー' }) as HTMLButtonElement;
+
+      expect(button.disabled).toBe(true);
+      fireEvent.click(button);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(copyToClipboard).not.toHaveBeenCalled();
+      expect(textFn).not.toHaveBeenCalled();
+    });
+
+    it('陽性対照: compact 表示でも disabled 属性が付き、クリックしてもコピーされない', async () => {
+      render(<CopyButton text="変更前の結果" ariaLabel="出力をコピー" compact disabled />);
+      const button = screen.getByRole('button', { name: '出力をコピー' }) as HTMLButtonElement;
+
+      expect(button.disabled).toBe(true);
+      fireEvent.click(button);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(copyToClipboard).not.toHaveBeenCalled();
+    });
+
+    it('陽性対照: disabled に切り替わった後は、同じボタンをクリックしてもコピーされない', async () => {
+      const { rerender } = render(<CopyButton text="値" label="コピー" />);
+      rerender(<CopyButton text="値" label="コピー" disabled />);
+      const button = screen.getByRole('button', { name: 'コピー' }) as HTMLButtonElement;
+
+      expect(button.disabled).toBe(true);
+      fireEvent.click(button);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(copyToClipboard).not.toHaveBeenCalled();
+    });
+
+    it('陰性対照: disabled を渡さなければ disabled 属性は付かず、従来どおりコピーされる', async () => {
+      render(<CopyButton text="通常のテキスト" label="コピー" />);
+      const button = screen.getByRole('button', { name: 'コピー' }) as HTMLButtonElement;
+
+      expect(button.disabled).toBe(false);
+      fireEvent.click(button);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(copyToClipboard).toHaveBeenCalledWith('通常のテキスト');
+    });
+  });
 });
