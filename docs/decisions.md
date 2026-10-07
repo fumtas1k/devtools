@@ -4771,4 +4771,9 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 ### 安全性
 
 - 削除するのは Gemini CLI 実行時にだけ読まれる設定で、Claude Code / Codex / CI の挙動は変わらない
-- `.claude/settings.json` の `.gemini/**` への編集・削除を ask にするルールは残す。設定が無い状態でエージェントが `.gemini/` を作る操作にも確認が入る
+- `.claude/settings.json` の `.gemini/**` への編集・削除を ask にするルールは残す。設定が無い状態でエージェントが `.gemini/` を作る主要な経路（Edit / Write、`rm` / `sed -i` / `tee`）にも確認が入る
+
+### 却下した選択肢
+
+- **`GEMINI.md` だけ削除する**: `.gemini/` と setup 手順が参照先を失ったまま残る
+- **`GEMINI.md` を短くして残す**: 使わないツールの指示書を保守し続けることになる

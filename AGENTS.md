@@ -12,4 +12,4 @@
 - 初回 clone 後に `git config core.hooksPath .githooks` を 1 回実行して git hook を有効化する。
 - `.codex/hooks.json` の SessionStart / PreToolUse hook は初回起動時に trust の確認が出る。trust しないと依存インストールとテスト編集時のガード注入が働かないため、内容を確認して承認する。
 - 一時ファイルは `/tmp/codex/` 配下に作り、削除は `bash scripts/rm-tmp.sh <path>` を使う。
-- ステージングは `bash .codex/scripts/git-add-files.sh <path>...` を使う（`git add .` 等の直接実行は `.codex/rules/default.rules` で拒否される）。
+- ステージングは `bash .codex/scripts/git-add-files.sh <path>...` を使う（`git add` の直接実行はパス指定でも `.codex/rules/default.rules` と PreToolUse hook で拒否される）。

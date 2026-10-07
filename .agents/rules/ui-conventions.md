@@ -28,7 +28,7 @@ UI コンポーネントの変更時と、Playwright で UI 確認・E2E テス�
 
 ### 2.1 ホバー・フォーカス時の色変化
 
-CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、JSX の `style={{}}` や `e.currentTarget.style.X = Y` による色変更は禁止。ホバー / 状態色は `global.css` の `@layer components` に `:hover` / `[aria-pressed="true"]` 擬似クラスごと semantic class を定義し、`className` で適用する（`hover:` variant が使えない理由は common.md 7.1 章）。
+CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、JSX の `style={{}}` と `e.currentTarget.style.X = Y` は用途を問わず使わない。ホバー / 状態色は `global.css` の `@layer components` に `:hover` / `[aria-pressed="true"]` 擬似クラスごと semantic class を定義し、`className` で適用する（`hover:` variant が使えない理由は common.md 7.1 章）。
 
 - 既存例: `.btn-clear`（透過 → `--color-bg-subtle`）、`ActionButton` の `.btn-action--{variant}`
 - ボタンの hover は **`:hover:not(:disabled)` と `:focus-visible:not(:disabled)` を同じ視覚反応で定義**する（キーボード利用者にも同等のフィードバックを出し、disabled 時は反応させない）
@@ -51,7 +51,7 @@ CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、J
 
 ### 2.5 live region は小さい要素に限定する
 
-リアルタイム変換系ツールで、結果領域全体に `aria-live` / `role="status"` を付けない（1 文字編集ごとに全体が再アナウンスされる）。「結果の 1 行要約」など小さく安定した要素だけを live region にする。`role="status"` は暗黙で `aria-live="polite"` を持つので併記しない（PR #746）。
+リアルタイム変換系ツールで、結果領域全体に `aria-live` / `role="status"` を付けない（1 文字編集ごとに全体が再アナウンスされる）。「結果の 1 行要約」など小さく安定した要素だけを live region にする。`role="status"` は暗黙で `aria-live="polite"` を持つので併記しない（PR #746）。`JwtDecoder` は結果領域全体を live region にしたまま未改修なので、踏襲しない。
 
 ---
 
@@ -76,4 +76,4 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** の両方でスク
 
 ### 3.4 React island へ入力する spec は hydration を待つ
 
-`/tools/*` で `fill` / `click` する spec は `beforeEach` で `await waitForReactHydration(page);`（`tests/e2e/helpers.ts`）を呼ぶ。hydration 前の `fill` は React の `onChange` を発火させない。CI（`workers: 1`）では顕在化せずローカル並列でだけ flaky になる（issue #750）。漏れは `tests/meta/e2e-hydration-wait-coverage.test.ts` が検出する。
+`/tools/*` で `fill` / `click` する spec は `beforeEach` で `await waitForReactHydration(page);`（`tests/e2e/helpers.ts`）を呼ぶ（`withProductionCsp` は内部で待機するので不要）。hydration 前の `fill` は React の `onChange` を発火させない。CI（`workers: 1`）では顕在化せずローカル並列でだけ flaky になる（issue #750）。漏れは `tests/meta/e2e-hydration-wait-coverage.test.ts` が検出する。
