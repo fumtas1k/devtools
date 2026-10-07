@@ -74,11 +74,29 @@ function redactPairString(
 }
 
 /**
- * `name=value&...` 形式を `&` で分割し、1 ペア（`name=value`）単位で scrubText を適用する。
+ * 1 ペア（`name=value`）に scrubText を適用する。置換は値の範囲に限り、name は書き換えない。
+ * 1. 値だけを走査する（主。キーの文脈を使わないルール: JWT / API キー / 高エントロピー等）
+ * 2. `name=` + 1 の結果を走査し、検出範囲が値の先頭以降にある finding だけ採用する（補完）。
+ *    キーの文脈が要るルール（CREDENTIAL_ASSIGN: `access_key=abcdefghi` 等）を拾うためで、
+ *    name にかかる検出（HIGH_ENTROPY_BASE64 が `custom=` まで取り込む等）は捨てる。
+ * `=` の無いペアは従来どおり全体を走査する。
+ */
+function scrubPair(
+  pair: string,
+  counts: Record<HarRedactCategory, number>,
+  category: HarRedactCategory
+): string {
+  const eq = pair.indexOf('=');
+  if (eq === -1) return scrubInto(pair, counts, category);
+  const head = pair.slice(0, eq + 1);
+  const scrubbedValue = scrubInto(pair.slice(eq + 1), counts, category);
+  return scrubInto(head + scrubbedValue, counts, category, head.length);
+}
+
+/**
+ * `name=value&...` 形式を `&` で分割し、1 ペアずつ scrubPair で走査する。
  * クエリ/フラグメント/form 本文全体を scrubText に渡すと CREDENTIAL_ASSIGN の値クラスが
- * 区切り `&` を越えて隣の param まで飲み込む（非機密 param を破壊する）。一方、値だけを渡すと
- * キー名の文脈（`access_key=...` / `credential=...`）が失われ CREDENTIAL_ASSIGN が効かない。
- * ペア単位なら `&` 越えの飲み込みを防ぎつつキーの文脈を保てる（値だけがマスクされる）。
+ * 区切り `&` を越えて隣の param まで飲み込む（非機密 param を破壊する）ため、ペア単位に分ける。
  * カテゴリは呼び出し側が指定する（URL は PATH_SCAN（#694: QUERY から分離）、form 本文は BODY）。
  */
 function scrubPairs(
@@ -88,7 +106,7 @@ function scrubPairs(
 ): string {
   return s
     .split('&')
-    .map((pair) => scrubInto(pair, counts, category))
+    .map((pair) => scrubPair(pair, counts, category))
     .join('&');
 }
 
@@ -108,7 +126,7 @@ function redactFormBody(
       if (eq !== -1 && isSensitiveParamName(pair.slice(0, eq))) {
         return pair.slice(0, eq + 1) + tokenize('BODY', pair.slice(eq + 1));
       }
-      return scrubInto(pair, counts, 'BODY');
+      return scrubPair(pair, counts, 'BODY');
     })
     .join('&');
 }
@@ -321,18 +339,23 @@ function redactUrl(
 /**
  * value に scrubText を適用し、findings 件数を counts[category] に加算して
  * redact 済み文字列を返す（findings が無ければ原文を返す）。
+ * minStart を指定すると、検出範囲の開始位置が minStart 以降の finding だけを採用する
+ * （`name=value` の name 側にかかる検出を捨てるために使う。既定 0 は全 finding を採用）。
  */
 function scrubInto(
   value: string,
   counts: Record<HarRedactCategory, number>,
-  category: HarRedactCategory
+  category: HarRedactCategory,
+  minStart = 0
 ): string {
   const r = scrubText(value, DEFAULT_ENABLED);
   if (r.findings.length === 0) return value;
   // 既に [REDACTED:...] になっている値への再マッチ（例: `"password":"[REDACTED:BODY_1]"` を
   // CREDENTIAL_ASSIGN が拾う）は採用しない。採用すると再サニタイズで件数が増え、トークンも
   // 別カテゴリに置き換わる（冪等性の破壊）。
-  const adopted = r.findings.filter((f) => !PLACEHOLDER_EXACT_RE.test(value.slice(f.start, f.end)));
+  const adopted = r.findings.filter(
+    (f) => f.start >= minStart && !PLACEHOLDER_EXACT_RE.test(value.slice(f.start, f.end))
+  );
   if (adopted.length === 0) return value;
   if (adopted.length === r.findings.length) {
     counts[category] += adopted.length;

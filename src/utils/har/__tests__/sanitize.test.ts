@@ -1145,6 +1145,55 @@ describe('#778: サニタイズ済み HAR に秘密値が残らない', () => {
       expect(isSensitiveParamName(name)).toBe(expected);
     });
 
+    // 検出・置換が名前側（`custom=`）にはみ出さないこと。HIGH_ENTROPY_BASE64 は `custom=` まで取り込むと
+    // 値単体と異なるエントロピーで判定して見逃す（ペア全体を走査した実装の退行）。
+    const ENTROPY_VALUE = 'nftsokupusviutomqmccdstgjghnhlog';
+    const AWS_KEY = 'AKIAIOSFODNN7EXAMPLE';
+
+    it('陽性対照: 辞書外の名前の高エントロピー値が request.url から残らない', () => {
+      const har = entryHar({ url: `https://x.com/cb?custom=${ENTROPY_VALUE}` });
+      expect(sanitizedJson(har)).not.toContain(ENTROPY_VALUE);
+    });
+
+    it('陽性対照: 辞書外の名前の高エントロピー値が Location ヘッダから残らない', () => {
+      const har = entryHar(
+        {},
+        { headers: [{ name: 'Location', value: `https://x.com/cb?custom=${ENTROPY_VALUE}` }] }
+      );
+      expect(sanitizedJson(har)).not.toContain(ENTROPY_VALUE);
+    });
+
+    it('陽性対照: 辞書外の名前の高エントロピー値が response.redirectURL から残らない', () => {
+      const har = entryHar({}, { redirectURL: `https://x.com/cb?custom=${ENTROPY_VALUE}` });
+      expect(sanitizedJson(har)).not.toContain(ENTROPY_VALUE);
+    });
+
+    it('陽性対照: 辞書外の名前の高エントロピー値が form 本文から残らない', () => {
+      const har = entryHar({ postData: { mimeType: FORM, text: `custom=${ENTROPY_VALUE}` } });
+      expect(sanitizedJson(har)).not.toContain(ENTROPY_VALUE);
+    });
+
+    it('陽性対照: URL クエリで AWS キーの値だけが置換され、名前 custom= は残る', () => {
+      const har = entryHar({ url: `https://x.com/cb?custom=${AWS_KEY}&page=2` });
+      const url = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.url;
+      expect(url).not.toContain(AWS_KEY);
+      expect(url).toMatch(/\?custom=\[REDACTED:[A-Z_]+_\d+\]&page=2$/);
+    });
+
+    it('陽性対照: form 本文で AWS キーの値だけが置換され、名前 custom= は残る', () => {
+      const har = entryHar({ postData: { mimeType: FORM, text: `custom=${AWS_KEY}&page=2` } });
+      const text = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(text).not.toContain(AWS_KEY);
+      expect(text).toMatch(/^custom=\[REDACTED:[A-Z_]+_\d+\]&page=2$/);
+    });
+
+    it('陰性対照: 名前そのものが検出パターンに見えても名前は書き換わらない（名前は走査対象外）', () => {
+      const url = entryHar({ url: `https://x.com/cb?${AWS_KEY}=1&page=2` });
+      const form = entryHar({ postData: { mimeType: FORM, text: `${AWS_KEY}=1&page=2` } });
+      expect(sanitizeHar(url, ALL_ON).har).toEqual(url);
+      expect(sanitizeHar(form, ALL_ON).har).toEqual(form);
+    });
+
     it('陰性対照: 末尾一致しない名前（途中に含むだけ）と page は変化しない', () => {
       const har = entryHar({
         url: 'https://x.com/cb?tokenizer=abc&password_hint_shown=true&page=2',
