@@ -1,31 +1,24 @@
 # Claude Code: Git / ファイルシステム操作ルール
 
-`.agents/rules/common.md` の補足。Claude Code 固有の一時ファイル / sandbox / git 制約を定める。
+`.agents/rules/common.md` の補足。Claude Code 固有の一時ファイル / sandbox / git 制約。
 
 ## 一時ファイル
 
-- 作成先は `/tmp/claude/` 配下。credential / secret 類は置かない。
-- 削除は `bash scripts/rm-tmp.sh <path>` を使う（実パス検証で `/tmp/claude/` 配下のみ削除を許可。`/tmp/codex/` も同ヘルパーで削除可）。
-- `gh api` 等に渡す JSON / body ファイルも `/tmp/claude/` に作成する。
+- 作成先は `/tmp/claude/` 配下（`gh api` 等に渡す body / JSON ファイルも同じ）。削除は `bash scripts/rm-tmp.sh <path>` を使う。
 
 ## sandbox 制約
 
-- `denyWithinAllow` に含まれるファイルへの操作は Bash（`mkdir` / `rm` / `tee` / `sed -i` 等）経由では deny されるが、`Edit` / `Write` tool 経由は通る。操作前に必ず `Edit` / `Write` を先に試す（tool で完結できれば別ターミナル依頼は不要）。
-- `!` prefix は sandbox bypass にならない。blocked 操作の workaround として使わない。
-- `.claude/settings.json` の `sandbox.excludedCommands`（`git push` / `git fetch` / `gh pr` / `gh issue` / `npm run test:e2e` / `codex review` 等）は **単独で実行する**。`cd ... &&` の前置だけでなく、後ろへの `&&` / `;` 連結・パイプ・リダイレクト・ループも付けない。付けるとパターンに一致せず sandbox 内で走り、SSH の proxy 拒否・`gh` の keyring エラーや `tls: failed to verify certificate: x509: OSStatus -26276`・`listen EPERM` として現れる（auto mode や設定、`gh` の不安定さの問題ではない。curl への迂回も不要。PR #764 のセッションで確認）。
+- `denyWithinAllow` 対象のファイルは Bash（`mkdir` / `rm` / `sed -i` 等）では deny されるが `Edit` / `Write` tool は通る。先に tool で試す。
+- `!` prefix は sandbox bypass にならない。
+- `.claude/settings.json` の `sandbox.excludedCommands`（`git push` / `git fetch` / `gh pr` / `gh issue` / `npm run test:e2e` / `codex review` 等）は **単独で実行する**。`cd ... &&` の前置、`&&` / `;` 連結、パイプ、リダイレクト、ループを付けるとパターンに一致せず sandbox 内で走り、SSH の proxy 拒否や `gh` の `x509: OSStatus -26276`・`listen EPERM` として失敗する（PR #764）。
+- `git -C <path>` は使わない（除外パターンに一致せず SSH push が known_hosts 拒否で失敗する）。
 
-## git 操作
+## Playwright / E2E（macOS ローカルセッションのみ）
 
-- `git -C <path>` は使わない。既に project dir に居る場合は素の `git` を使う（`git -C` は sandbox 除外パターンに合致せず SSH push が known_hosts 拒否で失敗する）。
+web セッション（claude.ai/code）は Chromium 導入済みのコンテナで動くため、本節は該当しない。
 
-## Playwright / E2E の sandbox 制約（macOS ローカルセッション向け）
-
-本節は macOS ローカルの sandbox-exec 環境で確認した制約。web セッション（claude.ai/code）は Chromium pre-install 済みのコンテナで動くため `playwright install` は不要で、`mach_port_rendezvous` の制約も該当しない。
-
-- ブラウザ未インストール環境では `PLAYWRIGHT_BROWSERS_PATH="$PWD/tmp/claude/ms-playwright"`（リポジトリ内の sandbox 書込可能経路）を指定して `npx playwright install chromium chromium-headless-shell` する。デフォルトの `~/Library/Caches` は書込 deny。キャッシュは未追跡のまま残してよい（次セッションで再利用可）。
-- `node` スクリプトから `chromium.launch()` を直接呼ぶと `mach_port_rendezvous ... Permission denied (1100)` で起動できない。**test runner（`npm run test:e2e` / `npx playwright test`）経由なら起動できる**。スクリーンショット撮影等の単発ブラウザ操作も、一時 spec + 専用 config（起動済みサーバを `baseURL` 参照、`webServer` なし）を作って runner 経由で実行する（一時 spec はコミットしない）。
-- 環境によっては `webServer` 自動起動が `listen EPERM ::1:4321`（IPv6 bind 拒否）で失敗することがある。その場合は `astro preview --host 127.0.0.1` を別途起動して `baseURL` で参照する。
-- さらに環境によっては loopback への **connect 自体が全面 deny** される（`astro preview` の起動・listen は成功するのに、node fetch / curl / バックグラウンドタスクからの `127.0.0.1` 接続がすべて EPERM / exit 000）。この状態では上記 workaround を含め **in-session E2E は実行不能**。接続 probe（`curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:<port>/` 等）が 2〜3 回失敗した時点で workaround 探索を打ち切り、「CI を E2E の最終ゲートにする」判断へ切り替えて PR 本文にローカル E2E 未実行の旨と理由を明示する。UI の目視確認は claude-in-chrome（ユーザーの実 Chrome、sandbox 外）で代替できる。
-- 調査目的で `astro dev` / `astro preview` を**手動起動しない**。astro 7 はエージェント検知時に自動で detached background 起動し、`astro dev stop` でも止まらず残ることがある。残存サーバがあるとローカル E2E は port 使用中エラー（`is already used`）で止まる（sandbox 内からの `kill` は不可）。残ってしまったら `npm run pretest:e2e:dev` を単独実行して 4321 / 4322 を空ける（`ignore-scripts=true` のため pretest は自動では走らない。PR #769 / #772）。
-
-（経緯: PR #746 のセッションで親・サブエージェント計 3 者が同じ制約に別々に遭遇したため記録。loopback connect 全面 deny は PR #749 のセッションで確認し、workaround 試行のラウンドトリップが無駄になったため追記）
+- ブラウザ未導入なら `PLAYWRIGHT_BROWSERS_PATH="$PWD/tmp/claude/ms-playwright"` を指定して `npx playwright install chromium chromium-headless-shell`（`~/Library/Caches` は書込 deny）。
+- `node` スクリプトからの `chromium.launch()` は `mach_port_rendezvous ... (1100)` で失敗する。スクリーンショット等の単発操作も一時 spec + 専用 config を作り test runner 経由で実行する（一時 spec はコミットしない）。
+- `webServer` が `listen EPERM ::1:4321` で失敗したら `astro preview --host 127.0.0.1` を別途起動して `baseURL` で参照する。
+- loopback への connect 自体が全面 deny される環境では in-session E2E は実行不能。接続 probe が 2〜3 回失敗したら workaround 探索を打ち切り、CI を最終ゲートにして PR 本文にローカル E2E 未実行と理由を書く（PR #749）。
+- `astro dev` / `astro preview` を調査目的で手動起動しない（エージェント検知時に detached 起動し、止まらず残ることがある）。残ったら `npm run pretest:e2e:dev` を単独実行して 4321 / 4322 を空ける（PR #769 / #772）。
