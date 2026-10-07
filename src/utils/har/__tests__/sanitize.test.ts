@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sanitizeHar } from '../sanitize';
-import { HAR_REDACT_DEFAULT } from '../rules';
+import { HAR_REDACT_DEFAULT, isSensitiveParamName } from '../rules';
 import type { Har, HarRequest, HarResponse } from '../types';
 
 function makeHar(): Har {
@@ -1060,6 +1060,168 @@ describe('#778: サニタイズ済み HAR に秘密値が残らない', () => {
       });
       const enabled = { ...ALL_ON, QUERY: false, PATH_SCAN: false };
       expect(sanitizeHar(har, enabled).har).toEqual(har);
+    });
+  });
+
+  describe('キー名の文脈に依存する検出（ペア単位の走査 + 末尾一致の機密名）', () => {
+    it.each([
+      ['access_key=abcdefghi', 'abcdefghi'],
+      ['credential=abcdefghi', 'abcdefghi'],
+      ['db_password=hunter2', 'hunter2'],
+      ['db_password=abc', 'abc'],
+    ])('陽性対照: form 本文の %s が残らない', (text, leaked) => {
+      const har = entryHar({ postData: { mimeType: FORM, text } });
+      expect(sanitizedJson(har)).not.toContain(leaked);
+    });
+
+    it('陽性対照: 名前の末尾一致では拾えない日本語キー（パスワード=...）もペア単位走査で残らない', () => {
+      // 末尾一致の語は英語のみ。日本語キーは CREDENTIAL_ASSIGN のキー文脈（ペア単位走査）で検出する
+      const har = entryHar({ postData: { mimeType: FORM, text: 'パスワード=abcdefghi&a=1' } });
+      const out = sanitizedJson(har);
+      expect(out).not.toContain('abcdefghi');
+      expect(out).toContain('a=1');
+    });
+
+    it('陽性対照: URL クエリの日本語キー（トークン=...）が PATH_SCAN で残らない', () => {
+      const har = entryHar({ url: 'https://x.com/cb?トークン=abcdefghi&page=2' });
+      const out = sanitizedJson(har, { ...ALL_OFF, PATH_SCAN: true });
+      expect(out).not.toContain('abcdefghi');
+      expect(out).toContain('page=2');
+    });
+
+    it('陽性対照: URL クエリの db_password が残らない', () => {
+      const har = entryHar({ url: 'https://x.com/cb?db_password=hunter2' });
+      expect(sanitizedJson(har)).not.toContain('hunter2');
+    });
+
+    it('陽性対照: URL クエリの access_key が QUERY OFF でも PATH_SCAN（ペア単位走査）で残らない', () => {
+      // QUERY が OFF のとき名前辞書は使われない。ペア単位の自由走査（PATH_SCAN）だけで検出できること
+      const har = entryHar({ url: 'https://x.com/cb?access_key=abcdefghi&page=2' });
+      const out = sanitizedJson(har, { ...ALL_OFF, PATH_SCAN: true });
+      expect(out).not.toContain('abcdefghi');
+      expect(out).toContain('page=2');
+    });
+
+    it('陽性対照: URL フラグメントの access_key が PATH_SCAN で残らない', () => {
+      const har = entryHar({ url: 'https://x.com/cb#access_key=abcdefghi&page=2' });
+      const out = sanitizedJson(har, { ...ALL_OFF, PATH_SCAN: true });
+      expect(out).not.toContain('abcdefghi');
+      expect(out).toContain('page=2');
+    });
+
+    it('陽性対照: queryString[] の db_password が残らない', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb',
+        queryString: [{ name: 'db_password', value: 'hunter2' }],
+      });
+      expect(sanitizedJson(har)).not.toContain('hunter2');
+    });
+
+    it('陽性対照: postData.params[] の db_password が残らない', () => {
+      const har = entryHar({
+        postData: { mimeType: FORM, params: [{ name: 'db_password', value: 'abc' }] },
+      });
+      expect(sanitizedJson(har)).not.toContain('abc');
+    });
+
+    it('陽性対照: JSON 本文の dbPassword が残らない', () => {
+      const har = entryHar({
+        postData: { mimeType: 'application/json', text: '{"dbPassword":"abc"}' },
+      });
+      expect(sanitizedJson(har)).not.toContain('abc');
+    });
+
+    it.each([
+      ['db_password', true],
+      ['access_key', true],
+      ['x-csrf-token', true],
+      ['sessionToken', true],
+      ['client_secret', true],
+      ['tokenizer', false],
+      ['password_hint_shown', false],
+      ['page', false],
+    ])('isSensitiveParamName(%s) === %s', (name, expected) => {
+      // 末尾一致の判定そのものの確認（陽性・陰性を 1 表にまとめた境界テスト）
+      expect(isSensitiveParamName(name)).toBe(expected);
+    });
+
+    it('陰性対照: 末尾一致しない名前（途中に含むだけ）と page は変化しない', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb?tokenizer=abc&password_hint_shown=true&page=2',
+        queryString: [
+          { name: 'tokenizer', value: 'abc' },
+          { name: 'password_hint_shown', value: 'true' },
+          { name: 'page', value: '2' },
+        ],
+        postData: {
+          mimeType: FORM,
+          text: 'tokenizer=abc&password_hint_shown=true&page=2',
+          params: [{ name: 'tokenizer', value: 'abc' }],
+        },
+      });
+      expect(sanitizeHar(har, ALL_ON).har).toEqual(har);
+    });
+
+    it('陰性対照: form 本文で、あるペアの検出が隣のペアの値を巻き込まない', () => {
+      const har = entryHar({
+        postData: { mimeType: FORM, text: 'a=1&db_password=hunter2&b=2' },
+      });
+      const text = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(text).toMatch(/^a=1&db_password=\[REDACTED:BODY_\d+\]&b=2$/);
+    });
+
+    it('陰性対照: 辞書外のペアの検出も隣のペアを巻き込まない（form 本文・URL）', () => {
+      // `note=password=abcdefghi` は辞書外の名前でペア内の CREDENTIAL_ASSIGN が効く。隣は残る
+      const form = entryHar({
+        postData: { mimeType: FORM, text: 'a=1&note=password=abcdefghi&b=2' },
+      });
+      const text = sanitizeHar(form, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(text).toMatch(/^a=1&note=password=\[REDACTED:[A-Z_]+_\d+\]&b=2$/);
+      const url = entryHar({ url: 'https://x.com/cb?a=1&note=password=abcdefghi&b=2' });
+      const out = sanitizeHar(url, { ...ALL_OFF, PATH_SCAN: true }).har.log.entries[0]!.request.url;
+      expect(out).toMatch(/\?a=1&note=password=\[REDACTED:[A-Z_]+_\d+\]&b=2$/);
+    });
+  });
+
+  describe('JSON 本文の走査（線形スキャナ）', () => {
+    // 旧正規表現実装は `(?:[^"\\]|\\.)*` が V8 で長い文字列に RangeError（スタック超過）を投げた。
+    // 実測の境界は 'a ' の繰り返し 4_194_304 回（文字列長 2^23）付近で、4_200_000 以上で旧実装は落ち、
+    // 4_000_000 以下は通った。境界を確実に超えつつ数百 ms で終わる値を使う。
+    const LONG_REPEAT = 4_500_000;
+
+    it('陽性対照: 長い文字列値を含む JSON 本文でも例外を出さず、機密キーの値が置換される', () => {
+      const text = JSON.stringify({ data: 'a '.repeat(LONG_REPEAT), password: 'abc' });
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      let out: Har | undefined;
+      expect(() => {
+        out = sanitizeHar(har, ALL_ON).har;
+      }).not.toThrow();
+      const outText = out!.log.entries[0]!.request.postData!.text!;
+      expect(outText).toMatch(/"password":"\[REDACTED:BODY_1\]"\}$/);
+      expect(outText).not.toContain('"password":"abc"');
+    });
+
+    it('陰性対照: 文字列値の中のエスケープされた引用符とキーに見える並びは書き換えない', () => {
+      const text = '{"note":"say \\"password\\": \\"x\\" here","page":2}';
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      const out = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(out).toBe(text);
+    });
+
+    it('陰性対照: 閉じ引用符の無い壊れた JSON でも例外を出さない', () => {
+      for (const text of ['{"password":"abc', '{"password', '{"a":"b\\', '{"password":']) {
+        const har = entryHar({ postData: { mimeType: 'application/json', text } });
+        expect(() => sanitizeHar(har, ALL_ON)).not.toThrow();
+      }
+    });
+
+    it('陽性対照: キーの直後の値が文字列でも、配列要素の文字列を挟んで正しくキーを拾う', () => {
+      const text = '{"list":["a","b"],"password":"abc","n":{"token":"zzz"}}';
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      const out = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text!;
+      expect(out).not.toContain('abc');
+      expect(out).not.toContain('zzz');
+      expect(out).toContain('"list":["a","b"]');
     });
   });
 
