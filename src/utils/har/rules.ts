@@ -110,3 +110,40 @@ export const SENSITIVE_PARAM_NAMES = new Set([
   'auth',
   'session_state',
 ]);
+
+/** `_` と `-` を取り除く（camelCase / kebab-case / snake_case を同一視するための正規化）。 */
+function stripSeparators(s: string): string {
+  return s.replace(/[_-]/g, '');
+}
+
+/** SENSITIVE_PARAM_NAMES を区切り文字なしに正規化した辞書。モジュール初期化時に 1 度だけ作る。 */
+const SENSITIVE_PARAM_NAMES_COMPACT = new Set([...SENSITIVE_PARAM_NAMES].map(stripSeparators));
+
+/**
+ * percent-decode する。不正なエンコード（`%zz` 等）なら例外を握りつぶさず null を返す。
+ * 戻り値を必ず使う形にしてあるのは、戻り値を捨てた decodeURIComponent が本番ビルドの
+ * minifier に副作用なしとみなされて削除されるのを避けるため。
+ */
+function tryDecodeURIComponent(s: string): string | null {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * パラメータ名が機密名かを判定する（クエリ / queryString[] / postData.params[] / form・JSON 本文で共用）。
+ * - `+` を空白、percent-encoding を復号してから照合する（`%74oken` / `access%5Ftoken` 対策）。
+ *   復号に失敗した名前は復号前の文字列で照合する。
+ * - 辞書と一致しなければ `_` `-` を除いた形でも照合する（`accessToken` / `clientSecret` /
+ *   `returnTo` 等の camelCase 対策）。
+ */
+export function isSensitiveParamName(rawName: unknown): boolean {
+  if (typeof rawName !== 'string') return false;
+  const plusAsSpace = rawName.replace(/\+/g, ' ');
+  const decoded = tryDecodeURIComponent(plusAsSpace);
+  const name = (decoded === null ? plusAsSpace : decoded).trim().toLowerCase();
+  if (SENSITIVE_PARAM_NAMES.has(name)) return true;
+  return SENSITIVE_PARAM_NAMES_COMPACT.has(stripSeparators(name));
+}
