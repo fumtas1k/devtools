@@ -55,7 +55,7 @@
 
 ## 4. セキュリティ設計
 
-貼り付けられた HTML は攻撃ペイロードであり得る（反射型 XSS のリスク、`.agents/rules/common.md` 9.5 章）。
+貼り付けられた HTML は攻撃ペイロードであり得る（反射型 XSS のリスク）。
 
 - **二重防御**: 自作許可リストサニタイザでの除去 ＋ `sandbox=""` iframe（`allow-scripts` なし）での描画隔離。サニタイザに見落としがあっても sandbox がスクリプト実行を阻止する
 - **DOMPurify 不採用の理由**: sandbox iframe が第二防壁として存在するため、依存追加（約 20KB gzip）よりも自作許可リスト＋二重防御を選択。`docs/decisions.md` に記録する
