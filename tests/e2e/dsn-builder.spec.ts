@@ -37,6 +37,15 @@ test.describe('DSN/接続文字列ビルダ', () => {
     );
   });
 
+  test('陽性対照: クエリ形式の password もマスク済み URI で伏せる', async ({ page }) => {
+    await page
+      .getByLabel('接続 URI')
+      .fill('postgresql://db.example/app?user=alice&password=secret123');
+    const masked = page.getByLabel('マスク済み URI（共有用）');
+    await expect(masked).toHaveValue(/password=\*\*\*\*/);
+    await expect(masked).not.toHaveValue(/secret123/);
+  });
+
   test('サンプルを入力ボタンで現在スキームのサンプルが入る', async ({ page }) => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByLabel('接続 URI')).not.toHaveValue('');
