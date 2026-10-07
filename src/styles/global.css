@@ -322,6 +322,13 @@
     background: var(--color-success-bg);
     color: var(--color-success);
   }
+  /* disabled: ActionButton (.btn-action:disabled) と同じ非アクティブ表現（muted 文字色 + not-allowed）。
+     .btn-copy には hover 用ルールが無いため :not(:disabled) の追加は不要。
+     ルール順序は is-copied の後に置き、disabled が常に優先されるようにする。 */
+  .btn-copy:disabled {
+    color: var(--color-muted);
+    cursor: not-allowed;
+  }
 
   /* ActionButton: variant × disabled マトリクス */
   .btn-action {
