@@ -104,7 +104,6 @@ devtools/
 ├── astro.config.mjs
 ├── tsconfig.json
 ├── package.json
-├── GEMINI.md               # Gemini CLI 用プロジェクト指示書
 ├── vitest.config.ts
 ├── playwright.config.ts
 ├── .agents/

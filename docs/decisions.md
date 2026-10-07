@@ -1302,7 +1302,7 @@ README.md にテストカバレッジのバッジを表示し、GitHub Actions �
 
 ## [040] Gemini CLI 用のプロジェクト指示書 (GEMINI.md) の作成
 
-**2026-04-26 | ステータス: 採用**
+**2026-04-26 | ステータス: 変更（[128] で廃止）**
 
 ### 背景
 
@@ -1483,7 +1483,7 @@ Issue #115 にて、訪問済みリンクの区別（`:visited`）がついて�
 
 ## [046] Gemini CLI サンドボックスとセキュリティポリシーの導入
 
-**2026-04-29 | ステータス: 採用**
+**2026-04-29 | ステータス: 変更（[128] で廃止）**
 
 ### 背景
 
@@ -4755,3 +4755,20 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 
 - **上流修正まで astro 6 に留まる**: astro の XSS / RCE を含む脆弱性が残り続ける
 - **`dev` スクリプトを `astro dev --force` にする**: CI では効くが、ローカル E2E の build と dev の並走で上書き競合が残る
+
+## [128] Gemini CLI 用の指示書・設定を削除する
+
+**2026-10-07 | ステータス: 採用**
+
+### 背景
+
+[040] / [046] で Gemini CLI 用に `GEMINI.md`・`.gemini/`（sandbox 設定とセキュリティポリシー）・`docs/setup/gemini-policy.md` を導入したが、2026-05-31 以降は更新されておらず、Gemini CLI もこのリポジトリで使っていない。保守されない指示書とポリシーは、共通規約と食い違ったまま残るリスクがある。
+
+### 決断
+
+**`GEMINI.md`・`.gemini/settings.json`・`.gemini/policies/security.toml`・`docs/setup/gemini-policy.md` を削除し、参照箇所（`SPEC.md` / `CLAUDE.md` / `.agents/rules/common.md`）を更新する。** 再び使う場合は、その時点の共通規約と Gemini CLI の仕様に合わせて作り直す。
+
+### 安全性
+
+- 削除するのは Gemini CLI 実行時にだけ読まれる設定で、Claude Code / Codex / CI の挙動は変わらない
+- `.claude/settings.json` の `.gemini/**` への編集・削除を ask にするルールは残す。設定が無い状態でエージェントが `.gemini/` を作る操作にも確認が入る

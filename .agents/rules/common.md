@@ -1,6 +1,6 @@
 # プロジェクト共通開発規約 (AIエージェント用)
 
-このリポジトリで作業するすべての AI エージェント（Claude Code, Codex, Gemini CLI 等）が遵守する共通規約。一般的なコーディング作法は書かず、このリポジトリ固有の約束事と過去の事故から得たルールだけを置く。
+このリポジトリで作業するすべての AI エージェント（Claude Code, Codex 等）が遵守する共通規約。一般的なコーディング作法は書かず、このリポジトリ固有の約束事と過去の事故から得たルールだけを置く。
 
 ## 1. 言語・出力規約
 
@@ -114,7 +114,7 @@
 
 ### 6.6 一時ファイル・ステージング
 
-- 一時ファイルは各エージェント専用の一時ディレクトリにのみ作り、credential / secret を置かない。具体パスと削除 helper は各エージェント固有ルール（Claude → `.claude/rules/`、Codex → `.codex/rules/`、Gemini → `docs/setup/gemini-policy.md`）に従う。
+- 一時ファイルは各エージェント専用の一時ディレクトリにのみ作り、credential / secret を置かない。具体パスと削除 helper は各エージェント固有ルール（Claude → `.claude/rules/git-and-fs.md`、Codex → `AGENTS.md`）に従う。
 - stage は明示 pathspec のみ。`git add .` / `-A` / `--all` は使わない。
 - レビュー取得は `gh pr view <PR> --comments` を優先する（`gh api` は多くの設定で ask 経路）。
 

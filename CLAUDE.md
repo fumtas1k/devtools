@@ -11,7 +11,7 @@
 
 ## Claude 固有の運用ルール
 
-Claude Code 固有の補足は `.claude/rules/` に分割し、上記 `@import` で読み込んでいる（Codex は `.codex/rules/`、Gemini CLI は `docs/setup/gemini-policy.md`）。
+Claude Code 固有の補足は `.claude/rules/` に分割し、上記 `@import` で読み込んでいる（Codex 固有の事項は `AGENTS.md`）。
 
 ### 実装後の Codex レビュー
 
