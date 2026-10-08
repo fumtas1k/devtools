@@ -10,7 +10,7 @@ import {
   COOKIE_HEADER_NAMES,
   AUTH_HEADER_NAMES,
   URL_HEADER_NAMES,
-  SENSITIVE_PARAM_NAMES,
+  isSensitiveParamName,
   emptyRedactCounts,
 } from './rules';
 // 相対 import で統一する理由: このモジュールは Web Worker（harSanitizer.worker.ts）の
@@ -46,14 +46,14 @@ function makeTokenizer(counts: Record<HarRedactCategory, number>) {
 }
 
 /**
- * `name=value` 形式（Cookie ヘッダ "a=1; b=2" / クエリ文字列）の value 部のみを
- * 指定 names にマッチするとき redact する。COOKIE ヘッダは全 value を redact する。
+ * `name=value` 形式（Cookie ヘッダ "a=1; b=2" / クエリ文字列）の value 部のみを、
+ * name が shouldRedact を満たすとき redact する。名前の表記（`%74oken=` 等）は保ち、値だけを置換する。
+ * Cookie ヘッダは全 value を redact するため `() => true` を渡す。
  */
 function redactPairString(
   raw: string,
   pairSep: string,
-  redactAll: boolean,
-  names: Set<string>,
+  shouldRedact: (name: string) => boolean,
   category: HarRedactCategory,
   tokenize: (c: HarRedactCategory, v: string) => string
 ): string {
@@ -62,10 +62,10 @@ function redactPairString(
     .map((pair) => {
       const eq = pair.indexOf('=');
       if (eq === -1) return pair;
-      const name = pair.slice(0, eq).trim().toLowerCase();
+      const name = pair.slice(0, eq);
       const before = pair.slice(0, eq + 1);
       const value = pair.slice(eq + 1);
-      if (redactAll || names.has(name)) {
+      if (shouldRedact(name)) {
         return before + tokenize(category, value);
       }
       return pair;
@@ -74,21 +74,179 @@ function redactPairString(
 }
 
 /**
- * `name=value&...` 形式の各 value 部のみに scrubText を適用する。
- * クエリ/フラグメント全体を scrubText に渡すと CREDENTIAL_ASSIGN の値クラスが
- * 区切り `&` を越えて隣の param まで飲み込む（非機密 param を破壊する）ため、
- * value 単位で走査して取りこぼし無く・破壊無く redact する。
- * カテゴリは PATH_SCAN（URL自由走査）で計上する（#694: QUERY から分離）。
+ * 1 ペア（`name=value`）に scrubText を適用する。置換は値の範囲に限り、name は書き換えない。
+ * 1. 値だけを走査する（主。キーの文脈を使わないルール: JWT / API キー / 高エントロピー等）
+ * 2. `name=` + 1 の結果を走査し、検出範囲が値の先頭以降にある finding だけ採用する（補完）。
+ *    キーの文脈が要るルール（CREDENTIAL_ASSIGN: `access_key=abcdefghi` 等）を拾うためで、
+ *    name にかかる検出（HIGH_ENTROPY_BASE64 が `custom=` まで取り込む等）は捨てる。
+ * `=` の無いペアは従来どおり全体を走査する。
  */
-function scrubPairValues(s: string, counts: Record<HarRedactCategory, number>): string {
+function scrubPair(
+  pair: string,
+  counts: Record<HarRedactCategory, number>,
+  category: HarRedactCategory
+): string {
+  const eq = pair.indexOf('=');
+  if (eq === -1) return scrubInto(pair, counts, category);
+  const head = pair.slice(0, eq + 1);
+  const scrubbedValue = scrubInto(pair.slice(eq + 1), counts, category);
+  return scrubInto(head + scrubbedValue, counts, category, head.length);
+}
+
+/**
+ * `name=value&...` 形式を `&` で分割し、1 ペアずつ scrubPair で走査する。
+ * クエリ/フラグメント/form 本文全体を scrubText に渡すと CREDENTIAL_ASSIGN の値クラスが
+ * 区切り `&` を越えて隣の param まで飲み込む（非機密 param を破壊する）ため、ペア単位に分ける。
+ * カテゴリは呼び出し側が指定する（URL は PATH_SCAN（#694: QUERY から分離）、form 本文は BODY）。
+ */
+function scrubPairs(
+  s: string,
+  counts: Record<HarRedactCategory, number>,
+  category: HarRedactCategory
+): string {
   return s
+    .split('&')
+    .map((pair) => scrubPair(pair, counts, category))
+    .join('&');
+}
+
+/**
+ * form 本文（application/x-www-form-urlencoded）の構造的 redact。
+ * 機密名の値は tokenize、それ以外のペアは `name=value` 単位で scrubText する（`&` 越えの飲み込み防止）。
+ */
+function redactFormBody(
+  text: string,
+  counts: Record<HarRedactCategory, number>,
+  tokenize: (c: HarRedactCategory, v: string) => string
+): string {
+  return text
     .split('&')
     .map((pair) => {
       const eq = pair.indexOf('=');
-      if (eq === -1) return scrubInto(pair, counts, 'PATH_SCAN');
-      return pair.slice(0, eq + 1) + scrubInto(pair.slice(eq + 1), counts, 'PATH_SCAN');
+      if (eq !== -1 && isSensitiveParamName(pair.slice(0, eq))) {
+        return pair.slice(0, eq + 1) + tokenize('BODY', pair.slice(eq + 1));
+      }
+      return scrubPair(pair, counts, 'BODY');
     })
     .join('&');
+}
+
+/** JSON のキーとして機密名判定にかける最大長。超えるキーは「機密名でない」と扱う。 */
+const JSON_KEY_MAX_LENGTH = 100;
+/** 位置から始まる JSON 数値リテラル（sticky）。 */
+const JSON_NUMBER_RE = /-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
+
+/** text[start] が `"` のとき、対応する閉じ `"` の次の位置を返す。閉じ `"` が無ければ -1。 */
+function scanJsonString(text: string, start: number): number {
+  let i = start + 1;
+  while (i < text.length) {
+    const ch = text.charCodeAt(i);
+    if (ch === 0x5c /* \ */) {
+      i += 2;
+    } else if (ch === 0x22 /* " */) {
+      return i + 1;
+    } else {
+      i++;
+    }
+  }
+  return -1;
+}
+
+/** i 以降の JSON 空白（space / \t / \n / \r）を読み飛ばした位置を返す。 */
+function skipJsonWhitespace(text: string, i: number): number {
+  while (i < text.length) {
+    const ch = text.charCodeAt(i);
+    if (ch !== 0x20 && ch !== 0x09 && ch !== 0x0a && ch !== 0x0d) break;
+    i++;
+  }
+  return i;
+}
+
+/**
+ * JSON 本文の `"キー": 値` を手書きの線形スキャナで走査し、キーが機密名で値が文字列/数値
+ * リテラルなら値を `"<トークン>"` に置換する。JSON.parse → stringify は書式（インデント・改行）を
+ * 壊すため使わない。値がオブジェクト・配列・true/false/null のものは触らない。
+ * 正規表現ではなくループで走査する理由: `(?:[^"\\]|\\.)*` は V8 で長い文字列（数 MB）に対し
+ * RangeError（スタック超過）を投げるため。再帰・バックトラックを使わず、出力は断片配列を
+ * join して二次時間を避ける。
+ * - `"` を見つけたら閉じ `"` まで進めて文字列リテラルを 1 個切り出す。閉じが無ければ残りをそのまま出力して終了
+ * - 直後が（空白を挟んで）`:` ならキー。それ以外の文字列リテラル（値・配列要素）はそのまま出力する
+ * - キーの値として読んだ文字列リテラルはキー候補として再走査しない
+ */
+function redactJsonBody(
+  text: string,
+  tokenize: (c: HarRedactCategory, v: string) => string
+): string {
+  const out: string[] = [];
+  let pos = 0; // out へ未出力の先頭位置
+  let i = 0;
+  while (i < text.length) {
+    if (text.charCodeAt(i) !== 0x22) {
+      i++;
+      continue;
+    }
+    const keyEnd = scanJsonString(text, i);
+    if (keyEnd === -1) break; // 閉じ引用符なし: 残りはそのまま出力
+    const colon = skipJsonWhitespace(text, keyEnd);
+    if (text.charCodeAt(colon) !== 0x3a /* : */) {
+      // キーではない文字列リテラル（値・配列要素）
+      i = keyEnd;
+      continue;
+    }
+    const valueStart = skipJsonWhitespace(text, colon + 1);
+    let valueEnd = -1;
+    if (text.charCodeAt(valueStart) === 0x22) {
+      valueEnd = scanJsonString(text, valueStart);
+    } else {
+      JSON_NUMBER_RE.lastIndex = valueStart;
+      const m = JSON_NUMBER_RE.exec(text);
+      if (m) valueEnd = valueStart + m[0].length;
+    }
+    if (valueEnd === -1) {
+      // 値が文字列/数値リテラルでない（オブジェクト・配列・true/false/null・壊れた文字列）
+      i = colon + 1;
+      continue;
+    }
+    const keyLength = keyEnd - i - 2;
+    if (keyLength >= 1 && keyLength <= JSON_KEY_MAX_LENGTH) {
+      if (isSensitiveParamName(text.slice(i + 1, keyEnd - 1))) {
+        const isString = text.charCodeAt(valueStart) === 0x22;
+        const inner = isString
+          ? text.slice(valueStart + 1, valueEnd - 1)
+          : text.slice(valueStart, valueEnd);
+        out.push(text.slice(pos, valueStart), `"${tokenize('BODY', inner)}"`);
+        pos = valueEnd;
+      }
+    }
+    i = valueEnd; // 値として読んだリテラルはキー候補として再走査しない
+  }
+  out.push(text.slice(pos));
+  return out.join('');
+}
+
+/** 本文が JSON か判定する（mimeType に json を含む、または最初の非空白文字が `{` / `[`）。 */
+function looksLikeJson(mimeType: unknown, text: string): boolean {
+  if (typeof mimeType === 'string' && mimeType.toLowerCase().includes('json')) return true;
+  const first = text.trimStart()[0];
+  return first === '{' || first === '[';
+}
+
+/** postData.text の構造的 redact + 自由走査（BODY）。multipart 等は自由走査のみ。 */
+function redactPostText(
+  text: string,
+  mimeType: unknown,
+  counts: Record<HarRedactCategory, number>,
+  tokenize: (c: HarRedactCategory, v: string) => string
+): string {
+  const mime = typeof mimeType === 'string' ? mimeType.toLowerCase().split(';')[0].trim() : '';
+  if (mime === 'application/x-www-form-urlencoded') {
+    // 本文全体を scrubText に渡すと `&` を越えて隣の値を飲み込むため、ペア単位でのみ走査する
+    return redactFormBody(text, counts, tokenize);
+  }
+  if (looksLikeJson(mimeType, text)) {
+    return scrubInto(redactJsonBody(text, tokenize), counts, 'BODY');
+  }
+  return scrubInto(text, counts, 'BODY');
 }
 
 /**
@@ -96,7 +254,7 @@ function scrubPairValues(s: string, counts: Record<HarRedactCategory, number>): 
  * scrubText を適用する。host を潰さず URL の可読性を保ったまま、パス内トークンや
  * 辞書外クエリ名の JWT/API キーを redact する。
  * - path: そのまま scrubText（`key=value&` 構造を持たないため安全）
- * - query / fragment: param value 単位で scrubText（`&` 越えの飲み込みを防ぐ）
+ * - query / fragment: `name=value` ペア単位で scrubText（`&` 越えの飲み込みを防ぎ、キー名の文脈も保つ）
  * カテゴリは PATH_SCAN で計上する（#694: QUERY から分離）。
  */
 function scrubUrlPath(url: string, counts: Record<HarRedactCategory, number>): string {
@@ -131,8 +289,8 @@ function scrubUrlPath(url: string, counts: Record<HarRedactCategory, number>): s
   const query = qIndex !== -1 ? beforeHash.slice(qIndex + 1) : '';
 
   let result = head + scrubInto(path, counts, 'PATH_SCAN');
-  if (qIndex !== -1) result += '?' + scrubPairValues(query, counts);
-  if (hashIndex !== -1) result += '#' + scrubPairValues(fragment, counts);
+  if (qIndex !== -1) result += '?' + scrubPairs(query, counts, 'PATH_SCAN');
+  if (hashIndex !== -1) result += '#' + scrubPairs(fragment, counts, 'PATH_SCAN');
   return result;
 }
 
@@ -163,14 +321,7 @@ function redactUrl(
       const hashIndex = queryPart.indexOf('#');
       const query = hashIndex !== -1 ? queryPart.slice(0, hashIndex) : queryPart;
       const hash = hashIndex !== -1 ? queryPart.slice(hashIndex) : '';
-      const newQuery = redactPairString(
-        query,
-        '&',
-        false,
-        SENSITIVE_PARAM_NAMES,
-        'QUERY',
-        tokenize
-      );
+      const newQuery = redactPairString(query, '&', isSensitiveParamName, 'QUERY', tokenize);
       result = base + newQuery + hash;
     }
   }
@@ -188,18 +339,36 @@ function redactUrl(
 /**
  * value に scrubText を適用し、findings 件数を counts[category] に加算して
  * redact 済み文字列を返す（findings が無ければ原文を返す）。
+ * minStart を指定すると、検出範囲の開始位置が minStart 以降の finding だけを採用する
+ * （`name=value` の name 側にかかる検出を捨てるために使う。既定 0 は全 finding を採用）。
  */
 function scrubInto(
   value: string,
   counts: Record<HarRedactCategory, number>,
-  category: HarRedactCategory
+  category: HarRedactCategory,
+  minStart = 0
 ): string {
   const r = scrubText(value, DEFAULT_ENABLED);
-  if (r.findings.length > 0) {
-    counts[category] += r.findings.length;
+  if (r.findings.length === 0) return value;
+  // 既に [REDACTED:...] になっている値への再マッチ（例: `"password":"[REDACTED:BODY_1]"` を
+  // CREDENTIAL_ASSIGN が拾う）は採用しない。採用すると再サニタイズで件数が増え、トークンも
+  // 別カテゴリに置き換わる（冪等性の破壊）。
+  const adopted = r.findings.filter(
+    (f) => f.start >= minStart && !PLACEHOLDER_EXACT_RE.test(value.slice(f.start, f.end))
+  );
+  if (adopted.length === 0) return value;
+  if (adopted.length === r.findings.length) {
+    counts[category] += adopted.length;
     return r.output;
   }
-  return value;
+  // findings は入力座標で重なりなし・start 昇順。後ろから置換してオフセットを保つ。
+  let output = value;
+  for (let i = adopted.length - 1; i >= 0; i--) {
+    const f = adopted[i];
+    output = output.slice(0, f.start) + f.placeholder + output.slice(f.end);
+  }
+  counts[category] += adopted.length;
+  return output;
 }
 
 /**
@@ -240,7 +409,7 @@ function redactHeaders(
     if (enabled.COOKIE && COOKIE_HEADER_NAMES.has(lower)) {
       // Cookie ヘッダは "a=1; b=2" を value だけ redact、Set-Cookie は全体 redact
       if (lower === 'cookie') {
-        h.value = redactPairString(h.value, ';', true, COOKIE_HEADER_NAMES, 'COOKIE', tokenize);
+        h.value = redactPairString(h.value, ';', () => true, 'COOKIE', tokenize);
       } else {
         h.value = tokenize('COOKIE', h.value);
       }
@@ -299,15 +468,15 @@ export function sanitizeHar(
         }
       }
 
-      // クエリ（配列）
-      if (enabled.QUERY && Array.isArray(request.queryString)) {
+      // クエリ（配列）: 機密名は構造的 redact（QUERY）、それ以外は URL 側と同じく
+      // 値の自由走査（PATH_SCAN）。QUERY が OFF でも PATH_SCAN が ON なら走査する。
+      if (Array.isArray(request.queryString)) {
         for (const q of request.queryString) {
-          if (
-            q &&
-            typeof q.value === 'string' &&
-            SENSITIVE_PARAM_NAMES.has(q.name?.toLowerCase())
-          ) {
+          if (!q || typeof q.value !== 'string') continue;
+          if (enabled.QUERY && isSensitiveParamName(q.name)) {
             q.value = tokenize('QUERY', q.value);
+          } else if (enabled.PATH_SCAN) {
+            q.value = scrubInto(q.value, counts, 'PATH_SCAN');
           }
         }
       }
@@ -321,17 +490,19 @@ export function sanitizeHar(
       if (enabled.BODY && request.postData && typeof request.postData === 'object') {
         if (Array.isArray(request.postData.params)) {
           for (const p of request.postData.params) {
-            if (
-              p &&
-              typeof p.value === 'string' &&
-              SENSITIVE_PARAM_NAMES.has(p.name?.toLowerCase())
-            ) {
-              p.value = tokenize('BODY', p.value);
-            }
+            if (!p || typeof p.value !== 'string') continue;
+            p.value = isSensitiveParamName(p.name)
+              ? tokenize('BODY', p.value)
+              : scrubInto(p.value, counts, 'BODY');
           }
         }
         if (typeof request.postData.text === 'string') {
-          request.postData.text = scrubInto(request.postData.text, counts, 'BODY');
+          request.postData.text = redactPostText(
+            request.postData.text,
+            request.postData.mimeType,
+            counts,
+            tokenize
+          );
         }
       }
     }
