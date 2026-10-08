@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { sanitizeHar } from '../sanitize';
-import { HAR_REDACT_DEFAULT } from '../rules';
-import type { Har } from '../types';
+import { HAR_REDACT_DEFAULT, isSensitiveParamName } from '../rules';
+import type { Har, HarRequest, HarResponse } from '../types';
 
 function makeHar(): Har {
   return {
@@ -800,6 +800,508 @@ describe('#694: HEADER_SCAN / PATH_SCAN 独立制御', () => {
       secret
     );
     expect(counts.QUERY).toBe(0);
+  });
+});
+
+// ── #778: 別表現・別エンコードで残る秘密値の漏れ ──
+describe('#778: サニタイズ済み HAR に秘密値が残らない', () => {
+  const JWT = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5In0.SflKxwRJSMeKKF2QTabcDEF';
+
+  /** request / response を部分指定して 1 エントリの HAR を作る。 */
+  function entryHar(req: Partial<HarRequest>, res: Partial<HarResponse> = {}): Har {
+    return {
+      log: {
+        entries: [
+          {
+            request: {
+              method: 'POST',
+              url: 'https://x.com/api',
+              headers: [],
+              queryString: [],
+              cookies: [],
+              ...req,
+            },
+            response: { status: 200, headers: [], cookies: [], content: {}, ...res },
+          },
+        ],
+      },
+    };
+  }
+
+  /** 漏れの検証は個別フィールドでなく HAR 全体の直列化に対して行う。 */
+  function sanitizedJson(har: Har, enabled = ALL_ON): string {
+    return JSON.stringify(sanitizeHar(har, enabled).har);
+  }
+
+  const FORM = 'application/x-www-form-urlencoded';
+
+  describe('A: postData.text の構造的 redact', () => {
+    it('陽性対照: form 本文のみ（params なし）の code が消える', () => {
+      const har = entryHar({ postData: { mimeType: FORM, text: 'code=login-code&page=2' } });
+      expect(sanitizedJson(har)).not.toContain('login-code');
+    });
+
+    it('陽性対照: form 本文の text と params の両方にある code が消える', () => {
+      const har = entryHar({
+        postData: {
+          mimeType: FORM,
+          text: 'code=login-code&page=2',
+          params: [
+            { name: 'code', value: 'login-code' },
+            { name: 'page', value: '2' },
+          ],
+        },
+      });
+      expect(sanitizedJson(har)).not.toContain('login-code');
+    });
+
+    it('陽性対照: form 本文の短い password=abc が消える', () => {
+      const har = entryHar({
+        postData: { mimeType: `${FORM}; charset=UTF-8`, text: 'password=abc' },
+      });
+      expect(sanitizedJson(har)).not.toContain('abc');
+    });
+
+    it('陽性対照: form 本文の隣接する非機密値は残り、機密値だけが置換される', () => {
+      const har = entryHar({
+        postData: { mimeType: FORM, text: 'user=alice&code=login-code&page=2' },
+      });
+      const text = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(text).toMatch(/^user=alice&code=\[REDACTED:BODY_\d+\]&page=2$/);
+    });
+
+    it.each([
+      ['文字列 code', '{"code":"login-code"}', 'login-code'],
+      ['短い password', '{"user":"alice","password":"abc"}', 'abc'],
+      ['数値 code', '{"code": 123456}', '123456'],
+      ['camelCase accessToken', '{"accessToken":"abc"}', 'abc'],
+      ['camelCase clientSecret', '{"clientSecret":"zzz"}', 'zzz'],
+      ['ネストしたキー', '{"user":{"credentials":{"password":"abc"}}}', 'abc'],
+      ['配列内オブジェクト', '[{"id":1},{"password":"abc"}]', 'abc'],
+    ])('陽性対照: JSON 本文（%s）の機密値が消える', (_label, text, leaked) => {
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      expect(sanitizedJson(har)).not.toContain(leaked);
+    });
+
+    it('陽性対照: mimeType が JSON でなくても先頭が { / [ なら JSON として処理する', () => {
+      const har = entryHar({ postData: { mimeType: 'text/plain', text: '  {"password":"abc"}' } });
+      expect(sanitizedJson(har)).not.toContain('abc');
+    });
+
+    it('陽性対照: postData.params の辞書外名の値が消える（JWT）', () => {
+      const har = entryHar({
+        postData: { mimeType: 'multipart/form-data', params: [{ name: 'custom', value: JWT }] },
+      });
+      expect(sanitizedJson(har)).not.toContain(JWT);
+    });
+
+    it('陰性対照: JSON 本文でオブジェクト・配列・真偽値・null の値は構造処理で触らない', () => {
+      const text = '{"code":{"a":1},"token":null,"password":true,"key":[1,2]}';
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      const out = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(out).toBe(text);
+    });
+
+    it('陰性対照: JSON 本文の書式（インデント・改行）は置換箇所以外保たれる', () => {
+      const text = '{\n  "user": "alice",\n  "password" : "abc",\n  "page": 2,\n  "ok": true\n}';
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      const out = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(out).toBe(
+        '{\n  "user": "alice",\n  "password" : "[REDACTED:BODY_1]",\n  "page": 2,\n  "ok": true\n}'
+      );
+    });
+
+    it('陰性対照: 機密名でない値は form / JSON / params で変化しない', () => {
+      const har = entryHar({
+        postData: {
+          mimeType: FORM,
+          text: 'page=2&sort=asc',
+          params: [
+            { name: 'page', value: '2' },
+            { name: 'sort', value: 'asc' },
+          ],
+        },
+      });
+      const json = entryHar({
+        postData: { mimeType: 'application/json', text: '{"page":2,"sort":"asc"}' },
+      });
+      expect(sanitizeHar(har, ALL_ON).har).toEqual(har);
+      expect(sanitizeHar(json, ALL_ON).har).toEqual(json);
+    });
+
+    it('陰性対照: BODY が OFF なら postData は変化しない', () => {
+      const har = entryHar({
+        postData: {
+          mimeType: FORM,
+          text: 'code=login-code&password=abc',
+          params: [{ name: 'code', value: 'login-code' }],
+        },
+      });
+      const json = entryHar({
+        postData: { mimeType: 'application/json', text: '{"password":"abc"}' },
+      });
+      const enabled = { ...ALL_ON, BODY: false };
+      expect(sanitizeHar(har, enabled).har).toEqual(har);
+      expect(sanitizeHar(json, enabled).har).toEqual(json);
+    });
+
+    it('陰性対照: multipart 本文は構造処理せず従来どおり自由走査のみ（短い値は残る）', () => {
+      // multipart の構造処理は対象外であることの明示（対象にしたら本テストを更新する）
+      const text = '--b\r\nContent-Disposition: form-data; name="code"\r\n\r\nlogin-code\r\n--b--';
+      const har = entryHar({ postData: { mimeType: 'multipart/form-data; boundary=b', text } });
+      expect(sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text).toBe(text);
+    });
+  });
+
+  describe('B: percent-encoded のパラメータ名', () => {
+    it('陽性対照: request.url の %74oken が redact される', () => {
+      const har = entryHar({ url: 'https://x.com/cb?%74oken=secret123&page=2' });
+      const out = sanitizedJson(har);
+      expect(out).not.toContain('secret123');
+      // 名前の表記は保たれ、非機密 param は残る
+      expect(out).toContain('%74oken=[REDACTED:QUERY_1]&page=2');
+    });
+
+    it('陽性対照: Location ヘッダの %74oken が redact される', () => {
+      const har = entryHar(
+        {},
+        { headers: [{ name: 'Location', value: 'https://x.com/cb?%74oken=secret123' }] }
+      );
+      expect(sanitizedJson(har)).not.toContain('secret123');
+    });
+
+    it('陽性対照: Referer ヘッダの %74oken が redact される', () => {
+      const har = entryHar({
+        headers: [{ name: 'Referer', value: 'https://x.com/p?%74oken=secret123' }],
+      });
+      expect(sanitizedJson(har)).not.toContain('secret123');
+    });
+
+    it('陽性対照: response.redirectURL の %74oken が redact される', () => {
+      const har = entryHar({}, { redirectURL: 'https://x.com/cb?%74oken=secret123' });
+      expect(sanitizedJson(har)).not.toContain('secret123');
+    });
+
+    it('陽性対照: _ を %5F で encode した access%5Ftoken が redact される', () => {
+      const har = entryHar({ url: 'https://x.com/cb?access%5Ftoken=secret123' });
+      expect(sanitizedJson(har)).not.toContain('secret123');
+    });
+
+    it('陽性対照: camelCase のクエリ名（returnTo / accessToken）が redact される', () => {
+      const har = entryHar({ url: 'https://x.com/cb?returnTo=secret123&accessToken=secret456' });
+      const out = sanitizedJson(har);
+      expect(out).not.toContain('secret123');
+      expect(out).not.toContain('secret456');
+    });
+
+    it('陰性対照: 不正な percent-encoding の名前で例外を出さず、値が保たれる', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb?%zz=1&page=2',
+        queryString: [{ name: '%zz', value: '1' }],
+        postData: { mimeType: FORM, text: '%zz=1' },
+      });
+      expect(() => sanitizeHar(har, ALL_ON)).not.toThrow();
+      expect(sanitizeHar(har, ALL_ON).har).toEqual(har);
+    });
+
+    it('陰性対照: 非機密名（decode 後も辞書外）は encode されていても変化しない', () => {
+      const har = entryHar({ url: 'https://x.com/cb?%70age=2&so%72t=asc' });
+      expect(sanitizeHar(har, ALL_ON).har).toEqual(har);
+    });
+  });
+
+  describe('C: queryString[] / postData.params[] の値の自由走査', () => {
+    it('陽性対照: URL の辞書外名に入った JWT が消える', () => {
+      const har = entryHar({ url: `https://x.com/cb?custom=${JWT}` });
+      expect(sanitizedJson(har)).not.toContain(JWT);
+    });
+
+    it('陽性対照: queryString[] の辞書外名に入った JWT が消える', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb',
+        queryString: [{ name: 'custom', value: JWT }],
+      });
+      expect(sanitizedJson(har)).not.toContain(JWT);
+    });
+
+    it('陽性対照: QUERY が OFF でも PATH_SCAN が ON なら queryString[] の JWT が消える', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb',
+        queryString: [{ name: 'custom', value: JWT }],
+      });
+      expect(sanitizedJson(har, { ...ALL_OFF, PATH_SCAN: true })).not.toContain(JWT);
+    });
+
+    it('陽性対照: postData.params[] の辞書外名に入った JWT が消える', () => {
+      const har = entryHar({
+        postData: { mimeType: FORM, params: [{ name: 'custom', value: JWT }] },
+      });
+      expect(sanitizedJson(har)).not.toContain(JWT);
+    });
+
+    it('陰性対照: 機密名でない queryString[] は変化しない', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb?page=2&sort=asc',
+        queryString: [
+          { name: 'page', value: '2' },
+          { name: 'sort', value: 'asc' },
+        ],
+      });
+      expect(sanitizeHar(har, ALL_ON).har).toEqual(har);
+    });
+
+    it('陰性対照: QUERY も PATH_SCAN も OFF なら queryString[] は変化しない', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb',
+        queryString: [
+          { name: 'custom', value: JWT },
+          { name: 'token', value: 'secret123' },
+        ],
+      });
+      const enabled = { ...ALL_ON, QUERY: false, PATH_SCAN: false };
+      expect(sanitizeHar(har, enabled).har).toEqual(har);
+    });
+  });
+
+  describe('キー名の文脈に依存する検出（ペア単位の走査 + 末尾一致の機密名）', () => {
+    it.each([
+      ['access_key=abcdefghi', 'abcdefghi'],
+      ['credential=abcdefghi', 'abcdefghi'],
+      ['db_password=hunter2', 'hunter2'],
+      ['db_password=abc', 'abc'],
+    ])('陽性対照: form 本文の %s が残らない', (text, leaked) => {
+      const har = entryHar({ postData: { mimeType: FORM, text } });
+      expect(sanitizedJson(har)).not.toContain(leaked);
+    });
+
+    it('陽性対照: 名前の末尾一致では拾えない日本語キー（パスワード=...）もペア単位走査で残らない', () => {
+      // 末尾一致の語は英語のみ。日本語キーは CREDENTIAL_ASSIGN のキー文脈（ペア単位走査）で検出する
+      const har = entryHar({ postData: { mimeType: FORM, text: 'パスワード=abcdefghi&a=1' } });
+      const out = sanitizedJson(har);
+      expect(out).not.toContain('abcdefghi');
+      expect(out).toContain('a=1');
+    });
+
+    it('陽性対照: URL クエリの日本語キー（トークン=...）が PATH_SCAN で残らない', () => {
+      const har = entryHar({ url: 'https://x.com/cb?トークン=abcdefghi&page=2' });
+      const out = sanitizedJson(har, { ...ALL_OFF, PATH_SCAN: true });
+      expect(out).not.toContain('abcdefghi');
+      expect(out).toContain('page=2');
+    });
+
+    it('陽性対照: URL クエリの db_password が残らない', () => {
+      const har = entryHar({ url: 'https://x.com/cb?db_password=hunter2' });
+      expect(sanitizedJson(har)).not.toContain('hunter2');
+    });
+
+    it('陽性対照: URL クエリの access_key が QUERY OFF でも PATH_SCAN（ペア単位走査）で残らない', () => {
+      // QUERY が OFF のとき名前辞書は使われない。ペア単位の自由走査（PATH_SCAN）だけで検出できること
+      const har = entryHar({ url: 'https://x.com/cb?access_key=abcdefghi&page=2' });
+      const out = sanitizedJson(har, { ...ALL_OFF, PATH_SCAN: true });
+      expect(out).not.toContain('abcdefghi');
+      expect(out).toContain('page=2');
+    });
+
+    it('陽性対照: URL フラグメントの access_key が PATH_SCAN で残らない', () => {
+      const har = entryHar({ url: 'https://x.com/cb#access_key=abcdefghi&page=2' });
+      const out = sanitizedJson(har, { ...ALL_OFF, PATH_SCAN: true });
+      expect(out).not.toContain('abcdefghi');
+      expect(out).toContain('page=2');
+    });
+
+    it('陽性対照: queryString[] の db_password が残らない', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb',
+        queryString: [{ name: 'db_password', value: 'hunter2' }],
+      });
+      expect(sanitizedJson(har)).not.toContain('hunter2');
+    });
+
+    it('陽性対照: postData.params[] の db_password が残らない', () => {
+      const har = entryHar({
+        postData: { mimeType: FORM, params: [{ name: 'db_password', value: 'abc' }] },
+      });
+      expect(sanitizedJson(har)).not.toContain('abc');
+    });
+
+    it('陽性対照: JSON 本文の dbPassword が残らない', () => {
+      const har = entryHar({
+        postData: { mimeType: 'application/json', text: '{"dbPassword":"abc"}' },
+      });
+      expect(sanitizedJson(har)).not.toContain('abc');
+    });
+
+    it.each([
+      ['db_password', true],
+      ['access_key', true],
+      ['x-csrf-token', true],
+      ['sessionToken', true],
+      ['client_secret', true],
+      ['tokenizer', false],
+      ['password_hint_shown', false],
+      ['page', false],
+    ])('isSensitiveParamName(%s) === %s', (name, expected) => {
+      // 末尾一致の判定そのものの確認（陽性・陰性を 1 表にまとめた境界テスト）
+      expect(isSensitiveParamName(name)).toBe(expected);
+    });
+
+    // 検出・置換が名前側（`custom=`）にはみ出さないこと。HIGH_ENTROPY_BASE64 は `custom=` まで取り込むと
+    // 値単体と異なるエントロピーで判定して見逃す（ペア全体を走査した実装の退行）。
+    const ENTROPY_VALUE = 'nftsokupusviutomqmccdstgjghnhlog';
+    const AWS_KEY = 'AKIAIOSFODNN7EXAMPLE';
+
+    it('陽性対照: 辞書外の名前の高エントロピー値が request.url から残らない', () => {
+      const har = entryHar({ url: `https://x.com/cb?custom=${ENTROPY_VALUE}` });
+      expect(sanitizedJson(har)).not.toContain(ENTROPY_VALUE);
+    });
+
+    it('陽性対照: 辞書外の名前の高エントロピー値が Location ヘッダから残らない', () => {
+      const har = entryHar(
+        {},
+        { headers: [{ name: 'Location', value: `https://x.com/cb?custom=${ENTROPY_VALUE}` }] }
+      );
+      expect(sanitizedJson(har)).not.toContain(ENTROPY_VALUE);
+    });
+
+    it('陽性対照: 辞書外の名前の高エントロピー値が response.redirectURL から残らない', () => {
+      const har = entryHar({}, { redirectURL: `https://x.com/cb?custom=${ENTROPY_VALUE}` });
+      expect(sanitizedJson(har)).not.toContain(ENTROPY_VALUE);
+    });
+
+    it('陽性対照: 辞書外の名前の高エントロピー値が form 本文から残らない', () => {
+      const har = entryHar({ postData: { mimeType: FORM, text: `custom=${ENTROPY_VALUE}` } });
+      expect(sanitizedJson(har)).not.toContain(ENTROPY_VALUE);
+    });
+
+    it('陽性対照: URL クエリで AWS キーの値だけが置換され、名前 custom= は残る', () => {
+      const har = entryHar({ url: `https://x.com/cb?custom=${AWS_KEY}&page=2` });
+      const url = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.url;
+      expect(url).not.toContain(AWS_KEY);
+      expect(url).toMatch(/\?custom=\[REDACTED:[A-Z_]+_\d+\]&page=2$/);
+    });
+
+    it('陽性対照: form 本文で AWS キーの値だけが置換され、名前 custom= は残る', () => {
+      const har = entryHar({ postData: { mimeType: FORM, text: `custom=${AWS_KEY}&page=2` } });
+      const text = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(text).not.toContain(AWS_KEY);
+      expect(text).toMatch(/^custom=\[REDACTED:[A-Z_]+_\d+\]&page=2$/);
+    });
+
+    it('陰性対照: 名前そのものが検出パターンに見えても名前は書き換わらない（名前は走査対象外）', () => {
+      const url = entryHar({ url: `https://x.com/cb?${AWS_KEY}=1&page=2` });
+      const form = entryHar({ postData: { mimeType: FORM, text: `${AWS_KEY}=1&page=2` } });
+      expect(sanitizeHar(url, ALL_ON).har).toEqual(url);
+      expect(sanitizeHar(form, ALL_ON).har).toEqual(form);
+    });
+
+    it('陰性対照: 末尾一致しない名前（途中に含むだけ）と page は変化しない', () => {
+      const har = entryHar({
+        url: 'https://x.com/cb?tokenizer=abc&password_hint_shown=true&page=2',
+        queryString: [
+          { name: 'tokenizer', value: 'abc' },
+          { name: 'password_hint_shown', value: 'true' },
+          { name: 'page', value: '2' },
+        ],
+        postData: {
+          mimeType: FORM,
+          text: 'tokenizer=abc&password_hint_shown=true&page=2',
+          params: [{ name: 'tokenizer', value: 'abc' }],
+        },
+      });
+      expect(sanitizeHar(har, ALL_ON).har).toEqual(har);
+    });
+
+    it('陰性対照: form 本文で、あるペアの検出が隣のペアの値を巻き込まない', () => {
+      const har = entryHar({
+        postData: { mimeType: FORM, text: 'a=1&db_password=hunter2&b=2' },
+      });
+      const text = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(text).toMatch(/^a=1&db_password=\[REDACTED:BODY_\d+\]&b=2$/);
+    });
+
+    it('陰性対照: 辞書外のペアの検出も隣のペアを巻き込まない（form 本文・URL）', () => {
+      // `note=password=abcdefghi` は辞書外の名前でペア内の CREDENTIAL_ASSIGN が効く。隣は残る
+      const form = entryHar({
+        postData: { mimeType: FORM, text: 'a=1&note=password=abcdefghi&b=2' },
+      });
+      const text = sanitizeHar(form, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(text).toMatch(/^a=1&note=password=\[REDACTED:[A-Z_]+_\d+\]&b=2$/);
+      const url = entryHar({ url: 'https://x.com/cb?a=1&note=password=abcdefghi&b=2' });
+      const out = sanitizeHar(url, { ...ALL_OFF, PATH_SCAN: true }).har.log.entries[0]!.request.url;
+      expect(out).toMatch(/\?a=1&note=password=\[REDACTED:[A-Z_]+_\d+\]&b=2$/);
+    });
+  });
+
+  describe('JSON 本文の走査（線形スキャナ）', () => {
+    // 旧正規表現実装は `(?:[^"\\]|\\.)*` が V8 で長い文字列に RangeError（スタック超過）を投げた。
+    // 実測の境界は 'a ' の繰り返し 4_194_304 回（文字列長 2^23）付近で、4_200_000 以上で旧実装は落ち、
+    // 4_000_000 以下は通った。境界を確実に超えつつ数百 ms で終わる値を使う。
+    const LONG_REPEAT = 4_500_000;
+
+    it('陽性対照: 長い文字列値を含む JSON 本文でも例外を出さず、機密キーの値が置換される', () => {
+      const text = JSON.stringify({ data: 'a '.repeat(LONG_REPEAT), password: 'abc' });
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      let out: Har | undefined;
+      expect(() => {
+        out = sanitizeHar(har, ALL_ON).har;
+      }).not.toThrow();
+      const outText = out!.log.entries[0]!.request.postData!.text!;
+      expect(outText).toMatch(/"password":"\[REDACTED:BODY_1\]"\}$/);
+      expect(outText).not.toContain('"password":"abc"');
+    });
+
+    it('陰性対照: 文字列値の中のエスケープされた引用符とキーに見える並びは書き換えない', () => {
+      const text = '{"note":"say \\"password\\": \\"x\\" here","page":2}';
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      const out = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text;
+      expect(out).toBe(text);
+    });
+
+    it('陰性対照: 閉じ引用符の無い壊れた JSON でも例外を出さない', () => {
+      for (const text of ['{"password":"abc', '{"password', '{"a":"b\\', '{"password":']) {
+        const har = entryHar({ postData: { mimeType: 'application/json', text } });
+        expect(() => sanitizeHar(har, ALL_ON)).not.toThrow();
+      }
+    });
+
+    it('陽性対照: キーの直後の値が文字列でも、配列要素の文字列を挟んで正しくキーを拾う', () => {
+      const text = '{"list":["a","b"],"password":"abc","n":{"token":"zzz"}}';
+      const har = entryHar({ postData: { mimeType: 'application/json', text } });
+      const out = sanitizeHar(har, ALL_ON).har.log.entries[0]!.request.postData!.text!;
+      expect(out).not.toContain('abc');
+      expect(out).not.toContain('zzz');
+      expect(out).toContain('"list":["a","b"]');
+    });
+  });
+
+  it('冪等性: サニタイズ結果をもう一度サニタイズしても件数が増えず内容も変わらない', () => {
+    const har = entryHar(
+      {
+        url: `https://x.com/cb?%74oken=secret123&custom=${JWT}`,
+        queryString: [
+          { name: 'token', value: 'secret123' },
+          { name: 'custom', value: JWT },
+        ],
+        postData: {
+          mimeType: FORM,
+          text: 'code=login-code&password=abc',
+          params: [{ name: 'code', value: 'login-code' }],
+        },
+      },
+      {}
+    );
+    const json = entryHar({
+      postData: {
+        mimeType: 'application/json',
+        text: '{"password":"abc","note":"password=hunter2hunter2"}',
+      },
+    });
+    for (const input of [har, json]) {
+      const once = sanitizeHar(input, ALL_ON);
+      const twice = sanitizeHar(once.har, ALL_ON);
+      expect(Object.values(twice.counts).reduce((a, b) => a + b, 0)).toBe(0);
+      expect(twice.har).toEqual(once.har);
+    }
   });
 });
 

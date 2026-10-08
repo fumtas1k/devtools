@@ -16,8 +16,27 @@ function formatHost(host: string, port: string): string {
 }
 
 interface SerializeOptions {
-  /** パスワードを **** に置換する（共有用マスク） */
+  /** パスワードと認証情報キーのクエリパラメータ値を **** に置換する（共有用マスク） */
   maskPassword?: boolean;
+}
+
+/** 末尾一致で認証情報とみなすキー（`sslpassword` / `client_secret` / `access_token` 等を含む） */
+const CREDENTIAL_KEY_SUFFIXES = ['password', 'passwd', 'pwd', 'secret', 'token'];
+
+/** 完全一致で認証情報とみなすキー。authmechanismproperties は MongoDB で AWS_SESSION_TOKEN を運ぶ */
+const CREDENTIAL_KEYS = new Set(['pass', 'authmechanismproperties']);
+
+/** クエリパラメータのキーが認証情報を表すか（大文字小文字を区別しない） */
+function isCredentialParamKey(key: string): boolean {
+  const k = key.toLowerCase();
+  return CREDENTIAL_KEYS.has(k) || CREDENTIAL_KEY_SUFFIXES.some((suffix) => k.endsWith(suffix));
+}
+
+/** 認証情報キーの値を **** に置換した params を返す（新しい配列。空値は伏せる対象がないためそのまま） */
+function maskParams(params: DsnParam[]): DsnParam[] {
+  return params.map((p) =>
+    p.value !== '' && isCredentialParamKey(p.key) ? { key: p.key, value: '****' } : p
+  );
 }
 
 /** key=value 列を percent-encode してクエリ文字列にする（空なら ''） */
@@ -29,7 +48,9 @@ function formatQuery(params: DsnParam[]): string {
 
 /** DsnModel から接続文字列を再構成する（percent-encode を内包） */
 export function serializeDsn(model: DsnModel, options: SerializeOptions = {}): string {
-  const { scheme, user, password, hosts, database, params } = model;
+  const { scheme, user, password, hosts, database } = model;
+  // 共有用マスク時は、クエリ形式で指定された認証情報の値も伏せる（model は変更しない）
+  const params = options.maskPassword ? maskParams(model.params) : model.params;
   const authority = hosts.map((h) => formatHost(h.host, h.port)).join(',');
   const path = database === '' ? '' : '/' + enc(database);
   const maskedPassword = options.maskPassword ? '****' : password;
@@ -60,7 +81,7 @@ export function serializeDsn(model: DsnModel, options: SerializeOptions = {}): s
   return `${scheme}://${userinfo}${authority}${path}${formatQuery(params)}`;
 }
 
-/** パスワードを **** に置換した共有用 URI を返す */
+/** パスワードと認証情報とみなすクエリパラメータの値を **** に置換した共有用 URI を返す */
 export function maskDsn(model: DsnModel): string {
   return serializeDsn(model, { maskPassword: true });
 }

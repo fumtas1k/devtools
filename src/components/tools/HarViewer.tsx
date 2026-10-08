@@ -166,20 +166,25 @@ export function HarViewer() {
               {} ケースとの UX 非対称を解消する（issue #684） */}
           {selectedIndex != null && <HarEntryDetail entry={selectedEntry} />}
 
-          {/* 出力ボタン群（JSON.stringify はコピー/DL 押下時のみ遅延生成） */}
+          {/* 出力ボタン群（JSON.stringify はコピー/DL 押下時のみ遅延生成）。
+              再計算中（busy）は result が前回の redact 設定のままなので、変更前の
+              （未マスクかもしれない）結果を出力させないよう無効化する（issue #780） */}
           <div className="flex flex-wrap justify-end gap-2">
             <CopyButton
               text={() => JSON.stringify(result.har, null, 2)}
               label="サニタイズ済み HAR をコピー"
+              disabled={busy}
             />
             <DownloadButton
-              onClick={() =>
+              onClick={() => {
+                if (busy) return;
                 downloadText(
                   JSON.stringify(result.har, null, 2),
                   'sanitized.har',
                   'application/json'
-                )
-              }
+                );
+              }}
+              disabled={busy}
               label="サニタイズ済み HAR をダウンロード"
             />
             <ClearButton onClick={handleReset} />

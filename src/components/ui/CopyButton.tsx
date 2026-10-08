@@ -62,6 +62,11 @@ interface Props {
   className?: string;
   /** テーブル行など狭い場所向けのコンパクト表示 */
   compact?: boolean;
+  /**
+   * true のとき操作を無効化する（`disabled` 属性を付与し、ハンドラ側でも何もしない）。
+   * 表示中の値がまだ最新でない間（再計算中など）に、古い値をコピーさせないために使う。
+   */
+  disabled?: boolean;
 }
 
 /**
@@ -71,7 +76,7 @@ interface Props {
  * コールバック形式はクリック時のみ評価されるため、大きなデータの逐次 stringify に使用できる。
  *
  * style: global.css `@layer components` の `.btn-copy` / `.btn-copy.is-copied` /
- * `.btn-copy.is-compact` を参照。状態は `is-copied` / `is-compact` className で切替。
+ * `.btn-copy.is-compact` / `.btn-copy:disabled` を参照。状態は `is-copied` / `is-compact` className で切替。
  *
  * default 表示の角丸は COMPACT_BUTTON_SHAPE_CLASSES 経由で ActionButton (size="compact") /
  * DownloadButton と統一（rounded-lg / issue #320）。
@@ -82,6 +87,7 @@ export function CopyButton({
   ariaLabel,
   className = '',
   compact = false,
+  disabled = false,
 }: Props) {
   const accessibleName = ariaLabel ?? label;
   const [copied, setCopied] = useState(false);
@@ -94,6 +100,7 @@ export function CopyButton({
   }, []);
 
   const handleClick = async () => {
+    if (disabled) return;
     const value = typeof text === 'function' ? text() : text;
     const ok = await copyToClipboard(value);
     if (ok) {
@@ -110,6 +117,7 @@ export function CopyButton({
       <button
         type="button"
         onClick={handleClick}
+        disabled={disabled}
         aria-label={accessibleName}
         className={cx(
           'btn-copy is-compact',
@@ -127,6 +135,7 @@ export function CopyButton({
     <button
       type="button"
       onClick={handleClick}
+      disabled={disabled}
       aria-label={accessibleName}
       className={cx(
         'btn-copy',

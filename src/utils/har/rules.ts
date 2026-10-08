@@ -110,3 +110,64 @@ export const SENSITIVE_PARAM_NAMES = new Set([
   'auth',
   'session_state',
 ]);
+
+/** `_` と `-` を取り除く（camelCase / kebab-case / snake_case を同一視するための正規化）。 */
+function stripSeparators(s: string): string {
+  return s.replace(/[_-]/g, '');
+}
+
+/** SENSITIVE_PARAM_NAMES を区切り文字なしに正規化した辞書。モジュール初期化時に 1 度だけ作る。 */
+const SENSITIVE_PARAM_NAMES_COMPACT = new Set([...SENSITIVE_PARAM_NAMES].map(stripSeparators));
+
+/**
+ * percent-decode する。不正なエンコード（`%zz` 等）なら例外を握りつぶさず null を返す。
+ * 戻り値を必ず使う形にしてあるのは、戻り値を捨てた decodeURIComponent が本番ビルドの
+ * minifier に副作用なしとみなされて削除されるのを避けるため。
+ */
+function tryDecodeURIComponent(s: string): string | null {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 名前の末尾一致で機密とみなす語（`_` `-` を除いた小文字の形で比較する）。
+ * `src/utils/secret-scrubber/rules.ts` の CREDENTIAL_ASSIGN のキー一覧
+ * （password / passwd / pwd / secret / token / api[_-]?key / apikey / access[_-]?key /
+ * client[_-]?secret / credential）と対応させている。
+ * 値だけを走査すると失われる「キー名の文脈」（`db_password=...` / `access_key=...`）を、
+ * 名前の判定側で補うためのもの。`db_password` / `access_key` / `x-csrf-token` / `sessionToken`
+ * が該当し、`tokenizer` / `password_hint_shown` のように途中に含むだけの名前は該当しない。
+ * client_secret は secret で、api_key は apikey で既に末尾一致する。
+ */
+const SENSITIVE_PARAM_SUFFIXES = [
+  'password',
+  'passwd',
+  'pwd',
+  'secret',
+  'token',
+  'apikey',
+  'accesskey',
+  'credential',
+];
+
+/**
+ * パラメータ名が機密名かを判定する（クエリ / queryString[] / postData.params[] / form・JSON 本文で共用）。
+ * - `+` を空白、percent-encoding を復号してから照合する（`%74oken` / `access%5Ftoken` 対策）。
+ *   復号に失敗した名前は復号前の文字列で照合する。
+ * - 辞書と一致しなければ `_` `-` を除いた形でも照合する（`accessToken` / `clientSecret` /
+ *   `returnTo` 等の camelCase 対策）。
+ * - さらに、`_` `-` を除いた名前が SENSITIVE_PARAM_SUFFIXES のいずれかで終わるなら機密とみなす。
+ */
+export function isSensitiveParamName(rawName: unknown): boolean {
+  if (typeof rawName !== 'string') return false;
+  const plusAsSpace = rawName.replace(/\+/g, ' ');
+  const decoded = tryDecodeURIComponent(plusAsSpace);
+  const name = (decoded === null ? plusAsSpace : decoded).trim().toLowerCase();
+  if (SENSITIVE_PARAM_NAMES.has(name)) return true;
+  const compact = stripSeparators(name);
+  if (SENSITIVE_PARAM_NAMES_COMPACT.has(compact)) return true;
+  return SENSITIVE_PARAM_SUFFIXES.some((suffix) => compact.endsWith(suffix));
+}

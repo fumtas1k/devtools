@@ -370,4 +370,73 @@ test.describe('HAR ビューア', () => {
     await page.getByRole('button', { name: '（壊れたエントリ）' }).click();
     await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
   });
+
+  // ─── issue #780: 再計算中は変更前の結果をコピー / ダウンロードさせない ───────
+
+  /**
+   * Worker への `sanitize` メッセージ（redact トグルによる再計算）だけを delayMs 遅らせる。
+   * 再計算中（busy）の状態を、確実に観測できる長さまで引き延ばすための init script。
+   * `load`（初回読込）は遅らせないため、HAR 読み込みは通常どおり完了する。
+   * goto より前に呼ぶこと。
+   */
+  async function delaySanitizeMessages(page: Page, delayMs: number): Promise<void> {
+    await page.addInitScript((ms) => {
+      const original = Worker.prototype.postMessage;
+      Worker.prototype.postMessage = function (
+        this: Worker,
+        message: unknown,
+        ...rest: unknown[]
+      ): void {
+        const type = (message as { type?: string } | null)?.type;
+        if (type === 'sanitize') {
+          setTimeout(() => {
+            (original as (...args: unknown[]) => void).call(this, message, ...rest);
+          }, ms);
+          return;
+        }
+        (original as (...args: unknown[]) => void).call(this, message, ...rest);
+      } as typeof Worker.prototype.postMessage;
+    }, delayMs);
+  }
+
+  test('陽性対照: redact トグルの再計算中はコピー / ダウンロードのボタンが無効になる', async ({
+    page,
+  }) => {
+    await delaySanitizeMessages(page, 1500);
+    await openHarViewer(page);
+    await uploadHar(page, buildCookieHar(3));
+    await expect(page.getByText(/redact:\s*3\s*件/)).toBeVisible({ timeout: 10000 });
+
+    const copyButton = page.getByRole('button', { name: 'サニタイズ済み HAR をコピー' });
+    const downloadButton = page.getByRole('button', { name: 'サニタイズ済み HAR をダウンロード' });
+    // 再計算前は有効（トグル前の前提確認）
+    await expect(copyButton).toBeEnabled();
+    await expect(downloadButton).toBeEnabled();
+
+    // Cookie チップをトグル → worker への sanitize が 1.5 秒遅れ、その間は busy
+    await page.getByRole('button', { name: /Cookie/ }).click();
+    await expect(page.getByText('サニタイズ処理中…（ブラウザ内で完結します）')).toBeVisible();
+
+    // 修正前は busy を見ずに旧 result を出力できてしまうため、ここで fail する
+    await expect(copyButton).toBeDisabled();
+    await expect(downloadButton).toBeDisabled();
+  });
+
+  test('陰性対照: 再計算が完了するとコピー / ダウンロードのボタンが有効に戻る', async ({
+    page,
+  }) => {
+    await delaySanitizeMessages(page, 1500);
+    await openHarViewer(page);
+    await uploadHar(page, buildCookieHar(3));
+    await expect(page.getByText(/redact:\s*3\s*件/)).toBeVisible({ timeout: 10000 });
+
+    await page.getByRole('button', { name: /Cookie/ }).click();
+    // 再計算の完了（redact 件数が 0 に変わる）を待つ
+    await expect(page.getByText(/redact:\s*0\s*件/)).toBeVisible({ timeout: 10000 });
+
+    await expect(page.getByRole('button', { name: 'サニタイズ済み HAR をコピー' })).toBeEnabled();
+    await expect(
+      page.getByRole('button', { name: 'サニタイズ済み HAR をダウンロード' })
+    ).toBeEnabled();
+  });
 });
