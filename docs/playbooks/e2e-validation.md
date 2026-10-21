@@ -309,7 +309,7 @@ baseline 更新は「意図した変更」を承認する操作であり、**真
 
 `gh run download <run-id> --name visual-regression-report-pr-<n>` で playwright report を取得し、`expected` と `actual` の HTML スナップショット（Astro が生成する HTML）を比較。次の点に regression がないことを確認:
 
-- `aria-*` / `role=` 属性の削除なし（`.agents/rules/common.md` 9.6 章の a11y 保護にも該当）
+- `aria-*` / `role=` 属性の削除なし（`.agents/rules/common.md` 9.2 章の a11y 保護にも該当）
 - DOM 階層・要素数の差分なし
 - `<img>` `alt` / `<a>` `href` 等の semantic 属性が同一
 

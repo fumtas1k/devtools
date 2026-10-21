@@ -69,7 +69,7 @@
 - **フレームワーク**: [Astro](https://astro.build/) 6
 - **UI**: [React](https://react.dev/) 19 + [Tailwind CSS](https://tailwindcss.com/) v4
 - **言語**: TypeScript
-- **ランタイム**: Node.js 22+
+- **ランタイム**: Node.js 24（開発・CI・ビルドで使う版は `.node-version` で指定）
 
 ## 開発
 

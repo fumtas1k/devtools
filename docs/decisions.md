@@ -1302,7 +1302,7 @@ README.md にテストカバレッジのバッジを表示し、GitHub Actions �
 
 ## [040] Gemini CLI 用のプロジェクト指示書 (GEMINI.md) の作成
 
-**2026-04-26 | ステータス: 採用**
+**2026-04-26 | ステータス: 変更（[128] で廃止）**
 
 ### 背景
 
@@ -1483,7 +1483,7 @@ Issue #115 にて、訪問済みリンクの区別（`:visited`）がついて�
 
 ## [046] Gemini CLI サンドボックスとセキュリティポリシーの導入
 
-**2026-04-29 | ステータス: 採用**
+**2026-04-29 | ステータス: 変更（[128] で廃止）**
 
 ### 背景
 
@@ -4755,3 +4755,91 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 
 - **上流修正まで astro 6 に留まる**: astro の XSS / RCE を含む脆弱性が残り続ける
 - **`dev` スクリプトを `astro dev --force` にする**: CI では効くが、ローカル E2E の build と dev の並走で上書き競合が残る
+
+## [128] Gemini CLI 用の指示書・設定を削除する
+
+**2026-10-07 | ステータス: 採用**
+
+### 背景
+
+[040] / [046] で Gemini CLI 用に `GEMINI.md`・`.gemini/`（sandbox 設定とセキュリティポリシー）・`docs/setup/gemini-policy.md` を導入したが、2026-05-31 以降は更新されておらず、Gemini CLI もこのリポジトリで使っていない。保守されない指示書とポリシーは、共通規約と食い違ったまま残るリスクがある。
+
+### 決断
+
+**`GEMINI.md`・`.gemini/settings.json`・`.gemini/policies/security.toml`・`docs/setup/gemini-policy.md` を削除し、参照箇所（`SPEC.md` / `CLAUDE.md` / `.agents/rules/common.md`）を更新する。** 再び使う場合は、その時点の共通規約と Gemini CLI の仕様に合わせて作り直す。
+
+### 安全性
+
+- 削除するのは Gemini CLI 実行時にだけ読まれる設定で、Claude Code / Codex / CI の挙動は変わらない
+- `.claude/settings.json` の `.gemini/**` への編集・削除を ask にするルールは残す。設定が無い状態でエージェントが `.gemini/` を作る主要な経路（Edit / Write、`rm` / `sed -i` / `tee`）にも確認が入る
+
+### 却下した選択肢
+
+- **`GEMINI.md` だけ削除する**: `.gemini/` と setup 手順が参照先を失ったまま残る
+- **`GEMINI.md` を短くして残す**: 使わないツールの指示書を保守し続けることになる
+
+---
+
+## [129] CI の `actions/setup-node` を `check-latest: true` と下限付きの版指定にし、修正版以上の最新 Node 22.x を使う
+
+**2026-10-21 | ステータス: 変更（[130] で置き換え）**
+
+### 背景
+
+2026-10-21 に Node.js のセキュリティリリース（HIGH 4 件。22.x の修正版は v22.23.4）が出た（[アドバイザリ](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)）。本番は Astro の静的ビルドを Cloudflare Pages で配信しており（SSR adapter / functions なし）、Node が動くのはビルド・開発・CI だけなので本番への影響はない。ただし CI の `actions/setup-node@v6` は `node-version: 22` だけを指定しており、既定の `check-latest: false` では runner の tool cache にある古い 22.x がそのまま使われ、修正版が入るのは runner image の更新を待つことになる。
+
+### 決断
+
+**`test.yml`（2 箇所）・`visual-regression.yml`・`update-visual-baseline.yml` の `setup-node` を `node-version: '>=22.23.4 <23'` + `check-latest: true` にする。** 実行のたびに範囲内の最新版を解決するので、今後のセキュリティリリースにも手作業なしで追従できる。
+
+`check-latest: true` だけ（`node-version: 22`）では足りなかった。setup-node が最新版を解決する先は nodejs.org ではなく `actions/node-versions` の manifest で、2026-10-21 時点ではまだ 22.23.4 が載っておらず、CI は 22.23.3 を使い続けた（PR #793 の初回 CI）。下限を付けると、manifest に条件を満たす版が無いときは nodejs.org の配布物から直接取得するので、manifest の反映を待たずに修正版を使える。下限は次のセキュリティリリースで上げなくても追従は続くが、上げないと manifest 反映までの遅れが毎回出る。
+
+### 安全性
+
+- 取得元は tool cache に無い版を使うときと同じ（`actions/node-versions` の manifest と nodejs.org の公式配布物）で、新しい配布元を増やさない
+- major は 22 に固定したままなので、semver 上の破壊的変更は入らない。22.x の minor 更新で CI が壊れた場合は CI の失敗として検知できる
+- `.npmrc` の `min-release-age=7` は npm パッケージの公開直後のリスク（乗っ取られた版の配布等）への対策で、Node 本体には適用されない。Node 本体は Node.js プロジェクトの公式リリースで、セキュリティ修正を待たずに入れる利点を優先する
+- 毎回のバージョン解決で manifest の取得が増えるが、実行時間への影響は小さい
+
+### 却下した選択肢
+
+- **`node-version: 22.23.4` に固定する**: セキュリティリリースのたびに 4 箇所を手で書き換える必要があり、追従漏れが起きる
+- **`node-version: 22` + `check-latest: true` のまま manifest の反映を待つ**: 反映まで CI が修正前の版で動き、セキュリティリリースのたびに同じ遅れが出る
+- **`lts/*` を指定する**: LTS の切り替わりで major が自動で上がり、破壊的変更が予告なく入る
+
+---
+
+## [130] ビルド・CI の Node を 24 に統一し、`.node-version` で一元管理する
+
+**2026-10-21 | ステータス: 採用**
+
+### 背景
+
+Node の major がローカル開発は 24、CI は 22、Cloudflare Pages のビルドは 22 と環境ごとに違っていた。major が違うと、ローカルでは通るのに CI やデプロイでだけ失敗する（またはその逆の）差が生じうる。Node 22 は 2027-04-30 に EOL を迎える。astro 7 と Vite 8 の `engines` は `>=22.12.0` を含む範囲で、24 は対応範囲に入る。
+
+指定の置き場所も分散していた。CI は workflow 4 箇所の `node-version`（[129]）、Cloudflare Pages はダッシュボードの環境変数 `NODE_VERSION` で管理しており、repo には Node のバージョンを示すファイルが無かった。
+
+### 決断
+
+**repo 直下に `.node-version`（中身は `24.22.1` の 1 行）を置き、`test.yml`（2 箇所）・`visual-regression.yml`・`update-visual-baseline.yml` の `setup-node` を `node-version-file: .node-version` にする。** `node-version` と `check-latest` は削除し、[129] の範囲指定を置き換える。
+
+版は範囲ではなく完全指定にする。
+
+- setup-node は完全指定の版が `actions/node-versions` の manifest に無ければ nodejs.org の配布物から直接取得するので、[129] で問題になった manifest の反映遅れを受けない
+- Cloudflare Pages のビルドも `.node-version` を読む（[build image](https://developers.cloudflare.com/pages/configuration/build-image/)）。fnm / nodenv / mise 等のバージョンマネージャも同じファイルを読む。nvm は `.nvmrc` しか読まない
+
+### トレードオフ
+
+- 今後のセキュリティリリースでは `.node-version` を手で上げる必要がある。[129] の範囲指定と違い、上げ忘れると CI もビルドも修正前の版で動き続ける。ただし書き換えは 1 か所で済み、[129] で却下した「4 箇所を手で書き換える」問題は起きない
+- Cloudflare Pages はダッシュボードの `NODE_VERSION` と `.node-version` の両方を読める。両方あるときの優先順位は公式 docs に記載が無いので、一元管理を徹底するなら `NODE_VERSION` をダッシュボードから外す
+- `package.json` の `engines`（`>=22.12.0`）は変えない。`.node-version` は開発・CI・ビルドで使う版で、`engines` は動作を許容する下限という役割の違いがある
+
+### 安全性
+
+- 取得元は [129] と同じ（`actions/node-versions` の manifest と nodejs.org の公式配布物）で、新しい配布元を増やさない
+- major を 22 から 24 に上げる変更は CI の全ジョブ（unit / E2E / VRT）で検証してから取り込む
+
+### 却下した選択肢
+
+- **`node-version: 24.x` 等の範囲指定 + `check-latest: true` を workflow に書く**: CI 以外（Cloudflare Pages・ローカル）が読めず、版の置き場所が分散したままになる
+- **`.nvmrc` を使う**: setup-node と Cloudflare Pages は読めるが、`.node-version` のほうが読めるバージョンマネージャが多い。両方置くと 2 か所の同期が必要になる
