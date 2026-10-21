@@ -4780,7 +4780,7 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 
 ---
 
-## [129] CI の `actions/setup-node` で `check-latest: true` を指定し、最新の Node 22.x を使う
+## [129] CI の `actions/setup-node` を `check-latest: true` と下限付きの版指定にし、修正版以上の最新 Node 22.x を使う
 
 **2026-10-21 | ステータス: 採用**
 
@@ -4790,7 +4790,9 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 
 ### 決断
 
-**`test.yml`（2 箇所）・`visual-regression.yml`・`update-visual-baseline.yml` の `setup-node` に `check-latest: true` を追加する。`node-version: 22` は維持する。** 実行のたびに 22.x の最新版を解決するので、今後のセキュリティリリースにも手作業なしで追従できる。
+**`test.yml`（2 箇所）・`visual-regression.yml`・`update-visual-baseline.yml` の `setup-node` を `node-version: '>=22.23.4 <23'` + `check-latest: true` にする。** 実行のたびに範囲内の最新版を解決するので、今後のセキュリティリリースにも手作業なしで追従できる。
+
+`check-latest: true` だけ（`node-version: 22`）では足りなかった。setup-node が最新版を解決する先は nodejs.org ではなく `actions/node-versions` の manifest で、2026-10-21 時点ではまだ 22.23.4 が載っておらず、CI は 22.23.3 を使い続けた（PR #793 の初回 CI）。下限を付けると、manifest に条件を満たす版が無いときは nodejs.org の配布物から直接取得するので、manifest の反映を待たずに修正版を使える。下限は次のセキュリティリリースで上げなくても追従は続くが、上げないと manifest 反映までの遅れが毎回出る。
 
 ### 安全性
 
@@ -4802,4 +4804,5 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 ### 却下した選択肢
 
 - **`node-version: 22.23.4` に固定する**: セキュリティリリースのたびに 4 箇所を手で書き換える必要があり、追従漏れが起きる
+- **`node-version: 22` + `check-latest: true` のまま manifest の反映を待つ**: 反映まで CI が修正前の版で動き、セキュリティリリースのたびに同じ遅れが出る
 - **`lts/*` を指定する**: LTS の切り替わりで major が自動で上がり、破壊的変更が予告なく入る
