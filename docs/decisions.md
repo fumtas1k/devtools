@@ -4777,3 +4777,29 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 
 - **`GEMINI.md` だけ削除する**: `.gemini/` と setup 手順が参照先を失ったまま残る
 - **`GEMINI.md` を短くして残す**: 使わないツールの指示書を保守し続けることになる
+
+---
+
+## [129] CI の `actions/setup-node` で `check-latest: true` を指定し、最新の Node 22.x を使う
+
+**2026-10-21 | ステータス: 採用**
+
+### 背景
+
+2026-10-21 に Node.js のセキュリティリリース（HIGH 4 件。22.x の修正版は v22.23.4）が出た（[アドバイザリ](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)）。本番は Astro の静的ビルドを Cloudflare Pages で配信しており（SSR adapter / functions なし）、Node が動くのはビルド・開発・CI だけなので本番への影響はない。ただし CI の `actions/setup-node@v6` は `node-version: 22` だけを指定しており、既定の `check-latest: false` では runner の tool cache にある古い 22.x がそのまま使われ、修正版が入るのは runner image の更新を待つことになる。
+
+### 決断
+
+**`test.yml`（2 箇所）・`visual-regression.yml`・`update-visual-baseline.yml` の `setup-node` に `check-latest: true` を追加する。`node-version: 22` は維持する。** 実行のたびに 22.x の最新版を解決するので、今後のセキュリティリリースにも手作業なしで追従できる。
+
+### 安全性
+
+- 取得元は tool cache に無い版を使うときと同じ（`actions/node-versions` の manifest と nodejs.org の公式配布物）で、新しい配布元を増やさない
+- major は 22 に固定したままなので、semver 上の破壊的変更は入らない。22.x の minor 更新で CI が壊れた場合は CI の失敗として検知できる
+- `.npmrc` の `min-release-age=7` は npm パッケージの公開直後のリスク（乗っ取られた版の配布等）への対策で、Node 本体には適用されない。Node 本体は Node.js プロジェクトの公式リリースで、セキュリティ修正を待たずに入れる利点を優先する
+- 毎回のバージョン解決で manifest の取得が増えるが、実行時間への影響は小さい
+
+### 却下した選択肢
+
+- **`node-version: 22.23.4` に固定する**: セキュリティリリースのたびに 4 箇所を手で書き換える必要があり、追従漏れが起きる
+- **`lts/*` を指定する**: LTS の切り替わりで major が自動で上がり、破壊的変更が予告なく入る
