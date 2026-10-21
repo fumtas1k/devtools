@@ -4782,7 +4782,7 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 
 ## [129] CI の `actions/setup-node` を `check-latest: true` と下限付きの版指定にし、修正版以上の最新 Node 22.x を使う
 
-**2026-10-21 | ステータス: 採用**
+**2026-10-21 | ステータス: 変更（[130] で置き換え）**
 
 ### 背景
 
@@ -4806,3 +4806,40 @@ astro 6 系では解消できない脆弱性（astro の XSS / AVIF 最適化経
 - **`node-version: 22.23.4` に固定する**: セキュリティリリースのたびに 4 箇所を手で書き換える必要があり、追従漏れが起きる
 - **`node-version: 22` + `check-latest: true` のまま manifest の反映を待つ**: 反映まで CI が修正前の版で動き、セキュリティリリースのたびに同じ遅れが出る
 - **`lts/*` を指定する**: LTS の切り替わりで major が自動で上がり、破壊的変更が予告なく入る
+
+---
+
+## [130] ビルド・CI の Node を 24 に統一し、`.node-version` で一元管理する
+
+**2026-10-21 | ステータス: 採用**
+
+### 背景
+
+Node の major がローカル開発は 24、CI は 22、Cloudflare Pages のビルドは 22 と環境ごとに違っていた。major が違うと、ローカルでは通るのに CI やデプロイでだけ失敗する（またはその逆の）差が生じうる。Node 22 は 2027-04-30 に EOL を迎える。astro 7 と Vite 8 の `engines` は `>=22.12.0` を含む範囲で、24 は対応範囲に入る。
+
+指定の置き場所も分散していた。CI は workflow 4 箇所の `node-version`（[129]）、Cloudflare Pages はダッシュボードの環境変数 `NODE_VERSION` で管理しており、repo には Node のバージョンを示すファイルが無かった。
+
+### 決断
+
+**repo 直下に `.node-version`（中身は `24.22.1` の 1 行）を置き、`test.yml`（2 箇所）・`visual-regression.yml`・`update-visual-baseline.yml` の `setup-node` を `node-version-file: .node-version` にする。** `node-version` と `check-latest` は削除し、[129] の範囲指定を置き換える。
+
+版は範囲ではなく完全指定にする。
+
+- setup-node は完全指定の版が `actions/node-versions` の manifest に無ければ nodejs.org の配布物から直接取得するので、[129] で問題になった manifest の反映遅れを受けない
+- Cloudflare Pages のビルドも `.node-version` を読む（[build image](https://developers.cloudflare.com/pages/configuration/build-image/)）。fnm / nodenv / mise 等のバージョンマネージャも同じファイルを読む。nvm は `.nvmrc` しか読まない
+
+### トレードオフ
+
+- 今後のセキュリティリリースでは `.node-version` を手で上げる必要がある。[129] の範囲指定と違い、上げ忘れると CI もビルドも修正前の版で動き続ける。ただし書き換えは 1 か所で済み、[129] で却下した「4 箇所を手で書き換える」問題は起きない
+- Cloudflare Pages はダッシュボードの `NODE_VERSION` と `.node-version` の両方を読める。両方あるときの優先順位は公式 docs に記載が無いので、一元管理を徹底するなら `NODE_VERSION` をダッシュボードから外す
+- `package.json` の `engines`（`>=22.12.0`）は変えない。`.node-version` は開発・CI・ビルドで使う版で、`engines` は動作を許容する下限という役割の違いがある
+
+### 安全性
+
+- 取得元は [129] と同じ（`actions/node-versions` の manifest と nodejs.org の公式配布物）で、新しい配布元を増やさない
+- major を 22 から 24 に上げる変更は CI の全ジョブ（unit / E2E / VRT）で検証してから取り込む
+
+### 却下した選択肢
+
+- **`node-version: 24.x` 等の範囲指定 + `check-latest: true` を workflow に書く**: CI 以外（Cloudflare Pages・ローカル）が読めず、版の置き場所が分散したままになる
+- **`.nvmrc` を使う**: setup-node と Cloudflare Pages は読めるが、`.node-version` のほうが読めるバージョンマネージャが多い。両方置くと 2 か所の同期が必要になる

@@ -9,7 +9,7 @@
 #       Claude のコンテキストに注入される (Claude Code Hook 仕様)。
 #       マッチしないときは何も出さない (silent pass)。
 #
-# JSON parse は jq ではなく node を使う: このリポジトリは Node 22 前提で node は
+# JSON parse は jq ではなく node を使う: このリポジトリは Node 前提で node は
 # 必ず存在するが、jq は暗黙の外部依存になり、欠落環境では `|| true` で hook が
 # 黙って no-op になり「テスト編集を検知できないまま green」になる (PR #542 レビュー指摘)。
 
