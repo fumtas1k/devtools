@@ -120,19 +120,23 @@ npm run test -- vrt-comment-build-script
 
 ## check-lockfile-release-age.mjs
 
-Dependabot の security update の lockfile 差分のうち、修正対象以外で新しく入った版が公開から指定日数以上たっているかを確認する。`dependabot-auto-merge.yml` が自動マージの前に呼ぶ（`docs/decisions.md` [132]）。
+Dependabot の security update の lockfile 差分のうち、新しく入った版が公開から指定日数以上たっているかを確認する。例外は `--allow` に完全一致する `name@version` だけ（advisory の `first_patched_version`）。`dependabot-auto-merge.yml` が自動マージの前に呼ぶ（`docs/decisions.md` [132]）。
 
 ### 使い方
 
 ```bash
-node scripts/check-lockfile-release-age.mjs <base-lock> <head-lock> --allow <修正対象の名前> [--min-days 7]
+node scripts/check-lockfile-release-age.mjs <base-lock> <head-lock> [--allow <name>@<version>[,...]] [--min-days 7]
 ```
 
 ### 終了コード
 
-- `0`: 修正対象以外はすべて公開から `--min-days` 日以上たっている
-- `1`: 若すぎる版、または公開日時（`npm view <name>@<version> time`）を取得できない版がある
-- `2`: 引数エラー
+- `0`: 例外以外はすべて公開から `--min-days` 日以上たっている
+- `1`: 次のどれかに当たる
+  - 若すぎる版がある
+  - 公開日時（`npm view <name>@<version> time`）を取得できない版がある
+  - registry 外を指す `resolved` がある
+  - lockfile が v2 未満
+- `2`: 引数エラー（名前だけの `--allow` を含む）
 
 ### テスト
 

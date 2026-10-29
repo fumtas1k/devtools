@@ -1,19 +1,21 @@
 name: Dependabot security auto-merge
 
-# Dependabot の security update PR を、条件を満たすときだけ develop へ即時 auto-merge する
+# Dependabot の npm security update PR を、条件を満たすときだけ develop へ即時 auto-merge する
 # （docs/decisions.md [132]）。CI（ruleset の required checks）が green になった時点で
 # GitHub がマージする。main へのマージは人が行う（security-release-pr.yml が PR を作る）。
 #
-# 条件（すべて満たすこと）:
-#   - PR の作成者と今回の push の actor がどちらも dependabot[bot]
-#   - npm の更新で、Dependabot alert が OPEN（GHSA ID が取れる）
-#   - semver-major ではなく、更新対象は 1 パッケージだけで、Playwright 系ではない
-#   - 修正対象以外で lockfile に入った版が公開から 7 日以上（scripts/check-lockfile-release-age.mjs）
-# 満たさない PR は auto-merge を解除し、理由をコメントして人の判断に回す。
+# 毎回まず auto-merge を解除し、次の条件をすべて満たしたときだけ有効にし直す（fail closed）:
+#   - PR の作成者と今回の push の actor がどちらも dependabot[bot]、ブランチが dependabot/npm_and_yarn/
+#   - 変更ファイルが package.json / package-lock.json だけ
+#   - Dependabot alert が OPEN（GHSA ID が取れる）、semver-major ではない、1 パッケージだけ、Playwright 系ではない
+#   - lockfile に新しく入った版が、advisory の修正版（first_patched_version）と完全一致するもの以外
+#     すべて公開から 7 日以上（scripts/check-lockfile-release-age.mjs）
+#   - develop の ruleset に required checks（test / e2e）がある
+# 満たさない PR には理由をコメントして人の判断に回す。
 #
 # GITHUB_TOKEN でマージすると develop への push で workflow が起動せず、リリース PR も
 # 作られないため、GitHub App のトークンを使う。Dependabot が起動した workflow は
-# Dependabot secrets しか読めないので、App の ID と秘密鍵は Dependabot secrets に登録する。
+# Dependabot secrets しか読めないので、App の Client ID と秘密鍵は Dependabot secrets に登録する。
 
 on:
   pull_request:
@@ -27,19 +29,81 @@ permissions:
   contents: read
 
 jobs:
+  # Dependabot の PR に Dependabot 以外が push したら、以前に有効化した auto-merge を解除する
+  revoke-on-foreign-push:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor != 'dependabot[bot]'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: auto-merge を解除
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          enabled=$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')
+          if [ "$enabled" = "true" ]; then
+            gh pr merge "$PR_URL" --disable-auto
+            echo "Dependabot 以外の push があったため auto-merge を解除した"
+          fi
+
   auto-merge:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]' && startsWith(github.head_ref, 'dependabot/npm_and_yarn/')
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
+      # pull_request 起動では workflow 定義も PR 側から読まれる。npm の更新以外のファイル
+      # （workflow 自体を含む）を変える PR には、App の秘密鍵を一切渡さない
+      - name: 変更ファイルが package.json / package-lock.json だけか確認
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected=$(gh pr diff "$PR_URL" --name-only | grep -vxE 'package(-lock)?\.json' || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error::npm の security update 以外のファイルが変更されているため処理しない:"
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+
+      - name: マージ用の App トークンを発行
+        id: write-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.SECURITY_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.SECURITY_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      # 評価が終わるまで（失敗した場合も）前回の push で有効化した auto-merge を残さない
+      - name: 評価の前に auto-merge を解除
+        env:
+          GH_TOKEN: ${{ steps.write-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          enabled=$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')
+          if [ "$enabled" = "true" ]; then
+            gh pr merge "$PR_URL" --disable-auto
+          fi
+
       # alert の参照だけに絞ったトークン（GITHUB_TOKEN には Dependabot alerts の権限が無い）
       - name: alert 参照用の App トークンを発行
         id: read-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ secrets.SECURITY_BOT_APP_ID }}
+          client-id: ${{ secrets.SECURITY_BOT_CLIENT_ID }}
           private-key: ${{ secrets.SECURITY_BOT_PRIVATE_KEY }}
           permission-vulnerability-alerts: read
           permission-contents: read
+          permission-pull-requests: read
 
       - name: Dependabot の更新内容を取得
         id: meta
@@ -61,10 +125,8 @@ jobs:
           set -euo pipefail
           reason=""
           if [ "$ECOSYSTEM" != "npm_and_yarn" ]; then
-            # github-actions のバージョン更新等は対象外。コメントせずに終える
-            echo "skip=true" >> "$GITHUB_OUTPUT"
             reason="npm 以外の更新（$ECOSYSTEM）"
-          elif [ "$ALERT_STATE" != "OPEN" ] || [ -z "$GHSA_ID" ]; then
+          elif [ "$ALERT_STATE" != "OPEN" ] || [[ ! "$GHSA_ID" =~ ^GHSA(-[23456789cfghjmpqrvwx]{4}){3}$ ]]; then
             reason="OPEN の Dependabot alert に対応する security update ではない（alert-state=${ALERT_STATE:-なし}）"
           elif [ "$UPDATE_TYPE" = "version-update:semver-major" ]; then
             reason="semver-major の更新"
@@ -78,7 +140,24 @@ jobs:
             echo "自動マージしない: $reason"
           fi
 
-      # 判定に使うスクリプトは PR 側ではなく base 側のものを使う
+      # advisory が指定する修正版だけを公開直後でも許可する。推移的依存では Dependabot が
+      # npm update で範囲内の最新版を選ぶため、修正版より新しい公開直後の版が入りうる
+      - name: advisory の修正版を取得
+        id: patched
+        if: steps.decide.outputs.reason == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GHSA_ID: ${{ steps.meta.outputs.ghsa-id }}
+          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          allowed=$(gh api "/advisories/$GHSA_ID" \
+            --jq '[.vulnerabilities[] | select(.package.ecosystem == "npm" and .package.name == env.DEPENDENCY_NAMES) | .first_patched_version | select(. != null and . != "") | env.DEPENDENCY_NAMES + "@" + .] | join(",")')
+          echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
+          echo "公開直後でも許可する版: ${allowed:-なし}"
+
+      # 判定に使うスクリプトは base 側のものを使う（変更ファイルの確認と合わせた多層防御）
       - uses: actions/checkout@v6
         if: steps.decide.outputs.reason == ''
         with:
@@ -91,29 +170,19 @@ jobs:
         with:
           node-version-file: .node-version
 
-      - name: 修正対象以外の公開直後の版を検出
+      - name: lockfile に入った公開直後の版を検出
         id: release-age
         if: steps.decide.outputs.reason == ''
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+          ALLOWED_VERSIONS: ${{ steps.patched.outputs.allowed }}
         shell: bash
         run: |
           set -euo pipefail
           git show "$BASE_SHA:package-lock.json" > "$RUNNER_TEMP/base-lock.json"
           git show "$HEAD_SHA:package-lock.json" > "$RUNNER_TEMP/head-lock.json"
-          node scripts/check-lockfile-release-age.mjs "$RUNNER_TEMP/base-lock.json" "$RUNNER_TEMP/head-lock.json" --allow "$DEPENDENCY_NAMES" --min-days 7
-
-      - name: マージ用の App トークンを発行
-        id: write-token
-        if: always() && steps.meta.outcome == 'success' && steps.decide.outputs.skip != 'true'
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          app-id: ${{ secrets.SECURITY_BOT_APP_ID }}
-          private-key: ${{ secrets.SECURITY_BOT_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
+          node scripts/check-lockfile-release-age.mjs "$RUNNER_TEMP/base-lock.json" "$RUNNER_TEMP/head-lock.json" --allow "$ALLOWED_VERSIONS" --min-days 7
 
       - name: 日本語の squash 件名で auto-merge を有効化
         if: steps.decide.outputs.reason == '' && steps.release-age.outcome == 'success'
@@ -121,6 +190,7 @@ jobs:
           GH_TOKEN: ${{ steps.write-token.outputs.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GHSA_ID: ${{ steps.meta.outputs.ghsa-id }}
           DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
           DEPENDENCY_TYPE: ${{ steps.meta.outputs.dependency-type }}
@@ -146,11 +216,12 @@ jobs:
           printf '%s\n' \
             "Dependabot の security update（$GHSA_ID）。$DEPENDENCY_NAMES を $PREVIOUS_VERSION から $NEW_VERSION に更新する。" \
             "dependabot-auto-merge.yml が自動マージした（docs/decisions.md [132]）。" > "$body_file"
-          gh pr merge "$PR_URL" --auto --squash --subject "$subject" --body-file "$body_file"
+          # 評価した head 以外がマージされないよう head を固定する
+          gh pr merge "$PR_URL" --auto --squash --match-head-commit "$HEAD_SHA" --subject "$subject" --body-file "$body_file"
           echo "auto-merge を有効化: $subject"
 
       - name: 自動マージしない理由をコメント
-        if: always() && steps.write-token.outcome == 'success' && (steps.decide.outputs.reason != '' || steps.release-age.outcome == 'failure')
+        if: "!cancelled() && steps.write-token.outcome == 'success' && (steps.decide.outputs.reason != '' || steps.release-age.outcome == 'failure')"
         env:
           GH_TOKEN: ${{ steps.write-token.outputs.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
@@ -159,10 +230,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # 以前の push で有効化した auto-merge が残らないようにする（未設定なら失敗するので無視）
-          gh pr merge "$PR_URL" --disable-auto || true
           if [ -z "$REASON" ]; then
-            REASON="修正対象以外で lockfile に入った版に、公開から 7 日未満（または公開日時の取れない）ものがある。workflow のログを確認すること"
+            REASON="lockfile の確認で fail した（公開から 7 日未満・公開日時の取れない・registry 外の版がある、またはガードの実行に失敗）。workflow のログを確認すること"
           fi
           body_file="$RUNNER_TEMP/comment.md"
           printf '%s\n' \

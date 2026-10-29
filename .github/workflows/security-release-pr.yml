@@ -4,16 +4,12 @@ name: Security release PR
 # develop → main のリリース PR を作る（docs/decisions.md [132]）。マージは人が行う（--merge）。
 # 既に open のリリース PR があれば、そこへ修正の追加をコメントする。
 #
-# GITHUB_TOKEN で作った PR では pull_request の CI が起動せず、main の required checks が
-# 走らないため、GitHub App のトークンで作る（App の ID と秘密鍵は Actions secrets）。
+# GITHUB_TOKEN で作った PR では pull_request 起動の workflow（VRT 等）が走らないため、
+# GitHub App のトークンで作る（App の Client ID と秘密鍵は Actions secrets）。
 
 on:
   push:
     branches: [develop]
-
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -22,12 +18,16 @@ jobs:
   create-release-pr:
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.message, 'GHSA-')
+    # job 単位にして、skip される無関係な push が待機中の GHSA の run を取り消さないようにする
+    concurrency:
+      group: ${{ github.workflow }}
+      cancel-in-progress: false
     steps:
       - name: App トークンを発行
         id: token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ secrets.SECURITY_BOT_APP_ID }}
+          client-id: ${{ secrets.SECURITY_BOT_CLIENT_ID }}
           private-key: ${{ secrets.SECURITY_BOT_PRIVATE_KEY }}
           permission-contents: read
           permission-pull-requests: write
