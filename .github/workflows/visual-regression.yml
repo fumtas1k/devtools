@@ -25,9 +25,9 @@ jobs:
       vrt-outcome: ${{ steps.vrt-status.outputs.outcome }}
       slider-generated: ${{ steps.slider-status.outputs.generated }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
@@ -100,17 +100,17 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: テストレポート artifact を download
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: visual-regression-report-pr-${{ github.event.pull_request.number }}
           path: .
 
       - name: スライダーレポート artifact を download
         if: ${{ needs.visual-regression.outputs.slider-generated == 'true' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: visual-regression-slider-pr-${{ github.event.pull_request.number }}
           path: vrt-slider-report/
