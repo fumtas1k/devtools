@@ -33,9 +33,9 @@ jobs:
   npm-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
 
@@ -49,14 +49,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # gate と同じ Node（= 同じ npm）・同じ .npmrc で audit するため、この 2 ファイルだけ取得する
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             .node-version
             .npmrc
           sparse-checkout-cone-mode: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
 
