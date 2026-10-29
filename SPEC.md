@@ -110,6 +110,7 @@ devtools/
 │   └── rules/
 │       └── common.md       # AIエージェント用プロジェクト共通開発規約
 ├── .github/
+│   ├── dependabot.yml      # security updates の設定（docs/decisions.md [131]）
 │   └── workflows/
 │       └── test.yml
 ├── docs/

@@ -1,0 +1,32 @@
+# Dependabot 設定（docs/decisions.md [009] / 本ファイル導入の ADR を参照）
+#
+# security updates（advisory に対する修正 PR）はリポジトリ設定
+# 「Dependabot security updates」で有効化し、既定ブランチ develop に向けて出る。
+# 本ファイルの commit-message 等の設定は security updates の PR にも適用される。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # 0 にするとバージョン更新 PR は出さず、security updates だけが出る
+    # （security updates には別枠の上限があり、この値の影響を受けない）
+    open-pull-requests-limit: 0
+    # PR タイトル = squash 件名を Conventional Commits にする（build(deps): / build(deps-dev): ）
+    commit-message:
+      prefix: build
+      prefix-development: build
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # .npmrc の min-release-age=7 と揃え、公開直後の action 版を取り込まない
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci

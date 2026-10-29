@@ -280,7 +280,7 @@ npm パッケージを通じたサプライチェーン攻撃（悪意ある pos
 ### 却下した選択肢
 
 - **グローバル設定のみに依存**: クローン先の環境に保証がない。CI では特に無効になりやすい。
-- **`audit-level=high` の追加**: 開発中に `npm install` のたびに失敗するとノイズになりやすいため、CI の別ステップで管理する判断とした。
+- **`audit-level=high` の追加**: 開発中に `npm install` のたびに失敗するとノイズになりやすいため、CI の別ステップで管理する判断とした（[131] で `security-audit.yml` として実装）。
 
 ### 結果・トレードオフ
 
@@ -4843,3 +4843,45 @@ Node の major がローカル開発は 24、CI は 22、Cloudflare Pages のビ
 
 - **`node-version: 24.x` 等の範囲指定 + `check-latest: true` を workflow に書く**: CI 以外（Cloudflare Pages・ローカル）が読めず、版の置き場所が分散したままになる
 - **`.nvmrc` を使う**: setup-node と Cloudflare Pages は読めるが、`.node-version` のほうが読めるバージョンマネージャが多い。両方置くと 2 か所の同期が必要になる
+
+---
+
+## [131] 脆弱性対応の自動化 Phase 1: Dependabot security updates・CI の `npm audit`・CodeQL を導入する
+
+**2026-10-29 | ステータス: 採用**
+
+### 背景
+
+脆弱性の検知と修正が手作業に依存していた。`dependabot.yml` と CodeQL が無く、[009] で「CI の別ステップで管理する」とした `npm audit` も実装されていなかった。導入時点の `npm audit` は high 5 件（vite / undici / sharp / zod / source-map-js）と moderate 5 件を報告していた。
+
+最終的な目標は「advisory の公開から、修正 PR → develop マージ → main 向けリリース PR の作成までを自動化する」こと。本 ADR はその Phase 1（検知と修正 PR の自動作成）を扱う。自動マージとリリース PR の自動作成は Phase 2 で別 ADR にする。
+
+### 決断
+
+- 既存の脆弱性を解消する。lockfile 内の推移的依存は `npm audit fix`、直接依存は `smol-toml` 1.8.0 → 1.9.1、`vitest` / `@vitest/coverage-v8` 4.1.11 → 4.1.12。どれも公開から 7 日以上たった版で、`min-release-age=7` を満たす
+- `.github/dependabot.yml` を追加する
+  - npm は `open-pull-requests-limit: 0` にして、バージョン更新 PR は出さず security updates だけを受ける。security updates は既定ブランチ develop に向けて出る
+  - PR タイトル（= squash 件名）が Conventional Commits になるよう、`commit-message.prefix` を npm は `build`、github-actions は `ci` にする
+  - github-actions はバージョン更新も受け、`cooldown: 7` 日で `.npmrc` の `min-release-age` と揃える
+- `.github/workflows/security-audit.yml` を追加する。`npm audit --audit-level=high` を push / PR / 日次で実行する。陽性対照ジョブは、既知の high 脆弱性を持つ `lodash@4.17.20` の lockfile を実行時に生成して audit し、gate が fail すること・advisory ID が報告されることを assert する。gate と陽性対照の閾値の drift は `tests/meta/security-audit-workflow.test.ts` が検知する
+- `.github/workflows/codeql.yml` を追加する。`javascript-typescript` と `actions` を `security-extended` で解析する。`codeql-action` は SHA で固定する
+
+### 有効化に必要なリポジトリ設定（コード外）
+
+Settings → Advanced Security で、Dependabot alerts、Dependabot security updates、Secret Protection（push protection を含む）を有効にする。Code scanning の「Default setup」は有効にしない（advanced setup の本 workflow とは併用できない）。
+
+### 判明した前提（Phase 2 の設計に影響）
+
+- **`min-release-age` は解決時にしか効かない**。npm 11.21.1 で、公開当日の版を含む lockfile を `npm ci` したところ、そのままインストールされた。Dependabot の修正 PR に公開直後の版が入っていても CI は通る。公開直後の版に対する防御は、`min-release-age` ではなく「advisory が指定する修正版であること」と「main へのマージを人が判断すること」が担う
+- **`security-audit.yml` は required status check にしない**。複数の advisory が同時に出ると、1 件ずつ直す Dependabot PR のどれもが残りの advisory で audit fail になり、自動マージが相互にデッドロックする
+
+### 安全性
+
+- 追加した workflow の権限は `contents: read` だけ（CodeQL ジョブのみ結果アップロードのため `security-events: write`）。secret を参照せず、`pull_request_target` も使わない
+- 陽性対照の fixture はコミットしない。コミットすると Dependabot がその fixture に alert と修正 PR を出し、陽性対照が壊れるため
+
+### 却下した選択肢
+
+- **`npm audit` を `test.yml` のステップにする**: test ジョブを required にしたとき、上記のデッドロックが起きる
+- **npm のバージョン更新 PR も受ける**: solo 開発では VRT baseline の更新を含めてノイズが大きい。セキュリティ目的には security updates で足りる
+- **Code scanning の Default setup**: 設定が repo 外になり、レビューと履歴管理ができない
