@@ -115,3 +115,25 @@ npm run test -- vrt-comment-build-script
 - `.github/workflows/visual-regression.yml`（対象 step: `PR comment 本文を組み立て（失敗 spec 名込み）`）
 - `tests/meta/vrt-comment-build-script.test.ts`（CI 組み込みテスト + workflow との pipeline drift 検知）
 - issue #324
+
+---
+
+## check-lockfile-release-age.mjs
+
+Dependabot の security update の lockfile 差分のうち、修正対象以外で新しく入った版が公開から指定日数以上たっているかを確認する。`dependabot-auto-merge.yml` が自動マージの前に呼ぶ（`docs/decisions.md` [132]）。
+
+### 使い方
+
+```bash
+node scripts/check-lockfile-release-age.mjs <base-lock> <head-lock> --allow <修正対象の名前> [--min-days 7]
+```
+
+### 終了コード
+
+- `0`: 修正対象以外はすべて公開から `--min-days` 日以上たっている
+- `1`: 若すぎる版、または公開日時（`npm view <name>@<version> time`）を取得できない版がある
+- `2`: 引数エラー
+
+### テスト
+
+`tests/meta/check-lockfile-release-age.test.ts`（PATH 上の偽 `npm` で CLI の経路も検証する）

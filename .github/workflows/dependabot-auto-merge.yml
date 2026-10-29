@@ -1,0 +1,173 @@
+name: Dependabot security auto-merge
+
+# Dependabot の security update PR を、条件を満たすときだけ develop へ即時 auto-merge する
+# （docs/decisions.md [132]）。CI（ruleset の required checks）が green になった時点で
+# GitHub がマージする。main へのマージは人が行う（security-release-pr.yml が PR を作る）。
+#
+# 条件（すべて満たすこと）:
+#   - PR の作成者と今回の push の actor がどちらも dependabot[bot]
+#   - npm の更新で、Dependabot alert が OPEN（GHSA ID が取れる）
+#   - semver-major ではなく、更新対象は 1 パッケージだけで、Playwright 系ではない
+#   - 修正対象以外で lockfile に入った版が公開から 7 日以上（scripts/check-lockfile-release-age.mjs）
+# 満たさない PR は auto-merge を解除し、理由をコメントして人の判断に回す。
+#
+# GITHUB_TOKEN でマージすると develop への push で workflow が起動せず、リリース PR も
+# 作られないため、GitHub App のトークンを使う。Dependabot が起動した workflow は
+# Dependabot secrets しか読めないので、App の ID と秘密鍵は Dependabot secrets に登録する。
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
+    steps:
+      # alert の参照だけに絞ったトークン（GITHUB_TOKEN には Dependabot alerts の権限が無い）
+      - name: alert 参照用の App トークンを発行
+        id: read-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SECURITY_BOT_APP_ID }}
+          private-key: ${{ secrets.SECURITY_BOT_PRIVATE_KEY }}
+          permission-vulnerability-alerts: read
+          permission-contents: read
+
+      - name: Dependabot の更新内容を取得
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ steps.read-token.outputs.token }}
+          alert-lookup: true
+
+      - name: 自動マージの条件を判定
+        id: decide
+        env:
+          ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          ALERT_STATE: ${{ steps.meta.outputs.alert-state }}
+          GHSA_ID: ${{ steps.meta.outputs.ghsa-id }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          reason=""
+          if [ "$ECOSYSTEM" != "npm_and_yarn" ]; then
+            # github-actions のバージョン更新等は対象外。コメントせずに終える
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            reason="npm 以外の更新（$ECOSYSTEM）"
+          elif [ "$ALERT_STATE" != "OPEN" ] || [ -z "$GHSA_ID" ]; then
+            reason="OPEN の Dependabot alert に対応する security update ではない（alert-state=${ALERT_STATE:-なし}）"
+          elif [ "$UPDATE_TYPE" = "version-update:semver-major" ]; then
+            reason="semver-major の更新"
+          elif [[ "$DEPENDENCY_NAMES" == *,* ]]; then
+            reason="複数パッケージの更新（$DEPENDENCY_NAMES）"
+          elif [[ "$DEPENDENCY_NAMES" =~ ^(@playwright/test|playwright|playwright-core)$ ]]; then
+            reason="Playwright の更新（CI の container image も上げる必要がある）"
+          fi
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          if [ -n "$reason" ]; then
+            echo "自動マージしない: $reason"
+          fi
+
+      # 判定に使うスクリプトは PR 側ではなく base 側のものを使う
+      - uses: actions/checkout@v6
+        if: steps.decide.outputs.reason == ''
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        if: steps.decide.outputs.reason == ''
+        with:
+          node-version-file: .node-version
+
+      - name: 修正対象以外の公開直後の版を検出
+        id: release-age
+        if: steps.decide.outputs.reason == ''
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$BASE_SHA:package-lock.json" > "$RUNNER_TEMP/base-lock.json"
+          git show "$HEAD_SHA:package-lock.json" > "$RUNNER_TEMP/head-lock.json"
+          node scripts/check-lockfile-release-age.mjs "$RUNNER_TEMP/base-lock.json" "$RUNNER_TEMP/head-lock.json" --allow "$DEPENDENCY_NAMES" --min-days 7
+
+      - name: マージ用の App トークンを発行
+        id: write-token
+        if: always() && steps.meta.outcome == 'success' && steps.decide.outputs.skip != 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SECURITY_BOT_APP_ID }}
+          private-key: ${{ secrets.SECURITY_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: 日本語の squash 件名で auto-merge を有効化
+        if: steps.decide.outputs.reason == '' && steps.release-age.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.write-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GHSA_ID: ${{ steps.meta.outputs.ghsa-id }}
+          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+          DEPENDENCY_TYPE: ${{ steps.meta.outputs.dependency-type }}
+          PREVIOUS_VERSION: ${{ steps.meta.outputs.previous-version }}
+          NEW_VERSION: ${{ steps.meta.outputs.new-version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # ruleset に required checks が無いと --auto が CI を待たずにマージしうるので、先に確認する
+          contexts=$(gh api "repos/$GITHUB_REPOSITORY/rules/branches/develop" \
+            --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] | join(",")')
+          for check in test e2e; do
+            if [[ ",$contexts," != *",$check,"* ]]; then
+              echo "::error::develop の ruleset に required status check '$check' が無いため auto-merge しない（docs/decisions.md [132]）"
+              exit 1
+            fi
+          done
+          scope=deps
+          if [ "$DEPENDENCY_TYPE" = "direct:development" ]; then scope=deps-dev; fi
+          # security-release-pr.yml は件名の GHSA ID を目印にリリース PR を作る
+          subject="build($scope): $DEPENDENCY_NAMES を $NEW_VERSION に更新する（$GHSA_ID） (#$PR_NUMBER)"
+          body_file="$RUNNER_TEMP/squash-body.md"
+          printf '%s\n' \
+            "Dependabot の security update（$GHSA_ID）。$DEPENDENCY_NAMES を $PREVIOUS_VERSION から $NEW_VERSION に更新する。" \
+            "dependabot-auto-merge.yml が自動マージした（docs/decisions.md [132]）。" > "$body_file"
+          gh pr merge "$PR_URL" --auto --squash --subject "$subject" --body-file "$body_file"
+          echo "auto-merge を有効化: $subject"
+
+      - name: 自動マージしない理由をコメント
+        if: always() && steps.write-token.outcome == 'success' && (steps.decide.outputs.reason != '' || steps.release-age.outcome == 'failure')
+        env:
+          GH_TOKEN: ${{ steps.write-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REASON: ${{ steps.decide.outputs.reason }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 以前の push で有効化した auto-merge が残らないようにする（未設定なら失敗するので無視）
+          gh pr merge "$PR_URL" --disable-auto || true
+          if [ -z "$REASON" ]; then
+            REASON="修正対象以外で lockfile に入った版に、公開から 7 日未満（または公開日時の取れない）ものがある。workflow のログを確認すること"
+          fi
+          body_file="$RUNNER_TEMP/comment.md"
+          printf '%s\n' \
+            "この PR は develop へ自動マージしません（\`$HEAD_SHA\`）。" \
+            "" \
+            "- 理由: $REASON" \
+            "- 判断して手動でマージしてください（docs/decisions.md [132]）" > "$body_file"
+          gh pr comment "$PR_URL" --body-file "$body_file"

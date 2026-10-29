@@ -1,0 +1,76 @@
+name: Security release PR
+
+# develop にセキュリティ修正（コミットメッセージに GHSA ID を含む）が入ったら、
+# develop → main のリリース PR を作る（docs/decisions.md [132]）。マージは人が行う（--merge）。
+# 既に open のリリース PR があれば、そこへ修正の追加をコメントする。
+#
+# GITHUB_TOKEN で作った PR では pull_request の CI が起動せず、main の required checks が
+# 走らないため、GitHub App のトークンで作る（App の ID と秘密鍵は Actions secrets）。
+
+on:
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, 'GHSA-')
+    steps:
+      - name: App トークンを発行
+        id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SECURITY_BOT_APP_ID }}
+          private-key: ${{ secrets.SECURITY_BOT_PRIVATE_KEY }}
+          permission-contents: read
+          permission-pull-requests: write
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: develop → main のリリース PR を作成（あればコメント）
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          HEAD_SUBJECT: ${{ github.event.head_commit.message }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          subject=$(printf '%s\n' "$HEAD_SUBJECT" | head -1)
+          existing=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
+
+          if [ -n "$existing" ]; then
+            body_file="$RUNNER_TEMP/comment.md"
+            printf '%s\n' "develop にセキュリティ修正が追加されました: $subject" > "$body_file"
+            gh pr comment "$existing" --body-file "$body_file"
+            echo "既存のリリース PR #$existing にコメントした"
+            exit 0
+          fi
+
+          body_file="$RUNNER_TEMP/release-body.md"
+          {
+            echo "## 概要"
+            echo ""
+            echo "develop にセキュリティ修正が入ったため自動作成したリリース PR（\`.github/workflows/security-release-pr.yml\`、docs/decisions.md [132]）。"
+            echo "セキュリティ修正以外の未リリースのコミットも含むので、内容を確認してから \`--merge\` でマージする。"
+            echo ""
+            echo "## セキュリティ修正"
+            echo ""
+            git log --format='- %s' origin/main..HEAD | grep 'GHSA-' || true
+            echo ""
+            echo "## 含まれるコミット（main との差分）"
+            echo ""
+            git log --format='- %s' origin/main..HEAD
+          } > "$body_file"
+
+          gh pr create --base main --head develop \
+            --title "release: セキュリティ修正の反映（develop → main）" \
+            --body-file "$body_file"
