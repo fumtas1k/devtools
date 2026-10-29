@@ -280,7 +280,7 @@ npm パッケージを通じたサプライチェーン攻撃（悪意ある pos
 ### 却下した選択肢
 
 - **グローバル設定のみに依存**: クローン先の環境に保証がない。CI では特に無効になりやすい。
-- **`audit-level=high` の追加**: 開発中に `npm install` のたびに失敗するとノイズになりやすいため、CI の別ステップで管理する判断とした。
+- **`audit-level=high` の追加**: 開発中に `npm install` のたびに失敗するとノイズになりやすいため、CI の別ステップで管理する判断とした（[131] で `security-audit.yml` として実装）。
 
 ### 結果・トレードオフ
 
@@ -4843,3 +4843,112 @@ Node の major がローカル開発は 24、CI は 22、Cloudflare Pages のビ
 
 - **`node-version: 24.x` 等の範囲指定 + `check-latest: true` を workflow に書く**: CI 以外（Cloudflare Pages・ローカル）が読めず、版の置き場所が分散したままになる
 - **`.nvmrc` を使う**: setup-node と Cloudflare Pages は読めるが、`.node-version` のほうが読めるバージョンマネージャが多い。両方置くと 2 か所の同期が必要になる
+
+---
+
+## [131] 脆弱性対応の自動化 Phase 1: Dependabot security updates・CI の `npm audit`・CodeQL を導入する
+
+**2026-10-29 | ステータス: 採用**
+
+### 背景
+
+脆弱性の検知と修正が手作業に依存していた。`dependabot.yml` と CodeQL が無く、[009] で「CI の別ステップで管理する」とした `npm audit` も実装されていなかった。導入時点の `npm audit` は high 5 件（vite / undici / sharp / zod / source-map-js）と moderate 5 件を報告していた。
+
+最終的な目標は「advisory の公開から、修正 PR → develop マージ → main 向けリリース PR の作成までを自動化する」こと。本 ADR はその Phase 1（検知と修正 PR の自動作成）を扱う。自動マージとリリース PR の自動作成は Phase 2 で別 ADR にする。
+
+### 決断
+
+- 既存の脆弱性を解消する。lockfile 内の推移的依存は `npm audit fix`、直接依存は `smol-toml` 1.8.0 → 1.9.1、`vitest` / `@vitest/coverage-v8` 4.1.11 → 4.1.12。どれも公開から 7 日以上たった版で、`min-release-age=7` を満たす
+- `.github/dependabot.yml` を追加する
+  - npm は `open-pull-requests-limit: 0` にして、バージョン更新 PR は出さず security updates だけを受ける。security updates は既定ブランチ develop に向けて出る
+  - PR タイトル（= squash 件名）が Conventional Commits になるよう、`commit-message.prefix` を npm は `build`、github-actions は `ci` にする
+  - github-actions はバージョン更新も受け、`cooldown.default-days: 7` で `.npmrc` の `min-release-age` と揃える
+- `.github/workflows/security-audit.yml` を追加する。`npm audit --audit-level=high` を push / PR / 日次で実行する。陽性対照ジョブは、既知の high 脆弱性を持つ `lodash@4.17.20` の lockfile を実行時に生成して audit し、gate が fail すること・advisory ID が報告されることを assert する。gate と陽性対照の閾値の drift は `tests/meta/security-audit-workflow.test.ts` が検知する
+- `.github/workflows/codeql.yml` を追加する。`javascript-typescript` と `actions` を `security-extended` で解析する。`codeql-action` は SHA で固定する。CodeQL の JS/TS extractor は `.astro` を抽出しないため、`.astro` の frontmatter・`<script>`・`set:html` は解析対象外になる
+
+### 有効化に必要なリポジトリ設定（コード外）
+
+Settings → Advanced Security で、Dependabot alerts、Dependabot security updates、Secret Protection（push protection を含む）を有効にする。Code scanning の「Default setup」は有効にしない（advanced setup の本 workflow とは併用できない）。
+
+### 判明した前提（Phase 2 の設計に影響）
+
+- **`min-release-age` は解決時にしか効かない**。npm 11.21.1 で、公開当日の版を含む lockfile を `npm ci` したところ、そのままインストールされた。Dependabot の修正 PR に公開直後の版が入っていても CI は通る。公開直後の版に対する防御は、`min-release-age` ではなく「advisory が指定する修正版であること」と「main へのマージを人が判断すること」が担う
+- **確認済み（[132]）: Dependabot は security update では `.npmrc` の `min-release-age` を無視する**。dependabot-core は security update で npm に `--min-release-age=0` を渡すため、公開直後の修正版でも PR は作られる。代わりに、同時に解決し直された推移的依存にも公開直後の版が入りうる
+- **`security-audit.yml` は required status check にしない**。複数の advisory が同時に出ると、1 件ずつ直す Dependabot PR のどれもが残りの advisory で audit fail になり、自動マージが相互にデッドロックする。修正版の無い advisory が出た場合も、gate が無期限に赤になる
+
+### 運用
+
+- 修正版の無い high 以上の advisory で gate が赤になったら、その場で issue を起票し、影響範囲（本番バンドルに入るか、build 時だけか）と回避策を記録する。`npm audit` には advisory 単位の除外機能が無く、Dependabot alert を dismiss しても gate には反映されない。赤が続くと検知の意味が薄れるので、長期化するなら advisory ID 単位で除外できる仕組み（`audit-ci` 等）の導入を別途判断する
+
+### Phase 2 の設計で扱う制約
+
+- **squash 件名**: Dependabot の PR タイトルは英語（例: `build(deps): bump undici from 8.10.2 to 8.12.3`）で、本文は release notes の HTML 断片になる。自動マージでは `gh pr merge --subject` / `--body` で日本語の件名と要約本文を生成し直す（`docs/playbooks/pr-creation.md` 6 章）
+- **トークン**: `GITHUB_TOKEN` 起点のマージや PR 作成は新しい workflow run を起動しない。develop への push で `Test` / `Security Audit` / `CodeQL` が走らず、develop → main の PR では required の `test` / `e2e` が走らずマージできない。GitHub App のトークンを使う場合、develop への push で走る `Test` は `GIST_TOKEN` を持つので、公開直後の依存がその job で実行されることを許容するか判断する
+- **PR の数**: `groups` に `applies-to: security-updates` を指定すると、npm の security updates を 1 PR にまとめられる。PR 数・CI 実行回数・自動マージの対象が減る。修正版の無い advisory が残るので、gate を required にできない結論は変わらない
+- **Playwright**: `@playwright/test` / `playwright` の security update は npm パッケージだけを上げ、CI の container image（`mcr.microsoft.com/playwright:vX.Y.Z-noble`）は上がらない。ブラウザ版のずれで `e2e` が落ちるので、`playwright*` は自動マージの対象から外すか image を同時に上げる
+
+### 安全性
+
+- 追加した workflow の権限は `contents: read` だけ（CodeQL ジョブのみ結果アップロードのため `security-events: write`）。secret を参照せず、`pull_request_target` も使わない
+- 陽性対照の fixture はコミットしない。コミットすると Dependabot がその fixture に alert と修正 PR を出し、陽性対照が壊れるため
+
+### 却下した選択肢
+
+- **`npm audit` を `test.yml` のステップにする**: test ジョブを required にしたとき、上記のデッドロックが起きる
+- **npm のバージョン更新 PR も受ける**: solo 開発では VRT baseline の更新を含めてノイズが大きい。セキュリティ目的には security updates で足りる
+- **Code scanning の Default setup**: 設定が repo 外になり、レビューと履歴管理ができない
+
+---
+
+## [132] 脆弱性対応の自動化 Phase 2: Dependabot security update を develop へ即時自動マージし、main 向けリリース PR を自動作成する
+
+**2026-10-29 | ステータス: 採用**
+
+### 背景
+
+[131] で Dependabot security updates による修正 PR の自動作成までを導入した。目標は「advisory の公開から、修正 PR → develop マージ → main 向けリリース PR の作成までを自動化し、main へのマージは人が判断する」こと。方針として、Dependabot alert が出ている advisory に対する修正版なら、公開直後でも即時に develop へマージする。
+
+[131] で要確認とした、Dependabot が `.npmrc` の `min-release-age=7` に従うかを dependabot-core の実装で確認した。security update では npm に `--min-release-age=0` を渡し、`.npmrc` の値を意図的に上書きする（`npm_and_yarn/lib/dependabot/npm_and_yarn/file_updater/npm_lockfile_updater.rb` の `effective_min_release_age_arg`、`update_checker.rb` の `apply_npmrc_min_release_age`。npm 11.10 以上が前提）。このため公開直後の修正版でも PR は作られる。一方でこの上書きは npm の実行全体に効くので、次の 2 つに公開直後の版が入りうる。
+
+- 修正対象と一緒に解決し直された推移的依存
+- 推移的依存の修正対象そのもの。Dependabot は推移的依存を `npm update <name>` で更新し、npm は親の semver 範囲内の最新版を選ぶ（`update_checker.rb` の `lowest_resolvable_security_fix_version`）。advisory の修正版より後に公開された版が入りうる
+
+### 決断
+
+- `.github/workflows/dependabot-auto-merge.yml` を追加する。毎回まず auto-merge を解除し、次をすべて満たしたときだけ `gh pr merge --auto --squash --match-head-commit <評価した head>` で有効にし直す。ruleset の required checks が green になった時点で GitHub がマージする
+  - PR の作成者と、その push の actor がどちらも `dependabot[bot]` で、ブランチが `dependabot/npm_and_yarn/`
+  - 変更ファイルが `package.json` / `package-lock.json` だけ。`pull_request` 起動では workflow 定義も PR 側から読まれるため、確認が済むまで App の秘密鍵を使うステップを実行しない
+  - `dependabot/fetch-metadata` の alert lookup で Dependabot alert が OPEN（GHSA ID が取れる）
+  - semver-major ではない。更新対象が 1 パッケージだけ。Playwright 系ではない（CI の container image と連動するため。[131]）
+  - lockfile に新しく入った版が、advisory の `first_patched_version`（`GET /advisories/{ghsa_id}`）と完全一致するもの以外、すべて公開から 7 日以上（`scripts/check-lockfile-release-age.mjs`）。公開日時が取れない版、registry 外の `resolved`、v1 形式の lockfile は fail にする
+  - develop の ruleset に required checks `test` / `e2e` がある。gh は PR がマージ可能な状態だと `--auto` でも即時マージするため、無ければ fail する
+- Dependabot の PR に Dependabot 以外が push したら、別 job（`revoke-on-foreign-push`）が auto-merge を解除する
+- squash 件名は `build(deps): <名前> を <版> に更新する（<GHSA ID>） (#<PR>)` と日本語で生成し直す（`docs/playbooks/pr-creation.md` 6 章）。本文も 2 行の要約にする
+- 条件を満たさない npm の PR には理由をコメントし、人の判断に回す。github-actions の PR では job 自体を起動しない
+- `.github/workflows/security-release-pr.yml` を追加する。develop への push のうち、コミットメッセージに `GHSA-` を含むものを契機に develop → main のリリース PR を作る。open のリリース PR があればコメントだけ足す。マージは人が `--merge` で行う
+- 両 workflow は GitHub App のトークンを使う。`GITHUB_TOKEN` でマージすると develop への push で workflow（`Test` / `CodeQL` / リリース PR の作成）が起動しない。また `GITHUB_TOKEN` で作った PR では pull_request 起動の workflow（VRT 等）が走らない。トークンは用途ごとに権限を絞って発行する（alert 参照: `vulnerability-alerts: read` ほか read のみ / マージとコメント: `contents: write` + `pull-requests: write` / リリース PR: `pull-requests: write`）
+- 安全上の前提は `tests/meta/security-automation-workflows.test.ts` が固定する。条件式とガードの実行行は、`|| true` 等の付け足しで無効化されないよう完全一致で比較する
+
+### 有効化に必要なリポジトリ設定（コード外）
+
+1. GitHub App を作る（Webhook は無効）。Repository permissions は Contents: Read and write、Pull requests: Read and write、Dependabot alerts: Read-only（Metadata: Read-only は自動）。このリポジトリにだけ install する
+2. App の Client ID と秘密鍵を `SECURITY_BOT_CLIENT_ID` / `SECURITY_BOT_PRIVATE_KEY` として、**Actions secrets と Dependabot secrets の両方**に登録する。Dependabot が起動した workflow は Dependabot secrets しか読めない
+3. App を develop / main の ruleset の bypass に入れない。bypass できるとマージ可能な状態とみなされ、`--auto` が CI を待たずにマージしうる
+4. Settings → General → Pull Requests の「Allow auto-merge」と、develop の ruleset の required status checks（`test` / `e2e`、strict なし、承認の必須化なし。[069]）は導入時点で設定済み。`Security Audit` は required にしない（[131]）
+
+### トレードオフ・既知の制約
+
+- advisory の修正版と完全一致する版だけは公開直後でもマージされる。advisory が指定する修正版であることと、main へのマージを人が判断することが防御になる（[131]）。推移的依存で修正版より新しい版が選ばれた場合は、公開から 7 日たつまで自動マージしない
+- `dependabot/fetch-metadata` は Dependabot alert を状態を問わず先頭 100 件しか照合しない。alert の履歴が 100 件を超えると新しい alert が見つからず、自動マージされなくなる（fail closed）
+- 人が手動でマージした Dependabot PR の件名は英語のまま GHSA ID を含まないので、リリース PR は自動では作られない
+- App のトークンでマージした develop への push では `Test` が走り、`GIST_TOKEN` を参照する。公開直後の修正版のコードがこの job で実行される。`GIST_TOKEN` の権限は gist だけで、人が Dependabot PR をマージした場合と同じ状況なので許容する
+- 判定スクリプトを base 側から checkout するのは多層防御の一つ。workflow 定義そのものは PR 側から読まれるので、変更ファイルの確認が主な防御になる
+- 条件を満たさない PR には synchronize（Dependabot の rebase）ごとにコメントが付く
+
+### 却下した選択肢
+
+- **`GITHUB_TOKEN` だけで実装する**: 上記のとおり、下流の workflow が起動しない。`GITHUB_TOKEN` には Dependabot alerts の読み取り権限も付けられない
+- **個人の PAT を使う**: 権限がユーザーアカウント全体に及び、失効の影響も受ける。App なら権限とインストール先をこのリポジトリに絞れる
+- **修正対象を名前だけで例外にする**: 推移的依存では修正版より新しい公開直後の版が素通りする
+- **推移的依存のガードを置かない**: `--min-release-age=0` のまま、[009] の `min-release-age=7` が守っていた範囲が自動マージで素通りになる
+- **security updates を `groups` で 1 PR にまとめる**: 自動マージの条件（1 パッケージ・GHSA ID 1 件）の判定が複雑になる。当面は 1 advisory = 1 PR で運用し、PR 数が問題になったら見直す

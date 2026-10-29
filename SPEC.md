@@ -110,8 +110,13 @@ devtools/
 │   └── rules/
 │       └── common.md       # AIエージェント用プロジェクト共通開発規約
 ├── .github/
+│   ├── dependabot.yml      # security updates の設定（docs/decisions.md [131]）
 │   └── workflows/
-│       └── test.yml
+│       ├── test.yml
+│       ├── security-audit.yml  # npm audit gate + 陽性対照（[131]）
+│       ├── codeql.yml          # CodeQL 静的解析（[131]）
+│       ├── dependabot-auto-merge.yml  # security update の develop への自動マージ（[132]）
+│       └── security-release-pr.yml    # develop → main のリリース PR 自動作成（[132]）
 ├── docs/
 │   └── decisions.md        # 設計・実装の決断ログ
 ├── tests/
