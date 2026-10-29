@@ -48,10 +48,12 @@ jobs:
   npm-audit-positive-control:
     runs-on: ubuntu-latest
     steps:
-      # gate と同じ Node（= 同じ npm）で audit するため .node-version だけ取得する
+      # gate と同じ Node（= 同じ npm）・同じ .npmrc で audit するため、この 2 ファイルだけ取得する
       - uses: actions/checkout@v6
         with:
-          sparse-checkout: .node-version
+          sparse-checkout: |
+            .node-version
+            .npmrc
           sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v6
@@ -64,9 +66,12 @@ jobs:
           set -euo pipefail
           dir="$RUNNER_TEMP/npm-audit-positive-control"
           mkdir -p "$dir"
+          # repo の .npmrc に audit の範囲を狭める設定（omit=dev 等）が入ったら陽性対照も fail させる
+          cp "$GITHUB_WORKSPACE/.npmrc" "$dir/.npmrc"
           cd "$dir"
-          # lodash 4.17.20: GHSA-35jh-r3h4-6jhm（Command Injection, high）
-          printf '{"name":"npm-audit-positive-control","version":"1.0.0","private":true,"dependencies":{"lodash":"4.17.20"}}\n' > package.json
+          # lodash 4.17.20: GHSA-35jh-r3h4-6jhm（Command Injection, high）。
+          # dev 依存を audit から外す drift も捕まえるため devDependencies に置く
+          printf '{"name":"npm-audit-positive-control","version":"1.0.0","private":true,"devDependencies":{"lodash":"4.17.20"}}\n' > package.json
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
           set +e

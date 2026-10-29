@@ -1,6 +1,8 @@
 name: CodeQL
 
-# 自前コード（TS / Astro の script）と GitHub Actions workflow の脆弱性を静的解析する。
+# 自前コード（.ts / .tsx / .js 等）と GitHub Actions workflow の脆弱性を静的解析する。
+# CodeQL の JS/TS extractor は .astro を抽出しないため、.astro の frontmatter・<script>・
+# set:html は解析対象外（docs/decisions.md [131]）。
 # 結果は Security タブの Code scanning alerts に出る。
 # 注意: リポジトリ設定で Code scanning の「Default setup」を有効にすると本 workflow の
 # アップロードが拒否される。advanced setup（本ファイル）で一元管理する。

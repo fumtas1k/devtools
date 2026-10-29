@@ -1,4 +1,4 @@
-# Dependabot 設定（docs/decisions.md [009] / 本ファイル導入の ADR を参照）
+# Dependabot 設定（docs/decisions.md [009] / [131] を参照）
 #
 # security updates（advisory に対する修正 PR）はリポジトリ設定
 # 「Dependabot security updates」で有効化し、既定ブランチ develop に向けて出る。
