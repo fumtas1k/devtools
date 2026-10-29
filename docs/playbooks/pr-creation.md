@@ -168,6 +168,8 @@ gh pr merge <PR> --merge --delete-branch
 
 squash merge と異なり `--subject` / `--body-file` の指定は不要（merge commit のメッセージは GitHub が自動生成する `Merge pull request #N ...` で十分）。
 
+**セキュリティ修正のリリース PR は自動で作られる**: Dependabot の security update が develop に自動マージされると、`security-release-pr.yml` が `release: セキュリティ修正の反映（develop → main）` を作る（既に open のリリース PR があればコメントだけ足す）。セキュリティ修正以外の未リリースのコミットも含むので、本文の「含まれるコミット」を確認してから上記の `--merge` でマージする（`docs/decisions.md` [132]）。
+
 ## 7. マージ後の worktree 後始末
 
 `gh pr merge --delete-branch` を打つ前に worktree を unlock + remove する。`worktree-agent-<id>` の内部 branch も別途 `git branch -D` で削除（記憶: feedback_worktree_merge_order）。

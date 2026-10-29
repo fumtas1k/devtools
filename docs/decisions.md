@@ -4873,7 +4873,7 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 ### 判明した前提（Phase 2 の設計に影響）
 
 - **`min-release-age` は解決時にしか効かない**。npm 11.21.1 で、公開当日の版を含む lockfile を `npm ci` したところ、そのままインストールされた。Dependabot の修正 PR に公開直後の版が入っていても CI は通る。公開直後の版に対する防御は、`min-release-age` ではなく「advisory が指定する修正版であること」と「main へのマージを人が判断すること」が担う
-- **要確認: Dependabot 自身が公開 7 日未満の修正版を解決できるか**。`npm install --package-lock-only --min-release-age=7` は公開 7 日未満の版を `notarget` で拒否する（npm 11.21.1 で確認）。Dependabot が lockfile の更新時に repo の `.npmrc` の `min-release-age` を読むと、公開直後の修正版では security update 自体が失敗し、「即時」が成立しない。Phase 2 の前に、公開 7 日未満の修正版が出た advisory で Dependabot の PR が作られるか（失敗するならアラート画面に理由が出る）を確認する
+- **確認済み（[132]）: Dependabot は security update では `.npmrc` の `min-release-age` を無視する**。dependabot-core は security update で npm に `--min-release-age=0` を渡すため、公開直後の修正版でも PR は作られる。代わりに、同時に解決し直された推移的依存にも公開直後の版が入りうる
 - **`security-audit.yml` は required status check にしない**。複数の advisory が同時に出ると、1 件ずつ直す Dependabot PR のどれもが残りの advisory で audit fail になり、自動マージが相互にデッドロックする。修正版の無い advisory が出た場合も、gate が無期限に赤になる
 
 ### 運用
@@ -4897,3 +4897,58 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 - **`npm audit` を `test.yml` のステップにする**: test ジョブを required にしたとき、上記のデッドロックが起きる
 - **npm のバージョン更新 PR も受ける**: solo 開発では VRT baseline の更新を含めてノイズが大きい。セキュリティ目的には security updates で足りる
 - **Code scanning の Default setup**: 設定が repo 外になり、レビューと履歴管理ができない
+
+---
+
+## [132] 脆弱性対応の自動化 Phase 2: Dependabot security update を develop へ即時自動マージし、main 向けリリース PR を自動作成する
+
+**2026-10-29 | ステータス: 採用**
+
+### 背景
+
+[131] で Dependabot security updates による修正 PR の自動作成までを導入した。目標は「advisory の公開から、修正 PR → develop マージ → main 向けリリース PR の作成までを自動化し、main へのマージは人が判断する」こと。方針として、Dependabot alert が出ている advisory に対する修正版なら、公開直後でも即時に develop へマージする。
+
+[131] で要確認とした、Dependabot が `.npmrc` の `min-release-age=7` に従うかを dependabot-core の実装で確認した。security update では npm に `--min-release-age=0` を渡し、`.npmrc` の値を意図的に上書きする（`npm_and_yarn/lib/dependabot/npm_and_yarn/file_updater/npm_lockfile_updater.rb` の `effective_min_release_age_arg`、`update_checker.rb` の `apply_npmrc_min_release_age`。npm 11.10 以上が前提）。このため公開直後の修正版でも PR は作られる。一方でこの上書きは npm の実行全体に効くので、次の 2 つに公開直後の版が入りうる。
+
+- 修正対象と一緒に解決し直された推移的依存
+- 推移的依存の修正対象そのもの。Dependabot は推移的依存を `npm update <name>` で更新し、npm は親の semver 範囲内の最新版を選ぶ（`update_checker.rb` の `lowest_resolvable_security_fix_version`）。advisory の修正版より後に公開された版が入りうる
+
+### 決断
+
+- `.github/workflows/dependabot-auto-merge.yml` を追加する。毎回まず auto-merge を解除し、次をすべて満たしたときだけ `gh pr merge --auto --squash --match-head-commit <評価した head>` で有効にし直す。ruleset の required checks が green になった時点で GitHub がマージする
+  - PR の作成者と、その push の actor がどちらも `dependabot[bot]` で、ブランチが `dependabot/npm_and_yarn/`
+  - 変更ファイルが `package.json` / `package-lock.json` だけ。`pull_request` 起動では workflow 定義も PR 側から読まれるため、確認が済むまで App の秘密鍵を使うステップを実行しない
+  - `dependabot/fetch-metadata` の alert lookup で Dependabot alert が OPEN（GHSA ID が取れる）
+  - semver-major ではない。更新対象が 1 パッケージだけ。Playwright 系ではない（CI の container image と連動するため。[131]）
+  - lockfile に新しく入った版が、advisory の `first_patched_version`（`GET /advisories/{ghsa_id}`）と完全一致するもの以外、すべて公開から 7 日以上（`scripts/check-lockfile-release-age.mjs`）。公開日時が取れない版、registry 外の `resolved`、v1 形式の lockfile は fail にする
+  - develop の ruleset に required checks `test` / `e2e` がある。gh は PR がマージ可能な状態だと `--auto` でも即時マージするため、無ければ fail する
+- Dependabot の PR に Dependabot 以外が push したら、別 job（`revoke-on-foreign-push`）が auto-merge を解除する
+- squash 件名は `build(deps): <名前> を <版> に更新する（<GHSA ID>） (#<PR>)` と日本語で生成し直す（`docs/playbooks/pr-creation.md` 6 章）。本文も 2 行の要約にする
+- 条件を満たさない npm の PR には理由をコメントし、人の判断に回す。github-actions の PR では job 自体を起動しない
+- `.github/workflows/security-release-pr.yml` を追加する。develop への push のうち、コミットメッセージに `GHSA-` を含むものを契機に develop → main のリリース PR を作る。open のリリース PR があればコメントだけ足す。マージは人が `--merge` で行う
+- 両 workflow は GitHub App のトークンを使う。`GITHUB_TOKEN` でマージすると develop への push で workflow（`Test` / `CodeQL` / リリース PR の作成）が起動しない。また `GITHUB_TOKEN` で作った PR では pull_request 起動の workflow（VRT 等）が走らない。トークンは用途ごとに権限を絞って発行する（alert 参照: `vulnerability-alerts: read` ほか read のみ / マージとコメント: `contents: write` + `pull-requests: write` / リリース PR: `pull-requests: write`）
+- 安全上の前提は `tests/meta/security-automation-workflows.test.ts` が固定する。条件式とガードの実行行は、`|| true` 等の付け足しで無効化されないよう完全一致で比較する
+
+### 有効化に必要なリポジトリ設定（コード外）
+
+1. GitHub App を作る（Webhook は無効）。Repository permissions は Contents: Read and write、Pull requests: Read and write、Dependabot alerts: Read-only（Metadata: Read-only は自動）。このリポジトリにだけ install する
+2. App の Client ID と秘密鍵を `SECURITY_BOT_CLIENT_ID` / `SECURITY_BOT_PRIVATE_KEY` として、**Actions secrets と Dependabot secrets の両方**に登録する。Dependabot が起動した workflow は Dependabot secrets しか読めない
+3. App を develop / main の ruleset の bypass に入れない。bypass できるとマージ可能な状態とみなされ、`--auto` が CI を待たずにマージしうる
+4. Settings → General → Pull Requests の「Allow auto-merge」と、develop の ruleset の required status checks（`test` / `e2e`、strict なし、承認の必須化なし。[069]）は導入時点で設定済み。`Security Audit` は required にしない（[131]）
+
+### トレードオフ・既知の制約
+
+- advisory の修正版と完全一致する版だけは公開直後でもマージされる。advisory が指定する修正版であることと、main へのマージを人が判断することが防御になる（[131]）。推移的依存で修正版より新しい版が選ばれた場合は、公開から 7 日たつまで自動マージしない
+- `dependabot/fetch-metadata` は Dependabot alert を状態を問わず先頭 100 件しか照合しない。alert の履歴が 100 件を超えると新しい alert が見つからず、自動マージされなくなる（fail closed）
+- 人が手動でマージした Dependabot PR の件名は英語のまま GHSA ID を含まないので、リリース PR は自動では作られない
+- App のトークンでマージした develop への push では `Test` が走り、`GIST_TOKEN` を参照する。公開直後の修正版のコードがこの job で実行される。`GIST_TOKEN` の権限は gist だけで、人が Dependabot PR をマージした場合と同じ状況なので許容する
+- 判定スクリプトを base 側から checkout するのは多層防御の一つ。workflow 定義そのものは PR 側から読まれるので、変更ファイルの確認が主な防御になる
+- 条件を満たさない PR には synchronize（Dependabot の rebase）ごとにコメントが付く
+
+### 却下した選択肢
+
+- **`GITHUB_TOKEN` だけで実装する**: 上記のとおり、下流の workflow が起動しない。`GITHUB_TOKEN` には Dependabot alerts の読み取り権限も付けられない
+- **個人の PAT を使う**: 権限がユーザーアカウント全体に及び、失効の影響も受ける。App なら権限とインストール先をこのリポジトリに絞れる
+- **修正対象を名前だけで例外にする**: 推移的依存では修正版より新しい公開直後の版が素通りする
+- **推移的依存のガードを置かない**: `--min-release-age=0` のまま、[009] の `min-release-age=7` が守っていた範囲が自動マージで素通りになる
+- **security updates を `groups` で 1 PR にまとめる**: 自動マージの条件（1 パッケージ・GHSA ID 1 件）の判定が複雑になる。当面は 1 advisory = 1 PR で運用し、PR 数が問題になったら見直す
