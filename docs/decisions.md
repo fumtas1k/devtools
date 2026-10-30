@@ -5144,3 +5144,30 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 - ✅ 見出し・本文の行高が DADS の値になり、ページ間でそろう
 - ⚠️ 行高が変わるため、見出しやツール説明欄の高さが少し変わる（VRT の差分になる）
+
+---
+
+## [139] DADS 移行 Phase 4: 角丸とエレベーション
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 4。Tailwind v4 の `rounded-lg` は `--radius-lg` を参照するため、このリポジトリでは入力欄・ボタン・カードのすべてが 16px の角丸になっていた（`rounded-xl` は Tailwind 既定の 12px で、`rounded-lg` より小さい）。DADS はコントロール 8px・カード 12px を使い分ける。影は Tailwind 風の 5 段だった。
+
+### 決断
+
+- `--radius-lg` を 12px（DADS のカード）にする。カード・パネル・セクション・プレビューの枠は `rounded-lg` のまま
+- コントロール（入力欄・セレクト・ボタン・トグル）と、それと並ぶ出力・テキスト表示欄（`OutputField` と同じ形の欄）は `rounded-md`（8px）に付け替える。compact ボタンの共有定数 `COMPACT_BUTTON_SHAPE_CLASSES` も `rounded-md` にし、ずれ検知テストを合わせた
+- `--elevation-1`〜`8` を DADS の値（ambient + key の 2 枚重ね）にする。Tailwind の `shadow-md`（ツールカードの hover）は DADS の 2 段、`shadow-xl`（モバイルのドロワー）は 6 段に `@theme` で上書きする
+- 部品単位の小さな角丸（正規表現の AST ノード 6px 等）と、DADS の「カードは常に薄い影を持ち hover で 1 段上げる」は、コンポーネントごとに見た目を判断するため Phase 5 で扱う
+
+### 却下した選択肢
+
+- **`rounded-lg` を 8px にして、カードだけ `rounded-xl` に付け替える**: カードのほうが使用箇所が多く、付け替えの範囲が広がる
+- **DADS 公式の名前（`rounded-8` / `rounded-12`）の utility を新設する**: 既存の Tailwind の名前と二重になる
+
+### 結果・トレードオフ
+
+- ✅ コントロールとカードの角丸が DADS の値で使い分けられる
+- ⚠️ 入力欄・ボタンの角が小さくなり、影が濃くなるため、全ページの見た目が変わる（VRT の差分になる）

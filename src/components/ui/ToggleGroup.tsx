@@ -43,8 +43,8 @@ export function ToggleGroup<T extends string>({
   );
 
   const containerClass = isWrap
-    ? 'bg-subtle rounded-lg border border-input p-1 flex flex-wrap gap-1 w-max max-w-full'
-    : cx('bg-subtle rounded-lg border border-input p-1 toggle-grid', dynClassName);
+    ? 'bg-subtle rounded-md border border-input p-1 flex flex-wrap gap-1 w-max max-w-full'
+    : cx('bg-subtle rounded-md border border-input p-1 toggle-grid', dynClassName);
   const buttonSizeClass = size === 'sm' ? 'px-2.5 py-0.5' : 'px-3 py-1.5';
 
   return (
@@ -56,7 +56,7 @@ export function ToggleGroup<T extends string>({
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
           className={cx(
-            'caption font-bold btn-toggle rounded-lg whitespace-nowrap',
+            'caption font-bold btn-toggle rounded-md whitespace-nowrap',
             buttonSizeClass
           )}
         >

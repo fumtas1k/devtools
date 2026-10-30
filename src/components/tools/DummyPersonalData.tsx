@@ -121,7 +121,7 @@ export function DummyPersonalDataTool() {
               value={countInput}
               onChange={(e) => onCount(e.target.value)}
               onBlur={onCountBlur}
-              className="rounded-lg px-3 py-2 caption w-32 border border-input bg-default text-default"
+              className="rounded-md px-3 py-2 caption w-32 border border-input bg-default text-default"
             />
             <p className="caption text-muted mt-1">1〜{MAX_COUNT}人</p>
           </div>
@@ -137,7 +137,7 @@ export function DummyPersonalDataTool() {
                 value={ageMinInput}
                 onChange={(e) => onAgeMin(e.target.value)}
                 onBlur={onAgeMinBlur}
-                className="rounded-lg px-3 py-2 caption w-20 border border-input bg-default text-default"
+                className="rounded-md px-3 py-2 caption w-20 border border-input bg-default text-default"
               />
               <span className="caption text-muted">歳 〜</span>
               <input
@@ -149,7 +149,7 @@ export function DummyPersonalDataTool() {
                 value={ageMaxInput}
                 onChange={(e) => onAgeMax(e.target.value)}
                 onBlur={onAgeMaxBlur}
-                className="rounded-lg px-3 py-2 caption w-20 border border-input bg-default text-default"
+                className="rounded-md px-3 py-2 caption w-20 border border-input bg-default text-default"
               />
               <span className="caption text-muted">歳</span>
             </div>

@@ -629,7 +629,7 @@ export function CertDecoder() {
                   }
                 }}
                 placeholder="PKCS#12 のパスワード"
-                className="caption w-full rounded-lg border border-default bg-default text-default px-3 py-2"
+                className="caption w-full rounded-md border border-default bg-default text-default px-3 py-2"
                 autoComplete="off"
               />
             </div>

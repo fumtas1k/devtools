@@ -8,7 +8,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 ## 0. 正本と移行状況
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
-- **移行中**: 色（Phase 1）・フォーカスリング（Phase 2）・タイポグラフィ（Phase 3）は DADS に移行済み（`src/styles/global.css`）。角丸・影・コンポーネントの見た目は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
+- **移行中**: 色（Phase 1）・フォーカスリング（Phase 2）・タイポグラフィ（Phase 3）・角丸と影（Phase 4）は DADS に移行済み（`src/styles/global.css`）。コンポーネントの見た目は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
 - DADS の目標値（プリミティブ全色）は `references/tokens.md`、コンポーネントの見た目仕様は `references/components.md`。
 
 ### 移行中に新しく書くコードのルール
@@ -86,8 +86,8 @@ DADS の象徴。全インタラクティブ要素で同じ見た目にし、消
 ## 5. 余白・角丸・影
 
 - 余白は **4px グリッド**（4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 56 / 64 / 80 / 96）。
-- 角丸: コントロール（ボタン・入力・セレクト）**8px**、カード **12px**、ピル・アバター full。小さいボタンは 6px / 4px。
-- 影（elevation）は ambient（10% 黒）+ key（30% 黒）の 2 枚重ねで 8 段。カード・メニュー・ダイアログに使い、カードは hover で 1 段上げる。値は `references/tokens.md`。
+- 角丸: コントロール（ボタン・入力・セレクト・トグル、それと並ぶ出力欄）**8px** = `rounded-md`、カード・パネル・セクション **12px** = `rounded-lg`、ピル・アバター full = `rounded-full`。小さいボタンやコードの地は 4px = `rounded`。
+- 影（elevation）は ambient（10% 黒）+ key（30% 黒）の 2 枚重ねで 8 段（`--elevation-1`〜`8`）。カード・メニュー・ダイアログに使い、カードは hover で 1 段上げる。Tailwind の `shadow-md` は 2 段、`shadow-xl` は 6 段にそろえてある。
 - レイアウトは中央寄せの最大幅コンテナ、フォームは 1 カラム（読みやすい幅 ~760px）。
 
 ## 6. 文言

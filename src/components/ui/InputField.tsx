@@ -58,7 +58,7 @@ export function InputField({
   const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined;
 
   const inputClass = [
-    'caption w-full rounded-lg px-3 py-2 border text-default',
+    'caption w-full rounded-md px-3 py-2 border text-default',
     error ? 'border-error' : 'border-input',
     readOnly ? 'bg-surface' : 'bg-default',
     mono && 'font-mono',

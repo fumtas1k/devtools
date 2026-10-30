@@ -26,7 +26,7 @@ const HTML_VIEW_OPTIONS: { value: HtmlView; label: string }[] = [
 /** フレーバー本文の共通 pre 表示 */
 function FlavorPre({ content }: { content: string }) {
   return (
-    <pre className="m-0 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-subtle p-3 font-mono text-sm text-default">
+    <pre className="m-0 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md bg-subtle p-3 font-mono text-sm text-default">
       {content}
     </pre>
   );
