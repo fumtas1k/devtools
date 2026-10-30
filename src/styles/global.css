@@ -89,7 +89,7 @@
   /* ダークモード追加時はここを .dark でオーバーライドする */
   --color-text: #333333; /* solid-gray-800: 本文・見出し */
   --color-muted: #4d4d4d; /* solid-gray-700: 補助テキスト */
-  --color-bg: #ffffff;
+  --color-bg: #ffffff; /* white: ページ背景・カード（DADS の surface-page） */
   --color-bg-surface: #f2f2f2; /* solid-gray-50: テーブル見出し・縞・読み取り専用欄 */
   --color-bg-subtle: #f2f2f2; /* solid-gray-50: hover・既定ボタン背景（DADS の薄いグレーは 1 段のみ） */
   --color-border: #e6e6e6; /* solid-gray-100: カード枠・区切り */

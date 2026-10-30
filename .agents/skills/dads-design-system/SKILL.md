@@ -43,6 +43,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 | 図の線（3:1 必須）  | `solid-gray-536`                                                | `#767676`             | `--color-border-strong`                                                    |
 | tint 上のエラー文字 | `error-2`                                                       | `#ce0000`             | `--color-error-text`（`.text-error-text`）                                 |
 | フッター（濃色帯）  | `solid-gray-900` 地 / `-200` 文字 / `-400` 補助 / `-300` リンク | —                     | `--color-footer-*`                                                         |
+| ページ背景・カード  | `white`                                                         | `#ffffff`             | `--color-bg`（`.bg-default`）                                              |
 | 薄い背景            | `solid-gray-50`                                                 | `#f2f2f2`             | `--color-bg-subtle` / `--color-bg-surface`（`.bg-subtle` / `.bg-surface`） |
 
 セマンティック色は 2 段ペア。`-1` は白地で 4.5:1 に届かないもの（success / warning）があるので、**文字と白文字を載せる塗りには `-2` を使い、`-1` はアイコン・枠など非テキスト（3:1）に限る**（`error-1` は 4.60:1 で文字にも使える）。現行の対応先は `--color-success` / `--color-error` / `--color-warning` と各 `-bg`（`.text-success` / `.alert-success` 等）。
