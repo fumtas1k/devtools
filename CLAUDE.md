@@ -17,6 +17,8 @@ Claude Code 固有の補足は `.claude/rules/` に分割し、上記 `@import` 
 
 コード変更を伴う作業は、PR 作成前に `codex review --base origin/develop -c model="gpt-6-astra" -c model_reasoning_effort="high"` を**単独で**実行する（`cd` 前置・パイプ・リダイレクトを付けると `sandbox.excludedCommands` に一致せず起動に失敗する）。指摘は `receiving-code-review` skill の基準で精査して対応してから PR を作る。docs のみの変更は対象外。`.agents/rules/common.md` 6.9 節の reviewer subagent はこれで置き換える。
 
+`codex` が使えない環境（Claude Code on the web 等）では、Opus のサブエージェントを effort high 以上で起動してレビューさせる（Agent tool の `model: "opus"` / `effort: "high"`）。読み取り専用で、指摘は重大度・該当箇所・根拠付きで報告させる。
+
 ### 前提モデル
 
 `.claude/settings.json` の `model: "opus[1m]"` は現行世代の最新 Opus を指すエイリアス。`.agents/rules/common.md` の出力量（1.1 節）・委譲判断（6.9 節）の規約は、執筆時点の Claude Opus 5 の既定挙動（出力が長い / subagent 委譲に積極的）を前提にしている。**解決先が次世代に移ったら、これらの前提を見直す**。
@@ -26,7 +28,8 @@ Claude Code 固有の補足は `.claude/rules/` に分割し、上記 `@import` 
 ## プラグイン / vendor skill
 
 - リポジトリで共有するプラグインは **必ず `.claude/settings.json` の `enabledPlugins` に宣言する**（`context7` / `claude-md-management`）。`claude plugin install` はユーザーレベル設定に書くため、宣言しないと web セッションでは入らない（`.claude/scripts/session-install.sh` が `enabledPlugins` を読んで install する）。
-- superpowers / frontend-design はプラグインではなく `.agents/skills/` に vendor 済み（`skills-lock.json` 管理、出典は `.agents/skills/README.md`）。
+- superpowers はプラグインではなく `.agents/skills/` に vendor 済み（`skills-lock.json` 管理、出典は `.agents/skills/README.md`）。
+- UI のデザイン判断は `dads-design-system` skill を使う（frontend-design は使わない。`docs/decisions.md [134]`）。
 - セットアップ・トラブルシュート → `docs/setup/plugins.md`
 
 ---
