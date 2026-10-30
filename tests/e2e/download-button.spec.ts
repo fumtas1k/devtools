@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
 const PRIMARY_COLOR = 'rgb(0, 23, 193)'; // --color-primary (blue-900)
+const PRIMARY_HOVER_COLOR = 'rgb(0, 17, 143)'; // --color-primary-hover (blue-1000)
 
 test.describe('DownloadButton（production CSP 適用）', () => {
   test('SVGダウンロードボタン（secondary）が表示される（CSP 違反なし）', async ({ browser }) => {
@@ -59,7 +60,7 @@ test.describe('DownloadButton（production CSP 適用）', () => {
     });
   });
 
-  test('PNGダウンロードボタン（primary）の hover で filter brightness が変化する（CSP 違反なし）', async ({
+  test('PNGダウンロードボタン（primary）の hover で背景が primary-hover になる（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/jan-code', async (page) => {
@@ -68,12 +69,13 @@ test.describe('DownloadButton（production CSP 適用）', () => {
       const button = page.getByRole('button', { name: 'PNGダウンロード' });
       await expect(button).toBeVisible();
 
-      // 初期状態: filter なし (none)
-      await expect(button).toHaveCSS('filter', 'none');
+      // 初期状態: primary（blue-900）
+      await expect(button).toHaveCSS('background-color', PRIMARY_COLOR);
 
-      // hover: filter brightness(0.92) で 8% 暗化
+      // hover: --color-primary-hover（blue-1000）。filter は使わない（フォーカスの黄リングまで暗くなるため）
       await button.hover();
-      await expect(button).toHaveCSS('filter', 'brightness(0.92)');
+      await expect(button).toHaveCSS('background-color', PRIMARY_HOVER_COLOR);
+      await expect(button).toHaveCSS('filter', 'none');
     });
   });
 });
