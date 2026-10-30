@@ -66,10 +66,11 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 ### Phase 2: フォーカスリング
 
-- [ ] `:where(...):focus-visible` を黒 4px outline + 黄 2px ring に変更
-- [ ] 現行の `--focus-ring` は `outline` の省略形（`global.css` で 3 箇所が `outline: var(--focus-ring)`）。DS の `--focus-ring`（box-shadow のリスト）をそのまま転記すると壊れるので、outline 用と ring 用でトークンを分ける
-- [ ] `outline` を個別に上書きしている箇所（コンポーネント CSS）を洗い出して揃える
-- [ ] 暗い背景（primary 塗りのボタン等）上での視認性を確認
+- [x] `:where(...):focus-visible` を黒 4px outline + 黄 2px ring に変更
+- [x] outline 用 `--focus-ring`（`4px solid` 黒）と ring 用 `--focus-ring-shadow`（黄 2px の box-shadow）にトークンを分けた。旧 `--color-focus` は削除
+- [x] 個別に上書きしていた箇所（`.btn-file-input` の focus-within、`.json-toggle`、`.result-table-row`）を揃えた。自前の box-shadow を持つ選択中トグルは黄リングと影を重ねる
+- [x] テキストリンク（`.text-link` / `.text-link-plain`）は DADS の Link と同じく focus 時に地を yellow-300 にする
+- [x] 暗い背景（primary 塗りのボタン、濃色フッター）上での視認性を確認（`docs/decisions.md [136]`）
 
 ### Phase 3: タイポグラフィ
 

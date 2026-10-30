@@ -8,7 +8,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 ## 0. 正本と移行状況
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
-- **移行中**: 色は Phase 1 で DADS の値に移行済み（`src/styles/global.css`）。フォーカスリング・タイポグラフィ・角丸・影・コンポーネントの見た目は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
+- **移行中**: 色（Phase 1）とフォーカスリング（Phase 2）は DADS に移行済み（`src/styles/global.css`）。タイポグラフィ・角丸・影・コンポーネントの見た目は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
 - DADS の目標値（プリミティブ全色）は `references/tokens.md`、コンポーネントの見た目仕様は `references/components.md`。
 
 ### 移行中に新しく書くコードのルール
@@ -61,7 +61,11 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 DADS の象徴。全インタラクティブ要素で同じ見た目にし、消さない（`outline-none` を付けない）。目標は黒 4px の outline（offset 2px）+ `yellow-300` `#ffd43d` の 2px ring（box-shadow）。
 
-本リポジトリでは `global.css` の `:where(...):focus-visible` で一括適用している（JS ハンドラ不要）。現行は青 2px（`--focus-ring: 2px solid var(--color-focus)` を `outline` に渡す形）で、DADS の見た目へは Phase 2 で切り替える。それまでコンポーネント側で独自に上書きしない。
+本リポジトリでは `global.css` の `:where(...):focus-visible` で一括適用している（JS ハンドラ不要）。トークンは outline 用の `--focus-ring`（`4px solid` 黒）と、黄リング用の `--focus-ring-shadow`（`0 0 0 2px` yellow-300）。
+
+- コンポーネント側で `outline` / `box-shadow` を独自に指定しない。一括ルールは `@layer` の外にあり、focus 中は `@layer components` 内の自前の影を上書きする。focus 中も影を残したい要素は、一括ルールの直後（レイヤー外）で `box-shadow: var(--focus-ring-shadow), <自前の影>` と重ねる（例: `.btn-toggle[aria-pressed='true']`）
+- `:where()` の一括対象外の要素（`<tr>` やラベル）は `outline: var(--focus-ring)` と `box-shadow: var(--focus-ring-shadow)` を個別に付ける
+- テキストリンクは focus 時に地を yellow-300 にする（`.text-link` / `.text-link-plain` で定義済み）
 
 ## 4. タイポグラフィ
 
