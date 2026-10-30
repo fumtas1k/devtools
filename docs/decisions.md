@@ -21,7 +21,7 @@
 
 ## [001] デザインシステムとして DADS を採用
 
-**2026-04-12 | ステータス: 採用**
+**2026-04-12 | ステータス: 変更（[134] で配色・トークン値を DADS 実値へ移行）**
 
 ### 背景
 
@@ -4225,7 +4225,7 @@ cert-decoder（issue #643）で「鍵フォーマット変換（PEM/DER/JWK）�
 
 ## [113] 2026-06-13 — frontend-design もプラグイン運用から `npx skills add` vendor 方式へ移行
 
-**2026-06-13 | ステータス: 採用**
+**2026-06-13 | ステータス: 変更（[134] で廃止）**
 
 ### 背景
 
@@ -5001,7 +5001,7 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 - `frontend-design` スキル（vendor）を削除する。「大胆で個性的な美学」を求める汎用スキルで、UI 作業で発動すると DADS の静かで予測可能な見た目と逆方向の配色・書体を持ち込む
 - DADS 公式 npm パッケージ（`@digital-go-jp/tailwind-theme-plugin` / `design-system-example-components-react`）は導入せず、値を `@theme` のトークンへ転記する。既存の semantic token / `@layer components` の意味クラスの仕組みを保つため
 - DS が Google Fonts を `@import` している点は採用しない。外部送信禁止の原則と CSP（`default-src 'self'`）に反するため、`@fontsource` の自前配信を続ける
-- 移行の個別判断: `--color-blue-*` は DADS 値で上書きする / 等幅フォントは JetBrains Mono を維持する / タイポグラフィのクラス名は維持して値だけ寄せる / DS は参照専用とし、実装側の判断はこのファイルに残す
+- 移行の個別判断（primitive 名の衝突・等幅フォント・同期方向・タイポのクラス名）は計画書 4 章 D1〜D4 を正本とする
 
 ### 却下した選択肢
 
@@ -5011,6 +5011,6 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 
 ### 結果・トレードオフ
 
-- ✅ UI 作業で参照するスキルが 1 つになり、値の矛盾がなくなる
+- ✅ UI 作業で参照するスキルが 1 つになる。移行完了後はスキル・`global.css`・DS の値が一致する
 - ⚠️ 移行完了まで、スキルの目標値と `global.css` の現行値が食い違う期間がある。スキル冒頭に移行中である旨を明記した
 - ⚠️ 見た目が変わるフェーズごとに VRT baseline の再生成（`workflow_dispatch`、web セッションからは不可）が必要

@@ -22,11 +22,11 @@ DS にない `ToggleGroup` / `ToggleChips` は Button（outline / solid-fill）�
 - size: `lg` 56px（最小幅 136px）/ `md` 48px（96px）/ `sm` 36px（80px、角丸 6px）/ `xs` 28px（72px、14px 文字、角丸 4px）。lg / md の角丸は 8px
 - 文字は 16px Bold、行高 1（Oneline）
 
-| variant    | 通常                                             | hover                                  | active                     | disabled                                    |
-| :--------- | :----------------------------------------------- | :------------------------------------- | :------------------------- | :------------------------------------------ |
-| solid-fill | `blue-900` 塗り・白文字・**4px double の透明枠** | `blue-1000` + 下線                     | `blue-1200` + 下線         | `solid-gray-300` 塗り・`solid-gray-50` 文字 |
-| outline    | 白地・`blue-900` 文字と 1px 枠                   | `blue-200` 地・`blue-1000` 文字 + 下線 | `blue-300` 地・`blue-1200` | 白地・`solid-gray-300` 文字                 |
-| text       | 透明・`blue-900` 文字・下線（offset 3px）        | `blue-50` 地・下線 3px                 | `blue-100` 地              | `solid-gray-300` 文字                       |
+| variant    | 通常                                             | hover                                    | active                                 | disabled                                    |
+| :--------- | :----------------------------------------------- | :--------------------------------------- | :------------------------------------- | :------------------------------------------ |
+| solid-fill | `blue-900` 塗り・白文字・**4px double の透明枠** | `blue-1000` + 下線                       | `blue-1200` + 下線                     | `solid-gray-300` 塗り・`solid-gray-50` 文字 |
+| outline    | 白地・`blue-900` 文字と 1px 枠                   | `blue-200` 地・`blue-1000` 文字 + 下線   | `blue-300` 地・`blue-1200` 文字 + 下線 | 白地・`solid-gray-300` 文字                 |
+| text       | 透明・`blue-900` 文字・下線（offset 3px）        | `blue-50` 地・`blue-1000` 文字・下線 3px | `blue-100` 地・`blue-1200` 文字        | `solid-gray-300` 文字                       |
 
 disabled は pointer-events を止める。hover と `:focus-visible` は同じ視覚反応で定義する（`ui-conventions.md` 2.1）。
 
@@ -45,7 +45,8 @@ disabled は pointer-events を止める。hover と `:focus-visible` は同じ�
 ## Checkbox / Radio
 
 - 18px の枠（2px `solid-gray-600`）、クリック領域は 24px の箱 + ラベル
-- checked は `blue-900` 塗り（radio は中心の円）、hover で `blue-1100`
+- 未チェックの hover は枠を黒にする
+- checked は `blue-900` 塗り（radio は中心の円）。checkbox の checked hover は `blue-1100`（radio には無い）
 - エラーは `error-1`、disabled は `solid-gray-300`
 
 ## NotificationBanner
@@ -58,7 +59,7 @@ disabled は pointer-events を止める。hover と `:focus-visible` は同じ�
 ## StatusBadge
 
 - 塗りのピル（角丸 8px）、padding 8px、文字 16px / 行高 1、白文字
-- 既定の塗りは `solid-gray-536`。状態色を使うときも白文字で 4.5:1 を満たす塗りにする
+- 既定の塗りは `solid-gray-536`。状態色を使うときは白文字で 4.5:1 を満たす `-2`（`success-2` / `error-2` / `warning-*-2`）を塗る（`-1` は success / warning で不足する）
 
 ## ChipLabel
 

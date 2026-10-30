@@ -9,8 +9,15 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
 - **移行中**: `src/styles/global.css` のトークンは、まだ DADS 以前の値（Tailwind パレット由来）が残っている。段階移行の計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
-- 新規コードは **semantic token / 意味クラス経由**で色・角丸・影を指定する（`.agents/rules/common.md` 7 章）。トークンの値は移行フェーズで差し替わるので、DADS の hex をコンポーネントに直書きしない。
 - DADS の目標値（プリミティブ全色）は `references/tokens.md`、コンポーネントの見た目仕様は `references/components.md`。
+
+### 移行中に新しく書くコードのルール
+
+1〜5 章とコンポーネント仕様は**移行フェーズで適用する目標**で、まだ `global.css` に入っていないものがある。移行の途中で新しく UI を書くときは、次のとおりにする。
+
+- `src/components/ui/` の既存コンポーネントと、既存の semantic token / 意味クラス（2 章の「現行の対応先」列）を使う。トークンの値はフェーズごとに差し替わるので、新しいコードも自動で追従する
+- DADS の見た目を先取りしない。DADS の hex の直書き、`@theme` への DADS 値の個別追加、`rounded-[12px]` 等の任意値、独自のフォーカスリングや hover 下線はどれも使わない
+- 必要な意味クラスが無ければ、現行パレットの値で `global.css` に追加し（common.md 7 章）、DADS 値への移行は計画のフェーズに任せる
 
 ## 1. 原則
 
@@ -22,38 +29,35 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 キーカラーは Blue の 1 色だけ。他の色相（cyan / green / lime / yellow / orange / red / magenta / purple / light-blue）はチップ・タグ・データ・状態表示に限って控えめに使う。
 
-| 用途                | DADS トークン                                        | 値                    |
-| :------------------ | :--------------------------------------------------- | :-------------------- |
-| primary（塗り）     | `blue-900`                                           | `#0017c1`             |
-| primary hover       | `blue-1000`                                          | `#00118f`             |
-| primary active      | `blue-1200`                                          | `#000060`             |
-| リンク / visited    | `blue-1000` / `magenta-900`                          | `#00118f` / `#8b008b` |
-| 本文 / 見出し       | `solid-gray-800` / `solid-gray-900`                  | `#333333` / `#1a1a1a` |
-| 補助テキスト        | `solid-gray-700`                                     | `#4d4d4d`             |
-| placeholder         | `solid-gray-536`（白地 AA の下限）                   | `#767676`             |
-| 入力欄の枠          | `solid-gray-600`                                     | `#666666`             |
-| 区切り線 / 薄い枠   | `solid-gray-420` / `solid-gray-100`                  | `#949494` / `#e6e6e6` |
-| 薄い背景            | `solid-gray-50`                                      | `#f2f2f2`             |
-| success 塗り / 文字 | `success-1`（green-600）/ `success-2`（green-800）   | `#259d63` / `#197a4b` |
-| error 塗り / 文字   | `error-1`（red-800）/ `error-2`（red-900）           | `#ec0000` / `#ce0000` |
-| warning（黄）       | `warning-yellow-1`（yellow-700）/ `-2`（yellow-900） | `#b78f00` / `#927200` |
-| warning（橙）       | `warning-orange-1`（orange-600）/ `-2`（orange-800） | `#fb5b01` / `#c74700` |
+| 用途              | DADS トークン                       | 値                    | 現行の対応先                                                               |
+| :---------------- | :---------------------------------- | :-------------------- | :------------------------------------------------------------------------- |
+| primary（塗り）   | `blue-900`                          | `#0017c1`             | `--color-primary`（`bg-primary` / `text-primary`）                         |
+| primary hover     | `blue-1000`                         | `#00118f`             | 各コンポーネントの `:hover` 定義                                           |
+| primary active    | `blue-1200`                         | `#000060`             | 同上                                                                       |
+| リンク / visited  | `blue-1000` / `magenta-900`         | `#00118f` / `#8b008b` | `--color-link` / `--color-link-visited`（`.text-link`）                    |
+| 本文 / 見出し     | `solid-gray-800` / `solid-gray-900` | `#333333` / `#1a1a1a` | `--color-text`（`.text-default` / `.text-body`）                           |
+| 補助テキスト      | `solid-gray-700`                    | `#4d4d4d`             | `--color-muted`（`.text-muted`）                                           |
+| placeholder       | `solid-gray-536`（白地 AA の下限）  | `#767676`             | —                                                                          |
+| 入力欄の枠        | `solid-gray-600`                    | `#666666`             | `--color-border-input`（`.border-input`）                                  |
+| 区切り線 / 薄い枠 | `solid-gray-420` / `solid-gray-100` | `#949494` / `#e6e6e6` | `--color-border`（`.border-default`）                                      |
+| 薄い背景          | `solid-gray-50`                     | `#f2f2f2`             | `--color-bg-subtle` / `--color-bg-surface`（`.bg-subtle` / `.bg-surface`） |
 
-セマンティック色は「塗り」と「文字」の 2 段ペアで使い、どちらもコントラストを満たす組を選ぶ。visited の色は DS 内で `magenta-800` と `magenta-900` が混在しているため、移行時に公式値で確定する。
+セマンティック色は 2 段ペア。`-1` は白地で 4.5:1 に届かないもの（success / warning）があるので、**文字と白文字を載せる塗りには `-2` を使い、`-1` はアイコン・枠など非テキスト（3:1）に限る**（`error-1` は 4.60:1 で文字にも使える）。現行の対応先は `--color-success` / `--color-error` / `--color-warning` と各 `-bg`（`.text-success` / `.alert-success` 等）。
+
+| 種類          | `-1`（非テキスト）                   | `-2`（文字・白文字の塗り）       |
+| :------------ | :----------------------------------- | :------------------------------- |
+| success       | `green-600` `#259d63`（白地 3.45:1） | `green-800` `#197a4b`（5.35:1）  |
+| error         | `red-800` `#ec0000`（4.60:1）        | `red-900` `#ce0000`（5.79:1）    |
+| warning（黄） | `yellow-700` `#b78f00`（3.02:1）     | `yellow-900` `#927200`（4.54:1） |
+| warning（橙） | `orange-600` `#fb5b01`（3.18:1）     | `orange-800` `#c74700`（4.85:1） |
+
+visited の色は DS 内で `magenta-800` と `magenta-900` が混在しているため、Phase 1 で公式値で確定する。
 
 ## 3. フォーカスリング
 
-DADS の象徴。全インタラクティブ要素で同じ見た目にし、消さない（`outline-none` を付けない）。
+DADS の象徴。全インタラクティブ要素で同じ見た目にし、消さない（`outline-none` を付けない）。目標は黒 4px の outline（offset 2px）+ `yellow-300` `#ffd43d` の 2px ring（box-shadow）。
 
-```css
-:focus-visible {
-  outline: 4px solid #000000;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 2px #ffd43d; /* yellow-300 */
-}
-```
-
-本リポジトリでは `global.css` の `:where(...):focus-visible` で一括適用している（JS ハンドラ不要）。
+本リポジトリでは `global.css` の `:where(...):focus-visible` で一括適用している（JS ハンドラ不要）。現行は青 2px（`--focus-ring: 2px solid var(--color-focus)` を `outline` に渡す形）で、DADS の見た目へは Phase 2 で切り替える。それまでコンポーネント側で独自に上書きしない。
 
 ## 4. タイポグラフィ
 
@@ -68,7 +72,7 @@ DADS の象徴。全インタラクティブ要素で同じ見た目にし、消
 | Dense（dns）    | テーブル・密な UI  | 17・16・14 × N/B × 行高 120 / 130                                                                 |
 | Oneline（oln）  | ボタン・1 行ラベル | 17・16・14 × N/B × 行高 100                                                                       |
 | Display（dsp）  | ヒーロー           | 64 / 57 / 48 × N/B × 行高 140                                                                     |
-| Mono            | コード             | 17・16・14 × N/B × 行高 150                                                                       |
+| Mono            | コード             | 17・16・14 × N × 行高 150（JetBrains Mono は 400 のみ読み込み。B は使わない）                     |
 
 ## 5. 余白・角丸・影
 
@@ -98,10 +102,9 @@ DADS の汎用仕様より優先する。詳細の正本は以下。
 
 ## 8. チェックリスト
 
-- [ ] 色・角丸・影を semantic token / 意味クラス経由で指定した
+- [ ] 色・角丸・影を既存の semantic token / 意味クラス経由で指定した（DADS 値の先取りなし）
 - [ ] 文字 4.5:1 / 非テキスト 3:1 を満たす
-- [ ] フォーカスリング（黒 4px + 黄 2px）が見える
-- [ ] hover で色以外の手掛かり（下線等）がある
+- [ ] フォーカスリングを上書き・削除していない
 - [ ] 本文 16px 以上、14px 未満なし
 - [ ] タップ領域 44x44px 以上
 - [ ] PC 1280x800 / スマホ 390x844 で目視確認した

@@ -61,18 +61,22 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 - [ ] HAR フェーズ色・鉄道図アンカー色を DADS のアクセント色相へ付け替え
 - [ ] 文字 4.5:1 / 非テキスト 3:1 を全組み合わせで確認
 
-primitive を直接使う 16 箇所前後（`blue-*`）は値の衝突で見た目が変わるので、同じ PR で semantic token へ移す。
+primitive の直接参照は `var(--color-blue-*)` 4 箇所（`global.css` 3 / `index.astro` 1）と `var(--color-neutral-*)` 約 15 箇所（`Footer.astro` / `Sidebar.astro` / `MobileDrawer.astro` / `index.astro` / `global.css`）。blue は値の衝突で見た目が変わり、neutral は Solid Gray へ置き換える対象なので、どちらも同じ PR で semantic token へ移す。
+
+- [ ] `src/layouts/BaseLayout.astro` の `<meta name="theme-color">` と `public/manifest.webmanifest` の `theme_color`（どちらも `#1A56DB`）を primary に合わせる
+- [ ] visited の色（DS 内で `magenta-800` / `900` が混在）を公式値で確定する
 
 ### Phase 2: フォーカスリング
 
 - [ ] `:where(...):focus-visible` を黒 4px outline + 黄 2px ring に変更
+- [ ] 現行の `--focus-ring` は `outline` の省略形（`global.css` で 3 箇所が `outline: var(--focus-ring)`）。DS の `--focus-ring`（box-shadow のリスト）をそのまま転記すると壊れるので、outline 用と ring 用でトークンを分ける
 - [ ] `outline` を個別に上書きしている箇所（コンポーネント CSS）を洗い出して揃える
 - [ ] 暗い背景（primary 塗りのボタン等）上での視認性を確認
 
 ### Phase 3: タイポグラフィ
 
 - [ ] `.caption` / `.body-emphasis` / `.tool-info-*` 等の値を DADS の std / dns / oln スケールへ寄せる（クラス名は維持、4 章 D4）
-- 等幅フォントは JetBrains Mono を維持（4 章 D2）
+- 等幅フォントは JetBrains Mono を維持（4 章 D2）。読み込みは 400 のみなので、等幅の Bold は使わない
 
 ### Phase 4: 角丸・エレベーション
 
@@ -96,6 +100,7 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 ### Phase 7: 後片付け
 
 - [ ] 使われなくなった旧トークン・旧クラスを削除
+- [ ] `dads-design-system/references/tokens.md` を削除し、`SKILL.md` 0 章の「移行中」の記述と 2 章の「現行の対応先」列を更新
 - [ ] `SPEC.md` / `docs/decisions.md` / `.agents/rules/ui-conventions.md` を更新
 
 ## 4. 決定事項（2026-10-30 確定、`docs/decisions.md [134]`）
