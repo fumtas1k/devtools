@@ -6,7 +6,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   // CI は全コアを使う（GitHub の ubuntu-latest は 4 vCPU）。1 worker 直列だと E2E が律速になっていた。
-  // ローカルは Playwright 既定（コア数の 50%）のまま。採用根拠: docs/decisions.md [136]
+  // CI 未設定のローカルは Playwright 既定（コア数の 50%）。採用根拠: docs/decisions.md [136]
   workers: process.env.CI ? '100%' : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
@@ -29,8 +29,8 @@ export default defineConfig({
       name: 'visual-regression',
       use: { ...devices['Desktop Chrome'] },
       testMatch: ['**/visual-regression.spec.ts'],
-      // 描画差分は retry しても再現するため retry しない。retry があると diff が出た PR で
-      // 全件を 2 回撮り直し、失敗 run が数分伸びていた（docs/decisions.md [136]）
+      // 描画差分は retry しても再現するため retry しない。diff が出たテストは retry で
+      // 再撮影され、失敗 run が数分伸びていた（docs/decisions.md [136]）
       retries: 0,
     },
     // #414: dev mode 経路 hydration check 専用 (attribute mismatch は production silent

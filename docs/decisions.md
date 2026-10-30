@@ -5054,13 +5054,13 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 
 ### 背景
 
-CI の `workers` は Playwright 雛形の既定値（`process.env.CI ? 1 : undefined`）のままで、採用理由の記録がなかった。E2E は 395 件を直列で回し、`E2E テストを実行` ステップだけで約 3 分 54 秒（e2e ジョブ全体 5 分 14 秒）かかっていた。VRT は pass 時 37 秒だが、diff が出た run では `retries: 1` で全件を撮り直し、`VRT 実行` ステップが 5 分 45 秒まで伸びていた（PR #809）。
+CI の `workers` は Playwright 雛形の既定値（`process.env.CI ? 1 : undefined`）のままで、採用理由の記録がなかった。E2E は 395 件を直列で回し、`E2E テストを実行` ステップだけで約 3 分 54 秒（e2e ジョブ全体 5 分 14 秒）かかっていた。VRT は pass 時 37 秒だが、全ページに diff が出た PR #809 では、各テストが mismatch のまま `expect.timeout`（5 秒）まで撮り直しを続けたうえ `retries: 1` でもう一度走り、`VRT 実行` ステップが 5 分 45 秒まで伸びていた。
 
 ### 決断
 
-- `playwright.config.ts` の CI 時 `workers` を `'100%'` にする（GitHub の ubuntu-latest は 4 vCPU）。ローカルは既定（コア数の 50%）のまま
+- `playwright.config.ts` の CI 時 `workers` を `'100%'` にする（GitHub の ubuntu-latest は 4 vCPU）。`CI` 未設定のローカルは既定（コア数の 50%）のまま。`CI=1` を設定した Claude Code on the web セッションは CI と同じく `'100%'` になる
 - `visual-regression.yml` の `--workers=1` を外す。baseline 生成（`update-visual-baseline.yml`）は実行頻度が低いため 1 worker のまま残す
-- `visual-regression` project は `retries: 0` にする。描画差分は retry しても再現するので、retry は失敗 run を長くするだけになる
+- `visual-regression` project は `retries: 0` にする。描画差分は retry しても再現するので、retry は失敗 run を長くするだけになる。project の設定なので baseline 生成（`update-visual-baseline.yml`）も retry しなくなるが、1 worker で負荷が低く、失敗しても再実行すれば済む
 
 4 コアのコンテナで実測した結果:
 
