@@ -85,7 +85,7 @@ test.describe('ToggleGroup hover / focus-visible フィードバック（issue #
       const boxShadow = () => encodeBtn.evaluate((el) => getComputedStyle(el).boxShadow);
       await expect
         .poll(boxShadow)
-        .toMatch(/^rgb\(255, 212, 61\) 0px 0px 0px 2px, rgba\(0, 0, 0, 0\.1\)/);
+        .toMatch(/^rgb\(255, 212, 61\) 0px 0px 0px 2px, rgba\(0, 0, 0, 0\.1\) 0px 2px 12px 2px/);
     });
   });
 });

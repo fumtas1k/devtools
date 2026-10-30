@@ -99,14 +99,14 @@ export function MarkdownEditor() {
           </div>
           {input.length === 0 ? (
             <div
-              className="md-preview-box w-full rounded-lg border border-input p-3 caption text-muted flex items-center justify-center"
+              className="md-preview-box w-full rounded-md border border-input p-3 caption text-muted flex items-center justify-center"
               aria-label="プレビューエリア（入力待ち）"
             >
               markdown を入力するとプレビューが表示されます
             </div>
           ) : (
             <div
-              className="markdown-preview md-preview-box focus-inset w-full rounded-lg border border-input p-4"
+              className="markdown-preview md-preview-box focus-inset w-full rounded-md border border-input p-4"
               // sanitizeHtml 済みの HTML を dangerouslySetInnerHTML で描画する。
               // renderMarkdown が必ず sanitizeHtml に通してから返すため XSS は発生しない。
               dangerouslySetInnerHTML={{ __html: html }}

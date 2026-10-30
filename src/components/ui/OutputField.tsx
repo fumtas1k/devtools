@@ -82,7 +82,7 @@ export function OutputField({
             'caption',
             monoClass,
             resizeClass,
-            'w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide',
+            'w-full rounded-md border border-default bg-subtle text-default px-3 py-2 tracking-wide',
             fillTextareaClass
           )}
           aria-label={ariaLabel ?? label}

@@ -26,7 +26,7 @@ const HTML_VIEW_OPTIONS: { value: HtmlView; label: string }[] = [
 /** フレーバー本文の共通 pre 表示 */
 function FlavorPre({ content }: { content: string }) {
   return (
-    <pre className="m-0 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-subtle p-3 font-mono text-sm text-default">
+    <pre className="m-0 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md bg-subtle p-3 font-mono text-sm text-default">
       {content}
     </pre>
   );
@@ -64,7 +64,7 @@ function HtmlFlavorBody({
             title="サニタイズ後プレビュー"
             sandbox=""
             srcDoc={sanitized}
-            className="h-64 w-full rounded-lg border border-default bg-default"
+            className="h-64 w-full rounded-md border border-default bg-default"
           />
           <p className="caption text-muted m-0 mt-2">
             スクリプト・危険な属性は除去済み。セキュリティポリシー（CSP）によりインラインスタイルは反映されず、構造とテキスト中心の表示になります。

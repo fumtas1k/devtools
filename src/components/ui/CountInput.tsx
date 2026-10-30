@@ -47,7 +47,7 @@ export function CountInput({
               handleGenerate();
             }
           }}
-          className="caption w-24 rounded-lg border border-input bg-default text-default px-3 py-2"
+          className="caption w-24 rounded-md border border-input bg-default text-default px-3 py-2"
           aria-describedby={`${id}-hint`}
         />
         <ActionButton onClick={handleGenerate} variant="primary">

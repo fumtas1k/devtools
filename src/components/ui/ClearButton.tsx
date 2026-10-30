@@ -17,7 +17,7 @@ export function ClearButton({ onClick, className = '' }: Props) {
       type="button"
       onClick={onClick}
       className={cx(
-        'caption text-muted btn-clear rounded-lg px-3 py-1.5 whitespace-nowrap border-0',
+        'caption text-muted btn-clear rounded-md px-3 py-1.5 whitespace-nowrap border-0',
         className
       )}
     >

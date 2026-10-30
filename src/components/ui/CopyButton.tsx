@@ -79,7 +79,7 @@ interface Props {
  * `.btn-copy.is-compact` / `.btn-copy:disabled` を参照。状態は `is-copied` / `is-compact` className で切替。
  *
  * default 表示の角丸は COMPACT_BUTTON_SHAPE_CLASSES 経由で ActionButton (size="compact") /
- * DownloadButton と統一（rounded-lg / issue #320）。
+ * DownloadButton と統一（rounded-md / issue #320。DADS 移行 Phase 4 で rounded-lg から変更）。
  */
 export function CopyButton({
   text,

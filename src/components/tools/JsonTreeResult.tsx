@@ -90,7 +90,7 @@ export function JsonTreeResult({
       </div>
       <div
         ref={boxRef}
-        className="json-tree-box rounded-lg border border-default bg-subtle px-3 py-2"
+        className="json-tree-box rounded-md border border-default bg-subtle px-3 py-2"
       >
         {tooLarge ? (
           <div className="space-y-2" role="status" aria-live="polite">

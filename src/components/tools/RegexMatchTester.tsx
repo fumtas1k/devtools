@@ -246,7 +246,7 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
                   入力が長いため先頭 {UNKNOWN_CAP} 文字だけで実行しました。
                 </p>
               )}
-              <div className="rounded-lg border border-default p-3 font-mono caption whitespace-pre-wrap break-all">
+              <div className="rounded-md border border-default p-3 font-mono caption whitespace-pre-wrap break-all">
                 {matches.length > 0 ? (
                   <MatchHighlights
                     text={shownText}

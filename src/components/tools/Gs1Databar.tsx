@@ -335,7 +335,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                     <button
                       type="button"
                       onClick={() => removeAiField(i)}
-                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5 inline-flex items-center justify-center"
+                      className="rounded-md p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5 inline-flex items-center justify-center"
                       aria-label="フィールドを削除"
                     >
                       <CloseIcon size={16} />

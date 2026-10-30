@@ -53,7 +53,7 @@ export function HarEntryList({ entries, waterfall, selectedIndex, onSelect }: Pr
   });
 
   return (
-    <div className={cx('overflow-x-auto rounded border border-default', dynClassName)}>
+    <div className={cx('overflow-x-auto rounded-lg border border-default', dynClassName)}>
       <table className="w-full border-collapse text-sm">
         <caption className="sr-only">HTTP リクエスト一覧</caption>
         <thead>

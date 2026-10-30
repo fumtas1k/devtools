@@ -126,7 +126,7 @@ export function DummyTextTool() {
                 handleLengthBlur();
               }
             }}
-            className="rounded-lg px-3 py-2 caption w-32 border border-input bg-default text-default"
+            className="rounded-md px-3 py-2 caption w-32 border border-input bg-default text-default"
           />
           <p className="caption text-muted mt-1">1〜5000文字</p>
         </div>
@@ -157,7 +157,7 @@ export function DummyTextTool() {
                   value={chunkInput}
                   onChange={(e) => handleChunkChange(e.target.value)}
                   onBlur={handleChunkBlur}
-                  className="rounded-lg px-3 py-2 caption w-20 border border-input bg-default text-default"
+                  className="rounded-md px-3 py-2 caption w-20 border border-input bg-default text-default"
                 />
                 <span className="caption text-muted">文字ごと（1〜1000）</span>
               </div>

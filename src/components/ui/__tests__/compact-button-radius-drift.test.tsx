@@ -52,7 +52,7 @@ describe('compact ボタン border-radius drift 検知 (陰性対照)', () => {
     const btn = screen.getByRole('button', { name: 'コピー' }) as HTMLButtonElement;
     const tokens = extractCompactTokens(COMPACT_BUTTON_SHAPE_CLASSES);
 
-    expect(btn.className).toContain(tokens.borderRadius); // 'rounded-lg'
+    expect(btn.className).toContain(tokens.borderRadius); // 'rounded-md'
     expect(btn.className).toContain(tokens.px); // 'px-3'
     expect(btn.className).toContain(tokens.py); // 'py-2'
     expect(btn.className).toContain(tokens.leading); // 'leading-none'
@@ -68,7 +68,7 @@ describe('compact ボタン border-radius drift 検知 (陰性対照)', () => {
     const btn = screen.getByRole('button', { name: 'ダウンロード' }) as HTMLButtonElement;
     const tokens = extractCompactTokens(COMPACT_BUTTON_SHAPE_CLASSES);
 
-    expect(btn.className).toContain(tokens.borderRadius); // 'rounded-lg'
+    expect(btn.className).toContain(tokens.borderRadius); // 'rounded-md'
     expect(btn.className).toContain(tokens.px);
     expect(btn.className).toContain(tokens.py);
     expect(btn.className).toContain(tokens.leading);
@@ -99,37 +99,37 @@ describe('compact ボタン border-radius drift 検知 (陰性対照)', () => {
 // test-gates ルール準拠: 検知能力ゼロで green にならないことを保証する。
 //
 // 検証方法: 旧実装（CopyButton が rounded を使用）では copyTokens.borderRadius = 'rounded'、
-// COMPACT_BUTTON_SHAPE_CLASSES には 'rounded-lg' が含まれるため
+// COMPACT_BUTTON_SHAPE_CLASSES には 'rounded-md'（issue #320 で rounded-lg に統一、DADS 移行 Phase 4 で rounded-md に変更）が含まれるため
 // expect(copyTokens.borderRadius).toBe(expectedRadius) が fail する。
-// → 「CopyButton の rounded を rounded-lg に統一した」修正が機能していることを証明する。
+// → 「CopyButton の rounded を共有定数の角丸に統一した」修正が機能していることを証明する。
 //
 // もし CopyButton の角丸を再び rounded に戻すと、このテストが fail して drift を検知できる。
 
 describe('compact ボタン border-radius drift 検知 (陽性対照)', () => {
-  it('[陽性対照] COMPACT_BUTTON_SHAPE_CLASSES が rounded-lg を指定していることを確認する', () => {
-    // 定数自体が rounded-lg を含む前提。これが変わったら意図的な変更として検知する。
+  it('[陽性対照] COMPACT_BUTTON_SHAPE_CLASSES が rounded-md を指定していることを確認する', () => {
+    // 定数自体が rounded-md を含む前提。これが変わったら意図的な変更として検知する。
     const tokens = extractCompactTokens(COMPACT_BUTTON_SHAPE_CLASSES);
-    expect(tokens.borderRadius).toBe('rounded-lg');
+    expect(tokens.borderRadius).toBe('rounded-md');
   });
 
-  it('[陽性対照] CopyButton(default) の角丸が rounded-lg であることを確認する (旧実装 rounded では fail)', () => {
+  it('[陽性対照] CopyButton(default) の角丸が rounded-md であることを確認する (旧実装 rounded では fail)', () => {
     // 旧実装: CopyButton に 'rounded' が直書きされていた。
-    // → このテストは rounded-lg を assert するため、旧実装に当てると必ず fail する。
+    // → このテストは rounded-md を assert するため、旧実装に当てると必ず fail する。
     // → 角丸が再び rounded に戻った場合も検知できる。
     render(<CopyButton text="test" label="コピー" />);
     const btn = screen.getByRole('button', { name: 'コピー' }) as HTMLButtonElement;
 
-    // 'rounded-lg' が存在することを assert
-    expect(btn.className).toContain('rounded-lg');
+    // 'rounded-md' が存在することを assert
+    expect(btn.className).toContain('rounded-md');
 
-    // 旧実装の 'rounded'（= 0.25rem, rounded-lg 以外の rounded）が単体で含まれないことを確認
-    // ('rounded-lg' は 'rounded' を部分一致で含むため、単体 token として存在しないことを検証)
+    // 旧実装の 'rounded'（= 0.25rem, rounded-md 以外の rounded）が単体で含まれないことを確認
+    // ('rounded-md' は 'rounded' を部分一致で含むため、単体 token として存在しないことを検証)
     const classes = btn.className.split(' ');
     const hasPlainRounded = classes.includes('rounded');
-    expect(hasPlainRounded).toBe(false); // 'rounded' のみ（rounded-lgではない）が含まれていたら fail
+    expect(hasPlainRounded).toBe(false); // 'rounded' のみ（rounded-mdではない）が含まれていたら fail
   });
 
-  it('[陽性対照] ActionButton(compact) の角丸が rounded-lg であることを確認する', () => {
+  it('[陽性対照] ActionButton(compact) の角丸が rounded-md であることを確認する', () => {
     render(
       <ActionButton onClick={() => {}} size="compact">
         ダウンロード
@@ -138,7 +138,7 @@ describe('compact ボタン border-radius drift 検知 (陽性対照)', () => {
     const btn = screen.getByRole('button', { name: 'ダウンロード' }) as HTMLButtonElement;
     const classes = btn.className.split(' ');
 
-    expect(classes).toContain('rounded-lg');
+    expect(classes).toContain('rounded-md');
     expect(classes).not.toContain('rounded'); // plain 'rounded' (0.25rem) は含まない
   });
 });

@@ -303,7 +303,7 @@ export function EncodingConverterTool() {
             対応形式: テキストファイル（.txt / .csv / .json / .xml / .yaml / .toml 等）・最大 10 MB
           </p>
           {fileBytes && (
-            <div className="mt-2 rounded-lg px-3 py-2 font-mono caption text-muted bg-subtle border border-default break-all">
+            <div className="mt-2 rounded-md px-3 py-2 font-mono caption text-muted bg-subtle border border-default break-all">
               <span className="text-default">{formatBytes(fileBytes.length)}</span>
               {'　'}
               {hexPreview(fileBytes)}

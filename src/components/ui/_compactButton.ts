@@ -5,5 +5,6 @@
  *
  * 歴史: PR #318 後も CopyButton は rounded(0.25rem) / ActionButton compact は rounded-lg(0.5rem)
  * で不一致が残っていたため、issue #320 で rounded-lg に統一し本定数として共有化。
+ * DADS 移行 Phase 4 で、DADS のコントロールの角丸 8px（rounded-md）に変更（docs/decisions.md [139]）。
  */
-export const COMPACT_BUTTON_SHAPE_CLASSES = 'rounded-lg font-bold px-3 py-2 leading-none' as const;
+export const COMPACT_BUTTON_SHAPE_CLASSES = 'rounded-md font-bold px-3 py-2 leading-none' as const;

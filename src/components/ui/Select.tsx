@@ -29,7 +29,7 @@ export function Select<T extends string>({
         onChange={(e) => onChange(e.target.value as T)}
         aria-label={ariaLabel}
         autoComplete={autoComplete}
-        className="caption w-full rounded-lg border border-input bg-default text-default appearance-none pl-3 pr-10 py-2"
+        className="caption w-full rounded-md border border-input bg-default text-default appearance-none pl-3 pr-10 py-2"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value} disabled={opt.disabled}>
