@@ -48,7 +48,7 @@ jobs:
         # pipefail で playwright の exit code を tee 越しでも保持。
         run: |
           set -o pipefail
-          npm run test:vrt -- --workers=1 2>&1 | tee vrt-output.log
+          npm run test:vrt 2>&1 | tee vrt-output.log
 
       - name: VRT outcome を出力
         if: ${{ !cancelled() }}

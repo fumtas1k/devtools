@@ -76,4 +76,4 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** の両方でスク
 
 ### 3.4 React island へ入力する spec は hydration を待つ
 
-`/tools/*` で `fill` / `click` する spec は `beforeEach` で `await waitForReactHydration(page);`（`tests/e2e/helpers.ts`）を呼ぶ（`withProductionCsp` は内部で待機するので不要）。hydration 前の `fill` は React の `onChange` を発火させない。CI（`workers: 1`）では顕在化せずローカル並列でだけ flaky になる（issue #750）。漏れは `tests/meta/e2e-hydration-wait-coverage.test.ts` が検出する。
+`/tools/*` で `fill` / `click` する spec は `beforeEach` で `await waitForReactHydration(page);`（`tests/e2e/helpers.ts`）を呼ぶ（`withProductionCsp` は内部で待機するので不要）。hydration 前の `fill` は React の `onChange` を発火させない。並列実行時にだけ顕在化する flaky になる（issue #750。CI も並列実行）。漏れは `tests/meta/e2e-hydration-wait-coverage.test.ts` が検出する。
