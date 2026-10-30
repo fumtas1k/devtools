@@ -99,9 +99,9 @@ describe('compact ボタン border-radius drift 検知 (陰性対照)', () => {
 // test-gates ルール準拠: 検知能力ゼロで green にならないことを保証する。
 //
 // 検証方法: 旧実装（CopyButton が rounded を使用）では copyTokens.borderRadius = 'rounded'、
-// COMPACT_BUTTON_SHAPE_CLASSES には 'rounded-md' が含まれるため
+// COMPACT_BUTTON_SHAPE_CLASSES には 'rounded-md'（issue #320 で rounded-lg に統一、DADS 移行 Phase 4 で rounded-md に変更）が含まれるため
 // expect(copyTokens.borderRadius).toBe(expectedRadius) が fail する。
-// → 「CopyButton の rounded を rounded-md に統一した」修正が機能していることを証明する。
+// → 「CopyButton の rounded を共有定数の角丸に統一した」修正が機能していることを証明する。
 //
 // もし CopyButton の角丸を再び rounded に戻すと、このテストが fail して drift を検知できる。
 

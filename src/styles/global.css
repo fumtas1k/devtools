@@ -89,7 +89,7 @@
 
   /* === 角の形状 === */
   --radius-none: 0px;
-  --radius-sm: 4px; /* 小さいボタン・コードの地 */
+  --radius-sm: 4px; /* テキストリンクのフォーカス地・マッチのハイライト等。utility の rounded（0.25rem 固定）は参照しない */
   --radius-md: 8px; /* DADS のコントロール（入力欄・セレクト・ボタン・トグル）: rounded-md */
   --radius-lg: 12px; /* DADS のカード・パネル・セクション: rounded-lg */
   --radius-full: 9999px;

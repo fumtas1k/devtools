@@ -105,14 +105,14 @@ export function HarEntryDetail({ entry }: Props) {
   // 直接参照すると TypeError でクラッシュするためプレースホルダでガードする（issue #681）。
   if (!request || typeof request !== 'object' || !response || typeof response !== 'object') {
     return (
-      <div className="rounded border border-default p-4 text-muted">
+      <div className="rounded-lg border border-default p-4 text-muted">
         このエントリは request / response を欠くため詳細を表示できません。
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 rounded border border-default p-4">
+    <div className="space-y-4 rounded-lg border border-default p-4">
       <div>
         <h3 className="font-normal">リクエスト</h3>
         <p className="break-all font-mono text-sm">

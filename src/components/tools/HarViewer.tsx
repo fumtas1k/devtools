@@ -88,7 +88,7 @@ export function HarViewer() {
     <div className="space-y-6">
       {/* ファイル入力エリア */}
       <div
-        className="rounded border border-dashed border-default p-6 text-center"
+        className="rounded-lg border border-dashed border-default p-6 text-center"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -118,7 +118,7 @@ export function HarViewer() {
       {/* 処理中インジケータ（初回 load / トグル再計算 共通） */}
       {busy && (
         <div
-          className="rounded border border-default bg-subtle p-4"
+          className="rounded-lg border border-default bg-subtle p-4"
           role="status"
           aria-live="polite"
         >

@@ -84,7 +84,7 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 - [x] `--radius-lg` を 16px → 12px（DADS のカード）にし、コントロール（入力欄・セレクト・ボタン・トグルと、それと並ぶ出力・テキスト表示欄）を `rounded-md`（8px）に付け替えた
 - [x] `--elevation-*` を DADS の 8 段に置換。Tailwind の `shadow-md`（カードの hover）/ `shadow-xl`（ドロワー）も DADS の 2 / 6 段にそろえた（`docs/decisions.md [139]`）
-- 部品単位の小さな角丸（正規表現の AST ノード 6px 等）とカードの常時の影は Phase 5 で扱う
+- 部品単位の小さな角丸（正規表現の AST ノード 6px 等）、DADS の小さいボタンの 6px（sm）、`rounded-xl` の `rounded-lg` への統一、トグルの土台と中のボタンが同じ 8px で入れ子になる点、カードの常時の影は Phase 5 で扱う
 
 ### Phase 5: コンポーネント（1 コンポーネント 1 PR 目安）
 

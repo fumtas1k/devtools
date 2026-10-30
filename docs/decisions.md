@@ -5157,7 +5157,7 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 ### 決断
 
-- `--radius-lg` を 12px（DADS のカード）にする。カード・パネル・セクション・プレビューの枠は `rounded-lg` のまま
+- `--radius-lg` を 12px（DADS のカード）にする。カード・パネル・セクション・プレビューの枠と、ファイルのドロップ / 貼り付け領域は `rounded-lg`。4px / 8px だったカード・パネル（文字数カウント、HAR ビューア、ER 図）も `rounded-lg` にそろえた。入力欄と並ぶプレビュー（Markdown エディタ、クリップボードのプレビュー）は出力欄として 8px
 - コントロール（入力欄・セレクト・ボタン・トグル）と、それと並ぶ出力・テキスト表示欄（`OutputField` と同じ形の欄）は `rounded-md`（8px）に付け替える。compact ボタンの共有定数 `COMPACT_BUTTON_SHAPE_CLASSES` も `rounded-md` にし、ずれ検知テストを合わせた
 - `--elevation-1`〜`8` を DADS の値（ambient + key の 2 枚重ね）にする。Tailwind の `shadow-md`（ツールカードの hover）は DADS の 2 段、`shadow-xl`（モバイルのドロワー）は 6 段に `@theme` で上書きする
 - 部品単位の小さな角丸（正規表現の AST ノード 6px 等）と、DADS の「カードは常に薄い影を持ち hover で 1 段上げる」は、コンポーネントごとに見た目を判断するため Phase 5 で扱う
