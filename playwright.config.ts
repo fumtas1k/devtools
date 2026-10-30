@@ -37,40 +37,42 @@ export default defineConfig({
     },
   ],
   webServer: (() => {
-    // #248: CI と local で webServer 設定を分ける
-    // - CI: `.github/workflows/test.yml` が事前に `npm run build` を走らせるため
+    // #248: GitHub Actions と local で webServer 設定を分ける
+    // - GitHub Actions: `.github/workflows/test.yml` 等が事前に `npm run build` を走らせるため
     //   webServer は preview だけで十分。timeout は 30s（fail-fast、env 由来失敗の早期検知）。
     // - Local: build → preview を直列起動して safety net。`reuseExistingServer: false`
     //   で毎回新規 build/preview し stale dist による silent pass を防ぐ。
     //   incremental cache が効くため 2 回目以降の build は数秒。
     //   残存サーバがあると port 使用中エラーで止まる。`.npmrc` の ignore-scripts=true で
     //   pretest:* は自動実行されないため、その場合は `npm run pretest:e2e` を手動実行する（#770）。
+    // 判定は `CI` ではなく `GITHUB_ACTIONS` で行う。`CI=1` を設定した Claude Code on the web
+    // セッションを GitHub Actions と誤判定し、build を省いて古い dist/ を配信しないため。
     // 採用根拠: docs/decisions.md [063] / [065]
     //
     // #414: dev server (port 4322) を併走させ hydration-dev project に提供する。
     // preview と dev は port を分け衝突回避。preview は React production build で
     // text/structure mismatch のみ catch、dev は React dev build で attribute mismatch も
     // catch する 2 層構成。
-    const isCI = !!process.env.CI;
+    const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
     // astro 7 は AI コーディングエージェント検知時（macOS / Linux）に dev / preview を
     // 自動で detached background 起動し、コマンド自体は即 exit する。Playwright はこれを
     // 「webServer exited early」と判定するため、フォアグラウンド起動を強制する（#762）。
     const foregroundEnv = { ASTRO_DEV_BACKGROUND: '0', ASTRO_PREVIEW_BACKGROUND: '0' };
     return [
       {
-        command: isCI
+        command: isGitHubActions
           ? 'npm run preview -- --port 4321'
           : 'npm run build && npm run preview -- --port 4321',
         url: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4321',
-        timeout: isCI ? 30_000 : 120_000,
-        reuseExistingServer: isCI,
+        timeout: isGitHubActions ? 30_000 : 120_000,
+        reuseExistingServer: isGitHubActions,
         env: foregroundEnv,
       },
       {
         command: 'npm run dev -- --port 4322',
         url: 'http://localhost:4322',
-        timeout: isCI ? 30_000 : 60_000,
-        reuseExistingServer: isCI,
+        timeout: isGitHubActions ? 30_000 : 60_000,
+        reuseExistingServer: isGitHubActions,
         env: foregroundEnv,
       },
     ];

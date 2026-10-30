@@ -2372,7 +2372,7 @@ XSS sink への inline script 注入 (`<script>maliciousCode()</script>`) を考
 
 ---
 
-## [065] 2026-05-03 — Playwright `webServer` を `process.env.CI` で分岐
+## [065] 2026-05-03 — Playwright `webServer` を `process.env.CI` で分岐（2026-10-30 に判定を `GITHUB_ACTIONS` へ変更）
 
 **2026-05-03 | ステータス: 採用**
 
@@ -2384,7 +2384,7 @@ PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で
 
 ### 決断
 
-`playwright.config.ts:webServer` を `process.env.CI` で分岐する:
+`playwright.config.ts:webServer` を `process.env.CI` で分岐する（2026-10-30 に `GITHUB_ACTIONS` 判定へ変更。下記追記）:
 
 - **CI**: `command: 'npm run preview -- --port 4321'`（事前 step で build 済み）、`timeout: 30_000`（preview 起動は瞬時、env 由来失敗を早期検知）、`reuseExistingServer: true`（fresh runner なので影響なし）
 - **Local**: `command: 'npm run build && npm run preview ...'`（build 忘れの safety net）、`timeout: 120_000`（build 時間込み）、`reuseExistingServer: false`（毎回新規 build/preview で stale dist trap を回避）
@@ -2396,6 +2396,7 @@ PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で
 - **CI 実行時間**: build の重複実行がなくなり ~25s 短縮（cold start で計測）
 - **ローカル開発**: `npm run test:e2e` 実行ごとに incremental build が走る。手動 preview を別途起動した状態での E2E は port 衝突で失敗するため、`npm run pretest:e2e` で port 解放してから実行
   - **追記（2026-09-26, #770）**: 実装が `reuseExistingServer: !isCI` となっており、本決断と逆（ローカル `true` / CI `false`）のまま運用されていたため `isCI` に修正した。ローカルで残存サーバを黙って使い回し、古い状態で誤った結果を出していた。また `.npmrc` の `ignore-scripts=true` により `pretest:*` は npm に自動実行されないため、`npm run pretest:e2e` は明示的に実行する
+  - **追記（2026-10-30）**: 判定を `process.env.CI` から `process.env.GITHUB_ACTIONS === 'true'` に変更した。環境設定で `CI=1` を入れた Claude Code on the web セッションが CI と誤判定され、build を省いて古い `dist/` に対し E2E が pass していた（PR #809）。Playwright を動かす workflow（`test.yml` / `visual-regression.yml` / `update-visual-baseline.yml`）はすべて GitHub Actions 上で事前 build するため挙動は変わらない。`forbidOnly` / `retries` / `workers` は `CI` 判定のまま
 - **fail-fast**: CI の env 由来失敗（webServer 起動不可等）が 30s で確定
 - **後続作業**: なし（独立完結）
 
