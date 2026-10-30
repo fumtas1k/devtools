@@ -169,7 +169,7 @@ hover 等が必要なら、専用 class を `:hover` 擬似クラスごと `@lay
 
 ### 7.2 Tailwind の scan 除外（`docs/` 等）を消さない
 
-`src/styles/global.css` の `@source not` 群（`docs` / `.agents` / `.claude` / `.github` / `tests` / 直下の `*.md`）は、実装コード以外に書かれた class 名が本番 CSS に混入するのを防いでいる。不要に見えても削除しない。実装コード以外の置き場所を新設したら、ここにも足す。
+`src/styles/global.css` の `@source not` 群（対象と理由は同ファイルのコメントが正本）は、実装コード以外に書かれた class 名が本番 CSS に混入するのを防いでいる。不要に見えても削除しない。実装コード以外のディレクトリを新設したら同じ箇所に足す。
 
 ---
 

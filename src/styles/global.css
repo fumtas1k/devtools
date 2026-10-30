@@ -14,12 +14,19 @@
    - .agents / .claude: エージェント規約・skill の md が禁止例として
      `text-blue-500` 等を書いている。.claude/skills は .agents/skills への
      symlink なので .claude も除外しないと skill 経由で混入する
+     （#726 で「隠し dir は除外できない」としたのはこの symlink 経路が原因。
+     片方だけの除外では漏れ、両方で止まることを番兵 class で確認済み）
    - .github / tests: workflow の `contents:` や E2E の `'visible'` 等が
      utility 名として拾われる
-   - リポジトリ直下の md（SPEC.md / README.md / CLAUDE.md 等） */
+   - .codex / .githooks / scripts / tasks: 規約・hook・補助スクリプト・作業メモ
+   - リポジトリ直下の md（SPEC.md / README.md / AGENTS.md / CLAUDE.md 等） */
 @source not "../../.agents";
 @source not "../../.claude";
+@source not "../../.codex";
+@source not "../../.githooks";
 @source not "../../.github";
+@source not "../../scripts";
+@source not "../../tasks";
 @source not "../../tests";
 @source not "../../*.md";
 
