@@ -4983,3 +4983,34 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 - **PR ごとの Claude によるセキュリティレビュー（GitHub Actions）**: 上記のとおり API キーと利用料が必要。週次の点検で足りなくなったら追加する
 - **毎回リポジトリ全体を点検する**: 指摘が毎週重複し、差分の確認より漏れが増える
 - **修正 PR の自動マージ**: 依存の更新と違い、修正の妥当性を人が判断する必要がある
+
+---
+
+## [134] Claude Design の DADS デザインシステムを正本にし、frontend-design スキルを外す
+
+**2026-10-30 | ステータス: 採用**
+
+### 背景
+
+[001] で DADS を採用したが、`global.css` と `dads-design-system` スキルの値は Tailwind のパレット（primary `#1a56db` 等）で、DADS v2 の実値（`blue-900` `#0017c1` 等）と一致していなかった。グレー・セマンティック色・フォーカスリング・角丸・影・タイポグラフィも同様にずれている。Claude Design 上に DADS 公式リポジトリから転記したデザインシステム（<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>）を用意したので、これに合わせて段階的に移行する（計画: `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`）。
+
+### 決断
+
+- Claude Design の DADS デザインシステムを見た目の正本にする。値の最終確認は DADS 公式の `figma/tokens.json` で行う
+- `dads-design-system` スキルを DS 準拠に書き換える。Codex は claude.ai の artifact を読めないため、目標値と仕様はスキル内（`references/`）に転記する。トークンを `global.css` に反映し終えたら `global.css` を正本にして転記は削除する
+- `frontend-design` スキル（vendor）を削除する。「大胆で個性的な美学」を求める汎用スキルで、UI 作業で発動すると DADS の静かで予測可能な見た目と逆方向の配色・書体を持ち込む
+- DADS 公式 npm パッケージ（`@digital-go-jp/tailwind-theme-plugin` / `design-system-example-components-react`）は導入せず、値を `@theme` のトークンへ転記する。既存の semantic token / `@layer components` の意味クラスの仕組みを保つため
+- DS が Google Fonts を `@import` している点は採用しない。外部送信禁止の原則と CSP（`default-src 'self'`）に反するため、`@fontsource` の自前配信を続ける
+- 移行の個別判断: `--color-blue-*` は DADS 値で上書きする / 等幅フォントは JetBrains Mono を維持する / タイポグラフィのクラス名は維持して値だけ寄せる / DS は参照専用とし、実装側の判断はこのファイルに残す
+
+### 却下した選択肢
+
+- **`dads-design-system` スキルも削除し DS の URL だけを参照する**: Codex（`AGENTS.md` がスキルを参照）が DADS の規約を読めなくなる
+- **一括で全面移行する**: 全ページの VRT baseline が一度に変わり、差分の目視確認が現実的でなくなる
+- **等幅フォントを Noto Sans Mono に変える**: コード表示が主用途で、`0/O` `1/l` の判別性を優先した
+
+### 結果・トレードオフ
+
+- ✅ UI 作業で参照するスキルが 1 つになり、値の矛盾がなくなる
+- ⚠️ 移行完了まで、スキルの目標値と `global.css` の現行値が食い違う期間がある。スキル冒頭に移行中である旨を明記した
+- ⚠️ 見た目が変わるフェーズごとに VRT baseline の再生成（`workflow_dispatch`、web セッションからは不可）が必要

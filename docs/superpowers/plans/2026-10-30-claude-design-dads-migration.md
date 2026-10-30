@@ -37,9 +37,9 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 | `frontend-design`（vendor）  | **削除**         | 「大胆で個性的な美学」を求める汎用スキルで、DADS の「静かで予測可能」と方向が逆。UI 作業で発動すると独自の配色・書体を持ち込む                                                             |
 | `dads-design-system`（自作） | **全面書き換え** | 名前は DADS だが値は Tailwind パレット（`#1a56db` 等）で、DS と矛盾する。消すと Codex（`AGENTS.md` が参照）が DADS 規約を読めなくなるため、DS の実値と本リポジトリの実装ルールに差し替える |
 
-書き換え後の `dads-design-system` は「DS の URL」「`global.css` のトークン名と用途」「本リポジトリ固有の制約（CSP・自前フォント・`@layer components` の variant 非対応）」だけを持ち、値の一覧は `global.css` を正本として重複させない。
+書き換え後の `dads-design-system` は「DS の URL」「用途ごとの DADS トークン」「本リポジトリ固有の制約（CSP・自前フォント・`@layer components` の variant 非対応）」を持つ。Codex は DS を読めないため、プリミティブの目標値は `references/tokens.md` に転記し、Phase 1 / 4 で `global.css` に反映した後に削除する（Phase 7）。
 
-`frontend-design` 削除で触るファイル: `.agents/skills/frontend-design/`、`.claude/skills/frontend-design`（symlink）、`.agents/skills/LICENSE-frontend-design`、`.agents/skills/README.md`、`skills-lock.json`、`CLAUDE.md`（vendor 済みスキルの記述）、`docs/setup/plugins.md`、`docs/decisions.md`（新規エントリ）。`tests/meta/session-install.test.ts:204` は無効化済みプラグイン ID の検証なので影響を確認する。
+`frontend-design` 削除で触るファイル: `.agents/skills/frontend-design/`、`.claude/skills/frontend-design`（symlink）、`.agents/skills/LICENSE-frontend-design`、`.agents/skills/README.md`、`skills-lock.json`、`CLAUDE.md`（vendor 済みスキルの記述）、`docs/setup/plugins.md`、`docs/decisions.md`（新規エントリ）。`tests/meta/session-install.test.ts:204` の `frontend-design@claude-plugins-official` は hook の陰性対照に使う任意のプラグイン ID で、vendor スキルとは無関係なので残す。
 
 ## 3. フェーズ
 
@@ -47,9 +47,9 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 ### Phase 0: スキル整理
 
-- [ ] `frontend-design` を削除（2 章のファイル一式）
-- [ ] `dads-design-system` を DS 準拠に書き換え（`references/components.md` も）
-- [ ] `docs/decisions.md` に「Claude Design の DS を正本にする」「frontend-design を外す」を記録
+- [x] `frontend-design` を削除（2 章のファイル一式）
+- [x] `dads-design-system` を DS 準拠に書き換え（`references/components.md` / `references/tokens.md`）
+- [x] `docs/decisions.md [134]` に「Claude Design の DS を正本にする」「frontend-design を外す」を記録
 
 見た目の変更なし（VRT 不要）。
 
@@ -71,8 +71,8 @@ primitive を直接使う 16 箇所前後（`blue-*`）は値の衝突で見た�
 
 ### Phase 3: タイポグラフィ
 
-- [ ] `.caption` / `.body-emphasis` / `.tool-info-*` 等を DADS の std / dns / oln スケールへ対応付ける（クラスを置換するか、既存クラスの値だけ変えるかを決める）
-- [ ] 等幅フォントの扱いを決める（4 章 D2）
+- [ ] `.caption` / `.body-emphasis` / `.tool-info-*` 等の値を DADS の std / dns / oln スケールへ寄せる（クラス名は維持、4 章 D4）
+- 等幅フォントは JetBrains Mono を維持（4 章 D2）
 
 ### Phase 4: 角丸・エレベーション
 
@@ -98,9 +98,9 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 - [ ] 使われなくなった旧トークン・旧クラスを削除
 - [ ] `SPEC.md` / `docs/decisions.md` / `.agents/rules/ui-conventions.md` を更新
 
-## 4. 着手前に決めること
+## 4. 決定事項（2026-10-30 確定、`docs/decisions.md [134]`）
 
-| #   | 論点                     | 推奨                                                                                                                                |
+| #   | 論点                     | 決定                                                                                                                                |
 | :-- | :----------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | primitive 名の衝突       | `--color-blue-*` を DADS 値で上書きする（コンポーネントは primitive を直接使わない規約のため影響は限定的）                          |
 | D2  | 等幅フォント             | JetBrains Mono を維持（コード表示が主用途で、`0/O` `1/l` の判別性を優先）。DADS に寄せるなら Noto Sans Mono を `@fontsource` で追加 |

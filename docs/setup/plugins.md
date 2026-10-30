@@ -8,7 +8,7 @@
 | :--------------------------------- | :---------------------------------------------------------------- |
 | `context7@claude-plugins-official` | ライブラリ公式ドキュメントの最新参照（Upstash Context7 MCP 同梱） |
 
-> **superpowers / frontend-design について**: 以前は `@claude-plugins-official` プラグインで運用していたが、Web セッションでプラグイン install が効かない制約（後述 2 章）の回避のため、`npx skills add` で `.agents/skills/` にスキル本体を vendor する方式へ移行した（`skills-lock.json` で出典・hash を管理）。frontend-design は単一スキルで MCP を同梱しないため vendor できる（context7 は MCP server 同梱のためプラグインのまま）。出典・ライセンスは `.agents/skills/README.md` を参照。
+> **superpowers について**: 以前は `@claude-plugins-official` プラグインで運用していたが、Web セッションでプラグイン install が効かない制約（後述 2 章）の回避のため、`npx skills add` で `.agents/skills/` にスキル本体を vendor する方式へ移行した（`skills-lock.json` で出典・hash を管理）。context7 は MCP server 同梱のためプラグインのまま。出典・ライセンスは `.agents/skills/README.md` を参照。frontend-design も同方式で vendor していたが、DADS 準拠の方針と衝突するため外した（`docs/decisions.md [134]`）。
 
 ---
 
