@@ -75,8 +75,10 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 ### Phase 3: タイポグラフィ
 
-- [ ] `.caption` / `.body-emphasis` / `.tool-info-*` 等の値を DADS の std / dns / oln スケールへ寄せる（クラス名は維持、4 章 D4）
-- 等幅フォントは JetBrains Mono を維持（4 章 D2）。読み込みは 400 のみなので、等幅の Bold は使わない
+- [x] `.tool-info-*` / `.section-heading` / `.text-body` / `.hero-heading` / `.page-heading` / `.body-emphasis` の値を DADS の Std スケールへ寄せた（クラス名は維持、4 章 D4）。`.caption`（14px・行高 1.7）は DADS に 14px の Std がないため据え置き
+- [x] 文字の太さを 400 / 700 にそろえた（`font-semibold` → `font-bold`、`font-medium` → `font-normal`）。再混入は `tests/meta/font-weight-dads.test.ts` で検知
+- [ ] 14px 未満の文字（バッジ・図のラベル・JSON の件数等）は部品ごとの判断が要るため Phase 5 で扱う（[#814](https://github.com/fumtas1k/devtools/issues/814)）
+- 等幅フォントは JetBrains Mono を維持（4 章 D2）。読み込みは 400 のみなので、等幅に `font-bold` を付けるとブラウザの擬似ボールドになる（既存の `GenerateTab` / `TotpHotpGenerator` / `.toggle-chip__token`。見た目は従来どおり）
 
 ### Phase 4: 角丸・エレベーション
 

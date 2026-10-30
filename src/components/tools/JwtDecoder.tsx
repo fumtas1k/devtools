@@ -217,7 +217,7 @@ export function JwtDecoderTool() {
           {verifyExp && (
             <span
               className={cx(
-                'rounded-full px-3 py-0.5 caption font-medium',
+                'rounded-full px-3 py-0.5 caption font-normal',
                 expBadge[parsed.expStatus].badgeClass
               )}
             >
@@ -230,7 +230,7 @@ export function JwtDecoderTool() {
           {sigBadge[sigStatus] && (
             <span
               className={cx(
-                'rounded-full px-3 py-0.5 caption font-medium',
+                'rounded-full px-3 py-0.5 caption font-normal',
                 sigBadge[sigStatus]!.badgeClass
               )}
             >

@@ -56,7 +56,7 @@ export function ToggleGroup<T extends string>({
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
           className={cx(
-            'caption font-semibold btn-toggle rounded-lg whitespace-nowrap',
+            'caption font-bold btn-toggle rounded-lg whitespace-nowrap',
             buttonSizeClass
           )}
         >

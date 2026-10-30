@@ -8,7 +8,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 ## 0. 正本と移行状況
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
-- **移行中**: 色（Phase 1）とフォーカスリング（Phase 2）は DADS に移行済み（`src/styles/global.css`）。タイポグラフィ・角丸・影・コンポーネントの見た目は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
+- **移行中**: 色（Phase 1）・フォーカスリング（Phase 2）・タイポグラフィ（Phase 3）は DADS に移行済み（`src/styles/global.css`）。角丸・影・コンポーネントの見た目は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
 - DADS の目標値（プリミティブ全色）は `references/tokens.md`、コンポーネントの見た目仕様は `references/components.md`。
 
 ### 移行中に新しく書くコードのルール
@@ -71,17 +71,17 @@ DADS の象徴。全インタラクティブ要素で同じ見た目にし、消
 ## 4. タイポグラフィ
 
 - 書体: **Noto Sans JP**（`@fontsource` で自前配信）。等幅は **JetBrains Mono を維持**（コード表示で `0/O` `1/l` の判別性を優先。DADS 標準の Noto Sans Mono には寄せない）。
-- 太さは 400（N）と 700（B）だけ。
+- 太さは 400（N）と 700（B）だけ。Tailwind では `font-normal` / `font-bold` を使い、`font-semibold` / `font-medium` 等は使わない（Noto Sans JP は 400 / 700 しか読み込んでおらず、指定と見た目が食い違う。`tests/meta/font-weight-dads.test.ts` が検知）。
 - 本文・UI は 16px 以上、14px はフッター等の限定用途、14px 未満は使わない。本文の行高は 170〜175%。
 - スタイル体系は `{種別}-{サイズ}{N|B}-{行高%}`。本リポジトリのクラス名（`.caption` / `.body-emphasis` 等）は維持し、値を下表に寄せる。
 
-| 種別            | 用途               | 主なスタイル                                                                                      |
-| :-------------- | :----------------- | :------------------------------------------------------------------------------------------------ |
-| Standard（std） | 見出し・本文       | 32B-150 / 28B-150 / 24B-150 / 22B-150 / 20B-160 / 18B-160 / 17N-170 / 16N-170 / 16N-175 / 16B-170 |
-| Dense（dns）    | テーブル・密な UI  | 17・16・14 × N/B × 行高 120 / 130                                                                 |
-| Oneline（oln）  | ボタン・1 行ラベル | 17・16・14 × N/B × 行高 100                                                                       |
-| Display（dsp）  | ヒーロー           | 64 / 57 / 48 × N/B × 行高 140                                                                     |
-| Mono            | コード             | 17・16・14 × N × 行高 150（JetBrains Mono は 400 のみ読み込み。B は使わない）                     |
+| 種別            | 用途               | 主なスタイル                                                                                                |
+| :-------------- | :----------------- | :---------------------------------------------------------------------------------------------------------- |
+| Standard（std） | 見出し・本文       | 32B-150 / 28B-150 / 24B-150 / 22B-150 / 20B-160 / 18B-160 / 17B-170 / 17N-170 / 16N-170 / 16N-175 / 16B-170 |
+| Dense（dns）    | テーブル・密な UI  | 17・16・14 × N/B × 行高 120 / 130                                                                           |
+| Oneline（oln）  | ボタン・1 行ラベル | 17・16・14 × N/B × 行高 100                                                                                 |
+| Display（dsp）  | ヒーロー           | 64 / 57 / 48 × N/B × 行高 140                                                                               |
+| Mono            | コード             | 17・16・14 × N × 行高 150（JetBrains Mono は 400 のみ読み込み。B は使わない）                               |
 
 ## 5. 余白・角丸・影
 

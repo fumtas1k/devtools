@@ -210,14 +210,10 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
           <div className="space-y-2">
             {/* ヘッダ行 (PCのみ) */}
             <div className="hidden md:flex gap-2 items-center mb-1">
-              <span className="flex-1 min-w-0 caption text-muted font-semibold">チケットID</span>
-              <span className="flex-1 min-w-0 caption text-muted font-semibold">
-                参加者名（任意）
-              </span>
-              <span className="flex-1 min-w-0 caption text-muted font-semibold">
-                料金区分（任意）
-              </span>
-              <span className="w-15 text-right caption text-muted font-semibold">サイズ</span>
+              <span className="flex-1 min-w-0 caption text-muted font-bold">チケットID</span>
+              <span className="flex-1 min-w-0 caption text-muted font-bold">参加者名（任意）</span>
+              <span className="flex-1 min-w-0 caption text-muted font-bold">料金区分（任意）</span>
+              <span className="w-15 text-right caption text-muted font-bold">サイズ</span>
               <span className="w-8"></span>
             </div>
 
@@ -235,7 +231,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                   )}
                 >
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <span className="md:hidden caption text-muted font-semibold leading-none">
+                    <span className="md:hidden caption text-muted font-bold leading-none">
                       チケットID
                     </span>
                     <BareInput
@@ -248,7 +244,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                     />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <span className="md:hidden caption text-muted font-semibold leading-none">
+                    <span className="md:hidden caption text-muted font-bold leading-none">
                       参加者名（任意）
                     </span>
                     <BareInput
@@ -260,7 +256,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                     />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <span className="md:hidden caption text-muted font-semibold leading-none">
+                    <span className="md:hidden caption text-muted font-bold leading-none">
                       料金区分（任意）
                     </span>
                     <BareInput
@@ -272,11 +268,11 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                     />
                   </div>
                   <div className="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
-                    <span className="md:hidden caption text-muted font-semibold">合計データ量</span>
+                    <span className="md:hidden caption text-muted font-bold">合計データ量</span>
                     <span
                       className={cx(
                         'w-auto md:w-15 caption text-right',
-                        isOver ? 'text-error font-semibold' : 'text-muted'
+                        isOver ? 'text-error font-bold' : 'text-muted'
                       )}
                       title="QRコードに埋め込まれる全データ（署名・時間含む）の合計バイト数"
                     >
@@ -349,9 +345,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                     className="w-40 h-40"
                     dangerouslySetInnerHTML={{ __html: qr.svg }}
                   />
-                  <span className="caption font-mono font-semibold text-default">
-                    {qr.ticket.t}
-                  </span>
+                  <span className="caption font-mono font-bold text-default">{qr.ticket.t}</span>
                   {qr.ticket.n && <span className="caption text-muted">{qr.ticket.n}</span>}
                   {qr.ticket.p && <span className="caption badge-category">{qr.ticket.p}</span>}
                   <DownloadButton

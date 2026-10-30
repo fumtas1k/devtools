@@ -12,7 +12,7 @@ function NameValueTable({ rows, label }: { rows: HarNameValue[]; label: string }
   if (!rows || rows.length === 0) return null;
   return (
     <div>
-      <h4 className="mb-1 mt-3 font-medium">{label}</h4>
+      <h4 className="mb-1 mt-3 font-normal">{label}</h4>
       <table className="w-full border-collapse text-sm">
         <tbody>
           {rows.map((r, i) => (
@@ -67,7 +67,7 @@ function TimingBreakdown({ entry }: { entry: HarEntry }) {
   // PHASE_ORDER 順に並べる（segments は既にこの順）。
   return (
     <div className={dynClassName}>
-      <h4 className="mb-1 mt-3 font-medium">タイミング</h4>
+      <h4 className="mb-1 mt-3 font-normal">タイミング</h4>
       <table className="w-full border-collapse text-sm">
         <tbody>
           {row.segments.map((seg, j) => (
@@ -86,7 +86,7 @@ function TimingBreakdown({ entry }: { entry: HarEntry }) {
               </td>
             </tr>
           ))}
-          <tr className="align-middle font-medium">
+          <tr className="align-middle font-normal">
             <td className="px-2 py-1">合計</td>
             <td className="px-2 py-1 text-right font-mono">{Math.round(row.totalMs)} ms</td>
             <td className="px-2 py-1" />
@@ -114,7 +114,7 @@ export function HarEntryDetail({ entry }: Props) {
   return (
     <div className="space-y-4 rounded border border-default p-4">
       <div>
-        <h3 className="font-medium">リクエスト</h3>
+        <h3 className="font-normal">リクエスト</h3>
         <p className="break-all font-mono text-sm">
           {request.method} {request.url}
         </p>
@@ -123,7 +123,7 @@ export function HarEntryDetail({ entry }: Props) {
         <NameValueTable rows={request.cookies} label="Cookie" />
         {request.postData?.text != null && (
           <div>
-            <h4 className="mb-1 mt-3 font-medium">POST ボディ</h4>
+            <h4 className="mb-1 mt-3 font-normal">POST ボディ</h4>
             <pre className="overflow-x-auto rounded bg-subtle p-2 hint-xs">
               {request.postData.text}
             </pre>
@@ -131,14 +131,14 @@ export function HarEntryDetail({ entry }: Props) {
         )}
       </div>
       <div>
-        <h3 className="font-medium">
+        <h3 className="font-normal">
           レスポンス（{response.status} {response.statusText ?? ''}）
         </h3>
         <NameValueTable rows={response.headers} label="ヘッダ" />
         <NameValueTable rows={response.cookies} label="Cookie" />
         {response.content?.text != null && (
           <div>
-            <h4 className="mb-1 mt-3 font-medium">ボディ</h4>
+            <h4 className="mb-1 mt-3 font-normal">ボディ</h4>
             <pre className="overflow-x-auto rounded bg-subtle p-2 hint-xs">
               {response.content.text}
             </pre>

@@ -155,7 +155,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
         {signatureValid !== null && (
           <span
             className={cx(
-              'caption font-medium px-2 py-0.5 rounded-full',
+              'caption font-normal px-2 py-0.5 rounded-full',
               signatureValid ? 'bg-success-tint text-success' : 'bg-error-tint text-error-text'
             )}
           >
@@ -348,7 +348,7 @@ function ChainBanner({ chainResult, certs }: ChainBannerProps) {
               {link?.signatureValid !== null && (
                 <span
                   className={
-                    link?.signatureValid ? 'text-success font-medium' : 'text-error font-medium'
+                    link?.signatureValid ? 'text-success font-normal' : 'text-error font-normal'
                   }
                 >
                   {link?.signatureValid ? '✓' : '✗'}

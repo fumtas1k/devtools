@@ -151,7 +151,7 @@ export function CsrGenerator() {
         <div className="space-y-5">
           {/* アルゴリズム選択 */}
           <div className="space-y-2">
-            <span className="caption font-semibold">鍵アルゴリズム</span>
+            <span className="caption font-bold">鍵アルゴリズム</span>
             <ToggleGroup<KeyAlgorithm>
               ariaLabel="鍵アルゴリズム"
               layout="wrap"
@@ -206,7 +206,7 @@ export function CsrGenerator() {
 
           {/* SAN */}
           <fieldset className="space-y-2">
-            <legend className="caption font-semibold">SAN（Subject Alternative Name）</legend>
+            <legend className="caption font-bold">SAN（Subject Alternative Name）</legend>
             {san.map((entry, i) => {
               const ipError =
                 entry.type === 'ip' &&
@@ -217,7 +217,7 @@ export function CsrGenerator() {
                 <div key={i} className="space-y-1">
                   <label
                     htmlFor={`csr-san-${i}`}
-                    className="caption font-semibold text-default"
+                    className="caption font-bold text-default"
                   >{`SAN ${i + 1}`}</label>
                   <div className="flex flex-wrap items-center gap-2">
                     <ToggleGroup<SanEntry['type']>
