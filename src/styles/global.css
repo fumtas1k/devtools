@@ -10,6 +10,19 @@
    docs/ は実装コードを含まないので scan する意味がない。 */
 @source not "../../docs";
 
+/* 同じ理由で、実装コードを含まない以下も scan 対象外にする。
+   - .agents / .claude: エージェント規約・skill の md が禁止例として
+     `text-blue-500` 等を書いている。.claude/skills は .agents/skills への
+     symlink なので .claude も除外しないと skill 経由で混入する
+   - .github / tests: workflow の `contents:` や E2E の `'visible'` 等が
+     utility 名として拾われる
+   - リポジトリ直下の md（SPEC.md / README.md / CLAUDE.md 等） */
+@source not "../../.agents";
+@source not "../../.claude";
+@source not "../../.github";
+@source not "../../tests";
+@source not "../../*.md";
+
 /* ダークモード未サポート: dark: クラスはメディアクエリではなく .dark クラス指定時のみ適用 */
 @variant dark (&:where(.dark, .dark *));
 
