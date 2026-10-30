@@ -472,7 +472,7 @@ export function TotpHotpGeneratorTool() {
               {verificationResult !== null && (
                 <div aria-live="assertive">
                   {verificationResult.valid ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 caption font-medium bg-success-tint text-success">
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 caption font-normal bg-success-tint text-success">
                       ✓ 有効
                       {verificationResult.offset === 0
                         ? '（現在の期間）'
@@ -481,7 +481,7 @@ export function TotpHotpGeneratorTool() {
                           : `（${verificationResult.offset} 期間前）`}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 caption font-medium bg-error-tint text-error-text">
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 caption font-normal bg-error-tint text-error-text">
                       ✗ 無効
                     </span>
                   )}

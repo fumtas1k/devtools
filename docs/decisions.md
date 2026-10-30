@@ -5117,3 +5117,30 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 - ✅ diff が出た VRT の run は retry 分がなくなる。pass 時の `VRT 実行` は 37 秒 → 36 秒でほぼ変わらない（並列にすると 1 件あたりの撮影時間が伸び、CPU が律速になる）
 - ⚠️ 並列実行でだけ顕在化するテスト間の干渉（共有状態・CPU 負荷によるタイムアウト）が CI でも表に出る。E2E は `retries: 1` を残して吸収する
 - ⚠️ VRT の flaky は retry で吸収されず fail になる。VRT は required check ではないため merge は止まらない
+
+---
+
+## [138] DADS 移行 Phase 3: タイポグラフィ
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 3 で、文字のスタイルを DADS の文字スケール（`{種別}-{サイズ}{N|B}-{行高%}`）に寄せた。計画書 4 章 D4 のとおり、既存のクラス名は維持して値だけを変える。
+
+### 決断
+
+- 見出し・本文の意味クラスを DADS のスタイルに対応付ける: `.tool-info-heading` と `.body-emphasis` は Std-17B-170、`.tool-info-body` は Std-17N-170、`.tool-info-list` は Dns-14N-130、`.section-heading` は Std-18B-160、`.text-body` は Std-16N-175、`.hero-heading` は Std-32B-150、`.page-heading` は Std-28B-150
+- `.caption`（14px・行高 1.7）は据え置く。DADS には 14px の Std スタイルがなく（14px は Dns / Oln / Mono のみ）、複数行の補助テキストに Dns-14N-130 の行高 1.3 を当てると読みにくくなるため
+- 文字の太さを DADS の 400 / 700 にそろえる。`font-semibold`（600）は `font-bold`、`font-medium`（500）は `font-normal` に置き換える。Noto Sans JP は 400 / 700 しか読み込んでおらず、ブラウザはもともと 600 を 700、500 を 400 で描いていたため、見た目は変わらない。再混入は meta テスト（`tests/meta/font-weight-dads.test.ts`、陽性対照付き）で検知する
+- 14px 未満の文字（バッジ・図のラベル・JSON の件数等）は部品ごとに判断が要るため Phase 5 に回す（#814）
+
+### 却下した選択肢
+
+- **`.caption` を 16px に上げる**: 214 箇所で使う補助テキストが一斉に大きくなり、レイアウトへの影響が Phase 3 の範囲を超える
+- **DADS 公式のクラス名（`text-std-16N-170` 等）に置き換える**: 全ツールのマークアップに波及する（計画書 4 章 D4）
+
+### 結果・トレードオフ
+
+- ✅ 見出し・本文の行高が DADS の値になり、ページ間でそろう
+- ⚠️ 行高が変わるため、見出しやツール説明欄の高さが少し変わる（VRT の差分になる）

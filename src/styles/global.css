@@ -198,25 +198,28 @@
   transform: translateY(0);
 }
 
-/* ツール説明セクションのテキストスタイル */
+/* ツール説明セクションのテキストスタイル（DADS の文字スケール: docs/decisions.md [138]） */
+/* Std-17B-170 */
 .tool-info-heading {
-  font-size: 1.06rem;
-  font-weight: 600;
-  line-height: 1.24;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.7;
   letter-spacing: 0.02em;
 }
 
+/* Std-17N-170 */
 .tool-info-body {
-  font-size: 1.06rem;
+  font-size: 1.0625rem;
   font-weight: 400;
-  line-height: 1.47;
+  line-height: 1.7;
   letter-spacing: 0.02em;
   color: var(--color-text);
 }
 
+/* Dns-14N-130 */
 .tool-info-list {
   font-size: 0.875rem;
-  line-height: 1.29;
+  line-height: 1.3;
   letter-spacing: 0.02em;
   color: var(--color-text);
 }
@@ -267,6 +270,7 @@
 /* === issue #176 B 案: inline style 撤去用 semantic class === */
 @layer components {
   /* === Typography (legacy bodyEmphasis / caption from src/utils/styles.ts) === */
+  /* Std-17B-170 */
   .body-emphasis {
     font-size: 1.0625rem;
     font-weight: 700;
@@ -778,9 +782,9 @@
      キーボードフォーカス時に outline ring が可視化される。
      §7.1 の variant 非対応制約により :focus-within / [aria-disabled] を直接定義。 */
   .btn-file-input {
-    /* QrReader.tsx の旧 label スタイルと等価: caption font-semibold inline-block px-4 py-2 rounded-lg border border-input bg-subtle text-default cursor-pointer */
+    /* QrReader.tsx の旧 label スタイルと等価: caption font-bold inline-block px-4 py-2 rounded-lg border border-input bg-subtle text-default cursor-pointer */
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.7;
     letter-spacing: 0.02em;
     display: inline-block;
@@ -855,16 +859,18 @@
      親要素から色継承で十分なケースのみ単独適用 (例: index.astro の card title が
      親 .tool-card-title から var(--color-text) を継承)。新規 consumer は
      原則 `.text-default` 併用が安全 (silent regression 予防)。 */
+  /* Std-18B-160 */
   .section-heading {
     font-size: 1.125rem;
-    line-height: 1.5;
+    line-height: 1.6;
     letter-spacing: 0.02em;
   }
 
   /* Body prose text: about/privacy 本文段落（typography + color baked-in） */
+  /* Std-16N-175 */
   .text-body {
     font-size: 1rem;
-    line-height: 1.8;
+    line-height: 1.75;
     letter-spacing: 0.02em;
     color: var(--color-text);
   }
@@ -872,18 +878,20 @@
   /* トップページ hero h1 見出し (2rem)。.page-heading (1.75rem) / .section-heading (1.125rem) より
      一段大きい hero 用見出しスケールの SoT。color は class に含めず consumer 側で text-default を併用
      (既存 hero h1 は text-default 付き)。(issue #565) */
+  /* Std-32B-150 */
   .hero-heading {
     font-size: 2rem;
-    line-height: 1.4;
+    line-height: 1.5;
     letter-spacing: 0.01em;
   }
 
   /* ページ h1 見出し: about/privacy/404 の静的ページ共通 (1.75rem)。
      .section-heading (h2, 1.125rem) より一段大きい page タイトル用。
      color は .section-heading と同様 class に含めず consumer 側で text-default を併用 (issue #535)。 */
+  /* Std-28B-150 */
   .page-heading {
     font-size: 1.75rem;
-    line-height: 1.4;
+    line-height: 1.5;
     letter-spacing: 0.02em;
   }
 

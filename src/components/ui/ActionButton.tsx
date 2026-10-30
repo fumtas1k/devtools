@@ -17,7 +17,7 @@ interface Props extends Omit<
   /**
    * 高さプリセット。角丸（rounded-lg）は両サイズとも SIZE_CLASS 経由で供給し、
    * base className には持たせない（issue #320: 共有定数を角丸の単一の真実源にするため）。
-   * - 'default'（既定）: `rounded-lg font-semibold px-4 py-2`、`caption` の line-height 1.7 を継承
+   * - 'default'（既定）: `rounded-lg font-bold px-4 py-2`、`caption` の line-height 1.7 を継承
    * - 'compact': COMPACT_BUTTON_SHAPE_CLASSES（rounded-lg / font-bold / px-3 py-2 / leading-none）、
    *   CopyButton (default) と同じ高さ・角丸（issue #320 で統一）
    */
@@ -25,7 +25,7 @@ interface Props extends Omit<
 }
 
 const SIZE_CLASS: Record<Size, string> = {
-  default: 'rounded-lg font-semibold px-4 py-2',
+  default: 'rounded-lg font-bold px-4 py-2',
   compact: COMPACT_BUTTON_SHAPE_CLASSES,
 };
 

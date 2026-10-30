@@ -285,7 +285,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
         {/* AIフィールド */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <span className="caption text-default font-semibold">合成シンボル（任意）</span>
+            <span className="caption text-default font-bold">合成シンボル（任意）</span>
             {canAddField && (
               <button
                 type="button"

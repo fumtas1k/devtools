@@ -162,10 +162,10 @@ describe('ActionButton', () => {
     expect(btn.disabled).toBe(true);
   });
 
-  it('size 未指定（default）は font-semibold + px-4 py-2 を持ち leading-none を持たない', () => {
+  it('size 未指定（default）は font-bold + px-4 py-2 を持ち leading-none を持たない', () => {
     render(<ActionButton onClick={() => {}}>標準</ActionButton>);
     const btn = screen.getByRole('button') as HTMLButtonElement;
-    expect(btn.className).toContain('font-semibold');
+    expect(btn.className).toContain('font-bold');
     expect(btn.className).toContain('px-4');
     expect(btn.className).toContain('py-2');
     expect(btn.className).not.toContain('leading-none');

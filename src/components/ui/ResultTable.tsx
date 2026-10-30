@@ -100,7 +100,7 @@ export function ResultTable<T>({
                   key={col.key}
                   scope="col"
                   className={cx(
-                    'caption text-muted font-semibold whitespace-nowrap',
+                    'caption text-muted font-bold whitespace-nowrap',
                     paddingClass(),
                     alignClass(col.headerAlign)
                   )}
