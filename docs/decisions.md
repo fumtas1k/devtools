@@ -5045,3 +5045,34 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 - ✅ red-50 などの tint 上の文字を含め、トークン経由の色の組み合わせは AA を満たす（`--color-error` を tint に載せる箇所は `--color-error-text` に替えた）
 - ⚠️ トークンを経由しない直書き色（UUID v7 のフィールド色など）には既存の AA 不足が残る（#808）
 - ⚠️ 入力欄・ボタン・チップの枠が濃くなり、全ページの見た目が変わる（VRT baseline の再生成が必要）
+
+---
+
+## [136] DADS 移行 Phase 2: フォーカスリング
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 2 で、全インタラクティブ要素のフォーカス表示を、青 2px の outline から DADS のフォーカスインジケータへ切り替えた。DADS の形は、黒 4px の outline（offset 2px）と、要素と outline の隙間を埋める yellow-300 の 2px リングの二重表示（公式 Button / Link の `focus-visible:outline-4 outline-black outline-offset-2 ring-2 ring-yellow-300`）。
+
+### 決断
+
+- トークンを outline 用の `--focus-ring`（`4px solid` 黒）と、黄リング用の `--focus-ring-shadow`（`0 0 0 2px` yellow-300 の box-shadow）に分ける。既存の `outline: var(--focus-ring)` の書き方を変えずに済む
+- 一括の focus ルール（`:where(...):focus-visible`、`summary` を対象に追加）は `@layer` の外にあるため、`@layer` 内（components / utilities）の box-shadow（影）や outline の指定を詳細度に関係なく上書きする。focus 中も影を残したい選択中のトグル（`.btn-toggle[aria-pressed='true']`）は、一括ルールの直後（レイヤー外）で黄リングと影を重ねる
+- テキストリンク（`.text-link` / `.text-link-plain`）は公式 Link と同じく、focus 時に地を yellow-300、文字を blue-1000 にする（9.98:1）
+- クリック可能なテーブル行（`<tr>`）は親の `overflow-hidden` に切られないよう outline を内側（offset -4px）に描き、黄リングは付けない（`<tr>` の box-shadow はブラウザで描画が安定しないため）
+- 親の `overflow` で外側の表示が切れる要素（トップのカテゴリタブ、横スクロールのパネル内の ToolCard、`overflow-hidden` の箱の中の `<summary>`）と、キーボードでフォーカスできるスクロール領域（Markdown プレビュー等）には `.focus-inset` を付け、内側に描く（offset -4px の outline + `inset 0 0 0 6px` の黄）
+- primary ボタンの hover / focus は `filter: brightness()` だと黄リングまで暗くなるため、背景色（`--color-primary-hover` = blue-1000）で表す
+- スキップリンクは focus 時に画面端から 6px 離し、フォーカス表示が画面外に切れないようにする
+- 濃色フッター（solid-gray-900）上では黒い outline は見えないが、黄リング（12.21:1）が見えるのでそのままにする
+
+### 却下した選択肢
+
+- **outline を黄、box-shadow を黒にする**: DADS の見た目（黒が外側）と逆になる
+- **すべての focusable 要素を内側描画にする**: DADS の見た目（要素の外側にリング）から外れる。切れる要素だけに限る
+
+### 結果・トレードオフ
+
+- ✅ キーボード操作時の現在位置が、どの背景色の上でも明確になる
+- ⚠️ 影を持つ要素（ToolCard の `hover:shadow-md` など）は、focus 中は影が黄リングに置き換わる。影を残す必要がある要素は上記のトグルと同じく個別に重ねる
