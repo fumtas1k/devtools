@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { existsSync } from 'node:fs';
+import { describe, it, expect, afterEach } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   generateHTML,
   isRetryDir,
@@ -203,5 +207,60 @@ describe('[陽性対照] isRetryDir (誤検知・見逃しの検出)', () => {
 
   it('"retry" の前にハイフンが無いと false', () => {
     expect(isRetryDir('fooretry1')).toBe(false);
+  });
+});
+
+/**
+ * import 時に main() が走らないことの検証。
+ *
+ * 本ファイルのように関数を import するだけで main() が走ると、ローカルの test-results/ に
+ * -actual.png が残っているとき `npm run test` がリポジトリ直下へ vrt-slider-report/ を
+ * 書き出していた。スクリプトは cwd 相対で test-results/ を読むため、一時ディレクトリを
+ * cwd にした子プロセスで import / 直接実行を比べる（リポジトリの test-results/ に触れない）。
+ */
+const SCRIPT_PATH = resolve(__dirname, '../../scripts/generate-vrt-slider.mjs');
+const tempDirs: string[] = [];
+
+/** -actual.png / -expected.png の比較ペアを 1 件持つ作業ディレクトリを作る */
+function makeWorkspaceWithFailedSnapshot(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'vrt-slider-'));
+  tempDirs.push(dir);
+  const caseDir = join(dir, 'test-results', 'visual-regression-foo');
+  mkdirSync(caseDir, { recursive: true });
+  writeFileSync(join(caseDir, 'foo-actual.png'), 'actual');
+  writeFileSync(join(caseDir, 'foo-expected.png'), 'expected');
+  // 直接実行時は node_modules/img-comparison-slider/dist を cwd 相対でコピーする
+  symlinkSync(resolve(__dirname, '../../node_modules'), join(dir, 'node_modules'), 'dir');
+  return dir;
+}
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+
+describe('generate-vrt-slider.mjs の import', () => {
+  it('import しただけでは test-results/ に差分があってもレポートを生成しない', () => {
+    const dir = makeWorkspaceWithFailedSnapshot();
+    execFileSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `await import(${JSON.stringify(pathToFileURL(SCRIPT_PATH).href)});`,
+      ],
+      { cwd: dir, stdio: 'pipe' }
+    );
+    expect(existsSync(join(dir, 'vrt-slider-report'))).toBe(false);
+  });
+});
+
+describe('[陽性対照] generate-vrt-slider.mjs の直接実行', () => {
+  it('同じ作業ディレクトリで直接実行するとレポートを生成する', () => {
+    const dir = makeWorkspaceWithFailedSnapshot();
+    execFileSync(process.execPath, [SCRIPT_PATH], { cwd: dir, stdio: 'pipe' });
+    expect(existsSync(join(dir, 'vrt-slider-report', 'index.html'))).toBe(true);
+    expect(
+      existsSync(join(dir, 'vrt-slider-report', 'images', 'visual_regression_foo-actual.png'))
+    ).toBe(true);
   });
 });

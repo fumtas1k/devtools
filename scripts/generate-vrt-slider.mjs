@@ -1,6 +1,7 @@
 import { readdir, copyFile, mkdir, writeFile } from 'fs/promises';
 import { join, basename, dirname } from 'path';
 import { existsSync, readFileSync } from 'fs';
+import { pathToFileURL } from 'url';
 
 // VRT スライダーレポート生成
 // test-results/ の *-actual.png と隣接する *-expected.png を使って
@@ -312,7 +313,12 @@ async function main() {
   console.log(`VRT スライダーレポート生成完了: ${comparisons.length} 件`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// `node scripts/generate-vrt-slider.mjs` で直接実行されたときだけ生成する。
+// meta テストが関数を import するたびに main() が走ると、ローカルの test-results/ に
+// -actual.png が残っている場合にリポジトリ直下へ vrt-slider-report/ を書き出してしまう。
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
