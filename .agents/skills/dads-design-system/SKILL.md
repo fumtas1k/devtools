@@ -63,8 +63,9 @@ DADS の象徴。全インタラクティブ要素で同じ見た目にし、消
 
 本リポジトリでは `global.css` の `:where(...):focus-visible` で一括適用している（JS ハンドラ不要）。トークンは outline 用の `--focus-ring`（`4px solid` 黒）と、黄リング用の `--focus-ring-shadow`（`0 0 0 2px` yellow-300）。
 
-- コンポーネント側で `outline` / `box-shadow` を独自に指定しない。一括ルールは `@layer` の外にあり、focus 中は `@layer components` 内の自前の影を上書きする。focus 中も影を残したい要素は、一括ルールの直後（レイヤー外）で `box-shadow: var(--focus-ring-shadow), <自前の影>` と重ねる（例: `.btn-toggle[aria-pressed='true']`）
-- `:where()` の一括対象外の要素（`<tr>` やラベル）は `outline: var(--focus-ring)` と `box-shadow: var(--focus-ring-shadow)` を個別に付ける
+- コンポーネント側で `outline` / `box-shadow` を独自に指定しない。一括ルールは `@layer` の外にあり、focus 中は `@layer` 内（components / utilities）の影や outline の指定をすべて上書きする。focus 中も影を残したい要素は、一括ルールの直後（レイヤー外）で `box-shadow: var(--focus-ring-shadow), <自前の影>` と重ねる（例: `.btn-toggle[aria-pressed='true']`）
+- 親の `overflow`（横スクロール領域・`overflow-hidden` の箱）で外側の表示が切れる要素、一括対象外の要素（キーボードでフォーカスできるスクロール領域の div 等）には `focus-inset` クラスを付けて内側に描く（縁から黒 4px → 黄 2px）
+- 例外: クリック可能な表の行（`<tr>`）は offset -4px の outline だけで、黄リングは付けない（`<tr>` の box-shadow は描画が安定しないため）。ラベル内の sr-only input は `.btn-file-input:focus-within` で個別に付けている
 - テキストリンクは focus 時に地を yellow-300 にする（`.text-link` / `.text-link-plain` で定義済み）
 
 ## 4. タイポグラフィ

@@ -40,6 +40,7 @@
 
   /* === キーカラー（Blue）: DADS v2（docs/decisions.md [134]） === */
   --color-primary: #0017c1; /* blue-900 */
+  --color-primary-hover: #00118f; /* blue-1000: primary 塗りの hover / focus */
   --color-tertiary: #00118f; /* blue-1000: カテゴリバッジ文字（blue-100 上で 11.3:1） */
   --color-background: #e8f1fe; /* blue-50: トップページ hero 背景 */
 
@@ -139,7 +140,16 @@
 
 /* focus-visible を CSS で一括適用（JS の onFocusRing/onBlurRing ハンドラは不要）。
    [role='textbox'] は contenteditable な貼り付け受付領域（clipboard-inspector）用 */
-:where(button, a, [role='button'], [role='textbox'], input, textarea, select):focus-visible {
+:where(
+  button,
+  a,
+  [role='button'],
+  [role='textbox'],
+  input,
+  textarea,
+  select,
+  summary
+):focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;
   box-shadow: var(--focus-ring-shadow);
@@ -149,6 +159,15 @@
    詳細度に関係なく上書きする。focus 中も影を残したい要素は、ここ（レイヤー外）で黄リングと重ねる */
 .btn-toggle[aria-pressed='true']:focus-visible {
   box-shadow: var(--focus-ring-shadow), var(--elevation-2);
+}
+
+/* 親の overflow（横スクロール領域・overflow-hidden の箱）で外側の表示が切れる要素用。
+   フォーカス表示を要素の内側に描く（縁から黒 4px → 黄 2px）。一括ルールの対象外の
+   要素（キーボードでフォーカスできるスクロール領域の div 等）にも付けられる */
+.focus-inset:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -4px;
+  box-shadow: inset 0 0 0 6px var(--color-focus-ring);
 }
 
 /* `hidden` 属性は UA 既定 display:none が Tailwind の `.flex` / `.block` 等
@@ -173,6 +192,9 @@
   text-decoration: none;
 }
 .skip-link:focus-visible {
+  /* フォーカス表示（外側 6px）が画面外に切れないよう端から離す */
+  top: 6px;
+  left: 6px;
   transform: translateY(0);
 }
 
@@ -402,7 +424,8 @@
      残留視覚反応を避ける。global.css の `:where(...):focus-visible` outline ring と併用。 */
   .btn-action--primary:hover:not(:disabled),
   .btn-action--primary:focus-visible:not(:disabled) {
-    filter: brightness(0.92);
+    /* filter だとフォーカスの黄リングまで暗くなるため背景色で表す（DADS の primary hover） */
+    background: var(--color-primary-hover);
   }
   .btn-action--secondary:hover:not(:disabled),
   .btn-action--secondary:focus-visible:not(:disabled) {
@@ -1162,9 +1185,6 @@
     text-align: center;
   }
   .json-toggle:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: 2px;
-    box-shadow: var(--focus-ring-shadow);
     border-radius: 0.25rem;
   }
   .json-toggle-spacer {

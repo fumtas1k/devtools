@@ -68,7 +68,8 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 - [x] `:where(...):focus-visible` を黒 4px outline + 黄 2px ring に変更
 - [x] outline 用 `--focus-ring`（`4px solid` 黒）と ring 用 `--focus-ring-shadow`（黄 2px の box-shadow）にトークンを分けた。旧 `--color-focus` は削除
-- [x] 個別に上書きしていた箇所（`.btn-file-input` の focus-within、`.json-toggle`、`.result-table-row`）を揃えた。自前の box-shadow を持つ選択中トグルは黄リングと影を重ねる
+- [x] 個別に上書きしていた箇所（`.btn-file-input` の focus-within、`.result-table-row`）を揃え、効いていなかった `.json-toggle` の指定を削除した。自前の box-shadow を持つ選択中トグルは黄リングと影を重ねる
+- [x] 一括ルールに `summary` を追加。親の overflow で切れる要素（カテゴリタブ、ToolCard、CertDecoder の summary）とスクロール領域は `.focus-inset` で内側に描く
 - [x] テキストリンク（`.text-link` / `.text-link-plain`）は DADS の Link と同じく focus 時に地を yellow-300 にする
 - [x] 暗い背景（primary 塗りのボタン、濃色フッター）上での視認性を確認（`docs/decisions.md [136]`）
 
