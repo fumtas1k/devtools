@@ -220,6 +220,8 @@ describe('[陽性対照] isRetryDir (誤検知・見逃しの検出)', () => {
  */
 const SCRIPT_PATH = resolve(__dirname, '../../scripts/generate-vrt-slider.mjs');
 const tempDirs: string[] = [];
+// 同期実行の子プロセスがハングすると vitest のタイムアウトが効かないため、子プロセス側で打ち切る
+const CHILD_TIMEOUT_MS = 10_000;
 
 /** -actual.png / -expected.png の比較ペアを 1 件持つ作業ディレクトリを作る */
 function makeWorkspaceWithFailedSnapshot(): string {
@@ -248,7 +250,7 @@ describe('generate-vrt-slider.mjs の import', () => {
         '-e',
         `await import(${JSON.stringify(pathToFileURL(SCRIPT_PATH).href)});`,
       ],
-      { cwd: dir, stdio: 'pipe' }
+      { cwd: dir, stdio: 'pipe', timeout: CHILD_TIMEOUT_MS }
     );
     expect(existsSync(join(dir, 'vrt-slider-report'))).toBe(false);
   });
@@ -257,7 +259,11 @@ describe('generate-vrt-slider.mjs の import', () => {
 describe('[陽性対照] generate-vrt-slider.mjs の直接実行', () => {
   it('同じ作業ディレクトリで直接実行するとレポートを生成する', () => {
     const dir = makeWorkspaceWithFailedSnapshot();
-    execFileSync(process.execPath, [SCRIPT_PATH], { cwd: dir, stdio: 'pipe' });
+    execFileSync(process.execPath, [SCRIPT_PATH], {
+      cwd: dir,
+      stdio: 'pipe',
+      timeout: CHILD_TIMEOUT_MS,
+    });
     expect(existsSync(join(dir, 'vrt-slider-report', 'index.html'))).toBe(true);
     expect(
       existsSync(join(dir, 'vrt-slider-report', 'images', 'visual_regression_foo-actual.png'))

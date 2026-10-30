@@ -1,7 +1,7 @@
 import { readdir, copyFile, mkdir, writeFile } from 'fs/promises';
 import { join, basename, dirname } from 'path';
-import { existsSync, readFileSync } from 'fs';
-import { pathToFileURL } from 'url';
+import { existsSync, readFileSync, realpathSync } from 'fs';
+import { fileURLToPath } from 'url';
 
 // VRT スライダーレポート生成
 // test-results/ の *-actual.png と隣接する *-expected.png を使って
@@ -316,7 +316,8 @@ async function main() {
 // `node scripts/generate-vrt-slider.mjs` で直接実行されたときだけ生成する。
 // meta テストが関数を import するたびに main() が走ると、ローカルの test-results/ に
 // -actual.png が残っている場合にリポジトリ直下へ vrt-slider-report/ を書き出してしまう。
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// import.meta.url は realpath 済みなので、argv[1] も realpath にそろえて比べる（シンボリックリンク経由の起動対策）。
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);
