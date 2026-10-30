@@ -59,10 +59,10 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 - [x] semantic token と `:root` のエイリアスの値を DADS に付け替え（クラス名は維持）。セマンティック色は文字にも使うため `-2` 側を採用し、warning のみ tint 上のコントラストのため `yellow-1000` にした（`docs/decisions.md [135]`）
 - [x] `--color-secondary` は未使用のため削除。`--color-tertiary` は `blue-1000`、`--color-background` は `blue-50`
 - [x] HAR フェーズ色・鉄道図アンカー色を DADS の色相へ付け替え
-- [x] primitive の直接参照（`var(--color-blue-*)` / `var(--color-neutral-*)`）を semantic token へ移した。neutral 系は `--color-text` / `--color-border-strong` / `--color-overlay` / `--color-footer-*` に集約
+- [x] `var(--color-neutral-*)` の直接参照を semantic token（`--color-text` / `--color-border-strong` / `--color-overlay` / `--color-footer-*`）へ移した。`var(--color-blue-*)` は D1 に従い DADS 値で上書きしたうえで、`global.css` の意味クラス（`.rr-charclass` / `.match-highlight-*`）と `index.astro` の hero 区切りに直接参照を残す
 - [x] `theme-color` / `manifest.webmanifest` の `theme_color`・`background_color` を DADS に合わせた
 - [x] visited は公式 Link コンポーネント（`visited:text-magenta-900`）で `magenta-900` に確定
-- [x] 文字 4.5:1 / 非テキスト 3:1 を確認。`ErrorMessage` の block 表示は red-50 上で `error-1` が 4.08:1 になるため文字を `--color-error-text` に変更
+- [x] 文字 4.5:1 / 非テキスト 3:1 を確認。red-50 上で `error-1` は 4.08:1 になるため、`ErrorMessage` の block 表示・VerifyTab の無効見出し・`.regex-ast-node-hot`・danger ボタンと `.btn-remove-card` の hover の文字を `--color-error-text` に変更。JSON ツリーの構文色は hover 行（blue-50）上で不足したため DADS の濃い段へ。直書き色で既存の不足が残る UUID / JWT は [#808](https://github.com/fumtas1k/devtools/issues/808) で扱う
 
 ### Phase 2: フォーカスリング
 
@@ -82,6 +82,8 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 ### Phase 5: コンポーネント（1 コンポーネント 1 PR 目安）
 
+- [ ] UUID v7 生成・JWT デコーダの直書き色を DADS の色に置き換える（[#808](https://github.com/fumtas1k/devtools/issues/808)）
+
 DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChips / CopyButton 等）は DS のボタン・チップ規約から派生させる。
 
 - [ ] `ActionButton`（solid-fill / outline / text、サイズ、hover 下線、double border）
@@ -98,7 +100,7 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 
 ### Phase 7: 後片付け
 
-- [ ] 使われなくなった旧トークン・旧クラスを削除
+- [ ] 使われなくなった旧トークン・旧クラスを削除（`--color-success-strong` は Phase 1 で `--color-success` と同値になったので統合する）
 - [ ] `dads-design-system/references/tokens.md` を削除し、`SKILL.md` 0 章の「移行中」の記述と 2 章の「現行の対応先」列を更新
 - [ ] `SPEC.md` / `docs/decisions.md` / `.agents/rules/ui-conventions.md` を更新
 

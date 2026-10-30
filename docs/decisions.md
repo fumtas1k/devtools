@@ -5030,7 +5030,7 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 - セマンティック色（`--color-success` / `--color-error` / `--color-warning`）は文字にも白文字バッジの塗りにも使うため、DADS の `-2` 側（白地 4.5:1 以上）を採る。error のみ `error-1`（`red-800`、白地 4.60:1）を `--color-error` に、`error-2` を `--color-error-text`（tint 上の文字）に割り当てる
 - warning は DADS の `warning-yellow-2`（`yellow-900`）だと `yellow-50` の tint 上で 4.16:1 になり、JwtDecoder の「exp なし」バッジで AA を満たさない。1 段濃い `yellow-1000`（5.20:1）を使う
 - `--color-bg-surface` と `--color-bg-subtle` は、DADS の薄いグレーが `solid-gray-50` の 1 段しかないため同じ値にする（トークンは用途の区別のため残す）
-- `--color-border-input` は公式 Input と同じ `solid-gray-600`。ボタン・チップの枠も同じトークンを使っており、現行の `#d1d5db`（白地 1.48:1）は WCAG 1.4.11 の 3:1 を満たしていなかったため、そのまま濃くする。鉄道図の箱など図の線は新設の `--color-border-strong`（`solid-gray-420`、3.03:1）に分ける
+- `--color-border-input` は公式 Input と同じ `solid-gray-600`。ボタン・チップの枠も同じトークンを使っており、現行の `#d1d5db`（白地 1.47:1）は WCAG 1.4.11 の 3:1 を満たしていなかったため、そのまま濃くする。鉄道図の箱など図の線は新設の `--color-border-strong`（`solid-gray-536`、白地 4.54:1 / gray-50 上 4.06:1）に分ける。`solid-gray-420` は gray-50 のグループ枠の上で 2.71:1 になり不足する
 - 本文 `--color-text` は公式 Heading と同じ `solid-gray-800`、補助テキスト `--color-muted` は `solid-gray-700`
 - Solid Gray はプリミティブとして `@theme` に置かない。未使用のテーマ変数はビルドで削られ、primitive の直接参照は規約で禁止しているため、semantic token の値として直接持つ
 
@@ -5041,5 +5041,6 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 
 ### 結果・トレードオフ
 
-- ✅ 文字・非テキストのコントラストが全トークンで AA を満たす
+- ✅ red-50 などの tint 上の文字を含め、トークン経由の色の組み合わせは AA を満たす（`--color-error` を tint に載せる箇所は `--color-error-text` に替えた）
+- ⚠️ トークンを経由しない直書き色（UUID v7 のフィールド色など）には既存の AA 不足が残る（#808）
 - ⚠️ 入力欄・ボタン・チップの枠が濃くなり、全ページの見た目が変わる（VRT baseline の再生成が必要）

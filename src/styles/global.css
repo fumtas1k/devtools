@@ -93,7 +93,7 @@
   --color-bg-surface: #f2f2f2; /* solid-gray-50: テーブル見出し・縞・読み取り専用欄 */
   --color-bg-subtle: #f2f2f2; /* solid-gray-50: hover・既定ボタン背景（DADS の薄いグレーは 1 段のみ） */
   --color-border: #e6e6e6; /* solid-gray-100: カード枠・区切り */
-  --color-border-strong: #949494; /* solid-gray-420: 図の線など白地で 3:1 が必要な非テキスト */
+  --color-border-strong: #767676; /* solid-gray-536: 図の線など 3:1 が必要な非テキスト（白地 4.54:1 / gray-50 上 4.06:1） */
   --color-border-input: #666666; /* solid-gray-600: 入力欄・コントロールの枠（白地 5.74:1） */
   --color-error-text: #ce0000; /* error-2 (red-900): red-50 上 5.14:1 */
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
@@ -372,6 +372,7 @@
   .btn-action--danger:hover:not(:disabled),
   .btn-action--danger:focus-visible:not(:disabled) {
     background: var(--color-error-bg);
+    color: var(--color-error-text); /* red-50 上は error-2（5.14:1） */
   }
   .btn-action:disabled {
     background: var(--color-bg-subtle);
@@ -687,6 +688,7 @@
   }
   .btn-remove-card:hover {
     background: var(--color-error-bg);
+    color: var(--color-error-text); /* red-50 上は error-2（5.14:1） */
   }
 
   /* Gs1Databar: AI フィールド ✕ ボタン / GS1 文字列 <summary> 共通 (hover で bg-subtle) */
@@ -872,7 +874,7 @@
   /* ReDoS 危険箇所にマッチするノードをエラー色（赤）で強調 */
   .regex-ast-node-hot {
     background: var(--color-error-bg);
-    color: var(--color-error);
+    color: var(--color-error-text); /* red-50 上は error-1 だと 4.08:1 のため error-2 */
   }
 
   /* === 汎用トグルチップ（ToggleChips コンポーネント用） === */
@@ -1137,13 +1139,13 @@
   }
   /* JSON 値の構文色（UI トークンではないローカル色。jwt-json-* と同方針） */
   .json-string {
-    color: #15803d; /* green-700 */
+    color: #197a4b; /* green-800: hover 行（blue-50）上 4.70:1 */
   }
   .json-number {
-    color: #b45309; /* amber-700 */
+    color: #ac3e00; /* orange-900: hover 行上 5.36:1 */
   }
   .json-boolean {
-    color: #7c3aed; /* violet-600 */
+    color: #6f23d0; /* purple-700: hover 行上 6.52:1 */
   }
   .json-null {
     color: var(--color-muted);
