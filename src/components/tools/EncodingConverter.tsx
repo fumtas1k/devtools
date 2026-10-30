@@ -342,7 +342,7 @@ export function EncodingConverterTool() {
             </span>
           </div>
           {detectResult.decodedPreview && (
-            <div className="mt-2 font-mono rounded px-2 py-1.5 overflow-auto caption text-default bg-default border border-default max-h-24 whitespace-pre-wrap break-all">
+            <div className="focus-inset mt-2 font-mono rounded px-2 py-1.5 overflow-auto caption text-default bg-default border border-default max-h-24 whitespace-pre-wrap break-all">
               {detectResult.decodedPreview}
             </div>
           )}

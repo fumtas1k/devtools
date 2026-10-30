@@ -40,6 +40,7 @@
 
   /* === キーカラー（Blue）: DADS v2（docs/decisions.md [134]） === */
   --color-primary: #0017c1; /* blue-900 */
+  --color-primary-hover: #00118f; /* blue-1000: primary 塗りの hover / focus */
   --color-tertiary: #00118f; /* blue-1000: カテゴリバッジ文字（blue-100 上で 11.3:1） */
   --color-background: #e8f1fe; /* blue-50: トップページ hero 背景 */
 
@@ -85,7 +86,6 @@
   --color-link-visited: #8b008b; /* magenta-900（DADS Link の visited） */
   --color-anchor-bg: #f1eafa; /* purple-50: 鉄道図アンカー塗り */
   --color-anchor: #6f23d0; /* purple-700: 鉄道図アンカー枠/文字（purple-50 上で 6.33:1） */
-  --color-focus: #2563eb; /* DADS のフォーカスリングへは移行計画 Phase 2 で切り替える */
 
   /* === 角の形状 === */
   --radius-none: 0px;
@@ -103,7 +103,11 @@
 }
 
 :root {
-  --focus-ring: 2px solid var(--color-focus);
+  /* DADS のフォーカスインジケータ: 黒 4px の outline（offset 2px）+ その内側の黄 2px リング（box-shadow） */
+  --color-focus-outline: #000000; /* black */
+  --color-focus-ring: #ffd43d; /* yellow-300 */
+  --focus-ring: 4px solid var(--color-focus-outline);
+  --focus-ring-shadow: 0 0 0 2px var(--color-focus-ring);
 
   /* === セマンティックエイリアス === */
   /* ダークモード追加時はここを .dark でオーバーライドする */
@@ -136,9 +140,34 @@
 
 /* focus-visible を CSS で一括適用（JS の onFocusRing/onBlurRing ハンドラは不要）。
    [role='textbox'] は contenteditable な貼り付け受付領域（clipboard-inspector）用 */
-:where(button, a, [role='button'], [role='textbox'], input, textarea, select):focus-visible {
+:where(
+  button,
+  a,
+  [role='button'],
+  [role='textbox'],
+  input,
+  textarea,
+  select,
+  summary
+):focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;
+  box-shadow: var(--focus-ring-shadow);
+}
+
+/* 上の一括ルールは @layer の外にあるため、@layer components 内の自前の box-shadow（影）を
+   詳細度に関係なく上書きする。focus 中も影を残したい要素は、ここ（レイヤー外）で黄リングと重ねる */
+.btn-toggle[aria-pressed='true']:focus-visible {
+  box-shadow: var(--focus-ring-shadow), var(--elevation-2);
+}
+
+/* 親の overflow（横スクロール領域・overflow-hidden の箱）で外側の表示が切れる要素用。
+   フォーカス表示を要素の内側に描く（縁から黒 4px → 黄 2px）。一括ルールの対象外の
+   要素（キーボードでフォーカスできるスクロール領域の div 等）にも付けられる */
+.focus-inset:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -4px;
+  box-shadow: inset 0 0 0 6px var(--color-focus-ring);
 }
 
 /* `hidden` 属性は UA 既定 display:none が Tailwind の `.flex` / `.block` 等
@@ -163,6 +192,9 @@
   text-decoration: none;
 }
 .skip-link:focus-visible {
+  /* フォーカス表示（外側 6px）が画面外に切れないよう端から離す */
+  top: 6px;
+  left: 6px;
   transform: translateY(0);
 }
 
@@ -221,6 +253,15 @@
 
 .text-link:visited {
   color: var(--color-link-visited);
+}
+
+/* テキストリンクのフォーカス: DADS の Link と同じく地を yellow-300、文字を blue-1000 にする
+   （outline / 黄リングは global の :focus-visible）。visited より後に置いて文字色を上書きする */
+.text-link:focus-visible,
+.text-link-plain:focus-visible {
+  background: var(--color-focus-ring);
+  color: var(--color-link);
+  border-radius: var(--radius-sm);
 }
 
 /* === issue #176 B 案: inline style 撤去用 semantic class === */
@@ -383,7 +424,8 @@
      残留視覚反応を避ける。global.css の `:where(...):focus-visible` outline ring と併用。 */
   .btn-action--primary:hover:not(:disabled),
   .btn-action--primary:focus-visible:not(:disabled) {
-    filter: brightness(0.92);
+    /* filter だとフォーカスの黄リングまで暗くなるため背景色で表す（DADS の primary hover） */
+    background: var(--color-primary-hover);
   }
   .btn-action--secondary:hover:not(:disabled),
   .btn-action--secondary:focus-visible:not(:disabled) {
@@ -489,7 +531,7 @@
      outline-offset は負値で <tr> 境界の内側に描画し overflow-hidden の親に切られないようにする。 */
   .result-table-row[data-clickable='true']:focus-visible {
     outline: var(--focus-ring);
-    outline-offset: -2px;
+    outline-offset: -4px;
   }
   /* selection マーカー (border-top/bottom 2px primary) */
   .result-table-row[data-selected='true'] > td {
@@ -754,6 +796,7 @@
   .btn-file-input:focus-within:not([aria-disabled='true']) {
     outline: var(--focus-ring);
     outline-offset: 2px;
+    box-shadow: var(--focus-ring-shadow);
   }
   /* disabled 状態: カーソルを not-allowed に変え、opacity で無効感を表現 */
   .btn-file-input[aria-disabled='true'] {
@@ -1142,8 +1185,6 @@
     text-align: center;
   }
   .json-toggle:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
     border-radius: 0.25rem;
   }
   .json-toggle-spacer {

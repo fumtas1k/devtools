@@ -106,7 +106,7 @@ export function MarkdownEditor() {
             </div>
           ) : (
             <div
-              className="markdown-preview md-preview-box w-full rounded-lg border border-input p-4"
+              className="markdown-preview md-preview-box focus-inset w-full rounded-lg border border-input p-4"
               // sanitizeHtml 済みの HTML を dangerouslySetInnerHTML で描画する。
               // renderMarkdown が必ず sanitizeHtml に通してから返すため XSS は発生しない。
               dangerouslySetInnerHTML={{ __html: html }}

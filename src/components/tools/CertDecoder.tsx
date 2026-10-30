@@ -104,7 +104,7 @@ interface CertSectionProps {
 function CertSection({ title, defaultOpen = false, children }: CertSectionProps) {
   return (
     <details open={defaultOpen}>
-      <summary className="px-4 py-3 cursor-pointer hover-bg-subtle summary-no-marker flex items-center gap-2">
+      <summary className="focus-inset px-4 py-3 cursor-pointer hover-bg-subtle summary-no-marker flex items-center gap-2">
         <span
           className="cert-chevron shrink-0 inline-flex items-center justify-center size-5 rounded-full border border-current bg-default text-primary"
           aria-hidden="true"
@@ -388,7 +388,7 @@ function PrivateKeySection({ privateKeys }: PrivateKeySectionProps) {
           </div>
           <div className="bg-default p-4">
             <details>
-              <summary className="cursor-pointer body-emphasis text-default">
+              <summary className="focus-inset cursor-pointer body-emphasis text-default">
                 秘密鍵（PKCS#8 PEM）を表示
               </summary>
               <div className="mt-3">
