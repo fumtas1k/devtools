@@ -5076,3 +5076,44 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 
 - ✅ キーボード操作時の現在位置が、どの背景色の上でも明確になる
 - ⚠️ 影を持つ要素（ToolCard の `hover:shadow-md` など）は、focus 中は影が黄リングに置き換わる。影を残す必要がある要素は上記のトグルと同じく個別に重ねる
+
+---
+
+## [137] CI の Playwright を全コアで並列実行し、VRT の比較は retry しない
+
+**2026-10-30 | ステータス: 採用**
+
+### 背景
+
+CI の `workers` は Playwright 雛形の既定値（`process.env.CI ? 1 : undefined`）のままで、採用理由の記録がなかった。E2E は 395 件を直列で回し、`E2E テストを実行` ステップだけで約 3 分 54 秒（e2e ジョブ全体 5 分 14 秒）かかっていた。VRT は pass 時 37 秒だが、全ページに diff が出た PR #809 では、各テストが mismatch のまま `expect.timeout`（5 秒）まで撮り直しを続けたうえ `retries: 1` でもう一度走り、`VRT 実行` ステップが 5 分 45 秒まで伸びていた。
+
+### 決断
+
+- `playwright.config.ts` の CI 時 `workers` を `'100%'` にする（GitHub の ubuntu-latest は 4 vCPU）。`CI` 未設定のローカルは既定（コア数の 50%）のまま。`CI=1` を設定した Claude Code on the web セッションは CI と同じく `'100%'` になる
+- `visual-regression.yml` の `--workers=1` を外す。baseline 生成（`update-visual-baseline.yml`）は実行頻度が低いため 1 worker のまま残す
+- `visual-regression` project は `retries: 0` にする。描画差分は retry しても再現するので、retry は失敗 run を長くするだけになる。project の設定なので baseline 生成（`update-visual-baseline.yml`）も retry しなくなるが、1 worker で負荷が低く、失敗しても再実行すれば済む
+
+4 コアのコンテナで実測した結果:
+
+| 対象           | workers | wall time（build 込み） | 結果                         |
+| :------------- | :------ | :---------------------- | :--------------------------- |
+| E2E            | 1       | 5.7 分                  | 395 passed                   |
+| E2E            | 2       | 3.4 分                  | 395 passed                   |
+| E2E            | 4       | 2.9 分                  | 395 passed                   |
+| E2E ×2 周      | 4       | 5.2 分                  | 790 passed / flaky 0         |
+| VRT（74 件）   | 1       | 1.0 分                  | 一時生成した baseline と一致 |
+| VRT（74 件）×2 | 4       | 38 秒 / 40 秒           | 一時生成した baseline と一致 |
+
+hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化と meta テストで塞いであり、並列化の前提が整っている。
+
+### 却下した選択肢
+
+- **E2E を matrix で shard する**: ジョブごとにコンテナ起動・`npm ci`・build で約 45 秒の固定費が乗る。4 workers 化後の E2E 本体は 2 分 31 秒（PR #813 の CI 実測）で、現時点では割に合わない。件数がさらに増えたら再検討する
+- **`workers: 2`（Playwright 既定の 50%）**: 4 workers より遅く（3.4 分 vs 2.9 分）、4 コアの runner を使い切らない
+
+### 結果・トレードオフ
+
+- ✅ CI の `E2E テストを実行` ステップが 3 分 54 秒 → 2 分 31 秒（e2e ジョブ全体は 5 分 14 秒 → 3 分 40 秒、PR #813）。ローカルほどは縮まない
+- ✅ diff が出た VRT の run は retry 分がなくなる。pass 時の `VRT 実行` は 37 秒 → 36 秒でほぼ変わらない（並列にすると 1 件あたりの撮影時間が伸び、CPU が律速になる）
+- ⚠️ 並列実行でだけ顕在化するテスト間の干渉（共有状態・CPU 負荷によるタイムアウト）が CI でも表に出る。E2E は `retries: 1` を残して吸収する
+- ⚠️ VRT の flaky は retry で吸収されず fail になる。VRT は required check ではないため merge は止まらない

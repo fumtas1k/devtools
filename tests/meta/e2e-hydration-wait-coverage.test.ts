@@ -7,8 +7,8 @@ import { join } from 'node:path';
  *
  * Playwright の fill / click / setInputFiles が React island の hydration
  * 完了前に実行されると、DOM だけ書き換わり React の onChange が発火しない
- * hydration race で flaky になる（CI は workers:1 で顕在化せずローカル並列
- * 実行でのみ落ちるため発見が遅れる）。
+ * hydration race で flaky になる（並列実行時にだけ落ちるため発見が遅れる。
+ * 当時 CI は workers:1 で顕在化しなかった）。
  *
  * 検知ルール: `tests/e2e/*.spec.ts` のうちソースに `goto('/tools/...')` を
  * 含むファイルは `waitForReactHydration` または `withProductionCsp`（内部で
