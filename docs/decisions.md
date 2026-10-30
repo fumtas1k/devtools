@@ -5130,9 +5130,9 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 ### 決断
 
-- 見出し・本文の意味クラスを DADS のスタイルに対応付ける: `.tool-info-heading` と `.body-emphasis` は Std-17B-170、`.tool-info-body` は Std-17N-170、`.tool-info-list` は Dns-14N-130、`.section-heading` は Std-18B-160、`.text-body` は Std-16N-175、`.hero-heading` は Std-32B-150、`.page-heading` は Std-28B-150
+- 見出し・本文の意味クラスを DADS のスタイルに対応付ける: `.tool-info-heading` と `.body-emphasis` は Std-17B-170、`.tool-info-body` は Std-17N-170、`.tool-info-list` は Std-16N-170（14px・行高 1.29 から。複数行の説明文なので本文と同じ Std にする）、`.section-heading` は Std-18B-160、`.text-body` は Std-16N-175、`.hero-heading` は Std-32B-150、`.page-heading` は Std-28B-150
 - `.caption`（14px・行高 1.7）は据え置く。DADS には 14px の Std スタイルがなく（14px は Dns / Oln / Mono のみ）、複数行の補助テキストに Dns-14N-130 の行高 1.3 を当てると読みにくくなるため
-- 文字の太さを DADS の 400 / 700 にそろえる。`font-semibold`（600）は `font-bold`、`font-medium`（500）は `font-normal` に置き換える。Noto Sans JP は 400 / 700 しか読み込んでおらず、ブラウザはもともと 600 を 700、500 を 400 で描いていたため、見た目は変わらない。再混入は meta テスト（`tests/meta/font-weight-dads.test.ts`、陽性対照付き）で検知する
+- 文字の太さを DADS の 400 / 700 にそろえる。`font-semibold`（600）は `font-bold`、`font-medium`（500）は `font-normal` に置き換える。Noto Sans JP は 400 / 700 しか読み込んでおらず、Noto Sans JP で描かれる文字はもともと 600 が 700、500 が 400 で描かれていたため、見た目は変わらない（Noto Sans JP の unicode-range 外の記号や、フォント読み込み前のシステムフォント表示では差が出うるが軽微）。再混入は meta テスト（`tests/meta/font-weight-dads.test.ts`、陽性対照付き）で検知する
 - 14px 未満の文字（バッジ・図のラベル・JSON の件数等）は部品ごとに判断が要るため Phase 5 に回す（#814）
 
 ### 却下した選択肢
