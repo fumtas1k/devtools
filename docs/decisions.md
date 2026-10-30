@@ -5077,11 +5077,12 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 ### 却下した選択肢
 
-- **E2E を matrix で shard する**: ジョブごとにコンテナ起動・`npm ci`・build で約 45 秒の固定費が乗る。4 workers 化後の E2E 本体は 2 分前後に縮むため、現時点では割に合わない。件数がさらに増えたら再検討する
+- **E2E を matrix で shard する**: ジョブごとにコンテナ起動・`npm ci`・build で約 45 秒の固定費が乗る。4 workers 化後の E2E 本体は 2 分 31 秒（PR #813 の CI 実測）で、現時点では割に合わない。件数がさらに増えたら再検討する
 - **`workers: 2`（Playwright 既定の 50%）**: 4 workers より遅く（3.4 分 vs 2.9 分）、4 コアの runner を使い切らない
 
 ### 結果・トレードオフ
 
-- ✅ CI の E2E と VRT の待ち時間が縮む（E2E 本体は概ね半分の見込み）。diff が出た VRT の run は retry 分がなくなる
+- ✅ CI の `E2E テストを実行` ステップが 3 分 54 秒 → 2 分 31 秒（e2e ジョブ全体は 5 分 14 秒 → 3 分 40 秒、PR #813）。ローカルほどは縮まない
+- ✅ diff が出た VRT の run は retry 分がなくなる。pass 時の `VRT 実行` は 37 秒 → 36 秒でほぼ変わらない（並列にすると 1 件あたりの撮影時間が伸び、CPU が律速になる）
 - ⚠️ 並列実行でだけ顕在化するテスト間の干渉（共有状態・CPU 負荷によるタイムアウト）が CI でも表に出る。E2E は `retries: 1` を残して吸収する
 - ⚠️ VRT の flaky は retry で吸収されず fail になる。VRT は required check ではないため merge は止まらない
