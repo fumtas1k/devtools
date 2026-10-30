@@ -18,64 +18,54 @@
     'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* === キーカラー（Blue） === */
-  --color-primary: #1a56db;
-  --color-secondary: #3b82f6;
-  --color-tertiary: #0e3293;
-  --color-background: #eff6ff;
+  /* === キーカラー（Blue）: DADS v2（docs/decisions.md [134]） === */
+  --color-primary: #0017c1; /* blue-900 */
+  --color-tertiary: #00118f; /* blue-1000: カテゴリバッジ文字（blue-100 上で 11.3:1） */
+  --color-background: #e8f1fe; /* blue-50: トップページ hero 背景 */
 
-  /* === プリミティブカラー Blue === */
-  --color-blue-50: #eff6ff;
-  --color-blue-100: #dbeafe;
-  --color-blue-200: #bfdbfe;
-  --color-blue-300: #93c5fd;
-  --color-blue-400: #60a5fa;
-  --color-blue-500: #3b82f6;
-  --color-blue-600: #2563eb;
-  --color-blue-700: #1d4ed8;
-  --color-blue-800: #1e40af;
-  --color-blue-900: #1e3a8a;
-  --color-blue-950: #172554;
+  /* === プリミティブカラー Blue（DADS 13 段。Tailwind 既定の blue は使わない） === */
+  --color-blue-*: initial;
+  --color-blue-50: #e8f1fe;
+  --color-blue-100: #d9e6ff;
+  --color-blue-200: #c5d7fb;
+  --color-blue-300: #9db7f9;
+  --color-blue-400: #7096f8;
+  --color-blue-500: #4979f5;
+  --color-blue-600: #3460fb;
+  --color-blue-700: #264af4;
+  --color-blue-800: #0031d8;
+  --color-blue-900: #0017c1;
+  --color-blue-1000: #00118f;
+  --color-blue-1100: #000071;
+  --color-blue-1200: #000060;
 
-  /* === ニュートラルカラー === */
-  --color-neutral-white: #ffffff;
-  --color-neutral-50: #f9fafb;
-  --color-neutral-100: #f3f4f6;
-  --color-neutral-200: #e5e7eb;
-  --color-neutral-300: #d1d5db;
-  --color-neutral-400: #9ca3af;
-  --color-neutral-500: #6b7280;
-  --color-neutral-600: #4b5563;
-  --color-neutral-700: #374151;
-  --color-neutral-800: #1f2937;
-  --color-neutral-900: #111827;
-
-  /* === セマンティックカラー === */
-  --color-success: #16a34a;
-  --color-success-strong: #15803d; /* 白文字バッジ用: 白×#15803d ≈ 5.0:1 で WCAG AA 合格 */
-  --color-success-bg: #f0fdf4;
-  --color-error: #dc2626;
-  --color-error-bg: #fef2f2;
-  --color-warning: #854d0e; /* amber-800: amber-600 は白背景で WCAG AA 不合格 */
-  --color-warning-bg: #fef3c7; /* amber-100 */
-  --color-info: #1d4ed8; /* blue-700: 白背景でコントラスト 4.5:1 以上 */
-  --color-info-bg: #eff6ff; /* blue-50 */
+  /* === セマンティックカラー ===
+     DADS の 2 段ペアのうち、文字・白文字の塗りにも使うため -2 側（白地 4.5:1 以上）を採る。 */
+  --color-success: #197a4b; /* success-2 (green-800): 白地 5.35:1 / green-50 上 4.75:1 */
+  --color-success-strong: #197a4b; /* 白文字バッジ用: success-2。白文字 5.35:1 */
+  --color-success-bg: #e6f5ec; /* green-50 */
+  --color-error: #ec0000; /* error-1 (red-800): 白地 4.60:1。red-50 上の文字は --color-error-text を使う */
+  --color-error-bg: #fdeeee; /* red-50 */
+  --color-warning: #806300; /* yellow-1000: warning-yellow-2 (yellow-900) は yellow-50 上 4.16:1 で不足するため 1 段濃くする（5.20:1） */
+  --color-warning-bg: #fbf5e0; /* yellow-50 */
+  --color-info: #0017c1; /* blue-900: DADS info バナー色 */
+  --color-info-bg: #e8f1fe; /* blue-50 */
 
   /* HAR ウォーターフォール フェーズ色（質的パレット・primitive 直書き回避のためトークン化） */
-  --color-har-blocked: #9ca3af; /* neutral-400: 待機/キュー */
-  --color-har-dns: #854d0e; /* amber-800: 名前解決 */
-  --color-har-connect: #15803d; /* green-700: TCP 接続 */
-  --color-har-ssl: #7c3aed; /* violet-600: TLS */
-  --color-har-send: #0e3293; /* tertiary: 送信 */
-  --color-har-wait: #1a56db; /* primary: TTFB（最重要） */
-  --color-har-receive: #60a5fa; /* blue-400: 受信（wait と明度差を広げ一覧バーでの識別性を確保） */
+  --color-har-blocked: #949494; /* solid-gray-420: 待機/キュー */
+  --color-har-dns: #927200; /* yellow-900: 名前解決 */
+  --color-har-connect: #1d8b56; /* green-700: TCP 接続 */
+  --color-har-ssl: #8843e1; /* purple-600: TLS */
+  --color-har-send: #000071; /* blue-1100: 送信 */
+  --color-har-wait: #0017c1; /* primary: TTFB（最重要） */
+  --color-har-receive: #7096f8; /* blue-400: 受信（wait と明度差を広げ一覧バーでの識別性を確保） */
 
   /* === 機能カラー === */
-  --color-link: #2563eb;
-  --color-link-visited: #7c3aed;
-  --color-anchor-bg: #ede9fe; /* violet-100 相当: 鉄道図アンカー塗り */
-  --color-anchor: #7c3aed; /* violet-600 相当: 鉄道図アンカー枠/文字（アンカー塗り #ede9fe 上で約4.8:1, AA 合格） */
-  --color-focus: #2563eb;
+  --color-link: #00118f; /* blue-1000（DADS Link） */
+  --color-link-visited: #8b008b; /* magenta-900（DADS Link の visited） */
+  --color-anchor-bg: #f1eafa; /* purple-50: 鉄道図アンカー塗り */
+  --color-anchor: #6f23d0; /* purple-700: 鉄道図アンカー枠/文字（purple-50 上で 6.33:1） */
+  --color-focus: #2563eb; /* DADS のフォーカスリングへは移行計画 Phase 2 で切り替える */
 
   /* === 角の形状 === */
   --radius-none: 0px;
@@ -95,19 +85,28 @@
 :root {
   --focus-ring: 2px solid var(--color-focus);
 
-  /* === セマンティックエイリアス（React インラインスタイル用） === */
+  /* === セマンティックエイリアス === */
   /* ダークモード追加時はここを .dark でオーバーライドする */
-  --color-text: #111827; /* neutral-900 */
-  --color-muted: #6b7280; /* neutral-500 */
+  --color-text: #333333; /* solid-gray-800: 本文・見出し */
+  --color-muted: #4d4d4d; /* solid-gray-700: 補助テキスト */
   --color-bg: #ffffff;
-  --color-bg-surface: #f9fafb; /* neutral-50 */
-  --color-bg-subtle: #f3f4f6; /* neutral-100 */
-  --color-border: #e5e7eb; /* neutral-200 */
-  --color-border-input: #d1d5db; /* neutral-300 */
-  --color-error-text: #b91c1c; /* red-700 */
+  --color-bg-surface: #f2f2f2; /* solid-gray-50: テーブル見出し・縞・読み取り専用欄 */
+  --color-bg-subtle: #f2f2f2; /* solid-gray-50: hover・既定ボタン背景（DADS の薄いグレーは 1 段のみ） */
+  --color-border: #e6e6e6; /* solid-gray-100: カード枠・区切り */
+  --color-border-strong: #949494; /* solid-gray-420: 図の線など白地で 3:1 が必要な非テキスト */
+  --color-border-input: #666666; /* solid-gray-600: 入力欄・コントロールの枠（白地 5.74:1） */
+  --color-error-text: #ce0000; /* error-2 (red-900): red-50 上 5.14:1 */
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
-  --color-bg-active: #eff6ff; /* アクティブなナビ項目背景（blue-50） */
-  --color-badge-bg: #dbeafe; /* カテゴリバッジ背景（blue-100） */
+  --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景 */
+  --color-badge-bg: #d9e6ff; /* blue-100: カテゴリバッジ背景 */
+  --color-overlay: rgba(0, 0, 0, 0.5); /* opacity-gray-500: モーダル背景 */
+
+  /* Footer（濃色帯） */
+  --color-footer-bg: #1a1a1a; /* solid-gray-900 */
+  --color-footer-text: #cccccc; /* solid-gray-200: 10.84:1 */
+  --color-footer-meta: #999999; /* solid-gray-400: 6.11:1 */
+  --color-footer-link: #b3b3b3; /* solid-gray-300: 8.30:1 */
+  --color-footer-link-hover: #f2f2f2; /* solid-gray-50 */
 }
 
 /* ボタン・リンク類のカーソルを pointer に統一 */
@@ -758,9 +757,9 @@
     letter-spacing: 0.08em;
   }
 
-  /* Icon button color (44x44 SVG ボタンの neutral-700) */
+  /* Icon button color (44x44 SVG ボタン) */
   .text-icon {
-    color: var(--color-neutral-700);
+    color: var(--color-text);
   }
 
   /* CategoryBadge: badge background (`--color-badge-bg` は `:root` 定義、auto-utility 不在のため意味クラス維持) */
@@ -770,17 +769,16 @@
 
   /* Footer container & meta text (Footer 専用、neutral 系 primitive 色を意味クラス化) */
   .footer-bar {
-    background: var(--color-neutral-900);
-    color: var(--color-neutral-300);
+    background: var(--color-footer-bg);
+    color: var(--color-footer-text);
   }
   .text-footer-meta {
-    color: var(--color-neutral-500);
+    color: var(--color-footer-meta);
   }
 
-  /* MobileDrawer backdrop (modal 背景の半透明 overlay)
-     `--color-neutral-900` 50% alpha。将来 dark mode / theme 切替で token 値変更に自動追従。 */
+  /* MobileDrawer backdrop (modal 背景の半透明 overlay、`--color-overlay`) */
   .drawer-backdrop {
-    background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+    background: var(--color-overlay);
   }
 
   /* === PR 7b (#289): Astro pages inline migration helpers === */
@@ -798,18 +796,12 @@
     letter-spacing: 0.02em;
   }
 
-  /* Body prose text: about/privacy 本文段落 (8 occurrences、全件 neutral-700)
-     注: typography + color baked-in。.footer-bar precedent (PR 7a で
-     bg+color combined) に追従。8 件全て neutral-700 で一致するため安全。
-     TODO(dark-mode): dark mode 対応時に 8 箇所すべての neutral-700 を
-     semantic alias (`--color-text-secondary` 等) へ書き換え必要。
-     PR 7a の `.footer-bar` も同根 (neutral-900/300 baked-in)、
-     dark mode 対応 issue 起票時にまとめて semantic alias 化検討。 */
+  /* Body prose text: about/privacy 本文段落（typography + color baked-in） */
   .text-body {
     font-size: 1rem;
     line-height: 1.8;
     letter-spacing: 0.02em;
-    color: var(--color-neutral-700);
+    color: var(--color-text);
   }
 
   /* トップページ hero h1 見出し (2rem)。.page-heading (1.75rem) / .section-heading (1.125rem) より
@@ -978,17 +970,17 @@
     display: block;
   }
   .rr-rail {
-    stroke: var(--color-neutral-400);
+    stroke: var(--color-border-strong);
     stroke-width: 2;
     fill: none;
   }
   /* 始点・終点マーカー（鉄道図の入口/出口の点）。黒に近い濃色で明示する。 */
   .rr-marker {
-    fill: var(--color-neutral-800);
+    fill: var(--color-text);
   }
   .rr-box {
     fill: var(--color-bg);
-    stroke: var(--color-border-input);
+    stroke: var(--color-border-strong);
     stroke-width: 1;
   }
   .rr-box-fallback {
@@ -1042,7 +1034,7 @@
   }
   /* ループ弧（反復方向）の矢印ヘッド。rr-rail と同系の中間グレー。 */
   .rr-arrow-head {
-    fill: var(--color-neutral-400);
+    fill: var(--color-border-strong);
   }
   /* 鉄道図の凡例。SVG 直下に破線区切りで種別の見本を並べる。 */
   .rr-legend {

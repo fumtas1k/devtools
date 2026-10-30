@@ -75,7 +75,7 @@ disabled は pointer-events を止める。hover と `:focus-visible` は同じ�
 
 ## Link
 
-- `blue-1000`・下線（offset 3px）。hover で下線 3px、active で `orange-800`、visited は magenta（`magenta-800` / `900` は移行時に確定）
+- `blue-1000`・下線（offset 3px）。hover で下線 3px、active で `orange-800`、visited は `magenta-900`
 
 ## Accordion
 

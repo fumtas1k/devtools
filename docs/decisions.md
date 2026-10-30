@@ -5014,3 +5014,32 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 - ✅ UI 作業で参照するスキルが 1 つになる。移行完了後はスキル・`global.css`・DS の値が一致する
 - ⚠️ 移行完了まで、スキルの目標値と `global.css` の現行値が食い違う期間がある。スキル冒頭に移行中である旨を明記した
 - ⚠️ 見た目が変わるフェーズごとに VRT baseline の再生成（`workflow_dispatch`、web セッションからは不可）が必要
+
+---
+
+## [135] DADS 移行 Phase 1: カラートークンの対応付け
+
+**2026-10-30 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 1 で、`global.css` の色トークンを DADS v2 の値に付け替えた。DADS の 2 段ペアや薄いグレーの段数が既存トークンと 1 対 1 に対応しないため、対応付けの判断を残す。値は DADS 公式 `digital-go-jp/design-tokens` の `figma/tokens.json` と照合済み。
+
+### 決断
+
+- セマンティック色（`--color-success` / `--color-error` / `--color-warning`）は文字にも白文字バッジの塗りにも使うため、DADS の `-2` 側（白地 4.5:1 以上）を採る。error のみ `error-1`（`red-800`、白地 4.60:1）を `--color-error` に、`error-2` を `--color-error-text`（tint 上の文字）に割り当てる
+- warning は DADS の `warning-yellow-2`（`yellow-900`）だと `yellow-50` の tint 上で 4.16:1 になり、JwtDecoder の「exp なし」バッジで AA を満たさない。1 段濃い `yellow-1000`（5.20:1）を使う
+- `--color-bg-surface` と `--color-bg-subtle` は、DADS の薄いグレーが `solid-gray-50` の 1 段しかないため同じ値にする（トークンは用途の区別のため残す）
+- `--color-border-input` は公式 Input と同じ `solid-gray-600`。ボタン・チップの枠も同じトークンを使っており、現行の `#d1d5db`（白地 1.48:1）は WCAG 1.4.11 の 3:1 を満たしていなかったため、そのまま濃くする。鉄道図の箱など図の線は新設の `--color-border-strong`（`solid-gray-420`、3.03:1）に分ける
+- 本文 `--color-text` は公式 Heading と同じ `solid-gray-800`、補助テキスト `--color-muted` は `solid-gray-700`
+- Solid Gray はプリミティブとして `@theme` に置かない。未使用のテーマ変数はビルドで削られ、primitive の直接参照は規約で禁止しているため、semantic token の値として直接持つ
+
+### 却下した選択肢
+
+- **warning も DADS の `warning-yellow-2` に揃える**: tint 上の文字が AA 未達になる
+- **ボタン・チップの枠だけ旧来の薄いグレーを残す**: 非テキストのコントラスト不足を温存する。ボタンの見た目は Phase 5 で DADS の outline / solid-fill に作り直す
+
+### 結果・トレードオフ
+
+- ✅ 文字・非テキストのコントラストが全トークンで AA を満たす
+- ⚠️ 入力欄・ボタン・チップの枠が濃くなり、全ページの見た目が変わる（VRT baseline の再生成が必要）

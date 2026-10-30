@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
-const PRIMARY_COLOR = 'rgb(26, 86, 219)';
+const PRIMARY_COLOR = 'rgb(0, 23, 193)'; // --color-primary (blue-900)
 
 test.describe('DownloadButton（production CSP 適用）', () => {
   test('SVGダウンロードボタン（secondary）が表示される（CSP 違反なし）', async ({ browser }) => {
@@ -53,9 +53,9 @@ test.describe('DownloadButton（production CSP 適用）', () => {
       // 初期状態: 背景透明
       await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
 
-      // hover: 背景が --color-bg-active (#eff6ff = blue-50) に変化
+      // hover: 背景が --color-bg-active (#e8f1fe = blue-50) に変化
       await button.hover();
-      await expect(button).toHaveCSS('background-color', 'rgb(239, 246, 255)');
+      await expect(button).toHaveCSS('background-color', 'rgb(232, 241, 254)');
     });
   });
 

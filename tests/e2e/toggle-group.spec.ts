@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
-const BG_ACTIVE = 'rgb(239, 246, 255)'; // --color-bg-active (blue-50)
+const BG_ACTIVE = 'rgb(232, 241, 254)'; // --color-bg-active (blue-50)
 const BG_TRANSPARENT = 'rgba(0, 0, 0, 0)';
 const BG_PRESSED = 'rgb(255, 255, 255)'; // --color-bg (white)
-const COLOR_TEXT = 'rgb(17, 24, 39)'; // --color-text (neutral-900)
-const COLOR_MUTED = 'rgb(107, 114, 128)'; // --color-muted (neutral-500)
+const COLOR_TEXT = 'rgb(51, 51, 51)'; // --color-text (solid-gray-800)
+const COLOR_MUTED = 'rgb(77, 77, 77)'; // --color-muted (solid-gray-700)
 
 test.describe('ToggleGroup hover / focus-visible フィードバック（issue #385）', () => {
   test('未選択ボタンを hover すると背景が --color-bg-active になる（CSP 違反なし）', async ({

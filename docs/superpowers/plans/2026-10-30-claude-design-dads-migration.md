@@ -55,16 +55,14 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 ### Phase 1: カラートークン
 
-- [ ] `@theme` の Blue プリミティブを DADS 13 段に置換し、Solid Gray とセマンティック 2 段ペアを追加
-- [ ] semantic token（`--color-primary` / `--color-link` / `--color-success` 等）と `:root` のエイリアス（`--color-text` / `--color-border` 等）の値を DADS に付け替える。クラス名は変えない
-- [ ] `--color-secondary` / `--color-tertiary` / `--color-background` の行き先を決める（DADS に対応概念がない）
-- [ ] HAR フェーズ色・鉄道図アンカー色を DADS のアクセント色相へ付け替え
-- [ ] 文字 4.5:1 / 非テキスト 3:1 を全組み合わせで確認
-
-primitive の直接参照は `var(--color-blue-*)` 4 箇所（`global.css` 3 / `index.astro` 1）と `var(--color-neutral-*)` 約 15 箇所（`Footer.astro` / `Sidebar.astro` / `MobileDrawer.astro` / `index.astro` / `global.css`）。blue は値の衝突で見た目が変わり、neutral は Solid Gray へ置き換える対象なので、どちらも同じ PR で semantic token へ移す。
-
-- [ ] `src/layouts/BaseLayout.astro` の `<meta name="theme-color">` と `public/manifest.webmanifest` の `theme_color`（どちらも `#1A56DB`）を primary に合わせる
-- [ ] visited の色（DS 内で `magenta-800` / `900` が混在）を公式値で確定する
+- [x] `@theme` の Blue プリミティブを DADS 13 段に置換（`--color-blue-*: initial` で Tailwind 既定の blue を外す）。Solid Gray はプリミティブとしては置かず、semantic token の値として持つ（未使用のテーマ変数はビルドで削られるため）
+- [x] semantic token と `:root` のエイリアスの値を DADS に付け替え（クラス名は維持）。セマンティック色は文字にも使うため `-2` 側を採用し、warning のみ tint 上のコントラストのため `yellow-1000` にした（`docs/decisions.md [135]`）
+- [x] `--color-secondary` は未使用のため削除。`--color-tertiary` は `blue-1000`、`--color-background` は `blue-50`
+- [x] HAR フェーズ色・鉄道図アンカー色を DADS の色相へ付け替え
+- [x] primitive の直接参照（`var(--color-blue-*)` / `var(--color-neutral-*)`）を semantic token へ移した。neutral 系は `--color-text` / `--color-border-strong` / `--color-overlay` / `--color-footer-*` に集約
+- [x] `theme-color` / `manifest.webmanifest` の `theme_color`・`background_color` を DADS に合わせた
+- [x] visited は公式 Link コンポーネント（`visited:text-magenta-900`）で `magenta-900` に確定
+- [x] 文字 4.5:1 / 非テキスト 3:1 を確認。`ErrorMessage` の block 表示は red-50 上で `error-1` が 4.08:1 になるため文字を `--color-error-text` に変更
 
 ### Phase 2: フォーカスリング
 
@@ -94,6 +92,7 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 
 ### Phase 6: レイアウト・Astro ページ
 
+- [ ] favicon（`public/favicon.svg`、旧 blue→violet のグラデーション）と PWA アイコン（`public/icons/*.png`）を DADS の配色に合わせる
 - [ ] ヘッダー / フッター / `ToolCard` / `PageContainer`（最大幅、余白）
 - [ ] Astro の `style="var(--color-*)"` 移行（[#289](https://github.com/fumtas1k/devtools/issues/289)）とまとめて進めるか判断
 

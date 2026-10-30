@@ -51,7 +51,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 | warning（黄） | `yellow-700` `#b78f00`（3.02:1）     | `yellow-900` `#927200`（4.54:1） |
 | warning（橙） | `orange-600` `#fb5b01`（3.18:1）     | `orange-800` `#c74700`（4.85:1） |
 
-visited の色は DS 内で `magenta-800` と `magenta-900` が混在しているため、Phase 1 で公式値で確定する。
+本リポジトリの warning 文字は tint（`yellow-50`）上の 4.5:1 を満たすため `yellow-1000` `#806300` を使う（`docs/decisions.md [135]`）。visited は公式 Link コンポーネントに合わせ `magenta-900`。
 
 ## 3. フォーカスリング
 
