@@ -167,9 +167,9 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** の両方でスク
 
 hover 等が必要なら、専用 class を `:hover` 擬似クラスごと `@layer components` に定義する（`.btn-clear` / `.hover-bg-subtle` 等）。追加後は `npm run build` して `dist/_astro/BaseLayout.*.css` に rule が出ているか確認する。
 
-### 7.2 `docs/` の Tailwind scan 除外を消さない
+### 7.2 Tailwind の scan 除外（`docs/` 等）を消さない
 
-`src/styles/global.css` の `@source not "../../docs";` は docs の Markdown に書かれた class 名が CSS に混入するのを防いでいる。不要に見えても削除しない。
+`src/styles/global.css` の `@source not` 群（対象と理由は同ファイルのコメントが正本）は、実装コード以外に書かれた class 名が本番 CSS に混入するのを防いでいる。不要に見えても削除しない。実装コード以外のディレクトリを新設したら同じ箇所に足す。
 
 ---
 
