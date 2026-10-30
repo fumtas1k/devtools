@@ -218,3 +218,24 @@ PR #749 の deflate 展開上限（zip bomb 対策）の陽性対照テスト（
 ### 関連
 
 - PR #749（`src/utils/__tests__/saml-decode.test.ts` の deflate 上限テスト）
+
+---
+
+## [2026-10-30] web セッションのローカル E2E は `CI=1` のためビルドせず古い `dist/` を配信する
+
+### 現象
+
+Claude Code on the web で `npm run test:e2e` を実行すると、直前の変更が反映されていない `dist/` に対してテストが走り、pass する。DADS 移行 Phase 1（PR #809）で、レビュー対応後とページ背景の変更後の E2E・スクリーンショットが変更前のビルドに対して実行されていた。
+
+### 根本原因
+
+web セッションのコンテナは環境変数 `CI=1` を持つ。`playwright.config.ts` の `webServer` は `CI` があると GitHub Actions 向けに `npm run preview` だけを起動し（`npm run build` を省く）、`reuseExistingServer` も有効になる。
+
+### 対処
+
+web セッションでローカル E2E や Playwright のスクリーンショットを取る前に、`npm run build` を単独で実行し、`dist/` に変更が入っていることを確認する（例: `grep` で該当クラスや CSS 変数を確かめる）。
+
+### 関連
+
+- `playwright.config.ts` の `webServer`（#248、decisions [063] / [065]）
+- `.agents/rules/common.md` 3 章（push 前の E2E）

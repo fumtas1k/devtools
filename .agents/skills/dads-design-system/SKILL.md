@@ -8,7 +8,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 ## 0. 正本と移行状況
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
-- **移行中**: `src/styles/global.css` のトークンは、まだ DADS 以前の値（Tailwind パレット由来）が残っている。段階移行の計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
+- **移行中**: 色は Phase 1 で DADS の値に移行済み（`src/styles/global.css`）。フォーカスリング・タイポグラフィ・角丸・影・コンポーネントの見た目は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
 - DADS の目標値（プリミティブ全色）は `references/tokens.md`、コンポーネントの見た目仕様は `references/components.md`。
 
 ### 移行中に新しく書くコードのルール
@@ -29,18 +29,22 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 キーカラーは Blue の 1 色だけ。他の色相（cyan / green / lime / yellow / orange / red / magenta / purple / light-blue）はチップ・タグ・データ・状態表示に限って控えめに使う。
 
-| 用途              | DADS トークン                       | 値                    | 現行の対応先                                                               |
-| :---------------- | :---------------------------------- | :-------------------- | :------------------------------------------------------------------------- |
-| primary（塗り）   | `blue-900`                          | `#0017c1`             | `--color-primary`（`bg-primary` / `text-primary`）                         |
-| primary hover     | `blue-1000`                         | `#00118f`             | 各コンポーネントの `:hover` 定義                                           |
-| primary active    | `blue-1200`                         | `#000060`             | 同上                                                                       |
-| リンク / visited  | `blue-1000` / `magenta-900`         | `#00118f` / `#8b008b` | `--color-link` / `--color-link-visited`（`.text-link`）                    |
-| 本文 / 見出し     | `solid-gray-800` / `solid-gray-900` | `#333333` / `#1a1a1a` | `--color-text`（`.text-default` / `.text-body`）                           |
-| 補助テキスト      | `solid-gray-700`                    | `#4d4d4d`             | `--color-muted`（`.text-muted`）                                           |
-| placeholder       | `solid-gray-536`（白地 AA の下限）  | `#767676`             | —                                                                          |
-| 入力欄の枠        | `solid-gray-600`                    | `#666666`             | `--color-border-input`（`.border-input`）                                  |
-| 区切り線 / 薄い枠 | `solid-gray-420` / `solid-gray-100` | `#949494` / `#e6e6e6` | `--color-border`（`.border-default`）                                      |
-| 薄い背景          | `solid-gray-50`                     | `#f2f2f2`             | `--color-bg-subtle` / `--color-bg-surface`（`.bg-subtle` / `.bg-surface`） |
+| 用途                | DADS トークン                                                   | 値                    | 現行の対応先                                                               |
+| :------------------ | :-------------------------------------------------------------- | :-------------------- | :------------------------------------------------------------------------- |
+| primary（塗り）     | `blue-900`                                                      | `#0017c1`             | `--color-primary`（`bg-primary` / `text-primary`）                         |
+| primary hover       | `blue-1000`                                                     | `#00118f`             | 各コンポーネントの `:hover` 定義                                           |
+| primary active      | `blue-1200`                                                     | `#000060`             | 同上                                                                       |
+| リンク / visited    | `blue-1000` / `magenta-900`                                     | `#00118f` / `#8b008b` | `--color-link` / `--color-link-visited`（`.text-link`）                    |
+| 本文 / 見出し       | `solid-gray-800` / `solid-gray-900`                             | `#333333` / `#1a1a1a` | `--color-text`（`.text-default` / `.text-body`）                           |
+| 補助テキスト        | `solid-gray-700`                                                | `#4d4d4d`             | `--color-muted`（`.text-muted`）                                           |
+| placeholder         | `solid-gray-536`（白地 AA の下限）                              | `#767676`             | —                                                                          |
+| 入力欄の枠          | `solid-gray-600`                                                | `#666666`             | `--color-border-input`（`.border-input`）                                  |
+| 区切り線 / 薄い枠   | `solid-gray-420` / `solid-gray-100`                             | `#949494` / `#e6e6e6` | `--color-border`（`.border-default`、`solid-gray-100`）                    |
+| 図の線（3:1 必須）  | `solid-gray-536`                                                | `#767676`             | `--color-border-strong`                                                    |
+| tint 上のエラー文字 | `error-2`                                                       | `#ce0000`             | `--color-error-text`（`.text-error-text`）                                 |
+| フッター（濃色帯）  | `solid-gray-900` 地 / `-200` 文字 / `-400` 補助 / `-300` リンク | —                     | `--color-footer-*`                                                         |
+| ページ背景・カード  | `white`                                                         | `#ffffff`             | `--color-bg`（`.bg-default`）                                              |
+| 薄い背景            | `solid-gray-50`                                                 | `#f2f2f2`             | `--color-bg-subtle` / `--color-bg-surface`（`.bg-subtle` / `.bg-surface`） |
 
 セマンティック色は 2 段ペア。`-1` は白地で 4.5:1 に届かないもの（success / warning）があるので、**文字と白文字を載せる塗りには `-2` を使い、`-1` はアイコン・枠など非テキスト（3:1）に限る**（`error-1` は 4.60:1 で文字にも使える）。現行の対応先は `--color-success` / `--color-error` / `--color-warning` と各 `-bg`（`.text-success` / `.alert-success` 等）。
 
@@ -51,7 +55,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 | warning（黄） | `yellow-700` `#b78f00`（3.02:1）     | `yellow-900` `#927200`（4.54:1） |
 | warning（橙） | `orange-600` `#fb5b01`（3.18:1）     | `orange-800` `#c74700`（4.85:1） |
 
-visited の色は DS 内で `magenta-800` と `magenta-900` が混在しているため、Phase 1 で公式値で確定する。
+本リポジトリの warning 文字は tint（`yellow-50`）上の 4.5:1 を満たすため `yellow-1000` `#806300` を使う（`docs/decisions.md [135]`）。visited は公式 Link コンポーネントに合わせ `magenta-900`。
 
 ## 3. フォーカスリング
 

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
-const SUCCESS_COLOR = 'rgb(22, 163, 74)';
+const SUCCESS_COLOR = 'rgb(25, 122, 75)'; // --color-success (success-2)
 
 async function setupJanCodeWithSample(page: import('@playwright/test').Page): Promise<void> {
   // CopyButton を表示するため /tools/jan-code でサンプル入力 → 結果を生成

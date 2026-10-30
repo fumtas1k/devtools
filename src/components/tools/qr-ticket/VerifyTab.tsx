@@ -155,7 +155,7 @@ export function VerifyTab({
                   <p
                     className={cx(
                       'body-emphasis',
-                      verificationResult.valid ? 'text-success' : 'text-error',
+                      verificationResult.valid ? 'text-success' : 'text-error-text',
                       verificationResult.ticket && 'mb-3'
                     )}
                   >

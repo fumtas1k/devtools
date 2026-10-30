@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
 // global.css の CSS 変数と対応
-const COLOR_LINK = 'rgb(37, 99, 235)'; // --color-link: #2563eb
-const COLOR_PRIMARY = 'rgb(26, 86, 219)'; // --color-primary: #1a56db
-const COLOR_TEXT = 'rgb(17, 24, 39)'; // --color-text: #111827
+const COLOR_LINK = 'rgb(0, 17, 143)'; // --color-link: #00118f (blue-1000)
+const COLOR_PRIMARY = 'rgb(0, 23, 193)'; // --color-primary: #0017c1 (blue-900)
+const COLOR_TEXT = 'rgb(51, 51, 51)'; // --color-text: #333333 (solid-gray-800)
 
 test.describe('Link Styles（production CSP 適用）', () => {
   // withProductionCsp が test ごとに fresh context を作成するため
@@ -137,7 +137,7 @@ test.describe('Link Styles（production CSP 適用）', () => {
           expect(color).not.toBeNull();
           const normalized = color?.replace(/\s/g, '').toLowerCase();
           // 定義された CSS 変数名、計算済みの RGB 値、または HEX 値のいずれかにマッチすることを確認
-          expect(normalized).toMatch(/^(var\(--color-link-visited\)|rgb\(124,58,237\)|#7c3aed)$/);
+          expect(normalized).toMatch(/^(var\(--color-link-visited\)|rgb\(139,0,139\)|#8b008b)$/);
         };
 
         // .text-link の :visited 定義確認

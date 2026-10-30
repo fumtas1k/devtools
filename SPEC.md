@@ -1507,15 +1507,16 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ### 8.2 カラーパレット
 
-DADS 青基調カラーシステムを使用（`src/styles/global.css` の `@theme` で定義）。
+DADS v2 のカラートークンを使用（`src/styles/global.css` の `@theme` / `:root` で定義。移行計画: `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`）。
 
-| 役割             | 値                       |
-| ---------------- | ------------------------ |
-| プライマリ       | `#1A56DB`                |
-| リンク           | `#2563EB`                |
-| 背景             | `#EFF6FF`（blue-50）     |
-| ニュートラル本文 | `#111827`（neutral-900） |
-| ミュートテキスト | `#6B7280`（neutral-500） |
+| 役割             | 値                          |
+| ---------------- | --------------------------- |
+| プライマリ       | `#0017C1`（blue-900）       |
+| リンク           | `#00118F`（blue-1000）      |
+| 背景             | `#E8F1FE`（blue-50）        |
+| ニュートラル本文 | `#333333`（solid-gray-800） |
+| ミュートテキスト | `#4D4D4D`（solid-gray-700） |
+| 入力欄の枠       | `#666666`（solid-gray-600） |
 
 ### 8.3 タイポグラフィ
 
@@ -1686,8 +1687,8 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
   "description": "ブラウザで完結する無料の開発者ツール集",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#EFF6FF",
-  "theme_color": "#1A56DB",
+  "background_color": "#E8F1FE",
+  "theme_color": "#0017C1",
   "lang": "ja",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -1734,7 +1735,7 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
 <!-- iOS ホーム画面アイコン -->
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <!-- テーマカラー（Androidアドレスバー） -->
-<meta name="theme-color" content="#1A56DB" />
+<meta name="theme-color" content="#0017C1" />
 ```
 
 Service Worker 登録（`<body>` 末尾にインラインスクリプト）:
