@@ -93,9 +93,11 @@ const { currentSlug } = Astro.props;
   .drawer-link--inactive {
     color: var(--color-text);
   }
-  .drawer-link--inactive:hover {
+  .drawer-link--inactive:hover,
+  .drawer-link--inactive:focus-visible {
     background: var(--color-bg-subtle);
     text-decoration: underline;
+    text-underline-offset: 3px;
   }
 </style>
 

@@ -39,10 +39,11 @@ test.describe('DADS のレイアウト（production CSP 適用）', () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.getByRole('button', { name: 'メニューを開く' }).click();
       const dialog = page.getByRole('dialog', { name: 'ナビゲーション' });
-      await expect(dialog.getByRole('link', { name: 'URLエンコード/デコード' })).toHaveCSS(
-        'border-radius',
-        '8px'
-      );
+      const link = dialog.getByRole('link', { name: 'URLエンコード/デコード' });
+      await expect(link).toHaveCSS('border-radius', '8px');
+      await expect(link).toHaveCSS('text-decoration-line', 'none');
+      await link.hover();
+      await expect(link).toHaveCSS('text-decoration-line', 'underline');
     });
   });
 

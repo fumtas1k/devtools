@@ -5369,9 +5369,9 @@ Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイ�
 
 ### 決断
 
-- **既に DADS に合っていた点は変えない**: `PageContainer`（最大幅 1120px、左右 16px / sm 以上 24px）、ヘッダー（高さ 64px、下罫線）、フッター（`solid-gray-900` 地、14px、縦 48px）、`ToolCard`（12px 角丸、`--color-border` の枠、hover で `shadow-md` = elevation-2）、現在地の `aria-current="page"` と blue-50 の背景
+- **既に DADS に合っていた点は変えない**: `PageContainer`（最大幅 1120px、左右 16px / sm 以上 24px）、ヘッダー（高さ 64px、下罫線）、フッター（`solid-gray-900` 地、14px、上下の余白 48px）、`ToolCard`（12px 角丸、`--color-border` の枠、hover で `shadow-md` = elevation-2）、現在地の `aria-current="page"` と blue-50 の背景
 - **サイドバーとドロワーのリンクの角丸を 4px から 8px（`rounded-md`）にした**。ナビ項目はコントロールと同じ扱い
-- **hover は色の変化だけにせず下線を足す**（DADS の原則）: ヘッダーのロゴ（従来は不透明度 80%）、サイドバー / ドロワーの非現在リンク、`ToolCard` の見出し
+- **hover は色の変化だけにせず下線（offset 3px、`.text-link` と同じ）を足す**（DADS の原則）: ヘッダーのロゴ（従来は不透明度 80%）、サイドバー / ドロワーの非現在リンク、`ToolCard` の見出し。サイドバー / ドロワーは `:focus-visible` にも同じ反応を付けた
 - 検証は `tests/e2e/dads-layout.spec.ts`（computed style）。変更前の実装に戻すと 4 件が失敗する（陽性対照。最大幅の 1 件は変更が無いので通り、回帰の検知のみ）
 - ナビの情報設計・構造は変えない
 
@@ -5383,4 +5383,5 @@ Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイ�
 ### 結果・トレードオフ
 
 - ✅ ナビとカードが DADS の角丸・hover 表現に揃う
-- ⚠️ 全ページのサイドバー・ヘッダーに差分が出るため VRT は全ページで差分が出る。ユーザーの目視確認後に baseline 更新が必要
+- ✅ 変更は hover と、現在リンク（blue-50 の背景）の角の丸みだけなので、VRT の静止画の差分はほぼ出ない見込み（hover と角丸は `dads-layout.spec.ts` で担保）。差分が出た場合は目視確認のうえ baseline を更新する
+- ⚠️ フッターのリンクは hover で色だけが変わる（常時下線あり）。DADS の Link は hover で下線が太くなるため、Phase 7 以降で揃えるか判断する

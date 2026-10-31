@@ -52,8 +52,10 @@ const { currentSlug } = Astro.props;
   .sidebar-link--inactive {
     color: var(--color-text);
   }
-  .sidebar-link--inactive:hover {
+  .sidebar-link--inactive:hover,
+  .sidebar-link--inactive:focus-visible {
     background: var(--color-bg-subtle);
     text-decoration: underline;
+    text-underline-offset: 3px;
   }
 </style>
