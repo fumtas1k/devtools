@@ -272,4 +272,33 @@ describe('toSvg', () => {
     expect(svg).toMatch(/^<svg/);
     expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
   });
+
+  // DADS の文字サイズ下限（docs/decisions.md [149]）。定数経由の font-size は meta テストでは検知できないため、出力で確認する
+  describe('font-size は DADS の下限 14px 以上（テーブル・PK/FK バッジ・リレーションラベル・空状態）', () => {
+    const fontSizes = (svg: string) => [...svg.matchAll(/font-size="([^"]+)"/g)].map((m) => m[1]);
+
+    it('テーブル・PK/FK バッジ・リレーションラベルの文字がすべて 14px 以上', async () => {
+      const sql = `
+        CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255));
+        CREATE TABLE posts (id INT PRIMARY KEY, user_id INT,
+          CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES users(id));`;
+      const { model } = await parseDdl(sql, 'postgresql');
+      const svg = toSvg(model);
+      // 陽性対照: PK / FK バッジとリレーションラベルを含む入力であること（検査対象が空でないこと）
+      expect(svg).toContain('>PK<');
+      expect(svg).toContain('>FK<');
+      expect(svg).toContain('>user_id<');
+      const sizes = fontSizes(svg);
+      // すべての <text> が font-size 属性を持つこと（属性なし・別の書き方で指定した文字を見逃さない）
+      expect(sizes).toHaveLength((svg.match(/<text /g) ?? []).length);
+      expect(sizes.length).toBeGreaterThanOrEqual(8);
+      for (const s of sizes) expect(Number(s)).toBeGreaterThanOrEqual(14);
+    });
+
+    it('テーブルが無い場合の文言も 14px 以上', () => {
+      const sizes = fontSizes(toSvg({ tables: [], relations: [] }));
+      expect(sizes).toHaveLength(1);
+      expect(Number(sizes[0])).toBeGreaterThanOrEqual(14);
+    });
+  });
 });
