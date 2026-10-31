@@ -71,7 +71,7 @@ export function InputField({
   return (
     <div>
       <div
-        className={`flex items-center justify-between mb-3 min-h-8${labelVisible ? '' : ' sr-only'}`}
+        className={`flex items-center justify-between mb-3 min-h-9${labelVisible ? '' : ' sr-only'}`}
       >
         <label htmlFor={id} className="body-emphasis text-default">
           {label}

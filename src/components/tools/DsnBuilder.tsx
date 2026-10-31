@@ -146,7 +146,7 @@ export function DsnBuilderTool() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <div className="flex items-center justify-between mb-3 min-h-8">
+              <div className="flex items-center justify-between mb-3 min-h-9">
                 <label htmlFor="dsn-scheme" className="body-emphasis text-default">
                   スキーム
                 </label>

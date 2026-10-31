@@ -5174,6 +5174,39 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 ---
 
+## [140] DADS 移行 Phase 5: ボタン類
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 のうちボタン類。`ActionButton` は灰色地の default・primary 塗り・primary 枠の secondary・赤枠の danger の 4 variant で、文字は 14px（`.caption`）、hover は地の色だけが変わっていた。`CopyButton` / `FileInputButton` も灰色地で、`CopyButton` には hover が無かった。DADS の Button は solid-fill / outline / text の 3 variant と lg / md / sm / xs の 4 サイズを持ち、文字は 16px Bold・行高 1、hover は地の色に下線を足す。
+
+### 決断
+
+- variant の対応: `primary` → solid-fill、`secondary` → outline、`text`（新設）→ text。`default` は DADS に灰色のボタンが無いため outline にそろえる（`secondary` と同じ見た目。名前の整理は Phase 7）。`danger` は DS に無いため outline を error 色（`--color-error`）にし、hover は red-50 の地に error-2 の文字 + 下線（`:active` も同じ。red の押下中用のトークンは足さない）
+- サイズの対応: `size="default"` → md（高さ 48px・最小幅 96px・角丸 8px）、`size="compact"`（`COMPACT_BUTTON_SHAPE_CLASSES`）→ sm（36px・80px・角丸 6px）。6px は `--radius-button-sm`（`rounded-button-sm`）として `@theme` に足した。文字は両サイズとも 16px Bold・行高 1（Oln-16B-100）
+- solid-fill は DADS 公式と同じく 4px double の透明な枠を持つ（通常は塗りに埋もれ、強制カラーモードで輪郭になる）。hover / `:focus-visible` は blue-1000、`:active` は blue-1200（`--color-primary-active`）
+- outline の hover / `:focus-visible` は blue-200 の地・blue-1000 の文字、`:active` は blue-300 の地・blue-1200 の文字。text の hover は blue-50 の地 + 3px の下線、`:active` は blue-100 の地。地の色は `:root` のトークン（`--color-bg-primary-hover` / `--color-bg-primary-active` / `--color-bg-text-button-active`）にした
+- hover と `:focus-visible` は同じ見た目（地の色 + 下線）にし、disabled には付けない。disabled は solid-fill が solid-gray-300 の塗り + solid-gray-50 の文字、outline / danger が白地に solid-gray-300 の文字と枠、text が solid-gray-300 の文字（`--color-disabled` / `--color-text-on-disabled`）。danger の disabled も中立のグレー（issue #259 の方針を維持）
+- `CopyButton` は outline の sm、表の行に置くアイコンだけの compact は枠なしのまま、hover で outline と同じ blue-200 の地を出す（32px 四方は維持し、角丸を 6px に）。text の hover と同じ blue-50 や blue-100 だと、置かれる行の地（JSON ツリーの操作欄・表の行 hover の blue-50、表の選択行の blue-100。[142]）と同じ色になって見えなくなるため。hover は `.is-copied` を除外する。クリック直後はポインタが乗ったままで、除外しないと成功の緑が hover の色に隠れるため
+- `FileInputButton` は outline の md と同じ見た目にし、hover と input のキーボードフォーカス（`:has(input:focus-visible)`）を同じ見た目にする。従来の `:focus-within` は、クリックでファイル選択を閉じた後も input にフォーカスが残り、フォーカスリング（と今回の hover の見た目）が残り続けていた。`ClearButton` は text の sm（`.btn-action--text` を共有）。トップページ検索欄のクリア（`.btn-clear`）はアイコンボタンなので対象外
+- compact ボタンを sm（36px）にしたため、ボタンを置くラベル行（`InputField` / `OutputField` / `JsonTreeResult` ほか）の最小高さを `min-h-8`（32px）から `min-h-9` にした。片側だけボタンがあると入力欄と結果欄の上端が 4px ずれるため（E2E で検知）
+
+### 却下した選択肢
+
+- **sm / xs の高さ 44px 未満のボタンに、DADS 公式の透明な `::after` でタップ領域を 44px に広げる**: 縦に詰めて並ぶ行（DSN ビルダーの削除ボタン等）で隣の要素に重なり、クリックを奪う。今回の変更で sm の高さは 32px → 36px に広がっている
+- **disabled で `pointer-events: none` にする（DADS 公式）**: `cursor: not-allowed` が出なくなる。`disabled` 属性でクリックは発火しないため、カーソルの表示を優先した。なお、レイヤー外の `:where(button) { cursor: pointer }` が `@layer components` の `cursor: not-allowed` を上書きしていて、disabled のボタンも pointer になっていたため、レイヤー外に `:where(button):disabled { cursor: not-allowed }` を足した（E2E で検知）
+- **`size="default"` を sm（36px）にして現状の高さ（約 42px）に近づける**: DADS の主要ボタンは md で、入力欄（DADS md 48px）と並べたときに高さがそろう
+
+### 結果・トレードオフ
+
+- ✅ ボタンの文字が 16px になり、hover が色だけに頼らなくなる
+- ⚠️ md のボタンが約 42px → 48px、compact が 32px → 36px に高くなり、文字も大きくなるため、ボタンを含む全ページの見た目が変わる（VRT の差分になる）
+- ⚠️ 入力欄はまだ約 42px のため、md のボタン（48px）と横に並べると高さがそろわない。入力欄の DADS 化（計画書 Phase 5）でそろえる
+
+---
+
 ## [141] DADS 移行 Phase 5: 通知・状態表示（NotificationBanner / StatusBadge / ChipLabel）と UUID v7 / JWT の色
 
 **2026-10-31 | ステータス: 採用**

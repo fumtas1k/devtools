@@ -77,9 +77,10 @@ interface Props {
  *
  * style: global.css `@layer components` の `.btn-copy` / `.btn-copy.is-copied` /
  * `.btn-copy.is-compact` / `.btn-copy:disabled` を参照。状態は `is-copied` / `is-compact` className で切替。
+ * default 表示は DADS Button の outline、compact（アイコンのみ）は枠なしで hover に text ボタンの地を出す。
  *
- * default 表示の角丸は COMPACT_BUTTON_SHAPE_CLASSES 経由で ActionButton (size="compact") /
- * DownloadButton と統一（rounded-md / issue #320。DADS 移行 Phase 4 で rounded-lg から変更）。
+ * default 表示の寸法は COMPACT_BUTTON_SHAPE_CLASSES 経由で ActionButton (size="compact") /
+ * DownloadButton と統一（DADS の sm ボタン / issue #320 / docs/decisions.md [140]）。
  */
 export function CopyButton({
   text,
@@ -122,7 +123,7 @@ export function CopyButton({
         className={cx(
           'btn-copy is-compact',
           stateClass,
-          'rounded-md inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap'
+          'rounded-button-sm inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap'
         )}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
@@ -140,9 +141,9 @@ export function CopyButton({
       className={cx(
         'btn-copy',
         stateClass,
-        'caption inline-flex items-center gap-1.5',
+        'inline-flex items-center justify-center gap-1.5',
         COMPACT_BUTTON_SHAPE_CLASSES,
-        'tracking-wide whitespace-nowrap',
+        'whitespace-nowrap',
         className
       )}
     >
