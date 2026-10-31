@@ -224,6 +224,7 @@ export function DummyPersonalDataTool() {
             value={format}
             onChange={setFormat}
             ariaLabel="出力形式"
+            matchField
           />
           <ActionButton variant="primary" onClick={generate}>
             生成

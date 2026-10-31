@@ -15,6 +15,12 @@ interface Props<T extends string> {
   size?: 'sm' | 'md';
   /** `grid`: 等幅グリッド（デフォルト）。`wrap`: flex-wrap で自然幅 */
   layout?: 'grid' | 'wrap';
+  /**
+   * 横に並ぶ入力欄・ボタン（48px）と土台の高さをそろえる。
+   * md の土台は 46px のため、そのままだと 2px 低い。ボタンは 36px のまま中央に置き、
+   * 土台だけ 48px にする（`size="md"` のときだけ効く。docs/decisions.md [151]）
+   */
+  matchField?: boolean;
 }
 
 /**
@@ -36,15 +42,24 @@ export function ToggleGroup<T extends string>({
   ariaLabel,
   size = 'md',
   layout = 'grid',
+  matchField = false,
 }: Props<T>) {
   const isWrap = layout === 'wrap';
   const dynClassName = useDynamicStyleSheet((className) =>
     isWrap ? '' : `.${className} { --toggle-cols: ${options.length}; }`
   );
 
+  const fieldHeightClass = matchField && size === 'md' ? 'min-h-12 content-center' : '';
   const containerClass = isWrap
-    ? 'bg-subtle rounded-md border border-input p-1 flex flex-wrap gap-1 w-max max-w-full'
-    : cx('bg-subtle rounded-md border border-input p-1 toggle-grid', dynClassName);
+    ? cx(
+        'bg-subtle rounded-md border border-input p-1 flex flex-wrap gap-1 w-max max-w-full',
+        fieldHeightClass
+      )
+    : cx(
+        'bg-subtle rounded-md border border-input p-1 toggle-grid',
+        dynClassName,
+        fieldHeightClass
+      );
   // md: DADS の sm ボタン相当（高さ 36px・16px Bold）、sm: xs 相当（28px・14px Bold）。
   // 土台の角丸 8px から枠 1px と余白 4px を引いた内側のボタンは rounded-sm（4px）にする
   const buttonSizeClass = size === 'sm' ? 'min-h-7 px-3 text-sm' : 'min-h-9 px-4 text-base';

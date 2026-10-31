@@ -83,6 +83,7 @@ export function SqlFormatterTool() {
             value={commaPosition}
             onChange={(v) => setCommaPosition(v as CommaPosition)}
             ariaLabel="カンマ位置"
+            matchField
           />
         </div>
       </div>

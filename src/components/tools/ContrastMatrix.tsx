@@ -109,7 +109,9 @@ export function ContrastMatrixTool() {
           <span className="w-12 shrink-0" />
           <span className="body-emphasis text-default min-w-0 max-w-32 flex-1">色</span>
           <span className="body-emphasis text-default min-w-0 max-w-40 flex-1">ラベル</span>
-          <span className="caption btn-remove-card shrink-0 rounded px-3 py-2 invisible">削除</span>
+          <span className="caption btn-remove-card shrink-0 rounded px-3 h-12 inline-flex items-center invisible">
+            削除
+          </span>
         </div>
         {rows.map((row) => {
           const invalid = parseColor(row.hex) === null;
@@ -149,7 +151,7 @@ export function ContrastMatrixTool() {
                 type="button"
                 onClick={() => removeRow(row.id)}
                 disabled={rows.length <= 2}
-                className="caption btn-remove-card shrink-0 rounded-md px-3 py-2"
+                className="caption btn-remove-card shrink-0 rounded-md px-3 h-12 inline-flex items-center"
               >
                 削除
               </button>
