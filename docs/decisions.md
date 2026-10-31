@@ -5424,6 +5424,7 @@ Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイ�
 - 残したもの: Blue 13 段（DADS のプリミティブとして `@theme` に置く）、`--elevation-1`〜`8`（DADS のスケール全段）、`--color-tertiary`（`CategoryBadge` が使用）。`btn-action--*` / `status-badge--*` 等の variant クラスはコンポーネントが文字列結合で組み立てるため、静的な grep に出なくても使用中
 - `rounded-xl` を `rounded-lg` に置き換えた（`Section`、`CertDecoder`、`TotpHotpGenerator`、`ClipboardInspector`）。`--radius-xl` は `@theme` に無く Tailwind 既定の 12px で、DADS のカード角丸 `--radius-lg`（12px）と同値なので、見た目は変わらない。クラスをそろえ、以後 `rounded-xl` を使わない。`dads-shape.spec.ts` に 1 件足した（`rounded-md` に戻すと失敗することを確認した陽性対照）
 - `dads-design-system` skill の `references/tokens.md` を削除し、0 章の「移行中」と 2 章の「現行の対応先」を移行後の記述に更新した。値の正本は `global.css`
+- トップの hero が `bg-[var(--color-background)]` と `border-[var(--color-blue-100)]` を任意値で直接参照していたのを、`bg-background`（@theme の auto-utility）と新しい意味クラス `.border-hero` に置き換えた。色の値は同じ。`dads-layout.spec.ts` で computed style を確認（陽性対照あり）
 - `SPEC.md`（8 章、ディレクトリ構成の存在しない `styles.ts`）、`common.md` 7 章（角丸の 1 行）、`ui-conventions.md` を実態に合わせた
 
 ### 結果・トレードオフ

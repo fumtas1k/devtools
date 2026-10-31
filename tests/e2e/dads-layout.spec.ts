@@ -88,4 +88,19 @@ test.describe('DADS のレイアウト（production CSP 適用）', () => {
       await expect(page.getByRole('banner').locator('> div')).toHaveCSS('padding-left', '24px');
     });
   });
+
+  test('トップの hero は blue-50 の背景と blue-100 の下罫線になる（[148]）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(
+      browser,
+      '/',
+      async (page) => {
+        const hero = page.getByRole('heading', { level: 1, name: 'DevTools' }).locator('..');
+        await expect(hero).toHaveCSS('background-color', 'rgb(232, 241, 254)');
+        await expect(hero).toHaveCSS('border-bottom-color', 'rgb(217, 230, 255)');
+      },
+      { skipHydration: true }
+    );
+  });
 });

@@ -1077,6 +1077,10 @@
     line-height: 1.5;
     letter-spacing: 0.01em;
   }
+  /* トップページ hero の下罫線（blue-100） */
+  .border-hero {
+    border-color: var(--color-blue-100);
+  }
 
   /* ページ h1 見出し: about/privacy/404 の静的ページ共通 (1.75rem)。
      .section-heading (h2, 1.125rem) より一段大きい page タイトル用。
