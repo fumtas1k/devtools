@@ -5356,3 +5356,24 @@ DADS は本文・UI を 16px 以上、補助的な用途でも 14px を下限と
 - ✅ CSS・コンポーネントの 14px 未満の文字が消え、再混入は CI で検知される。ただし検知は数値リテラルの直書きだけで、定数経由で組む SVG（`src/utils/ddl-er-diagram.ts` の 10〜13px）は対象外。[#822](https://github.com/fumtas1k/devtools/issues/822) で扱う
 - ⚠️ 鉄道図は group と量指定子の周りが縦に 4px ずつ広がる。VRT（regex-visualizer など）の差分は目視確認のうえ baseline を更新する
 - ⚠️ UUID のフィールド見出しが 14px になり、スマホでは折り返しながら並ぶ（はみ出しはなし）
+
+---
+
+## [146] DADS 移行 Phase 6: favicon と PWA アイコン
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+`public/favicon.svg` と `public/icons/*.png` は旧配色（#2563EB → #7C3AED のグラデーション + 白いハイライト）のままだった。`theme-color` と manifest の `theme_color` は Phase 1 で #0017C1 になっており、アイコンだけが旧ブランドで残っていた。
+
+### 決断
+
+- favicon は **blue-900 `#0017C1` の単色地 + 白の `>_`**（形は現行を維持）。DADS はグラデーションを使わないため、グラデーションと上半分のハイライトは廃止した。角丸は 32px のうち 6px（約 19%）で現行どおり（DADS のボタン radius に近い比率）
+- PNG 4 種は favicon.svg を Playwright（Chromium）で描画して生成した。`icon-*` は透過背景、`icon-maskable-*` は全面を #0017C1 で塗り、本体を 64% に縮小して中央に置く（safe zone の中央 80% の円に収まる）。生成スクリプトは一時ファイルとし、コミットしない
+- manifest の `background_color`（#E8F1FE = blue-50）は変更しない。スプラッシュでは明るい青地の上に blue-900 のアイコンが載り、コントラストが十分
+
+### 結果・トレードオフ
+
+- ✅ ライトタブ / ダークタブ（#35363a）の両方で、白い `>_` がはっきり読める
+- ⚠️ ダークタブでは地の #0017C1 と背景の明度差が小さい。白い記号で視認性を確保した
