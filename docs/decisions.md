@@ -5281,8 +5281,8 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 - **ToggleGroup**: 選択中を outline ボタンの通常状態（白地・blue-900 の文字と 1px 枠）にし、従来の `--elevation-2` の影は残す（[136] の `:focus-visible` との重ね描きを維持するため）。未選択は透明地・`--color-muted` の文字。hover / `:focus-visible` は outline ボタンと同じ blue-200 の地・blue-1000 の文字・下線、`:active` は blue-300 の地・blue-1200 の文字。選択中には hover の見た目を付けない。枠は未選択も 1px 透明で持ち、選択の切り替えで大きさが変わらないようにした
 - 入れ子の角丸: 土台は 8px のまま、内側のボタンを 4px（`rounded-sm`。外 8px − 枠 1px − 余白 4px にほぼ等しい）にした
-- サイズ: `md` は DADS の sm ボタン相当（高さ 36px・16px Bold・行高 1）、`sm` は xs 相当（28px・14px Bold）。土台を含めた高さは 44px / 36px（PC 幅・スマホ幅とも横にはみ出さないことを目視確認）
-- **ToggleChips**: ChipLabel の寸法（最小高 32px・角丸 8px・padding 4px 8px・16px）にそろえ、ピル型をやめた。文字は ChipLabel の 400 ではなくボタンと同じ Bold のまま（操作できる部品であることを示す）。OFF は outline（白地・solid-gray-600 の枠・muted 文字。文字 8.45:1、枠 5.74:1）、ON は solid-fill（blue-900 塗り・白文字 11.10:1）。hover / `:focus-visible` は OFF が outline ボタンと同じ blue-200 の地・blue-1000 の文字と枠・下線、ON が blue-1000 塗り + 下線。`:active` はそれぞれ blue-300 / blue-1200
+- サイズ: `md` は DADS の sm ボタン相当（高さ 36px・16px Bold・行高 1）、`sm` は xs 相当（28px・14px Bold）。土台（枠 1px + 余白 4px）を含めた高さは 46px / 38px（PC 幅・スマホ幅とも横にはみ出さないことを目視確認）
+- **ToggleChips**: ChipLabel の寸法（最小高 32px・角丸 8px・16px・行高 1・padding 3px 7px + 枠 1px・gap 4px）にそろえ、ピル型をやめた。文字は ChipLabel の 400 ではなくボタンと同じ Bold のまま（操作できる部品であることを示す）。OFF は outline（白地・solid-gray-600 の枠・muted 文字。文字 8.45:1、枠 5.74:1）、ON は solid-fill（blue-900 塗り・白文字 11.10:1）。hover / `:focus-visible` は OFF が outline ボタンと同じ blue-200 の地・blue-1000 の文字と枠・下線、ON が blue-1000 塗り + 下線。`:active` はそれぞれ blue-300 / blue-1200
 - 文字トークン・件数バッジは 13px → 14px、高さ 20px → 24px。ON 上の半透明白の地でも白文字 6.37:1
 - 操作不能（`aria-disabled`）は ON / OFF とも [140] のボタンの disabled と同じ solid-gray-300 の塗り・solid-gray-50 の文字（WCAG の対象外）にし、バッジは透明にして文字色を引き継ぐ。従来の `opacity: 0.6` は、ON の青塗り上の白文字が 4.5:1 を割るためやめた。ON / OFF の別は `aria-pressed` が伝える。`cursor: not-allowed` が global の `:where(button) { cursor: pointer }` に上書きされていたため、`:where(button)[aria-disabled='true']` もレイヤー外に足した
 - 色はすべて既存のトークン（`--color-primary*` / `--color-bg-primary-hover` / `--color-bg-primary-active` / `--color-disabled` 等）で、新しいトークンや hex の直書きはない
@@ -5296,5 +5296,5 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 ### 結果・トレードオフ
 
 - ✅ トグル 2 部品の寸法・色・hover が Button / ChipLabel と一貫し、14px 未満の文字と角丸の入れ子が解消する
-- ⚠️ ToggleGroup が約 30px → 44px（md）に、文字が 14px → 16px になり、トグルを置く全ツールの見た目が変わる（VRT の差分になる）
+- ⚠️ ToggleGroup は高さがほぼ据え置き（md 約 46px）で、文字が 14px → 16px、ボタンの横 padding が 12px → 16px に広がり、トグルを置く全ツールの見た目が変わる（VRT の差分になる）
 - ⚠️ 固定 ON の項目（日本語ダミー個人データの氏名）が灰色の塗りになり、ON であることが色だけでは分かりにくい（`aria-pressed` と title で補う）

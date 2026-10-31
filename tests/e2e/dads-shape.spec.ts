@@ -6,15 +6,17 @@ const CONTROL_RADIUS = '8px';
 const CARD_RADIUS = '12px';
 
 test.describe('DADS の角丸（production CSP 適用）', () => {
-  test('入力欄・トグルはコントロールの角丸、ツール説明欄はカードの角丸になる（CSP 違反なし）', async ({
+  test('入力欄・トグルの土台はコントロールの角丸、ツール説明欄はカードの角丸になる（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/base64', async (page) => {
       const input = page.getByRole('textbox').first();
       await expect(input).toHaveCSS('border-radius', CONTROL_RADIUS);
 
+      // トグルは土台がコントロールの角丸、内側のボタンは入れ子で重ならない 4px（[144]）
       const toggle = page.getByRole('button', { name: 'エンコード' });
-      await expect(toggle).toHaveCSS('border-radius', CONTROL_RADIUS);
+      await expect(toggle.locator('..')).toHaveCSS('border-radius', CONTROL_RADIUS);
+      await expect(toggle).toHaveCSS('border-radius', '4px');
 
       const info = page.getByRole('heading', { name: 'このツールについて' }).locator('..');
       await expect(info).toHaveCSS('border-radius', CARD_RADIUS);
