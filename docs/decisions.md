@@ -5191,7 +5191,7 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 - ResultTable の罫線は td の inset box-shadow で描く。従来は選択行だけ実際の border を付けており、選択を切り替えるたびに行の高さが 4px 変わっていた
 - **ResultTable の文字は DADS の 16px / 1.5 にせず、`.caption`（14px）のままにする**。16px にすると等幅の IP アドレスを 6 列並べる CIDR の分割表が PC 幅（1280px）でもはみ出して横スクロールになるため。Markdown プレビューの表は本文（16px）と並ぶ文書なので DADS どおり 16px / 1.5 にし、縦罫線をやめる。見出しは ResultTable と同じく折り返さない
 - padding が増えた分、正規表現のマッチ表がスマホ幅で「2026-10」のような短い値まで折り返したため、他の ResultTable と同じく `minWidth`（28rem）を指定して横スクロールにし、位置の列は折り返さない
-- 行見出し（`th[scope="row"]`）と caption は使っている表がないため追加しない。クリック可能な行のフォーカス表示は [136] のまま（offset -4px の outline）
+- 行見出し（`th[scope="row"]`）と caption は ResultTable と Markdown プレビューでは使わないため追加しない（使っている ContrastMatrix / HAR ビューアの表は Phase 5 の別の判断に回す）。クリック可能な行のフォーカス表示は [136] のまま（offset -4px の outline）
 
 ### 却下した選択肢
 

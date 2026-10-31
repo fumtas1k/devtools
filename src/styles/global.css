@@ -131,7 +131,7 @@
   --color-border-input: #666666; /* solid-gray-600: 入力欄・コントロールの枠（白地 5.74:1） */
   --color-error-text: #ce0000; /* error-2 (red-900): red-50 上 5.14:1 */
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
-  --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景 */
+  --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景・トグルと表の行の hover */
   --color-bg-selected: #d9e6ff; /* blue-100: 選択中の表の行（hover の blue-50 と区別。本文 10.06:1 / muted 6.73:1） */
   --color-badge-bg: #d9e6ff; /* blue-100: カテゴリバッジ背景 */
   --color-overlay: rgba(0, 0, 0, 0.5); /* opacity-gray-500: モーダル背景 */
