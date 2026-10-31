@@ -1,5 +1,7 @@
 # Claude Design の DADS デザインシステムへの段階移行計画
 
+**状況: 全 Phase（0〜7）完了（2026-10-31、`docs/decisions.md [148]`）。**
+
 **Goal:** Claude Design 上のデザインシステム「デジタル庁デザインシステム DADS」（以下 DS）を正本にして、サイト全体の見た目を PR 単位で段階的に DADS v2 の実値へ寄せる。
 
 **正本:** <https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（`project/tokens/*.css` / `project/components/components.css` / `project/README.md`）。DS 自体は DADS 公式リポジトリ（`digital-go-jp/design-tokens` / `design-system-example-components-react`）から転記したもので、値の最終確認は公式 `figma/tokens.json` で行う。
@@ -107,9 +109,9 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 
 ### Phase 7: 後片付け
 
-- [ ] 使われなくなった旧トークン・旧クラスを削除（`--color-success-strong` は Phase 1 で `--color-success` と同値になったので統合する）
-- [ ] `dads-design-system/references/tokens.md` を削除し、`SKILL.md` 0 章の「移行中」の記述と 2 章の「現行の対応先」列を更新
-- [ ] `SPEC.md` / `docs/decisions.md` / `.agents/rules/ui-conventions.md` を更新
+- [x] 使われなくなった旧トークン・旧クラスを削除（`--color-success-strong` は Phase 1 で `--color-success` と同値になったので統合する）
+- [x] `dads-design-system/references/tokens.md` を削除し、`SKILL.md` 0 章の「移行中」の記述と 2 章の「現行の対応先」列を更新
+- [x] `SPEC.md` / `docs/decisions.md` / `.agents/rules/ui-conventions.md` を更新
 
 ## 4. 決定事項（2026-10-30 確定、`docs/decisions.md [134]`）
 

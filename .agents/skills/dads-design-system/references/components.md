@@ -1,6 +1,6 @@
 # DADS コンポーネント仕様
 
-Claude Design の DADS デザインシステム（`project/components/components.css` と各 `*.prompt.md`）の要点。本リポジトリでは `src/components/ui/` の既存コンポーネントの見た目をこの仕様に寄せる（移行計画 Phase 5）。実装は `global.css` の `@layer components` の意味クラスで行い、hover / focus は擬似クラスごと定義する（`.agents/rules/common.md` 7.1）。
+Claude Design の DADS デザインシステム（`project/components/components.css` と各 `*.prompt.md`）の要点。本リポジトリの `src/components/ui/` の既存コンポーネントは、この仕様に合わせて移行済み（`docs/decisions.md [140]`〜[145]）。実装は `global.css` の `@layer components` の意味クラスで行い、hover / focus は擬似クラスごと定義する（`.agents/rules/common.md` 7.1）。
 
 | DADS                    | 本リポジトリの対応先                                                |
 | :---------------------- | :------------------------------------------------------------------ |

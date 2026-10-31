@@ -8,16 +8,13 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 ## 0. 正本と移行状況
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
-- **移行中**: 色（Phase 1）・フォーカスリング（Phase 2）・タイポグラフィ（Phase 3）・角丸と影（Phase 4）は DADS に移行済み（`src/styles/global.css`）。コンポーネントはボタン類（`ActionButton` / `CopyButton` / `DownloadButton` / `FileInputButton` / `ClearButton`、`docs/decisions.md [140]`）と結果の表（`ResultTable`、`[142]`）が移行済みで、それ以外は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
-- DADS の目標値（プリミティブ全色）は `references/tokens.md`、コンポーネントの見た目仕様は `references/components.md`。
+- **移行状況**: 完了（Phase 0〜7、`docs/decisions.md [134]`〜[148]）。色・フォーカスリング・タイポグラフィ・角丸と影・コンポーネント・レイアウトは DADS に合っている。経緯は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
+- **値の正本は `src/styles/global.css`**（`@theme` / `:root`）。Blue の 13 段は `@theme` に置いてある。他の色相やグレーは、使う段だけを semantic token（`:root`）の値として DS か公式 `figma/tokens.json` から転記する。コンポーネントの見た目仕様は `references/components.md`。
 
-### 移行中に新しく書くコードのルール
+### 新しく書くコードのルール
 
-1〜5 章とコンポーネント仕様は**移行フェーズで適用する目標**で、まだ `global.css` に入っていないものがある。移行の途中で新しく UI を書くときは、次のとおりにする。
-
-- `src/components/ui/` の既存コンポーネントと、既存の semantic token / 意味クラス（2 章の「現行の対応先」列）を使う。トークンの値はフェーズごとに差し替わるので、新しいコードも自動で追従する
-- DADS の見た目を先取りしない。DADS の hex の直書き、`@theme` への DADS 値の個別追加、`rounded-[12px]` 等の任意値、独自のフォーカスリングや hover 下線はどれも使わない
-- 必要な意味クラスが無ければ、現行パレットの値で `global.css` に追加し（common.md 7 章）、DADS 値への移行は計画のフェーズに任せる
+- `src/components/ui/` の既存コンポーネントと、既存の semantic token / 意味クラス（2 章の「対応先」列）を使う。DADS の hex の直書き、`rounded-[12px]` 等の任意値、独自のフォーカスリングや hover 下線は使わない
+- 必要な意味クラスが無ければ `global.css` に追加する（common.md 7 章）
 
 ## 1. 原則
 
@@ -29,7 +26,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 キーカラーは Blue の 1 色だけ。他の色相（cyan / green / lime / yellow / orange / red / magenta / purple / light-blue）はチップ・タグ・データ・状態表示に限って控えめに使う。
 
-| 用途                 | DADS トークン                                                   | 値                    | 現行の対応先                                                                     |
+| 用途                 | DADS トークン                                                   | 値                    | 対応先                                                                           |
 | :------------------- | :-------------------------------------------------------------- | :-------------------- | :------------------------------------------------------------------------------- |
 | primary（塗り）      | `blue-900`                                                      | `#0017c1`             | `--color-primary`（`bg-primary` / `text-primary`）                               |
 | primary hover        | `blue-1000`                                                     | `#00118f`             | 各コンポーネントの `:hover` 定義                                                 |
@@ -48,7 +45,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 | ページ背景・カード   | `white`                                                         | `#ffffff`             | `--color-bg`（`.bg-default`）                                                    |
 | 薄い背景             | `solid-gray-50`                                                 | `#f2f2f2`             | `--color-bg-subtle` / `--color-bg-surface`（`.bg-subtle` / `.bg-surface`）       |
 
-セマンティック色は 2 段ペア。`-1` は白地で 4.5:1 に届かないもの（success / warning）があるので、**文字と白文字を載せる塗りには `-2` を使い、`-1` はアイコン・枠など非テキスト（3:1）に限る**（`error-1` は 4.60:1 で文字にも使える）。現行の対応先は `--color-success` / `--color-error` / `--color-warning` と各 `-bg`（`.text-success` / `.alert-success` 等）。
+セマンティック色は 2 段ペア。`-1` は白地で 4.5:1 に届かないもの（success / warning）があるので、**文字と白文字を載せる塗りには `-2` を使い、`-1` はアイコン・枠など非テキスト（3:1）に限る**（`error-1` は 4.60:1 で文字にも使える）。対応先は `--color-success` / `--color-error` / `--color-warning` と各 `-bg`（`.text-success` / `.alert-success` 等）。
 
 | 種類          | `-1`（非テキスト）                   | `-2`（文字・白文字の塗り）       |
 | :------------ | :----------------------------------- | :------------------------------- |
@@ -61,7 +58,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 ## 3. フォーカスリング
 
-DADS の象徴。全インタラクティブ要素で同じ見た目にし、消さない（`outline-none` を付けない）。目標は黒 4px の outline（offset 2px）+ `yellow-300` `#ffd43d` の 2px ring（box-shadow）。
+DADS の象徴。全インタラクティブ要素で同じ見た目にし、消さない（`outline-none` を付けない）。黒 4px の outline（offset 2px）+ `yellow-300` `#ffd43d` の 2px ring（box-shadow）。
 
 本リポジトリでは `global.css` の `:where(...):focus-visible` で一括適用している（JS ハンドラ不要）。トークンは outline 用の `--focus-ring`（`4px solid` 黒）と、黄リング用の `--focus-ring-shadow`（`0 0 0 2px` yellow-300）。
 
@@ -88,7 +85,7 @@ DADS の象徴。全インタラクティブ要素で同じ見た目にし、消
 ## 5. 余白・角丸・影
 
 - 余白は **4px グリッド**（4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 56 / 64 / 80 / 96）。
-- 角丸: コントロール（ボタン・入力・セレクト・トグル、それと並ぶ出力欄）**8px** = `rounded-md`、カード・パネル・セクション **12px** = `rounded-lg`、ピル・アバター full = `rounded-full`。小さいボタンは DADS では 6px（sm 36px）= `rounded-button-sm` / 4px（xs 28px）= `rounded-sm`。既存の `rounded-xl` も 12px だが、新規は `rounded-lg` を使う。
+- 角丸: コントロール（ボタン・入力・セレクト・トグル、それと並ぶ出力欄）**8px** = `rounded-md`、カード・パネル・セクション **12px** = `rounded-lg`、ピル・アバター full = `rounded-full`。小さいボタンは DADS では 6px（sm 36px）= `rounded-button-sm` / 4px（xs 28px）= `rounded-sm`。`rounded-xl` は使わない（`rounded-lg` にそろえた）。
 - 影（elevation）は ambient（10% 黒）+ key（30% 黒）の 2 枚重ねで 8 段（`--elevation-1`〜`8`）。カード・メニュー・ダイアログに使い、カードは hover で 1 段上げる。Tailwind の `shadow-md` は 2 段、`shadow-xl` は 6 段にそろえてある。
 - レイアウトは中央寄せの最大幅コンテナ、フォームは 1 カラム（読みやすい幅 ~760px）。
 
@@ -113,7 +110,7 @@ DADS の汎用仕様より優先する。詳細の正本は以下。
 
 ## 8. チェックリスト
 
-- [ ] 色・角丸・影を既存の semantic token / 意味クラス経由で指定した（DADS 値の先取りなし）
+- [ ] 色・角丸・影を既存の semantic token / 意味クラス経由で指定した
 - [ ] 文字 4.5:1 / 非テキスト 3:1 を満たす
 - [ ] フォーカスリングを上書き・削除していない
 - [ ] 本文 16px 以上、14px 未満なし

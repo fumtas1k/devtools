@@ -32,7 +32,7 @@ export function Section({
   const hasHeader = title != null || headerSlot != null;
 
   return (
-    <div role={role} {...ariaProps} className="rounded-xl border border-default overflow-hidden">
+    <div role={role} {...ariaProps} className="rounded-lg border border-default overflow-hidden">
       {hasHeader && (
         <div
           className={cx(

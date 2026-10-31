@@ -269,7 +269,7 @@ export function TotpHotpGeneratorTool() {
   return (
     <div className="space-y-4">
       {/* ─── Section 1: Secret + Settings ─── */}
-      <div className="rounded-xl border border-default overflow-hidden">
+      <div className="rounded-lg border border-default overflow-hidden">
         <div className="body-emphasis text-default bg-subtle border-b border-default px-4 py-3">
           シークレット鍵と設定
         </div>
@@ -381,7 +381,7 @@ export function TotpHotpGeneratorTool() {
       </div>
 
       {/* ─── Section 2: Code Output ─── */}
-      <div className="rounded-xl border border-default overflow-hidden">
+      <div className="rounded-lg border border-default overflow-hidden">
         <div className="body-emphasis text-default bg-subtle border-b border-default px-4 py-3">
           {mode === 'totp'
             ? 'ワンタイムコード（TOTP）'
@@ -493,7 +493,7 @@ export function TotpHotpGeneratorTool() {
       </div>
 
       {/* ─── Section 3: otpauth URI ─── */}
-      <div className="rounded-xl border border-default overflow-hidden">
+      <div className="rounded-lg border border-default overflow-hidden">
         <div className="body-emphasis text-default bg-subtle border-b border-default px-4 py-3">
           otpauth:// URI（QRコード生成用）
         </div>

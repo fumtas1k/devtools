@@ -128,7 +128,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
 
   if (cert.error) {
     return (
-      <div className="rounded-xl border border-default overflow-hidden">
+      <div className="rounded-lg border border-default overflow-hidden">
         <div className="bg-subtle px-4 py-3 border-b border-default flex items-center gap-2">
           <span className="body-emphasis text-default">証明書 #{chainPosition + 1}</span>
           <ChipLabel tone="error">パース失敗</ChipLabel>
@@ -141,7 +141,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
   }
 
   return (
-    <div className="rounded-xl border border-default overflow-hidden">
+    <div className="rounded-lg border border-default overflow-hidden">
       {/* カードヘッダー */}
       <div className="bg-subtle px-4 py-3 border-b border-default flex flex-wrap items-center gap-2 justify-between">
         <div className="flex flex-wrap items-center gap-2">
@@ -378,7 +378,7 @@ function PrivateKeySection({ privateKeys }: PrivateKeySectionProps) {
         と抽出した秘密鍵は外部サーバーに送信されません。
       </NotificationBanner>
       {privateKeys.map((key, i) => (
-        <div key={i} className="rounded-xl border border-default overflow-hidden">
+        <div key={i} className="rounded-lg border border-default overflow-hidden">
           <div className="bg-subtle px-4 py-3 border-b border-default flex flex-wrap items-center gap-2">
             <span className="body-emphasis text-default">秘密鍵 #{i + 1}</span>
             <ChipLabel tone="error">秘密鍵</ChipLabel>
