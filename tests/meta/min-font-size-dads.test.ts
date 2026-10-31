@@ -30,16 +30,15 @@ interface Allow {
   reason: string;
 }
 
-const ALLOWLIST: readonly Allow[] = [
+// 許可リストは空。トグル類（.toggle-chip__token / __count）は #823 で 14px にそろえたため外した。
+// 例外が必要になったら、理由を書いて最小限に足す（機構の陽性対照は FIXTURE_ALLOWLIST で行う）。
+const ALLOWLIST: readonly Allow[] = [];
+
+const FIXTURE_ALLOWLIST: readonly Allow[] = [
   {
     path: 'src/styles/global.css',
-    selector: '.toggle-chip__token',
-    reason: 'トグル類（ToggleChips）の担当セッションが DADS のチップ規約に合わせて別 PR で扱う',
-  },
-  {
-    path: 'src/styles/global.css',
-    selector: '.toggle-chip__count',
-    reason: 'トグル類（ToggleChips）の担当セッションが DADS のチップ規約に合わせて別 PR で扱う',
+    selector: '.fixture-allowed',
+    reason: '陽性対照用（セレクタ単位の許可が効くことの確認）',
   },
 ];
 
@@ -171,8 +170,8 @@ describe('[陽性対照] 14px 未満の文字サイズの検知機構', () => {
 
   it('許可リストのセレクタ内だけが免除され、他のセレクタの同じ指定は検出する', () => {
     const css =
-      '.toggle-chip__token {\n  font-size: 0.8125rem;\n}\n.other {\n  font-size: 0.8125rem;\n}';
-    const v = findSmallFonts([{ path: 'src/styles/global.css', content: css }], ALLOWLIST);
+      '.fixture-allowed {\n  font-size: 0.8125rem;\n}\n.other {\n  font-size: 0.8125rem;\n}';
+    const v = findSmallFonts([{ path: 'src/styles/global.css', content: css }], FIXTURE_ALLOWLIST);
     expect(v).toEqual([{ path: 'src/styles/global.css', line: 5 }]);
   });
 });
