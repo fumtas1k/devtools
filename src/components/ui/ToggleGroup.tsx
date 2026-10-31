@@ -62,7 +62,8 @@ export function ToggleGroup<T extends string>({
       );
   // md: DADS の sm ボタン相当（高さ 36px・16px Bold）、sm: xs 相当（28px・14px Bold）。
   // 土台の角丸 8px から枠 1px と余白 4px を引いた内側のボタンは rounded-sm（4px）にする
-  const buttonSizeClass = size === 'sm' ? 'min-h-7 px-3 text-sm' : 'min-h-9 px-4 text-base';
+  const buttonSizeClass =
+    size === 'sm' ? 'min-h-7 min-w-11 px-3 text-sm' : 'min-h-9 px-4 text-base';
 
   return (
     <div className={containerClass} role="group" aria-label={ariaLabel}>
