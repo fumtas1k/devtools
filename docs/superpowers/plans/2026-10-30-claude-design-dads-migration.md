@@ -95,7 +95,7 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 - [x] `ActionButton`（solid-fill / outline / text、サイズ、hover 下線、double border）。`CopyButton` / `DownloadButton` / `FileInputButton` / `ClearButton` と、小さいボタンの角丸 6px（sm）も合わせて移行（`docs/decisions.md [140]`）
 - [ ] `InputField` / `BareInput` / `Select` / textarea（枠色、read-only 破線、エラー）
 - [ ] `NotificationBanner` / `StatusBadge` / `ChipLabel`
-- [ ] `ResultTable`
+- [x] `ResultTable` と Markdown プレビューの表（縞をやめて DADS の罫線・thead・行 hover・選択色にする。文字は 14px のまま。`docs/decisions.md [142]`）
 - [ ] `ToggleGroup` / `ToggleChips`（`FileInputButton` / `DownloadButton` / `CopyButton` はボタンの PR で移行済み）
 
 ### Phase 6: レイアウト・Astro ページ

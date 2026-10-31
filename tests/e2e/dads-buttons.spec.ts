@@ -191,6 +191,23 @@ test.describe('DADS Button の見た目', () => {
     });
   });
 
+  test.describe('uuid-v7（表の行のアイコンだけの CopyButton）', () => {
+    // 表の選択行は blue-100、行 hover は blue-50（[142]）。アイコンだけの CopyButton の hover 地が
+    // それらと同じ色だと見えなくなるため、outline と同じ blue-200 にしている
+    test('選択行の上でも hover の地が行の地と区別できる', async ({ page }) => {
+      await page.goto('/tools/uuid-v7');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: '生成' }).click();
+      const row = page.locator('table tbody tr').first();
+      await expect(row).toHaveAttribute('data-selected', 'true');
+      const copy = row.getByRole('button', { name: 'コピー' });
+      await copy.hover();
+      await expect(copy).toHaveCSS('background-color', BG_PRIMARY_HOVER);
+      const rowBg = await row.evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(rowBg).not.toBe(BG_PRIMARY_HOVER);
+    });
+  });
+
   test.describe('har-viewer（FileInputButton）', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/tools/har-viewer');
