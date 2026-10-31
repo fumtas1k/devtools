@@ -22,6 +22,9 @@ const SLUGS = readdirSync('src/pages/tools')
 const INTERACTIVE =
   'button, a[href], input:not([type=hidden]):not([type=checkbox]):not([type=radio]), label:has(input[type=checkbox]), label:has(input[type=radio]), select, textarea, summary, [role=button], [role=tab], [role=checkbox], [role=switch], label:has(input[type=file])';
 
+/** 入力欄の内側に重ねて置く操作要素（検索のクリア）。入力欄の範囲と重なるのは設計どおり */
+const OVERLAY = '.btn-clear';
+
 /** タップ領域を広げている系統（`.hit-area` 系）。陽性対照で、系統ごとに検知器が機能することを確認する */
 const CATEGORIES = [
   'btn-toggle',
@@ -51,7 +54,7 @@ interface Violation {
 /** ページ内で、全操作要素の hit-test を行い違反を返す */
 async function detect(page: Page): Promise<Violation[]> {
   return page.evaluate(
-    ({ selector, exempt, verticalExempt, categories }) => {
+    ({ selector, exempt, verticalExempt, categories, overlay }) => {
       const describe = (el: Element) => {
         const name = (el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 16);
         const cls = (el.getAttribute('class') ?? '').split(/\s+/).slice(0, 3).join('.');
@@ -61,7 +64,7 @@ async function detect(page: Page): Promise<Violation[]> {
       // 閉じた <details> の中身は、矩形を持っていても操作できない
       const inClosedDetails = (el: Element) => {
         for (let d = el.closest('details'); d; d = d.parentElement?.closest('details') ?? null) {
-          if (!d.open && !el.closest('summary')) return true;
+          if (!d.open && el.closest('summary')?.parentElement !== d) return true;
         }
         return false;
       };
@@ -101,19 +104,53 @@ async function detect(page: Page): Promise<Violation[]> {
         if (r.width === 0 || r.height === 0) continue;
         if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
         // 1. 奪わない: 見た目の範囲の内側 1px の 9 点
+        // 入力欄の内側に重ねて置く操作要素は、入力欄の範囲と重なるのが設計どおり
+        const skipOwnBox = el.matches(overlay);
         const xs = [r.left + 1, r.left + r.width / 2, r.right - 1];
         const ys = [r.top + 1, r.top + r.height / 2, r.bottom - 1];
         for (const x of xs) {
           for (const y of ys) {
-            if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+            if (skipOwnBox || x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
             const hit = document.elementFromPoint(x, y);
             const thief = hit?.closest(selector) ?? null;
-            if (thief && !owns(el, thief) && !owns(thief, el)) {
+            if (thief && !owns(el, thief) && !owns(thief, el) && !thief.matches(overlay)) {
               violations.push({
                 kind: 'stolen',
                 target: describe(el),
                 detail: `${describe(thief)} が (${Math.round(x)}, ${Math.round(y)}) を奪っている`,
               });
+            }
+          }
+        }
+        // 1b. 奪わない（食い込み）: ::after の範囲の格子点で、自身が最前面にあり、その直下（自身の子孫を除く最初の要素）が
+        // 別の操作要素で、その見た目の範囲の内側なら、その要素の一部を奪っている。辺の途中への食い込みも拾う。
+        // 直下がヘッダーなどの操作要素ではない面なら、下の要素は覆われていて押せないので対象外
+        const after = getComputedStyle(el, '::after');
+        if (after.content !== 'none' && after.position === 'absolute') {
+          const aw = parseFloat(after.width);
+          const ah = parseFloat(after.height);
+          const left = r.left + r.width / 2 - aw / 2;
+          const top = r.top + r.height / 2 - ah / 2;
+          for (let a = 0; a <= 6; a++) {
+            for (let b = 0; b <= 6; b++) {
+              const x = left + 0.5 + (a * (aw - 1)) / 6;
+              const y = top + 0.5 + (b * (ah - 1)) / 6;
+              if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+              const stack = document.elementsFromPoint(x, y);
+              if (!owns(el, stack[0] ?? null)) continue;
+              const other = stack
+                .slice(1)
+                .find((e) => !el.contains(e))
+                ?.closest(selector);
+              if (!other || owns(el, other) || owns(other, el) || other.matches(overlay)) continue;
+              const rect = other.getBoundingClientRect();
+              if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                violations.push({
+                  kind: 'stolen',
+                  target: describe(other),
+                  detail: `${describe(el)} のタップ領域が (${Math.round(x)}, ${Math.round(y)}) に食い込んでいる`,
+                });
+              }
             }
           }
         }
@@ -144,6 +181,7 @@ async function detect(page: Page): Promise<Violation[]> {
       exempt: EXEMPT,
       verticalExempt: VERTICAL_EXEMPT,
       categories: CATEGORIES,
+      overlay: OVERLAY,
     }
   );
 }
@@ -154,6 +192,17 @@ const click = async (page: Page, name: string | RegExp) => {
     await button.click({ timeout: 2000 }).catch(() => undefined);
     await page.waitForTimeout(100);
   }
+};
+
+/** prepare のあとに、必ず現れているべき操作要素（出ていなければ検査が空振りするので失敗させる） */
+const EXPECTED_AFTER_PREPARE: Record<string, (page: Page) => import('@playwright/test').Locator> = {
+  'ulid-generator': (page) => page.locator('button.is-compact').first(),
+  'uuid-v7': (page) => page.locator('button.is-compact').first(),
+  'json-formatter': (page) => page.locator('.json-toggle').first(),
+  'gs1-databar': (page) => page.getByRole('button', { name: 'バーコード 2 を削除' }),
+  'csr-generator': (page) => page.getByRole('button', { name: 'SAN 2 を削除' }),
+  'qr-ticket': (page) => page.getByRole('button', { name: '行 1 を削除' }),
+  'dsn-builder': (page) => page.getByRole('button', { name: 'ホスト 2 を削除' }),
 };
 
 /** 結果・表・ツリー・行の追加ボタンなど、状態で現れる操作要素を出す */
@@ -187,8 +236,17 @@ for (const viewport of [
     for (const slug of ['', ...SLUGS.map((s) => `tools/${s}`)]) {
       test(`/${slug}: 隣の操作要素を奪わず、44px まで届く`, async ({ page }) => {
         await page.goto(`/${slug}`);
-        await waitForReactHydration(page).catch(() => undefined);
-        if (slug.startsWith('tools/')) await prepare(page, slug.replace('tools/', ''));
+        if (slug !== '') await waitForReactHydration(page);
+        if (slug === '') {
+          // 検索語を入れると現れるクリアボタンも対象にする
+          await page.getByRole('searchbox', { name: 'ツールを検索' }).fill('json');
+          await expect(page.getByRole('button', { name: '検索をクリア' })).toBeVisible();
+        }
+        if (slug.startsWith('tools/')) {
+          const tool = slug.replace('tools/', '');
+          await prepare(page, tool);
+          await EXPECTED_AFTER_PREPARE[tool]?.(page).first().waitFor({ timeout: 5000 });
+        }
         expect(summarize(await detect(page))).toEqual([]);
       });
     }
@@ -231,6 +289,15 @@ test.describe('検知器の陽性対照', () => {
       }
     }
     expect([...found].sort()).toEqual([...CATEGORIES].sort());
+  });
+
+  test('::after を数 px 広げただけの食い込みも「奪う」として検出する', async ({ page }) => {
+    await page.goto('/tools/dummy-personal-data');
+    await waitForReactHydration(page);
+    // チップは横に並び、間隔は 8px。::after を 80px 幅にすると、幅 48px のチップが隣へ 8px 食い込む
+    await page.addStyleTag({ content: '.toggle-chip::after { width: 80px !important; }' });
+    const violations = await detect(page);
+    expect(violations.filter((v) => v.kind === 'stolen').length).toBeGreaterThan(0);
   });
 
   test('::after を大きく広げると「奪う」を検出する', async ({ page }) => {
@@ -294,5 +361,39 @@ test.describe('見た目の寸法も 44px にした箇所', () => {
     for (const button of await group.getByRole('button').all()) {
       expect((await size(button)).width).toBeGreaterThanOrEqual(44);
     }
+  });
+});
+
+test.describe('JSON ツリーの行末コピー（hover で現れる）', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('パス用と値用の 2 つのコピーが、お互いの見た目の範囲を奪わない', async ({ page }) => {
+    await page.goto('/tools/json-formatter');
+    await waitForReactHydration(page);
+    await click(page, 'サンプルを入力');
+    await click(page, 'ツリー');
+    const line = page
+      .locator('.json-line')
+      .filter({ has: page.getByRole('button', { name: /^値をコピー/ }) })
+      .first();
+    await line.hover();
+    const path = line.getByRole('button', { name: /^パスをコピー/ });
+    const value = line.getByRole('button', { name: /^値をコピー/ });
+    await expect(value).toBeVisible();
+    const [p, v] = [await path.boundingBox(), await value.boundingBox()];
+    if (!p || !v) throw new Error('コピーボタンの位置が取れない');
+    const y = p.y + p.height / 2;
+    // パス用の右端・値用の左端の内側 1px が、それぞれ自身に当たる
+    const hitAt = (x: number) =>
+      page.evaluate(
+        ([px, py]) =>
+          document.elementFromPoint(px, py)?.closest('button')?.getAttribute('aria-label'),
+        [x, y]
+      );
+    expect(await hitAt(p.x + p.width - 1)).toMatch(/^パスをコピー/);
+    expect(await hitAt(v.x + 1)).toMatch(/^値をコピー/);
+    // 幅は 44px まで届く（見た目 32px の外側 6px）
+    expect(await hitAt(p.x - 5)).toMatch(/^パスをコピー/);
+    expect(await hitAt(v.x + v.width + 5)).toMatch(/^値をコピー/);
   });
 });

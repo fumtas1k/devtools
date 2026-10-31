@@ -55,7 +55,7 @@ CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、J
 
 ### 2.6 操作要素は 44×44px
 
-見た目が 44px 未満の操作要素は、`.hit-area`（または `global.css` の `.hit-area` 系に登録済みの class）で透明な `::after` のタップ領域を 44×44px に広げる。隣の操作要素の見た目の範囲に食い込まないよう、直前・直後の要素とは `(44 − 見た目の高さ) / 2` 以上離す。奪う・届かないは `tests/e2e/touch-targets.spec.ts` が全ツールで検知する。`.text-link`（文中のインラインリンク）には付けない（`docs/decisions.md [152]`）。
+見た目が 44px 未満の操作要素は、`.hit-area`（または `global.css` の `.hit-area` 系に登録済みの class）で透明な `::after` のタップ領域を 44×44px に広げる。隣の操作要素の見た目の範囲に食い込まないよう、直前・直後の要素とは `(44 − 見た目の高さ) / 2` 以上離す。奪う・届かないは `tests/e2e/touch-targets.spec.ts` が全ツールで検知する。文中のインラインリンク（`.text-link` を段落内で使う場合）には付けない（パンくずなど単独のリンクは `.hit-area` を足す）（`docs/decisions.md [152]`）。
 
 ---
 
