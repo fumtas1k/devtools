@@ -5266,3 +5266,33 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 - ✅ 表の罫線・見出し・hover・選択の見た目が DADS にそろい、選択の切り替えで行の高さがずれなくなる
 - ⚠️ 行の高さが増え（約 40px → 48px）、同じ件数でも表が縦に長くなる。表は操作後に出るため、初期表示だけを撮る VRT には差分が出ない（見た目は `tests/e2e/dads-table.spec.ts` で確認する）
 - ⚠️ UUID v7 の色分け（`#7c3aed` 等の直書き色、#808）は白地でも 4.5:1 を満たさないものがあり、hover / 選択の地の上ではさらに下がる。#808 で DADS の色に置き換えるときに表の地の上でも確認する
+
+---
+
+## [143] DADS 移行 Phase 5: 入力欄（InputField / BareInput / Select / CountInput / OutputField）
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 のうち入力欄。従来は各コンポーネントと各ツールが Tailwind の utility（`caption` 14px・`px-3 py-2`・`border-input` / `border-error`）を個別に書いており、高さは約 42px、hover の反応は無く、read-only は実線、エラーは枠色の差し替えだけだった。[140] で md ボタンが 48px になったため、横に並べると高さがそろわなかった。
+
+### 決断
+
+- 見た目を `global.css` の `@layer components` に **`.field-control`**（+ `--textarea` / `--select`）として 1 か所にまとめ、`InputField` / `BareInput` / `Select` / `CountInput` / `OutputField` と、各ツール直書きの `<input>`（DummyText・DummyPersonalData・CertDecoder・トップの検索欄）が使う。状態は class ではなく属性で切り替える（エラー = `aria-invalid="true"`、read-only = `readonly`、disabled = `:disabled`）。`BareInput` の `error` prop は `aria-invalid` に変換する
+- DADS の md: 高さ 48px、左右 padding 16px、角丸 8px、文字 16px（`.caption` をやめる）。textarea は行高 1.7・padding 12px 16px で、高さは `rows` で決める。select は `appearance: none` + 右 16px の chevron で、文字が chevron に重ならないよう右 padding を 44px にする
+- 枠は solid-gray-600 で、hover（編集可能時のみ）は黒。エラーは error-1、hover は red-1000。placeholder は solid-gray-536。トークンは `--color-border-input-hover` / `--color-border-error-hover` / `--color-placeholder` / `--color-text-disabled` を `:root` に追加した
+- read-only は破線の枠 + solid-gray-50 の地（従来の `bg-surface` / OutputField の `bg-subtle` を維持）。hover しても枠は変えない。`OutputField` の枠は `border-default`（gray-100）から入力欄と同じ gray-600 の破線になった
+- disabled は枠 solid-gray-300・地 solid-gray-50・文字 solid-gray-420、`cursor: not-allowed`
+- ContrastMatrix のカラーピッカー（`input[type=color]`）は、隣の入力欄と上端・高さをそろえるため 40px → 48px にした。サイズ違いの sm（40px）/ lg（56px）は使用箇所が無いため作らない
+- CertDecoder のパスワード欄は枠が `border-default` だった（他の入力欄と不一致）ため `.field-control` にして gray-600 にそろえた
+
+### 却下した選択肢
+
+- **コンポーネントごとに utility を書き換える**: 状態（hover / エラー / read-only / disabled）が variant 非対応の `@layer components` に頼れず、各所で同じ組み合わせを繰り返すことになる
+- **BareInput だけ 40px（sm）にして表のような密な配置を詰める**: DSN ビルダー・QR チケット・TOTP の BareInput は、ボタンや InputField と並ぶため md（48px）でそろえる方が崩れない。詰める必要が出たら sm を足す
+
+### 結果・トレードオフ
+
+- ✅ 入力欄・セレクト・出力欄の高さ・文字・状態が DADS にそろい、md ボタンと横並びでも高さが一致する（`tests/e2e/dads-inputs.spec.ts`）
+- ⚠️ 入力欄が約 42px → 48px、文字が 14px → 16px になり、入力欄を含む全ツールの見た目が変わる（VRT の差分）。DSN ビルダーの PC 幅（3 カラム）では、スキームの長い選択肢（`postgresql:// ― PostgreSQL`）が選択中の表示で末尾まで入らない

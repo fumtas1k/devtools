@@ -93,7 +93,7 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChips / CopyButton 等）は DS のボタン・チップ規約から派生させる。
 
 - [x] `ActionButton`（solid-fill / outline / text、サイズ、hover 下線、double border）。`CopyButton` / `DownloadButton` / `FileInputButton` / `ClearButton` と、小さいボタンの角丸 6px（sm）も合わせて移行（`docs/decisions.md [140]`）
-- [ ] `InputField` / `BareInput` / `Select` / textarea（枠色、read-only 破線、エラー）
+- [x] `InputField` / `BareInput` / `Select` / `CountInput` / `OutputField` / textarea（枠色、read-only 破線、エラー、高さ 48px。`docs/decisions.md [143]`）
 - [x] `NotificationBanner` / `StatusBadge` / `ChipLabel`（`docs/decisions.md [141]`）
 - [x] `ResultTable` と Markdown プレビューの表（縞をやめて DADS の罫線・thead・行 hover・選択色にする。文字は 14px のまま。`docs/decisions.md [142]`）
 - [ ] `ToggleGroup` / `ToggleChips`（`FileInputButton` / `DownloadButton` / `CopyButton` はボタンの PR で移行済み）

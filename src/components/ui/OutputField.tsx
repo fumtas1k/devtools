@@ -79,10 +79,10 @@ export function OutputField({
           value={value}
           rows={rows}
           className={cx(
-            'caption',
+            'field-control field-control--textarea',
             monoClass,
             resizeClass,
-            'w-full rounded-md border border-default bg-subtle text-default px-3 py-2 tracking-wide',
+            'tracking-wide',
             fillTextareaClass
           )}
           aria-label={ariaLabel ?? label}

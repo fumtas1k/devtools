@@ -131,6 +131,10 @@
   --color-border-table-head: #999999; /* solid-gray-400: 表の見出し行の下罫線（DADS の Table） */
   --color-border-strong: #767676; /* solid-gray-536: 図の線など 3:1 が必要な非テキスト（白地 4.54:1 / gray-50 上 4.06:1） */
   --color-border-input: #666666; /* solid-gray-600: 入力欄・コントロールの枠（白地 5.74:1） */
+  --color-border-input-hover: #000000; /* black: 入力欄の hover の枠 */
+  --color-border-error-hover: #a90000; /* red-1000: エラー状態の入力欄の hover の枠 */
+  --color-placeholder: #767676; /* solid-gray-536: placeholder（白地 4.54:1） */
+  --color-text-disabled: #949494; /* solid-gray-420: disabled の入力欄の文字（WCAG のコントラスト対象外） */
   --color-error-text: #ce0000; /* error-2 (red-900): red-50 上 5.14:1 */
 
   /* データの色分け（UUID v7 のフィールド・JWT）: DADS の色相から、白地・gray-50・表の hover 行
@@ -346,6 +350,59 @@
   }
   .border-input {
     border-color: var(--color-border-input);
+  }
+
+  /* === DADS の Input / Select / Textarea（docs/decisions.md [143]） ===
+     高さ md 48px・左右 padding 16px・角丸 8px・文字 16px。InputField / BareInput / Select /
+     CountInput / OutputField と各ツール直書きの input が共有する。状態は属性で切り替える
+     （error = aria-invalid、read-only = readonly、disabled = disabled）。 */
+  .field-control {
+    display: block;
+    width: 100%;
+    height: 3rem;
+    padding: 0 1rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+  }
+  .field-control::placeholder {
+    color: var(--color-placeholder);
+    opacity: 1;
+  }
+  /* textarea: 行高 1.7・padding 12px 16px。高さは rows で決まる */
+  .field-control--textarea {
+    height: auto;
+    padding: 0.75rem 1rem;
+    line-height: 1.7;
+  }
+  /* select: ネイティブの矢印を消し、右 16px に chevron（Select.tsx の svg）を置く。chevron 分の右余白を確保 */
+  .field-control--select {
+    appearance: none;
+    padding-right: 2.75rem;
+  }
+  .field-control:hover:not(:disabled):not([readonly]) {
+    border-color: var(--color-border-input-hover);
+  }
+  .field-control[aria-invalid='true'] {
+    border-color: var(--color-error);
+  }
+  .field-control[aria-invalid='true']:hover:not(:disabled):not([readonly]) {
+    border-color: var(--color-border-error-hover);
+  }
+  /* read-only: 破線の枠と薄い地（編集できないことを枠で示す。エラー時は error 色の破線） */
+  .field-control[readonly] {
+    border-style: dashed;
+    background: var(--color-bg-surface);
+  }
+  .field-control:disabled {
+    border-color: var(--color-disabled);
+    background: var(--color-bg-surface);
+    color: var(--color-text-disabled);
+    cursor: not-allowed;
   }
   /* divide-y の境界線色（Tailwind v4 は divide-{color} を auto-generate しないため手書き定義）*/
   .divide-subtle > :not(:last-child) {
