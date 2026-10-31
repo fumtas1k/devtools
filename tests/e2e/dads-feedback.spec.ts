@@ -19,7 +19,12 @@ test.describe('DADS の通知・状態表示（production CSP 適用）', () => 
       await expect(title).toHaveCSS('font-size', '18px');
       await expect(title).toHaveCSS('font-weight', '700');
       await expect(banner.locator('svg').first()).toHaveAttribute('width', '28');
-      await expect(banner.getByText(/入力長に対してマッチ時間が/)).toHaveCSS('font-size', '16px');
+      const body = banner.getByText(/入力長に対してマッチ時間が/);
+      await expect(body).toHaveCSS('font-size', '16px');
+      // 枠・色帯は種類色（currentColor = error-1）、見出しと本文は本文色（solid-gray-800）
+      await expect(banner).toHaveCSS('border-top-color', 'rgb(236, 0, 0)');
+      await expect(title).toHaveCSS('color', 'rgb(51, 51, 51)');
+      await expect(body).toHaveCSS('color', 'rgb(51, 51, 51)');
 
       // StatusBadge: 16px / 400、padding 8px（decorative のため aria-hidden。getByText は a11y ツリーに依存しない）
       const badge = region.getByText('脆弱', { exact: true });
