@@ -8,7 +8,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 ## 0. 正本と移行状況
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
-- **移行中**: 色（Phase 1）・フォーカスリング（Phase 2）・タイポグラフィ（Phase 3）・角丸と影（Phase 4）は DADS に移行済み（`src/styles/global.css`）。コンポーネントの見た目は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
+- **移行中**: 色（Phase 1）・フォーカスリング（Phase 2）・タイポグラフィ（Phase 3）・角丸と影（Phase 4）は DADS に移行済み（`src/styles/global.css`）。コンポーネントはボタン類（`ActionButton` / `CopyButton` / `DownloadButton` / `FileInputButton` / `ClearButton`、`docs/decisions.md [140]`）と結果の表（`ResultTable`、`[142]`）が移行済みで、それ以外は未移行。計画と進捗は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
 - DADS の目標値（プリミティブ全色）は `references/tokens.md`、コンポーネントの見た目仕様は `references/components.md`。
 
 ### 移行中に新しく書くコードのルール
@@ -67,7 +67,7 @@ DADS の象徴。全インタラクティブ要素で同じ見た目にし、消
 
 - コンポーネント側で `outline` / `box-shadow` を独自に指定しない。一括ルールは `@layer` の外にあり、focus 中は `@layer` 内（components / utilities）の影や outline の指定をすべて上書きする。focus 中も影を残したい要素は、一括ルールの直後（レイヤー外）で `box-shadow: var(--focus-ring-shadow), <自前の影>` と重ねる（例: `.btn-toggle[aria-pressed='true']`）
 - 親の `overflow`（横スクロール領域・`overflow-hidden` の箱）で外側の表示が切れる要素、一括対象外の要素（キーボードでフォーカスできるスクロール領域の div 等）には `focus-inset` クラスを付けて内側に描く（縁から黒 4px → 黄 2px）
-- 例外: クリック可能な表の行（`<tr>`）は offset -4px の outline だけで、黄リングは付けない（`<tr>` の box-shadow は描画が安定しないため）。ラベル内の sr-only input は `.btn-file-input:focus-within` で個別に付けている
+- 例外: クリック可能な表の行（`<tr>`）は offset -4px の outline だけで、黄リングは付けない（`<tr>` の box-shadow は描画が安定しないため）。ラベル内の sr-only input は `.btn-file-input:has(input:focus-visible)` で個別に付けている
 - テキストリンクは focus 時に地を yellow-300 にする（`.text-link` / `.text-link-plain` で定義済み）
 
 ## 4. タイポグラフィ
@@ -88,7 +88,7 @@ DADS の象徴。全インタラクティブ要素で同じ見た目にし、消
 ## 5. 余白・角丸・影
 
 - 余白は **4px グリッド**（4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 56 / 64 / 80 / 96）。
-- 角丸: コントロール（ボタン・入力・セレクト・トグル、それと並ぶ出力欄）**8px** = `rounded-md`、カード・パネル・セクション **12px** = `rounded-lg`、ピル・アバター full = `rounded-full`。小さいボタンは DADS では 6px（sm 36px）/ 4px（xs 28px）で、現状は 4px = `rounded`（6px は Phase 5 で扱う）。既存の `rounded-xl` も 12px だが、新規は `rounded-lg` を使う。
+- 角丸: コントロール（ボタン・入力・セレクト・トグル、それと並ぶ出力欄）**8px** = `rounded-md`、カード・パネル・セクション **12px** = `rounded-lg`、ピル・アバター full = `rounded-full`。小さいボタンは DADS では 6px（sm 36px）= `rounded-button-sm` / 4px（xs 28px）= `rounded-sm`。既存の `rounded-xl` も 12px だが、新規は `rounded-lg` を使う。
 - 影（elevation）は ambient（10% 黒）+ key（30% 黒）の 2 枚重ねで 8 段（`--elevation-1`〜`8`）。カード・メニュー・ダイアログに使い、カードは hover で 1 段上げる。Tailwind の `shadow-md` は 2 段、`shadow-xl` は 6 段にそろえてある。
 - レイアウトは中央寄せの最大幅コンテナ、フォームは 1 カラム（読みやすい幅 ~760px）。
 

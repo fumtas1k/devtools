@@ -81,7 +81,7 @@ export function MarkdownEditor() {
 
         {/* 右ペイン: プレビュー（ラベル行は InputField / OutputField と同一構造で上端を揃える） */}
         <div className="w-full md:flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
+          <div className="flex items-center justify-between mb-3 min-h-9 gap-2">
             {/* ラベルは truncate でヘッダを常に 1 行に保ち、入力ヘッダと高さ（=箱の上端）を揃える */}
             <span className="body-emphasis text-default truncate min-w-0">プレビュー</span>
             {input.length > 0 && (

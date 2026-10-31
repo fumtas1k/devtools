@@ -285,7 +285,7 @@ export function TotpHotpGeneratorTool() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2 min-h-8">
+            <div className="flex items-center justify-between mb-2 min-h-9">
               <label htmlFor="totp-secret" className="body-emphasis text-default">
                 Base32 シークレット
               </label>

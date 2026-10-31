@@ -12,8 +12,8 @@ test.describe('DownloadButton（production CSP 適用）', () => {
       const button = page.getByRole('button', { name: 'SVGダウンロード' });
       await expect(button).toBeVisible();
 
-      // スタイルの検証（背景が透明、枠線がプライマリ色であること）
-      await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      // スタイルの検証（DADS の outline: 白地、枠線がプライマリ色であること）
+      await expect(button).toHaveCSS('background-color', 'rgb(255, 255, 255)');
       await expect(button).toHaveCSS('border', `1px solid ${PRIMARY_COLOR}`);
       await expect(button).toHaveCSS('color', PRIMARY_COLOR);
     });
@@ -42,7 +42,7 @@ test.describe('DownloadButton（production CSP 適用）', () => {
   // hover フィードバック（issue #238）
   // ActionButton は variant 別に :hover:not(:disabled) を global.css の @layer components で定義する。
   // DownloadButton は ActionButton の thin wrapper のため、その hover 挙動を経路として検証する。
-  test('SVGダウンロードボタン（secondary）の hover で背景が var(--color-bg-active) になる（CSP 違反なし）', async ({
+  test('SVGダウンロードボタン（secondary）の hover で背景が var(--color-bg-primary-hover) になる（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/jan-code', async (page) => {
@@ -51,12 +51,13 @@ test.describe('DownloadButton（production CSP 適用）', () => {
       const button = page.getByRole('button', { name: 'SVGダウンロード' });
       await expect(button).toBeVisible();
 
-      // 初期状態: 背景透明
-      await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      // 初期状態: 白地（DADS の outline）
+      await expect(button).toHaveCSS('background-color', 'rgb(255, 255, 255)');
 
-      // hover: 背景が --color-bg-active (#e8f1fe = blue-50) に変化
+      // hover: 背景が --color-bg-primary-hover (#c5d7fb = blue-200) に変化し、下線が付く
       await button.hover();
-      await expect(button).toHaveCSS('background-color', 'rgb(232, 241, 254)');
+      await expect(button).toHaveCSS('background-color', 'rgb(197, 215, 251)');
+      await expect(button).toHaveCSS('text-decoration-line', 'underline');
     });
   });
 
