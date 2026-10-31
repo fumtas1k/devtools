@@ -1,6 +1,6 @@
 # UI 実装・E2E 詳細規約
 
-UI コンポーネントの変更時と、Playwright で UI 確認・E2E テストを書く際に参照する。色の使用制限と `@layer components` の variant 制約は `.agents/rules/common.md` 7 章が正本。
+UI コンポーネントの変更時と、Playwright で UI 確認・E2E テストを書く際に参照する。色・角丸の使用制限と `@layer components` の variant 制約は `.agents/rules/common.md` 7 章が正本。DADS の値は `dads-design-system` skill を参照。
 
 ---
 

@@ -1,5 +1,7 @@
 # Claude Design の DADS デザインシステムへの段階移行計画
 
+**状況: 全 Phase（0〜7）完了（2026-10-31、`docs/decisions.md [148]`）。**
+
 **Goal:** Claude Design 上のデザインシステム「デジタル庁デザインシステム DADS」（以下 DS）を正本にして、サイト全体の見た目を PR 単位で段階的に DADS v2 の実値へ寄せる。
 
 **正本:** <https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（`project/tokens/*.css` / `project/components/components.css` / `project/README.md`）。DS 自体は DADS 公式リポジトリ（`digital-go-jp/design-tokens` / `design-system-example-components-react`）から転記したもので、値の最終確認は公式 `figma/tokens.json` で行う。
@@ -77,7 +79,7 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 - [x] `.tool-info-*` / `.section-heading` / `.text-body` / `.hero-heading` / `.page-heading` / `.body-emphasis` の値を DADS の Std スケールへ寄せた（クラス名は維持、4 章 D4）。`.caption`（14px・行高 1.7）は DADS に 14px の Std がないため据え置き
 - [x] 文字の太さを 400 / 700 にそろえた（`font-semibold` → `font-bold`、`font-medium` → `font-normal`）。再混入は `tests/meta/font-weight-dads.test.ts` で検知
-- [ ] 14px 未満の文字（バッジ・図のラベル・JSON の件数等）は部品ごとの判断が要るため Phase 5 で扱う（[#814](https://github.com/fumtas1k/devtools/issues/814)）
+- [x] 14px 未満の文字（バッジ・図のラベル・JSON の件数等）は部品ごとの判断が要るため Phase 5 で扱う（[145] で対応）（[#814](https://github.com/fumtas1k/devtools/issues/814)）
 - 等幅フォントは JetBrains Mono を維持（4 章 D2）。読み込みは 400 のみなので、等幅に `font-bold` を付けるとブラウザの擬似ボールドになる（既存の `GenerateTab` / `TotpHotpGenerator` / `.toggle-chip__token`。見た目は従来どおり）
 
 ### Phase 4: 角丸・エレベーション
@@ -107,9 +109,9 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 
 ### Phase 7: 後片付け
 
-- [ ] 使われなくなった旧トークン・旧クラスを削除（`--color-success-strong` は Phase 1 で `--color-success` と同値になったので統合する）
-- [ ] `dads-design-system/references/tokens.md` を削除し、`SKILL.md` 0 章の「移行中」の記述と 2 章の「現行の対応先」列を更新
-- [ ] `SPEC.md` / `docs/decisions.md` / `.agents/rules/ui-conventions.md` を更新
+- [x] 使われなくなった旧トークン・旧クラスを削除（`--color-success-strong` は Phase 1 で `--color-success` と同値になったので統合する）
+- [x] `dads-design-system/references/tokens.md` を削除し、`SKILL.md` 0 章の「移行中」の記述と 2 章の「現行の対応先」列を更新
+- [x] `SPEC.md` / `docs/decisions.md` / `.agents/rules/ui-conventions.md` を更新
 
 ## 4. 決定事項（2026-10-30 確定、`docs/decisions.md [134]`）
 

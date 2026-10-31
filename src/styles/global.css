@@ -64,14 +64,12 @@
   /* === セマンティックカラー ===
      DADS の 2 段ペアのうち、文字・白文字の塗りにも使うため -2 側（白地 4.5:1 以上）を採る。 */
   --color-success: #197a4b; /* success-2 (green-800): 白地 5.35:1 / green-50 上 4.75:1 */
-  --color-success-strong: #197a4b; /* 白文字バッジ用: success-2。白文字 5.35:1 */
   --color-success-bg: #e6f5ec; /* green-50 */
   --color-error: #ec0000; /* error-1 (red-800): 白地 4.60:1。red-50 上の文字は --color-error-text を使う */
   --color-error-bg: #fdeeee; /* red-50 */
   --color-warning: #806300; /* yellow-1000: warning-yellow-2 (yellow-900) は yellow-50 上 4.16:1 で不足するため 1 段濃くする（5.20:1） */
   --color-warning-bg: #fbf5e0; /* yellow-50 */
   --color-info: #0017c1; /* blue-900: DADS info バナー色 */
-  --color-info-bg: #e8f1fe; /* blue-50 */
 
   /* HAR ウォーターフォール フェーズ色（質的パレット・primitive 直書き回避のためトークン化） */
   --color-har-blocked: #949494; /* solid-gray-420: 待機/キュー */
@@ -89,7 +87,6 @@
   --color-anchor: #6f23d0; /* purple-700: 鉄道図アンカー枠/文字（purple-50 上で 6.33:1） */
 
   /* === 角の形状 === */
-  --radius-none: 0px;
   --radius-sm: 4px; /* テキストリンクのフォーカス地・マッチのハイライト等。utility の rounded（0.25rem 固定）は参照しない */
   --radius-md: 8px; /* DADS のコントロール（入力欄・セレクト・ボタン・トグル）: rounded-md */
   --radius-lg: 12px; /* DADS のカード・パネル・セクション: rounded-lg */
@@ -308,7 +305,7 @@
 
 /* === issue #176 B 案: inline style 撤去用 semantic class === */
 @layer components {
-  /* === Typography (legacy bodyEmphasis / caption from src/utils/styles.ts) === */
+  /* === Typography (.body-emphasis / .caption) === */
   /* Std-17B-170 */
   .body-emphasis {
     font-size: 1.0625rem;
@@ -333,9 +330,6 @@
   }
   .text-muted {
     color: var(--color-muted);
-  }
-  .text-on-primary {
-    color: var(--color-text-on-primary);
   }
   .bg-default {
     background: var(--color-bg);
@@ -441,11 +435,6 @@
     height: 100%;
     width: var(--progress-overflow-width, 0%);
     transition: width 0.2s ease-out;
-  }
-
-  /* === Elevation alias === */
-  .shadow-elev-2 {
-    box-shadow: var(--elevation-2);
   }
 
   /* === Component-scoped classes === */
@@ -1088,6 +1077,10 @@
     line-height: 1.5;
     letter-spacing: 0.01em;
   }
+  /* トップページ hero の下罫線（blue-100） */
+  .border-hero {
+    border-color: var(--color-blue-100);
+  }
 
   /* ページ h1 見出し: about/privacy/404 の静的ページ共通 (1.75rem)。
      .section-heading (h2, 1.125rem) より一段大きい page タイトル用。
@@ -1521,7 +1514,7 @@
     background: var(--color-error);
   }
   .status-badge--success {
-    background: var(--color-success-strong);
+    background: var(--color-success);
   }
   .status-badge--warning {
     background: var(--color-warning);

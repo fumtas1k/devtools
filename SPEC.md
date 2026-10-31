@@ -235,7 +235,6 @@ devtools/
         ├── qr-ticket.ts
         ├── qrcode.ts
         ├── uuid-v7.ts
-        ├── styles.ts           # 共通タイポグラフィ定数
         └── __tests__/
             ├── base64.test.ts
             ├── base64url.test.ts
@@ -1507,16 +1506,16 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ### 8.2 カラーパレット
 
-DADS v2 のカラートークンを使用（`src/styles/global.css` の `@theme` / `:root` で定義。移行計画: `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`）。
+DADS v2 のカラートークンを使用（`src/styles/global.css` の `@theme` / `:root` で定義。DADS への移行は完了済みで、経緯は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md` と `docs/decisions.md [134]`〜[148]）。
 
-| 役割             | 値                          |
-| ---------------- | --------------------------- |
-| プライマリ       | `#0017C1`（blue-900）       |
-| リンク           | `#00118F`（blue-1000）      |
-| 背景             | `#E8F1FE`（blue-50）        |
-| ニュートラル本文 | `#333333`（solid-gray-800） |
-| ミュートテキスト | `#4D4D4D`（solid-gray-700） |
-| 入力欄の枠       | `#666666`（solid-gray-600） |
+| 役割               | 値                          |
+| ------------------ | --------------------------- |
+| プライマリ         | `#0017C1`（blue-900）       |
+| リンク             | `#00118F`（blue-1000）      |
+| トップの hero 背景 | `#E8F1FE`（blue-50）        |
+| ニュートラル本文   | `#333333`（solid-gray-800） |
+| ミュートテキスト   | `#4D4D4D`（solid-gray-700） |
+| 入力欄の枠         | `#666666`（solid-gray-600） |
 
 ### 8.3 タイポグラフィ
 
@@ -1524,6 +1523,12 @@ DADS v2 のカラートークンを使用（`src/styles/global.css` の `@theme`
 - コード: JetBrains Mono（`@fontsource/jetbrains-mono` でセルフホスト）
 - 最小フォントサイズ: 14px（DADS 規定。本文は 16px 以上推奨）
 - letter-spacing: `0.02em`（正値）
+- 太さ: 400 / 700 のみ（`font-normal` / `font-bold`）
+
+### 8.3.1 角丸・影
+
+- 角丸: コントロール（入力欄・ボタン・トグル）8px = `rounded-md`、カード・パネル 12px = `rounded-lg`、ピル = `rounded-full`
+- 影: DADS のエレベーション（`--elevation-1`〜`8`）。Tailwind の `shadow-md` / `shadow-xl` も DADS の値にそろえてある
 
 ### 8.4 ダークモード
 
@@ -1604,6 +1609,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 - [x] **Phase 2c**: 共通 React UI（ClearButton / CountInput / ResultTable / ErrorMessage block variant）
 - [x] **Phase 3**: ツール一貫性適用（全ツール space-y-6 統一・QrCode サンプルボタン追加）
 - [x] **Phase 4**: モバイル UX（ハンバーガーメニュー・タップ領域・focus トラップ）
+- [x] **DADS 移行 Phase 0〜7**: 色・フォーカス・タイポグラフィ・角丸と影・コンポーネント・レイアウト・後片付け（`docs/decisions.md [134]`〜[148]）
 
 ### Phase 3: 成熟
 

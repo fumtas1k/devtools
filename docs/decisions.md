@@ -5233,6 +5233,7 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 - ✅ 3 部品の寸法が DS と一致し、`--color-border` 由来のチップ枠のコントラスト不足と、UUID / JWT の AA 未達が解消する
 - ⚠️ バッジ・チップ・バナー本文が 14px → 16px になり、使う画面（正規表現ビジュアライザ、ContrastMatrix、SAML / 証明書 / 鍵 / CSR 等）の高さと幅が変わる（VRT の差分になる）
 - ⚠️ UUID の 14px 未満の文字（`.uuid-field-key` / `.uuid-field-bits`）と JWT の `.jwt-pre`（12px）のサイズは #814 で扱う
+- 注記（[148]）: UUID v7 の色分け（`--color-uuid-*`）は、表の選択行（blue-100）の地の上でも 4.5:1 以上を満たすことを確認済み（#819 の作業時）
 
 ---
 
@@ -5406,6 +5407,30 @@ Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイ�
 - ✅ ナビとカードが DADS の角丸・hover 表現に揃う
 - ✅ 変更は hover と、現在リンク（blue-50 の背景）の角の丸みだけなので、VRT の静止画の差分はほぼ出ない見込み（hover と角丸は `dads-layout.spec.ts` で担保）。差分が出た場合は目視確認のうえ baseline を更新する
 - ✅ フッターのリンクも DADS の Link に合わせ、hover / `:focus-visible` で下線を 3px に太くした（offset 3px）。ToolCard の「開く ›」は見出しに下線が出るので色だけのまま
+
+---
+
+## [148] DADS 移行 Phase 7: 旧トークン・旧クラスの削除と移行中の記述の整理
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 7。Phase 1〜6 で DADS への移行が終わったので、使われなくなった旧定義と「移行中」の記述を片付けて計画を閉じる。
+
+### 決断
+
+- `src/` と `public/`、`tests/` を grep し、参照ゼロを確認してから `global.css` の次を削除した: `--radius-none`（参照なし）、`--color-success-strong`（Phase 1 で `--color-success` と同値になったため統合し、唯一の参照だった `.status-badge--success` を `--color-success` に置き換え）、`--color-info-bg`、`.text-on-primary`、`.shadow-elev-2`。見た目の変更なし
+- 残したもの: Blue 13 段（DADS のプリミティブとして `@theme` に置く）、`--elevation-1`〜`8`（DADS のスケール全段）、`--color-tertiary`（`CategoryBadge` が使用）。`btn-action--*` / `status-badge--*` 等の variant クラスはコンポーネントが文字列結合で組み立てるため、静的な grep に出なくても使用中
+- `rounded-xl` を `rounded-lg` に置き換えた（`Section`、`CertDecoder`、`TotpHotpGenerator`、`ClipboardInspector`）。`--radius-xl` は `@theme` に無く Tailwind 既定の 12px で、DADS のカード角丸 `--radius-lg`（12px）と同値なので、見た目は変わらない。クラスをそろえ、以後 `rounded-xl` を使わない。`dads-shape.spec.ts` に 1 件足した（`rounded-md` に戻すと失敗することを確認した陽性対照）
+- `dads-design-system` skill の `references/tokens.md` を削除し、0 章の「移行中」と 2 章の「現行の対応先」を移行後の記述に更新した。値の正本は `global.css`
+- トップの hero が `bg-[var(--color-background)]` と `border-[var(--color-blue-100)]` を任意値で直接参照していたのを、`bg-background`（@theme の auto-utility）と新しい意味クラス `.border-hero` に置き換えた。色の値は同じ。`dads-layout.spec.ts` で computed style を確認（陽性対照あり）
+- `SPEC.md`（8 章、ディレクトリ構成の存在しない `styles.ts`）、`common.md` 7 章（角丸の 1 行）、`ui-conventions.md` を実態に合わせた
+
+### 結果・トレードオフ
+
+- ✅ 未使用定義が減り、移行の記述が現状と一致する。VRT の静止画に差分は出ない見込み
+- ⚠️ Blue 以外の色相のプリミティブ一覧は repo から無くなった（使う段は `:root` の値としてコメント付きで持つ）。足りない段は DS か公式 `figma/tokens.json` から転記する
 
 ---
 

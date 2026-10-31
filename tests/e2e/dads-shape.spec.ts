@@ -22,4 +22,14 @@ test.describe('DADS の角丸（production CSP 適用）', () => {
       await expect(info).toHaveCSS('border-radius', CARD_RADIUS);
     });
   });
+
+  test('TOTP/HOTP のセクション枠はカードの角丸 12px（rounded-lg）になる（[148]）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/totp-hotp', async (page) => {
+      // 見出し行の親が、border + overflow-hidden のセクション枠
+      const section = page.getByText('シークレット鍵と設定', { exact: true }).locator('..');
+      await expect(section).toHaveCSS('border-radius', CARD_RADIUS);
+    });
+  });
 });
