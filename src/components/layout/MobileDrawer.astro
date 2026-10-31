@@ -66,7 +66,7 @@ const { currentSlug } = Astro.props;
                       <a
                         href={`/tools/${tool.slug}`}
                         aria-current={isActive ? 'page' : undefined}
-                        class={`flex items-center gap-2 rounded px-3 transition-colors drawer-link min-h-11 caption ${isActive ? 'font-bold drawer-link--active' : 'drawer-link--inactive'}`}
+                        class={`flex items-center gap-2 rounded-md px-3 transition-colors drawer-link min-h-11 caption ${isActive ? 'font-bold drawer-link--active' : 'drawer-link--inactive'}`}
                       >
                         <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
                         <span>{tool.name}</span>
@@ -93,8 +93,11 @@ const { currentSlug } = Astro.props;
   .drawer-link--inactive {
     color: var(--color-text);
   }
-  .drawer-link--inactive:hover {
+  .drawer-link--inactive:hover,
+  .drawer-link--inactive:focus-visible {
     background: var(--color-bg-subtle);
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 </style>
 

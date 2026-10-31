@@ -155,7 +155,7 @@ Tailwind の **primitive scale のカラークラス**（`text-blue-500` / `bg-r
 
 - `@theme` 登録の **semantic token** の auto-utility（`text-primary` / `text-success` 等）は使ってよい。判断基準は「token 名から用途が読み取れるか」。
 - それ以外の色は `src/styles/global.css` の `@layer components` の意味クラス（`bg-subtle` / `alert-success` 等）を使う。無ければ先に意味クラスを追加する。
-- Astro の既存 `style="var(--color-*)"` は [#289](https://github.com/fumtas1k/devtools/issues/289) で移行中。新規は React と同じ意味クラスを使う。
+- Astro の既存 `style="var(--color-*)"` は [#289](https://github.com/fumtas1k/devtools/issues/289) で移行済み（`src/**/*.astro` に `style="` は無い）。新規は React と同じ意味クラスを使う。
 
 - **`style={{}}` / `element.style` の書き換えは用途を問わず禁止**（issue #176 で全廃済み。SSR される `style` 属性は、色以外でも本番 CSP（`style-src` に `'unsafe-inline'` なし）に違反する）。
 
