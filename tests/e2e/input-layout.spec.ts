@@ -39,6 +39,7 @@ for (const viewport of [
     test('CharCount: 任意上限欄と「/」・件数のベースラインがそろう', async ({ page }) => {
       await page.goto('/tools/char-count');
       await waitForReactHydration(page);
+      await page.evaluate(() => document.fonts.ready);
       const limit = page.getByRole('spinbutton', { name: '任意上限' });
       const row = limit.locator('xpath=ancestor::div[contains(@class,"items-baseline")][1]');
       const result = await row.evaluate((rowEl) => {
@@ -60,6 +61,7 @@ for (const viewport of [
           slashTopFromInput: slash.getBoundingClientRect().top - input.getBoundingClientRect().top,
         };
       });
+      await expect(row).toHaveCSS('align-items', 'baseline');
       expect(result.currentBaseline).toBeCloseTo(result.slashBaseline, 0);
       expect(result.slashTopFromInput).toBeCloseTo(12, 0);
     });
@@ -72,6 +74,11 @@ for (const viewport of [
       const group = await box(page.getByRole('group', { name: 'カンマ位置' }));
       const select = await box(page.getByRole('combobox', { name: 'SQL 方言' }));
       expect(group.height).toBeCloseTo(48, 0);
+      // 土台だけ 48px で、ボタンは 36px のまま（content-center が無いと 38px に伸びる）
+      const button = await box(
+        page.getByRole('group', { name: 'カンマ位置' }).getByRole('button').first()
+      );
+      expect(button.height).toBeCloseTo(36, 0);
       if (viewport.width >= 768) {
         expect(group.top).toBeCloseTo(select.top, 0);
         expect(group.bottom).toBeCloseTo(select.bottom, 0);
@@ -86,6 +93,7 @@ test.describe('DSN ビルダー: スキームの選択中表示', () => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto('/tools/dsn-builder');
       await waitForReactHydration(page);
+      await page.evaluate(() => document.fonts.ready);
       const select = page.getByLabel('スキーム');
       const values = await select.evaluate((el: HTMLSelectElement) =>
         Array.from(el.options).map((o) => o.value)

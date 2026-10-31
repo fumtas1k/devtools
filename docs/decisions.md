@@ -5501,7 +5501,7 @@ Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイ�
 ### 決断
 
 - **DSN ビルダーのスキーム: 直す**。選択中の表示は最長で約 310px（`jdbc:postgresql:// — PostgreSQL (JDBC)`。canvas で実測。字間 0.32px 込み）で、select は左右 padding 60px を取るため幅 370px 以上が要る。3 カラム 1 つ（PC で約 252px）では入らなかった。スキームだけ 1 行にし（`md:max-w-md` = 448px）、ユーザー名・パスワードは `md:grid-cols-2` に変えた。`md`（768px）〜PC のどの幅でも全スキームが入ることを E2E で確認する
-- **ContrastMatrix の削除ボタン: 直す**。約 40px → 48px（`h-12 inline-flex items-center`）にして、同じ行の入力欄・カラーピッカー（48px）と上端・下端をそろえた。列見出し行の透明な見本（幅を合わせるためのもの）にも同じ class を付けて、幅がずれないようにした。ボタン自体の DADS 化（`ActionButton`）は本件に含めない
+- **ContrastMatrix の削除ボタン: 直す**。約 40px → 48px（`h-12 inline-flex items-center`）にして、同じ行の入力欄・カラーピッカー（48px）と上端・下端をそろえた。列見出し行の透明な見本は幅だけを合わせるものなので従来の class のまま（高さを付けると見出し行が約 8px 高くなる）。ボタン自体の DADS 化（`ActionButton`）は本件に含めない
 - **CharCount の任意上限欄: 既存で十分**。行は `items-baseline` で、「/」は input の文字行（枠 1px + 縦余白 11px = 上端から 12px）と同じ位置・同じ行高にあり、等幅の件数とも 0 幅 probe でベースラインが一致する。`inline-block` の中で `display: block` の input になっても崩れていない。再発検知として E2E に固定した（`items-baseline` を `items-center` / `items-start` にすると失敗する）
 - **ToggleGroup と入力欄の横並び: `matchField` prop を足し、並ぶ 3 か所だけ使う**。全ツールの横並びを実測した結果、土台 46px と 48px が上端・下端でずれるのは SQL フォーマッタ（カンマ位置 × SQL 方言）、日本語ダミーテキスト（改行 × 間隔）、日本語ダミー個人データ（出力形式 × 生成ボタン）の 3 か所だった。`matchField`（`size="md"` のときだけ有効）は土台を `min-h-12 content-center` にし、ボタンは 36px のまま中央に置く。実質の余白は縦 5px（4px + 1px の枠の分の差）になる
 - sm（38px）は 48px と並ぶ CSR ジェネレータ（SAN 欄）でも `items-center` の中央揃えのまま。小さいトグルを意図的に使っているため、そろえない
