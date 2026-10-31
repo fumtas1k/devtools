@@ -12,6 +12,8 @@ import {
 
 const MARKER_LEAD = 22; // start/end マーカーと本体の間の rail 長
 const MARKER_R = 5;
+// 文字クラス・メタ文字の角丸。リテラル（6、凡例は 4）より小さくし、形でも区別する（[150]）。
+const CHARCLASS_RX = 2;
 
 type Hotspot = { start: number; end: number }[];
 
@@ -67,7 +69,7 @@ function renderNode(
             y={y}
             width={node.width}
             height={node.height}
-            rx={6}
+            rx={CHARCLASS_RX}
             className={boxClass('rr-charclass')}
           />
           <text
@@ -333,7 +335,7 @@ export function RegexRailroad({ node, hotspot }: Props) {
         </span>
         <span className="rr-legend-item">
           <svg width="28" height="20" aria-hidden="true">
-            <rect x="1" y="2" width="26" height="16" rx="4" className="rr-charclass" />
+            <rect x="1" y="2" width="26" height="16" rx={CHARCLASS_RX} className="rr-charclass" />
           </svg>
           文字クラス・メタ文字
         </span>

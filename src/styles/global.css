@@ -1295,11 +1295,14 @@
   .rr-box-fallback {
     stroke-dasharray: 4 3;
   }
-  /* 文字クラス・メタ文字（[..] \s \d \w . 等）。青塗りでリテラルと区別する。 */
+  /* 文字クラス・メタ文字（[..] \s \d \w . 等）。青塗りに加え、色以外の手がかりとして
+     太い枠（2px）と角の小さい矩形（rx は RegexRailroad.tsx で 2、リテラルは 6）で区別する
+     （WCAG 1.4.1、[150]）。破線は後方参照・フォールバックが使うので使わない。
+     枠は primary（白地 9:1 超）で非テキスト 3:1 を満たす。 */
   .rr-charclass {
     fill: var(--color-bg-active);
-    stroke: var(--color-blue-300);
-    stroke-width: 1;
+    stroke: var(--color-primary);
+    stroke-width: 2;
   }
   .rr-text {
     fill: var(--color-text);
