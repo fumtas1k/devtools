@@ -21,7 +21,8 @@ interface Props {
  *
  * input を label の子に置くことで `:focus-within` が parent label に効き、
  * キーボードフォーカス時に outline ring (`.btn-file-input:focus-within`) が可視化される。
- * スタイルは `src/styles/global.css` の `.btn-file-input` クラスで定義。
+ * スタイルは `src/styles/global.css` の `.btn-file-input` クラスで定義（DADS Button の outline・md と同じ見た目。
+ * hover と :focus-within は同じ見た目。docs/decisions.md [140]）。
  *
  * @param accept - 許可する MIME タイプ / 拡張子 (例: "image/*")
  * @param onChange - ファイル選択時のコールバック

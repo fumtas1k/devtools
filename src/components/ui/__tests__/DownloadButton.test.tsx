@@ -95,7 +95,7 @@ describe('DownloadButton', () => {
     const btn = screen.getByRole('button') as HTMLButtonElement;
     expect(btn.className).toContain('font-bold');
     expect(btn.className).toContain('px-3');
-    expect(btn.className).toContain('py-2');
+    expect(btn.className).toContain('min-h-9');
     expect(btn.className).toContain('leading-none');
     expect(btn.className).not.toContain('px-4');
   });

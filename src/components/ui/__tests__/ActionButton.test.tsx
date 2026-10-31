@@ -162,26 +162,53 @@ describe('ActionButton', () => {
     expect(btn.disabled).toBe(true);
   });
 
-  it('size 未指定（default）は font-bold + px-4 py-2 を持ち leading-none を持たない', () => {
+  it('size 未指定（default）は DADS の md（min-h-12 / min-w-24 / rounded-md / text-base font-bold leading-none）', () => {
     render(<ActionButton onClick={() => {}}>標準</ActionButton>);
-    const btn = screen.getByRole('button') as HTMLButtonElement;
-    expect(btn.className).toContain('font-bold');
-    expect(btn.className).toContain('px-4');
-    expect(btn.className).toContain('py-2');
-    expect(btn.className).not.toContain('leading-none');
+    const classes = (screen.getByRole('button') as HTMLButtonElement).className.split(' ');
+    for (const c of [
+      'min-h-12',
+      'min-w-24',
+      'px-4',
+      'py-2',
+      'rounded-md',
+      'text-base',
+      'font-bold',
+      'leading-none',
+    ]) {
+      expect(classes).toContain(c);
+    }
+    // 14px の caption は使わない（DADS のボタン文字は 16px）
+    expect(classes).not.toContain('caption');
   });
 
-  it('size="compact" は font-bold + px-3 py-2 leading-none を持つ', () => {
+  it('size="compact" は DADS の sm（min-h-9 / min-w-20 / rounded-button-sm）', () => {
     render(
       <ActionButton onClick={() => {}} size="compact">
         コンパクト
       </ActionButton>
     );
-    const btn = screen.getByRole('button') as HTMLButtonElement;
-    expect(btn.className).toContain('font-bold');
-    expect(btn.className).toContain('px-3');
-    expect(btn.className).toContain('py-2');
-    expect(btn.className).toContain('leading-none');
-    expect(btn.className).not.toContain('px-4');
+    const classes = (screen.getByRole('button') as HTMLButtonElement).className.split(' ');
+    for (const c of [
+      'min-h-9',
+      'min-w-20',
+      'px-3',
+      'rounded-button-sm',
+      'text-base',
+      'font-bold',
+      'leading-none',
+    ]) {
+      expect(classes).toContain(c);
+    }
+    expect(classes).not.toContain('px-4');
+    expect(classes).not.toContain('rounded-md');
+  });
+
+  it('variant="text" は btn-action--text クラスを持つ', () => {
+    render(
+      <ActionButton onClick={() => {}} variant="text">
+        テキスト
+      </ActionButton>
+    );
+    expect(screen.getByRole('button').className.split(' ')).toContain('btn-action--text');
   });
 });

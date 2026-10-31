@@ -41,6 +41,7 @@
   /* === キーカラー（Blue）: DADS v2（docs/decisions.md [134]） === */
   --color-primary: #0017c1; /* blue-900 */
   --color-primary-hover: #00118f; /* blue-1000: primary 塗りの hover / focus */
+  --color-primary-active: #000060; /* blue-1200: primary 塗りの押下中（DADS Button の active） */
   --color-tertiary: #00118f; /* blue-1000: カテゴリバッジ文字（blue-100 上で 11.3:1） */
   --color-background: #e8f1fe; /* blue-50: トップページ hero 背景 */
 
@@ -92,6 +93,7 @@
   --radius-sm: 4px; /* テキストリンクのフォーカス地・マッチのハイライト等。utility の rounded（0.25rem 固定）は参照しない */
   --radius-md: 8px; /* DADS のコントロール（入力欄・セレクト・ボタン・トグル）: rounded-md */
   --radius-lg: 12px; /* DADS のカード・パネル・セクション: rounded-lg */
+  --radius-button-sm: 6px; /* DADS の sm ボタン（高さ 36px）: rounded-button-sm。xs（28px）は rounded-sm */
   --radius-full: 9999px;
 
   /* === エレベーション === */
@@ -129,7 +131,12 @@
   --color-border-input: #666666; /* solid-gray-600: 入力欄・コントロールの枠（白地 5.74:1） */
   --color-error-text: #ce0000; /* error-2 (red-900): red-50 上 5.14:1 */
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
-  --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景 */
+  --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景・text ボタンの hover 地 */
+  --color-bg-primary-hover: #c5d7fb; /* blue-200: outline ボタンの hover / focus 地 */
+  --color-bg-primary-active: #9db7f9; /* blue-300: outline ボタンの押下中の地 */
+  --color-bg-text-button-active: #d9e6ff; /* blue-100: text ボタンの押下中の地 */
+  --color-disabled: #b3b3b3; /* solid-gray-300: disabled のボタンの塗り・文字・枠（WCAG のコントラスト対象外） */
+  --color-text-on-disabled: #f2f2f2; /* solid-gray-50: disabled の solid-fill ボタンの文字 */
   --color-badge-bg: #d9e6ff; /* blue-100: カテゴリバッジ背景 */
   --color-overlay: rgba(0, 0, 0, 0.5); /* opacity-gray-500: モーダル背景 */
 
@@ -371,101 +378,171 @@
     background: var(--color-bg-subtle);
   }
 
-  /* CopyButton: copied 状態の bg / color / border 切替
-     注意: ルール順序は base → is-compact → is-copied。両 class 同時適用時に
-     is-copied (= 後勝ち) で color/bg が success に上書きされる必要があるため。 */
+  /* === ボタン類: DADS Button（docs/decisions.md [140]） ===
+     variant は solid-fill（.btn-action--primary）/ outline（--secondary・--default・CopyButton・
+     FileInputButton）/ text（--text・ClearButton）と、outline を error 色にした --danger。
+     サイズ（高さ・最小幅・角丸・文字）は ActionButton の SIZE_CLASS と COMPACT_BUTTON_SHAPE_CLASSES
+     の utility が持つ。hover と :focus-visible は同じ見た目（地の色 + 下線）にし、disabled には付けない。 */
+
+  /* CopyButton: outline。copied 状態は success の色に切り替える。
+     注意: ルール順序は base → hover/active → is-compact → is-copied → disabled。
+     hover は is-copied を除外する（クリック直後はポインタが乗ったままなので、除外しないと
+     「コピーしました」の色が hover の色に隠れる）。 */
   .btn-copy {
-    border: 1px solid var(--color-border);
-    background: var(--color-bg-subtle);
-    color: var(--color-text);
+    border: 1px solid var(--color-primary);
+    background: var(--color-bg);
+    color: var(--color-primary);
+    letter-spacing: 0.02em;
     transition:
       background-color 0.2s,
       color 0.2s,
       border-color 0.2s;
   }
+  .btn-copy:hover:not(:disabled):not(.is-copied),
+  .btn-copy:focus-visible:not(:disabled):not(.is-copied) {
+    background: var(--color-bg-primary-hover);
+    color: var(--color-primary-hover);
+    text-decoration-line: underline;
+  }
+  .btn-copy:active:not(:disabled):not(.is-copied) {
+    background: var(--color-bg-primary-active);
+    color: var(--color-primary-active);
+  }
+  /* compact（テーブル行のアイコンだけのボタン）: 枠なし・透明。hover は text ボタンと同じ地 */
   .btn-copy.is-compact {
-    border: none;
+    border-color: transparent;
+    background: transparent;
     color: var(--color-muted);
   }
-  /* 注意: compact 時は border:none で描画自体を抑止するため、is-copied の border-color は
-     compact では見えない (旧 develop 実装と同一)。bg/color は is-copied で上書きされ機能維持。 */
+  .btn-copy.is-compact:hover:not(:disabled):not(.is-copied),
+  .btn-copy.is-compact:focus-visible:not(:disabled):not(.is-copied) {
+    background: var(--color-bg-active);
+    color: var(--color-primary-hover);
+  }
+  .btn-copy.is-compact:active:not(:disabled):not(.is-copied) {
+    background: var(--color-bg-text-button-active);
+    color: var(--color-primary-active);
+  }
+  /* compact は枠が透明なので、is-copied の border-color は default 表示でだけ見える */
   .btn-copy.is-copied {
     border-color: var(--color-success);
     background: var(--color-success-bg);
     color: var(--color-success);
   }
-  /* disabled: ActionButton (.btn-action:disabled) と同じ非アクティブ表現（muted 文字色 + not-allowed）。
-     .btn-copy には hover 用ルールが無いため :not(:disabled) の追加は不要。
-     ルール順序は is-copied の後に置き、disabled が常に優先されるようにする。 */
+  .btn-copy.is-compact.is-copied {
+    border-color: transparent;
+  }
+  /* disabled: outline の disabled と同じ（白地・solid-gray-300 の文字と枠）。is-copied より後に置く */
   .btn-copy:disabled {
-    color: var(--color-muted);
+    border-color: var(--color-disabled);
+    background: var(--color-bg);
+    color: var(--color-disabled);
     cursor: not-allowed;
   }
+  .btn-copy.is-compact:disabled {
+    border-color: transparent;
+    background: transparent;
+  }
 
-  /* ActionButton: variant × disabled マトリクス */
+  /* ActionButton / ClearButton */
   .btn-action {
     border-style: solid;
     border-width: 1px;
+    letter-spacing: 0.02em;
     transition:
       background-color 0.15s,
-      filter 0.15s;
+      color 0.15s;
   }
-  .btn-action--default {
-    border-color: var(--color-border-input);
-    background: var(--color-bg-subtle);
-    color: var(--color-text);
-  }
+  /* solid-fill: 4px double の透明な枠を持つ。通常は塗りに埋もれて見えず、強制カラーモード
+     （Windows のハイコントラスト）で枠が描かれてボタンの輪郭になる（DADS 公式と同じ） */
   .btn-action--primary {
-    border-color: var(--color-primary);
+    border: 4px double transparent;
     background: var(--color-primary);
     color: var(--color-text-on-primary);
   }
-  .btn-action--secondary {
+  /* outline: 白地・primary の文字と 1px 枠。default は DADS に灰色のボタンが無いため outline にそろえる */
+  .btn-action--secondary,
+  .btn-action--default {
     border-color: var(--color-primary);
-    background: transparent;
+    background: var(--color-bg);
     color: var(--color-primary);
   }
+  /* danger: outline を error 色にしたもの（DADS に破壊的操作の variant は無い） */
   .btn-action--danger {
     border-color: var(--color-error);
-    background: transparent;
+    background: var(--color-bg);
     color: var(--color-error);
   }
-  /* hover / :focus-visible: variant 別フィードバック。disabled には適用しない。
-     キーボードユーザにも mouse hover と同等のフィードバックを与える (a11y 観点)。
-     :focus 全般ではなく :focus-visible に限定することで、click 押下中の不要な
-     残留視覚反応を避ける。global.css の `:where(...):focus-visible` outline ring と併用。 */
+  /* text: 透明・primary の文字・常に下線（offset 3px）。hover で下線を 3px に太くする */
+  .btn-action--text {
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-primary);
+    text-decoration-line: underline;
+    text-underline-offset: 0.1875rem;
+  }
+  /* hover / :focus-visible: 地の色 + 下線（色だけに頼らない）。disabled には適用しない。
+     :focus 全般ではなく :focus-visible に限定し、click 後の残留を避ける。
+     :active は同じ詳細度で後に置き、押下中の色が hover に勝つようにする。 */
+  .btn-action:hover:not(:disabled),
+  .btn-action:focus-visible:not(:disabled) {
+    text-decoration-line: underline;
+  }
   .btn-action--primary:hover:not(:disabled),
   .btn-action--primary:focus-visible:not(:disabled) {
     /* filter だとフォーカスの黄リングまで暗くなるため背景色で表す（DADS の primary hover） */
     background: var(--color-primary-hover);
   }
+  .btn-action--primary:active:not(:disabled) {
+    background: var(--color-primary-active);
+  }
   .btn-action--secondary:hover:not(:disabled),
-  .btn-action--secondary:focus-visible:not(:disabled) {
-    background: var(--color-bg-active);
+  .btn-action--secondary:focus-visible:not(:disabled),
+  .btn-action--default:hover:not(:disabled),
+  .btn-action--default:focus-visible:not(:disabled) {
+    background: var(--color-bg-primary-hover);
+    color: var(--color-primary-hover);
+  }
+  .btn-action--secondary:active:not(:disabled),
+  .btn-action--default:active:not(:disabled) {
+    background: var(--color-bg-primary-active);
+    color: var(--color-primary-active);
   }
   .btn-action--danger:hover:not(:disabled),
-  .btn-action--danger:focus-visible:not(:disabled) {
+  .btn-action--danger:focus-visible:not(:disabled),
+  .btn-action--danger:active:not(:disabled) {
     background: var(--color-error-bg);
     color: var(--color-error-text); /* red-50 上は error-2（5.14:1） */
   }
+  .btn-action--text:hover:not(:disabled),
+  .btn-action--text:focus-visible:not(:disabled) {
+    background: var(--color-bg-active);
+    color: var(--color-primary-hover);
+    text-decoration-thickness: 0.1875rem;
+  }
+  .btn-action--text:active:not(:disabled) {
+    background: var(--color-bg-text-button-active);
+    color: var(--color-primary-active);
+  }
+  /* disabled: solid-fill は solid-gray-300 の塗り + solid-gray-50 の文字、outline / danger は
+     白地に solid-gray-300 の文字と枠、text は solid-gray-300 の文字。
+     danger も中立のグレーにする（disabled は注意を引かない表現にそろえる。issue #259） */
   .btn-action:disabled {
-    background: var(--color-bg-subtle);
-    color: var(--color-muted);
     cursor: not-allowed;
   }
   .btn-action--primary:disabled {
-    border-color: var(--color-bg-subtle);
+    background: var(--color-disabled);
+    color: var(--color-text-on-disabled);
   }
-  .btn-action--secondary:disabled {
-    border-color: var(--color-border);
-    background: transparent;
-  }
-  /* danger も disabled 時は中立グレーに揃える (secondary:disabled と統一)。
-     赤 (--color-error) は「危険・注意喚起」シグナルだが disabled は非アクティブ状態を
-     意味するため、両者は矛盾する。disabled 時は variant 共通で注意を引かない表現にする。
-     issue #259 (起源: #176 / #256 final code review)。 */
+  .btn-action--secondary:disabled,
+  .btn-action--default:disabled,
   .btn-action--danger:disabled {
-    border-color: var(--color-border);
+    border-color: var(--color-disabled);
+    background: var(--color-bg);
+    color: var(--color-disabled);
+  }
+  .btn-action--text:disabled {
+    color: var(--color-disabled);
   }
 
   /* 入力欄の一時ハイライト (#426)。TOTP シークレットのランダム生成など、マスク状態で
@@ -790,30 +867,49 @@
      キーボードフォーカス時に outline ring が可視化される。
      §7.1 の variant 非対応制約により :focus-within / [aria-disabled] を直接定義。 */
   .btn-file-input {
-    /* QrReader.tsx の旧 label スタイルと等価: caption font-bold inline-block px-4 py-2 rounded-md border border-input bg-subtle text-default cursor-pointer */
-    font-size: 0.875rem;
-    font-weight: 700;
-    line-height: 1.7;
-    letter-spacing: 0.02em;
-    display: inline-block;
+    /* ActionButton の outline・md サイズ（高さ 48px・最小幅 96px・16px Bold・行高 1）と同じ見た目 */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    min-width: 6rem;
     padding: 0.5rem 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
     border-radius: var(--radius-md);
-    border: 1px solid var(--color-border-input);
-    background: var(--color-bg-subtle);
-    color: var(--color-text);
+    border: 1px solid var(--color-primary);
+    background: var(--color-bg);
+    color: var(--color-primary);
     cursor: pointer;
-    transition: background-color 0.15s;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
   }
-  /* focus-within: sr-only の input がフォーカスを受けたとき、parent label に outline を表示 */
+  /* hover と、sr-only の input がフォーカスを受けたとき（:focus-within）を同じ見た目にする */
+  .btn-file-input:hover:not([aria-disabled='true']),
+  .btn-file-input:focus-within:not([aria-disabled='true']) {
+    background: var(--color-bg-primary-hover);
+    color: var(--color-primary-hover);
+    text-decoration-line: underline;
+  }
+  .btn-file-input:active:not([aria-disabled='true']) {
+    background: var(--color-bg-primary-active);
+    color: var(--color-primary-active);
+  }
+  /* focus-within: parent label に一括ルールと同じフォーカスリングを描く */
   .btn-file-input:focus-within:not([aria-disabled='true']) {
     outline: var(--focus-ring);
     outline-offset: 2px;
     box-shadow: var(--focus-ring-shadow);
   }
-  /* disabled 状態: カーソルを not-allowed に変え、opacity で無効感を表現 */
+  /* disabled 状態: outline の disabled と同じ（白地・solid-gray-300 の文字と枠） */
   .btn-file-input[aria-disabled='true'] {
+    border-color: var(--color-disabled);
+    color: var(--color-disabled);
     cursor: not-allowed;
-    opacity: 0.6;
   }
 
   /* === PR 5a: QrReader video preview background ===
