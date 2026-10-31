@@ -12,6 +12,7 @@ import {
   REP_LEAD,
   ARC_H,
   LABEL_H,
+  estimateLabelWidth,
   CHAR_W,
   BOX_H,
   H_GAP,
@@ -98,6 +99,17 @@ describe('measureAssertion（アンカー: 1文字=円 / 複数文字=pill）', 
 });
 
 describe('measureRepetition（ループ=上 / スキップ=下 / ラベル帯）', () => {
+  it('長いラベル（最短一致）では幅をラベル幅以上に広げ、図の端で欠けない', () => {
+    const inner = measureTerminal('a', undefined);
+    const rep = measureRepetition(
+      inner,
+      { skip: false, loop: true, label: '1回以上（最短）' },
+      undefined
+    );
+    expect(rep.width).toBeGreaterThanOrEqual(estimateLabelWidth('1回以上（最短）'));
+    expect(rep.width).toBeGreaterThan(inner.width + REP_LEAD * 2);
+  });
+
   it('loop ありで上に ARC_H、下にラベル帯 LABEL_H', () => {
     const inner = measureTerminal('a', undefined);
     const rep = measureRepetition(inner, { skip: false, loop: true, label: '1回以上' }, undefined);

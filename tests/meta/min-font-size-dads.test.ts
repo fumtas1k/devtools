@@ -14,6 +14,9 @@ import { join, relative, resolve } from 'node:path';
  *   - SVG 属性・JSX の `fontSize` / `font-size="<数値>"`（14 未満）
  *   - Tailwind の `text-xs`（12px）と任意値 `text-[11px]` / `text-[0.7rem]`
  *
+ * 限界: 数値リテラルの直書きだけを見る。`font-size="${FONT_SIZE}"` のように定数・テンプレート経由で組む
+ * SVG（`src/utils/ddl-er-diagram.ts` 等）は検知できない（docs/decisions.md [145]）。
+ *
  * 許可リスト: セレクタ（CSS）またはパス（その他）単位で、理由を書いて最小限に置く。
  */
 
@@ -50,7 +53,7 @@ function toPx(value: string, unit: string): number | null {
 }
 
 const CSS_FONT_SIZE_RE = /font-size\s*:\s*([\d.]+)(rem|em|px)\b/g;
-const ATTR_FONT_SIZE_RE = /(?:font-size=|fontSize[=:]\s*)\{?["']?([\d.]+)(px)?["']?/g;
+const ATTR_FONT_SIZE_RE = /(?:font-size=|fontSize[=:]\s*)\{?["']?([\d.]+)(rem|em|px)?["']?/g;
 const TEXT_XS_RE = /\btext-xs\b/;
 const TEXT_ARBITRARY_RE = /\btext-\[([\d.]+)(rem|em|px)\]/g;
 
@@ -161,6 +164,7 @@ describe('[陽性対照] 14px 未満の文字サイズの検知機構', () => {
     ['src/styles/global.css', '.a {\n  font-size: 1.25rem;\n}'],
     ['src/components/X.tsx', '<span className="text-sm text-[1rem]">a</span>'],
     ['src/components/X.tsx', '<text fontSize="14">a</text>'],
+    ['src/components/X.tsx', "const s = { fontSize: '1rem' };"],
   ])('%s の「%s」は検出しない（過検知なし）', (path, content) => {
     expect(detect(path, content)).toBe(0);
   });

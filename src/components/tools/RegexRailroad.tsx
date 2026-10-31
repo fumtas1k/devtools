@@ -7,7 +7,6 @@ import {
   GROUP_PAD_TOP,
   CHOICE_LEAD,
   V_GAP,
-  REP_LEAD,
   ARC_H,
 } from '@/utils/regex-visualizer/railroad-layout';
 
@@ -223,7 +222,7 @@ function renderNode(
     }
     case 'repetition': {
       const inner = node.children[0];
-      const innerX = x + REP_LEAD;
+      const innerX = x + (node.width - inner.width) / 2; // ラベルで幅が広がったときも中央に置く
       const top = node.loop ? ARC_H : 0;
       const innerY = y + top;
       const railY = y + node.connectY; // = innerY + inner.connectY

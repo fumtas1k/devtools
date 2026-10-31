@@ -108,6 +108,13 @@ export function measureAssertion(label: string, loc: Loc): RailNode {
  * ループ弧を上（反復・矢印付き）、スキップ弧を下（バイパス）に置き、さらに下にラベル帯を確保する。
  * label は量指定子の日本語表示（'0回以上' 等）。
  */
+/** 量指定子ラベルの描画幅の概算(px)。全角は 14px、半角は等幅 14px の 8.4px。 */
+export function estimateLabelWidth(label: string): number {
+  let w = 0;
+  for (const ch of label) w += ch.charCodeAt(0) > 0xff ? 14 : 8.4;
+  return w;
+}
+
 export function measureRepetition(
   inner: RailNode,
   opts: { skip: boolean; loop: boolean; label: string },
@@ -117,7 +124,8 @@ export function measureRepetition(
   const bottom = (opts.skip ? ARC_H : 0) + LABEL_H; // スキップ弧（下）+ ラベル帯
   return {
     kind: 'repetition',
-    width: inner.width + REP_LEAD * 2,
+    // ラベル（最短一致の「（最短）」付き等）が図の端で欠けないよう、ラベル幅以上にする
+    width: Math.max(inner.width + REP_LEAD * 2, Math.ceil(estimateLabelWidth(opts.label)) + 4),
     height: inner.height + top + bottom,
     connectY: top + inner.connectY,
     label: opts.label,

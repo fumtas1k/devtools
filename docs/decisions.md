@@ -5279,7 +5279,7 @@ DADS は本文・UI を 16px 以上、補助的な用途でも 14px を下限と
 
 - `.hint-xs` / `.jwt-pre` / `.uuid-field-key` / `.uuid-field-bits` / `.json-count` を 0.875rem（14px）にした。`.hint-xs` は行高を 170%（DADS の Dns-14）、`.jwt-pre`（等幅）は 150% にし、letter-spacing の負値をやめた。クラス名の `xs` は変えない（利用箇所が多く、名前だけの変更になるため）
 - `CopyButton` の compact（アイコンだけ）の `text-xs` を `text-sm` にした。表示される文字は無く、sr-only のみのため見た目は変わらない。`no-primitive-text-xs` の許可リストから外した
-- **鉄道図の SVG ラベル（`.rr-text` 13px / `.rr-group-title` 11px / `.rr-quant` 11px）も 14px にし、例外にしない**。`.rr-text` は等幅 14px の 1 文字が約 8.4px で、レイアウトの `CHAR_W`（8.5）に収まる。タイトルと量指定子ラベルは高さが増えるため、`GROUP_PAD_TOP` を 22 → 26、`LABEL_H` を 12 → 16 にし、ベースラインも合わせた。PC / スマホで SVG の外にテキストがはみ出さないことを getBBox で確認した
+- **鉄道図の SVG ラベル（`.rr-text` 13px / `.rr-group-title` 11px / `.rr-quant` 11px）も 14px にし、例外にしない**。`.rr-text` は等幅 14px の 1 文字が約 8.4px で、レイアウトの `CHAR_W`（8.5）に収まる。量指定子ラベルは最短一致（「1回以上（最短）」等）だと幅が約 120px になり図の端で欠けるため、`measureRepetition` の幅をラベル幅以上にして内側のノードを中央に置く。タイトルと量指定子ラベルは高さが増えるため、`GROUP_PAD_TOP` を 22 → 26、`LABEL_H` を 12 → 16 にし、ベースラインも合わせた。PC / スマホで SVG の外にテキストがはみ出さないことを getBBox で確認した
 - 再混入を `tests/meta/min-font-size-dads.test.ts` で検知する（CSS の `font-size`、SVG の `fontSize`、`text-xs`、`text-[11px]` 等。陽性対照つき）。許可リストは `.toggle-chip__token` / `.toggle-chip__count`（0.8125rem）だけで、トグル類の別 PR で扱うため理由つきで置く
 
 ### 却下した選択肢
@@ -5288,6 +5288,6 @@ DADS は本文・UI を 16px 以上、補助的な用途でも 14px を下限と
 
 ### 結果・トレードオフ
 
-- ✅ 14px 未満の文字が `src/` から消え（トグル類を除く）、再混入は CI で検知される
+- ✅ CSS・コンポーネントの 14px 未満の文字が消え（トグル類を除く）、再混入は CI で検知される。ただし検知は数値リテラルの直書きだけで、定数経由で組む SVG（`src/utils/ddl-er-diagram.ts` の 10〜13px）は対象外。[#822](https://github.com/fumtas1k/devtools/issues/822) で扱う
 - ⚠️ 鉄道図は group と量指定子の周りが縦に 4px ずつ広がる。VRT（regex-visualizer など）の差分は目視確認のうえ baseline を更新する
 - ⚠️ UUID のフィールド見出しが 14px になり、スマホでは折り返しながら並ぶ（はみ出しはなし）
