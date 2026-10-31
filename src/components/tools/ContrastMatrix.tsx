@@ -149,7 +149,7 @@ export function ContrastMatrixTool() {
                 type="button"
                 onClick={() => removeRow(row.id)}
                 disabled={rows.length <= 2}
-                className="caption btn-remove-card shrink-0 rounded-md px-3 py-2"
+                className="caption btn-remove-card shrink-0 rounded-md px-3 h-12 inline-flex items-center"
               >
                 削除
               </button>

@@ -144,20 +144,22 @@ export function DsnBuilderTool() {
 
       <Section title="フォーム">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-3 min-h-9">
-                <label htmlFor="dsn-scheme" className="body-emphasis text-default">
-                  スキーム
-                </label>
-              </div>
-              <Select
-                id="dsn-scheme"
-                options={SCHEME_OPTIONS}
-                value={model.scheme}
-                onChange={handleSchemeChange}
-              />
+          {/* スキームの選択中表示は最長で約 310px（jdbc:postgresql:// — PostgreSQL (JDBC)）。
+             3 カラムの 1 つ（約 250px）には入らないため、スキームだけ別の行に置く（docs/decisions.md [151]） */}
+          <div className="md:max-w-md">
+            <div className="flex items-center justify-between mb-3 min-h-9">
+              <label htmlFor="dsn-scheme" className="body-emphasis text-default">
+                スキーム
+              </label>
             </div>
+            <Select
+              id="dsn-scheme"
+              options={SCHEME_OPTIONS}
+              value={model.scheme}
+              onChange={handleSchemeChange}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField
               id="dsn-user"
               label="ユーザー名"

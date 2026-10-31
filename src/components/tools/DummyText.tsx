@@ -143,6 +143,7 @@ export function DummyTextTool() {
               value={String(lineBreak) as 'false' | 'true'}
               onChange={(v) => setLineBreak(v === 'true')}
               ariaLabel="改行設定"
+              matchField
             />
             {lineBreak && (
               <div className="flex items-center gap-2">
