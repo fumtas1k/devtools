@@ -209,3 +209,35 @@ test.describe('正規表現ビジュアライザ', () => {
     });
   });
 });
+
+// 鉄道図の種別は色だけでなく形でも区別する（WCAG 1.4.1、docs/decisions.md [150]）。
+// 文字クラスはリテラルより枠が太く角が小さい。戻す（旧実装 = 同じ枠幅・同じ角丸）と fail する。
+test.describe('鉄道図: 種別の形状差', () => {
+  test('文字クラスはリテラルと枠の太さ・角丸が違い、凡例にも反映される', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('a\\d');
+      await page.getByRole('button', { name: '鉄道図' }).click();
+      const literal = page.locator('svg.rr-svg rect.rr-box').first();
+      const charclass = page.locator('svg.rr-svg rect.rr-charclass').first();
+      await expect(charclass).toBeVisible();
+
+      const sw = async (l: typeof literal) => l.evaluate((e) => getComputedStyle(e).strokeWidth);
+      const rx = async (l: typeof literal) => l.evaluate((e) => getComputedStyle(e).rx);
+      expect(parseFloat(await sw(charclass))).toBeGreaterThan(parseFloat(await sw(literal)));
+      expect(parseFloat(await rx(charclass))).toBeLessThan(parseFloat(await rx(literal)));
+
+      // 枠色は非テキスト 3:1 のため、リテラルと違う濃色（primary）であること
+      const stroke = async (l: typeof literal) => l.evaluate((e) => getComputedStyle(e).stroke);
+      expect(await stroke(charclass)).toBe('rgb(0, 23, 193)');
+
+      const legendLiteral = page.locator('.rr-legend rect.rr-box');
+      const legendCharclass = page.locator('.rr-legend rect.rr-charclass');
+      expect(parseFloat(await sw(legendCharclass))).toBeGreaterThan(
+        parseFloat(await sw(legendLiteral))
+      );
+      expect(parseFloat(await rx(legendCharclass))).toBeLessThan(
+        parseFloat(await rx(legendLiteral))
+      );
+    });
+  });
+});
