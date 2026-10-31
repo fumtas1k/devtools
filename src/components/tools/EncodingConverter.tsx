@@ -395,7 +395,7 @@ export function EncodingConverterTool() {
           )}
 
           {bomActive && (
-            <label className="flex items-center gap-2 cursor-pointer caption text-default">
+            <label className="flex items-center gap-2 cursor-pointer caption text-default min-h-11">
               <input
                 type="checkbox"
                 checked={withBom}

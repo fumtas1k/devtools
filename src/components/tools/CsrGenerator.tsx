@@ -247,7 +247,7 @@ export function CsrGenerator() {
                     {san.length > 1 && (
                       <button
                         type="button"
-                        className="caption btn-remove-card leading-none"
+                        className="caption btn-remove-card inline-flex min-h-11 min-w-11 items-center justify-center leading-none"
                         aria-label={`SAN ${i + 1} を削除`}
                         onClick={() => setSan((prev) => prev.filter((_, idx) => idx !== i))}
                       >
@@ -266,7 +266,7 @@ export function CsrGenerator() {
             })}
             <button
               type="button"
-              className="caption text-link-plain btn-link-plain"
+              className="caption text-link-plain btn-link-plain mt-3"
               onClick={() => setSan((prev) => [...prev, { type: 'dns', value: '' }])}
             >
               ＋ SAN を追加

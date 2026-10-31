@@ -104,7 +104,7 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
       {/* 鍵ペアセクション */}
       <Section title="鍵ペア">
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
             <ActionButton
               onClick={onGenerateKeys}
               disabled={keyGenerating}
