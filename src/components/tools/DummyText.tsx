@@ -157,7 +157,7 @@ export function DummyTextTool() {
                   value={chunkInput}
                   onChange={(e) => handleChunkChange(e.target.value)}
                   onBlur={handleChunkBlur}
-                  className="field-control w-20"
+                  className="field-control w-24"
                 />
                 <span className="caption text-muted">文字ごと（1〜1000）</span>
               </div>

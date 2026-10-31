@@ -398,6 +398,9 @@
     border-style: dashed;
     background: var(--color-bg-surface);
   }
+  .field-control:disabled::placeholder {
+    color: var(--color-text-disabled);
+  }
   .field-control:disabled {
     border-color: var(--color-disabled);
     background: var(--color-bg-surface);
@@ -1338,10 +1341,10 @@
 
   /* === JsonFormatter: ツリービュー === */
   .json-tree-box {
-    /* 入力 textarea（rows=18, 実測 446px ≒ 28rem）と外形を揃える固定高。
+    /* 入力 textarea（rows=18, 実測 516px ≒ 32.25rem）と外形を揃える固定高。
        超過分は overflow: auto で枠内スクロールさせる。textarea 側の
        rows/font-size/line-height を変えた場合はこの値も追従させること。 */
-    height: 28rem;
+    height: 32.25rem;
     overflow: auto;
   }
   .json-tree-root {
@@ -1744,11 +1747,11 @@
     margin-top: 0;
   }
   /* プレビュー箱 / 入力待ち箱の固定高。入力 textarea（InputField rows=18, mono,
-     実測 ≒ 446px ≒ 28rem。JsonFormatter / .json-tree-box と同設定）と外形を揃え、
+     実測 ≒ 516px ≒ 32.25rem。JsonFormatter / .json-tree-box と同設定）と外形を揃え、
      超過分は overflow: auto で枠内スクロールさせる。左右ペインの縦幅を一致させる要。
      textarea 側の rows/font-size/line-height を変えた場合はこの値も追従させること。 */
   .md-preview-box {
-    height: 28rem;
+    height: 32.25rem;
     overflow: auto;
   }
 }

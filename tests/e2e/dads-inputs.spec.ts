@@ -108,6 +108,7 @@ test.describe('DADS の入力欄', () => {
     const select = page.getByRole('combobox', { name: 'SQL 方言' });
     await expect(select).toHaveCSS('appearance', 'none');
     await expect(select).toHaveCSS('padding-left', '16px');
+    await expect(select).toHaveCSS('padding-right', '44px');
     await expect(select).toHaveCSS('font-size', '16px');
     await expect(select).toHaveCSS('border-radius', '8px');
     expect((await select.boundingBox())?.height).toBeCloseTo(48, 0);
@@ -122,5 +123,13 @@ test.describe('DADS の入力欄', () => {
     await expect(single).toHaveCSS('padding', '0px 16px');
     await expect(single).toHaveCSS('font-size', '16px');
     expect((await single.boundingBox())?.height).toBeCloseTo(48, 0);
+  });
+
+  test('トップの検索欄: 左右 padding 40px が utility で上書きされ、高さ 48px', async ({ page }) => {
+    await page.goto('/');
+    const search = page.getByRole('searchbox', { name: 'ツールを検索' });
+    await expect(search).toHaveCSS('padding-left', '40px');
+    await expect(search).toHaveCSS('padding-right', '40px');
+    expect((await search.boundingBox())?.height).toBeCloseTo(48, 0);
   });
 });

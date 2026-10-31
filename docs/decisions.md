@@ -5285,6 +5285,7 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 - read-only は破線の枠 + solid-gray-50 の地（従来の `bg-surface` / OutputField の `bg-subtle` を維持）。hover しても枠は変えない。`OutputField` の枠は `border-default`（gray-100）から入力欄と同じ gray-600 の破線になった
 - disabled は枠 solid-gray-300・地 solid-gray-50・文字 solid-gray-420、`cursor: not-allowed`
 - ContrastMatrix のカラーピッカー（`input[type=color]`）は、隣の入力欄と上端・高さをそろえるため 40px → 48px にした。サイズ違いの sm（40px）/ lg（56px）は使用箇所が無いため作らない
+- textarea の行高が 14px×1.7 → 16px×1.7 になり、rows=18 の高さが約 446px → 約 516px になったため、それに揃える固定高（`.md-preview-box` / `.json-tree-box`）を 28rem → 32.25rem にした（Markdown エディタの高さガードの E2E で検知）。DummyText の「間隔」と CharCount の任意上限は 4 桁が入るよう幅を `w-20` → `w-24` にした
 - CertDecoder のパスワード欄は枠が `border-default` だった（他の入力欄と不一致）ため `.field-control` にして gray-600 にそろえた
 
 ### 却下した選択肢
