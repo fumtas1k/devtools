@@ -40,13 +40,13 @@ export const BOX_H = 34;
 export const MIN_BOX_W = 26;
 export const H_GAP = 22; // sequence 要素間の接続線長
 export const GROUP_PAD_X = 12;
-export const GROUP_PAD_TOP = 22; // タイトル領域
+export const GROUP_PAD_TOP = 26; // タイトル領域
 export const GROUP_PAD_BOTTOM = 10;
 export const V_GAP = 14; // choice の分岐間の縦間隔
 export const CHOICE_LEAD = 22; // choice の split/merge 用の左右リード長
 export const REP_LEAD = 18; // repetition の弧が左右へ膨らむリード
 export const ARC_H = 24; // skip/loop 弧の高さ（モックアップに合わせ弧を大きく張り出させる）
-export const LABEL_H = 12; // 量指定子ラベル用の下バンド（loop が無いとき inner と重ならないよう確保）
+export const LABEL_H = 16; // 量指定子ラベル用の下バンド（loop が無いとき inner と重ならないよう確保）
 
 type Loc = { start: number; end: number } | undefined;
 
@@ -108,6 +108,13 @@ export function measureAssertion(label: string, loc: Loc): RailNode {
  * ループ弧を上（反復・矢印付き）、スキップ弧を下（バイパス）に置き、さらに下にラベル帯を確保する。
  * label は量指定子の日本語表示（'0回以上' 等）。
  */
+/** 量指定子ラベルの描画幅の概算(px)。全角は 14px、半角は等幅 14px の 8.4px。 */
+export function estimateLabelWidth(label: string): number {
+  let w = 0;
+  for (const ch of label) w += ch.charCodeAt(0) > 0xff ? 14 : 8.4;
+  return w;
+}
+
 export function measureRepetition(
   inner: RailNode,
   opts: { skip: boolean; loop: boolean; label: string },
@@ -117,7 +124,8 @@ export function measureRepetition(
   const bottom = (opts.skip ? ARC_H : 0) + LABEL_H; // スキップ弧（下）+ ラベル帯
   return {
     kind: 'repetition',
-    width: inner.width + REP_LEAD * 2,
+    // ラベル（最短一致の「（最短）」付き等）が図の端で欠けないよう、ラベル幅以上にする
+    width: Math.max(inner.width + REP_LEAD * 2, Math.ceil(estimateLabelWidth(opts.label)) + 4),
     height: inner.height + top + bottom,
     connectY: top + inner.connectY,
     label: opts.label,

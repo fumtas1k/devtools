@@ -7,7 +7,6 @@ import {
   GROUP_PAD_TOP,
   CHOICE_LEAD,
   V_GAP,
-  REP_LEAD,
   ARC_H,
 } from '@/utils/regex-visualizer/railroad-layout';
 
@@ -157,7 +156,7 @@ function renderNode(
         <g key={key}>
           <rect x={x} y={y} width={node.width} height={node.height} rx={8} className="rr-group" />
           {node.title && (
-            <text x={x + 8} y={y + 14} className="rr-group-title">
+            <text x={x + 8} y={y + 17} className="rr-group-title">
               {node.title}
             </text>
           )}
@@ -223,7 +222,7 @@ function renderNode(
     }
     case 'repetition': {
       const inner = node.children[0];
-      const innerX = x + REP_LEAD;
+      const innerX = x + (node.width - inner.width) / 2; // ラベルで幅が広がったときも中央に置く
       const top = node.loop ? ARC_H : 0;
       const innerY = y + top;
       const railY = y + node.connectY; // = innerY + inner.connectY
@@ -265,7 +264,7 @@ function renderNode(
         <text
           key="ql"
           x={x + node.width / 2}
-          y={y + node.height - 2}
+          y={y + node.height - 4}
           textAnchor="middle"
           className="rr-quant"
         >

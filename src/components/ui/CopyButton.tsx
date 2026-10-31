@@ -123,7 +123,7 @@ export function CopyButton({
         className={cx(
           'btn-copy is-compact',
           stateClass,
-          'rounded-button-sm inline-flex items-center justify-center text-xs px-2 py-1 min-w-8 min-h-8 whitespace-nowrap'
+          'rounded-button-sm inline-flex items-center justify-center text-sm px-2 py-1 min-w-8 min-h-8 whitespace-nowrap'
         )}
       >
         {copied ? <CheckIcon /> : <ClipboardIcon />}
