@@ -25,7 +25,7 @@ const { currentSlug } = Astro.props;
                   <a
                     href={`/tools/${tool.slug}`}
                     aria-current={currentSlug === tool.slug ? 'page' : undefined}
-                    class={`flex items-center gap-2 rounded px-3 transition-colors sidebar-link min-h-11 caption
+                    class={`flex items-center gap-2 rounded-md px-3 transition-colors sidebar-link min-h-11 caption
                   ${
                     currentSlug === tool.slug
                       ? 'font-bold sidebar-link--active'
@@ -54,5 +54,6 @@ const { currentSlug } = Astro.props;
   }
   .sidebar-link--inactive:hover {
     background: var(--color-bg-subtle);
+    text-decoration: underline;
   }
 </style>
