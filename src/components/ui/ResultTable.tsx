@@ -20,7 +20,10 @@ export interface TableColumn<T> {
   width?: string;
   /** td に追加される className (typography / 色 / nowrap 等の修飾用) */
   className?: string;
-  /** セルパディング。default: 'normal' (0.5rem 0.75rem)、compact (0.25rem 0.5rem) */
+  /**
+   * セルパディング。default: 'normal' (0.75rem 1rem、DADS の Table)、
+   * compact (0.25rem 0.5rem、CopyButton 等のコントロールを置く列)
+   */
   cellPadding?: 'normal' | 'compact';
   render: (row: T, index: number) => ReactNode;
 }
@@ -44,7 +47,7 @@ interface Props<T> {
 const alignClass = (a?: 'left' | 'right' | 'center') =>
   a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left';
 
-const paddingClass = (p?: 'normal' | 'compact') => (p === 'compact' ? 'px-2 py-1' : 'px-3 py-2');
+const paddingClass = (p?: 'normal' | 'compact') => (p === 'compact' ? 'px-2 py-1' : 'px-4 py-3');
 
 function buildResultTableRules<T>(
   className: string,
@@ -94,13 +97,13 @@ export function ResultTable<T>({
             ))}
           </colgroup>
           <thead>
-            <tr className="bg-surface border-b border-default">
+            <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
                   scope="col"
                   className={cx(
-                    'caption text-muted font-bold whitespace-nowrap',
+                    'caption whitespace-nowrap',
                     paddingClass(),
                     alignClass(col.headerAlign)
                   )}

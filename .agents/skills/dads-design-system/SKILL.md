@@ -29,22 +29,24 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 キーカラーは Blue の 1 色だけ。他の色相（cyan / green / lime / yellow / orange / red / magenta / purple / light-blue）はチップ・タグ・データ・状態表示に限って控えめに使う。
 
-| 用途                | DADS トークン                                                   | 値                    | 現行の対応先                                                               |
-| :------------------ | :-------------------------------------------------------------- | :-------------------- | :------------------------------------------------------------------------- |
-| primary（塗り）     | `blue-900`                                                      | `#0017c1`             | `--color-primary`（`bg-primary` / `text-primary`）                         |
-| primary hover       | `blue-1000`                                                     | `#00118f`             | 各コンポーネントの `:hover` 定義                                           |
-| primary active      | `blue-1200`                                                     | `#000060`             | 同上                                                                       |
-| リンク / visited    | `blue-1000` / `magenta-900`                                     | `#00118f` / `#8b008b` | `--color-link` / `--color-link-visited`（`.text-link`）                    |
-| 本文 / 見出し       | `solid-gray-800` / `solid-gray-900`                             | `#333333` / `#1a1a1a` | `--color-text`（`.text-default` / `.text-body`）                           |
-| 補助テキスト        | `solid-gray-700`                                                | `#4d4d4d`             | `--color-muted`（`.text-muted`）                                           |
-| placeholder         | `solid-gray-536`（白地 AA の下限）                              | `#767676`             | —                                                                          |
-| 入力欄の枠          | `solid-gray-600`                                                | `#666666`             | `--color-border-input`（`.border-input`）                                  |
-| 区切り線 / 薄い枠   | `solid-gray-420` / `solid-gray-100`                             | `#949494` / `#e6e6e6` | `--color-border`（`.border-default`、`solid-gray-100`）                    |
-| 図の線（3:1 必須）  | `solid-gray-536`                                                | `#767676`             | `--color-border-strong`                                                    |
-| tint 上のエラー文字 | `error-2`                                                       | `#ce0000`             | `--color-error-text`（`.text-error-text`）                                 |
-| フッター（濃色帯）  | `solid-gray-900` 地 / `-200` 文字 / `-400` 補助 / `-300` リンク | —                     | `--color-footer-*`                                                         |
-| ページ背景・カード  | `white`                                                         | `#ffffff`             | `--color-bg`（`.bg-default`）                                              |
-| 薄い背景            | `solid-gray-50`                                                 | `#f2f2f2`             | `--color-bg-subtle` / `--color-bg-surface`（`.bg-subtle` / `.bg-surface`） |
+| 用途                 | DADS トークン                                                   | 値                    | 現行の対応先                                                                     |
+| :------------------- | :-------------------------------------------------------------- | :-------------------- | :------------------------------------------------------------------------------- |
+| primary（塗り）      | `blue-900`                                                      | `#0017c1`             | `--color-primary`（`bg-primary` / `text-primary`）                               |
+| primary hover        | `blue-1000`                                                     | `#00118f`             | 各コンポーネントの `:hover` 定義                                                 |
+| primary active       | `blue-1200`                                                     | `#000060`             | 同上                                                                             |
+| リンク / visited     | `blue-1000` / `magenta-900`                                     | `#00118f` / `#8b008b` | `--color-link` / `--color-link-visited`（`.text-link`）                          |
+| 本文 / 見出し        | `solid-gray-800` / `solid-gray-900`                             | `#333333` / `#1a1a1a` | `--color-text`（`.text-default` / `.text-body`）                                 |
+| 補助テキスト         | `solid-gray-700`                                                | `#4d4d4d`             | `--color-muted`（`.text-muted`）                                                 |
+| placeholder          | `solid-gray-536`（白地 AA の下限）                              | `#767676`             | —                                                                                |
+| 入力欄の枠           | `solid-gray-600`                                                | `#666666`             | `--color-border-input`（`.border-input`）                                        |
+| 区切り線 / 薄い枠    | `solid-gray-420` / `solid-gray-100`                             | `#949494` / `#e6e6e6` | `--color-border-divider`（表の行の罫線） / `--color-border`（`.border-default`） |
+| 表の見出し行の下罫線 | `solid-gray-400`                                                | `#999999`             | `--color-border-table-head`                                                      |
+| 表の選択行           | `blue-100`                                                      | `#d9e6ff`             | `--color-bg-selected`（hover は `blue-50` = `--color-bg-active`）                |
+| 図の線（3:1 必須）   | `solid-gray-536`                                                | `#767676`             | `--color-border-strong`                                                          |
+| tint 上のエラー文字  | `error-2`                                                       | `#ce0000`             | `--color-error-text`（`.text-error-text`）                                       |
+| フッター（濃色帯）   | `solid-gray-900` 地 / `-200` 文字 / `-400` 補助 / `-300` リンク | —                     | `--color-footer-*`                                                               |
+| ページ背景・カード   | `white`                                                         | `#ffffff`             | `--color-bg`（`.bg-default`）                                                    |
+| 薄い背景             | `solid-gray-50`                                                 | `#f2f2f2`             | `--color-bg-subtle` / `--color-bg-surface`（`.bg-subtle` / `.bg-surface`）       |
 
 セマンティック色は 2 段ペア。`-1` は白地で 4.5:1 に届かないもの（success / warning）があるので、**文字と白文字を載せる塗りには `-2` を使い、`-1` はアイコン・枠など非テキスト（3:1）に限る**（`error-1` は 4.60:1 で文字にも使える）。現行の対応先は `--color-success` / `--color-error` / `--color-warning` と各 `-bg`（`.text-success` / `.alert-success` 等）。
 

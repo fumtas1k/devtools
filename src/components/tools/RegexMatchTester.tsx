@@ -189,7 +189,13 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
       render: (row) =>
         row.value === '' ? <span className="text-muted">(空マッチ)</span> : row.value,
     },
-    { key: 'pos', header: '位置', cellAlign: 'right', render: (row) => `${row.start}–${row.end}` },
+    {
+      key: 'pos',
+      header: '位置',
+      cellAlign: 'right',
+      className: 'whitespace-nowrap',
+      render: (row) => `${row.start}–${row.end}`,
+    },
     ...groupCols,
   ];
 
@@ -271,6 +277,7 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
                     rows={matches}
                     columns={columns}
                     getKey={(row) => `${row.start}-${row.end}-${row.value}`}
+                    minWidth="28rem"
                     selectedIndex={selectedIndex}
                     onRowClick={(i) => setSelected(i)}
                   />

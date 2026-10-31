@@ -5171,3 +5171,36 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 - ✅ コントロールとカードの角丸が DADS の値で使い分けられる
 - ⚠️ 入力欄・ボタンの角が小さくなり、影が濃くなるため、全ページの見た目が変わる（VRT の差分になる）
+
+---
+
+## [142] DADS 移行 Phase 5: 結果の表（ResultTable / Markdown プレビューの表）
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 で、`ResultTable`（UUID v7・ULID・CIDR・正規表現のマッチ・SAML の属性）と Markdown プレビューの表を DADS の Table に寄せた。従来は 1 行おきの縞（白 / gray-50）、薄い区切り線（solid-gray-100）、primary 8% を混ぜた選択色で、DADS の Table（縞なし・solid-gray-420 の下罫線・thead に 2px の下罫線・行 hover で blue-50）と異なっていた。
+
+### 決断
+
+- セル padding を DADS の 12px 16px（`px-4 py-3`）にする。CopyButton を置く列の `cellPadding: 'compact'`（4px 8px）は残す
+- 縞をやめ、各行に solid-gray-420 の下罫線を引く。thead は solid-gray-50 地・Bold・本文色（従来は muted）で、下罫線を 2px の solid-gray-400 にする。罫線用に `--color-border-divider`（gray-420）と `--color-border-table-head`（gray-400）を追加した
+- 行 hover は blue-50（`--color-bg-active`）。DADS どおりクリックできない行にも付ける。タッチ端末でタップ後に色が残らないよう `@media (hover: hover)` に限る
+- 選択行は hover と区別できるよう blue-100（新設の `--color-bg-selected`）にし、従来の上下 2px の primary の線を残す。本文 10.06:1・muted 6.73:1・primary 8.83:1（hover の blue-50 上は本文 11.10:1・muted 7.42:1）
+- ResultTable の罫線は td の inset box-shadow で描く。従来は選択行だけ実際の border を付けており、選択を切り替えるたびに行の高さが 4px 変わっていた
+- **ResultTable の文字は DADS の 16px / 1.5 にせず、`.caption`（14px）のままにする**。16px にすると等幅の IP アドレスを 6 列並べる CIDR の分割表が PC 幅（1280px）でもはみ出して横スクロールになるため。Markdown プレビューの表は本文（16px）と並ぶ文書なので DADS どおり 16px / 1.5 にし、縦罫線をやめる。見出しは ResultTable と同じく折り返さない
+- padding が増えた分、正規表現のマッチ表がスマホ幅で「2026-10」のような短い値まで折り返したため、他の ResultTable と同じく `minWidth`（28rem）を指定して横スクロールにし、位置の列は折り返さない
+- 行見出し（`th[scope="row"]`）と caption は ResultTable と Markdown プレビューでは使わないため追加しない（使っている ContrastMatrix / HAR ビューアの表は Phase 5 の別の判断に回す）。クリック可能な行のフォーカス表示は [136] のまま（offset -4px の outline）
+
+### 却下した選択肢
+
+- **ResultTable の文字も 16px にする**: 上記のとおり CIDR の分割表が PC 幅に収まらない。UUID / ULID の表もスマホでの横スクロール量が増える
+- **選択行を hover と同じ blue-50 にする**: hover 中の行と選択行の区別が上下の線だけになる
+- **hover をクリックできる行だけに付ける**: DADS の Table の仕様から外れる。クリックできるかどうかは `cursor: pointer` で示す
+
+### 結果・トレードオフ
+
+- ✅ 表の罫線・見出し・hover・選択の見た目が DADS にそろい、選択の切り替えで行の高さがずれなくなる
+- ⚠️ 行の高さが増え（約 40px → 48px）、同じ件数でも表が縦に長くなる。表は操作後に出るため、初期表示だけを撮る VRT には差分が出ない（見た目は `tests/e2e/dads-table.spec.ts` で確認する）
+- ⚠️ UUID v7 の色分け（`#7c3aed` 等の直書き色、#808）は白地でも 4.5:1 を満たさないものがあり、hover / 選択の地の上ではさらに下がる。#808 で DADS の色に置き換えるときに表の地の上でも確認する
