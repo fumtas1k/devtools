@@ -157,7 +157,7 @@ function renderNode(
         <g key={key}>
           <rect x={x} y={y} width={node.width} height={node.height} rx={8} className="rr-group" />
           {node.title && (
-            <text x={x + 8} y={y + 14} className="rr-group-title">
+            <text x={x + 8} y={y + 17} className="rr-group-title">
               {node.title}
             </text>
           )}
@@ -265,7 +265,7 @@ function renderNode(
         <text
           key="ql"
           x={x + node.width / 2}
-          y={y + node.height - 2}
+          y={y + node.height - 4}
           textAnchor="middle"
           className="rr-quant"
         >

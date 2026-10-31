@@ -96,6 +96,7 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 - [ ] `InputField` / `BareInput` / `Select` / textarea（枠色、read-only 破線、エラー）
 - [x] `NotificationBanner` / `StatusBadge` / `ChipLabel`（`docs/decisions.md [141]`）
 - [x] `ResultTable` と Markdown プレビューの表（縞をやめて DADS の罫線・thead・行 hover・選択色にする。文字は 14px のまま。`docs/decisions.md [142]`）
+- [x] 14px 未満の文字を 14px にそろえ、再混入を meta テストで検知する（[#814](https://github.com/fumtas1k/devtools/issues/814)、`docs/decisions.md [145]`。トグル類の `.toggle-chip__token` / `__count` はトグルの PR で扱う）
 - [ ] `ToggleGroup` / `ToggleChips`（`FileInputButton` / `DownloadButton` / `CopyButton` はボタンの PR で移行済み）
 
 ### Phase 6: レイアウト・Astro ページ

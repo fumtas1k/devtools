@@ -40,13 +40,13 @@ export const BOX_H = 34;
 export const MIN_BOX_W = 26;
 export const H_GAP = 22; // sequence 要素間の接続線長
 export const GROUP_PAD_X = 12;
-export const GROUP_PAD_TOP = 22; // タイトル領域
+export const GROUP_PAD_TOP = 26; // タイトル領域
 export const GROUP_PAD_BOTTOM = 10;
 export const V_GAP = 14; // choice の分岐間の縦間隔
 export const CHOICE_LEAD = 22; // choice の split/merge 用の左右リード長
 export const REP_LEAD = 18; // repetition の弧が左右へ膨らむリード
 export const ARC_H = 24; // skip/loop 弧の高さ（モックアップに合わせ弧を大きく張り出させる）
-export const LABEL_H = 12; // 量指定子ラベル用の下バンド（loop が無いとき inner と重ならないよう確保）
+export const LABEL_H = 16; // 量指定子ラベル用の下バンド（loop が無いとき inner と重ならないよう確保）
 
 type Loc = { start: number; end: number } | undefined;
 
