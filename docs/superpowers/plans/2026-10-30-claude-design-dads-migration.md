@@ -84,7 +84,7 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 - [x] `--radius-lg` を 16px → 12px（DADS のカード）にし、コントロール（入力欄・セレクト・ボタン・トグルと、それと並ぶ出力・テキスト表示欄）を `rounded-md`（8px）に付け替えた
 - [x] `--elevation-*` を DADS の 8 段に置換。Tailwind の `shadow-md`（カードの hover）/ `shadow-xl`（ドロワー）も DADS の 2 / 6 段にそろえた（`docs/decisions.md [139]`）
-- 部品単位の小さな角丸（正規表現の AST ノード 6px 等）、DADS の小さいボタンの 6px（sm）、`rounded-xl` の `rounded-lg` への統一、トグルの土台と中のボタンが同じ 8px で入れ子になる点、カードの常時の影は Phase 5 で扱う
+- 部品単位の小さな角丸（正規表現の AST ノード 6px 等）、DADS の小さいボタンの 6px（sm）、`rounded-xl` の `rounded-lg` への統一、カードの常時の影は Phase 5 で扱う
 
 ### Phase 5: コンポーネント（1 コンポーネント 1 PR 目安）
 
@@ -93,11 +93,11 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChips / CopyButton 等）は DS のボタン・チップ規約から派生させる。
 
 - [x] `ActionButton`（solid-fill / outline / text、サイズ、hover 下線、double border）。`CopyButton` / `DownloadButton` / `FileInputButton` / `ClearButton` と、小さいボタンの角丸 6px（sm）も合わせて移行（`docs/decisions.md [140]`）
-- [ ] `InputField` / `BareInput` / `Select` / textarea（枠色、read-only 破線、エラー）
+- [x] `InputField` / `BareInput` / `Select` / `CountInput` / `OutputField` / textarea（枠色、read-only 破線、エラー、高さ 48px。`docs/decisions.md [143]`）
 - [x] `NotificationBanner` / `StatusBadge` / `ChipLabel`（`docs/decisions.md [141]`）
 - [x] `ResultTable` と Markdown プレビューの表（縞をやめて DADS の罫線・thead・行 hover・選択色にする。文字は 14px のまま。`docs/decisions.md [142]`）
-- [x] 14px 未満の文字を 14px にそろえ、再混入を meta テストで検知する（[#814](https://github.com/fumtas1k/devtools/issues/814)、`docs/decisions.md [145]`。トグル類の `.toggle-chip__token` / `__count` はトグルの PR で扱う）
-- [ ] `ToggleGroup` / `ToggleChips`（`FileInputButton` / `DownloadButton` / `CopyButton` はボタンの PR で移行済み）
+- [x] 14px 未満の文字を 14px にそろえ、再混入を meta テストで検知する（[#814](https://github.com/fumtas1k/devtools/issues/814)、`docs/decisions.md [145]`。トグル類の `.toggle-chip__token` / `__count` は [144] で移行済み）
+- [x] `ToggleGroup` / `ToggleChips`（`FileInputButton` / `DownloadButton` / `CopyButton` はボタンの PR で移行済み。入れ子の角丸と、トークン・件数バッジの 14px もここで解消。`docs/decisions.md [144]`）
 
 ### Phase 6: レイアウト・Astro ページ
 

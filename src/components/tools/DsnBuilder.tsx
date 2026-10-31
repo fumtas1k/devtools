@@ -188,7 +188,7 @@ export function DsnBuilderTool() {
                     placeholder="db.example.com"
                     className="flex-1 min-w-0"
                   />
-                  {/* BareInput 基底の w-full と w-24 が衝突するため、固定幅は wrapper 側に持たせる */}
+                  {/* 固定幅は wrapper 側に持たせる */}
                   <div className="w-24 flex-none">
                     <BareInput
                       value={h.port}

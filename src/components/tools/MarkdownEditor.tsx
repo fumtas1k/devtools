@@ -41,7 +41,7 @@ function hello(name: string): string {
  * 左ペイン: textarea 入力 / 右ペイン: sanitizeHtml済みHTMLプレビュー。
  *
  * 高さ揃え: 入力（InputField rows=18, mono）とプレビュー箱（.md-preview-box の固定高
- * 28rem ≒ rows=18 の実測高）を同じ外形に揃え、はみ出しは枠内スクロールさせる。
+ * 32.25rem ≒ rows=18 の実測高）を同じ外形に揃え、はみ出しは枠内スクロールさせる。
  * JsonFormatter のツリー結果（.json-tree-box）と同じ「固定高で textarea に合わせる」方式。
  * fill / flex-stretch 方式はプレビューがコンテンツ div で高さが青天井に伸びるため不採用。
  * インライン style は使わず CSS class の固定高のみで実現（CSP / 規約準拠）。

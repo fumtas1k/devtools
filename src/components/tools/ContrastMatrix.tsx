@@ -122,7 +122,7 @@ export function ContrastMatrixTool() {
                 aria-label={`${row.label || '色'}のカラーピッカー`}
                 value={parseColor(row.hex) ? toHex(row.hex) : '#000000'}
                 onChange={(e) => updateRow(row.id, { hex: e.target.value })}
-                className="h-10 w-12 shrink-0 rounded-md border border-input"
+                className="h-12 w-12 shrink-0 rounded-md border border-input"
               />
               <div className="min-w-0 max-w-32 flex-1">
                 <InputField
