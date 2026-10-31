@@ -1,16 +1,17 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
-const BG_ACTIVE = 'rgb(232, 241, 254)'; // --color-bg-active (blue-50)
+const BG_HOVER = 'rgb(197, 215, 251)'; // --color-bg-primary-hover (blue-200、outline ボタンの hover と同じ)
 const BG_TRANSPARENT = 'rgba(0, 0, 0, 0)';
 const BG_PRESSED = 'rgb(255, 255, 255)'; // --color-bg (white)
-const COLOR_TEXT = 'rgb(51, 51, 51)'; // --color-text (solid-gray-800)
+const COLOR_HOVER = 'rgb(0, 17, 143)'; // --color-primary-hover (blue-1000)
+const COLOR_PRIMARY = 'rgb(0, 23, 193)'; // --color-primary (blue-900、選択中の文字と枠)
 const COLOR_MUTED = 'rgb(77, 77, 77)'; // --color-muted (solid-gray-700)
 const FOCUS_OUTLINE = 'rgb(0, 0, 0)'; // --color-focus-outline (black)
 const FOCUS_RING_SHADOW = 'rgb(255, 212, 61) 0px 0px 0px 2px'; // --focus-ring-shadow (yellow-300)
 
 test.describe('ToggleGroup hover / focus-visible フィードバック（issue #385）', () => {
-  test('未選択ボタンを hover すると背景が --color-bg-active になる（CSP 違反なし）', async ({
+  test('未選択ボタンを hover すると背景が blue-200（--color-bg-primary-hover）になる（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/base64', async (page) => {
@@ -21,8 +22,9 @@ test.describe('ToggleGroup hover / focus-visible フィードバック（issue #
       await expect(decodeBtn).toHaveCSS('color', COLOR_MUTED);
 
       await decodeBtn.hover();
-      await expect(decodeBtn).toHaveCSS('background-color', BG_ACTIVE);
-      await expect(decodeBtn).toHaveCSS('color', COLOR_TEXT);
+      await expect(decodeBtn).toHaveCSS('background-color', BG_HOVER);
+      await expect(decodeBtn).toHaveCSS('color', COLOR_HOVER);
+      await expect(decodeBtn).toHaveCSS('text-decoration-line', 'underline');
     });
   });
 
@@ -34,11 +36,11 @@ test.describe('ToggleGroup hover / focus-visible フィードバック（issue #
       await expect(encodeBtn).toBeVisible();
       await expect(encodeBtn).toHaveAttribute('aria-pressed', 'true');
       await expect(encodeBtn).toHaveCSS('background-color', BG_PRESSED);
-      await expect(encodeBtn).toHaveCSS('color', COLOR_TEXT);
+      await expect(encodeBtn).toHaveCSS('color', COLOR_PRIMARY);
 
       await encodeBtn.hover();
       await expect(encodeBtn).toHaveCSS('background-color', BG_PRESSED);
-      await expect(encodeBtn).toHaveCSS('color', COLOR_TEXT);
+      await expect(encodeBtn).toHaveCSS('color', COLOR_PRIMARY);
     });
   });
 
@@ -55,9 +57,9 @@ test.describe('ToggleGroup hover / focus-visible フィードバック（issue #
       await page.keyboard.press('Tab');
       await expect(decodeBtn).toBeFocused();
 
-      // 背景・文字色が hover と同じ blue-50 / --color-text になる
-      await expect(decodeBtn).toHaveCSS('background-color', BG_ACTIVE);
-      await expect(decodeBtn).toHaveCSS('color', COLOR_TEXT);
+      // 背景・文字色が hover と同じ blue-200 / blue-1000 になる
+      await expect(decodeBtn).toHaveCSS('background-color', BG_HOVER);
+      await expect(decodeBtn).toHaveCSS('color', COLOR_HOVER);
       // global :where(button, ...):focus-visible で適用される DADS のフォーカスリング
       // （黒 4px の outline + yellow-300 の 2px リング）
       await expect(decodeBtn).toHaveCSS('outline-color', FOCUS_OUTLINE);
