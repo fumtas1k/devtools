@@ -5420,7 +5420,7 @@ Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイ�
 
 ### 決断
 
-- `src/` 全体（`public/` を含む。テストは除く）を grep し、参照ゼロを確認してから `global.css` の次を削除した: `--color-success-strong`（Phase 1 で `--color-success` と同値になったため統合し、唯一の参照だった `.status-badge--success` を `--color-success` に置き換え）、`--color-info-bg`、`.text-on-primary`、`.shadow-elev-2`。見た目の変更なし
+- `src/` と `public/`、`tests/` を grep し、参照ゼロを確認してから `global.css` の次を削除した: `--radius-none`（参照なし）、`--color-success-strong`（Phase 1 で `--color-success` と同値になったため統合し、唯一の参照だった `.status-badge--success` を `--color-success` に置き換え）、`--color-info-bg`、`.text-on-primary`、`.shadow-elev-2`。見た目の変更なし
 - 残したもの: Blue 13 段（DADS のプリミティブとして `@theme` に置く）、`--elevation-1`〜`8`（DADS のスケール全段）、`--color-tertiary`（`CategoryBadge` が使用）。`btn-action--*` / `status-badge--*` 等の variant クラスはコンポーネントが文字列結合で組み立てるため、静的な grep に出なくても使用中
 - `rounded-xl` を `rounded-lg` に置き換えた（`Section`、`CertDecoder`、`TotpHotpGenerator`、`ClipboardInspector`）。`--radius-xl` は `@theme` に無く Tailwind 既定の 12px で、DADS のカード角丸 `--radius-lg`（12px）と同値なので、見た目は変わらない。クラスをそろえ、以後 `rounded-xl` を使わない。`dads-shape.spec.ts` に 1 件足した（`rounded-md` に戻すと失敗することを確認した陽性対照）
 - `dads-design-system` skill の `references/tokens.md` を削除し、0 章の「移行中」と 2 章の「現行の対応先」を移行後の記述に更新した。値の正本は `global.css`

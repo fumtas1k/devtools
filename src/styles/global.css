@@ -87,7 +87,6 @@
   --color-anchor: #6f23d0; /* purple-700: 鉄道図アンカー枠/文字（purple-50 上で 6.33:1） */
 
   /* === 角の形状 === */
-  --radius-none: 0px;
   --radius-sm: 4px; /* テキストリンクのフォーカス地・マッチのハイライト等。utility の rounded（0.25rem 固定）は参照しない */
   --radius-md: 8px; /* DADS のコントロール（入力欄・セレクト・ボタン・トグル）: rounded-md */
   --radius-lg: 12px; /* DADS のカード・パネル・セクション: rounded-lg */
@@ -306,7 +305,7 @@
 
 /* === issue #176 B 案: inline style 撤去用 semantic class === */
 @layer components {
-  /* === Typography (legacy bodyEmphasis / caption from src/utils/styles.ts) === */
+  /* === Typography (.body-emphasis / .caption) === */
   /* Std-17B-170 */
   .body-emphasis {
     font-size: 1.0625rem;

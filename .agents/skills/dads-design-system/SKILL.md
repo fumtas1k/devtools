@@ -9,7 +9,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
 - **移行状況**: 完了（Phase 0〜7、`docs/decisions.md [134]`〜[148]）。色・フォーカスリング・タイポグラフィ・角丸と影・コンポーネント・レイアウトは DADS に合っている。経緯は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
-- **値の正本は `src/styles/global.css`**（`@theme` / `:root`）。Blue の 13 段は `@theme` に置いてある。他の色相やグレーは、使う段だけを semantic token（`:root`）の値として DS か公式 `figma/tokens.json` から転記する。コンポーネントの見た目仕様は `references/components.md`。
+- **値の正本は `src/styles/global.css`**（`@theme` / `:root`）。Blue の 13 段は `@theme` に置いてある。他の色相やグレーは、使う段だけを semantic token（utility が要るものは `@theme`、それ以外は `:root`）の値として DS か公式 `figma/tokens.json` から転記する。コンポーネントの見た目仕様は `references/components.md`。
 
 ### 新しく書くコードのルール
 
