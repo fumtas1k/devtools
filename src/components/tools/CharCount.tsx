@@ -231,7 +231,7 @@ export function CharCountTool() {
             titleId="sns-card-custom-title"
             captionId="sns-card-custom-caption"
             limitNode={
-              <span className="inline-block w-20">
+              <span className="inline-block w-24">
                 <BareInput
                   type="number"
                   inputMode="numeric"

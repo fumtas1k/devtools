@@ -41,6 +41,13 @@ describe('BareInput', () => {
     expect(input.disabled).toBe(true);
   });
 
+  it('error=true のとき aria-invalid="true"、未指定なら属性なし', () => {
+    const { rerender } = render(<BareInput value="" onChange={() => {}} error aria-label="e" />);
+    expect(screen.getByRole('textbox').getAttribute('aria-invalid')).toBe('true');
+    rerender(<BareInput value="" onChange={() => {}} aria-label="e" />);
+    expect(screen.getByRole('textbox').hasAttribute('aria-invalid')).toBe(false);
+  });
+
   it('mono=true のとき monospace フォントが設定される', () => {
     // jsdom は @layer components CSS を解釈しないため className で検証（視覚確認は VRT/E2E 委譲）
     render(<BareInput value="" onChange={() => {}} mono aria-label="mono" />);

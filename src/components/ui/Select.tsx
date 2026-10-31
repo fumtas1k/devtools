@@ -29,7 +29,7 @@ export function Select<T extends string>({
         onChange={(e) => onChange(e.target.value as T)}
         aria-label={ariaLabel}
         autoComplete={autoComplete}
-        className="caption w-full rounded-md border border-input bg-default text-default appearance-none pl-3 pr-10 py-2"
+        className="field-control field-control--select"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value} disabled={opt.disabled}>
@@ -44,7 +44,7 @@ export function Select<T extends string>({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
-        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted"
+        className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted"
       >
         <path
           d="M2 4L6 8L10 4"
