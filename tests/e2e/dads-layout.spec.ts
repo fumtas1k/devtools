@@ -65,6 +65,21 @@ test.describe('DADS のレイアウト（production CSP 適用）', () => {
     );
   });
 
+  test('フッターのリンクは hover で下線が 3px に太くなる', async ({ browser }) => {
+    await withProductionCsp(
+      browser,
+      '/',
+      async (page) => {
+        const link = page.getByRole('link', { name: 'About' });
+        await expect(link).toHaveCSS('text-decoration-line', 'underline');
+        await expect(link).not.toHaveCSS('text-decoration-thickness', '3px');
+        await link.hover();
+        await expect(link).toHaveCSS('text-decoration-thickness', '3px');
+      },
+      { skipHydration: true }
+    );
+  });
+
   test('PageContainer の最大幅は 1120px で左右に 24px の余白がある', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/base64', async (page) => {
       await page.setViewportSize({ width: 1600, height: 900 });
