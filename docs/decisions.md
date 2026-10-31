@@ -5421,6 +5421,7 @@ Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイ�
 
 - **文字クラスの枠を太く（2px）し、角を小さく（rx 2。リテラルは 6、凡例は 4）する**。凡例の見本にも同じ値を使う（`CHARCLASS_RX` を共有）
 - **枠の色を `--color-primary`（blue-900）にする**。白地で非テキストの 3:1 を大きく超える
+- 太い枠が SVG の端で切れないよう、文字クラスの rect は 1px 内側に置く（外形は他ノードと同じ）。hotspot 中も `.rr-charclass.rr-box-hot` で枠を 2.5px にして差を残す。凡例のリテラルは図に合わせて rx 6 にした
 - 検証は `tests/e2e/regex-visualizer.spec.ts` で computed style（`stroke-width` / `rx`）を図と凡例の両方で比べる。実装を戻すと失敗する（陽性対照）
 
 ### 却下した選択肢

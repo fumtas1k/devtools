@@ -226,6 +226,10 @@ test.describe('鉄道図: 種別の形状差', () => {
       expect(parseFloat(await sw(charclass))).toBeGreaterThan(parseFloat(await sw(literal)));
       expect(parseFloat(await rx(charclass))).toBeLessThan(parseFloat(await rx(literal)));
 
+      // 枠色は非テキスト 3:1 のため、リテラルと違う濃色（primary）であること
+      const stroke = async (l: typeof literal) => l.evaluate((e) => getComputedStyle(e).stroke);
+      expect(await stroke(charclass)).toBe('rgb(0, 23, 193)');
+
       const legendLiteral = page.locator('.rr-legend rect.rr-box');
       const legendCharclass = page.locator('.rr-legend rect.rr-charclass');
       expect(parseFloat(await sw(legendCharclass))).toBeGreaterThan(

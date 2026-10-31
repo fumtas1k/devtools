@@ -1334,6 +1334,10 @@
     stroke: var(--color-warning);
     stroke-width: 1.5;
   }
+  /* hotspot 中の文字クラスも、リテラルより太い枠で形の差を残す。 */
+  .rr-charclass.rr-box-hot {
+    stroke-width: 2.5;
+  }
   /* 後方参照（\1 / \k<name>）: 破線枠でリテラルと視覚的に区別する。 */
   .rr-backref {
     stroke-dasharray: 3 2;
