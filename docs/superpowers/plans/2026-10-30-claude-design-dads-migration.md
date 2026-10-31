@@ -101,7 +101,7 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 
 ### Phase 6: レイアウト・Astro ページ
 
-- [ ] favicon（`public/favicon.svg`、旧 blue→violet のグラデーション）と PWA アイコン（`public/icons/*.png`）を DADS の配色に合わせる
+- [x] favicon（`public/favicon.svg`、旧 blue→violet のグラデーション）と PWA アイコン（`public/icons/*.png`）を DADS の配色に合わせる
 - [ ] ヘッダー / フッター / `ToolCard` / `PageContainer`（最大幅、余白）
 - [ ] Astro の `style="var(--color-*)"` 移行（[#289](https://github.com/fumtas1k/devtools/issues/289)）とまとめて進めるか判断
 

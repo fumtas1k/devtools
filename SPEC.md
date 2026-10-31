@@ -1720,8 +1720,7 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
 
 ### 12.6 アイコン生成
 
-`favicon.svg`（32×32 の `>_` ターミナルプロンプト SVG）を元に、`scripts/generate-icons.mjs` で  
-`sharp`（Astro の推移的依存として利用可能）を使い PNG 4 枚を生成する。
+`favicon.svg`（32×32、blue-900 `#0017C1` の単色地 + 白の `>_`。[146]）を元に、Playwright（Chromium）で描画して PNG 4 枚を生成する。
 
 - `icon-192.png` / `icon-512.png`：`purpose: any` 用（角丸あり）
 - `icon-maskable-192.png` / `icon-maskable-512.png`：`purpose: maskable` 用（背景を端まで塗り・セーフゾーン内にマーク）  
