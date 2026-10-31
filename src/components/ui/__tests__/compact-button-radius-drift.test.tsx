@@ -54,7 +54,7 @@ describe('compact ボタン border-radius drift 検知 (陰性対照)', () => {
 
     expect(btn.className).toContain(tokens.borderRadius); // 'rounded-button-sm'
     expect(btn.className).toContain(tokens.px); // 'px-3'
-    expect(btn.className).toContain(tokens.py); // 'py-2'
+    expect(btn.className).toContain(tokens.py); // 'py-0.5'
     expect(btn.className).toContain(tokens.leading); // 'leading-none'
     expect(btn.className).toContain(tokens.fontWeight); // 'font-bold'
   });

@@ -7,7 +7,9 @@ import { waitForReactHydration } from './helpers';
  * 通常・hover・:focus-visible・disabled の computed style を検証する。
  *
  * 陽性対照: Phase 5 以前の実装（primary の枠が 1px solid、outline が灰色地、hover に下線なし、
- * disabled が bg-subtle + muted 文字、compact が 32px）では各テストが fail することを確認済み。
+ * disabled が bg-subtle + muted 文字、compact が 32px）では、ラベル行の高さのテストを除く各テストが
+ * fail することを確認済み。ラベル行の高さのテストは、ボタンを sm（36px）にしたままラベル行を
+ * min-h-8 に戻すと fail する（4px ずれる）ことを確認済み。
  */
 
 const PRIMARY = 'rgb(0, 23, 193)'; // blue-900
@@ -78,6 +80,19 @@ test.describe('DADS Button の見た目', () => {
       await expect(btn).toHaveCSS('background-color', DISABLED);
     });
 
+    // レイヤー外の `:where(button) { cursor: pointer }` が @layer components の
+    // `.btn-action:disabled { cursor: not-allowed }` を上書きしていた不具合の回帰ガード
+    test('disabled のボタンは cursor が not-allowed、有効なボタンは pointer', async ({ page }) => {
+      await expect(page.getByRole('button', { name: '一括生成' })).toHaveCSS(
+        'cursor',
+        'not-allowed'
+      );
+      await expect(page.getByRole('button', { name: '鍵ペアを新規生成' })).toHaveCSS(
+        'cursor',
+        'pointer'
+      );
+    });
+
     test('variant="default" は outline（白地・blue-900 の文字と 1px 枠）', async ({ page }) => {
       const btn = page.getByRole('button', { name: '行を追加' });
       await expect(btn).toHaveCSS('background-color', WHITE);
@@ -119,7 +134,7 @@ test.describe('DADS Button の見た目', () => {
     });
 
     test('danger は白地で、hover で red-50 の地・error-2 の文字 + 下線', async ({ page }) => {
-      const btn = page.getByRole('button', { name: /パラメータ 1 を削除|削除/ }).first();
+      const btn = page.getByRole('button', { name: 'パラメータ 1 を削除' });
       await expect(btn).toHaveCSS('background-color', WHITE);
       await btn.hover();
       await expect(btn).toHaveCSS('background-color', ERROR_BG);
@@ -182,7 +197,9 @@ test.describe('DADS Button の見た目', () => {
       await waitForReactHydration(page);
     });
 
-    test('outline の md で、hover と :focus-within で blue-200 の地 + 下線', async ({ page }) => {
+    test('outline の md で、hover とキーボードフォーカスで blue-200 の地 + 下線', async ({
+      page,
+    }) => {
       const label = page.locator('label').filter({ hasText: 'ファイルを選択' });
       await expect(label).toHaveCSS('background-color', WHITE);
       await expect(label).toHaveCSS('border-top-color', PRIMARY);
@@ -197,6 +214,20 @@ test.describe('DADS Button の見た目', () => {
       await focusByKeyboard(page, label.locator('input[type="file"]'));
       await expect(label).toHaveCSS('background-color', BG_PRIMARY_HOVER);
       await expect(label).toHaveCSS('text-decoration-line', 'underline');
+    });
+
+    // :focus-within だとクリックでファイル選択を開いた後も input にフォーカスが残り、
+    // hover の見た目とフォーカスリングが残り続ける。:has(input:focus-visible) にした回帰ガード
+    test('マウスでクリックした後はポインタを外すと通常の見た目に戻る', async ({ page }) => {
+      const label = page.locator('label').filter({ hasText: 'ファイルを選択' });
+      const input = label.locator('input[type="file"]');
+      const chooser = page.waitForEvent('filechooser');
+      await label.click();
+      await chooser;
+      await page.mouse.move(0, 0);
+      await expect(input).toBeFocused();
+      await expect(label).toHaveCSS('background-color', WHITE);
+      await expect(label).toHaveCSS('outline-style', 'none');
     });
   });
 });
