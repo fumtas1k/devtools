@@ -10,17 +10,18 @@ interface Props {
   role?: string;
 }
 
+// DADS の NotificationBanner（color-chip 型）: 見出し 18px Bold + 28px アイコン、本文 16px（docs/decisions.md [141]）
 export function NotificationBanner({ variant = 'warning', title, children, role = 'note' }: Props) {
   return (
     <div
       role={role}
-      className={`notification-banner notification-banner--${variant} rounded-xl pt-4 pr-6 pb-6 pl-10`}
+      className={`notification-banner notification-banner--${variant} rounded-lg pt-4 pr-6 pb-6 pl-10`}
     >
-      <div className="flex items-center gap-3">
-        <StatusIcon variant={variant} size={24} filled className="shrink-0" />
-        <p className="body-emphasis text-default">{title}</p>
+      <div className="flex items-start gap-3">
+        <StatusIcon variant={variant} size={28} filled className="shrink-0" />
+        <p className="section-heading font-bold text-default">{title}</p>
       </div>
-      <div className="caption text-default mt-2">{children}</div>
+      <div className="text-body mt-2">{children}</div>
     </div>
   );
 }
