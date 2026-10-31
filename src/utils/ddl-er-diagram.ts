@@ -214,12 +214,13 @@ function escSvg(s: string): string {
 }
 
 // レイアウト定数
-const FONT_SIZE = 13;
+// 文字サイズは DADS の下限 14px 以上にする（docs/decisions.md [149]）。図内の文字はすべてこの定数から組む
+export const FONT_SIZE = 14;
 const CHAR_W = FONT_SIZE * 0.62; // 等幅フォント前提の文字幅推定係数
-const ROW_H = 22; // 1行の高さ
-const HEADER_H = 26; // ヘッダ行の高さ
+const ROW_H = 26; // 1行の高さ
+const HEADER_H = 30; // ヘッダ行の高さ
 const PAD_X = 12; // 水平パディング
-const GAP = 40; // テーブル間の余白
+const GAP = 72; // テーブル間の余白（リレーションラベル "user_id" 等が 14px で収まる幅。長い名前は従来どおり重なる）
 const COLS = 3; // グリッド最大列数
 
 // 配色（SVG presentation 属性として使用。Tailwindカラークラスではない）
@@ -376,7 +377,7 @@ export function toSvg(model: SchemaModel): string {
       const mainText = `${col.name} : ${col.type || '?'}`;
       parts.push(
         `<text x="${x + PAD_X}" y="${textY}" ` +
-          `font-family="monospace" font-size="${FONT_SIZE - 1}" ` +
+          `font-family="monospace" font-size="${FONT_SIZE}" ` +
           `fill="${C.text}" dominant-baseline="middle">${escSvg(mainText)}</text>`
       );
 
@@ -386,15 +387,15 @@ export function toSvg(model: SchemaModel): string {
       if (col.isForeignKey) badges.push({ label: 'FK', color: C.fkBadge });
       let bx = x + w - PAD_X;
       for (const b of badges.reverse()) {
-        const bw = b.label.length * (FONT_SIZE - 2) * 0.62 + 6;
+        const bw = b.label.length * FONT_SIZE * 0.62 + 8;
         bx -= bw + 2;
         parts.push(
-          `<rect x="${bx}" y="${textY - (ROW_H / 2 - 3)}" width="${bw}" height="${ROW_H - 6}" ` +
+          `<rect x="${bx}" y="${textY - (ROW_H / 2 - 2)}" width="${bw}" height="${ROW_H - 4}" ` +
             `fill="${b.color}" rx="2"/>`
         );
         parts.push(
           `<text x="${bx + bw / 2}" y="${textY}" ` +
-            `font-family="monospace" font-size="${FONT_SIZE - 3}" font-weight="bold" ` +
+            `font-family="monospace" font-size="${FONT_SIZE}" font-weight="bold" ` +
             `fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${b.label}</text>`
         );
       }
@@ -440,11 +441,11 @@ export function toSvg(model: SchemaModel): string {
     const labelX = (x1 + x2) / 2;
     const labelY = (y1 + y2) / 2 - 6;
     // ラベル背景: 等幅フォント前提で文字列幅を推定し、白背景 rect をラベル直前に描画する
-    const labelFontSize = FONT_SIZE - 3;
+    const labelFontSize = FONT_SIZE;
     const labelW = rel.fromColumn.length * labelFontSize * 0.62;
     const labelPadX = 3;
-    const labelPadY = 2;
-    const labelH = labelFontSize + labelPadY * 2;
+    const labelPadY = 3;
+    const labelH = labelFontSize + labelPadY * 2 + 2; // 下降部（g / y など）が背景からはみ出さないよう +2
     parts.push(
       `<rect x="${labelX - labelW / 2 - labelPadX}" y="${labelY - labelFontSize - labelPadY}" ` +
         `width="${labelW + labelPadX * 2}" height="${labelH}" ` +

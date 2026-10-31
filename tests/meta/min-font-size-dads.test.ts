@@ -15,7 +15,8 @@ import { join, relative, resolve } from 'node:path';
  *   - Tailwind の `text-xs`（12px）と任意値 `text-[11px]` / `text-[0.7rem]`
  *
  * 限界: 数値リテラルの直書きだけを見る。`font-size="${FONT_SIZE}"` のように定数・テンプレート経由で組む
- * SVG（`src/utils/ddl-er-diagram.ts` 等）は検知できない（docs/decisions.md [145]）。
+ * SVG は検知できない。`src/utils/ddl-er-diagram.ts` は生成した SVG 文字列の全 `font-size` が 14 以上であることを
+ * `src/utils/__tests__/ddl-er-diagram.test.ts` で確認している（docs/decisions.md [145] / [149]）。
  *
  * 許可リスト: セレクタ（CSS）またはパス（その他）単位で、理由を書いて最小限に置く。
  */
