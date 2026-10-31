@@ -289,6 +289,8 @@ describe('toSvg', () => {
       expect(svg).toContain('>FK<');
       expect(svg).toContain('>user_id<');
       const sizes = fontSizes(svg);
+      // すべての <text> が font-size 属性を持つこと（属性なし・別の書き方で指定した文字を見逃さない）
+      expect(sizes).toHaveLength((svg.match(/<text /g) ?? []).length);
       expect(sizes.length).toBeGreaterThanOrEqual(8);
       for (const s of sizes) expect(Number(s)).toBeGreaterThanOrEqual(14);
     });
