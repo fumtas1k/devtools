@@ -19,6 +19,13 @@ Claude Code 固有の補足は `.claude/rules/` に分割し、上記 `@import` 
 
 `codex` が使えない環境（Claude Code on the web 等）では、Opus のサブエージェントを effort high 以上で起動してレビューさせる（Agent tool の `model: "opus"` / `effort: "high"`）。読み取り専用で、指摘は重大度・該当箇所・根拠付きで報告させる。
 
+### 実装を委ねるときのモデル
+
+実装を別セッション（`create_session`）やサブエージェントに委ねるときは **Sonnet（effort high）** を指定し、レビューだけを Opus（effort high）にする。モデルを省略すると親と同じ Opus で動き、5 時間枠をすぐ使い切る（DADS 移行 Phase 5 で発生）。
+
+- `create_session`: `model: "claude-sonnet-5-5"`（現行の Sonnet の ID）。effort はこのツールで指定できないため、起動後にユーザーへアプリでの切り替えを依頼する
+- Agent tool: `model: "sonnet"` / `effort: "high"`
+
 ### 前提モデル
 
 `.claude/settings.json` の `model: "opus[1m]"` は現行世代の最新 Opus を指すエイリアス。`.agents/rules/common.md` の出力量（1.1 節）・委譲判断（6.9 節）の規約は、執筆時点の Claude Opus 5 の既定挙動（出力が長い / subagent 委譲に積極的）を前提にしている。**解決先が次世代に移ったら、これらの前提を見直す**。
