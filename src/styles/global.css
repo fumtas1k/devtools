@@ -122,24 +122,27 @@
   --color-text: #333333; /* solid-gray-800: 本文・見出し */
   --color-muted: #4d4d4d; /* solid-gray-700: 補助テキスト */
   --color-bg: #ffffff; /* white: ページ背景・カード（DADS の surface-page） */
-  --color-bg-surface: #f2f2f2; /* solid-gray-50: テーブル見出し・縞・読み取り専用欄 */
+  --color-bg-surface: #f2f2f2; /* solid-gray-50: テーブル見出し・読み取り専用欄 */
   --color-bg-subtle: #f2f2f2; /* solid-gray-50: hover・既定ボタン背景（DADS の薄いグレーは 1 段のみ） */
   --color-border: #e6e6e6; /* solid-gray-100: カード枠・区切り */
+  --color-border-divider: #949494; /* solid-gray-420: 表の行の区切り線（DADS の Table） */
+  --color-border-table-head: #999999; /* solid-gray-400: 表の見出し行の下罫線（DADS の Table） */
   --color-border-strong: #767676; /* solid-gray-536: 図の線など 3:1 が必要な非テキスト（白地 4.54:1 / gray-50 上 4.06:1） */
   --color-border-input: #666666; /* solid-gray-600: 入力欄・コントロールの枠（白地 5.74:1） */
   --color-error-text: #ce0000; /* error-2 (red-900): red-50 上 5.14:1 */
 
-  /* データの色分け（UUID v7 のフィールド・JWT）: DADS の色相から、白地・gray-50・選択行
-     （primary 8%）のどれでも文字 4.5:1 以上になる段。隣り合う UUID フィールドは明度も交互に変える
+  /* データの色分け（UUID v7 のフィールド・JWT）: DADS の色相から、白地・gray-50・表の hover 行
+     （blue-50）・選択行（blue-100）のどれでも文字 4.5:1 以上になる段。隣り合う UUID フィールドは明度も交互に変える
      （docs/decisions.md [141]） */
-  --color-uuid-ver: #aa00aa; /* magenta-800: 選択行 5.44:1 */
-  --color-uuid-rand-a: #0c472a; /* green-1000: 選択行 9.18:1 */
-  --color-uuid-var: #ac3e00; /* orange-900: 選択行 5.20:1 */
-  --color-uuid-rand-b: #004c59; /* cyan-1100: 選択行 8.22:1 */
+  --color-uuid-ver: #aa00aa; /* magenta-800: 選択行 5.08:1 */
+  --color-uuid-rand-a: #0c472a; /* green-1000: 選択行 8.57:1 */
+  --color-uuid-var: #ac3e00; /* orange-900: 選択行 4.85:1 */
+  --color-uuid-rand-b: #004c59; /* cyan-1100: 選択行 7.67:1 */
   --color-jwt-payload: #6f23d0; /* purple-700: payload 枠（gray-50 上 6.64:1） */
   --color-jwt-value: #6e5600; /* yellow-1100: JSON の値（gray-50 上 6.27:1） */
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
-  --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景 */
+  --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景・トグルと表の行の hover */
+  --color-bg-selected: #d9e6ff; /* blue-100: 選択中の表の行（hover の blue-50 と区別。本文 10.06:1 / muted 6.73:1） */
   --color-badge-bg: #d9e6ff; /* blue-100: カテゴリバッジ背景 */
   --color-overlay: rgba(0, 0, 0, 0.5); /* opacity-gray-500: モーダル背景 */
 
@@ -529,7 +532,7 @@
     color: var(--color-text);
   }
 
-  /* === PR 1.5: Surface bg (used by table thead row & InputField readOnly) === */
+  /* === PR 1.5: Surface bg (InputField の readOnly 等) === */
   .bg-surface {
     background: var(--color-bg-surface);
   }
@@ -537,32 +540,46 @@
   /* === PR 9 ([#304]): ResultTable は Constructable Stylesheets 経路に移行、
      `.result-table { min-width: var(...) }` / `.result-table-col { width: var(...) }`
      は撤去。`docs/decisions.md [067]` 参照 === */
-  .result-table-row:nth-child(odd) {
+  /* DADS の Table（docs/decisions.md [142]）: 縞なし、行の下罫線 solid-gray-420、
+     thead は solid-gray-50 地・Bold・下罫線 2px solid-gray-400。罫線は td の inset box-shadow で描き、
+     選択時に罫線の太さが変わっても行の高さがずれないようにする。
+     文字は DADS の 16px ではなく .caption（14px）のまま（等幅の ID や IP を並べる表が PC 幅に収まらなくなるため） */
+  .result-table > thead > tr > th {
+    background: var(--color-bg-surface);
+    color: var(--color-text);
+    font-weight: 700;
+    box-shadow: inset 0 -2px 0 var(--color-border-table-head);
+  }
+  .result-table-row {
     background: var(--color-bg);
   }
-  .result-table-row:nth-child(even) {
-    background: var(--color-bg-surface);
+  /* 区切り線（最終行はカードの枠と重なるので引かない） */
+  .result-table-row:not(:last-child) > td {
+    box-shadow: inset 0 -1px 0 var(--color-border-divider);
   }
-  .result-table-row[data-selected='true'] {
-    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg));
+  /* 行 hover は DADS どおり blue-50。タッチ端末でタップ後に残らないよう hover できる端末に限る */
+  @media (hover: hover) {
+    .result-table-row:hover {
+      background: var(--color-bg-active);
+    }
   }
   .result-table-row[data-clickable='true'] {
     cursor: pointer;
+  }
+  /* 選択行: blue-100 地 + 上下 2px の primary（hover の blue-50 と区別する。hover より後に置いて勝たせる） */
+  .result-table-row[data-selected='true'] {
+    background: var(--color-bg-selected);
+  }
+  .result-table-row[data-selected='true'] > td {
+    box-shadow:
+      inset 0 2px 0 var(--color-primary),
+      inset 0 -2px 0 var(--color-primary);
   }
   /* :where(button, ...):focus-visible は <tr> 不対象のため、clickable row 専用に focus ring を別定義。
      outline-offset は負値で <tr> 境界の内側に描画し overflow-hidden の親に切られないようにする。 */
   .result-table-row[data-clickable='true']:focus-visible {
     outline: var(--focus-ring);
     outline-offset: -4px;
-  }
-  /* selection マーカー (border-top/bottom 2px primary) */
-  .result-table-row[data-selected='true'] > td {
-    border-top: 2px solid var(--color-primary);
-    border-bottom: 2px solid var(--color-primary);
-  }
-  /* 区切り線 (最終行と選択中の行を除く) */
-  .result-table-row:not(:last-child):not([data-selected='true']) > td {
-    box-shadow: inset 0 -1px 0 var(--color-border);
   }
 
   /* === PR 1.5: InputField サンプルボタン === */
@@ -1508,25 +1525,34 @@
     padding: 0;
     font-size: inherit;
   }
+  /* 表は ResultTable と同じ DADS の Table（docs/decisions.md [142]）。縦罫線と縞は付けない */
   .markdown-preview table {
     border-collapse: collapse;
     width: 100%;
     margin-bottom: 0.875rem;
-    font-size: 0.875rem;
+    font-size: 1rem;
+    line-height: 1.5;
   }
+  .markdown-preview th,
+  .markdown-preview td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border-divider);
+  }
+  /* 見出しは ResultTable と同じく折り返さない（日本語の短い見出しが 1 文字ずつ折れるのを防ぐ。
+     はみ出す場合はプレビュー欄がスクロールする） */
   .markdown-preview th {
     background: var(--color-bg-surface);
     font-weight: 700;
     text-align: left;
-    border: 1px solid var(--color-border);
-    padding: 0.4rem 0.75rem;
+    white-space: nowrap;
   }
-  .markdown-preview td {
-    border: 1px solid var(--color-border);
-    padding: 0.4rem 0.75rem;
+  .markdown-preview thead th {
+    border-bottom: 2px solid var(--color-border-table-head);
   }
-  .markdown-preview tr:nth-child(even) td {
-    background: var(--color-bg-subtle);
+  @media (hover: hover) {
+    .markdown-preview tbody tr:hover {
+      background: var(--color-bg-active);
+    }
   }
   .markdown-preview a {
     color: var(--color-link);

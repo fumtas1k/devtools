@@ -95,7 +95,7 @@ DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChi
 - [ ] `ActionButton`（solid-fill / outline / text、サイズ、hover 下線、double border）
 - [ ] `InputField` / `BareInput` / `Select` / textarea（枠色、read-only 破線、エラー）
 - [x] `NotificationBanner` / `StatusBadge` / `ChipLabel`（`docs/decisions.md [141]`）
-- [ ] `ResultTable`
+- [x] `ResultTable` と Markdown プレビューの表（縞をやめて DADS の罫線・thead・行 hover・選択色にする。文字は 14px のまま。`docs/decisions.md [142]`）
 - [ ] `ToggleGroup` / `ToggleChips` / `FileInputButton` / `DownloadButton` / `CopyButton`
 
 ### Phase 6: レイアウト・Astro ページ
