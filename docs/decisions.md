@@ -5171,3 +5171,32 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 - ✅ コントロールとカードの角丸が DADS の値で使い分けられる
 - ⚠️ 入力欄・ボタンの角が小さくなり、影が濃くなるため、全ページの見た目が変わる（VRT の差分になる）
+
+---
+
+## [141] DADS 移行 Phase 5: 通知・状態表示（NotificationBanner / StatusBadge / ChipLabel）と UUID v7 / JWT の色
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 のうち通知・状態表示の 3 部品を、Claude Design の DS（`components.css` の `.dads-banner` / `.dads-status-badge` / `.dads-chip`）に合わせた。あわせて、トークンを経由せず AA を満たさない直書き色が残っていた UUID v7 生成と JWT デコーダの色を DADS の色相に置き換えた（#808）。
+
+### 決断
+
+- **NotificationBanner**: color-chip 型（2px の枠 + 左 16px の色帯、角丸 12px）は維持し、見出しを 18px Bold（`.section-heading` + `font-bold`。DS の 18px / 1.5 に対し、本リポジトリの Std-18B-160）、アイコンを 28px、本文を 16px（`.text-body`、Std-16N-175）に上げた。枠・色帯・アイコンは `currentColor` で描き、種類ごとの色は `color` だけで切り替える
+- 色は既存の semantic token のまま。warning は DS の `warning-yellow-2`（`yellow-900`）ではなく `--color-warning`（`yellow-1000`）を使う。バナーで色を使うのは枠・色帯・アイコン（非テキスト）だけで、どちらも白地 3:1 を満たす。サイト内の warning を 1 色に保つため（[135]）
+- **StatusBadge**: DS どおり 16px / 400 / 行高 1、padding 8px。地色は白文字で 4.5:1 を満たす semantic 色のまま（error は `error-1` で白文字 4.60:1。DS は「`-1` で不足するのは success / warning」としている）。狭いセル（ContrastMatrix）で「AAA」と「○」が割れないよう `white-space: nowrap` を付けた
+- **ChipLabel**: DS の outline 型（最小高 32px、16px / 400 / 行高 1、padding 3px 7px、枠 1px `currentColor`）。neutral の枠も `currentColor`（`--color-muted`）にし、旧来の `--color-border`（白地 1.2:1）をやめた。地は DS の透明ではなく白で固定する。正規表現の AST の危険ノード（red-50）に載ると `error-1` の文字が 4.08:1 に落ちるため
+- **UUID v7 / JWT（#808）**: 色を `:root` の `--color-uuid-*` / `--color-jwt-*` に移し、DADS の色相から白地・gray-50（偶数行・パネル）・選択行（primary 8%）のどれでも文字 4.5:1 以上になる段を選んだ。UUID の隣り合うフィールドは明度も交互にした（ts `blue-900` → ver `magenta-800` → rand_a `green-1000` → var `orange-900` → rand_b `cyan-1100`。隣接ペアのコントラストは 1.58〜1.77:1）。JWT の payload 枠は `purple-700`、値は `yellow-1100`。`.uuid-field-bits` は `opacity: 0.7`（gray-50 上で 4.5:1 未満）をやめ、親の `--color-muted` をそのまま使う
+
+### 却下した選択肢
+
+- **ChipLabel の地を DS どおり透明にする**: tint 上に載る箇所で文字のコントラストが不足する
+- **StatusBadge の error を DS の `-2`（`error-2`）にする**: `error-1` でも白文字 4.5:1 を満たし、バナー・チップの error と色がずれる
+
+### 結果・トレードオフ
+
+- ✅ 3 部品の寸法が DS と一致し、`--color-border` 由来のチップ枠のコントラスト不足と、UUID / JWT の AA 未達が解消する
+- ⚠️ バッジ・チップ・バナー本文が 14px → 16px になり、使う画面（正規表現ビジュアライザ、ContrastMatrix、SAML / 証明書 / 鍵 / CSR 等）の高さと幅が変わる（VRT の差分になる）
+- ⚠️ UUID の 14px 未満の文字（`.uuid-field-key` / `.uuid-field-bits`）と JWT の `.jwt-pre`（12px）のサイズは #814 で扱う

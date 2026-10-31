@@ -88,13 +88,13 @@ DS 側のコンポーネント: Button / Input / Select / Checkbox / Radio / Tex
 
 ### Phase 5: コンポーネント（1 コンポーネント 1 PR 目安）
 
-- [ ] UUID v7 生成・JWT デコーダの直書き色を DADS の色に置き換える（[#808](https://github.com/fumtas1k/devtools/issues/808)）
+- [x] UUID v7 生成・JWT デコーダの直書き色を DADS の色に置き換える（[#808](https://github.com/fumtas1k/devtools/issues/808)、`docs/decisions.md [141]`）
 
 DS にあるものから着手し、DS にないもの（ToggleGroup / ToggleChips / CopyButton 等）は DS のボタン・チップ規約から派生させる。
 
 - [ ] `ActionButton`（solid-fill / outline / text、サイズ、hover 下線、double border）
 - [ ] `InputField` / `BareInput` / `Select` / textarea（枠色、read-only 破線、エラー）
-- [ ] `NotificationBanner` / `StatusBadge` / `ChipLabel`
+- [x] `NotificationBanner` / `StatusBadge` / `ChipLabel`（`docs/decisions.md [141]`）
 - [ ] `ResultTable`
 - [ ] `ToggleGroup` / `ToggleChips` / `FileInputButton` / `DownloadButton` / `CopyButton`
 

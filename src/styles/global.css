@@ -128,6 +128,16 @@
   --color-border-strong: #767676; /* solid-gray-536: 図の線など 3:1 が必要な非テキスト（白地 4.54:1 / gray-50 上 4.06:1） */
   --color-border-input: #666666; /* solid-gray-600: 入力欄・コントロールの枠（白地 5.74:1） */
   --color-error-text: #ce0000; /* error-2 (red-900): red-50 上 5.14:1 */
+
+  /* データの色分け（UUID v7 のフィールド・JWT）: DADS の色相から、白地・gray-50・選択行
+     （primary 8%）のどれでも文字 4.5:1 以上になる段。隣り合う UUID フィールドは明度も交互に変える
+     （docs/decisions.md [141]） */
+  --color-uuid-ver: #aa00aa; /* magenta-800: 選択行 5.44:1 */
+  --color-uuid-rand-a: #0c472a; /* green-1000: 選択行 9.18:1 */
+  --color-uuid-var: #ac3e00; /* orange-900: 選択行 5.20:1 */
+  --color-uuid-rand-b: #004c59; /* cyan-1100: 選択行 8.22:1 */
+  --color-jwt-payload: #6f23d0; /* purple-700: payload 枠（gray-50 上 6.64:1） */
+  --color-jwt-value: #6e5600; /* yellow-1100: JSON の値（gray-50 上 6.27:1） */
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
   --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景 */
   --color-badge-bg: #d9e6ff; /* blue-100: カテゴリバッジ背景 */
@@ -586,30 +596,24 @@
     border-color: var(--color-error);
   }
 
-  /* Notification banner (DADS 通知バナー color-chip 型: 全周ボーダー + 左カラーチップ)
-     左帯は inset box-shadow（16px）で表現し、角丸に沿ってクリップされる。 */
+  /* Notification banner (DADS 通知バナー color-chip 型: 2px の全周ボーダー + 左 16px のカラーチップ)
+     枠・チップ・アイコンは currentColor（種類ごとの色）で描き、見出しと本文は本文色にする。
+     左帯は inset box-shadow で表現し、角丸に沿ってクリップされる（docs/decisions.md [141]）。 */
   .notification-banner {
-    border: 2px solid;
+    border: 2px solid currentColor;
+    box-shadow: inset 16px 0 0 0 currentColor;
     background: var(--color-bg);
   }
   .notification-banner--warning {
-    border-color: var(--color-warning);
-    box-shadow: inset 16px 0 0 0 var(--color-warning);
     color: var(--color-warning);
   }
   .notification-banner--error {
-    border-color: var(--color-error);
-    box-shadow: inset 16px 0 0 0 var(--color-error);
     color: var(--color-error);
   }
   .notification-banner--info {
-    border-color: var(--color-info);
-    box-shadow: inset 16px 0 0 0 var(--color-info);
     color: var(--color-info);
   }
   .notification-banner--success {
-    border-color: var(--color-success);
-    box-shadow: inset 16px 0 0 0 var(--color-success);
     color: var(--color-success);
   }
 
@@ -647,18 +651,18 @@
     border-left: 4px solid var(--color-error);
   }
   .section-jwt-payload {
-    border-left: 4px solid #9333ea;
+    border-left: 4px solid var(--color-jwt-payload);
   }
   .section-jwt-signature {
     border-left: 4px solid var(--color-primary);
   }
 
-  /* JwtDecoder: JSON syntax colors (not UI tokens, kept local) */
+  /* JwtDecoder: JSON syntax colors */
   .jwt-json-key {
     color: var(--color-link);
   }
   .jwt-json-value {
-    color: #6e4f0e;
+    color: var(--color-jwt-value);
   }
 
   /* JwtDecoder: <pre> (decoded JSON) typography */
@@ -686,16 +690,16 @@
     color: var(--color-primary);
   }
   .uuid-field-ver {
-    color: #7c3aed;
+    color: var(--color-uuid-ver);
   }
   .uuid-field-rand-a {
-    color: #059669;
+    color: var(--color-uuid-rand-a);
   }
   .uuid-field-var {
-    color: #d97706;
+    color: var(--color-uuid-var);
   }
   .uuid-field-rand-b {
-    color: #0891b2;
+    color: var(--color-uuid-rand-b);
   }
 
   /* UuidV7Generator: field key label typography
@@ -705,9 +709,9 @@
   .uuid-field-key {
     font-size: 0.75rem;
   }
+  /* 色は親の .text-muted を継承する（opacity で薄めると gray-50 上で 4.5:1 を割るため使わない） */
   .uuid-field-bits {
     font-size: 0.7rem;
-    opacity: 0.7;
   }
 
   /* 0.75rem の補足テキスト用 semantic class（Tailwind primitive `text-xs` 直書きの代替）。
@@ -1269,16 +1273,18 @@
     }
   }
 
-  /* === StatusBadge: 小さい filled ピル（地色=semantic 色、文字=白） === */
+  /* === StatusBadge: DADS の StatusBadge（塗りのピル、16px / 400 / 行高 1、padding 8px、白文字） ===
+     地色は白文字で 4.5:1 を満たす semantic 色（docs/decisions.md [141]） */
   .status-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.125rem 0.5rem;
-    border-radius: var(--radius-md, 0.5rem);
-    font-weight: 700;
-    font-size: 0.875rem;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 400;
+    font-size: 1rem;
     line-height: 1;
-    color: var(--color-text-on-primary, #fff);
+    white-space: nowrap; /* 1 行のラベル。狭いセル（ContrastMatrix）で「AAA」と「○」が割れないように */
+    color: var(--color-text-on-primary);
   }
   .status-badge--error {
     background: var(--color-error);
@@ -1293,29 +1299,30 @@
     background: var(--color-info);
   }
 
-  /* === ChipLabel: アウトライン型ピル（白背景 + color ボーダー + color 文字） === */
+  /* === ChipLabel: DADS の ChipLabel（outline 型。最小高 32px、16px / 400 / 行高 1、枠 1px currentColor） ===
+     地は白で固定する。tint の行（.regex-ast-node-hot の red-50 等）に載っても error-1 の文字が
+     4.5:1 を保つため（docs/decisions.md [141]） */
   .chip-label {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.125rem 0.5rem;
-    border-radius: var(--radius-md, 0.5rem);
-    border: 1px solid;
-    background: var(--color-bg, #fff);
-    font-size: 0.875rem;
-    font-weight: 700;
-    line-height: 1.2;
+    min-height: 2rem;
+    padding: 3px 7px;
+    border-radius: var(--radius-md);
+    border: 1px solid currentColor;
+    background: var(--color-bg);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1;
+    overflow-wrap: anywhere;
   }
   .chip-label--error {
-    border-color: var(--color-error);
     color: var(--color-error);
   }
   .chip-label--info {
-    border-color: var(--color-info);
     color: var(--color-info);
   }
   .chip-label--neutral {
-    border-color: var(--color-border);
     color: var(--color-muted);
   }
 
