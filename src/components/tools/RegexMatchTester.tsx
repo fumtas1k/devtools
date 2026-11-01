@@ -163,7 +163,8 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
     { fallbackError: 'マッチ実行に失敗しました' }
   );
 
-  const result = match.result;
+  // 判定が無効になった render で前回のマッチも直ちに隠す。
+  const result = shouldRun ? match.result : null;
   const matches = result?.matches ?? [];
   const selectedIndex = selected !== null && selected < matches.length ? selected : null;
   // 表示中のテキスト（unknown は capped 入力でマッチしているのでハイライトも同じ範囲）

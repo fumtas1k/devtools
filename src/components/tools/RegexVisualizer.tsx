@@ -31,6 +31,8 @@ const SAMPLE = '(a+)+$';
 type RegexModule = typeof import('@/utils/regex-visualizer');
 
 interface Analysis {
+  pattern: string;
+  flags: string;
   ast: RegexAstNode;
   redos: RedosResult;
   rail: RailNode;
@@ -73,6 +75,8 @@ export function RegexVisualizer() {
   const analysis = useDebouncedTransform<string, Analysis | null>(
     mod && pattern.trim() ? pattern : null,
     (p) => ({
+      pattern: p,
+      flags,
       ast: mod!.parseRegex(p, flags), // 不正なら throw → error 表示
       redos: mod!.analyzeRedos(p, flags),
       rail: mod!.buildRailroad(p, flags),
@@ -85,6 +89,14 @@ export function RegexVisualizer() {
   const ast = analysis.result?.ast ?? null;
   const redos = analysis.result?.redos ?? null;
   const rail = analysis.result?.rail ?? null;
+  // effect が pending を更新する前の render も、現在の入力に対応した判定だけを使う。
+  const currentVerdict =
+    !analysis.isPending &&
+    !analysis.error &&
+    analysis.result?.pattern === pattern &&
+    analysis.result.flags === flags
+      ? redos?.status
+      : undefined;
   // 攻撃文字列は pump で数千文字になりうるため表示用に truncate（全文はコピーで取得）。
   const attack = redos?.attackString ? truncateAttackString(redos.attackString) : null;
 
@@ -204,7 +216,7 @@ export function RegexVisualizer() {
         key={clearNonce}
         pattern={pattern}
         flags={flags}
-        redosStatus={redos?.status}
+        redosStatus={currentVerdict}
         regexValid={!analysis.error && !!ast}
       />
 

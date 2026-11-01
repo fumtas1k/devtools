@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { RegexVisualizer } from '../RegexVisualizer';
+import * as matchModule from '@/utils/regex-visualizer/match';
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 // 解析ユーティリティ（regexp-tree / recheck）は client mount 後に動的 import されるため、
@@ -17,6 +20,63 @@ function setPattern(value: string) {
 }
 
 describe('RegexVisualizer', () => {
+  it('旧 safe 判定で変更後の脆弱パターンを実行しない', async () => {
+    const runMatch = vi
+      .spyOn(matchModule, 'runMatch')
+      .mockReturnValue({ matches: [], truncated: false });
+    render(<RegexVisualizer />);
+    setPattern('a+');
+    await screen.findAllByText(/安全/, undefined, FIND);
+    fireEvent.change(screen.getByLabelText('テスト文字列'), { target: { value: 'aaaa!' } });
+    await screen.findByText('マッチしませんでした。', undefined, FIND);
+    runMatch.mockClear();
+
+    vi.useFakeTimers();
+    setPattern('(a+)+$');
+    act(() => vi.advanceTimersByTime(300));
+    expect(runMatch).not.toHaveBeenCalled();
+    expect(screen.getByText(/マッチ実行を無効化/)).toBeTruthy();
+  });
+
+  it('フラグ変更と連続編集の間は旧結果を隠し、最新の safe 判定後に実行する', async () => {
+    const runMatch = vi.spyOn(matchModule, 'runMatch');
+    render(<RegexVisualizer />);
+    setPattern('a+');
+    await screen.findAllByText(/安全/, undefined, FIND);
+    fireEvent.change(screen.getByLabelText('テスト文字列'), { target: { value: 'aa bb' } });
+    await screen.findByText(/1 件マッチ/, undefined, FIND);
+    runMatch.mockClear();
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'g: 全マッチ' }));
+    expect(screen.queryByText(/1 件マッチ/)).toBeNull();
+    setPattern('b');
+    act(() => vi.advanceTimersByTime(200));
+    setPattern('b+');
+    act(() => vi.advanceTimersByTime(300));
+    expect(runMatch).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(300));
+    expect(runMatch).toHaveBeenCalledOnce();
+    expect(runMatch).toHaveBeenCalledWith('b+', 'g', 'aa bb', undefined);
+    expect(screen.getByText(/1 件マッチ/)).toBeTruthy();
+  });
+
+  it('解析前に入力を消すか不正にすると予約済みマッチを実行しない', async () => {
+    const runMatch = vi.spyOn(matchModule, 'runMatch');
+    render(<RegexVisualizer />);
+    setPattern('a+');
+    await screen.findAllByText(/安全/, undefined, FIND);
+    fireEvent.change(screen.getByLabelText('テスト文字列'), { target: { value: 'aaa' } });
+    vi.useFakeTimers();
+    setPattern('(');
+    act(() => vi.advanceTimersByTime(300));
+    expect(runMatch).not.toHaveBeenCalled();
+    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
+    setPattern('');
+    act(() => vi.advanceTimersByTime(600));
+    expect(runMatch).not.toHaveBeenCalled();
+  });
+
   it('有効な正規表現を入力すると AST ラベルが表示される', async () => {
     render(<RegexVisualizer />);
     setPattern('a+');
