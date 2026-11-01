@@ -9,6 +9,7 @@ interface Props<T extends string> {
   value: T;
   onChange: (value: T) => void;
   ariaLabel?: string;
+  ariaDescribedBy?: string;
   id?: string;
   autoComplete?: string;
 }
@@ -18,6 +19,7 @@ export function Select<T extends string>({
   value,
   onChange,
   ariaLabel,
+  ariaDescribedBy,
   id,
   autoComplete,
 }: Props<T>) {
@@ -28,6 +30,7 @@ export function Select<T extends string>({
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
         autoComplete={autoComplete}
         className="field-control field-control--select"
       >
