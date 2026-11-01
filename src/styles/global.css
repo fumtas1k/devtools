@@ -1432,9 +1432,8 @@
 
   /* === JsonFormatter: ツリービュー === */
   .json-tree-box {
-    /* 入力 textarea（rows=18, 実測 516px ≒ 32.25rem）と外形を揃える固定高。
-       超過分は overflow: auto で枠内スクロールさせる。textarea 側の
-       rows/font-size/line-height を変えた場合はこの値も追従させること。 */
+    /* 初期状態とモバイル用の固定高。PC は入力 textarea の実寸で上書きする。
+       超過分は overflow: auto で枠内スクロールさせる。 */
     height: 32.25rem;
     overflow: auto;
   }
