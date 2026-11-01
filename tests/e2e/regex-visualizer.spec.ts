@@ -200,6 +200,32 @@ test.describe('正規表現ビジュアライザ', () => {
     });
   });
 
+  test('マッチ結果の挿入直後の矢印操作でも focus と tab stop が一致する', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByRole('button', { name: 'g: 全マッチ' }).click();
+      await page.getByLabel('正規表現').fill('\\d+');
+      const testRegion = page.getByRole('region', { name: 'マッチテスト' });
+      await testRegion.evaluate((region) => {
+        const observer = new MutationObserver(() => {
+          const marks = region.querySelectorAll<HTMLElement>('mark');
+          if (marks.length !== 2) return;
+          observer.disconnect();
+          marks[0].focus();
+          marks[0].dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })
+          );
+        });
+        observer.observe(region, { childList: true, subtree: true });
+      });
+      await page.getByLabel('テスト文字列').fill('a1 b22');
+      const first = page.getByRole('button', { name: 'マッチ 1: 1' });
+      const second = page.getByRole('button', { name: 'マッチ 2: 22' });
+      await expect(second).toBeFocused();
+      await expect(second).toHaveAttribute('tabindex', '0');
+      await expect(first).toHaveAttribute('tabindex', '-1');
+    });
+  });
+
   // ReDoS ゲートの陽性対照（本番 CSP 下・実 recheck 経路）: 既知の脆弱パターンで
   // マッチ実行が無効化されることを確認する。ゲートが空回りすると入力欄が出てこの assert が落ちる。
   test('vulnerable な正規表現ではマッチ実行が無効化される', async ({ browser }) => {
