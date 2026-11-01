@@ -120,7 +120,6 @@ export function SecretScrubberTool() {
           id="secret-scrubber-output"
           label="マスク済みテキスト"
           value={outputText}
-          onChange={() => {}}
           multiline
           rows={10}
           mono

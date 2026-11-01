@@ -104,6 +104,7 @@ export function HarEntryList({ entries, waterfall, selectedIndex, onSelect }: Pr
                   ) : (
                     <button
                       type="button"
+                      aria-label={`壊れたエントリ（${i + 1} 行目）`}
                       aria-current={selectedIndex === i ? 'true' : undefined}
                       className="text-left text-muted underline-offset-2 hover:underline"
                       onClick={() => onSelect(i)}

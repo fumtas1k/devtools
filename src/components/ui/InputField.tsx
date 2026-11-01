@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 
-interface Props {
+type Props = {
   id: string;
   label: ReactNode;
   /** ラベル行を視覚的に隠す（sr-only 化）。同一カラムの見出しを上部に 1 つだけ置く
@@ -9,7 +9,6 @@ interface Props {
       `<label htmlFor>` によるアクセシブル名は維持する用途。既定 true。 */
   labelVisible?: boolean;
   value: string;
-  onChange: (value: string) => void;
   placeholder?: string;
   multiline?: boolean;
   rows?: number;
@@ -21,7 +20,6 @@ interface Props {
   headerRight?: ReactNode;
   inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
   maxLength?: number;
-  readOnly?: boolean;
   mono?: boolean;
   resize?: boolean;
   onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement | HTMLInputElement>;
@@ -29,7 +27,10 @@ interface Props {
   busy?: boolean;
   /** ブラウザの autofill / 保存挙動の制御（例: "off"）。秘密鍵など hardening が必要な欄で指定する。 */
   autoComplete?: string;
-}
+} & (
+  | { readOnly?: false; onChange: (value: string) => void }
+  | { readOnly: true; onChange?: (value: string) => void }
+);
 
 export function InputField({
   id,
@@ -95,7 +96,7 @@ export function InputField({
         <textarea
           id={id}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange?.(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           rows={rows}
@@ -112,7 +113,7 @@ export function InputField({
           id={id}
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange?.(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           readOnly={readOnly}
