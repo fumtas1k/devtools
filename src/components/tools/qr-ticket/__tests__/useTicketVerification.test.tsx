@@ -57,6 +57,14 @@ vi.mock('@/hooks/useQrCamera', () => ({
 
 const validPubKeyStr = JSON.stringify({ kty: 'EC', crv: 'P-256', x: 'x', y: 'y' });
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -113,6 +121,7 @@ describe('useTicketVerification — verify', () => {
   });
 
   it('signal が abort 済みの場合は状態更新されない', async () => {
+    const { importPublicKey, verifyTicket } = await import('@/utils/qr-ticket');
     const { result } = renderHook(() => useTicketVerification({ pubKeyStr: validPubKeyStr }));
 
     const controller = new AbortController();
@@ -124,6 +133,111 @@ describe('useTicketVerification — verify', () => {
 
     // signal が aborted なので verify は先頭で return し状態更新されない
     expect(result.current.verificationResult).toBeNull();
+    expect(result.current.verifying).toBe(false);
+    expect(importPublicKey).not.toHaveBeenCalled();
+    expect(verifyTicket).not.toHaveBeenCalled();
+  });
+
+  it.each(['success', 'invalid-key', 'exception'] as const)(
+    '%s の終了後も external signal に手動リスナーを追加しない',
+    async (path) => {
+      const { verifyTicket } = await import('@/utils/qr-ticket');
+      if (path === 'exception') vi.mocked(verifyTicket).mockRejectedValueOnce(new Error('failed'));
+      const controller = new AbortController();
+      const addListener = vi.spyOn(controller.signal, 'addEventListener');
+      const { result } = renderHook(() =>
+        useTicketVerification({ pubKeyStr: path === 'invalid-key' ? 'invalid' : validPubKeyStr })
+      );
+
+      await act(async () => {
+        if (path === 'exception') {
+          await expect(result.current.verify('qr-data', controller.signal)).rejects.toThrow(
+            'failed'
+          );
+        } else {
+          await result.current.verify('qr-data', controller.signal);
+        }
+      });
+
+      expect(addListener).not.toHaveBeenCalled();
+      expect(result.current.verifying).toBe(false);
+    }
+  );
+
+  it('検証待機中の external abort は結果の反映を抑制する', async () => {
+    const { verifyTicket } = await import('@/utils/qr-ticket');
+    const gate = deferred<VerificationResult>();
+    vi.mocked(verifyTicket).mockReturnValueOnce(gate.promise);
+    const controller = new AbortController();
+    const { result } = renderHook(() => useTicketVerification({ pubKeyStr: validPubKeyStr }));
+    let pending!: Promise<void>;
+    await act(async () => {
+      pending = result.current.verify('qr-data', controller.signal);
+      await Promise.resolve();
+    });
+    expect(verifyTicket).toHaveBeenCalledOnce();
+    expect(result.current.verifying).toBe(true);
+
+    controller.abort();
+    await act(async () => {
+      gate.resolve(validResult);
+      await pending;
+    });
+    expect(result.current.verificationResult).toBeNull();
+  });
+
+  it('後から始めた検証の結果は先行検証が完了しても維持される', async () => {
+    const { verifyTicket } = await import('@/utils/qr-ticket');
+    const first = deferred<VerificationResult>();
+    const second = deferred<VerificationResult>();
+    vi.mocked(verifyTicket).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const { result } = renderHook(() => useTicketVerification({ pubKeyStr: validPubKeyStr }));
+    let a!: Promise<void>;
+    let b!: Promise<void>;
+    await act(async () => {
+      a = result.current.verify('A');
+      await Promise.resolve();
+      b = result.current.verify('B');
+      await Promise.resolve();
+    });
+    expect(verifyTicket).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      second.resolve(validResult);
+      await b;
+    });
+    expect(result.current.verificationResult).toEqual(validResult);
+    expect(result.current.verifying).toBe(false);
+    await act(async () => {
+      first.resolve(invalidResult);
+      await a;
+    });
+    expect(result.current.verificationResult).toEqual(validResult);
+    expect(result.current.verifying).toBe(false);
+  });
+
+  it('完了した先行検証の external abort は実行中の次の検証に影響しない', async () => {
+    const { verifyTicket } = await import('@/utils/qr-ticket');
+    const second = deferred<VerificationResult>();
+    vi.mocked(verifyTicket)
+      .mockResolvedValueOnce(invalidResult)
+      .mockReturnValueOnce(second.promise);
+    const controller = new AbortController();
+    const { result } = renderHook(() => useTicketVerification({ pubKeyStr: validPubKeyStr }));
+    await act(async () => {
+      await result.current.verify('A', controller.signal);
+    });
+    let b!: Promise<void>;
+    await act(async () => {
+      b = result.current.verify('B');
+      await Promise.resolve();
+    });
+    controller.abort();
+    await act(async () => {
+      second.resolve(validResult);
+      await b;
+    });
+    expect(result.current.verificationResult).toEqual(validResult);
+    expect(result.current.verifying).toBe(false);
   });
 });
 
@@ -199,36 +313,33 @@ describe('useTicketVerification — handleImageUpload', () => {
 });
 
 describe('useTicketVerification — unmount 後 abort（陽性対照）', () => {
-  it('unmount 後に verify が完走しても setState が走らない', async () => {
+  it('unmount 時に合成 signal が同期的に abort される', async () => {
     const { verifyTicket } = await import('@/utils/qr-ticket');
-
-    // verify の完了を制御するための Promise
-    let resolveVerify!: (v: VerificationResult) => void;
-    const pendingVerify = new Promise<VerificationResult>((resolve) => {
-      resolveVerify = resolve;
+    const gate = deferred<VerificationResult>();
+    vi.mocked(verifyTicket).mockReturnValueOnce(gate.promise);
+    const nativeAny = AbortSignal.any.bind(AbortSignal);
+    let composed!: AbortSignal;
+    vi.spyOn(AbortSignal, 'any').mockImplementation((signals) => {
+      composed = nativeAny(signals);
+      return composed;
     });
-    vi.mocked(verifyTicket).mockReturnValueOnce(pendingVerify);
-
+    const controller = new AbortController();
     const { result, unmount } = renderHook(() =>
       useTicketVerification({ pubKeyStr: validPubKeyStr })
     );
-
-    // verify を開始する Promise を保持しておく
-    const verifyPromise = act(async () => {
-      await result.current.verify('qr-data');
+    let pending!: Promise<void>;
+    await act(async () => {
+      pending = result.current.verify('qr-data', controller.signal);
+      await Promise.resolve();
     });
-
-    // unmount で controllerRef.abort() が走る
+    expect(verifyTicket).toHaveBeenCalledOnce();
+    expect(composed.aborted).toBe(false);
     unmount();
-
-    // unmount 後に verifyTicket の Promise を解決
-    resolveVerify(validResult);
-
-    // verify の act が完了するまで待つ
-    await verifyPromise;
-
-    // abort 済みなので state 更新されず null のまま
-    expect(result.current.verificationResult).toBeNull();
+    expect(composed.aborted).toBe(true);
+    await act(async () => {
+      gate.resolve(validResult);
+      await pending;
+    });
   });
 });
 

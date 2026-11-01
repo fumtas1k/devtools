@@ -45,15 +45,9 @@ export function useTicketVerification({
       const ctrl = new AbortController();
       controllerRef.current = ctrl;
 
-      if (externalSignal) {
-        if (externalSignal.aborted) {
-          ctrl.abort();
-        } else {
-          externalSignal.addEventListener('abort', () => ctrl.abort(), { once: true });
-        }
-      }
+      const signal = externalSignal ? AbortSignal.any([externalSignal, ctrl.signal]) : ctrl.signal;
 
-      if (ctrl.signal.aborted) return;
+      if (signal.aborted) return;
       setVerifying(true);
       try {
         let pubKey: CryptoKey;
@@ -61,7 +55,7 @@ export function useTicketVerification({
           const jwk = JSON.parse(pubKeyStr) as JsonWebKey;
           pubKey = await importPublicKey(jwk);
         } catch {
-          if (ctrl.signal.aborted) return;
+          if (signal.aborted) return;
           setVerificationResult({
             valid: false,
             ticket: null,
@@ -71,11 +65,11 @@ export function useTicketVerification({
           return;
         }
         const result = await verifyTicket(rawData, pubKey);
-        if (ctrl.signal.aborted) return;
+        if (signal.aborted) return;
         setVerificationResult(result);
       } finally {
         // abort 中は unmount 後の no-op になるため setState を抑制
-        if (!ctrl.signal.aborted) setVerifying(false);
+        if (!signal.aborted) setVerifying(false);
       }
     },
     [pubKeyStr]
