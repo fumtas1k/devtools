@@ -367,8 +367,38 @@ test.describe('HAR ビューア', () => {
 
     // 壊れた行（「（壊れたエントリ）」button）を再クリック → 詳細プレースホルダが再表示される。
     // 修正前は壊れ行が button でなくクリックできないため、ここで fail する（陽性ガード）。
-    await page.getByRole('button', { name: '（壊れたエントリ）' }).click();
+    await page.getByRole('button', { name: '壊れたエントリ（1 行目）' }).click();
     await expect(page.getByText(/詳細を表示できません/)).toBeVisible();
+  });
+
+  test('複数の壊れた行を名前で区別しクリックとキーボードで選択できる', async ({ page }) => {
+    await openHarViewer(page);
+    const json = JSON.stringify({
+      log: {
+        version: '1.2',
+        creator: { name: 'test', version: '1.0' },
+        entries: [
+          { request: { method: 'FIRST' }, response: { status: 201 } },
+          { request: { method: 'SECOND' }, response: { status: 202 } },
+        ],
+      },
+    });
+    await uploadHar(page, json);
+
+    const first = page.getByRole('button', { name: '壊れたエントリ（1 行目）', exact: true });
+    const second = page.getByRole('button', { name: '壊れたエントリ（2 行目）', exact: true });
+    await expect(first).toBeVisible();
+    await expect(second).toBeVisible();
+    await expect(page.getByText('（壊れたエントリ）')).toHaveCount(2);
+    await second.click();
+    await expect(second).toHaveAttribute('aria-current', 'true');
+    await expect(first).not.toHaveAttribute('aria-current');
+    await expect(page.getByRole('heading', { name: /レスポンス（202/ })).toBeVisible();
+    await first.focus();
+    await page.keyboard.press('Enter');
+    await expect(first).toHaveAttribute('aria-current', 'true');
+    await expect(second).not.toHaveAttribute('aria-current');
+    await expect(page.getByRole('heading', { name: /レスポンス（201/ })).toBeVisible();
   });
 
   // ─── issue #780: 再計算中は変更前の結果をコピー / ダウンロードさせない ───────
