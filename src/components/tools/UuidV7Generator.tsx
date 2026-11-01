@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cx } from '@/utils/cx';
-import { v7 as uuidv7 } from 'uuid';
+import { v4 as uuidv4, v7 as uuidv7 } from 'uuid';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { CountInput } from '@/components/ui/CountInput';
@@ -9,6 +9,8 @@ import { ResultTable } from '@/components/ui/ResultTable';
 import type { TableColumn } from '@/components/ui/ResultTable';
 import { parseUuidV7Fields, extractUuidV7Timestamp } from '@/utils/uuid-v7';
 import { useQuoteStyle, QUOTE_OPTIONS, type QuoteStyle } from '@/hooks/useQuoteStyle';
+
+type UuidVersion = 'v7' | 'v4';
 
 interface UuidRow {
   id: string;
@@ -24,10 +26,10 @@ const FIELD_CLASSES = {
   randB: 'uuid-field-rand-b',
 } as const;
 
-function generateRows(count: number): UuidRow[] {
+function generateRows(count: number, version: UuidVersion): UuidRow[] {
   return Array.from({ length: count }, () => {
-    const id = uuidv7();
-    return { id, timestamp: extractUuidV7Timestamp(id) };
+    const id = version === 'v7' ? uuidv7() : uuidv4();
+    return { id, timestamp: version === 'v7' ? extractUuidV7Timestamp(id) : '' };
   });
 }
 
@@ -93,6 +95,7 @@ function FieldBreakdownPanel({ uuid }: { uuid: string }) {
 }
 
 export function UuidV7GeneratorTool() {
+  const [version, setVersion] = useState<UuidVersion>('v7');
   const [rows, setRows] = useState<UuidRow[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const { quoteStyle, setQuoteStyle, formatId, formatAll } = useQuoteStyle();
@@ -111,15 +114,24 @@ export function UuidV7GeneratorTool() {
     },
     {
       key: 'uuid',
-      header: 'UUID',
-      render: (row) => <ColoredUuid uuid={row.id} quoteStyle={quoteStyle} />,
+      header: version === 'v7' ? 'UUID' : 'UUID v4',
+      render: (row) =>
+        version === 'v7' ? (
+          <ColoredUuid uuid={row.id} quoteStyle={quoteStyle} />
+        ) : (
+          <span className="font-mono caption whitespace-nowrap">{formatId(row.id)}</span>
+        ),
     },
-    {
-      key: 'timestamp',
-      header: 'タイムスタンプ（ISO 8601）',
-      className: 'font-mono text-muted whitespace-nowrap',
-      render: (row) => row.timestamp,
-    },
+    ...(version === 'v7'
+      ? [
+          {
+            key: 'timestamp',
+            header: 'タイムスタンプ（ISO 8601）',
+            className: 'font-mono text-muted whitespace-nowrap',
+            render: (row: UuidRow) => row.timestamp,
+          },
+        ]
+      : []),
     {
       key: 'copy',
       header: 'コピー',
@@ -134,13 +146,32 @@ export function UuidV7GeneratorTool() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <p className="body-emphasis text-default block mb-1">UUID バージョン</p>
+        <ToggleGroup<UuidVersion>
+          options={[
+            { value: 'v7', label: 'UUID v7' },
+            { value: 'v4', label: 'UUID v4' },
+          ]}
+          value={version}
+          onChange={(nextVersion) => {
+            if (nextVersion !== version) {
+              setVersion(nextVersion);
+              setRows([]);
+              setSelectedIndex(null);
+            }
+          }}
+          ariaLabel="UUID バージョン"
+          layout="wrap"
+        />
+      </div>
       <CountInput
         id="uuid-count"
         defaultValue={10}
         onGenerate={(count) => {
-          const newRows = generateRows(count);
+          const newRows = generateRows(count, version);
           setRows(newRows);
-          setSelectedIndex(newRows.length > 0 ? 0 : null);
+          setSelectedIndex(version === 'v7' && newRows.length > 0 ? 0 : null);
         }}
       />
 
@@ -150,9 +181,9 @@ export function UuidV7GeneratorTool() {
             rows={rows}
             columns={columns}
             getKey={(row) => row.id}
-            minWidth="42rem"
+            minWidth={version === 'v7' ? '42rem' : '30rem'}
             selectedIndex={selectedIndex}
-            onRowClick={setSelectedIndex}
+            onRowClick={version === 'v7' ? setSelectedIndex : undefined}
             renderHeader={() => (
               <>
                 <span className="body-emphasis text-default">{rows.length} 件生成</span>
@@ -180,7 +211,7 @@ export function UuidV7GeneratorTool() {
             )}
           />
 
-          {selectedIndex !== null && rows[selectedIndex] && (
+          {version === 'v7' && selectedIndex !== null && rows[selectedIndex] && (
             <FieldBreakdownPanel uuid={rows[selectedIndex].id} />
           )}
         </div>
