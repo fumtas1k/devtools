@@ -8,7 +8,7 @@ interface UseQrCameraOptions {
 /**
  * QRコードカメラスキャン用フック。
  * カメラの起動/停止と rAF ベースのスキャンループを管理する。
- * AbortSignal によりアンマウント時の race condition を防ぐ。
+ * 起動ごとの世代を使い、停止後の非同期処理を無効化する。
  */
 export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
   const [cameraActive, setCameraActive] = useState(false);
@@ -19,30 +19,39 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const scanningRef = useRef(false);
-  // アンマウント時に in-flight な非同期処理（getUserMedia / scan）を中断する AbortController
-  const controllerRef = useRef<AbortController>(new AbortController());
+  const generationRef = useRef(0);
   // stale closure を防ぐため ref で最新コールバックを保持
   const onQrDetectedRef = useRef(onQrDetected);
   useEffect(() => {
     onQrDetectedRef.current = onQrDetected;
   }, [onQrDetected]);
 
-  useEffect(() => () => controllerRef.current.abort(), []);
-
-  const stopCamera = useCallback(() => {
+  const releaseCamera = useCallback(() => {
+    generationRef.current += 1;
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
     if (streamRef.current) {
+      if (videoRef.current?.srcObject === streamRef.current) {
+        videoRef.current.srcObject = null;
+      }
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
     scanningRef.current = false;
-    setCameraActive(false);
   }, []);
 
+  useEffect(() => () => releaseCamera(), [releaseCamera]);
+
+  const stopCamera = useCallback(() => {
+    releaseCamera();
+    setCameraActive(false);
+  }, [releaseCamera]);
+
   const startCamera = useCallback(async () => {
+    stopCamera();
+    const generation = generationRef.current;
     setCameraError('');
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setCameraError(
@@ -55,8 +64,8 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
         video: { facingMode: 'environment' },
       });
 
-      // getUserMedia 解決後に既に unmount 済みならカメラリソースを解放して戻る
-      if (controllerRef.current.signal.aborted) {
+      // 停止・再起動・アンマウント後に取得した stream は使わない
+      if (generation !== generationRef.current) {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -66,18 +75,14 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
 
-        // video.play 解決後に既に unmount 済みなら状態更新を諦めてリソース解放
-        if (controllerRef.current.signal.aborted) {
-          stream.getTracks().forEach((t) => t.stop());
-          streamRef.current = null;
-          return;
-        }
+        // この stream の解放は停止時に完了している
+        if (generation !== generationRef.current) return;
       }
       setCameraActive(true);
       scanningRef.current = true;
 
       const scan = () => {
-        if (controllerRef.current.signal.aborted) return;
+        if (generation !== generationRef.current) return;
         if (!scanningRef.current) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -102,6 +107,8 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
       };
       rafRef.current = requestAnimationFrame(scan);
     } catch (err) {
+      if (generation !== generationRef.current) return;
+      releaseCamera();
       const e = err as DOMException;
       if (e.name === 'NotAllowedError') {
         setCameraError('カメラへのアクセスが拒否されました。ブラウザの設定で許可してください。');
@@ -111,10 +118,10 @@ export function useQrCamera({ onQrDetected }: UseQrCameraOptions) {
         setCameraError('カメラの起動に失敗しました。画像アップロードをお使いください。');
       }
     }
-  }, [stopCamera]);
+  }, [releaseCamera, stopCamera]);
 
   // 毎レンダでオブジェクトが再生成されないよう useMemo で安定化する。
-  // stopCamera は useCallback(..., []) で安定しており、startCamera は useCallback(..., [stopCamera]) で安定している。
+  // stopCamera / startCamera は useCallback で安定している。
   // cameraActive / cameraError はステート変化時のみ新しいオブジェクトを生成する。
   return useMemo(
     () => ({

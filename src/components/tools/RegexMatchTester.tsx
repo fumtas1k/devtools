@@ -40,20 +40,15 @@ interface MatchHighlightsProps {
  * 矢印 / Home / End で focus を移動（選択は変えない）、Enter / Space で onSelect を呼ぶ。
  */
 function MatchHighlights({ text, matches, selected, onSelect }: MatchHighlightsProps) {
-  const [rovingIndex, setRovingIndex] = useState(0);
+  const [roving, setRoving] = useState<{ matches: RegexMatch[]; index: number } | null>(null);
   const markRefs = useRef<Array<HTMLElement | null>>([]);
 
-  // 新しいマッチ結果（安定参照）が来たら roving を先頭へリセットする
-  useEffect(() => {
-    setRovingIndex(0);
-  }, [matches]);
-
   const n = matches.length;
-  // 件数縮小時の安全弁: 常に有効な tab stop が 1 個残るようにクランプ
-  const safeRoving = Math.min(rovingIndex, n - 1);
+  // 新しい結果では render 中に先頭へ戻す。effect で後から戻すとキー操作を上書きしうる。
+  const safeRoving = roving?.matches === matches ? Math.min(roving.index, n - 1) : 0;
 
   const focusMatch = (i: number) => {
-    setRovingIndex(i);
+    setRoving({ matches, index: i });
     markRefs.current[i]?.focus();
   };
 
@@ -113,7 +108,7 @@ function MatchHighlights({ text, matches, selected, onSelect }: MatchHighlightsP
         )}
         onClick={() => {
           // クリックでも roving item を更新し、次の Tab 復帰先を保持する
-          setRovingIndex(i);
+          setRoving({ matches, index: i });
           onSelect(i);
         }}
         title={`マッチ ${i + 1}`}
