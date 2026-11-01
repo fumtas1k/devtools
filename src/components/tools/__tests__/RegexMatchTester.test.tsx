@@ -81,6 +81,45 @@ describe('RegexMatchTester', () => {
     expect(marks[1].getAttribute('tabindex')).toBe('-1');
   });
 
+  it('マッチ結果が挿入された直後のキー入力を保持する', async () => {
+    const { container } = render(
+      <RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />
+    );
+    let moved = false;
+    // effect 実行前に入力が届く順序を再現する。
+    const observer = new MutationObserver(() => {
+      const marks = container.querySelectorAll<HTMLElement>('mark[role="button"]');
+      if (marks.length !== 2 || moved) return;
+      moved = true;
+      marks[0].focus();
+      fireEvent.keyDown(marks[0], { key: 'ArrowRight' });
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    typeTest('a1 b22');
+    await screen.findByText(/2 件マッチ/, undefined, FIND);
+    observer.disconnect();
+    const marks = screen.getAllByRole('button', { name: /マッチ \d/ });
+    expect(moved).toBe(true);
+    expect(document.activeElement).toBe(marks[1]);
+    expect(marks[0].getAttribute('tabindex')).toBe('-1');
+    expect(marks[1].getAttribute('tabindex')).toBe('0');
+  });
+
+  it('新しいマッチ結果では tab stop が先頭に戻る', async () => {
+    render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
+    typeTest('a1 b22');
+    await screen.findByText(/2 件マッチ/, undefined, FIND);
+    const first = screen.getAllByRole('button', { name: /マッチ \d/ });
+    fireEvent.keyDown(first[0], { key: 'ArrowRight' });
+    expect(first[1].getAttribute('tabindex')).toBe('0');
+
+    typeTest('c33 d444');
+    await screen.findByRole('button', { name: 'マッチ 2: 444' }, FIND);
+    const next = screen.getAllByRole('button', { name: /マッチ \d/ });
+    expect(next[0].getAttribute('tabindex')).toBe('0');
+    expect(next[1].getAttribute('tabindex')).toBe('-1');
+  });
+
   it('ArrowRight で roving が次のマッチへ移動し、末尾で先頭に wrap する', async () => {
     render(<RegexMatchTester pattern={String.raw`\d+`} flags="g" redosStatus="safe" regexValid />);
     typeTest('a1 b22');
