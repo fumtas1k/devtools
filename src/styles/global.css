@@ -1537,9 +1537,12 @@
     opacity: 1;
     pointer-events: auto;
   }
-  /* タッチ端末（hover 不可）では hover/focus で出せないため常時表示する（issue #508）。
-     絶対配置のため行高さは増えない。デスクトップは従来どおり hover 表示。 */
+  /* タッチ端末ではコピーを常時表示する。全行を同じ高さにして、絶対配置の
+     32px ボタンが隣の行と重ならないようにする（仮想ツリーも等高が必要）。 */
   @media (hover: none) {
+    .json-line {
+      min-height: 2rem;
+    }
     .json-row-actions {
       opacity: 1;
       pointer-events: auto;

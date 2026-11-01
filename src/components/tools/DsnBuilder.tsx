@@ -39,7 +39,7 @@ function isEmptyModel(model: DsnModel): boolean {
 
 const SCHEME_OPTIONS = SUPPORTED_SCHEMES.map((s) => ({
   value: s,
-  label: `${s}:// — ${DIALECTS[s].label}`,
+  label: `${s}://`,
 }));
 
 export function DsnBuilderTool() {
@@ -144,8 +144,7 @@ export function DsnBuilderTool() {
 
       <Section title="フォーム">
         <div className="space-y-4">
-          {/* スキームの選択中表示は最長で約 310px（jdbc:postgresql:// — PostgreSQL (JDBC)）。
-             3 カラムの 1 つ（約 250px）には入らないため、スキームだけ別の行に置く（docs/decisions.md [151]） */}
+          {/* スキームは独立した行に置き、方言の説明は選択欄の下に表示する（docs/decisions.md [151], [154]）。 */}
           <div className="md:max-w-md">
             <div className="flex items-center justify-between mb-3 min-h-9">
               <label htmlFor="dsn-scheme" className="body-emphasis text-default">
@@ -157,7 +156,11 @@ export function DsnBuilderTool() {
               options={SCHEME_OPTIONS}
               value={model.scheme}
               onChange={handleSchemeChange}
+              ariaDescribedBy="dsn-scheme-description"
             />
+            <p id="dsn-scheme-description" className="caption text-muted mt-1">
+              {dialect.label}
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField

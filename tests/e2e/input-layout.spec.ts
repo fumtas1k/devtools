@@ -88,7 +88,28 @@ for (const viewport of [
 }
 
 test.describe('DSN ビルダー: スキームの選択中表示', () => {
-  for (const width of [768, 1024, 1280]) {
+  test('陽性対照: 変更前の長い選択肢は 390px で収まらない', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/tools/dsn-builder');
+    await waitForReactHydration(page);
+    await page.evaluate(() => document.fonts.ready);
+    const result = await page.getByLabel('スキーム').evaluate((el: HTMLSelectElement) => {
+      const cs = getComputedStyle(el);
+      const ctx = document.createElement('canvas').getContext('2d')!;
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const available = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      return [
+        'jdbc:postgresql:// — PostgreSQL (JDBC)',
+        'postgres:// — PostgreSQL (postgres://)',
+      ].map(
+        (text) =>
+          ctx.measureText(text).width + parseFloat(cs.letterSpacing) * text.length - available
+      );
+    });
+    expect(result.every((overflow) => overflow > 0)).toBe(true);
+  });
+
+  for (const width of [390, 768, 1024, 1280]) {
     test(`幅 ${width}px: すべてのスキームの選択中表示が末尾まで入る`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto('/tools/dsn-builder');

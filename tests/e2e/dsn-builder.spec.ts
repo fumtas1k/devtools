@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { waitForReactHydration } from './helpers';
+import { DIALECTS, SUPPORTED_SCHEMES } from '../../src/utils/dsn-builder';
 
 const PG_URI = 'postgresql://app:s3cret@db.example.com:5432/app_db?sslmode=require';
 
@@ -50,6 +51,15 @@ test.describe('DSN/接続文字列ビルダ', () => {
     await page.getByRole('button', { name: 'サンプルを入力' }).click();
     await expect(page.getByLabel('接続 URI')).not.toHaveValue('');
     await expect(page.getByLabel('ホスト 1', { exact: true })).toHaveValue('db.example.com');
+  });
+
+  test('全スキームの表記と対応する方言の説明を表示する', async ({ page }) => {
+    const select = page.getByLabel('スキーム');
+    for (const scheme of SUPPORTED_SCHEMES) {
+      await select.selectOption(scheme);
+      await expect(select.locator('option:checked')).toHaveText(`${scheme}://`);
+      await expect(select).toHaveAccessibleDescription(DIALECTS[scheme].label);
+    }
   });
 
   test('陽性対照: 未対応スキームでエラーが表示される', async ({ page }) => {
