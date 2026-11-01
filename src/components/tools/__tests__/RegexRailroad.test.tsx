@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { act, render, cleanup } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
+import { hydrateRoot } from 'react-dom/client';
 import { RegexRailroad } from '../RegexRailroad';
 import {
   measureSequence,
@@ -14,6 +16,40 @@ import {
 } from '@/utils/regex-visualizer/railroad-layout';
 
 afterEach(() => cleanup());
+
+function nestedLoops() {
+  const loop = (inner: ReturnType<typeof measureTerminal>) =>
+    measureRepetition(inner, { skip: false, loop: true, label: '+' }, undefined);
+  return measureSequence(
+    [
+      measureGroup(loop(loop(measureTerminal('a', undefined))), '#1', undefined),
+      measureChoice(
+        [loop(measureTerminal('b', undefined)), measureTerminal('c', undefined)],
+        undefined
+      ),
+    ],
+    undefined
+  );
+}
+
+function expectLocalMarkers(container: Element, expectedReferences: number) {
+  const markers = Array.from(container.querySelectorAll('marker'));
+  const ids = markers.map((marker) => marker.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  expect(ids.every((id) => /^[A-Za-z][A-Za-z0-9_-]*$/.test(id))).toBe(true);
+  const paths = Array.from(container.querySelectorAll('[marker-end]'));
+  expect(paths).toHaveLength(expectedReferences);
+  for (const path of paths) {
+    const reference = path.getAttribute('marker-end');
+    expect(reference).toMatch(/^url\(#[A-Za-z][A-Za-z0-9_-]*\)$/);
+    const id = reference!.slice(5, -1);
+    const svg = path.closest('svg');
+    expect(
+      Array.from(svg!.querySelectorAll('marker')).filter((marker) => marker.id === id)
+    ).toHaveLength(1);
+  }
+  return ids;
+}
 
 describe('RegexRailroad', () => {
   it('terminal を rect + text で描画する', () => {
@@ -130,15 +166,60 @@ describe('RegexRailroad', () => {
     expect(container.textContent).toContain('\\s');
   });
 
-  it('loop ありの repetition は矢印 marker を参照する', () => {
-    const inner = measureTerminal('a', undefined);
-    const node = measureRepetition(inner, { skip: false, loop: true, label: '1回以上' }, undefined);
-    const { container } = render(<RegexRailroad node={node} />);
-    expect(container.querySelector('marker#rr-loop-arrow')).toBeTruthy();
-    const loopPath = Array.from(container.querySelectorAll('path')).find(
-      (p) => p.getAttribute('marker-end') === 'url(#rr-loop-arrow)'
+  it('複数の鉄道図でマーカーが一意かつ各 SVG 内にあり、再描画後も安定する', () => {
+    const node = nestedLoops();
+    const view = (showFirst: boolean) => (
+      <>
+        {showFirst && <RegexRailroad key="first" node={node} />}
+        <RegexRailroad key="second" node={node} />
+      </>
     );
-    expect(loopPath).toBeTruthy();
+    const { container, rerender, unmount } = render(view(true));
+    const ids = expectLocalMarkers(container, 8);
+    expect(ids).toHaveLength(4);
+    rerender(view(true));
+    expect(expectLocalMarkers(container, 8)).toEqual(ids);
+    rerender(view(false));
+    expect(expectLocalMarkers(container, 4)).toEqual(ids.slice(2));
+    unmount();
+    expect(container.querySelectorAll('marker')).toHaveLength(0);
+  });
+
+  it('句読点を含む異なる prefix で SSR と hydration の ID が一致し衝突しない', async () => {
+    const node = nestedLoops();
+    const prefixes = ['rail:a_', 'raila_'];
+    const containers = prefixes.map((identifierPrefix) => {
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      container.innerHTML = renderToString(<RegexRailroad node={node} />, { identifierPrefix });
+      return container;
+    });
+    const before = containers.map((container) => expectLocalMarkers(container, 4));
+    expect(new Set(before.flat()).size).toBe(4);
+    const onRecoverableError = vi.fn();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const roots: ReturnType<typeof hydrateRoot>[] = [];
+    try {
+      await act(async () => {
+        containers.forEach((container, i) => {
+          roots.push(
+            hydrateRoot(container, <RegexRailroad node={node} />, {
+              identifierPrefix: prefixes[i],
+              onRecoverableError,
+            })
+          );
+        });
+      });
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+      containers.forEach((container, i) =>
+        expect(expectLocalMarkers(container, 4)).toEqual(before[i])
+      );
+    } finally {
+      await act(async () => roots.forEach((root) => root.unmount()));
+      containers.forEach((container) => container.remove());
+      consoleError.mockRestore();
+    }
   });
 
   it('凡例の4種を描画する', () => {
