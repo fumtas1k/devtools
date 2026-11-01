@@ -245,14 +245,13 @@ export function CsrGenerator() {
                       />
                     </div>
                     {san.length > 1 && (
-                      <button
-                        type="button"
-                        className="caption btn-remove-card inline-flex rounded-md min-h-11 min-w-11 items-center justify-center leading-none"
+                      <ActionButton
+                        variant="danger"
                         aria-label={`SAN ${i + 1} を削除`}
                         onClick={() => setSan((prev) => prev.filter((_, idx) => idx !== i))}
                       >
                         削除
-                      </button>
+                      </ActionButton>
                     )}
                   </div>
                   {ipError && (

@@ -181,3 +181,28 @@ test.describe('CSR・鍵ペアジェネレータ（production CSP 適用）', ()
     );
   });
 });
+
+test('SAN 削除は実寸を保ち、指定した行だけを削除して最低 1 行を残す', async ({ browser }) => {
+  await withProductionCsp(browser, '/tools/csr-generator', async (page) => {
+    await expect(page.getByRole('button', { name: /SAN \d+ を削除/ })).toHaveCount(0);
+    await page.getByLabel('SAN 1', { exact: true }).fill('first.example.jp');
+    await page.getByRole('button', { name: '＋ SAN を追加' }).click();
+    await page.getByLabel('SAN 2', { exact: true }).fill('second.example.jp');
+    for (const viewport of [
+      { width: 1280, height: 800 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      for (const button of await page.getByRole('button', { name: /SAN \d+ を削除/ }).all()) {
+        const box = await button.boundingBox();
+        expect(box?.height).toBe(48);
+        expect(box?.width).toBeGreaterThanOrEqual(96);
+      }
+    }
+    const removeFirst = page.getByRole('button', { name: 'SAN 1 を削除' });
+    await removeFirst.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('SAN 1', { exact: true })).toHaveValue('second.example.jp');
+    await expect(page.getByRole('button', { name: /SAN \d+ を削除/ })).toHaveCount(0);
+  });
+});

@@ -34,18 +34,26 @@ test.describe('コントラスト比マトリクス', () => {
     });
   });
 
-  test('エラー表示時も HEX 欄とラベル欄の上端が揃う（段差防止）', async ({ browser }) => {
+  test('エラー表示時も HEX 欄と削除ボタンの上端が揃う（段差防止）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
       // 先頭行の HEX を不正値にしてエラー文言を表示させる
       await page.getByLabel('色').first().fill('notacolor');
       await expect(page.getByText('不正な色').first()).toBeVisible();
-      // items-start により、エラーで HEX 列が縦に伸びても入力ボックスの上端は揃う。
-      // 同一行の HEX 欄とラベル欄の top 座標が一致することを検証（段差の回帰ガード）。
-      const hexBox = await page.getByLabel('色').first().boundingBox();
-      const labelBox = await page.getByLabel('ラベル').first().boundingBox();
-      expect(hexBox).not.toBeNull();
-      expect(labelBox).not.toBeNull();
-      expect(Math.abs((hexBox?.y ?? 0) - (labelBox?.y ?? 0))).toBeLessThanOrEqual(1);
+      for (const width of [1280, 390, 320]) {
+        await page.setViewportSize({ width, height: 844 });
+        const hexBox = await page.getByLabel('色', { exact: true }).first().boundingBox();
+        const labelBox = await page.getByLabel('ラベル', { exact: true }).first().boundingBox();
+        const deleteBox = await page.getByRole('button', { name: '削除' }).first().boundingBox();
+        expect(hexBox).not.toBeNull();
+        expect(labelBox).not.toBeNull();
+        expect(deleteBox).not.toBeNull();
+        expect(Math.abs((hexBox?.y ?? 0) - (deleteBox?.y ?? 0))).toBeLessThanOrEqual(1);
+        if (width >= 768) {
+          expect(Math.abs((hexBox?.y ?? 0) - (labelBox?.y ?? 0))).toBeLessThanOrEqual(1);
+        } else {
+          expect(labelBox?.y).toBeGreaterThanOrEqual((hexBox?.y ?? 0) + (hexBox?.height ?? 0));
+        }
+      }
     });
   });
 
@@ -91,5 +99,77 @@ test.describe('コントラスト比マトリクス', () => {
       await expect(remaining.first()).toBeDisabled();
       await expect(remaining.last()).toBeDisabled();
     });
+  });
+});
+
+test('削除ボタンは実寸と行揃えを保ち、指定した色を削除する', async ({ browser }) => {
+  await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
+    const buttons = page.getByRole('button', { name: '削除', exact: true });
+    for (const viewport of [
+      { width: 1280, height: 800 },
+      { width: 390, height: 844 },
+      { width: 320, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      for (let i = 0; i < 4; i++) {
+        const box = await buttons.nth(i).boundingBox();
+        const inputBox = await page.getByLabel('色', { exact: true }).nth(i).boundingBox();
+        const labelBox = await page.getByLabel('ラベル', { exact: true }).nth(i).boundingBox();
+        expect(box?.height).toBe(48);
+        expect(box?.width).toBeGreaterThanOrEqual(96);
+        expect(Math.abs((box?.y ?? 0) - (inputBox?.y ?? 0))).toBeLessThanOrEqual(1);
+        if (viewport.width >= 768) {
+          expect(Math.abs((box?.y ?? 0) - (labelBox?.y ?? 0))).toBeLessThanOrEqual(1);
+        } else {
+          expect(labelBox?.y).toBeGreaterThanOrEqual((box?.y ?? 0) + (box?.height ?? 0));
+        }
+      }
+    }
+    await buttons.nth(1).focus();
+    await page.keyboard.press('Space');
+    await expect(page.getByLabel('ラベル', { exact: true })).toHaveCount(3);
+    await expect(page.getByLabel('ラベル', { exact: true }).nth(0)).toHaveValue('テキスト');
+    await expect(page.getByLabel('ラベル', { exact: true }).nth(1)).toHaveValue('プライマリ');
+    await expect(page.getByLabel('ラベル', { exact: true }).nth(2)).toHaveValue('アクセント');
+  });
+});
+
+test('狭い画面でも HEX 全体が表示され、ページは横にはみ出さない', async ({ browser }) => {
+  await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
+    await page.evaluate(() => document.fonts.ready);
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const input of await page.getByLabel('色', { exact: true }).all()) {
+        const { usableWidth, textWidth } = await input.evaluate((el: HTMLInputElement) => {
+          const style = getComputedStyle(el);
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('Canvas context unavailable');
+          context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+          return {
+            usableWidth:
+              el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+            textWidth:
+              context.measureText(el.value).width +
+              el.value.length * parseFloat(style.letterSpacing),
+          };
+        });
+        expect(usableWidth).toBeGreaterThanOrEqual(textWidth);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      );
+    }
+    const picker = page.getByLabel('テキストのカラーピッカー');
+    const hex = page.getByLabel('色', { exact: true }).first();
+    const label = page.getByLabel('ラベル', { exact: true }).first();
+    const remove = page.getByRole('button', { name: '削除' }).first();
+    await picker.focus();
+    await page.keyboard.press('Tab');
+    await expect(hex).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(label).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(remove).toBeFocused();
   });
 });
