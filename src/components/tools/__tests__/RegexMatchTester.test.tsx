@@ -50,6 +50,18 @@ describe('RegexMatchTester', () => {
     expect(await screen.findByText(/2 件マッチ/, undefined, FIND)).toBeTruthy();
   });
 
+  it('unknown の手動実行は入力変更後に再度許可が必要', async () => {
+    const { rerender } = render(
+      <RegexMatchTester pattern="a" flags="" redosStatus="unknown" regexValid />
+    );
+    typeTest('a'.repeat(1100));
+    fireEvent.click(screen.getByRole('button', { name: /マッチを実行/ }));
+    expect(await screen.findByText(/先頭 .*文字だけで実行/, undefined, FIND)).toBeTruthy();
+    rerender(<RegexMatchTester pattern="b" flags="" redosStatus="unknown" regexValid />);
+    expect(screen.getByRole('button', { name: /マッチを実行/ })).toBeTruthy();
+    expect(screen.queryByText(/件マッチ/)).toBeNull();
+  });
+
   it('regexValid=false なら案内文のみ', () => {
     render(<RegexMatchTester pattern="(" flags="" regexValid={false} />);
     expect(screen.getByText(/有効な正規表現を入力すると/)).toBeTruthy();
