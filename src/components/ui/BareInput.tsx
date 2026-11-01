@@ -21,8 +21,8 @@ interface Props extends Omit<
  * - `InputField` はラベル前提のため、ラベル不要のグリッド内 input はこちらを使う
  * - `outline: none` を component base から外し、global CSS の `:focus-visible` に委ねる（a11y 向上）
  *
- * style: global.css `@layer components` の `.caption` / `.bg-default` / `.text-default` /
- * `.border-input` / `.border-error` (Tailwind auto-utility from --color-error in @theme) を参照。
+ * style: global.css `@layer components` の `.field-control`（DADS の Input。docs/decisions.md [143]）。
+ * エラー時は `aria-invalid="true"` で枠が error 色になる。
  */
 export function BareInput({
   value,
@@ -32,20 +32,14 @@ export function BareInput({
   className,
   ...rest
 }: Props) {
-  const borderClass = error ? 'border-error' : 'border-input';
   const monoClass = mono ? 'font-mono' : '';
   const extraClass = className ?? '';
   return (
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={cx(
-        'caption rounded-md border',
-        borderClass,
-        monoClass,
-        'bg-default text-default w-full px-2 py-1.5',
-        extraClass
-      )}
+      aria-invalid={error || undefined}
+      className={cx('field-control', monoClass, extraClass)}
       {...rest}
     />
   );

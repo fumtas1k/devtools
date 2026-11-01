@@ -269,7 +269,7 @@ export function TotpHotpGeneratorTool() {
   return (
     <div className="space-y-4">
       {/* ─── Section 1: Secret + Settings ─── */}
-      <div className="rounded-xl border border-default overflow-hidden">
+      <div className="rounded-lg border border-default overflow-hidden">
         <div className="body-emphasis text-default bg-subtle border-b border-default px-4 py-3">
           シークレット鍵と設定
         </div>
@@ -285,7 +285,7 @@ export function TotpHotpGeneratorTool() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2 min-h-8">
+            <div className="flex items-center justify-between mb-2 min-h-9">
               <label htmlFor="totp-secret" className="body-emphasis text-default">
                 Base32 シークレット
               </label>
@@ -381,7 +381,7 @@ export function TotpHotpGeneratorTool() {
       </div>
 
       {/* ─── Section 2: Code Output ─── */}
-      <div className="rounded-xl border border-default overflow-hidden">
+      <div className="rounded-lg border border-default overflow-hidden">
         <div className="body-emphasis text-default bg-subtle border-b border-default px-4 py-3">
           {mode === 'totp'
             ? 'ワンタイムコード（TOTP）'
@@ -472,7 +472,7 @@ export function TotpHotpGeneratorTool() {
               {verificationResult !== null && (
                 <div aria-live="assertive">
                   {verificationResult.valid ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 caption font-medium bg-success-tint text-success">
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 caption font-normal bg-success-tint text-success">
                       ✓ 有効
                       {verificationResult.offset === 0
                         ? '（現在の期間）'
@@ -481,7 +481,7 @@ export function TotpHotpGeneratorTool() {
                           : `（${verificationResult.offset} 期間前）`}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 caption font-medium bg-error-tint text-error-text">
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 caption font-normal bg-error-tint text-error-text">
                       ✗ 無効
                     </span>
                   )}
@@ -493,7 +493,7 @@ export function TotpHotpGeneratorTool() {
       </div>
 
       {/* ─── Section 3: otpauth URI ─── */}
-      <div className="rounded-xl border border-default overflow-hidden">
+      <div className="rounded-lg border border-default overflow-hidden">
         <div className="body-emphasis text-default bg-subtle border-b border-default px-4 py-3">
           otpauth:// URI（QRコード生成用）
         </div>

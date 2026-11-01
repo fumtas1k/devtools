@@ -7,12 +7,13 @@ import {
   GROUP_PAD_TOP,
   CHOICE_LEAD,
   V_GAP,
-  REP_LEAD,
   ARC_H,
 } from '@/utils/regex-visualizer/railroad-layout';
 
 const MARKER_LEAD = 22; // start/end マーカーと本体の間の rail 長
 const MARKER_R = 5;
+// 文字クラス・メタ文字の角丸。リテラル（6、凡例は 4）より小さくし、形でも区別する（[150]）。
+const CHARCLASS_RX = 2;
 
 type Hotspot = { start: number; end: number }[];
 
@@ -63,12 +64,13 @@ function renderNode(
     case 'charclass':
       return (
         <g key={key}>
+          {/* 枠 2px が SVG 端で切れないよう 1px 内側に置く（外形は他ノードと同じ） */}
           <rect
-            x={x}
-            y={y}
-            width={node.width}
-            height={node.height}
-            rx={6}
+            x={x + 1}
+            y={y + 1}
+            width={node.width - 2}
+            height={node.height - 2}
+            rx={CHARCLASS_RX}
             className={boxClass('rr-charclass')}
           />
           <text
@@ -157,7 +159,7 @@ function renderNode(
         <g key={key}>
           <rect x={x} y={y} width={node.width} height={node.height} rx={8} className="rr-group" />
           {node.title && (
-            <text x={x + 8} y={y + 14} className="rr-group-title">
+            <text x={x + 8} y={y + 17} className="rr-group-title">
               {node.title}
             </text>
           )}
@@ -223,7 +225,7 @@ function renderNode(
     }
     case 'repetition': {
       const inner = node.children[0];
-      const innerX = x + REP_LEAD;
+      const innerX = x + (node.width - inner.width) / 2; // ラベルで幅が広がったときも中央に置く
       const top = node.loop ? ARC_H : 0;
       const innerY = y + top;
       const railY = y + node.connectY; // = innerY + inner.connectY
@@ -265,7 +267,7 @@ function renderNode(
         <text
           key="ql"
           x={x + node.width / 2}
-          y={y + node.height - 2}
+          y={y + node.height - 4}
           textAnchor="middle"
           className="rr-quant"
         >
@@ -328,13 +330,13 @@ export function RegexRailroad({ node, hotspot }: Props) {
       <div className="rr-legend caption text-muted">
         <span className="rr-legend-item">
           <svg width="28" height="20" aria-hidden="true">
-            <rect x="1" y="2" width="26" height="16" rx="4" className="rr-box" />
+            <rect x="1" y="2" width="26" height="16" rx="6" className="rr-box" />
           </svg>
           文字（リテラル）
         </span>
         <span className="rr-legend-item">
           <svg width="28" height="20" aria-hidden="true">
-            <rect x="1" y="2" width="26" height="16" rx="4" className="rr-charclass" />
+            <rect x="1" y="2" width="26" height="16" rx={CHARCLASS_RX} className="rr-charclass" />
           </svg>
           文字クラス・メタ文字
         </span>

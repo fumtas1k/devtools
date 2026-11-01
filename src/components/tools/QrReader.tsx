@@ -194,7 +194,7 @@ export function QrReaderTool() {
                   href={content.raw}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="caption font-semibold inline-flex items-center mt-2 px-3.5 py-1.5 rounded-md border border-warning bg-default text-default no-underline"
+                  className="caption font-bold inline-flex items-center mt-2 px-3.5 py-1.5 rounded-md border border-warning bg-default text-default no-underline"
                 >
                   URLを開く
                 </a>

@@ -58,10 +58,10 @@ export function JsonTreeResult({
   );
   return (
     <div className="w-full">
-      {/* ヘッダは折り返さず単一行（min-h-8）に固定し、入力欄ヘッダと上端を揃える。
+      {/* ヘッダは折り返さず単一行（min-h-9）に固定し、入力欄ヘッダと上端を揃える。
           全展開/全折りたたみ・ダウンロード・コピーは結果ラベル右側に一列で並べる。
           コピーは横幅を抑えるためツリー結果ではアイコンのみ（compact）にする。 */}
-      <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
+      <div className="flex items-center justify-between mb-3 min-h-9 gap-2">
         <span className="body-emphasis text-default shrink-0">結果</span>
         {hasResult && (
           <div className="flex items-center gap-2">
@@ -90,7 +90,7 @@ export function JsonTreeResult({
       </div>
       <div
         ref={boxRef}
-        className="json-tree-box rounded-lg border border-default bg-subtle px-3 py-2"
+        className="json-tree-box rounded-md border border-default bg-subtle px-3 py-2"
       >
         {tooLarge ? (
           <div className="space-y-2" role="status" aria-live="polite">

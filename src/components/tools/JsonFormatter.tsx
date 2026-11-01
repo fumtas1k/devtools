@@ -193,7 +193,7 @@ export function JsonFormatter() {
     setTreeKey((k) => k + 1);
   };
 
-  // 入力欄（InputField）と結果欄（OutputField / ツリー）はどちらも min-h-8 + mb-3 の
+  // 入力欄（InputField）と結果欄（OutputField / ツリー）はどちらも min-h-9 + mb-3 の
   // 単一行ヘッダを持たせ、入力前後で上端がずれない（がたつかない）ようにする。
   // 表示切替は上部オプション行に置く。ツリーの全展開/全折りたたみは結果ヘッダ内（結果ラベル右隣）に置く。
   const downloadButton = (

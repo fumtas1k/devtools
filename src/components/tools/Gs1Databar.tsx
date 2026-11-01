@@ -284,8 +284,8 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
 
         {/* AIフィールド */}
         <div>
-          <div className="mb-2 flex items-center justify-between">
-            <span className="caption text-default font-semibold">合成シンボル（任意）</span>
+          <div className="mb-3 flex items-center justify-between">
+            <span className="caption text-default font-bold">合成シンボル（任意）</span>
             {canAddField && (
               <button
                 type="button"
@@ -335,7 +335,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                     <button
                       type="button"
                       onClick={() => removeAiField(i)}
-                      className="rounded-lg p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5 inline-flex items-center justify-center"
+                      className="hit-area rounded-md p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5 inline-flex items-center justify-center"
                       aria-label="フィールドを削除"
                     >
                       <CloseIcon size={16} />

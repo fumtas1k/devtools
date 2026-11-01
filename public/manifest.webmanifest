@@ -4,8 +4,8 @@
   "description": "ブラウザで完結する無料の開発者ツール集",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#EFF6FF",
-  "theme_color": "#1A56DB",
+  "background_color": "#E8F1FE",
+  "theme_color": "#0017C1",
   "lang": "ja",
   "icons": [
     {

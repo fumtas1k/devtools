@@ -39,7 +39,7 @@ function isEmptyModel(model: DsnModel): boolean {
 
 const SCHEME_OPTIONS = SUPPORTED_SCHEMES.map((s) => ({
   value: s,
-  label: `${s}:// — ${DIALECTS[s].label}`,
+  label: `${s}://`,
 }));
 
 export function DsnBuilderTool() {
@@ -144,20 +144,25 @@ export function DsnBuilderTool() {
 
       <Section title="フォーム">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-3 min-h-8">
-                <label htmlFor="dsn-scheme" className="body-emphasis text-default">
-                  スキーム
-                </label>
-              </div>
-              <Select
-                id="dsn-scheme"
-                options={SCHEME_OPTIONS}
-                value={model.scheme}
-                onChange={handleSchemeChange}
-              />
+          {/* スキームは独立した行に置き、方言の説明は選択欄の下に表示する（docs/decisions.md [151], [154]）。 */}
+          <div className="md:max-w-md">
+            <div className="flex items-center justify-between mb-3 min-h-9">
+              <label htmlFor="dsn-scheme" className="body-emphasis text-default">
+                スキーム
+              </label>
             </div>
+            <Select
+              id="dsn-scheme"
+              options={SCHEME_OPTIONS}
+              value={model.scheme}
+              onChange={handleSchemeChange}
+              ariaDescribedBy="dsn-scheme-description"
+            />
+            <p id="dsn-scheme-description" className="caption text-muted mt-1">
+              {dialect.label}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField
               id="dsn-user"
               label="ユーザー名"
@@ -188,7 +193,7 @@ export function DsnBuilderTool() {
                     placeholder="db.example.com"
                     className="flex-1 min-w-0"
                   />
-                  {/* BareInput 基底の w-full と w-24 が衝突するため、固定幅は wrapper 側に持たせる */}
+                  {/* 固定幅は wrapper 側に持たせる */}
                   <div className="w-24 flex-none">
                     <BareInput
                       value={h.port}

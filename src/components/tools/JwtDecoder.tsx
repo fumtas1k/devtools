@@ -200,7 +200,7 @@ export function JwtDecoderTool() {
 
       {/* 有効期限チェックトグル */}
       {parsed && (
-        <label className="flex items-center gap-2 cursor-pointer caption text-default">
+        <label className="flex items-center gap-2 cursor-pointer caption text-default min-h-11">
           <input
             type="checkbox"
             checked={verifyExp}
@@ -217,7 +217,7 @@ export function JwtDecoderTool() {
           {verifyExp && (
             <span
               className={cx(
-                'rounded-full px-3 py-0.5 caption font-medium',
+                'rounded-full px-3 py-0.5 caption font-normal',
                 expBadge[parsed.expStatus].badgeClass
               )}
             >
@@ -230,7 +230,7 @@ export function JwtDecoderTool() {
           {sigBadge[sigStatus] && (
             <span
               className={cx(
-                'rounded-full px-3 py-0.5 caption font-medium',
+                'rounded-full px-3 py-0.5 caption font-normal',
                 sigBadge[sigStatus]!.badgeClass
               )}
             >

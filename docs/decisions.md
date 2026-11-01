@@ -21,7 +21,7 @@
 
 ## [001] デザインシステムとして DADS を採用
 
-**2026-04-12 | ステータス: 採用**
+**2026-04-12 | ステータス: 変更（[134] で配色・トークン値を DADS 実値へ移行）**
 
 ### 背景
 
@@ -2372,7 +2372,7 @@ XSS sink への inline script 注入 (`<script>maliciousCode()</script>`) を考
 
 ---
 
-## [065] 2026-05-03 — Playwright `webServer` を `process.env.CI` で分岐
+## [065] 2026-05-03 — Playwright `webServer` を `process.env.CI` で分岐（2026-10-30 に判定を `GITHUB_ACTIONS` へ変更）
 
 **2026-05-03 | ステータス: 採用**
 
@@ -2384,7 +2384,7 @@ PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で
 
 ### 決断
 
-`playwright.config.ts:webServer` を `process.env.CI` で分岐する:
+`playwright.config.ts:webServer` を `process.env.CI` で分岐する（2026-10-30 に `GITHUB_ACTIONS` 判定へ変更。下記追記）:
 
 - **CI**: `command: 'npm run preview -- --port 4321'`（事前 step で build 済み）、`timeout: 30_000`（preview 起動は瞬時、env 由来失敗を早期検知）、`reuseExistingServer: true`（fresh runner なので影響なし）
 - **Local**: `command: 'npm run build && npm run preview ...'`（build 忘れの safety net）、`timeout: 120_000`（build 時間込み）、`reuseExistingServer: false`（毎回新規 build/preview で stale dist trap を回避）
@@ -2396,6 +2396,7 @@ PR #247 セルフレビューの I-2 / I-3 として #248 に分離し別 PR で
 - **CI 実行時間**: build の重複実行がなくなり ~25s 短縮（cold start で計測）
 - **ローカル開発**: `npm run test:e2e` 実行ごとに incremental build が走る。手動 preview を別途起動した状態での E2E は port 衝突で失敗するため、`npm run pretest:e2e` で port 解放してから実行
   - **追記（2026-09-26, #770）**: 実装が `reuseExistingServer: !isCI` となっており、本決断と逆（ローカル `true` / CI `false`）のまま運用されていたため `isCI` に修正した。ローカルで残存サーバを黙って使い回し、古い状態で誤った結果を出していた。また `.npmrc` の `ignore-scripts=true` により `pretest:*` は npm に自動実行されないため、`npm run pretest:e2e` は明示的に実行する
+  - **追記（2026-10-30）**: 判定を `process.env.CI` から `process.env.GITHUB_ACTIONS === 'true'` に変更した。環境設定で `CI=1` を入れた Claude Code on the web セッションが CI と誤判定され、build を省いて古い `dist/` に対し E2E が pass していた（PR #809）。Playwright を動かす workflow（`test.yml` / `visual-regression.yml` / `update-visual-baseline.yml`）はすべて GitHub Actions 上で事前 build するため挙動は変わらない。`forbidOnly` / `retries` / `workers` は `CI` 判定のまま
 - **fail-fast**: CI の env 由来失敗（webServer 起動不可等）が 30s で確定
 - **後続作業**: なし（独立完結）
 
@@ -4225,7 +4226,7 @@ cert-decoder（issue #643）で「鍵フォーマット変換（PEM/DER/JWK）�
 
 ## [113] 2026-06-13 — frontend-design もプラグイン運用から `npx skills add` vendor 方式へ移行
 
-**2026-06-13 | ステータス: 採用**
+**2026-06-13 | ステータス: 変更（[134] で廃止）**
 
 ### 背景
 
@@ -4952,3 +4953,638 @@ Settings → Advanced Security で、Dependabot alerts、Dependabot security upd
 - **修正対象を名前だけで例外にする**: 推移的依存では修正版より新しい公開直後の版が素通りする
 - **推移的依存のガードを置かない**: `--min-release-age=0` のまま、[009] の `min-release-age=7` が守っていた範囲が自動マージで素通りになる
 - **security updates を `groups` で 1 PR にまとめる**: 自動マージの条件（1 パッケージ・GHSA ID 1 件）の判定が複雑になる。当面は 1 advisory = 1 PR で運用し、PR 数が問題になったら見直す
+
+---
+
+## [133] 脆弱性対応の自動化 Phase 3: 自前コードを週 1 回 Claude の定期タスクで点検する
+
+**2026-10-29 | ステータス: 採用**
+
+### 背景
+
+[131] / [132] で、依存パッケージの脆弱性は検知から develop へのマージ、リリース PR の作成まで自動化した。自前コード（XSS・CSP の破れ・外部送信の混入・workflow の script injection 等）は CodeQL の静的解析だけで、`.astro` は CodeQL の解析対象外（[131]）。CodeQL が拾わない種類の問題を、人が気づく前に見つけて修正 PR まで出したい。
+
+### 決断
+
+- Claude Code on the web の定期タスク（毎週月曜 02:13 UTC、実行ごとに新しいセッション）で、自前コードを点検する
+- 対象は、直近 8 日間に develop へ入ったコミットの差分（1 日重ねて取りこぼしを防ぐ）と、確認できれば CodeQL の open な alert。依存パッケージは Dependabot が担当するので対象外
+- 観点は XSS（`dangerouslySetInnerHTML` / `set:html` と `sanitizeHtml.ts` の経由、common.md 9.4）、CSP の破れ、外部送信の混入、ReDoS、プロトタイプ汚染、危険な URL スキーム、workflow の script injection と権限、secrets の混入
+- 実際の入力経路から悪用できることを追跡でき、テストで修正を示せるものだけを、陽性対照付きの修正 PR として develop に出す。推測にとどまる指摘は issue にまとめる。問題が無い週は何も作らない
+- 自前コードの修正は中身の判断が要るので、**自動マージはしない**（[132] の依存更新とは扱いを分ける）
+- 定期タスクの定義（プロンプト）はリポジトリ外（claude.ai の定期タスク）にある。点検の観点を変えるときは、この ADR と定期タスクのプロンプトを両方更新する
+
+### トレードオフ
+
+- 検出は最大で 1 週間遅れる。PR ごとの点検（`anthropics/claude-code-security-review` 等）はマージ前に止められるが、`ANTHROPIC_API_KEY` と API の利用料が必要になるので見送った
+- 差分だけを見るので、既存コードに昔からある問題は対象外。必要になったら全体点検を別途行う
+- 定期タスクのセッションで GitHub の MCP ツール（PR / issue の作成、Code scanning の参照）が使えるかは、登録時点では未確認。初回の手動実行で確認する
+
+### 却下した選択肢
+
+- **PR ごとの Claude によるセキュリティレビュー（GitHub Actions）**: 上記のとおり API キーと利用料が必要。週次の点検で足りなくなったら追加する
+- **毎回リポジトリ全体を点検する**: 指摘が毎週重複し、差分の確認より漏れが増える
+- **修正 PR の自動マージ**: 依存の更新と違い、修正の妥当性を人が判断する必要がある
+
+---
+
+## [134] Claude Design の DADS デザインシステムを正本にし、frontend-design スキルを外す
+
+**2026-10-30 | ステータス: 採用**
+
+### 背景
+
+[001] で DADS を採用したが、`global.css` と `dads-design-system` スキルの値は Tailwind のパレット（primary `#1a56db` 等）で、DADS v2 の実値（`blue-900` `#0017c1` 等）と一致していなかった。グレー・セマンティック色・フォーカスリング・角丸・影・タイポグラフィも同様にずれている。Claude Design 上に DADS 公式リポジトリから転記したデザインシステム（<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>）を用意したので、これに合わせて段階的に移行する（計画: `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`）。
+
+### 決断
+
+- Claude Design の DADS デザインシステムを見た目の正本にする。値の最終確認は DADS 公式の `figma/tokens.json` で行う
+- `dads-design-system` スキルを DS 準拠に書き換える。Codex は claude.ai の artifact を読めないため、目標値と仕様はスキル内（`references/`）に転記する。トークンを `global.css` に反映し終えたら `global.css` を正本にして転記は削除する
+- `frontend-design` スキル（vendor）を削除する。「大胆で個性的な美学」を求める汎用スキルで、UI 作業で発動すると DADS の静かで予測可能な見た目と逆方向の配色・書体を持ち込む
+- DADS 公式 npm パッケージ（`@digital-go-jp/tailwind-theme-plugin` / `design-system-example-components-react`）は導入せず、値を `@theme` のトークンへ転記する。既存の semantic token / `@layer components` の意味クラスの仕組みを保つため
+- DS が Google Fonts を `@import` している点は採用しない。外部送信禁止の原則と CSP（`default-src 'self'`）に反するため、`@fontsource` の自前配信を続ける
+- 移行の個別判断（primitive 名の衝突・等幅フォント・同期方向・タイポのクラス名）は計画書 4 章 D1〜D4 を正本とする
+
+### 却下した選択肢
+
+- **`dads-design-system` スキルも削除し DS の URL だけを参照する**: Codex（`AGENTS.md` がスキルを参照）が DADS の規約を読めなくなる
+- **一括で全面移行する**: 全ページの VRT baseline が一度に変わり、差分の目視確認が現実的でなくなる
+- **等幅フォントを Noto Sans Mono に変える**: コード表示が主用途で、`0/O` `1/l` の判別性を優先した
+
+### 結果・トレードオフ
+
+- ✅ UI 作業で参照するスキルが 1 つになる。移行完了後はスキル・`global.css`・DS の値が一致する
+- ⚠️ 移行完了まで、スキルの目標値と `global.css` の現行値が食い違う期間がある。スキル冒頭に移行中である旨を明記した
+- ⚠️ 見た目が変わるフェーズごとに VRT baseline の再生成（`workflow_dispatch`、web セッションからは不可）が必要
+
+---
+
+## [135] DADS 移行 Phase 1: カラートークンの対応付け
+
+**2026-10-30 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 1 で、`global.css` の色トークンを DADS v2 の値に付け替えた。DADS の 2 段ペアや薄いグレーの段数が既存トークンと 1 対 1 に対応しないため、対応付けの判断を残す。値は DADS 公式 `digital-go-jp/design-tokens` の `figma/tokens.json` と照合済み。
+
+### 決断
+
+- セマンティック色（`--color-success` / `--color-error` / `--color-warning`）は文字にも白文字バッジの塗りにも使うため、DADS の `-2` 側（白地 4.5:1 以上）を採る。error のみ `error-1`（`red-800`、白地 4.60:1）を `--color-error` に、`error-2` を `--color-error-text`（tint 上の文字）に割り当てる
+- warning は DADS の `warning-yellow-2`（`yellow-900`）だと `yellow-50` の tint 上で 4.16:1 になり、JwtDecoder の「exp なし」バッジで AA を満たさない。1 段濃い `yellow-1000`（5.20:1）を使う
+- `--color-bg-surface` と `--color-bg-subtle` は、DADS の薄いグレーが `solid-gray-50` の 1 段しかないため同じ値にする（トークンは用途の区別のため残す）。ページ全体の背景は `bg-surface` をやめ、DADS の既定（`surface-page` = 白）に合わせて `bg-default`（`--color-bg`）にする。カードとページの区切りは枠線（`solid-gray-100`）が担う
+- `--color-border-input` は公式 Input と同じ `solid-gray-600`。ボタン・チップの枠も同じトークンを使っており、現行の `#d1d5db`（白地 1.47:1）は WCAG 1.4.11 の 3:1 を満たしていなかったため、そのまま濃くする。鉄道図の箱など図の線は新設の `--color-border-strong`（`solid-gray-536`、白地 4.54:1 / gray-50 上 4.06:1）に分ける。`solid-gray-420` は gray-50 のグループ枠の上で 2.71:1 になり不足する
+- 本文 `--color-text` は公式 Heading と同じ `solid-gray-800`、補助テキスト `--color-muted` は `solid-gray-700`
+- Solid Gray はプリミティブとして `@theme` に置かない。未使用のテーマ変数はビルドで削られ、primitive の直接参照は規約で禁止しているため、semantic token の値として直接持つ
+
+### 却下した選択肢
+
+- **warning も DADS の `warning-yellow-2` に揃える**: tint 上の文字が AA 未達になる
+- **ボタン・チップの枠だけ旧来の薄いグレーを残す**: 非テキストのコントラスト不足を温存する。ボタンの見た目は Phase 5 で DADS の outline / solid-fill に作り直す
+
+### 結果・トレードオフ
+
+- ✅ red-50 などの tint 上の文字を含め、トークン経由の色の組み合わせは AA を満たす（`--color-error` を tint に載せる箇所は `--color-error-text` に替えた）
+- ⚠️ トークンを経由しない直書き色（UUID v7 のフィールド色など）には既存の AA 不足が残る（#808）
+- ⚠️ 入力欄・ボタン・チップの枠が濃くなり、全ページの見た目が変わる（VRT baseline の再生成が必要）
+
+---
+
+## [136] DADS 移行 Phase 2: フォーカスリング
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 2 で、全インタラクティブ要素のフォーカス表示を、青 2px の outline から DADS のフォーカスインジケータへ切り替えた。DADS の形は、黒 4px の outline（offset 2px）と、要素と outline の隙間を埋める yellow-300 の 2px リングの二重表示（公式 Button / Link の `focus-visible:outline-4 outline-black outline-offset-2 ring-2 ring-yellow-300`）。
+
+### 決断
+
+- トークンを outline 用の `--focus-ring`（`4px solid` 黒）と、黄リング用の `--focus-ring-shadow`（`0 0 0 2px` yellow-300 の box-shadow）に分ける。既存の `outline: var(--focus-ring)` の書き方を変えずに済む
+- 一括の focus ルール（`:where(...):focus-visible`、`summary` を対象に追加）は `@layer` の外にあるため、`@layer` 内（components / utilities）の box-shadow（影）や outline の指定を詳細度に関係なく上書きする。focus 中も影を残したい選択中のトグル（`.btn-toggle[aria-pressed='true']`）は、一括ルールの直後（レイヤー外）で黄リングと影を重ねる
+- テキストリンク（`.text-link` / `.text-link-plain`）は公式 Link と同じく、focus 時に地を yellow-300、文字を blue-1000 にする（9.98:1）
+- クリック可能なテーブル行（`<tr>`）は親の `overflow-hidden` に切られないよう outline を内側（offset -4px）に描き、黄リングは付けない（`<tr>` の box-shadow はブラウザで描画が安定しないため）
+- 親の `overflow` で外側の表示が切れる要素（トップのカテゴリタブ、横スクロールのパネル内の ToolCard、`overflow-hidden` の箱の中の `<summary>`）と、キーボードでフォーカスできるスクロール領域（Markdown プレビュー等）には `.focus-inset` を付け、内側に描く（offset -4px の outline + `inset 0 0 0 6px` の黄）
+- primary ボタンの hover / focus は `filter: brightness()` だと黄リングまで暗くなるため、背景色（`--color-primary-hover` = blue-1000）で表す
+- スキップリンクは focus 時に画面端から 6px 離し、フォーカス表示が画面外に切れないようにする
+- 濃色フッター（solid-gray-900）上では黒い outline は見えないが、黄リング（12.21:1）が見えるのでそのままにする
+
+### 却下した選択肢
+
+- **outline を黄、box-shadow を黒にする**: DADS の見た目（黒が外側）と逆になる
+- **すべての focusable 要素を内側描画にする**: DADS の見た目（要素の外側にリング）から外れる。切れる要素だけに限る
+
+### 結果・トレードオフ
+
+- ✅ キーボード操作時の現在位置が、どの背景色の上でも明確になる
+- ⚠️ 影を持つ要素（ToolCard の `hover:shadow-md` など）は、focus 中は影が黄リングに置き換わる。影を残す必要がある要素は上記のトグルと同じく個別に重ねる
+
+---
+
+## [137] CI の Playwright を全コアで並列実行し、VRT の比較は retry しない
+
+**2026-10-30 | ステータス: 採用**
+
+### 背景
+
+CI の `workers` は Playwright 雛形の既定値（`process.env.CI ? 1 : undefined`）のままで、採用理由の記録がなかった。E2E は 395 件を直列で回し、`E2E テストを実行` ステップだけで約 3 分 54 秒（e2e ジョブ全体 5 分 14 秒）かかっていた。VRT は pass 時 37 秒だが、全ページに diff が出た PR #809 では、各テストが mismatch のまま `expect.timeout`（5 秒）まで撮り直しを続けたうえ `retries: 1` でもう一度走り、`VRT 実行` ステップが 5 分 45 秒まで伸びていた。
+
+### 決断
+
+- `playwright.config.ts` の CI 時 `workers` を `'100%'` にする（GitHub の ubuntu-latest は 4 vCPU）。`CI` 未設定のローカルは既定（コア数の 50%）のまま。`CI=1` を設定した Claude Code on the web セッションは CI と同じく `'100%'` になる
+- `visual-regression.yml` の `--workers=1` を外す。baseline 生成（`update-visual-baseline.yml`）は実行頻度が低いため 1 worker のまま残す
+- `visual-regression` project は `retries: 0` にする。描画差分は retry しても再現するので、retry は失敗 run を長くするだけになる。project の設定なので baseline 生成（`update-visual-baseline.yml`）も retry しなくなるが、1 worker で負荷が低く、失敗しても再実行すれば済む
+
+4 コアのコンテナで実測した結果:
+
+| 対象           | workers | wall time（build 込み） | 結果                         |
+| :------------- | :------ | :---------------------- | :--------------------------- |
+| E2E            | 1       | 5.7 分                  | 395 passed                   |
+| E2E            | 2       | 3.4 分                  | 395 passed                   |
+| E2E            | 4       | 2.9 分                  | 395 passed                   |
+| E2E ×2 周      | 4       | 5.2 分                  | 790 passed / flaky 0         |
+| VRT（74 件）   | 1       | 1.0 分                  | 一時生成した baseline と一致 |
+| VRT（74 件）×2 | 4       | 38 秒 / 40 秒           | 一時生成した baseline と一致 |
+
+hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化と meta テストで塞いであり、並列化の前提が整っている。
+
+### 却下した選択肢
+
+- **E2E を matrix で shard する**: ジョブごとにコンテナ起動・`npm ci`・build で約 45 秒の固定費が乗る。4 workers 化後の E2E 本体は 2 分 31 秒（PR #813 の CI 実測）で、現時点では割に合わない。件数がさらに増えたら再検討する
+- **`workers: 2`（Playwright 既定の 50%）**: 4 workers より遅く（3.4 分 vs 2.9 分）、4 コアの runner を使い切らない
+
+### 結果・トレードオフ
+
+- ✅ CI の `E2E テストを実行` ステップが 3 分 54 秒 → 2 分 31 秒（e2e ジョブ全体は 5 分 14 秒 → 3 分 40 秒、PR #813）。ローカルほどは縮まない
+- ✅ diff が出た VRT の run は retry 分がなくなる。pass 時の `VRT 実行` は 37 秒 → 36 秒でほぼ変わらない（並列にすると 1 件あたりの撮影時間が伸び、CPU が律速になる）
+- ⚠️ 並列実行でだけ顕在化するテスト間の干渉（共有状態・CPU 負荷によるタイムアウト）が CI でも表に出る。E2E は `retries: 1` を残して吸収する
+- ⚠️ VRT の flaky は retry で吸収されず fail になる。VRT は required check ではないため merge は止まらない
+
+---
+
+## [138] DADS 移行 Phase 3: タイポグラフィ
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 3 で、文字のスタイルを DADS の文字スケール（`{種別}-{サイズ}{N|B}-{行高%}`）に寄せた。計画書 4 章 D4 のとおり、既存のクラス名は維持して値だけを変える。
+
+### 決断
+
+- 見出し・本文の意味クラスを DADS のスタイルに対応付ける: `.tool-info-heading` と `.body-emphasis` は Std-17B-170、`.tool-info-body` は Std-17N-170、`.tool-info-list` は Std-16N-170（14px・行高 1.29 から。複数行の説明文なので本文と同じ Std にする）、`.section-heading` は Std-18B-160、`.text-body` は Std-16N-175、`.hero-heading` は Std-32B-150、`.page-heading` は Std-28B-150
+- `.caption`（14px・行高 1.7）は据え置く。DADS には 14px の Std スタイルがなく（14px は Dns / Oln / Mono のみ）、複数行の補助テキストに Dns-14N-130 の行高 1.3 を当てると読みにくくなるため
+- 文字の太さを DADS の 400 / 700 にそろえる。`font-semibold`（600）は `font-bold`、`font-medium`（500）は `font-normal` に置き換える。Noto Sans JP は 400 / 700 しか読み込んでおらず、Noto Sans JP で描かれる文字はもともと 600 が 700、500 が 400 で描かれていたため、見た目は変わらない（Noto Sans JP の unicode-range 外の記号や、フォント読み込み前のシステムフォント表示では差が出うるが軽微）。再混入は meta テスト（`tests/meta/font-weight-dads.test.ts`、陽性対照付き）で検知する
+- 14px 未満の文字（バッジ・図のラベル・JSON の件数等）は部品ごとに判断が要るため Phase 5 に回す（#814）
+
+### 却下した選択肢
+
+- **`.caption` を 16px に上げる**: 214 箇所で使う補助テキストが一斉に大きくなり、レイアウトへの影響が Phase 3 の範囲を超える
+- **DADS 公式のクラス名（`text-std-16N-170` 等）に置き換える**: 全ツールのマークアップに波及する（計画書 4 章 D4）
+
+### 結果・トレードオフ
+
+- ✅ 見出し・本文の行高が DADS の値になり、ページ間でそろう
+- ⚠️ 行高が変わるため、見出しやツール説明欄の高さが少し変わる（VRT の差分になる）
+
+---
+
+## [139] DADS 移行 Phase 4: 角丸とエレベーション
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 4。Tailwind v4 の `rounded-lg` は `--radius-lg` を参照するため、このリポジトリでは入力欄・ボタン・カードのすべてが 16px の角丸になっていた（`rounded-xl` は Tailwind 既定の 12px で、`rounded-lg` より小さい）。DADS はコントロール 8px・カード 12px を使い分ける。影は Tailwind 風の 5 段だった。
+
+### 決断
+
+- `--radius-lg` を 12px（DADS のカード）にする。カード・パネル・セクション・プレビューの枠と、ファイルのドロップ / 貼り付け領域は `rounded-lg`。4px / 8px だったカード・パネル（文字数カウント、HAR ビューア、ER 図）も `rounded-lg` にそろえた。入力欄と並ぶプレビュー（Markdown エディタ、クリップボードのプレビュー）は出力欄として 8px
+- コントロール（入力欄・セレクト・ボタン・トグル）と、それと並ぶ出力・テキスト表示欄（`OutputField` と同じ形の欄）は `rounded-md`（8px）に付け替える。compact ボタンの共有定数 `COMPACT_BUTTON_SHAPE_CLASSES` も `rounded-md` にし、ずれ検知テストを合わせた
+- `--elevation-1`〜`8` を DADS の値（ambient + key の 2 枚重ね）にする。Tailwind の `shadow-md`（ツールカードの hover）は DADS の 2 段、`shadow-xl`（モバイルのドロワー）は 6 段に `@theme` で上書きする
+- 部品単位の小さな角丸（正規表現の AST ノード 6px 等）と、DADS の「カードは常に薄い影を持ち hover で 1 段上げる」は、コンポーネントごとに見た目を判断するため Phase 5 で扱う
+
+### 却下した選択肢
+
+- **`rounded-lg` を 8px にして、カードだけ `rounded-xl` に付け替える**: カードのほうが使用箇所が多く、付け替えの範囲が広がる
+- **DADS 公式の名前（`rounded-8` / `rounded-12`）の utility を新設する**: 既存の Tailwind の名前と二重になる
+
+### 結果・トレードオフ
+
+- ✅ コントロールとカードの角丸が DADS の値で使い分けられる
+- ⚠️ 入力欄・ボタンの角が小さくなり、影が濃くなるため、全ページの見た目が変わる（VRT の差分になる）
+
+---
+
+## [140] DADS 移行 Phase 5: ボタン類
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 のうちボタン類。`ActionButton` は灰色地の default・primary 塗り・primary 枠の secondary・赤枠の danger の 4 variant で、文字は 14px（`.caption`）、hover は地の色だけが変わっていた。`CopyButton` / `FileInputButton` も灰色地で、`CopyButton` には hover が無かった。DADS の Button は solid-fill / outline / text の 3 variant と lg / md / sm / xs の 4 サイズを持ち、文字は 16px Bold・行高 1、hover は地の色に下線を足す。
+
+### 決断
+
+- variant の対応: `primary` → solid-fill、`secondary` → outline、`text`（新設）→ text。`default` は DADS に灰色のボタンが無いため outline にそろえる（`secondary` と同じ見た目。名前の整理は Phase 7）。`danger` は DS に無いため outline を error 色（`--color-error`）にし、hover は red-50 の地に error-2 の文字 + 下線（`:active` も同じ。red の押下中用のトークンは足さない）
+- サイズの対応: `size="default"` → md（高さ 48px・最小幅 96px・角丸 8px）、`size="compact"`（`COMPACT_BUTTON_SHAPE_CLASSES`）→ sm（36px・80px・角丸 6px）。6px は `--radius-button-sm`（`rounded-button-sm`）として `@theme` に足した。文字は両サイズとも 16px Bold・行高 1（Oln-16B-100）
+- solid-fill は DADS 公式と同じく 4px double の透明な枠を持つ（通常は塗りに埋もれ、強制カラーモードで輪郭になる）。hover / `:focus-visible` は blue-1000、`:active` は blue-1200（`--color-primary-active`）
+- outline の hover / `:focus-visible` は blue-200 の地・blue-1000 の文字、`:active` は blue-300 の地・blue-1200 の文字。text の hover は blue-50 の地 + 3px の下線、`:active` は blue-100 の地。地の色は `:root` のトークン（`--color-bg-primary-hover` / `--color-bg-primary-active` / `--color-bg-text-button-active`）にした
+- hover と `:focus-visible` は同じ見た目（地の色 + 下線）にし、disabled には付けない。disabled は solid-fill が solid-gray-300 の塗り + solid-gray-50 の文字、outline / danger が白地に solid-gray-300 の文字と枠、text が solid-gray-300 の文字（`--color-disabled` / `--color-text-on-disabled`）。danger の disabled も中立のグレー（issue #259 の方針を維持）
+- `CopyButton` は outline の sm、表の行に置くアイコンだけの compact は枠なしのまま、hover で outline と同じ blue-200 の地を出す（32px 四方は維持し、角丸を 6px に）。text の hover と同じ blue-50 や blue-100 だと、置かれる行の地（JSON ツリーの操作欄・表の行 hover の blue-50、表の選択行の blue-100。[142]）と同じ色になって見えなくなるため。hover は `.is-copied` を除外する。クリック直後はポインタが乗ったままで、除外しないと成功の緑が hover の色に隠れるため
+- `FileInputButton` は outline の md と同じ見た目にし、hover と input のキーボードフォーカス（`:has(input:focus-visible)`）を同じ見た目にする。従来の `:focus-within` は、クリックでファイル選択を閉じた後も input にフォーカスが残り、フォーカスリング（と今回の hover の見た目）が残り続けていた。`ClearButton` は text の sm（`.btn-action--text` を共有）。トップページ検索欄のクリア（`.btn-clear`）はアイコンボタンなので対象外
+- compact ボタンを sm（36px）にしたため、ボタンを置くラベル行（`InputField` / `OutputField` / `JsonTreeResult` ほか）の最小高さを `min-h-8`（32px）から `min-h-9` にした。片側だけボタンがあると入力欄と結果欄の上端が 4px ずれるため（E2E で検知）
+
+### 却下した選択肢
+
+- **sm / xs の高さ 44px 未満のボタンに、DADS 公式の透明な `::after` でタップ領域を 44px に広げる**: 縦に詰めて並ぶ行（DSN ビルダーの削除ボタン等）で隣の要素に重なり、クリックを奪う。今回の変更で sm の高さは 32px → 36px に広がっている
+- **disabled で `pointer-events: none` にする（DADS 公式）**: `cursor: not-allowed` が出なくなる。`disabled` 属性でクリックは発火しないため、カーソルの表示を優先した。なお、レイヤー外の `:where(button) { cursor: pointer }` が `@layer components` の `cursor: not-allowed` を上書きしていて、disabled のボタンも pointer になっていたため、レイヤー外に `:where(button):disabled { cursor: not-allowed }` を足した（E2E で検知）
+- **`size="default"` を sm（36px）にして現状の高さ（約 42px）に近づける**: DADS の主要ボタンは md で、入力欄（DADS md 48px）と並べたときに高さがそろう
+
+### 結果・トレードオフ
+
+- ✅ ボタンの文字が 16px になり、hover が色だけに頼らなくなる
+- ⚠️ md のボタンが約 42px → 48px、compact が 32px → 36px に高くなり、文字も大きくなるため、ボタンを含む全ページの見た目が変わる（VRT の差分になる）
+- ⚠️ 入力欄はまだ約 42px のため、md のボタン（48px）と横に並べると高さがそろわない。入力欄の DADS 化（計画書 Phase 5）でそろえる
+
+---
+
+## [141] DADS 移行 Phase 5: 通知・状態表示（NotificationBanner / StatusBadge / ChipLabel）と UUID v7 / JWT の色
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 のうち通知・状態表示の 3 部品を、Claude Design の DS（`components.css` の `.dads-banner` / `.dads-status-badge` / `.dads-chip`）に合わせた。あわせて、トークンを経由しない直書き色が残っていた UUID v7 生成（一部が白地で AA 未達）と JWT デコーダ（AA は満たすが DADS 外の色）の色を DADS の色相に置き換えた（#808）。
+
+### 決断
+
+- **NotificationBanner**: color-chip 型（2px の枠 + 左 16px の色帯、角丸 12px）は維持し、見出しを 18px Bold（`.section-heading` + `font-bold`。DS の 18px / 1.5 に対し、本リポジトリの Std-18B-160）、アイコンを 28px、本文を 16px（`.text-body`、Std-16N-175。DS の 16px / 1.7 に対し行高 1.75）に上げた。枠・色帯・アイコンは `currentColor` で描き、種類ごとの色は `color` だけで切り替える
+- 色は既存の semantic token のまま。warning は DS の `warning-yellow-2`（`yellow-900`）ではなく `--color-warning`（`yellow-1000`）を使う。バナーで色を使うのは枠・色帯・アイコン（非テキスト）だけで、どちらも白地 3:1 を満たす。サイト内の warning を 1 色に保つため（[135]）
+- **StatusBadge**: DS どおり 16px / 400 / 行高 1、padding 8px。地色は白文字で 4.5:1 を満たす semantic 色のまま（error は `error-1` で白文字 4.60:1。DS は「`-1` で不足するのは success / warning」としている）。狭いセル（ContrastMatrix）で「AAA」と「○」が割れないよう `white-space: nowrap` を付けた
+- **ChipLabel**: DS の outline 型（最小高 32px、16px / 400 / 行高 1、padding 3px 7px、枠 1px `currentColor`）。neutral の枠も `currentColor`（`--color-muted`）にし、旧来の `--color-border`（白地 1.25:1）をやめた。地は DS の透明ではなく白で固定する。正規表現の AST の危険ノード（red-50）に載ると `error-1` の文字が 4.08:1 に落ちるため
+- **UUID v7 / JWT（#808）**: 色を `:root` の `--color-uuid-*` / `--color-jwt-*` に移し、DADS の色相から白地・gray-50（パネル）・表の hover 行（blue-50）・選択行（blue-100、[142]）のどれでも文字 4.5:1 以上になる段を選んだ（最小は選択行上の orange-900 で 4.85:1）。UUID の隣り合うフィールドは明度も交互にした（ts `blue-900` → ver `magenta-800` → rand_a `green-1000` → var `orange-900` → rand_b `cyan-1100`。隣接ペアのコントラストは 1.58〜1.77:1）。JWT の payload 枠は `purple-700`、値は `yellow-1100`。`.uuid-field-bits` は `opacity: 0.7`（gray-50 上で 4.5:1 未満）をやめ、親の `--color-muted` をそのまま使う
+
+### 却下した選択肢
+
+- **ChipLabel の地を DS どおり透明にする**: tint 上に載る箇所で文字のコントラストが不足する
+- **StatusBadge の error を DS の `-2`（`error-2`）にする**: `error-1` でも白文字 4.5:1 を満たし、バナー・チップの error と色がずれる
+
+### 結果・トレードオフ
+
+- ✅ 3 部品の寸法が DS と一致し、`--color-border` 由来のチップ枠のコントラスト不足と、UUID / JWT の AA 未達が解消する
+- ⚠️ バッジ・チップ・バナー本文が 14px → 16px になり、使う画面（正規表現ビジュアライザ、ContrastMatrix、SAML / 証明書 / 鍵 / CSR 等）の高さと幅が変わる（VRT の差分になる）
+- ⚠️ UUID の 14px 未満の文字（`.uuid-field-key` / `.uuid-field-bits`）と JWT の `.jwt-pre`（12px）のサイズは #814 で扱う
+- 注記（[148]）: UUID v7 の色分け（`--color-uuid-*`）は、表の選択行（blue-100）の地の上でも 4.5:1 以上を満たすことを確認済み（#819 の作業時）
+
+---
+
+## [142] DADS 移行 Phase 5: 結果の表（ResultTable / Markdown プレビューの表）
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 で、`ResultTable`（UUID v7・ULID・CIDR・正規表現のマッチ・SAML の属性）と Markdown プレビューの表を DADS の Table に寄せた。従来は 1 行おきの縞（白 / gray-50）、薄い区切り線（solid-gray-100）、primary 8% を混ぜた選択色で、DADS の Table（縞なし・solid-gray-420 の下罫線・thead に 2px の下罫線・行 hover で blue-50）と異なっていた。
+
+### 決断
+
+- セル padding を DADS の 12px 16px（`px-4 py-3`）にする。CopyButton を置く列の `cellPadding: 'compact'`（4px 8px）は残す
+- 縞をやめ、各行に solid-gray-420 の下罫線を引く。thead は solid-gray-50 地・Bold・本文色（従来は muted）で、下罫線を 2px の solid-gray-400 にする。罫線用に `--color-border-divider`（gray-420）と `--color-border-table-head`（gray-400）を追加した
+- 行 hover は blue-50（`--color-bg-active`）。DADS どおりクリックできない行にも付ける。タッチ端末でタップ後に色が残らないよう `@media (hover: hover)` に限る
+- 選択行は hover と区別できるよう blue-100（新設の `--color-bg-selected`）にし、従来の上下 2px の primary の線を残す。本文 10.06:1・muted 6.73:1・primary 8.83:1（hover の blue-50 上は本文 11.10:1・muted 7.42:1）
+- ResultTable の罫線は td の inset box-shadow で描く。従来は選択行だけ実際の border を付けており、選択を切り替えるたびに行の高さが 4px 変わっていた
+- **ResultTable の文字は DADS の 16px / 1.5 にせず、`.caption`（14px）のままにする**。16px にすると等幅の IP アドレスを 6 列並べる CIDR の分割表が PC 幅（1280px）でもはみ出して横スクロールになるため。Markdown プレビューの表は本文（16px）と並ぶ文書なので DADS どおり 16px / 1.5 にし、縦罫線をやめる。見出しは ResultTable と同じく折り返さない
+- padding が増えた分、正規表現のマッチ表がスマホ幅で「2026-10」のような短い値まで折り返したため、他の ResultTable と同じく `minWidth`（28rem）を指定して横スクロールにし、位置の列は折り返さない
+- 行見出し（`th[scope="row"]`）と caption は ResultTable と Markdown プレビューでは使わないため追加しない（使っている ContrastMatrix / HAR ビューアの表は Phase 5 の別の判断に回す）。クリック可能な行のフォーカス表示は [136] のまま（offset -4px の outline）
+
+### 却下した選択肢
+
+- **ResultTable の文字も 16px にする**: 上記のとおり CIDR の分割表が PC 幅に収まらない。UUID / ULID の表もスマホでの横スクロール量が増える
+- **選択行を hover と同じ blue-50 にする**: hover 中の行と選択行の区別が上下の線だけになる
+- **hover をクリックできる行だけに付ける**: DADS の Table の仕様から外れる。クリックできるかどうかは `cursor: pointer` で示す
+
+### 結果・トレードオフ
+
+- ✅ 表の罫線・見出し・hover・選択の見た目が DADS にそろい、選択の切り替えで行の高さがずれなくなる
+- ⚠️ 行の高さが増え（約 40px → 48px）、同じ件数でも表が縦に長くなる。表は操作後に出るため、初期表示だけを撮る VRT には差分が出ない（見た目は `tests/e2e/dads-table.spec.ts` で確認する）
+- ⚠️ UUID v7 の色分け（`#7c3aed` 等の直書き色、#808）は白地でも 4.5:1 を満たさないものがあり、hover / 選択の地の上ではさらに下がる。#808 で DADS の色に置き換えるときに表の地の上でも確認する
+
+---
+
+## [143] DADS 移行 Phase 5: 入力欄（InputField / BareInput / Select / CountInput / OutputField）
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 のうち入力欄。従来は各コンポーネントと各ツールが Tailwind の utility（`caption` 14px・`px-3 py-2`・`border-input` / `border-error`）を個別に書いており、高さは約 42px、hover の反応は無く、read-only は実線、エラーは枠色の差し替えだけだった。[140] で md ボタンが 48px になったため、横に並べると高さがそろわなかった。
+
+### 決断
+
+- 見た目を `global.css` の `@layer components` に **`.field-control`**（+ `--textarea` / `--select`）として 1 か所にまとめ、`InputField` / `BareInput` / `Select` / `CountInput` / `OutputField` と、各ツール直書きの `<input>`（DummyText・DummyPersonalData・CertDecoder・トップの検索欄）が使う。状態は class ではなく属性で切り替える（エラー = `aria-invalid="true"`、read-only = `readonly`、disabled = `:disabled`）。`BareInput` の `error` prop は `aria-invalid` に変換する
+- DADS の md: 高さ 48px、左右 padding 16px、角丸 8px、文字 16px（`.caption` をやめる）。textarea は行高 1.7・padding 12px 16px で、高さは `rows` で決める。select は `appearance: none` + 右 16px の chevron で、文字が chevron に重ならないよう右 padding を 44px にする
+- 枠は solid-gray-600 で、hover（編集可能時のみ）は黒。エラーは error-1、hover は red-1000。placeholder は solid-gray-536。トークンは `--color-border-input-hover` / `--color-border-error-hover` / `--color-placeholder` / `--color-text-disabled` を `:root` に追加した
+- read-only は破線の枠 + solid-gray-50 の地（従来の `bg-surface` / OutputField の `bg-subtle` を維持）。hover しても枠は変えない。`OutputField` の枠は `border-default`（gray-100）から入力欄と同じ gray-600 の破線になった
+- disabled は枠 solid-gray-300・地 solid-gray-50・文字 solid-gray-420、`cursor: not-allowed`
+- ContrastMatrix のカラーピッカー（`input[type=color]`）は、隣の入力欄と上端・高さをそろえるため 40px → 48px にした。サイズ違いの sm（40px）/ lg（56px）は使用箇所が無いため作らない
+- textarea の行高が 14px×1.7 → 16px×1.7 になり、rows=18 の高さが約 446px → 約 516px になったため、それに揃える固定高（`.md-preview-box` / `.json-tree-box`）を 28rem → 32.25rem にした（Markdown エディタの高さガードの E2E で検知）。DummyText の「間隔」と CharCount の任意上限は 4 桁が入るよう幅を `w-20` → `w-24` にした
+- CertDecoder のパスワード欄は枠が `border-default` だった（他の入力欄と不一致）ため `.field-control` にして gray-600 にそろえた
+
+### 却下した選択肢
+
+- **コンポーネントごとに utility を書き換える**: 状態（hover / エラー / read-only / disabled）が variant 非対応の `@layer components` に頼れず、各所で同じ組み合わせを繰り返すことになる
+- **BareInput だけ 40px（sm）にして表のような密な配置を詰める**: DSN ビルダー・QR チケット・TOTP の BareInput は、ボタンや InputField と並ぶため md（48px）でそろえる方が崩れない。詰める必要が出たら sm を足す
+
+### 結果・トレードオフ
+
+- ✅ 入力欄・セレクト・出力欄の高さ・文字・状態が DADS にそろい、md ボタンと横並びでも高さが一致する（`tests/e2e/dads-inputs.spec.ts`）
+- ⚠️ 入力欄が約 42px → 48px、文字が 14px → 16px になり、入力欄を含む全ツールの見た目が変わる（VRT の差分）。DSN ビルダーの PC 幅（3 カラム）では、スキームの長い選択肢（`postgresql:// ― PostgreSQL`）が選択中の表示で末尾まで入らない
+
+---
+
+## [144] DADS 移行 Phase 5: トグル（ToggleGroup / ToggleChips）
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 5 のうちトグル類。DS にトグルは無いため、Button（[140]）と ChipLabel（[141]）の規約から派生させた。従来は `ToggleGroup` が 14px の灰色の土台（8px・p-1）に 8px のボタンを入れ子にしており（角丸が同じ値で重なる）、選択中は白地 + 影、hover は blue-50。`ToggleChips` はピル型で、文字トークン・件数バッジが 13px（DADS の最小 14px 未満、#814）だった。
+
+### 決断
+
+- **ToggleGroup**: 選択中を outline ボタンの通常状態（白地・blue-900 の文字と 1px 枠）にし、従来の `--elevation-2` の影は残す（[136] の `:focus-visible` との重ね描きを維持するため）。未選択は透明地・`--color-muted` の文字。hover / `:focus-visible` は outline ボタンと同じ blue-200 の地・blue-1000 の文字・下線、`:active` は blue-300 の地・blue-1200 の文字。選択中には hover の見た目を付けない。枠は未選択も 1px 透明で持ち、選択の切り替えで大きさが変わらないようにした
+- 入れ子の角丸: 土台は 8px のまま、内側のボタンを 4px（`rounded-sm`。外 8px − 枠 1px − 余白 4px にほぼ等しい）にした
+- サイズ: `md` は DADS の sm ボタン相当（高さ 36px・16px Bold・行高 1）、`sm` は xs 相当（28px・14px Bold）。土台（枠 1px + 余白 4px）を含めた高さは 46px / 38px（PC 幅・スマホ幅とも横にはみ出さないことを目視確認）
+- **ToggleChips**: ChipLabel の寸法（最小高 32px・角丸 8px・16px・行高 1・padding 3px 7px + 枠 1px・gap 4px）にそろえ、ピル型をやめた。文字は ChipLabel の 400 ではなくボタンと同じ Bold のまま（操作できる部品であることを示す）。OFF は outline（白地・solid-gray-600 の枠・muted 文字。文字 8.45:1、枠 5.74:1）、ON は solid-fill（blue-900 塗り・白文字 11.10:1）。hover / `:focus-visible` は OFF が outline ボタンと同じ blue-200 の地・blue-1000 の文字と枠・下線、ON が blue-1000 塗り + 下線。`:active` はそれぞれ blue-300 / blue-1200
+- 文字トークン・件数バッジは 13px → 14px、高さ 20px → 24px。ON 上の半透明白の地でも白文字 6.37:1
+- 操作不能（`aria-disabled`）は ON / OFF とも [140] のボタンの disabled と同じ solid-gray-300 の塗り・solid-gray-50 の文字（WCAG の対象外）にし、バッジは透明にして文字色を引き継ぐ。従来の `opacity: 0.6` は、ON の青塗り上の白文字が 4.5:1 を割るためやめた。ON / OFF の別は `aria-pressed` が伝える。`cursor: not-allowed` が global の `:where(button) { cursor: pointer }` に上書きされていたため、`:where(button)[aria-disabled='true']` もレイヤー外に足した
+- 色はすべて既存のトークン（`--color-primary*` / `--color-bg-primary-hover` / `--color-bg-primary-active` / `--color-disabled` 等）で、新しいトークンや hex の直書きはない
+
+### 却下した選択肢
+
+- **ToggleGroup の選択中を solid-fill（青塗り）にする**: 1 画面に複数並ぶトグルが全部青塗りになり、DADS の「solid-fill は主要操作に 1 つ」から外れる。また ToggleChips の ON と見分けが付かなくなる
+- **ToggleGroup の md を 48px（DADS md）にする**: ツールバーに並ぶ入力欄横のトグルの高さが 56px になり、画面が間延びする。入力欄の DADS 化（別セッション）後に再検討する
+- **disabled を opacity で表す（従来）**: 上記のとおり ON でコントラストが不足し、DADS の disabled の表現ともずれる
+
+### 結果・トレードオフ
+
+- ✅ トグル 2 部品の寸法・色・hover が Button / ChipLabel と一貫し、14px 未満の文字と角丸の入れ子が解消する
+- ⚠️ ToggleGroup は高さがほぼ据え置き（md 約 46px）で、文字が 14px → 16px、ボタンの横 padding が 12px → 16px に広がり、トグルを置く全ツールの見た目が変わる（VRT の差分になる）
+- ⚠️ 固定 ON の項目（日本語ダミー個人データの氏名）が灰色の塗りになり、ON であることが色だけでは分かりにくい（`aria-pressed` と title で補う）
+
+---
+
+## [145] DADS 移行 Phase 5: 14px 未満の文字サイズを 14px にそろえる
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+DADS は本文・UI を 16px 以上、補助的な用途でも 14px を下限とし、14px 未満は使わない。[138] で見出し・本文の意味クラスは DADS の文字スケールに寄せたが、部品ごとに判断が要る 14px 未満の指定が残っていた（#814）。
+
+### 決断
+
+- `.hint-xs` / `.jwt-pre` / `.uuid-field-key` / `.uuid-field-bits` / `.json-count` を 0.875rem（14px）にした。`.hint-xs` は行高を 170%（DADS の Dns-14）、`.jwt-pre`（等幅）は 150% にし、letter-spacing の負値をやめた。クラス名の `xs` は変えない（利用箇所が多く、名前だけの変更になるため）
+- `CopyButton` の compact（アイコンだけ）の `text-xs` を `text-sm` にした。表示される文字は無く、sr-only のみのため見た目は変わらない。`no-primitive-text-xs` の許可リストから外した
+- **鉄道図の SVG ラベル（`.rr-text` 13px / `.rr-group-title` 11px / `.rr-quant` 11px）も 14px にし、例外にしない**。`.rr-text` は等幅 14px の 1 文字が約 8.4px で、レイアウトの `CHAR_W`（8.5）に収まる。量指定子ラベルは最短一致（「1回以上（最短）」等）だと幅が約 120px になり図の端で欠けるため、`measureRepetition` の幅をラベル幅以上にして内側のノードを中央に置く。タイトルと量指定子ラベルは高さが増えるため、`GROUP_PAD_TOP` を 22 → 26、`LABEL_H` を 12 → 16 にし、ベースラインも合わせた。PC / スマホで SVG の外にテキストがはみ出さないことを getBBox で確認した
+- 再混入を `tests/meta/min-font-size-dads.test.ts` で検知する（CSS の `font-size`、SVG の `fontSize`、`text-xs`、`text-[11px]` 等。陽性対照つき）。許可リストは空（トグル類は [144] で 14px になったため外した）。セレクタ単位の許可の機構は fixture で陽性対照を取る
+
+### 却下した選択肢
+
+- **鉄道図のラベルを図内テキストとして例外にする**: 14px に上げてもボックス幅・折り返し・はみ出しが崩れず、例外にする理由がない
+
+### 結果・トレードオフ
+
+- ✅ CSS・コンポーネントの 14px 未満の文字が消え、再混入は CI で検知される。ただし検知は数値リテラルの直書きだけで、定数経由で組む SVG（`src/utils/ddl-er-diagram.ts` の 10〜13px）は対象外。[#822](https://github.com/fumtas1k/devtools/issues/822) で扱う
+- ⚠️ 鉄道図は group と量指定子の周りが縦に 4px ずつ広がる。VRT（regex-visualizer など）の差分は目視確認のうえ baseline を更新する
+- ⚠️ UUID のフィールド見出しが 14px になり、スマホでは折り返しながら並ぶ（はみ出しはなし）
+
+---
+
+## [146] DADS 移行 Phase 6: favicon と PWA アイコン
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+`public/favicon.svg` と `public/icons/*.png` は旧配色（#2563EB → #7C3AED のグラデーション + 白いハイライト）のままだった。`theme-color` と manifest の `theme_color` は Phase 1 で #0017C1 になっており、アイコンだけが旧ブランドで残っていた。
+
+### 決断
+
+- favicon は **blue-900 `#0017C1` の単色地 + 白の `>_`**（形は現行を維持）。DADS はグラデーションを使わないため、グラデーションと上半分のハイライトは廃止した。角丸は 32px のうち 6px（約 19%）で現行どおり（DADS のボタン radius に近い比率）
+- PNG 4 種は favicon.svg を Playwright（Chromium）で描画して生成した。`icon-*` は透過背景、`icon-maskable-*` は全面を #0017C1 で塗り、favicon を 110% に拡大して中央に置く（地と本体が同色で輪郭は見えず、白い `>_` だけが見える。記号の中心からの最大距離は約 0.355w で、safe zone の半径 0.4w に収まる。旧版と同じ大きさ）。生成スクリプトは一時ファイルとし、コミットしない
+- apple-touch-icon は既存の `icon-maskable-192.png` を使う。iOS が角丸に切り抜く際、透過した四隅が黒く埋まるのを避けるため、全面塗りの画像を共用する（issue #829）
+- manifest の `background_color`（#E8F1FE = blue-50）は変更しない。スプラッシュでは明るい青地の上に blue-900 のアイコンが載り、コントラストが十分
+
+### 結果・トレードオフ
+
+- ✅ ライトタブ / ダークタブ（#35363a）の両方で、白い `>_` がはっきり読める
+- ⚠️ ダークタブでは地の #0017C1 と背景の明度差が小さい。白い記号で視認性を確保した
+
+---
+
+## [147] DADS 移行 Phase 6: ヘッダー・フッター・サイドバー・ToolCard のレイアウト
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイアウト系の Astro コンポーネントに残るずれを PC（1280x800）とスマホ（390x844）の目視で洗い出した。
+
+### 決断
+
+- **既に DADS に合っていた点は変えない**: `PageContainer`（最大幅 1120px、左右 16px / sm 以上 24px）、ヘッダー（高さ 64px、下罫線）、フッター（`solid-gray-900` 地、14px、上下の余白 48px）、`ToolCard`（12px 角丸、`--color-border` の枠、hover で `shadow-md` = elevation-2）、現在地の `aria-current="page"` と blue-50 の背景
+- **サイドバーとドロワーのリンクの角丸を 4px から 8px（`rounded-md`）にした**。ナビ項目はコントロールと同じ扱い
+- **hover は色の変化だけにせず下線（offset 3px、`.text-link` と同じ）を足す**（DADS の原則）: フッターのリンクは下線を 3px に太くする。ヘッダーのロゴ（従来は不透明度 80%）、サイドバー / ドロワーの非現在リンク、`ToolCard` の見出し。サイドバー / ドロワーは `:focus-visible` にも同じ反応を付けた
+- 検証は `tests/e2e/dads-layout.spec.ts`（computed style）。変更前の実装に戻すと 4 件が失敗する（陽性対照。最大幅の 1 件は変更が無いので通り、回帰の検知のみ）
+- ナビの情報設計・構造は変えない
+
+### 却下した選択肢
+
+- **現在地リンクへの左バー等の追加**: 構造変更になるうえ、`aria-current` と背景・太字で既に識別できる
+- **カードの常時 elevation-1**: 一覧が密で、枠線だけの静かな見た目のほうが DADS の「静かで予測可能」に合う
+
+### 結果・トレードオフ
+
+- ✅ ナビとカードが DADS の角丸・hover 表現に揃う
+- ✅ 変更は hover と、現在リンク（blue-50 の背景）の角の丸みだけなので、VRT の静止画の差分はほぼ出ない見込み（hover と角丸は `dads-layout.spec.ts` で担保）。差分が出た場合は目視確認のうえ baseline を更新する
+- ✅ フッターのリンクも DADS の Link に合わせ、hover / `:focus-visible` で下線を 3px に太くした（offset 3px）。ToolCard の「開く ›」は見出しに下線が出るので色だけのまま
+
+---
+
+## [148] DADS 移行 Phase 7: 旧トークン・旧クラスの削除と移行中の記述の整理
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[134] の移行計画 Phase 7。Phase 1〜6 で DADS への移行が終わったので、使われなくなった旧定義と「移行中」の記述を片付けて計画を閉じる。
+
+### 決断
+
+- `src/` と `public/`、`tests/` を grep し、参照ゼロを確認してから `global.css` の次を削除した: `--radius-none`（参照なし）、`--color-success-strong`（Phase 1 で `--color-success` と同値になったため統合し、唯一の参照だった `.status-badge--success` を `--color-success` に置き換え）、`--color-info-bg`、`.text-on-primary`、`.shadow-elev-2`。見た目の変更なし
+- 残したもの: Blue 13 段（DADS のプリミティブとして `@theme` に置く）、`--elevation-1`〜`8`（DADS のスケール全段）、`--color-tertiary`（`CategoryBadge` が使用）。`btn-action--*` / `status-badge--*` 等の variant クラスはコンポーネントが文字列結合で組み立てるため、静的な grep に出なくても使用中
+- `rounded-xl` を `rounded-lg` に置き換えた（`Section`、`CertDecoder`、`TotpHotpGenerator`、`ClipboardInspector`）。`--radius-xl` は `@theme` に無く Tailwind 既定の 12px で、DADS のカード角丸 `--radius-lg`（12px）と同値なので、見た目は変わらない。クラスをそろえ、以後 `rounded-xl` を使わない。`dads-shape.spec.ts` に 1 件足した（`rounded-md` に戻すと失敗することを確認した陽性対照）
+- `dads-design-system` skill の `references/tokens.md` を削除し、0 章の「移行中」と 2 章の「現行の対応先」を移行後の記述に更新した。値の正本は `global.css`
+- トップの hero が `bg-[var(--color-background)]` と `border-[var(--color-blue-100)]` を任意値で直接参照していたのを、`bg-background`（@theme の auto-utility）と新しい意味クラス `.border-hero` に置き換えた。色の値は同じ。`dads-layout.spec.ts` で computed style を確認（陽性対照あり）
+- `SPEC.md`（8 章、ディレクトリ構成の存在しない `styles.ts`）、`common.md` 7 章（角丸の 1 行）、`ui-conventions.md` を実態に合わせた
+
+### 結果・トレードオフ
+
+- ✅ 未使用定義が減り、移行の記述が現状と一致する。VRT の静止画に差分は出ない見込み
+- ⚠️ Blue 以外の色相のプリミティブ一覧は repo から無くなった（使う段は `:root` の値としてコメント付きで持つ）。足りない段は DS か公式 `figma/tokens.json` から転記する
+
+---
+
+## [149] DADS 移行 Phase 5: DDL → ER 図の SVG 文字を 14px にそろえる
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+`src/utils/ddl-er-diagram.ts` が作る ER 図の SVG は、`FONT_SIZE = 13`、カラム行の 12px、PK/FK バッジとリレーションラベルの 10px を使っていた。`DdlErDiagram.tsx` が原寸（`max-w-none`）で表示するため、14px 未満の文字が画面に出ていた（#822）。[145] の meta テストは数値リテラルしか検知できず、定数経由のこの SVG は対象外だった。
+
+### 決断
+
+- **例外にせず 14px にそろえる**。`FONT_SIZE` を 14 にし、カラム行・バッジ・リレーションラベルもすべて `FONT_SIZE`（14px）にした（バッジは 14px の太字）。`FONT_SIZE` は export して、図内の文字サイズの正本を 1 か所にした
+- レイアウト定数を連動して直した: `ROW_H` 22 → 26、`HEADER_H` 26 → 30、バッジの幅は `文字数 × 14 × 0.62 + 8`（高さは `ROW_H - 4`）、リレーションラベルの背景は上下の余白を広げて下降部（g / y）を覆う。`CHAR_W` は `FONT_SIZE` から導く式のまま（等幅 14px の実幅は約 8.4px で、推定 8.68px に収まる）
+- `GAP`（テーブル間）を 40 → 72 にした。ラベルは 14px になって幅が約 4 割増え、`user_id`（7 文字）で約 67px になるため、40px では隣のテーブルに大きく重なる
+- 再混入の検知は、meta テストでは足せないので**ユニットテストで生成した SVG 文字列の全 `font-size` が 14 以上であること**を確認する（テーブル・PK/FK バッジ・リレーションラベル・テーブル無しの文言）。PK / FK / ラベルを含む入力であることも assert して、検査対象が空にならないようにした。陽性対照: `FONT_SIZE` を 13 に戻す、またはラベルだけ `FONT_SIZE - 3` に戻すと失敗する
+- 色は変えない（既存の SVG presentation 属性の配色のまま）
+
+### 却下した選択肢
+
+- **ER 図を図内テキストとして例外にする**: 鉄道図と同じく、14px に上げてもボックスからはみ出さない（getBBox で確認）ため、例外にする理由がない
+- **meta テストを正規表現で拡張して `FONT_SIZE - 3` 等の式も検知する**: 式の評価までは正規表現では追えず、誤検知と見逃しが増える。生成物の出力を直接見るほうが確実
+
+### 結果・トレードオフ
+
+- ✅ ER 図の文字がすべて 14px 以上になり、テキストはテーブルの枠と SVG の外にはみ出さない
+- ⚠️ 図の行高・テーブル間隔が広がり、図全体が大きくなる。VRT（ddl-er-diagram）の差分は目視確認のうえ baseline を更新する
+- ⚠️ 長いカラム名のラベルや、隣り合わないテーブルを結ぶ線のラベルがテーブルに重なる点は従来から（ラベルを中点に置く簡易配置のため）。本件では直さない
+
+---
+
+## [150] 鉄道図: 文字クラスを色だけでなく形でも区別する（WCAG 1.4.1）
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+鉄道図の文字クラス・メタ文字は blue-50 の塗りと blue-300 の枠だけでリテラルと区別されていた。塗りはどちらも淡く、blue-300 の枠は白地で約 2:1 しかなく、非テキストの 3:1 も満たしていなかった（#611）。
+
+### 決断
+
+- **文字クラスの枠を太く（2px）し、角を小さく（rx 2。リテラルは 6、凡例は 4）する**。凡例の見本にも同じ値を使う（`CHARCLASS_RX` を共有）
+- **枠の色を `--color-primary`（blue-900）にする**。白地で非テキストの 3:1 を大きく超える
+- 太い枠が SVG の端で切れないよう、文字クラスの rect は 1px 内側に置く（外形は他ノードと同じ）。hotspot 中も `.rr-charclass.rr-box-hot` で枠を 2.5px にして差を残す。凡例のリテラルは図に合わせて rx 6 にした
+- 検証は `tests/e2e/regex-visualizer.spec.ts` で computed style（`stroke-width` / `rx`）を図と凡例の両方で比べる。実装を戻すと失敗する（陽性対照）
+
+### 却下した選択肢
+
+- **破線枠**: 後方参照（`3 2`）とフォールバック（`4 3`）が既に破線で、区別がつかなくなる
+- **左上の小アイコン**: 14px のラベルに対してノード幅の計算（`CHAR_W`）を変える必要があり、#613 の範囲に触れる
+
+### 結果・トレードオフ
+
+- ✅ 色が見えなくても、枠の太さと角の形で文字クラスを判別できる
+- ⚠️ 文字クラスを含む鉄道図の VRT に差分が出る。目視確認のうえ baseline を更新する
+
+---
+
+## [151] 入力欄の DADS 化（[143]）で残った表示の課題（#826）
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+[143] の入力欄（48px・16px）と [144] のトグル（ToggleGroup md は土台込み 46px）の移行後、スコープ外にしていた 4 項目（#826）を実測して判断した。
+
+### 決断
+
+- **DSN ビルダーのスキーム: 直す**。選択中の表示は最長で約 310px（`jdbc:postgresql:// — PostgreSQL (JDBC)`。canvas で実測。字間 0.32px 込み）で、select は左右 padding 60px を取るため幅 370px 以上が要る。3 カラム 1 つ（PC で約 252px）では入らなかった。スキームだけ 1 行にし（`md:max-w-md` = 448px）、ユーザー名・パスワードは `md:grid-cols-2` に変えた。`md`（768px）〜PC のどの幅でも全スキームが入ることを E2E で確認する
+- **ContrastMatrix の削除ボタン: 直す**。約 40px → 48px（`h-12 inline-flex items-center`）にして、同じ行の入力欄・カラーピッカー（48px）と上端・下端をそろえた。列見出し行の透明な見本は幅だけを合わせるものなので従来の class のまま（高さを付けると見出し行が約 8px 高くなる）。ボタン自体の DADS 化（`ActionButton`）は本件に含めない
+- **CharCount の任意上限欄: 既存で十分**。行は `items-baseline` で、「/」は input の文字行（枠 1px + 縦余白 11px = 上端から 12px）と同じ位置・同じ行高にあり、等幅の件数とも 0 幅 probe でベースラインが一致する。`inline-block` の中で `display: block` の input になっても崩れていない。再発検知として E2E に固定した（`items-baseline` を `items-center` / `items-start` にすると失敗する）
+- **ToggleGroup と入力欄の横並び: `matchField` prop を足し、並ぶ 3 か所だけ使う**。全ツールの横並びを実測した結果、土台 46px と 48px が上端・下端でずれるのは SQL フォーマッタ（カンマ位置 × SQL 方言）、日本語ダミーテキスト（改行 × 間隔）、日本語ダミー個人データ（出力形式 × 生成ボタン）の 3 か所だった。`matchField`（`size="md"` のときだけ有効）は土台を `min-h-12 content-center` にし、ボタンは 36px のまま中央に置く。実質の余白は縦 5px（4px + 1px の枠の分の差）になる
+- sm（38px）は 48px と並ぶ CSR ジェネレータ（SAN 欄）でも `items-center` の中央揃えのまま。小さいトグルを意図的に使っているため、そろえない
+
+### 却下した選択肢
+
+- **ToggleGroup md を全体で 48px にする**: 並んでいない箇所（25 ツール中の大半）も 2px 高くなり、ほぼ全ツールの VRT に差分が出る。そろえる必要があるのは入力欄と並ぶ 3 か所だけ
+- **ToggleGroup のボタンを 38px にして土台を 48px にする**: [144] で決めた DADS の sm ボタン相当（36px）から外れる
+- **スキームを 3 カラムのまま `2fr 1fr 1fr` にする**: PC の約 380px で入るが、`md`（768px）付近では約 340px しかなく、`jdbc:postgresql://` が再び切れる
+- **選択肢の表示を短くする**: 「どの方言か」の説明が消えるうえ、スキームの別名（`postgres://`）との区別が付きにくくなる
+
+### 結果・トレードオフ
+
+- ✅ PC 幅の DSN ビルダーで、全スキームの選択中表示が末尾まで見える。ContrastMatrix の行と、SQL フォーマッタ等の横並びで高さがそろう
+- ⚠️ DSN ビルダーの PC 幅で、フォーム上段のレイアウトが変わる（スキームが 1 行、ユーザー名・パスワードが 2 カラム）。VRT（dsn-builder）の差分は目視確認のうえ baseline を更新する。ContrastMatrix（削除ボタン）、SQL フォーマッタ・日本語ダミーテキスト・日本語ダミー個人データ（トグルの高さ）も差分になりうる
+- ⚠️ スマホ幅（390px）の DSN ビルダーは、select が約 324px で `jdbc:postgresql:// — PostgreSQL (` までしか入らない（`postgres:// — PostgreSQL (postgres://)` も同様）。native select の選択中表示は折り返せず、短くするには表示文字列の設計が要るため、#835 で扱う
+
+---
+
+## [152] タップ領域 44×44px: 見た目は変えず透明な hit area で広げる（#662）
+
+**2026-10-31 | ステータス: 採用**
+
+### 背景
+
+DADS のチェックリストは操作要素のタップ領域を 44×44px 以上と定めている（WCAG 2.5.5 AAA 相当。WCAG 2.2 の 2.5.8 AA は 24×24px。インライン・文中のリンクは 2.5.8 の例外）。#662 の一覧は DADS 移行前の計測だったため、全ツールの PC / スマホで操作要素の実寸を測り直した。移行後の主な寸法は、sm ボタン（`ActionButton` compact / `CopyButton` / `ClearButton` / `DownloadButton`）36px、ToggleGroup md 36px・sm 28px、ToggleChips 32px、`CopyButton` compact 32px、リンクボタン（`.btn-link-plain`）24px、トップのタブ 38px、トップの検索クリア 30px、フッターのリンク 20px、パンくず 24px、GS1 の ✕ 32px、QR チケットの行削除 40px、JSON ツリーのトグル 18×22px、CSR の SAN 削除 29×14px だった。
+
+### 決断
+
+- **見た目の大きさは変えず、透明な `::after` で操作できる範囲だけを中心から 44×44px に広げる**（`global.css` の `.hit-area` 系。`width: max(100%, 2.75rem)` なので、すでに 44px 以上の辺は広げない）。対象は `.btn-action` / `.btn-copy` / `.btn-toggle` / `.toggle-chip` / `.btn-link-plain` / `button.text-link-plain` / `.btn-row-remove` / `.btn-remove-card` / `.json-toggle` と、class を持たない要素に足す `.hit-area`（GS1 の ✕・ロゴ・パンくず・フッターのリンク）。文中のインラインリンク（`.text-link`）には付けない（行間で隣の行のリンクを奪う）
+- **隣の操作要素に食い込む箇所は、見た目の寸法か間隔を直す**。hit area を一律に付けると [140] が却下したとおり詰んだ並びでクリックを奪う。奪う箇所を E2E で洗い出し、次のように直した
+  - ToggleGroup sm は `min-w-11`（44px）にした。「2」「4」のような狭いボタンが横に並ぶと、隣へ食い込むため
+  - CSR ジェネレータの SAN 削除（29×14px）は見た目も `min-h-11 min-w-11` にした（スマホで入力欄の下に積まれ、hit area では入力欄を奪うため）。その下の「＋ SAN を追加」は `mt-3` で離した
+  - QR チケットの「既存の秘密鍵をインポート」は折り返したときの縦の間隔を `gap-y-3`、GS1 の「+ フィールド追加」の行は `mb-3` にした（リンクボタンは hit area が縦に 10px 出るため、直前・直後の要素と 10px 以上離す）
+  - トップの検索クリアは入力欄の内側に重ねて置くため、hit area ではなく見た目も 44×44px（`h-11 w-11`）にした。hit area だと入力欄の文字領域を奪う
+  - トップのタブは hit area ではなく見た目も `min-h-11` にした（横スクロール領域の中に置かれ、`::after` が領域の外へはみ出すとスクロール量が変わるため）。skip-link も同様に `min-height: 2.75rem`
+  - チェックボックスは input（13〜16px）ではなくラベルを 44px の高さ（`min-h-11`）にした。input 自体を広げるとラベル文字を覆うため
+- **JSON ツリーは縦を行の高さのままにする（例外）**。行は約 24px（実測 24.4px）で、縦に 44px へ広げると隣の行のトグル・コピーに食い込む。展開トグルは `::after` を 44×24px（`height: 1.5rem`）に、行末のコピー（hover で出る compact。見た目 32px）は `::after` の幅だけ 44px（高さは 100%）にした。**縦は DADS の 44px に満たない（トグル 24px・コピー 32px）**が、WCAG 2.5.8 AA の 24px は幅・高さとも満たす。パス用と値用の 2 つのコピーは、互いの hit area（幅 44px）が隣の見た目に食い込まないよう、間隔を 4px → 12px にした。行の高さを 44px にする案は、仮想スクロールの行高とツリーの密度に響くため見送った。なお、タッチ端末（`hover: none`）では行末コピーが常に出て、見た目 32px のコピーが行（24px）より高く、上下の行のコピーと重なる。これは #508 からの既存の挙動で、本件では直していない
+- WCAG 2.5.8（24px）と DADS（44px）は、**DADS の 44px を目標にし、2.5.8 を下限とする**。44px に満たないまま残るのは、上記 JSON ツリーの縦と、文中のインラインリンク（2.5.8 の例外）だけ
+- **検証は E2E（`tests/e2e/touch-targets.spec.ts`）**。全ツール × PC / スマホで、閉じた `<details>` と hover 前の行末コピーを除く全操作要素について、(1) 奪わない: 見た目の範囲の内側 9 点が自身に当たる、(2) 奪わない（食い込み）: `::after` の範囲の格子点（7×7）で、自身の直下が別の操作要素の見た目の範囲なら違反（辺の途中への食い込みも拾う。ヘッダーの裏に隠れた要素は押せないので対象外）、(3) 届く: 44px 未満の辺は中心から約 22px 先まで、操作要素ではない場所に当たらない、を hit-test で調べる。状態で現れる要素（生成後の表・ツリー・GS1 のカード・SAN・検索クリアなど）は操作して出し、出ていなければ失敗させる。hover で出る行末コピーは別テストで hover して確認する。実寸を変えた箇所は寸法を直接 assert する
+- 陽性対照: 実装（src）を変更前に戻すと 76 件中 75 件が失敗する。検知器自体も、`::after` を無効にすると系統ごと（10 系統）に「届かない」を、`.btn-action::after` を 300px にすると、また `.toggle-chip::after` を隣へ 8px 食い込む幅にすると「奪う」を検出することを E2E で確認している
+
+### 却下した選択肢
+
+- **sm / xs のボタンを実寸 44px にする**: [140] で決めた DADS の sm（36px）・xs（28px）から外れ、入力欄・ボタンが並ぶ行の高さがそろわなくなる
+- **DADS 公式のとおり全ボタンに `::after` を一律に付ける**: [140] のとおり、詰んだ並びでクリックを奪う。今回は食い込みを検知して直す前提で使い、奪う箇所は寸法・間隔で解消した
+- **`@media (pointer: coarse)` のときだけ広げる**: PC でもマウスでなくタッチパッド・タッチ画面で使う場合があり、DADS の要件は入力手段で分けていない。検証も二重になる
+- **JSON ツリーの行を 44px にする**: 上記のとおり密度と仮想スクロールに響く
+
+### 結果・トレードオフ
+
+- ✅ 全ツールの操作要素が、見た目を変えずに 44×44px 以上で押せる（JSON ツリーの縦を除く）。新しい操作要素は `.hit-area` を付ければよく、食い込みは E2E が検知する
+- ⚠️ hit area は透明で、見た目の外側 4〜11px でもクリックが効く（隣の文字を押しても反応する）。隣の操作要素の見た目の範囲には食い込ませない（E2E が検知）。hit area どうしが重なる余白は、DOM で後ろにある要素が取る
+- ⚠️ トップのタブ（38 → 44px）・検索クリア（30 → 44px）・CSR の SAN 削除・QR チケット / GS1 / CSR のリンクの間隔・ToggleGroup sm の幅は見た目が変わる。VRT の差分は目視確認のうえ baseline を更新する
+- ⚠️ 要素に `position: relative` が付く。`@layer utilities` の `absolute` / `fixed` / `sticky` は後から勝つので配置は変わらないが、新しく `.btn-action` 等に z-index を付けるときは `::after` も同じ積み順に入る点に注意する
+
+---
+
+## [153] コミットメッセージの日本語文字数を Unicode コードポイントで数える
+
+**2026-10-31 | ステータス: 採用**
+
+`grep` の文字範囲はロケールの照合順に依存し、UTF-8 環境でもエラーや誤判定になる。Node.js で従来の `ぁ-ん`、`ァ-ン`、`一-龯`、`、。` をコードポイント単位で数え、2 文字以上という条件と既存の例外を維持する。入力の読み込みや Node.js の処理に失敗した場合は拒否する。C と利用可能な UTF-8 ロケールで hook の実行結果を検証する。
+
+---
+
+## [154] DSN のスキーム名と方言の説明を分ける（#835）
+
+**2026-11-01 | ステータス: 採用**
+
+390px 幅では [151] の長い選択肢が native select の選択中表示に収まらない。選択肢を `jdbc:postgresql://` のようにスキーム自体に短縮し、選択中の方言名を直下に表示して `aria-describedby` で関連付ける。`postgres://` と `postgresql://`、JDBC、SRV、TLS もスキームから区別でき、説明は選択後に確認できる。独立した行の配置は維持する。
+
+## [155] JSON ツリーのタッチ時の行高（#839）
+
+**2026-11-01 | ステータス: 採用**
+
+[152] のコピーは高さ 32px だが、タッチ端末では常時表示され、約 24px の行から上下にはみ出す。`hover: none` の場合だけ閉じ括弧を含む全行を最低 32px にし、隣接するコピーの見た目と操作領域の重なりを解消する。仮想ツリーも等高行を実測するため同じ規則を適用する。縦の hit area は従来どおり 32px で、デスクトップの密度とキーボード操作は維持する。
+
+---
+
+## [156] ER 図の幅推定とリレーションラベルの退避
+
+**2026-11-01 | ステータス: 採用**
+
+DOM 非依存の同期 SVG 生成を維持し、ASCII 1 セル・その他 2 セルの推定幅とバッジの実際の配置幅でカードを決める。リレーションラベルは曲線上の候補をカードと既存ラベルに照合し、空きがなければ右側の専用領域へ引出線付きで退避する。長いラベルでは SVG が広がり、フォント固有の幅は実測できない。プレビュー・SVG・PNG は同じ SVG を使う。

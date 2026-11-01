@@ -56,7 +56,7 @@ export function OutputField({
   const fillTextareaClass = fill ? 'md:block md:h-full md:min-h-0' : '';
   return (
     <div className={cx('w-full', fillContainerClass)}>
-      <div className="flex items-center justify-between mb-3 min-h-8">
+      <div className="flex items-center justify-between mb-3 min-h-9">
         <label htmlFor={id} className="body-emphasis text-default">
           {label}
         </label>
@@ -79,10 +79,10 @@ export function OutputField({
           value={value}
           rows={rows}
           className={cx(
-            'caption',
+            'field-control field-control--textarea',
             monoClass,
             resizeClass,
-            'w-full rounded-lg border border-default bg-subtle text-default px-3 py-2 tracking-wide',
+            'tracking-wide',
             fillTextareaClass
           )}
           aria-label={ariaLabel ?? label}

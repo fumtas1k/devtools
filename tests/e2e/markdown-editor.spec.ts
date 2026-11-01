@@ -128,7 +128,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
   });
 
   // ─── 高さ一致ガード: 入力欄とプレビューの縦幅が揃うことを担保 ──────────
-  // 入力 textarea(rows=18 ≒ 28rem) とプレビュー箱(.md-preview-box = 固定高 28rem) を揃える設計。
+  // 入力 textarea(rows=18 ≒ 32.25rem) とプレビュー箱(.md-preview-box = 固定高 32.25rem) を揃える設計。
   // 旧実装（プレビューが青天井に伸長）では高さ差が広がり fail する。
   test('高さガード: 長文入力時に入力欄とプレビューの高さがほぼ一致する（PC 幅）', async ({
     browser,
@@ -156,7 +156,7 @@ test.describe('markdownエディタ（production CSP 適用）', () => {
       const previewBox = await preview.boundingBox();
       if (!inputBox || !previewBox) throw new Error('boundingBox が取得できませんでした');
 
-      // 固定高 28rem 同士のため両者の高さは一致する。border/padding 差の許容差は数 px。
+      // 固定高 32.25rem 同士のため両者の高さは一致する。border/padding 差の許容差は数 px。
       expect(Math.abs(inputBox.height - previewBox.height)).toBeLessThanOrEqual(5);
     });
   });

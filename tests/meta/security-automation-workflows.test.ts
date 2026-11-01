@@ -293,8 +293,9 @@ describe('[陽性対照] security automation workflows', () => {
       'PR head を checkout する step を足す',
       mutate(
         autoMerge,
-        '      - uses: actions/setup-node@v6\n',
-        '      - uses: actions/checkout@v6\n        with:\n          ref: ${{ github.event.pull_request.head.sha }}\n\n      - uses: actions/setup-node@v6\n'
+        // 置換位置は step 名で決める（action の版に依存すると Dependabot の更新で空回りする）
+        '      - name: lockfile に入った公開直後の版を検出\n',
+        '      - uses: actions/checkout@v6\n        with:\n          ref: ${{ github.event.pull_request.head.sha }}\n\n      - name: lockfile に入った公開直後の版を検出\n'
       ),
       'every checkout must use the base sha',
     ],

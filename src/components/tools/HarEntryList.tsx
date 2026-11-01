@@ -53,29 +53,29 @@ export function HarEntryList({ entries, waterfall, selectedIndex, onSelect }: Pr
   });
 
   return (
-    <div className={cx('overflow-x-auto rounded border border-default', dynClassName)}>
+    <div className={cx('overflow-x-auto rounded-lg border border-default', dynClassName)}>
       <table className="w-full border-collapse text-sm">
         <caption className="sr-only">HTTP リクエスト一覧</caption>
         <thead>
           <tr className="bg-subtle text-left">
-            <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
+            <th scope="col" className="whitespace-nowrap px-3 py-2 font-normal">
               メソッド
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="px-3 py-2 font-normal">
               URL
             </th>
-            <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
+            <th scope="col" className="whitespace-nowrap px-3 py-2 font-normal">
               ステータス
             </th>
-            <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
+            <th scope="col" className="whitespace-nowrap px-3 py-2 font-normal">
               サイズ
             </th>
-            <th scope="col" className="whitespace-nowrap px-3 py-2 font-medium">
+            <th scope="col" className="whitespace-nowrap px-3 py-2 font-normal">
               時間
             </th>
             <th
               scope="col"
-              className="hidden whitespace-nowrap px-3 py-2 font-medium md:table-cell"
+              className="hidden whitespace-nowrap px-3 py-2 font-normal md:table-cell"
             >
               タイミング
             </th>

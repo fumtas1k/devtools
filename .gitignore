@@ -5,6 +5,7 @@ dist
 .DS_Store
 test-results/
 playwright-report/
+vrt-slider-report/
 coverage/
 .claude/scheduled_tasks.lock
 conductor/

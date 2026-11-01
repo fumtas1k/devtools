@@ -177,7 +177,7 @@ export function DdlErDiagramTool() {
       {svgUrl && (
         <div className="space-y-4">
           <div
-            className="overflow-auto rounded border border-default bg-default p-4"
+            className="overflow-auto rounded-lg border border-default bg-default p-4"
             data-testid="er-diagram"
           >
             <img

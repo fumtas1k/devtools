@@ -104,7 +104,7 @@ interface CertSectionProps {
 function CertSection({ title, defaultOpen = false, children }: CertSectionProps) {
   return (
     <details open={defaultOpen}>
-      <summary className="px-4 py-3 cursor-pointer hover-bg-subtle summary-no-marker flex items-center gap-2">
+      <summary className="focus-inset px-4 py-3 cursor-pointer hover-bg-subtle summary-no-marker flex items-center gap-2">
         <span
           className="cert-chevron shrink-0 inline-flex items-center justify-center size-5 rounded-full border border-current bg-default text-primary"
           aria-hidden="true"
@@ -128,7 +128,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
 
   if (cert.error) {
     return (
-      <div className="rounded-xl border border-default overflow-hidden">
+      <div className="rounded-lg border border-default overflow-hidden">
         <div className="bg-subtle px-4 py-3 border-b border-default flex items-center gap-2">
           <span className="body-emphasis text-default">証明書 #{chainPosition + 1}</span>
           <ChipLabel tone="error">パース失敗</ChipLabel>
@@ -141,7 +141,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
   }
 
   return (
-    <div className="rounded-xl border border-default overflow-hidden">
+    <div className="rounded-lg border border-default overflow-hidden">
       {/* カードヘッダー */}
       <div className="bg-subtle px-4 py-3 border-b border-default flex flex-wrap items-center gap-2 justify-between">
         <div className="flex flex-wrap items-center gap-2">
@@ -155,7 +155,7 @@ function CertCard({ cert, signatureValid, expired, chainPosition, totalInChain }
         {signatureValid !== null && (
           <span
             className={cx(
-              'caption font-medium px-2 py-0.5 rounded-full',
+              'caption font-normal px-2 py-0.5 rounded-full',
               signatureValid ? 'bg-success-tint text-success' : 'bg-error-tint text-error-text'
             )}
           >
@@ -348,7 +348,7 @@ function ChainBanner({ chainResult, certs }: ChainBannerProps) {
               {link?.signatureValid !== null && (
                 <span
                   className={
-                    link?.signatureValid ? 'text-success font-medium' : 'text-error font-medium'
+                    link?.signatureValid ? 'text-success font-normal' : 'text-error font-normal'
                   }
                 >
                   {link?.signatureValid ? '✓' : '✗'}
@@ -378,7 +378,7 @@ function PrivateKeySection({ privateKeys }: PrivateKeySectionProps) {
         と抽出した秘密鍵は外部サーバーに送信されません。
       </NotificationBanner>
       {privateKeys.map((key, i) => (
-        <div key={i} className="rounded-xl border border-default overflow-hidden">
+        <div key={i} className="rounded-lg border border-default overflow-hidden">
           <div className="bg-subtle px-4 py-3 border-b border-default flex flex-wrap items-center gap-2">
             <span className="body-emphasis text-default">秘密鍵 #{i + 1}</span>
             <ChipLabel tone="error">秘密鍵</ChipLabel>
@@ -388,7 +388,7 @@ function PrivateKeySection({ privateKeys }: PrivateKeySectionProps) {
           </div>
           <div className="bg-default p-4">
             <details>
-              <summary className="cursor-pointer body-emphasis text-default">
+              <summary className="focus-inset cursor-pointer body-emphasis text-default">
                 秘密鍵（PKCS#8 PEM）を表示
               </summary>
               <div className="mt-3">
@@ -629,7 +629,7 @@ export function CertDecoder() {
                   }
                 }}
                 placeholder="PKCS#12 のパスワード"
-                className="caption w-full rounded-lg border border-default bg-default text-default px-3 py-2"
+                className="field-control"
                 autoComplete="off"
               />
             </div>

@@ -155,7 +155,8 @@ Tailwind の **primitive scale のカラークラス**（`text-blue-500` / `bg-r
 
 - `@theme` 登録の **semantic token** の auto-utility（`text-primary` / `text-success` 等）は使ってよい。判断基準は「token 名から用途が読み取れるか」。
 - それ以外の色は `src/styles/global.css` の `@layer components` の意味クラス（`bg-subtle` / `alert-success` 等）を使う。無ければ先に意味クラスを追加する。
-- Astro の既存 `style="var(--color-*)"` は [#289](https://github.com/fumtas1k/devtools/issues/289) で移行中。新規は React と同じ意味クラスを使う。
+- Astro の既存 `style="var(--color-*)"` は [#289](https://github.com/fumtas1k/devtools/issues/289) で移行済み（`src/**/*.astro` に `style="` は無い）。新規は React と同じ意味クラスを使う。
+- 角丸はコントロール `rounded-md`（8px）、カード・パネル `rounded-lg`（12px）。`rounded-xl` は使わない（`docs/decisions.md [139]` / `[148]`）。
 
 - **`style={{}}` / `element.style` の書き換えは用途を問わず禁止**（issue #176 で全廃済み。SSR される `style` 属性は、色以外でも本番 CSP（`style-src` に `'unsafe-inline'` なし）に違反する）。
 
@@ -167,9 +168,9 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** の両方でスク
 
 hover 等が必要なら、専用 class を `:hover` 擬似クラスごと `@layer components` に定義する（`.btn-clear` / `.hover-bg-subtle` 等）。追加後は `npm run build` して `dist/_astro/BaseLayout.*.css` に rule が出ているか確認する。
 
-### 7.2 `docs/` の Tailwind scan 除外を消さない
+### 7.2 Tailwind の scan 除外（`docs/` 等）を消さない
 
-`src/styles/global.css` の `@source not "../../docs";` は docs の Markdown に書かれた class 名が CSS に混入するのを防いでいる。不要に見えても削除しない。
+`src/styles/global.css` の `@source not` 群（対象と理由は同ファイルのコメントが正本）は、実装コード以外に書かれた class 名が本番 CSS に混入するのを防いでいる。不要に見えても削除しない。実装コード以外のディレクトリを新設したら同じ箇所に足す。
 
 ---
 

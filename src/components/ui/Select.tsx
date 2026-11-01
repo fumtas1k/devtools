@@ -9,6 +9,7 @@ interface Props<T extends string> {
   value: T;
   onChange: (value: T) => void;
   ariaLabel?: string;
+  ariaDescribedBy?: string;
   id?: string;
   autoComplete?: string;
 }
@@ -18,6 +19,7 @@ export function Select<T extends string>({
   value,
   onChange,
   ariaLabel,
+  ariaDescribedBy,
   id,
   autoComplete,
 }: Props<T>) {
@@ -28,8 +30,9 @@ export function Select<T extends string>({
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
         autoComplete={autoComplete}
-        className="caption w-full rounded-lg border border-input bg-default text-default appearance-none pl-3 pr-10 py-2"
+        className="field-control field-control--select"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value} disabled={opt.disabled}>
@@ -44,7 +47,7 @@ export function Select<T extends string>({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
-        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted"
+        className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted"
       >
         <path
           d="M2 4L6 8L10 4"

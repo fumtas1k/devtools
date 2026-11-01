@@ -10,9 +10,7 @@ import { join, relative, resolve } from 'node:path';
  * 本テストを CI (`npm run test`) で走らせることで、primitive `text-xs` の再混入が
  * merge 前に必ず fail として検知される。
  *
- * 許可リスト:
- *   - `src/components/ui/CopyButton.tsx`: コンパクトボタン内テキストで別用途として
- *     意図的に維持（PR #399 のスコープ外として除外）。
+ * 許可リスト: なし（14px 未満全般は min-font-size-dads.test.ts が検知する）。
  *
  * 対象: `src/` 配下の tsx / astro ファイル（再帰）
  * 除外: css ファイル（global.css の `.hint-xs` 説明コメント内の "text-xs" を
@@ -26,8 +24,9 @@ const REPO_ROOT = resolve(__dirname, '..', '..');
  * OS 依存しないよう path 区切りを `/` に正規化して比較する。
  */
 const ALLOWLIST: ReadonlySet<string> = new Set([
-  // CopyButton のコンパクト表示で別用途。#399 のスコープ外として意図的に維持。
-  'src/components/ui/CopyButton.tsx',
+  // 許可リストは空。CopyButton は #814 で text-sm（14px）にしたため外した。
+  // 陽性対照（許可リストが効く）用に、存在しないパスを 1 件だけ残す。
+  'src/components/FixtureAllowed.tsx',
 ]);
 
 /** `\btext-xs\b` (word boundary) で primitive Tailwind utility を検出する正規表現 */
@@ -125,7 +124,7 @@ describe('[陽性対照] primitive text-xs 検知機構', () => {
   it('許可リストに登録されたパスは text-xs があっても検出されない (allowlist が効く)', () => {
     const files = [
       {
-        path: 'src/components/ui/CopyButton.tsx',
+        path: 'src/components/FixtureAllowed.tsx',
         content: 'className="btn-copy text-xs px-2"',
       },
     ];

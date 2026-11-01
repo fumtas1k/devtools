@@ -41,7 +41,7 @@ function hello(name: string): string {
  * 左ペイン: textarea 入力 / 右ペイン: sanitizeHtml済みHTMLプレビュー。
  *
  * 高さ揃え: 入力（InputField rows=18, mono）とプレビュー箱（.md-preview-box の固定高
- * 28rem ≒ rows=18 の実測高）を同じ外形に揃え、はみ出しは枠内スクロールさせる。
+ * 32.25rem ≒ rows=18 の実測高）を同じ外形に揃え、はみ出しは枠内スクロールさせる。
  * JsonFormatter のツリー結果（.json-tree-box）と同じ「固定高で textarea に合わせる」方式。
  * fill / flex-stretch 方式はプレビューがコンテンツ div で高さが青天井に伸びるため不採用。
  * インライン style は使わず CSS class の固定高のみで実現（CSP / 規約準拠）。
@@ -81,7 +81,7 @@ export function MarkdownEditor() {
 
         {/* 右ペイン: プレビュー（ラベル行は InputField / OutputField と同一構造で上端を揃える） */}
         <div className="w-full md:flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-3 min-h-8 gap-2">
+          <div className="flex items-center justify-between mb-3 min-h-9 gap-2">
             {/* ラベルは truncate でヘッダを常に 1 行に保ち、入力ヘッダと高さ（=箱の上端）を揃える */}
             <span className="body-emphasis text-default truncate min-w-0">プレビュー</span>
             {input.length > 0 && (
@@ -99,14 +99,14 @@ export function MarkdownEditor() {
           </div>
           {input.length === 0 ? (
             <div
-              className="md-preview-box w-full rounded-lg border border-input p-3 caption text-muted flex items-center justify-center"
+              className="md-preview-box w-full rounded-md border border-input p-3 caption text-muted flex items-center justify-center"
               aria-label="プレビューエリア（入力待ち）"
             >
               markdown を入力するとプレビューが表示されます
             </div>
           ) : (
             <div
-              className="markdown-preview md-preview-box w-full rounded-lg border border-input p-4"
+              className="markdown-preview md-preview-box focus-inset w-full rounded-md border border-input p-4"
               // sanitizeHtml 済みの HTML を dangerouslySetInnerHTML で描画する。
               // renderMarkdown が必ず sanitizeHtml に通してから返すため XSS は発生しない。
               dangerouslySetInnerHTML={{ __html: html }}

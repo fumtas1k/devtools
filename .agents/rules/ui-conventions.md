@@ -1,6 +1,6 @@
 # UI 実装・E2E 詳細規約
 
-UI コンポーネントの変更時と、Playwright で UI 確認・E2E テストを書く際に参照する。色の使用制限と `@layer components` の variant 制約は `.agents/rules/common.md` 7 章が正本。
+UI コンポーネントの変更時と、Playwright で UI 確認・E2E テストを書く際に参照する。色・角丸の使用制限と `@layer components` の variant 制約は `.agents/rules/common.md` 7 章が正本。DADS の値は `dads-design-system` skill を参照。
 
 ---
 
@@ -17,7 +17,7 @@ UI コンポーネントの変更時と、Playwright で UI 確認・E2E テス�
 | `CopyButton`          | クリップボードコピーボタン                                                                                                                                                                                                                                                          |
 | `ToggleGroup<T>`      | 排他選択トグル（モード切替等）                                                                                                                                                                                                                                                      |
 | `ToggleChips<T>`      | 多選択トグルチップ群。`<fieldset>`/`<legend>` で意味付け、各チップは `aria-pressed` ボタン。`count` prop で件数バッジ表示（マスク検出件数等）、`token` prop で文字トークンを等幅バッジ表示（フラグ g/i/m 等）、`legendVisible={false}` で見出しを sr-only 化（a11y ツリーには残す） |
-| `FileInputButton`     | ファイル選択ボタン。label 内包 input 構造で `:focus-within` によるキーボードフォーカス可視化に対応                                                                                                                                                                                  |
+| `FileInputButton`     | ファイル選択ボタン。label 内包 input 構造で `:has(input:focus-visible)` によるキーボードフォーカス可視化に対応                                                                                                                                                                      |
 | `NotificationBanner`  | DADS color-chip 型の通知バナー（variant: warning/error/info/success、title + 本文）                                                                                                                                                                                                 |
 | `StatusBadge`         | 状態を表す filled ピルバッジ（tone: error/success/warning/info）。`decorative` prop で `aria-hidden` を付与し、隣接する通知バナー等が意味を担保する文脈での二重読み上げを抑制できる                                                                                                 |
 | `ChipLabel`           | アウトライン型ラベルチップ（tone: error/info/neutral、任意 icon）                                                                                                                                                                                                                   |
@@ -53,6 +53,10 @@ CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、J
 
 リアルタイム変換系ツールで、結果領域全体に `aria-live` / `role="status"` を付けない（1 文字編集ごとに全体が再アナウンスされる）。「結果の 1 行要約」など小さく安定した要素だけを live region にする。`role="status"` は暗黙で `aria-live="polite"` を持つので併記しない（PR #746）。`JwtDecoder` は結果領域全体を live region にしたまま未改修なので、踏襲しない。
 
+### 2.6 操作要素は 44×44px
+
+見た目が 44px 未満の操作要素は、`.hit-area`（または `global.css` の `.hit-area` 系に登録済みの class）で透明な `::after` のタップ領域を 44×44px に広げる。隣の操作要素の見た目の範囲に食い込まないよう、直前・直後の要素とは `(44 − 見た目の高さ) / 2` 以上離す。奪う・届かないは `tests/e2e/touch-targets.spec.ts` が全ツールで検知する。文中のインラインリンク（`.text-link` を段落内で使う場合）には付けない（パンくずなど単独のリンクは `.hit-area` を足す）（`docs/decisions.md [152]`）。
+
 ---
 
 ## 3. Playwright での確認手順
@@ -76,4 +80,4 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** の両方でスク
 
 ### 3.4 React island へ入力する spec は hydration を待つ
 
-`/tools/*` で `fill` / `click` する spec は `beforeEach` で `await waitForReactHydration(page);`（`tests/e2e/helpers.ts`）を呼ぶ（`withProductionCsp` は内部で待機するので不要）。hydration 前の `fill` は React の `onChange` を発火させない。CI（`workers: 1`）では顕在化せずローカル並列でだけ flaky になる（issue #750）。漏れは `tests/meta/e2e-hydration-wait-coverage.test.ts` が検出する。
+`/tools/*` で `fill` / `click` する spec は `beforeEach` で `await waitForReactHydration(page);`（`tests/e2e/helpers.ts`）を呼ぶ（`withProductionCsp` は内部で待機するので不要）。hydration 前の `fill` は React の `onChange` を発火させない。並列実行時にだけ顕在化する flaky になる（issue #750。CI も並列実行）。漏れは `tests/meta/e2e-hydration-wait-coverage.test.ts` が検出する。

@@ -58,9 +58,8 @@ export function InputField({
   const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined;
 
   const inputClass = [
-    'caption w-full rounded-lg px-3 py-2 border text-default',
-    error ? 'border-error' : 'border-input',
-    readOnly ? 'bg-surface' : 'bg-default',
+    'field-control',
+    multiline && 'field-control--textarea',
     mono && 'font-mono',
     multiline && !resize && 'resize-none',
     multiline && resize && 'resize-y',
@@ -71,7 +70,7 @@ export function InputField({
   return (
     <div>
       <div
-        className={`flex items-center justify-between mb-3 min-h-8${labelVisible ? '' : ' sr-only'}`}
+        className={`flex items-center justify-between mb-3 min-h-9${labelVisible ? '' : ' sr-only'}`}
       >
         <label htmlFor={id} className="body-emphasis text-default">
           {label}

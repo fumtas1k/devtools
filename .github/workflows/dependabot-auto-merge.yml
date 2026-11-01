@@ -158,14 +158,14 @@ jobs:
           echo "公開直後でも許可する版: ${allowed:-なし}"
 
       # 判定に使うスクリプトは base 側のものを使う（変更ファイルの確認と合わせた多層防御）
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: steps.decide.outputs.reason == ''
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: steps.decide.outputs.reason == ''
         with:
           node-version-file: .node-version

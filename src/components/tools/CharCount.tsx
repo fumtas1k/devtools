@@ -62,7 +62,7 @@ function SnsCard({
   return (
     <article
       aria-labelledby={titleId}
-      className="border-default rounded-md border p-3 flex h-full flex-col gap-2"
+      className="border-default rounded-lg border p-3 flex h-full flex-col gap-2"
     >
       <div>
         <p id={titleId} className="caption font-bold">
@@ -231,7 +231,7 @@ export function CharCountTool() {
             titleId="sns-card-custom-title"
             captionId="sns-card-custom-caption"
             limitNode={
-              <span className="inline-block w-20">
+              <span className="inline-block w-24">
                 <BareInput
                   type="number"
                   inputMode="numeric"

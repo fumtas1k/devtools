@@ -33,8 +33,8 @@ function DownloadIcon() {
  * ダウンロードアイコン付きのアクションボタン。
  * `ActionButton` を `size="compact"` で内部使用する薄いラッパー。
  * - 高さは CopyButton (default) と pixel-perfect に揃う（横並び崩れ回避、#288）
- * - `variant="primary"`: primary 色背景 + 白文字 (デフォルト)
- * - `variant="secondary"`: 透過背景 + primary 文字色 + primary ボーダー
+ * - `variant="primary"`: DADS の solid-fill（primary の塗り + 白文字。デフォルト）
+ * - `variant="secondary"`: DADS の outline（白地 + primary の文字と枠）
  * - `loading=true`: ActionButton 経由で `aria-busy="true"` と disabled 状態を付与
  */
 export function DownloadButton({

@@ -235,7 +235,6 @@ devtools/
         ├── qr-ticket.ts
         ├── qrcode.ts
         ├── uuid-v7.ts
-        ├── styles.ts           # 共通タイポグラフィ定数
         └── __tests__/
             ├── base64.test.ts
             ├── base64url.test.ts
@@ -1350,12 +1349,12 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 1. `node-sql-parser`（dynamic import で遅延ロード）で DDL をパースし、テーブル・カラム・制約の中間モデルを構築する
 2. 中間モデルから Mermaid ER 記法テキスト（`toMermaid`）を生成する（テキスト出力・コピー用。mermaid ライブラリ不使用）
-3. 中間モデルから自前 SVG レンダラ（`toSvg`）で直接 SVG を生成する（presentation 属性のみ使用・`style=` / `<style>` タグ不使用で CSP 準拠）
+3. 中間モデルから自前 SVG レンダラ（`toSvg`）で直接 SVG を生成する。文字幅を推定してカードを広げ、リレーションラベルはカードと他のラベルを避けて配置する（presentation 属性のみ使用・`style=` / `<style>` タグ不使用で CSP 準拠）
 4. 生成 SVG を blob URL の `<img>` として表示（スクリプト非実行・CSP 隔離）
 
 **パース対象:** `CREATE TABLE` 内の制約（`PRIMARY KEY`・`FOREIGN KEY ... REFERENCES`・列定義内 `REFERENCES`）を対象とする。
 
-**モジュール構成:** `src/utils/ddl-er-diagram/`（`types.ts` / `parse.ts` DDL パース・中間モデル構築 / `mermaid.ts` Mermaid 記法生成 / `svg.ts` 自前 SVG レンダラ / `index.ts`）/ `src/components/tools/DdlErDiagram.tsx` / `src/pages/tools/ddl-er-diagram.astro`
+**モジュール構成:** `src/utils/ddl-er-diagram.ts`（DDL パース・`SchemaModel` 構築・Mermaid 記法生成・自前 SVG レンダラ）/ `src/components/tools/DdlErDiagram.tsx` / `src/pages/tools/ddl-er-diagram.astro`
 
 **追加依存:** `node-sql-parser`（DDL パース）。
 
@@ -1507,15 +1506,16 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ### 8.2 カラーパレット
 
-DADS 青基調カラーシステムを使用（`src/styles/global.css` の `@theme` で定義）。
+DADS v2 のカラートークンを使用（`src/styles/global.css` の `@theme` / `:root` で定義。DADS への移行は完了済みで、経緯は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md` と `docs/decisions.md [134]`〜[148]）。
 
-| 役割             | 値                       |
-| ---------------- | ------------------------ |
-| プライマリ       | `#1A56DB`                |
-| リンク           | `#2563EB`                |
-| 背景             | `#EFF6FF`（blue-50）     |
-| ニュートラル本文 | `#111827`（neutral-900） |
-| ミュートテキスト | `#6B7280`（neutral-500） |
+| 役割               | 値                          |
+| ------------------ | --------------------------- |
+| プライマリ         | `#0017C1`（blue-900）       |
+| リンク             | `#00118F`（blue-1000）      |
+| トップの hero 背景 | `#E8F1FE`（blue-50）        |
+| ニュートラル本文   | `#333333`（solid-gray-800） |
+| ミュートテキスト   | `#4D4D4D`（solid-gray-700） |
+| 入力欄の枠         | `#666666`（solid-gray-600） |
 
 ### 8.3 タイポグラフィ
 
@@ -1523,6 +1523,12 @@ DADS 青基調カラーシステムを使用（`src/styles/global.css` の `@the
 - コード: JetBrains Mono（`@fontsource/jetbrains-mono` でセルフホスト）
 - 最小フォントサイズ: 14px（DADS 規定。本文は 16px 以上推奨）
 - letter-spacing: `0.02em`（正値）
+- 太さ: 400 / 700 のみ（`font-normal` / `font-bold`）
+
+### 8.3.1 角丸・影
+
+- 角丸: コントロール（入力欄・ボタン・トグル）8px = `rounded-md`、カード・パネル 12px = `rounded-lg`、ピル = `rounded-full`
+- 影: DADS のエレベーション（`--elevation-1`〜`8`）。Tailwind の `shadow-md` / `shadow-xl` も DADS の値にそろえてある
 
 ### 8.4 ダークモード
 
@@ -1603,6 +1609,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 - [x] **Phase 2c**: 共通 React UI（ClearButton / CountInput / ResultTable / ErrorMessage block variant）
 - [x] **Phase 3**: ツール一貫性適用（全ツール space-y-6 統一・QrCode サンプルボタン追加）
 - [x] **Phase 4**: モバイル UX（ハンバーガーメニュー・タップ領域・focus トラップ）
+- [x] **DADS 移行 Phase 0〜7**: 色・フォーカス・タイポグラフィ・角丸と影・コンポーネント・レイアウト・後片付け（`docs/decisions.md [134]`〜[148]）
 
 ### Phase 3: 成熟
 
@@ -1686,8 +1693,8 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
   "description": "ブラウザで完結する無料の開発者ツール集",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#EFF6FF",
-  "theme_color": "#1A56DB",
+  "background_color": "#E8F1FE",
+  "theme_color": "#0017C1",
   "lang": "ja",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -1719,8 +1726,7 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
 
 ### 12.6 アイコン生成
 
-`favicon.svg`（32×32 の `>_` ターミナルプロンプト SVG）を元に、`scripts/generate-icons.mjs` で  
-`sharp`（Astro の推移的依存として利用可能）を使い PNG 4 枚を生成する。
+`favicon.svg`（32×32、blue-900 `#0017C1` の単色地 + 白の `>_`。[146]）を元に、Playwright（Chromium）で描画して PNG 4 枚を生成する。
 
 - `icon-192.png` / `icon-512.png`：`purpose: any` 用（角丸あり）
 - `icon-maskable-192.png` / `icon-maskable-512.png`：`purpose: maskable` 用（背景を端まで塗り・セーフゾーン内にマーク）  
@@ -1734,7 +1740,7 @@ Android / iOS のホーム画面に追加し、ブラウザUIなしでアプリ�
 <!-- iOS ホーム画面アイコン -->
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <!-- テーマカラー（Androidアドレスバー） -->
-<meta name="theme-color" content="#1A56DB" />
+<meta name="theme-color" content="#0017C1" />
 ```
 
 Service Worker 登録（`<body>` 末尾にインラインスクリプト）:

@@ -1,14 +1,17 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
-const BG_ACTIVE = 'rgb(239, 246, 255)'; // --color-bg-active (blue-50)
+const BG_HOVER = 'rgb(197, 215, 251)'; // --color-bg-primary-hover (blue-200、outline ボタンの hover と同じ)
 const BG_TRANSPARENT = 'rgba(0, 0, 0, 0)';
 const BG_PRESSED = 'rgb(255, 255, 255)'; // --color-bg (white)
-const COLOR_TEXT = 'rgb(17, 24, 39)'; // --color-text (neutral-900)
-const COLOR_MUTED = 'rgb(107, 114, 128)'; // --color-muted (neutral-500)
+const COLOR_HOVER = 'rgb(0, 17, 143)'; // --color-primary-hover (blue-1000)
+const COLOR_PRIMARY = 'rgb(0, 23, 193)'; // --color-primary (blue-900、選択中の文字と枠)
+const COLOR_MUTED = 'rgb(77, 77, 77)'; // --color-muted (solid-gray-700)
+const FOCUS_OUTLINE = 'rgb(0, 0, 0)'; // --color-focus-outline (black)
+const FOCUS_RING_SHADOW = 'rgb(255, 212, 61) 0px 0px 0px 2px'; // --focus-ring-shadow (yellow-300)
 
 test.describe('ToggleGroup hover / focus-visible フィードバック（issue #385）', () => {
-  test('未選択ボタンを hover すると背景が --color-bg-active になる（CSP 違反なし）', async ({
+  test('未選択ボタンを hover すると背景が blue-200（--color-bg-primary-hover）になる（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/base64', async (page) => {
@@ -19,8 +22,9 @@ test.describe('ToggleGroup hover / focus-visible フィードバック（issue #
       await expect(decodeBtn).toHaveCSS('color', COLOR_MUTED);
 
       await decodeBtn.hover();
-      await expect(decodeBtn).toHaveCSS('background-color', BG_ACTIVE);
-      await expect(decodeBtn).toHaveCSS('color', COLOR_TEXT);
+      await expect(decodeBtn).toHaveCSS('background-color', BG_HOVER);
+      await expect(decodeBtn).toHaveCSS('color', COLOR_HOVER);
+      await expect(decodeBtn).toHaveCSS('text-decoration-line', 'underline');
     });
   });
 
@@ -32,11 +36,11 @@ test.describe('ToggleGroup hover / focus-visible フィードバック（issue #
       await expect(encodeBtn).toBeVisible();
       await expect(encodeBtn).toHaveAttribute('aria-pressed', 'true');
       await expect(encodeBtn).toHaveCSS('background-color', BG_PRESSED);
-      await expect(encodeBtn).toHaveCSS('color', COLOR_TEXT);
+      await expect(encodeBtn).toHaveCSS('color', COLOR_PRIMARY);
 
       await encodeBtn.hover();
       await expect(encodeBtn).toHaveCSS('background-color', BG_PRESSED);
-      await expect(encodeBtn).toHaveCSS('color', COLOR_TEXT);
+      await expect(encodeBtn).toHaveCSS('color', COLOR_PRIMARY);
     });
   });
 
@@ -53,12 +57,37 @@ test.describe('ToggleGroup hover / focus-visible フィードバック（issue #
       await page.keyboard.press('Tab');
       await expect(decodeBtn).toBeFocused();
 
-      // 背景・文字色が hover と同じ blue-50 / --color-text になる
-      await expect(decodeBtn).toHaveCSS('background-color', BG_ACTIVE);
-      await expect(decodeBtn).toHaveCSS('color', COLOR_TEXT);
-      // global :where(button, ...):focus-visible で適用される outline ring
-      await expect(decodeBtn).toHaveCSS('outline-color', 'rgb(37, 99, 235)');
+      // 背景・文字色が hover と同じ blue-200 / blue-1000 になる
+      await expect(decodeBtn).toHaveCSS('background-color', BG_HOVER);
+      await expect(decodeBtn).toHaveCSS('color', COLOR_HOVER);
+      // global :where(button, ...):focus-visible で適用される DADS のフォーカスリング
+      // （黒 4px の outline + yellow-300 の 2px リング）
+      await expect(decodeBtn).toHaveCSS('outline-color', FOCUS_OUTLINE);
       await expect(decodeBtn).toHaveCSS('outline-style', 'solid');
+      await expect(decodeBtn).toHaveCSS('outline-width', '4px');
+      await expect(decodeBtn).toHaveCSS('box-shadow', FOCUS_RING_SHADOW);
+    });
+  });
+
+  test('選択中ボタンに focus すると黄リングと elevation の影が重なる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/base64', async (page) => {
+      const encodeBtn = page.getByRole('button', { name: 'エンコード' });
+      const decodeBtn = page.getByRole('button', { name: 'デコード' });
+      await expect(encodeBtn).toHaveAttribute('aria-pressed', 'true');
+
+      // 未選択ボタンから Shift+Tab で選択中ボタンへキーボード移動（:focus-visible を発火させる）
+      await decodeBtn.focus();
+      await page.keyboard.press('Shift+Tab');
+      await expect(encodeBtn).toBeFocused();
+
+      // 黄リングの後ろに elevation-2 の影が続く。box-shadow は 0.15s の transition があるため、
+      // 両方がそろうまで待つ（global の focus ルールだけだと影が消えて黄リングのみになる）
+      const boxShadow = () => encodeBtn.evaluate((el) => getComputedStyle(el).boxShadow);
+      await expect
+        .poll(boxShadow)
+        .toMatch(/^rgb\(255, 212, 61\) 0px 0px 0px 2px, rgba\(0, 0, 0, 0\.1\) 0px 2px 12px 2px/);
     });
   });
 });

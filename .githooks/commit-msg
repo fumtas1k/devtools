@@ -12,7 +12,10 @@ NC='\033[0m'
 commit_msg_file="$1"
 
 # コミットメッセージを読む（最初の行のみ、コメント行を除外）
-commit_msg=$(grep -v '^#' "$commit_msg_file" | head -1)
+if ! commit_msg=$(LC_ALL=C awk '!/^#/ { print; exit }' "$commit_msg_file"); then
+  printf 'エラー: コミットメッセージを読み込めません。\n' >&2
+  exit 1
+fi
 
 # 空のメッセージはスキップ
 if [ -z "$commit_msg" ]; then
@@ -48,11 +51,21 @@ if ! echo "$commit_msg" | grep -Eq "$pattern"; then
 fi
 
 # 2. 日本語チェック
-# 日本語の文字（ひらがな、カタカナ、漢字）を検出する正規表現
-japanese_count=$(echo "$commit_msg" | grep -o '[ぁ-ん]' | wc -l)
-japanese_count=$((japanese_count + $(echo "$commit_msg" | grep -o '[ァ-ン]' | wc -l)))
-japanese_count=$((japanese_count + $(echo "$commit_msg" | grep -o '[一-龯]' | wc -l)))
-japanese_count=$((japanese_count + $(echo "$commit_msg" | grep -o '[、。]' | wc -l)))
+# 既存の文字範囲をロケールに依存せず Unicode コードポイントで数える
+if ! japanese_count=$(printf '%s' "$commit_msg" | node -e '
+  const { readFileSync } = require("node:fs");
+  const message = new TextDecoder("utf-8", { fatal: true }).decode(readFileSync(0));
+  console.log((message.match(/[ぁ-んァ-ン一-龯、。]/gu) || []).length);
+'); then
+  printf 'エラー: 日本語文字数を検証できません。\n' >&2
+  exit 1
+fi
+case "$japanese_count" in
+  ''|*[!0-9]*)
+    printf 'エラー: 日本語文字数を検証できません。\n' >&2
+    exit 1
+    ;;
+esac
 
 # 日本語文字がない場合はエラー
 if [ "$japanese_count" -lt 2 ]; then
