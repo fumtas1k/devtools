@@ -815,9 +815,9 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 
 `CREATE TABLE` 文（MySQL / PostgreSQL）を `node-sql-parser` でパースし、テーブル・カラム・FK 制約の中間モデルを構築する。中間モデルを 2 系統の出力に変換する。
 
-- **DDL パース（`parse.ts`）**: `node-sql-parser` の `Parser` を dynamic import で遅延ロードし、`astify(ddl, { database: dialect })` で AST を得る。AST からテーブル定義（カラム名・型・NOT NULL）と FK 制約（`FOREIGN KEY ... REFERENCES`・列定義内 `REFERENCES`）を正規化して中間モデル（`ErdTable[]`）に変換する。
-- **Mermaid 記法生成（`mermaid.ts`、`toMermaid`）**: 中間モデルから `erDiagram` 記法のテキストを生成する（mermaid ライブラリ不使用、テキスト出力のみ）。FK があるテーブル間に `||--o{` 等の関係線を出力する。
-- **自前 SVG レンダラ（`svg.ts`、`toSvg`）**: 中間モデルから直接 SVG を生成する純関数。等幅フォント幅推定で DOM 非依存。カラム行は `<rect>` + `<text>` の presentation 属性（`fill` / `stroke` / `font-size` 等）のみで描画し、`style=` 属性・`<style>` タグを一切使用しない（CSP `style-src 'unsafe-inline'` 不要）。FK リレーション線は `<line>` / `<path>` で描画。
+- **DDL パース（`src/utils/ddl-er-diagram.ts`、`parseDdl`）**: `node-sql-parser` の `Parser` を dynamic import で遅延ロードし、`astify(ddl, { database: dialect })` で AST を得る。AST からテーブル定義（カラム名・型・NOT NULL）と FK 制約（`FOREIGN KEY ... REFERENCES`・列定義内 `REFERENCES`）を正規化して中間モデル（`SchemaModel`）に変換する。
+- **Mermaid 記法生成（`toMermaid`）**: 中間モデルから `erDiagram` 記法のテキストを生成する（mermaid ライブラリ不使用、テキスト出力のみ）。FK があるテーブル間に `||--o{` 等の関係線を出力する。
+- **自前 SVG レンダラ（`toSvg`）**: 中間モデルから直接 SVG を生成する同期純関数。ASCII を 1 セル、その他のコードポイントを 2 セルとして幅を保守的に推定し、カードは本文とバッジの幅を確保する。ラベルは曲線上の有限候補からカード・他のラベルを避けて選び、空きがなければ図の右側に引出線付きで配置する。カラム行は `<rect>` + `<text>` の presentation 属性（`fill` / `stroke` / `font-size` 等）のみで描画し、`style=` 属性・`<style>` タグを一切使用しない（CSP `style-src 'unsafe-inline'` 不要）。FK リレーション線は `<line>` / `<path>` で描画。
 - **表示**: 生成した SVG を `URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))` で blob URL 化し、`<img src={blobUrl}>` で表示する。blob URL 経由の `<img>` はスクリプト実行の心配がなく、CSP 隔離も保たれる。
 - **PNG 変換**: blob URL を `<canvas>` で描画し `toBlob('image/png')` でダウンロード。
 
@@ -829,6 +829,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 
 #### 制限・エッジケース
 
+- **SVG の幅推定**: フォント実測ではないため特殊なフォントや結合文字には誤差があり、長いラベルの退避で図が広がる。
 - **`ALTER TABLE` FK 非対応**: `CREATE TABLE` 内の制約のみを対象とする。`ALTER TABLE ... ADD CONSTRAINT FOREIGN KEY` は未対応。
 - **命名規則推測なし**: `user_id → users.id` のような名前ベースの関係推測は行わない。明示的な FK 定義のみからリレーション線を生成する。
 - **mermaid ライブラリ不使用**: mermaid の `render()` は描画時に一時 DOM へインラインスタイルを挿入するため、本プロジェクトの strict CSP（`style-src 'unsafe-inline'` なし）と根本衝突する（詳細は `docs/decisions.md` [122]）。コピー用の Mermaid テキスト生成は自前実装で行い、描画は自前 SVG レンダラが担う。

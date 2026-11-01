@@ -302,3 +302,119 @@ describe('toSvg', () => {
     });
   });
 });
+
+describe('toSvg レイアウト', () => {
+  const column = (name: string, type = 'INT', keys = false) => ({
+    name,
+    type,
+    nullable: true,
+    isPrimaryKey: keys,
+    isForeignKey: keys,
+  });
+  const rects = (svg: string, pattern: RegExp) =>
+    [...svg.matchAll(pattern)].map((m) => ({
+      x: Number(m[1]),
+      y: Number(m[2]),
+      w: Number(m[3]),
+      h: Number(m[4]),
+    }));
+  const intersects = (
+    a: { x: number; y: number; w: number; h: number },
+    b: { x: number; y: number; w: number; h: number }
+  ) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const cardPattern =
+    /<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" fill="#ffffff" stroke="#334155"/g;
+  const labelPattern =
+    /<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" fill="#ffffff" rx="2"\/><text/g;
+
+  it('型が空のとき ? と同じ幅にし、全角文字と両バッジの幅を確保する', () => {
+    const make = (name: string, type: string) => ({
+      tables: [{ name: 't', columns: [column(name, type, true)] }],
+      relations: [],
+    });
+    const width = (svg: string) => rects(svg, cardPattern)[0].w;
+    expect(width(toSvg(make('識別子'.repeat(8), '型'.repeat(8))))).toBeGreaterThan(
+      width(toSvg(make('id', 'INT')))
+    );
+    expect(width(toSvg(make('long_ascii_column_name'.repeat(3), '')))).toBe(
+      width(toSvg(make('long_ascii_column_name'.repeat(3), '?')))
+    );
+    const svg = toSvg(make('名前'.repeat(10), '型'.repeat(5)));
+    const badgeRects = rects(
+      svg,
+      /<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" fill="#(?:1e40af|065f46)"/g
+    );
+    const card = rects(svg, cardPattern)[0];
+    expect(badgeRects).toHaveLength(2);
+    expect(intersects(badgeRects[0], badgeRects[1])).toBe(false);
+    expect(Math.min(...badgeRects.map((b) => b.x))).toBeGreaterThan(
+      card.x + 12 + (20 * 2 + 3 + 5 * 2) * 14 * 0.62
+    );
+  });
+
+  it('通常の短いラベルは隣接カード間に置き、引出線を使わない', () => {
+    const tables = ['users', 'posts'].map((name) => ({ name, columns: [column('id')] }));
+    const svg = toSvg({
+      tables,
+      relations: [{ fromTable: 'posts', toTable: 'users', fromColumn: 'user_id', toColumn: 'id' }],
+    });
+    expect(svg).not.toContain('stroke-dasharray="3,3"');
+  });
+
+  it('自己参照の関係線はカードの外側を通る', () => {
+    const tables = [{ name: 't', columns: [column('id')] }];
+    const svg = toSvg({
+      tables,
+      relations: [{ fromTable: 't', toTable: 't', fromColumn: 'id', toColumn: 'id' }],
+    });
+    const card = rects(svg, cardPattern)[0];
+    const curve = svg.match(
+      /<path d="M([\d.]+),([\d.]+) C([\d.]+),([\d.]+) ([\d.]+),([\d.]+) ([\d.]+),([\d.]+)"/
+    )!;
+    expect(Number(curve[1])).toBe(card.x + card.w);
+    expect(Number(curve[3])).toBeGreaterThan(card.x + card.w);
+    expect(Number(curve[5])).toBeGreaterThan(card.x + card.w);
+  });
+
+  it('非隣接・逆方向・行またぎ・自己参照・複数関係のラベルはカードや他のラベルと交差しない', () => {
+    const tables = Array.from({ length: 6 }, (_, i) => ({
+      name: `t${i}`,
+      columns: [column('id')],
+    }));
+    const pairs = [
+      [0, 2],
+      [2, 0],
+      [0, 5],
+      [5, 0],
+      [3, 3],
+      [0, 2],
+      [0, 2],
+    ];
+    const model = {
+      tables,
+      relations: pairs.map(([from, to], i) => ({
+        fromTable: `t${from}`,
+        toTable: `t${to}`,
+        fromColumn: i >= 5 ? '長いラベル'.repeat(30) + i : `relation_${i}`,
+        toColumn: 'id',
+      })),
+    };
+    const svg = toSvg(model);
+    expect(svg).toBe(toSvg(model));
+    const cards = rects(svg, cardPattern);
+    const labels = rects(svg, labelPattern);
+    const [, w, h] = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)!.map(Number);
+    expect(cards).toHaveLength(6);
+    expect(labels).toHaveLength(pairs.length);
+    expect(svg).toContain('stroke-dasharray="3,3"');
+    expect(intersects(cards[0], cards[0])).toBe(true); // 陽性対照
+    for (const [i, label] of labels.entries()) {
+      expect(label.x).toBeGreaterThanOrEqual(0);
+      expect(label.y).toBeGreaterThanOrEqual(0);
+      expect(label.x + label.w).toBeLessThanOrEqual(w);
+      expect(label.y + label.h).toBeLessThanOrEqual(h);
+      expect(cards.some((card) => intersects(label, card))).toBe(false);
+      expect(labels.slice(0, i).some((other) => intersects(label, other))).toBe(false);
+    }
+  });
+});
