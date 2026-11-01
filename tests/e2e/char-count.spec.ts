@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import fixtures from '../../src/workers/__tests__/charCount.fixtures.json' with { type: 'json' };
 import { applyProductionCsp, waitForReactHydration, withProductionCsp } from './helpers';
 
 test.describe('文字カウント', () => {
@@ -161,6 +162,121 @@ test.describe('文字カウント', () => {
     await withProductionCsp(browser, '/tools/char-count', async (page) => {
       await page.getByLabel('入力テキスト').fill('😀');
       await expect(page.getByText(/不可: 1 文字/).first()).toBeVisible();
+    });
+  });
+
+  test('本番 CSP 下の実 worker は count と同じ結果を返し例外にも requestId を付ける', async ({
+    browser,
+  }) => {
+    const inputs = fixtures.map(({ text }) => text);
+    await withProductionCsp(browser, '/tools/char-count', async (page) => {
+      // アプリ自身が実際に読み込む production bundle の URL を取得する。
+      const appWorker = page.waitForEvent('worker');
+      await page.getByLabel('入力テキスト').fill('seed');
+      const workerUrl = (await appWorker).url();
+      expect(new URL(workerUrl).origin).toBe(new URL(page.url()).origin);
+
+      const responses = await page.evaluate(
+        async ({ url, texts }) => {
+          const worker = new Worker(url, { type: 'module' });
+          return await new Promise<unknown[]>((resolve, reject) => {
+            const received: unknown[] = [];
+            const timeout = window.setTimeout(() => {
+              worker.terminate();
+              reject(new Error('worker の応答がタイムアウトしました'));
+            }, 10_000);
+            worker.onerror = () => {
+              window.clearTimeout(timeout);
+              worker.terminate();
+              reject(new Error('worker の読み込みまたは実行に失敗しました'));
+            };
+            worker.onmessage = (event: MessageEvent) => {
+              received.push(event.data);
+              if (received.length === texts.length + 1) {
+                window.clearTimeout(timeout);
+                worker.terminate();
+                resolve(received);
+              }
+            };
+            texts.forEach((text, index) => {
+              worker.postMessage({ type: 'count', requestId: index + 1, text });
+            });
+            // 無効な入力で count の例外経路を通し、同じ requestId が返るか確認する。
+            worker.postMessage({ type: 'count', requestId: 999, text: null });
+          });
+        },
+        { url: workerUrl, texts: inputs }
+      );
+
+      expect(responses).toEqual([
+        ...inputs.map((_, index) => ({
+          type: 'result',
+          requestId: index + 1,
+          result: fixtures[index].result,
+        })),
+        expect.objectContaining({
+          type: 'error',
+          requestId: 999,
+          message: expect.stringContaining('集計に失敗しました'),
+        }),
+      ]);
+    });
+  });
+
+  test('本番 CSP 下の大量入力集計中も入力変更とクリアができ、古い結果は残らない', async ({
+    browser,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    await withProductionCsp(browser, '/tools/char-count', async (page) => {
+      const input = page.getByLabel('入力テキスト');
+      const clear = page.getByRole('button', { name: 'クリア' });
+      const length = page.locator('dt:has-text("JS .length (UTF-16)") + dd');
+      const largeText = 'a'.repeat(1_000_001);
+      const timings: Record<string, number> = {};
+
+      // worker の生成を実際に待ってから入力を差し替える。debounce 中の
+      // キャンセルだけが通ってもこのテストは成功しない。
+      let started = Date.now();
+      let workerPromise = page.waitForEvent('worker');
+      await input.fill(largeText);
+      const replacedWorker = await workerPromise;
+      timings.firstWorkerStartupMs = Date.now() - started;
+      expect(new URL(replacedWorker.url()).origin).toBe(new URL(page.url()).origin);
+      await expect(page.getByText(/集計中/)).toBeVisible();
+      const replacedWorkerClosed = replacedWorker.waitForEvent('close');
+      started = Date.now();
+      await input.fill('ok', { timeout: 5000 });
+      await expect(input).toHaveValue('ok', { timeout: 5000 });
+      await replacedWorkerClosed;
+      timings.replaceAndTerminateMs = Date.now() - started;
+      expect(timings.replaceAndTerminateMs).toBeLessThan(5000);
+      await expect(length).toHaveText('2');
+
+      // 再び実 worker の処理中にクリアし、空の結果に即座に戻ることを確認する。
+      started = Date.now();
+      workerPromise = page.waitForEvent('worker');
+      await input.fill(largeText);
+      const clearedWorker = await workerPromise;
+      timings.secondWorkerStartupMs = Date.now() - started;
+      expect(new URL(clearedWorker.url()).origin).toBe(new URL(page.url()).origin);
+      await expect(page.getByText(/集計中/)).toBeVisible();
+      const clearedWorkerClosed = clearedWorker.waitForEvent('close');
+      started = Date.now();
+      await clear.click({ timeout: 5000 });
+      await expect(input).toHaveValue('', { timeout: 5000 });
+      await clearedWorkerClosed;
+      timings.clearAndTerminateMs = Date.now() - started;
+      expect(timings.clearAndTerminateMs).toBeLessThan(5000);
+      await expect(length).toHaveText('0');
+      await expect(page.getByText(/集計中/)).toHaveCount(0);
+
+      // 終了済み worker の古い結果で上書きされないことを確認する。
+      await page.waitForTimeout(500);
+      await expect(length).toHaveText('0');
+      await testInfo.attach('char-count-worker-timings.json', {
+        body: JSON.stringify(timings, null, 2),
+        contentType: 'application/json',
+      });
     });
   });
 });

@@ -9,17 +9,44 @@ vi.mock('@/utils/char-count', async () => {
 
 import { CharCountTool } from '@/components/tools/CharCount';
 import { count } from '@/utils/char-count';
+import type { CharCountWorkerRequest, CharCountWorkerResponse } from '@/workers/charCount.types';
+
+const { count: realCount } =
+  await vi.importActual<typeof import('@/utils/char-count')>('@/utils/char-count');
+class FakeWorker {
+  static instances: FakeWorker[] = [];
+  static autoComplete = true;
+  onmessage: ((event: MessageEvent<CharCountWorkerResponse>) => void) | null = null;
+  onerror = null;
+  onmessageerror = null;
+  postMessage = vi.fn((request: CharCountWorkerRequest) => {
+    if (FakeWorker.autoComplete) this.complete(request);
+  });
+  terminate = vi.fn();
+  constructor() {
+    FakeWorker.instances.push(this);
+  }
+  complete(request = this.postMessage.mock.calls[0][0]) {
+    this.onmessage?.({
+      data: { type: 'result', requestId: request.requestId, result: realCount(request.text) },
+    } as MessageEvent<CharCountWorkerResponse>);
+  }
+}
 
 const DEBOUNCE_MS = 100;
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.mocked(count).mockClear();
+  FakeWorker.instances = [];
+  FakeWorker.autoComplete = true;
+  vi.stubGlobal('Worker', FakeWorker);
 });
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe('CharCountTool — 基本レイアウト', () => {
@@ -53,8 +80,8 @@ describe('CharCountTool — debounce', () => {
     act(() => {
       vi.advanceTimersByTime(50);
     });
-    // 初期空文字の 1 回のみ (mount 時)
-    expect(vi.mocked(count).mock.calls.filter((c) => c[0] === 'abc')).toHaveLength(0);
+    expect(FakeWorker.instances).toHaveLength(0);
+    expect(count).not.toHaveBeenCalled();
   });
 
   it('入力後 100ms 経過後に count() が呼ばれる', () => {
@@ -66,7 +93,11 @@ describe('CharCountTool — debounce', () => {
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
-    expect(vi.mocked(count).mock.calls.some((c) => c[0] === 'abc')).toBe(true);
+    expect(FakeWorker.instances).toHaveLength(1);
+    expect(FakeWorker.instances[0].postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'count', text: 'abc' })
+    );
+    expect(count).not.toHaveBeenCalled();
   });
 });
 
@@ -111,6 +142,56 @@ describe('CharCountTool — 結果表示', () => {
   });
 });
 
+describe('CharCountTool — 非同期集計', () => {
+  it('処理中は前回結果や互換性表示を隠し、完了後に新しい結果を表示する', () => {
+    render(<CharCountTool />);
+    const textarea = screen.getByLabelText('入力テキスト');
+    fireEvent.change(textarea, { target: { value: 'abcdefghijk' } });
+    act(() => vi.advanceTimersByTime(DEBOUNCE_MS));
+    expect(screen.getAllByText('11').length).toBeGreaterThan(0);
+    FakeWorker.autoComplete = false;
+    fireEvent.change(textarea, { target: { value: 'あいう' } });
+    expect(screen.queryByText('11')).toBeNull();
+    expect(screen.getByText(/集計中/)).toBeTruthy();
+    expect(screen.queryByText('対応')).toBeNull();
+    expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
+    act(() => vi.advanceTimersByTime(DEBOUNCE_MS));
+    act(() => FakeWorker.instances[1].complete());
+    expect(screen.queryByText(/集計中/)).toBeNull();
+    expect(screen.getAllByText('3').length).toBeGreaterThan(0);
+  });
+
+  it('worker エラーでは集計中を終了し、古い値や互換性を表示しない', () => {
+    FakeWorker.autoComplete = false;
+    render(<CharCountTool />);
+    fireEvent.change(screen.getByLabelText('入力テキスト'), { target: { value: 'abc' } });
+    act(() => vi.advanceTimersByTime(DEBOUNCE_MS));
+    const worker = FakeWorker.instances[0];
+    const request = worker.postMessage.mock.calls[0][0];
+    act(() =>
+      worker.onmessage?.({
+        data: { type: 'error', requestId: request.requestId, message: 'failed' },
+      } as MessageEvent<CharCountWorkerResponse>)
+    );
+    expect(screen.queryByText(/集計中/)).toBeNull();
+    expect(screen.getByText(/文字数の集計に失敗しました/)).toBeTruthy();
+    expect(screen.queryAllByText('対応')).toHaveLength(0);
+    expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
+  });
+
+  it('100万文字超でも main thread の count を呼ばず処理中になる（旧実装では失敗）', () => {
+    FakeWorker.autoComplete = false;
+    render(<CharCountTool />);
+    fireEvent.change(screen.getByLabelText('入力テキスト'), {
+      target: { value: 'a'.repeat(1_000_001) },
+    });
+    act(() => vi.advanceTimersByTime(DEBOUNCE_MS));
+    expect(screen.getByText(/集計中/)).toBeTruthy();
+    expect(FakeWorker.instances[0].postMessage).toHaveBeenCalledOnce();
+    expect(count).not.toHaveBeenCalled();
+  });
+});
+
 describe('CharCountTool — SNS 任意上限', () => {
   it('任意上限入力欄がデフォルト 280 で表示される', () => {
     render(<CharCountTool />);
@@ -135,6 +216,8 @@ describe('CharCountTool — SNS 任意上限', () => {
       fireEvent.change(limitInput, { target: { value: '100' } });
     });
     expect(limitInput.value).toBe('100');
+    expect(FakeWorker.instances).toHaveLength(1);
+    expect(FakeWorker.instances[0].postMessage).toHaveBeenCalledOnce();
     // 「残り」表示は廃止 (Twitter/Bluesky と同じく count / limit のみ)
     // 任意上限行の count 部分に 5 が表示される (他セルにも 5 はあり得るので getAllByText)
     expect(screen.getAllByText('5').length).toBeGreaterThan(0);
