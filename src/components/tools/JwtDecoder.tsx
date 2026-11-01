@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { cx } from '@/utils/cx';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ClearButton } from '@/components/ui/ClearButton';
@@ -99,9 +99,18 @@ function Section({ title, variant, data, renderValue, 'data-testid': testId }: S
 
 export function JwtDecoderTool() {
   const [token, setToken] = useState('');
+  const tokenRef = useRef('');
   const [secretKey, setSecretKey] = useState('');
   const [verifyExp, setVerifyExp] = useState(true);
   const [sigStatus, setSigStatus] = useState<SigStatus>('unchecked');
+  const [inputRevision, setInputRevision] = useState(0);
+
+  const updateToken = (value: string) => {
+    if (value !== tokenRef.current) setSigStatus('unchecked');
+    tokenRef.current = value;
+    setToken(value);
+    setInputRevision((revision) => revision + 1);
+  };
 
   const parsed = useMemo(() => (token.trim() ? parseJwt(token) : null), [token]);
   const isInvalid = token.trim() !== '' && parsed === null;
@@ -159,6 +168,14 @@ export function JwtDecoderTool() {
     },
   };
 
+  const announcement = parsed
+    ? `${inputRevision % 2 ? 'JWTをデコードしました。' : 'JWTの入力を更新しました。'} ${verifyExp ? `有効期限: ${expBadge[parsed.expStatus].label}。` : '有効期限チェックはオフです。'} ${sigBadge[sigStatus]?.label ?? '署名: 未検証'}。`
+    : isInvalid
+      ? 'JWTの形式が正しくありません。'
+      : inputRevision > 0
+        ? 'JWTの入力をクリアしました。'
+        : '';
+
   return (
     <div className="space-y-6">
       {/* トークン入力 */}
@@ -166,14 +183,14 @@ export function JwtDecoderTool() {
         id="jwt-input"
         label="JWTトークンを貼り付け"
         value={token}
-        onChange={setToken}
+        onChange={updateToken}
         placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         multiline
         rows={4}
         error={isInvalid ? '有効なJWTトークンではありません' : undefined}
         onSampleClick={async () => {
           setSecretKey(SAMPLE_SECRET);
-          setToken(await generateSampleJwt(SAMPLE_SECRET));
+          updateToken(await generateSampleJwt(SAMPLE_SECRET));
         }}
         mono
       />
@@ -189,7 +206,10 @@ export function JwtDecoderTool() {
             </>
           }
           value={secretKey}
-          onChange={setSecretKey}
+          onChange={(value) => {
+            setSigStatus('unchecked');
+            setSecretKey(value);
+          }}
           placeholder={keyPlaceholder}
           multiline
           rows={isHmac ? 2 : 4}
@@ -210,6 +230,10 @@ export function JwtDecoderTool() {
           有効期限（exp）チェックを行う
         </label>
       )}
+
+      <span className="sr-only" role="status" data-testid="jwt-announcement">
+        {announcement}
+      </span>
 
       {/* ステータス */}
       {parsed && (
@@ -242,7 +266,7 @@ export function JwtDecoderTool() {
 
       {/* デコード結果 */}
       {parsed && (
-        <div className="space-y-3" role="status" aria-live="polite">
+        <div className="space-y-3">
           <Section
             title="Header (JOSE)"
             variant="header"
@@ -276,7 +300,7 @@ export function JwtDecoderTool() {
         <div className="flex justify-end">
           <ClearButton
             onClick={() => {
-              setToken('');
+              updateToken('');
               setSecretKey('');
               setSigStatus('unchecked');
             }}

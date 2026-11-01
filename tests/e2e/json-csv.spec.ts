@@ -78,6 +78,15 @@ test.describe('JSON / CSV 変換（production CSP 適用）', () => {
     });
   });
 
+  test('JSON → CSV: 見出しをエスケープしても各列の値を保持する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/json-csv', async (page) => {
+      await page.getByLabel('入力').fill(JSON.stringify([{ '=1+1': '=1+1', "'=1+1": '別の値' }]));
+      await expect(page.getByLabel('変換結果')).toHaveValue("'=1+1,'=1+1\n'=1+1,別の値");
+    });
+  });
+
   test('JSON → CSV: タイピング直後はダウンロードボタンが disabled になり、デバウンス完了後に有効化される（CSP 違反なし）', async ({
     browser,
   }) => {

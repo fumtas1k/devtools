@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import Papa from 'papaparse';
 import { jsonToCsv, csvToJson, escapeCsvFormula } from '../json-csv';
 
 describe('jsonToCsv', () => {
@@ -50,6 +51,64 @@ describe('jsonToCsv', () => {
   });
 
   describe('CSVフォーミュラインジェクション対策', () => {
+    it('見出しと値の数式文字をエスケープし、衝突する見出しの値も保持する', () => {
+      const json = JSON.stringify([
+        {
+          '=1+1': '=1+1',
+          "'=1+1": '別の値',
+          '+key': 'plus',
+          '-key': 'minus',
+          '@key': 'at',
+          '\tkey': 'tab',
+          '\rkey': 'cr',
+          '=a"b\nc': 'quoted formula',
+        },
+      ]);
+      const result = Papa.parse<string[]>(jsonToCsv(json)).data;
+      expect(result).toEqual([
+        ["'=1+1", "'=1+1", "'+key", "'-key", "'@key", "'\tkey", "'\rkey", '\'=a"b\nc'],
+        ["'=1+1", '別の値', 'plus', 'minus', 'at', 'tab', 'cr', 'quoted formula'],
+      ]);
+    });
+
+    it('通常の見出しと引用符・改行・ネストを含む見出しを保持する', () => {
+      const json = JSON.stringify([{ normal: 'ok', 'a"b\nc': 'quoted', a: { '=b': 'nested' } }]);
+      expect(Papa.parse<string[]>(jsonToCsv(json)).data).toEqual([
+        ['normal', 'a"b\nc', 'a.=b'],
+        ['ok', 'quoted', 'nested'],
+      ]);
+    });
+
+    it('エスケープした見出しは CSV → JSON でシングルクォート付きのキーになる', () => {
+      const csv = jsonToCsv(JSON.stringify([{ '=1+1': 'value' }]));
+      expect(JSON.parse(csvToJson(csv))).toEqual([{ "'=1+1": 'value' }]);
+    });
+
+    it('行ごとにキーが異なる場合も最初の行の列と空値を維持する', () => {
+      const json = JSON.stringify([
+        { '=a': null, b: false },
+        { b: 0, extra: 'ignored' },
+      ]);
+      expect(Papa.parse<string[]>(jsonToCsv(json)).data).toEqual([
+        ["'=a", 'b'],
+        ['', 'false'],
+        ['', '0'],
+      ]);
+      expect(jsonToCsv('[{},{}]')).toBe('\r\n');
+    });
+
+    it('空オブジェクトの行は空行になり、往復時に空レコードを作らない', () => {
+      const csv = jsonToCsv('[{"a":1,"b":2},{}]');
+      expect(csv).toBe('a,b\r\n1,2\r\n');
+      expect(JSON.parse(csvToJson(csv))).toEqual([{ a: 1, b: 2 }]);
+    });
+
+    it('危険なキーだけの行も空行になり、往復時に空レコードを作らない', () => {
+      const csv = jsonToCsv('[{"a":1,"b":2},{"__proto__":1,"constructor":2,"prototype":3}]');
+      expect(csv).toBe('a,b\r\n1,2\r\n');
+      expect(JSON.parse(csvToJson(csv))).toEqual([{ a: 1, b: 2 }]);
+    });
+
     it('= で始まる文字列セルはシングルクォートでエスケープされる', () => {
       const json = '[{"formula":"=SUM(A1:A10)"}]';
       const result = jsonToCsv(json);

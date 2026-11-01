@@ -97,7 +97,12 @@ export function jsonToCsv(jsonStr: string): string {
     return flat;
   });
 
-  return Papa.unparse(flatRows);
+  // 元のキーで値を取り出す。エスケープ後の見出しが重複しても列を失わない。
+  const keys = Object.keys(flatRows[0]);
+  return Papa.unparse({
+    fields: keys.map((key) => escapeCsvFormula(key)),
+    data: flatRows.map((row) => (Object.keys(row).length === 0 ? [] : keys.map((key) => row[key]))),
+  });
 }
 
 /** CSV文字列 → JSON文字列（整形済み）。失敗時は Error を投げる */

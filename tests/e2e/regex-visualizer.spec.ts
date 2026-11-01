@@ -208,6 +208,19 @@ test.describe('正規表現ビジュアライザ', () => {
       await expect(page.getByText(/マッチ実行を無効化/)).toBeVisible();
     });
   });
+
+  test('safe のマッチ結果はパターン変更時に消え、脆弱判定では実行をブロックする', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('a+');
+      await page.getByLabel('テスト文字列').fill('aaaa!');
+      await expect(page.getByText(/1 件マッチ/)).toBeVisible();
+      await page.getByLabel('正規表現').fill('(a+)+$');
+      await expect(page.getByText(/1 件マッチ/)).toBeHidden();
+      await expect(page.getByText(/マッチ実行を無効化/)).toBeVisible();
+    });
+  });
 });
 
 // 鉄道図の種別は色だけでなく形でも区別する（WCAG 1.4.1、docs/decisions.md [150]）。

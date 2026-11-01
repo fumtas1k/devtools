@@ -33,18 +33,23 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
     });
   });
 
-  test('JWTデコーダ: デコード結果が role="status" として読める（CSP 違反なし）', async ({
+  test('JWTデコーダ: 簡潔な状態だけを常設 live region で通知する（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/jwt-decoder', async (page) => {
       const SAMPLE_JWT =
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const status = page.getByTestId('jwt-announcement');
+      await expect(status).toHaveRole('status');
+      await expect(status).toHaveText('');
+      await expect(status).not.toHaveAttribute('aria-live');
       await page.getByLabel('JWTトークンを貼り付け').fill(SAMPLE_JWT);
 
       await expect(page.getByRole('heading', { name: 'Header (JOSE)' })).toBeVisible();
 
-      const statusRegions = page.getByRole('status');
-      await expect(statusRegions.first()).toBeVisible();
+      await expect(status).toContainText('JWTをデコードしました');
+      await expect(status).toContainText('有効期限: exp なし');
+      await expect(status).toContainText('署名: 未検証');
     });
   });
 
