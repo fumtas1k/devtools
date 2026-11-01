@@ -99,6 +99,44 @@ test.describe('正規表現ビジュアライザ', () => {
     });
   });
 
+  test('ネストしたループと凡例の矢印が各 SVG 内の marker を参照し、タブ往復後も表示される', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+      await page.getByLabel('正規表現').fill('(a+)+');
+      await expect(page.getByText(/1 回以上の繰り返し/).first()).toBeVisible();
+      const checkMarkers = async () => {
+        await expect(page.getByRole('img', { name: '正規表現の鉄道図' })).toBeVisible();
+        const result = await page.locator('[marker-end]').evaluateAll((paths) =>
+          paths.map((path) => {
+            const ref = path.getAttribute('marker-end') ?? '';
+            const match = /^url\(#([A-Za-z][A-Za-z0-9_-]*)\)$/.exec(ref);
+            const svg = path.closest('svg');
+            const markers = Array.from(svg?.querySelectorAll('marker') ?? []);
+            return {
+              id: match?.[1],
+              local: markers.filter((marker) => marker.id === match?.[1]).length,
+              documentMatch: match
+                ? (document.getElementById(match[1]) as Element | null) === markers[0]
+                : false,
+            };
+          })
+        );
+        expect(result).toHaveLength(3);
+        expect(result.every((item) => item.id && item.local === 1 && item.documentMatch)).toBe(
+          true
+        );
+        expect(new Set(result.map((item) => item.id)).size).toBe(2);
+      };
+      await page.getByRole('button', { name: '鉄道図' }).click();
+      await checkMarkers();
+      await page.getByRole('button', { name: '構造ツリー' }).click();
+      await expect(page.getByRole('img', { name: '正規表現の鉄道図' })).toHaveCount(0);
+      await page.getByRole('button', { name: '鉄道図' }).click();
+      await checkMarkers();
+    });
+  });
+
   test('選択肢 a|b|c が鉄道図で分岐表示される', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
       await page.getByLabel('正規表現').fill('a|b|c');

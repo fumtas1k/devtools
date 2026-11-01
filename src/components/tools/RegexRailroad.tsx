@@ -1,5 +1,6 @@
 // 鉄道図を SVG で描画する純粋プレゼンテーションコンポーネント（CJS 非依存・SSR 安全）。
 // レイアウト計算は railroad-layout.ts（pure）から取得した RailNode を prop で受け取る。
+import { useId } from 'react';
 import type { RailNode } from '@/utils/regex-visualizer/railroad-layout';
 import {
   H_GAP,
@@ -33,6 +34,7 @@ function renderNode(
   x: number,
   y: number,
   key: string,
+  markerId: string,
   hotspot?: Hotspot
 ): React.ReactNode {
   const hot = isHot(node, hotspot);
@@ -146,7 +148,7 @@ function renderNode(
             />
           );
         }
-        els.push(renderNode(child, cx, cy, `${key}-${i}`, hotspot));
+        els.push(renderNode(child, cx, cy, `${key}-${i}`, markerId, hotspot));
         cx += child.width + H_GAP;
       });
       return <g key={key}>{els}</g>;
@@ -177,7 +179,7 @@ function renderNode(
             y2={y + node.connectY}
             className="rr-rail"
           />
-          {renderNode(inner, innerX, innerY, `${key}-g`, hotspot)}
+          {renderNode(inner, innerX, innerY, `${key}-g`, markerId, hotspot)}
         </g>
       );
     }
@@ -192,7 +194,7 @@ function renderNode(
       let by = y;
       node.children.forEach((branch, i) => {
         const bRailY = by + branch.connectY;
-        els.push(renderNode(branch, innerLeft, by, `${key}-b${i}`, hotspot));
+        els.push(renderNode(branch, innerLeft, by, `${key}-b${i}`, markerId, hotspot));
         els.push(
           <path
             key={`ei${i}`}
@@ -238,7 +240,7 @@ function renderNode(
       els.push(
         <line key="lr" x1={innerRight} y1={railY} x2={exitX} y2={railY} className="rr-rail" />
       );
-      els.push(renderNode(inner, innerX, innerY, `${key}-r`, hotspot));
+      els.push(renderNode(inner, innerX, innerY, `${key}-r`, markerId, hotspot));
       // ループ弧（上・反復方向の矢印付き）: 出口から inner の上を回って入口へ戻り、入口で下向き矢印。
       if (node.loop) {
         const loopY = innerY - ARC_H / 2;
@@ -247,7 +249,7 @@ function renderNode(
             key="loop"
             d={`M ${exitX} ${railY} L ${exitX} ${loopY + r} Q ${exitX} ${loopY} ${exitX - r} ${loopY} L ${x + r} ${loopY} Q ${x} ${loopY} ${x} ${loopY + r} L ${x} ${railY}`}
             className="rr-rail"
-            markerEnd="url(#rr-loop-arrow)"
+            markerEnd={`url(#${markerId})`}
           />
         );
       }
@@ -279,6 +281,31 @@ function renderNode(
   }
 }
 
+// useId の文字列を UTF-16 code unit ごとに固定幅で符号化し、文字を削除せず衝突を防ぐ。
+function encodeId(id: string): string {
+  return Array.from({ length: id.length }, (_, i) =>
+    id.charCodeAt(i).toString(16).padStart(4, '0')
+  ).join('');
+}
+
+function LoopMarker({ id }: { id: string }) {
+  return (
+    <defs>
+      <marker
+        id={id}
+        viewBox="0 0 10 10"
+        refX="5"
+        refY="5"
+        markerWidth="8"
+        markerHeight="8"
+        orient="auto"
+      >
+        <path d="M 0 0 L 10 5 L 0 10 z" className="rr-arrow-head" />
+      </marker>
+    </defs>
+  );
+}
+
 interface Props {
   node: RailNode;
   hotspot?: { start: number; end: number }[];
@@ -286,6 +313,9 @@ interface Props {
 
 /** RailNode を SVG で描画する純粋プレゼンテーションコンポーネント（CJS 非依存・SSR 安全）。 */
 export function RegexRailroad({ node, hotspot }: Props) {
+  const id = encodeId(useId());
+  const diagramMarkerId = `rr-${id}-diagram`;
+  const legendMarkerId = `rr-${id}-legend`;
   const totalW = node.width + MARKER_LEAD * 2;
   const totalH = node.height;
   const railY = node.connectY;
@@ -300,22 +330,10 @@ export function RegexRailroad({ node, hotspot }: Props) {
           aria-label="正規表現の鉄道図"
           className="rr-svg"
         >
-          <defs>
-            <marker
-              id="rr-loop-arrow"
-              viewBox="0 0 10 10"
-              refX="5"
-              refY="5"
-              markerWidth="8"
-              markerHeight="8"
-              orient="auto"
-            >
-              <path d="M 0 0 L 10 5 L 0 10 z" className="rr-arrow-head" />
-            </marker>
-          </defs>
+          <LoopMarker id={diagramMarkerId} />
           <circle cx={MARKER_R + 1} cy={railY} r={MARKER_R} className="rr-marker" />
           <line x1={MARKER_R + 1} y1={railY} x2={MARKER_LEAD} y2={railY} className="rr-rail" />
-          {renderNode(node, MARKER_LEAD, 0, 'root', hotspot)}
+          {renderNode(node, MARKER_LEAD, 0, 'root', diagramMarkerId, hotspot)}
           <line
             x1={MARKER_LEAD + node.width}
             y1={railY}
@@ -348,10 +366,11 @@ export function RegexRailroad({ node, hotspot }: Props) {
         </span>
         <span className="rr-legend-item">
           <svg width="28" height="20" aria-hidden="true">
+            <LoopMarker id={legendMarkerId} />
             <path
               d="M 2 16 Q 2 4 14 4 Q 26 4 26 16"
               className="rr-rail"
-              markerEnd="url(#rr-loop-arrow)"
+              markerEnd={`url(#${legendMarkerId})`}
             />
           </svg>
           量指定子（くり返し・スキップ）
