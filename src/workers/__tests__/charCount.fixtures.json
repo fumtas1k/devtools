@@ -1,0 +1,398 @@
+[
+  {
+    "text": "Hello, world!",
+    "result": {
+      "chars": {
+        "utf16Length": 13,
+        "codePoints": 13,
+        "graphemes": 13,
+        "graphemesNoNewline": 13,
+        "graphemesNoWhitespace": 12,
+        "weightedWidth": 6.5
+      },
+      "bytes": {
+        "utf8": {
+          "ok": true,
+          "bytes": 13,
+          "failedCount": 0
+        },
+        "utf8Bmp": {
+          "ok": true,
+          "bytes": 13,
+          "failedCount": 0
+        },
+        "utf16": {
+          "ok": true,
+          "bytes": 26,
+          "failedCount": 0
+        },
+        "sjis": {
+          "ok": true,
+          "bytes": 13,
+          "failedCount": 0
+        },
+        "eucjp": {
+          "ok": true,
+          "bytes": 13,
+          "failedCount": 0
+        }
+      },
+      "lines": {
+        "total": 1,
+        "nonEmpty": 1,
+        "longestGraphemes": 13,
+        "newline": "none",
+        "counts": {
+          "lf": 0,
+          "crlf": 0,
+          "cr": 0
+        }
+      },
+      "sns": {
+        "twitterWeight": 13,
+        "blueskyCount": 13
+      },
+      "manuscript": {
+        "genkoSheets": 1,
+        "paragraphs": 1,
+        "readingMinutes": 1,
+        "englishWords": 2
+      },
+      "meta": {
+        "inputLength": 13,
+        "large": false,
+        "truncated": false
+      }
+    }
+  },
+  {
+    "text": "日本語の文字列",
+    "result": {
+      "chars": {
+        "utf16Length": 7,
+        "codePoints": 7,
+        "graphemes": 7,
+        "graphemesNoNewline": 7,
+        "graphemesNoWhitespace": 7,
+        "weightedWidth": 7
+      },
+      "bytes": {
+        "utf8": {
+          "ok": true,
+          "bytes": 21,
+          "failedCount": 0
+        },
+        "utf8Bmp": {
+          "ok": true,
+          "bytes": 21,
+          "failedCount": 0
+        },
+        "utf16": {
+          "ok": true,
+          "bytes": 14,
+          "failedCount": 0
+        },
+        "sjis": {
+          "ok": true,
+          "bytes": 14,
+          "failedCount": 0
+        },
+        "eucjp": {
+          "ok": true,
+          "bytes": 14,
+          "failedCount": 0
+        }
+      },
+      "lines": {
+        "total": 1,
+        "nonEmpty": 1,
+        "longestGraphemes": 7,
+        "newline": "none",
+        "counts": {
+          "lf": 0,
+          "crlf": 0,
+          "cr": 0
+        }
+      },
+      "sns": {
+        "twitterWeight": 14,
+        "blueskyCount": 7
+      },
+      "manuscript": {
+        "genkoSheets": 1,
+        "paragraphs": 1,
+        "readingMinutes": 1,
+        "englishWords": 0
+      },
+      "meta": {
+        "inputLength": 7,
+        "large": false,
+        "truncated": false
+      }
+    }
+  },
+  {
+    "text": "𠮷😀",
+    "result": {
+      "chars": {
+        "utf16Length": 4,
+        "codePoints": 2,
+        "graphemes": 2,
+        "graphemesNoNewline": 2,
+        "graphemesNoWhitespace": 2,
+        "weightedWidth": 2
+      },
+      "bytes": {
+        "utf8": {
+          "ok": true,
+          "bytes": 8,
+          "failedCount": 0
+        },
+        "utf8Bmp": {
+          "ok": false,
+          "bytes": null,
+          "failedCount": 2
+        },
+        "utf16": {
+          "ok": true,
+          "bytes": 8,
+          "failedCount": 0
+        },
+        "sjis": {
+          "ok": false,
+          "bytes": null,
+          "failedCount": 2
+        },
+        "eucjp": {
+          "ok": false,
+          "bytes": null,
+          "failedCount": 2
+        }
+      },
+      "lines": {
+        "total": 1,
+        "nonEmpty": 1,
+        "longestGraphemes": 2,
+        "newline": "none",
+        "counts": {
+          "lf": 0,
+          "crlf": 0,
+          "cr": 0
+        }
+      },
+      "sns": {
+        "twitterWeight": 4,
+        "blueskyCount": 2
+      },
+      "manuscript": {
+        "genkoSheets": 1,
+        "paragraphs": 1,
+        "readingMinutes": 1,
+        "englishWords": 0
+      },
+      "meta": {
+        "inputLength": 4,
+        "large": false,
+        "truncated": false
+      }
+    }
+  },
+  {
+    "text": "👩‍👩‍👧‍👧",
+    "result": {
+      "chars": {
+        "utf16Length": 11,
+        "codePoints": 7,
+        "graphemes": 1,
+        "graphemesNoNewline": 1,
+        "graphemesNoWhitespace": 1,
+        "weightedWidth": 1
+      },
+      "bytes": {
+        "utf8": {
+          "ok": true,
+          "bytes": 25,
+          "failedCount": 0
+        },
+        "utf8Bmp": {
+          "ok": false,
+          "bytes": null,
+          "failedCount": 4
+        },
+        "utf16": {
+          "ok": true,
+          "bytes": 22,
+          "failedCount": 0
+        },
+        "sjis": {
+          "ok": false,
+          "bytes": null,
+          "failedCount": 7
+        },
+        "eucjp": {
+          "ok": false,
+          "bytes": null,
+          "failedCount": 7
+        }
+      },
+      "lines": {
+        "total": 1,
+        "nonEmpty": 1,
+        "longestGraphemes": 1,
+        "newline": "none",
+        "counts": {
+          "lf": 0,
+          "crlf": 0,
+          "cr": 0
+        }
+      },
+      "sns": {
+        "twitterWeight": 2,
+        "blueskyCount": 1
+      },
+      "manuscript": {
+        "genkoSheets": 1,
+        "paragraphs": 1,
+        "readingMinutes": 1,
+        "englishWords": 0
+      },
+      "meta": {
+        "inputLength": 11,
+        "large": false,
+        "truncated": false
+      }
+    }
+  },
+  {
+    "text": "一行目\r\n二行目\n三行目\r四行目",
+    "result": {
+      "chars": {
+        "utf16Length": 16,
+        "codePoints": 16,
+        "graphemes": 15,
+        "graphemesNoNewline": 12,
+        "graphemesNoWhitespace": 12,
+        "weightedWidth": 15
+      },
+      "bytes": {
+        "utf8": {
+          "ok": true,
+          "bytes": 40,
+          "failedCount": 0
+        },
+        "utf8Bmp": {
+          "ok": true,
+          "bytes": 40,
+          "failedCount": 0
+        },
+        "utf16": {
+          "ok": true,
+          "bytes": 32,
+          "failedCount": 0
+        },
+        "sjis": {
+          "ok": true,
+          "bytes": 28,
+          "failedCount": 0
+        },
+        "eucjp": {
+          "ok": true,
+          "bytes": 28,
+          "failedCount": 0
+        }
+      },
+      "lines": {
+        "total": 4,
+        "nonEmpty": 4,
+        "longestGraphemes": 3,
+        "newline": "mixed",
+        "counts": {
+          "lf": 1,
+          "crlf": 1,
+          "cr": 1
+        }
+      },
+      "sns": {
+        "twitterWeight": 28,
+        "blueskyCount": 15
+      },
+      "manuscript": {
+        "genkoSheets": 1,
+        "paragraphs": 1,
+        "readingMinutes": 1,
+        "englishWords": 0
+      },
+      "meta": {
+        "inputLength": 16,
+        "large": false,
+        "truncated": false
+      }
+    }
+  },
+  {
+    "text": "URL https://example.com/path?q=1",
+    "result": {
+      "chars": {
+        "utf16Length": 32,
+        "codePoints": 32,
+        "graphemes": 32,
+        "graphemesNoNewline": 32,
+        "graphemesNoWhitespace": 31,
+        "weightedWidth": 16
+      },
+      "bytes": {
+        "utf8": {
+          "ok": true,
+          "bytes": 32,
+          "failedCount": 0
+        },
+        "utf8Bmp": {
+          "ok": true,
+          "bytes": 32,
+          "failedCount": 0
+        },
+        "utf16": {
+          "ok": true,
+          "bytes": 64,
+          "failedCount": 0
+        },
+        "sjis": {
+          "ok": true,
+          "bytes": 32,
+          "failedCount": 0
+        },
+        "eucjp": {
+          "ok": true,
+          "bytes": 32,
+          "failedCount": 0
+        }
+      },
+      "lines": {
+        "total": 1,
+        "nonEmpty": 1,
+        "longestGraphemes": 32,
+        "newline": "none",
+        "counts": {
+          "lf": 0,
+          "crlf": 0,
+          "cr": 0
+        }
+      },
+      "sns": {
+        "twitterWeight": 27,
+        "blueskyCount": 32
+      },
+      "manuscript": {
+        "genkoSheets": 1,
+        "paragraphs": 1,
+        "readingMinutes": 1,
+        "englishWords": 6
+      },
+      "meta": {
+        "inputLength": 32,
+        "large": false,
+        "truncated": false
+      }
+    }
+  }
+]
