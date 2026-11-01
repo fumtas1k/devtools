@@ -1349,12 +1349,12 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 1. `node-sql-parser`（dynamic import で遅延ロード）で DDL をパースし、テーブル・カラム・制約の中間モデルを構築する
 2. 中間モデルから Mermaid ER 記法テキスト（`toMermaid`）を生成する（テキスト出力・コピー用。mermaid ライブラリ不使用）
-3. 中間モデルから自前 SVG レンダラ（`toSvg`）で直接 SVG を生成する（presentation 属性のみ使用・`style=` / `<style>` タグ不使用で CSP 準拠）
+3. 中間モデルから自前 SVG レンダラ（`toSvg`）で直接 SVG を生成する。文字幅を推定してカードを広げ、リレーションラベルはカードと他のラベルを避けて配置する（presentation 属性のみ使用・`style=` / `<style>` タグ不使用で CSP 準拠）
 4. 生成 SVG を blob URL の `<img>` として表示（スクリプト非実行・CSP 隔離）
 
 **パース対象:** `CREATE TABLE` 内の制約（`PRIMARY KEY`・`FOREIGN KEY ... REFERENCES`・列定義内 `REFERENCES`）を対象とする。
 
-**モジュール構成:** `src/utils/ddl-er-diagram/`（`types.ts` / `parse.ts` DDL パース・中間モデル構築 / `mermaid.ts` Mermaid 記法生成 / `svg.ts` 自前 SVG レンダラ / `index.ts`）/ `src/components/tools/DdlErDiagram.tsx` / `src/pages/tools/ddl-er-diagram.astro`
+**モジュール構成:** `src/utils/ddl-er-diagram.ts`（DDL パース・`SchemaModel` 構築・Mermaid 記法生成・自前 SVG レンダラ）/ `src/components/tools/DdlErDiagram.tsx` / `src/pages/tools/ddl-er-diagram.astro`
 
 **追加依存:** `node-sql-parser`（DDL パース）。
 

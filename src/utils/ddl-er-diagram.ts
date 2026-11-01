@@ -216,11 +216,25 @@ function escSvg(s: string): string {
 // レイアウト定数
 // 文字サイズは DADS の下限 14px 以上にする（docs/decisions.md [149]）。図内の文字はすべてこの定数から組む
 export const FONT_SIZE = 14;
-const CHAR_W = FONT_SIZE * 0.62; // 等幅フォント前提の文字幅推定係数
+const CHAR_W = FONT_SIZE * 0.62; // 等幅フォントの ASCII 文字幅の推定値
+// DOM 非依存の保守的な推定。ASCII を 1 セル、それ以外のコードポイントを 2 セルとする。
+// フォントの実測値ではないため、特殊なフォントや結合文字には誤差がある。
+function textWidth(text: string): number {
+  return (
+    Array.from(text).reduce((cells, char) => cells + (char.codePointAt(0)! <= 0x7f ? 1 : 2), 0) *
+    CHAR_W
+  );
+}
+function columnText(column: Column): string {
+  return `${column.name} : ${column.type || '?'}`;
+}
+const BADGE_W = textWidth('PK') + 8;
+const BADGE_GAP = 2;
+const TEXT_BADGE_GAP = 8;
 const ROW_H = 26; // 1行の高さ
 const HEADER_H = 30; // ヘッダ行の高さ
 const PAD_X = 12; // 水平パディング
-const GAP = 72; // テーブル間の余白（リレーションラベル "user_id" 等が 14px で収まる幅。長い名前は従来どおり重なる）
+const GAP = 72; // テーブル間の余白
 const COLS = 3; // グリッド最大列数
 
 // 配色（SVG presentation 属性として使用。Tailwindカラークラスではない）
@@ -262,17 +276,12 @@ export function toSvg(model: SchemaModel): string {
 
   // --- 各テーブルの幅・高さを計算 ---
   const tableSizes = tables.map((t) => {
-    // ヘッダ行テキスト幅
-    const headerLen = t.name.length;
-    // カラム行テキスト幅: "colname : TYPE  PK,FK"
-    const colTextLens = t.columns.map((c) => {
-      const badge = [c.isPrimaryKey ? 'PK' : '', c.isForeignKey ? 'FK' : '']
-        .filter(Boolean)
-        .join(',');
-      return `${c.name} : ${c.type}${badge ? '  ' + badge : ''}`.length;
+    const bodyWidths = t.columns.map((column) => {
+      const count = Number(column.isPrimaryKey) + Number(column.isForeignKey);
+      const badges = count ? count * (BADGE_W + BADGE_GAP) + TEXT_BADGE_GAP : 0;
+      return textWidth(columnText(column)) + badges;
     });
-    const maxLen = Math.max(headerLen, ...colTextLens, 12);
-    const w = Math.round(maxLen * CHAR_W + PAD_X * 2);
+    const w = Math.ceil(Math.max(textWidth(t.name), ...bodyWidths, 12 * CHAR_W) + PAD_X * 2);
     const h = HEADER_H + t.columns.length * ROW_H + 4;
     return { w, h };
   });
@@ -315,13 +324,11 @@ export function toSvg(model: SchemaModel): string {
   });
 
   // 全体サイズ
-  const totalW = colOffsets[numCols - 1] + colWidths[numCols - 1] + GAP;
-  const totalH = rowOffsets[numRows - 1] + rowHeights[numRows - 1] + GAP;
+  let totalW = colOffsets[numCols - 1] + colWidths[numCols - 1] + GAP;
+  let totalH = rowOffsets[numRows - 1] + rowHeights[numRows - 1] + GAP;
+  const gridW = totalW;
 
   const parts: string[] = [];
-
-  // --- 背景 ---
-  parts.push(`<rect width="${totalW}" height="${totalH}" fill="${C.background}"/>`);
 
   // --- テーブルカード ---
   for (let i = 0; i < tables.length; i++) {
@@ -374,7 +381,7 @@ export function toSvg(model: SchemaModel): string {
       }
 
       // カラム名 : 型
-      const mainText = `${col.name} : ${col.type || '?'}`;
+      const mainText = columnText(col);
       parts.push(
         `<text x="${x + PAD_X}" y="${textY}" ` +
           `font-family="monospace" font-size="${FONT_SIZE}" ` +
@@ -387,8 +394,8 @@ export function toSvg(model: SchemaModel): string {
       if (col.isForeignKey) badges.push({ label: 'FK', color: C.fkBadge });
       let bx = x + w - PAD_X;
       for (const b of badges.reverse()) {
-        const bw = b.label.length * FONT_SIZE * 0.62 + 8;
-        bx -= bw + 2;
+        const bw = BADGE_W;
+        bx -= bw + BADGE_GAP;
         parts.push(
           `<rect x="${bx}" y="${textY - (ROW_H / 2 - 2)}" width="${bw}" height="${ROW_H - 4}" ` +
             `fill="${b.color}" rx="2"/>`
@@ -402,58 +409,85 @@ export function toSvg(model: SchemaModel): string {
     }
   }
 
-  // --- リレーション線 ---
+  // --- リレーション線とラベル ---
   const tableIndex = new Map(layouts.map((l) => [l.name, l]));
+  const edges: string[] = [];
+  const labels: string[] = [];
+  type Rect = { x: number; y: number; w: number; h: number };
+  const placed: Rect[] = [];
+  const overlaps = (a: Rect, b: Rect) =>
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const paddedCards = layouts.map(({ x, y, w, h }) => ({ x: x - 2, y: y - 2, w: w + 4, h: h + 4 }));
+  const labelH = FONT_SIZE + 8;
+  let fallbackCount = 0;
 
   for (const rel of relations) {
     const from = tableIndex.get(rel.fromTable);
     const to = tableIndex.get(rel.toTable);
-    if (!from || !to) continue; // 参照先が存在しない → スキップ
+    if (!from || !to) continue;
 
-    // FK テーブルの右辺中央 → 参照先テーブルの左辺中央 を繋ぐ
-    // （テーブルの位置関係によって左右を選ぶ簡易版）
-    let x1: number, y1: number, x2: number, y2: number;
-    const fromCx = from.x + from.w / 2;
-    const toCx = to.x + to.w / 2;
-
-    if (fromCx <= toCx) {
-      // from が左側: from 右辺 → to 左辺
-      x1 = from.x + from.w;
-      y1 = from.y + from.h / 2;
-      x2 = to.x;
-      y2 = to.y + to.h / 2;
-    } else {
-      // from が右側: from 左辺 → to 右辺
-      x1 = from.x;
-      y1 = from.y + from.h / 2;
-      x2 = to.x + to.w;
-      y2 = to.y + to.h / 2;
-    }
-
-    // 曲線パス
+    const self = from === to;
+    const leftToRight = from.x + from.w / 2 <= to.x + to.w / 2;
+    const x1 = leftToRight ? from.x + from.w : from.x;
+    const x2 = self ? x1 : leftToRight ? to.x : to.x + to.w;
+    const y1 = from.y + from.h / 2 - (self ? 6 : 0);
+    const y2 = to.y + to.h / 2 + (self ? 6 : 0);
     const mx = (x1 + x2) / 2;
-    parts.push(
-      `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" ` +
+    // 自己参照はカード外へ膨らませ、カードの背面に描いても線が消えないようにする。
+    const cx1 = self ? x1 + GAP / 2 : mx;
+    const cx2 = self ? x2 + GAP / 2 : mx;
+    const cy1 = self ? y1 - 30 : y1;
+    const cy2 = self ? y2 + 30 : y2;
+    edges.push(
+      `<path d="M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}" ` +
         `fill="none" stroke="${C.line}" stroke-width="1.5"/>`
     );
 
-    // fromColumn ラベル（中点付近）
-    const labelX = (x1 + x2) / 2;
-    const labelY = (y1 + y2) / 2 - 6;
-    // ラベル背景: 等幅フォント前提で文字列幅を推定し、白背景 rect をラベル直前に描画する
-    const labelFontSize = FONT_SIZE;
-    const labelW = rel.fromColumn.length * labelFontSize * 0.62;
-    const labelPadX = 3;
-    const labelPadY = 3;
-    const labelH = labelFontSize + labelPadY * 2 + 2; // 下降部（g / y など）が背景からはみ出さないよう +2
-    parts.push(
-      `<rect x="${labelX - labelW / 2 - labelPadX}" y="${labelY - labelFontSize - labelPadY}" ` +
-        `width="${labelW + labelPadX * 2}" height="${labelH}" ` +
-        `fill="#ffffff" rx="2"/>`
-    );
-    parts.push(
-      `<text x="${labelX}" y="${labelY}" ` +
-        `font-family="monospace" font-size="${labelFontSize}" ` +
+    // 三次ベジェ上の候補を中点から順に試し、カードと既存ラベルを避ける。
+    const point = (t: number) => {
+      const u = 1 - t;
+      return {
+        x: u ** 3 * x1 + 3 * u ** 2 * t * cx1 + 3 * u * t ** 2 * cx2 + t ** 3 * x2,
+        y: u ** 3 * y1 + 3 * u ** 2 * t * cy1 + 3 * u * t ** 2 * cy2 + t ** 3 * y2,
+      };
+    };
+    const labelW = textWidth(rel.fromColumn) + 6;
+    let chosen: Rect | undefined;
+    for (const t of [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9]) {
+      const p = point(t);
+      for (const y of [p.y - labelH - 1, p.y + 4]) {
+        const candidate = { x: p.x - labelW / 2, y, w: labelW, h: labelH };
+        if (
+          candidate.x >= 0 &&
+          candidate.y >= 0 &&
+          candidate.x + candidate.w <= gridW &&
+          candidate.y + candidate.h <= totalH &&
+          !paddedCards.some((card) => overlaps(candidate, card)) &&
+          !placed.some((label) => overlaps(candidate, label))
+        ) {
+          chosen = candidate;
+          break;
+        }
+      }
+      if (chosen) break;
+    }
+    if (!chosen) {
+      // 候補が塞がれたら右側に専用の縦スロットを設ける。長い名前では図が広がる。
+      chosen = { x: gridW + GAP, y: GAP + fallbackCount * (labelH + 4), w: labelW, h: labelH };
+      fallbackCount++;
+      totalW = Math.max(totalW, chosen.x + chosen.w + GAP);
+      totalH = Math.max(totalH, chosen.y + chosen.h + GAP);
+      const mid = point(0.5);
+      edges.push(
+        `<path d="M${mid.x},${mid.y} L${chosen.x},${chosen.y + labelH / 2}" ` +
+          `fill="none" stroke="${C.line}" stroke-width="1" stroke-dasharray="3,3"/>`
+      );
+    }
+    placed.push(chosen);
+    labels.push(
+      `<rect x="${chosen.x}" y="${chosen.y}" width="${chosen.w}" height="${chosen.h}" fill="#ffffff" rx="2"/>` +
+        `<text x="${chosen.x + chosen.w / 2}" y="${chosen.y + FONT_SIZE + 3}" ` +
+        `font-family="monospace" font-size="${FONT_SIZE}" ` +
         `fill="${C.subText}" text-anchor="middle">${escSvg(rel.fromColumn)}</text>`
     );
   }
@@ -461,7 +495,10 @@ export function toSvg(model: SchemaModel): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" ` +
     `width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">` +
+    `<rect width="${totalW}" height="${totalH}" fill="${C.background}"/>` +
+    edges.join('') +
     parts.join('') +
+    labels.join('') +
     `</svg>`
   );
 }
