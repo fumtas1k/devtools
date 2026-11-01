@@ -151,7 +151,6 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                 id="qr-ticket-private-key"
                 label="秘密鍵（主催者が保管）"
                 value={privateKeyJwkStr}
-                onChange={() => {}}
                 multiline
                 rows={4}
                 mono
@@ -163,7 +162,6 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                 id="qr-ticket-public-key"
                 label="公開鍵（検証スタッフへ共有）"
                 value={publicKeyJwkStr}
-                onChange={() => {}}
                 multiline
                 rows={4}
                 mono
