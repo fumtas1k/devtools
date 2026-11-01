@@ -31,15 +31,28 @@ async function waitForViolationCountToStabilize(guard: CspGuard): Promise<void> 
  * page.evaluate で DataTransfer を構築してイベントを発火する（入力シミュレーション用途）。
  */
 async function dispatchPaste(page: Page, flavors: Record<string, string>): Promise<void> {
-  await page.evaluate((flavorEntries) => {
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-testid="clipboard-drop-zone"]')
+        ?.getAttribute('data-paste-ready') === 'true',
+    null,
+    { timeout: 5000 }
+  );
+  const handled = await page.evaluate((flavorEntries) => {
     const dt = new DataTransfer();
     for (const [type, value] of Object.entries(flavorEntries)) {
       dt.setData(type, value);
     }
-    document.dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
-    );
+    const event = new ClipboardEvent('paste', {
+      clipboardData: dt,
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(event);
+    return event.defaultPrevented;
   }, flavors);
+  expect(handled, 'paste リスナーがイベントを処理する').toBe(true);
 }
 
 /** 合成 DragEvent（drop）でファイルドロップを再現する */
@@ -56,6 +69,66 @@ async function dispatchFileDrop(page: Page): Promise<void> {
     zone.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
   });
 }
+
+test('paste はリスナー登録まで待ち、登録後に HTML を捕捉する（陽性対照）', async ({ page }) => {
+  let release!: () => void;
+  const hold = new Promise<void>((resolve) => (release = resolve));
+  let requested!: () => void;
+  const moduleRequested = new Promise<void>((resolve) => (requested = resolve));
+  await page.route('**/_astro/ClipboardInspector.*.js', async (route) => {
+    requested();
+    await hold;
+    await route.continue();
+  });
+  await page.addInitScript(() => {
+    const getAttribute = Element.prototype.getAttribute;
+    Element.prototype.getAttribute = function (name) {
+      const value = getAttribute.call(this, name);
+      if (
+        name === 'data-paste-ready' &&
+        this.getAttribute('data-testid') === 'clipboard-drop-zone'
+      ) {
+        document.documentElement.setAttribute('data-ready-check', value ?? 'missing');
+      }
+      return value;
+    };
+    document.addEventListener(
+      'paste',
+      () => document.documentElement.setAttribute('data-paste-seen', 'true'),
+      true
+    );
+  });
+  await page.goto(PAGE_PATH, { waitUntil: 'domcontentloaded' });
+  await moduleRequested;
+  // 汎用判定が通るが対象コンポーネントは未初期化、という窓を再現する。
+  await page.evaluate(() => {
+    Object.assign(document.querySelector('astro-island *')!, { __reactDiagnostic: true });
+  });
+  await waitForReactHydration(page);
+  const paste = dispatchPaste(page, { 'text/html': '<p>待機後の入力</p>' });
+  // 失敗した場合も先に rejection を受け取り、モジュール解放後に結果を確認する。
+  const pasteResult = paste.then(
+    () => null,
+    (error: unknown) => error
+  );
+  let pasteError: unknown;
+  try {
+    // 準備確認か paste のどちらかに実際に到達するまで待つ。
+    await page.waitForFunction(
+      () =>
+        document.documentElement.hasAttribute('data-ready-check') ||
+        document.documentElement.hasAttribute('data-paste-seen')
+    );
+    expect(await page.locator('html').getAttribute('data-ready-check')).toBe('missing');
+    expect(await page.locator('html').getAttribute('data-paste-seen')).toBeNull();
+  } finally {
+    release();
+    pasteError = await pasteResult;
+  }
+  if (pasteError) throw pasteError;
+  await expect(page.getByText('text/html', { exact: true })).toBeVisible();
+  await expect(page.getByText('待機後の入力')).toBeVisible();
+});
 
 test.describe('クリップボードインスペクタ', () => {
   test.beforeEach(async ({ page }) => {
@@ -131,15 +204,8 @@ test.describe('クリップボードインスペクタ — 本番 CSP', () => {
       // iframe 表示後も増加なしを確認済み）。そのため本テストでは style なし HTML を使用し、
       // サニタイズ後のプレビュー表示が CSP 違反を起こさないことを確認する。
       // style 付き HTML のケースは後続の describe（inline pattern）で検証する。
-      await page.evaluate(() => {
-        const dt = new DataTransfer();
-        dt.setData(
-          'text/html',
-          '<p><strong>bold</strong> text</p><script>document.title="pwned"</script>'
-        );
-        document.dispatchEvent(
-          new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
-        );
+      await dispatchPaste(page, {
+        'text/html': '<p><strong>bold</strong> text</p><script>document.title="pwned"</script>',
       });
       await expect(page.getByText('text/html', { exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'サニタイズ後プレビュー' }).click();

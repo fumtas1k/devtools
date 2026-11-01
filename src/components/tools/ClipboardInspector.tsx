@@ -181,7 +181,12 @@ export function ClipboardInspectorTool() {
       capture(e.clipboardData, 'paste');
     };
     document.addEventListener('paste', onPaste);
-    return () => document.removeEventListener('paste', onPaste);
+    const zone = dropZoneRef.current;
+    zone?.setAttribute('data-paste-ready', 'true');
+    return () => {
+      zone?.removeAttribute('data-paste-ready');
+      document.removeEventListener('paste', onPaste);
+    };
   }, [capture]);
 
   const flavorCount = snapshot ? snapshot.strings.length + snapshot.files.length : 0;

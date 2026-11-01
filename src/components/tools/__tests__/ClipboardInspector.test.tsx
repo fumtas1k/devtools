@@ -24,6 +24,14 @@ function mockClipboardData(flavors: Record<string, string>, delayMs = 0): DataTr
 }
 
 describe('ClipboardInspector — 初期表示', () => {
+  it('paste リスナーの準備完了を通知し、解除時に取り消す', () => {
+    const { unmount } = render(<ClipboardInspectorTool />);
+    const zone = screen.getByTestId('clipboard-drop-zone');
+    expect(zone.getAttribute('data-paste-ready')).toBe('true');
+    unmount();
+    expect(zone.hasAttribute('data-paste-ready')).toBe(false);
+  });
+
   it('貼り付け/ドロップ受付領域と SR 向け live region が常設される', () => {
     const { container } = render(<ClipboardInspectorTool />);
     expect(screen.getByText(/Ctrl\+V/)).toBeTruthy();

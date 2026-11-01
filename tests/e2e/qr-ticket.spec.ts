@@ -193,13 +193,18 @@ test.describe('QRチケット（production CSP 適用）', () => {
       await page.getByRole('button', { name: '画像アップロード' }).click();
 
       // 6. PNG を fileInput にセット（hidden input は setInputFiles で直接操作可能）
-      await page.getByLabel('画像を選択').setInputFiles({
+      const image = {
         name: 'ticket.png',
         mimeType: 'image/png',
         buffer: Buffer.from(pngBase64, 'base64'),
-      });
+      };
+      await page.getByLabel('画像を選択').setInputFiles(image);
 
       // 7. 検証結果を確認
+      await expect(page.getByText('有効なチケット')).toBeVisible({ timeout: 15000 });
+      await page.getByRole('button', { name: '再スキャン' }).click();
+      await expect(page.getByText('有効なチケット')).not.toBeVisible();
+      await page.getByLabel('画像を選択').setInputFiles(image);
       await expect(page.getByText('有効なチケット')).toBeVisible({ timeout: 15000 });
     });
   });
