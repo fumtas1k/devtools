@@ -32,9 +32,21 @@ test.describe('QRチケット（production CSP 適用）', () => {
 
   test('「鍵ペアを新規生成」で秘密鍵・公開鍵が表示される（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/qr-ticket', async (page) => {
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
       await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
-      await expect(page.getByText('秘密鍵（主催者が保管）')).toBeVisible({ timeout: 10000 });
-      await expect(page.getByText('公開鍵（検証スタッフへ共有）')).toBeVisible({ timeout: 10000 });
+      for (const label of ['秘密鍵（主催者が保管）', '公開鍵（検証スタッフへ共有）']) {
+        const field = page.getByLabel(label);
+        await expect(field).toBeVisible({ timeout: 10000 });
+        await expect(field).not.toHaveValue('');
+        await expect(field).toHaveAttribute('readonly', '');
+        await expect(field).toHaveAttribute('autocomplete', 'off');
+        expect(
+          await field.evaluate((element) => element.closest('[aria-live], [role="status"]'))
+        ).toBeNull();
+        const value = await field.inputValue();
+        await field.locator('..').getByRole('button', { name: 'コピー' }).click();
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(value);
+      }
     });
   });
 

@@ -187,6 +187,10 @@ test.describe('シークレットスクラバー（production CSP 適用）', ()
 
       await page.getByLabel('テキストを貼り付け').fill(`contact: ${DUMMY_EMAIL}`);
       await expect(output).toContainText('[REDACTED:EMAIL_1]', { timeout: 5000 });
+      await expect(output).toHaveAttribute('readonly', '');
+      expect(
+        await output.evaluate((element) => element.closest('[aria-live], [role="status"]'))
+      ).toBeNull();
       const displayed = await output.inputValue();
 
       await page.getByRole('button', { name: '出力テキストをコピー' }).click();
