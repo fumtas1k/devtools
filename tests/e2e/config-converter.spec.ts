@@ -360,4 +360,64 @@ test.describe('設定ファイル相互変換', () => {
     await toGroup.getByRole('button', { name: 'YAML' }).click();
     await expect(page.getByText('値はすべて文字列に変換されます')).toBeHidden();
   });
+
+  test('スキーマ警告は成功・失敗と共存し編集や形式変更で消える', async ({ page }) => {
+    await page
+      .getByRole('group', { name: '変換先フォーマット' })
+      .getByRole('button', { name: 'JSON' })
+      .click();
+    await page.getByLabel('JSON (整形)').fill('{"age":30}');
+    await expect(page.getByLabel('JSON', { exact: true })).toHaveValue(/age/);
+    await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
+    const schema = page.getByLabel('JSON Schema (貼り付け)');
+    await schema.fill(
+      '{"properties":{"age":{"type":"number","minLength":2,"unknownKeyword":true}}}'
+    );
+    await page.getByRole('button', { name: '検証する', exact: true }).click();
+    await expect(page.getByText('スキーマ検証成功')).toBeVisible();
+    await expect(
+      page.getByRole('note', { name: '' }).filter({ hasText: 'スキーマに関する警告' })
+    ).toContainText('/properties/age/minLength');
+    await expect(page.getByTestId('config-converter-validation-announcement')).toContainText(
+      '警告が2件'
+    );
+    await schema.fill('{"required":["name"],"typo":true}');
+    await expect(page.getByText('スキーマに関する警告')).toHaveCount(0);
+    await page.getByRole('button', { name: '検証する', exact: true }).click();
+    await expect(page.getByText('/typo', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('config-converter-validation-announcement')).toContainText(
+      'エラー'
+    );
+    await schema.fill('{}');
+    await page.getByRole('button', { name: '検証する', exact: true }).click();
+    await expect(page.getByText('スキーマ検証成功')).toBeVisible();
+    await expect(page.getByText('スキーマに関する警告')).toHaveCount(0);
+    await page
+      .getByRole('group', { name: '変換先フォーマット' })
+      .getByRole('button', { name: 'YAML' })
+      .click();
+    await expect(page.getByText('スキーマ検証成功')).toHaveCount(0);
+    await page.getByRole('button', { name: 'クリア' }).click();
+    await expect(schema).toHaveValue('');
+  });
+
+  test('本番 CSP 下でも警告を表示し外部スキーマや参照を取得しない', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/config-converter', async (page) => {
+      const remote: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().startsWith('https://example.com/')) remote.push(request.url());
+      });
+      await page.getByLabel('JSON').fill('{"x":1}');
+      await expect(page.getByLabel('YAML')).toHaveValue(/x/);
+      await page.getByRole('button', { name: 'JSON Schema で検証する' }).click();
+      await page
+        .getByLabel('JSON Schema (貼り付け)')
+        .fill(
+          '{"$schema":"https://example.com/schema","properties":{"x":{"$ref":"https://example.com/ref"}},"typo":true}'
+        );
+      await page.getByRole('button', { name: '検証する', exact: true }).click();
+      await expect(page.getByText('/typo', { exact: true })).toBeVisible();
+      expect(remote).toEqual([]);
+    });
+  });
 });

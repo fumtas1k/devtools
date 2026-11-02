@@ -2148,7 +2148,7 @@ of script: script-src 'self' 'unsafe-inline'.
 
 ### 影響 / 移行
 
-- **挙動差**: cfworker は JSON Schema 仕様に準拠して未知のキーワード（旧 Ajv `strict: true` で検出していたもの）や型と無関係なキーワード（例: `type: number` に対する `minLength`）を **無視** する。Ajv の独自警告に依存していたユーザーには UX 面の小さな後退があるが、spec 準拠を優先する。`schema-validator.test.ts` に当該挙動を明示する回帰防止テストを置いた。失われた検出能力は将来「スキーマ lint」機能として復活させる予定（追跡: [#235](https://github.com/fumtas1k/devtools/issues/235)）。
+- **挙動差と lint**: cfworker による検証結果は維持し、選択 draft の非標準キーワードと明示 type に適用されない制約を別途情報として警告する（[#235](https://github.com/fumtas1k/devtools/issues/235)）。拡張キーワードは許容され、警告はスキーマの無効性や実行時に必ず無視されることを意味しない。エンジンは root の draft を選択する。異なるまたは未知の nested `$schema` 以下は lint 対象外で、外部参照も取得しない。
 - **依存サイズ**: `ajv-formats` は direct dep から削除（cfworker は draft 既定の formats を内蔵）。`ajv` / `ajv-draft-04` は他の devDependencies の推移依存として残るが、本コードからの import は無し。
 - **CSP gate の射程**: 当初は `tests/e2e/config-converter.spec.ts` の検証ボタン経路 1 本のみ適用。他のツールへ広げる作業は [#234](https://github.com/fumtas1k/devtools/issues/234) で別途議論する（一気に全テスト適用すると、現状混入している他の `unsafe-*` 依存が浮上する可能性があり、本 PR スコープを膨らませるため）。
 
