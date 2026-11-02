@@ -11,7 +11,7 @@ import { parseIpv4 } from './ipv4';
  * 対応記法:
  * - 完全形式: "2001:0db8:0000:0000:0000:0000:0000:0001"
  * - :: 省略形式: "2001:db8::1"（:: は 1 回のみ）
- * - IPv4 mapped/compatible 末尾記法: "::ffff:192.168.1.1"
+ * - IPv4 末尾記法: "::ffff:192.168.1.1"、"2001:db8:0:0:0:0:192.168.1.1"
  *
  * 拒否するケース:
  * - :: が 2 回以上
@@ -43,7 +43,7 @@ export function parseIpv6(s: string): bigint {
   }
 
   // 左右をグループに分解
-  const leftGroups = left !== '' ? left.split(':') : [];
+  let leftGroups = left !== '' ? left.split(':') : [];
   let rightGroups = right !== '' ? right.split(':') : [];
 
   // IPv4 末尾記法の検出と変換（最後のグループにドットが含まれる場合）
@@ -54,14 +54,8 @@ export function parseIpv6(s: string): bigint {
     rightGroups = rightGroups.slice(0, -1);
     // IPv4 は 32 ビット = 2 hextet 分
   } else if (leftGroups.length > 0 && leftGroups[leftGroups.length - 1].includes('.') && !hasDC) {
-    // :: なしで左側の最後が IPv4（稀なケース対応）
-    const ipv4Str = leftGroups[leftGroups.length - 1];
-    // ドット区切りはパーサーに投げず、そもそも `:` 区切りグループ中の `.` は不正
-    // IPv4 末尾は :: あり（右側）のみサポート
-    void ipv4Str;
-    throw new Error(
-      `不正な IPv6 アドレス: IPv4 末尾記法は :: と組み合わせて使用してください ("${s}")`
-    );
+    ipv4Suffix = parseIpv4(leftGroups[leftGroups.length - 1]);
+    leftGroups = leftGroups.slice(0, -1);
   }
 
   const allGroups = [...leftGroups, ...rightGroups];
