@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cx } from '@/utils/cx';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
 import { InputField } from '@/components/ui/InputField';
@@ -64,6 +64,13 @@ export function ConfigConverterTool() {
   const [schemaText, setSchemaText] = useState('');
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const executionId = useRef(0);
+
+  const clearValidation = () => {
+    executionId.current += 1;
+    setValidationResult(null);
+    setIsValidating(false);
+  };
 
   const {
     input,
@@ -84,24 +91,27 @@ export function ConfigConverterTool() {
 
   // output / error 変化時に validationResult をリセットする（UI リセット目的、side-channel ではない）
   useEffect(() => {
+    executionId.current += 1;
     setValidationResult(null);
+    setIsValidating(false);
   }, [output, error]);
 
   const handleFromChange = (next: ConfigFormat) => {
     setFrom(next);
     // reset() が meta（warnings）を initialMeta（[]）にリセットする
     reset();
-    setValidationResult(null);
+    clearValidation();
   };
 
   const handleToChange = (next: ConfigFormat) => {
     setTo(next);
     // to は deps に含まれるため、変更で transform が再走し meta（warnings）が更新される
-    setValidationResult(null);
+    clearValidation();
   };
 
   const handleValidate = async () => {
-    if (!output || !schemaText) return;
+    if (!output || !schemaText || isPending) return;
+    const id = ++executionId.current;
     setIsValidating(true);
     setValidationResult(null);
     try {
@@ -118,15 +128,19 @@ export function ConfigConverterTool() {
         setValidationResult({
           valid: false,
           errors: [{ path: '/', message: 'スキーマが有効なJSONではありません' }],
+          warnings: [],
         });
         return;
       }
       const { validateWithSchema } = await import('@/utils/config-converter/schema-validator');
+      if (executionId.current !== id) return;
       const result = validateWithSchema(data, schema);
-      setValidationResult(result);
+      if (executionId.current === id) setValidationResult(result);
     } catch (e) {
+      if (executionId.current !== id) return;
       setValidationResult({
         valid: false,
+        warnings: [],
         errors: [
           {
             path: '/',
@@ -138,7 +152,7 @@ export function ConfigConverterTool() {
         ],
       });
     } finally {
-      setIsValidating(false);
+      if (executionId.current === id) setIsValidating(false);
     }
   };
 
@@ -171,11 +185,17 @@ export function ConfigConverterTool() {
             id="config-converter-input"
             label={from === to ? `${FORMAT_LABELS[from]} (整形)` : FORMAT_LABELS[from]}
             value={input}
-            onChange={setInput}
+            onChange={(value) => {
+              clearValidation();
+              setInput(value);
+            }}
             multiline
             rows={16}
             error={error || undefined}
-            onSampleClick={() => setInput(SAMPLE[from])}
+            onSampleClick={() => {
+              clearValidation();
+              setInput(SAMPLE[from]);
+            }}
             mono
             resize
           />
@@ -235,7 +255,10 @@ export function ConfigConverterTool() {
               id="config-converter-schema"
               label="JSON Schema (貼り付け)"
               value={schemaText}
-              onChange={setSchemaText}
+              onChange={(value) => {
+                clearValidation();
+                setSchemaText(value);
+              }}
               multiline
               rows={8}
               mono
@@ -245,7 +268,7 @@ export function ConfigConverterTool() {
                 if (e.nativeEvent.isComposing) return;
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
-                  if (!output || !schemaText || isValidating) return;
+                  if (!output || !schemaText || isValidating || isPending) return;
                   handleValidate();
                 }
               }}
@@ -253,7 +276,7 @@ export function ConfigConverterTool() {
             <div className="flex items-center gap-3">
               <ActionButton
                 onClick={handleValidate}
-                disabled={!output || !schemaText || isValidating}
+                disabled={!output || !schemaText || isValidating || isPending}
                 loading={isValidating}
                 variant="primary"
                 aria-keyshortcuts="Meta+Enter Control+Enter"
@@ -265,29 +288,42 @@ export function ConfigConverterTool() {
               </kbd>
             </div>
             {validationResult && (
-              <div
-                className={cx(
-                  'rounded-lg p-3 border',
-                  validationResult.valid ? 'alert-success' : 'alert-error'
+              <>
+                <div
+                  className={cx(
+                    'rounded-lg p-3 border',
+                    validationResult.valid ? 'alert-success' : 'alert-error'
+                  )}
+                >
+                  {validationResult.valid ? (
+                    <p className="caption text-default inline-flex items-center gap-1">
+                      <span className="text-success">
+                        <StatusIcon variant="success" />
+                      </span>
+                      スキーマ検証成功
+                    </p>
+                  ) : (
+                    <ul className="caption text-error-text m-0 pl-5">
+                      {validationResult.errors.map((e, i) => (
+                        <li key={i}>
+                          <strong>{e.path}</strong>: {e.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {validationResult.warnings.length > 0 && (
+                  <NotificationBanner title="スキーマに関する警告">
+                    <ul className="m-0 pl-5 break-all">
+                      {validationResult.warnings.map((warning, i) => (
+                        <li key={i}>
+                          <strong>{warning.path}</strong>: {warning.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </NotificationBanner>
                 )}
-              >
-                {validationResult.valid ? (
-                  <p className="caption text-default inline-flex items-center gap-1">
-                    <span className="text-success">
-                      <StatusIcon variant="success" />
-                    </span>
-                    スキーマ検証成功
-                  </p>
-                ) : (
-                  <ul className="caption text-error-text m-0 pl-5">
-                    {validationResult.errors.map((e, i) => (
-                      <li key={i}>
-                        <strong>{e.path}</strong>: {e.message}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              </>
             )}
           </div>
         )}
@@ -298,7 +334,7 @@ export function ConfigConverterTool() {
           onClick={() => {
             // reset() が meta（warnings）も initialMeta（[]）にリセットする
             reset();
-            setValidationResult(null);
+            clearValidation();
             setSchemaText('');
           }}
         />
@@ -326,9 +362,11 @@ export function ConfigConverterTool() {
         data-testid="config-converter-validation-announcement"
       >
         {validationResult
-          ? validationResult.valid
-            ? 'スキーマ検証に成功しました'
-            : `スキーマ検証で${validationResult.errors.length}件のエラーが見つかりました`
+          ? `${
+              validationResult.valid
+                ? 'スキーマ検証に成功しました'
+                : `スキーマ検証で${validationResult.errors.length}件のエラーが見つかりました`
+            }${validationResult.warnings.length ? `。スキーマに関する警告が${validationResult.warnings.length}件あります` : ''}`
           : ''}
       </div>
     </div>
