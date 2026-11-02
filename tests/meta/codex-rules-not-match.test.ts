@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest';
 // Codex の loader は各 prefix_rule の `not_match` 例が、その rule 自身の `pattern`
 // プレフィックスに「一致しない」ことを検証する。一致する例を書くと codex が
 // `.codex/rules/default.rules` の読み込みに失敗する(過去に rm-tmp ルールで発生)。
-// vitest からは codex の Rust loader を起動できないため、同じプレフィックス照合の
-// semantics を JS で再現してメタテストとして CI で守る。
+// 同じプレフィックス照合の semantics を JS で再現してメタテストとして守る。
+// 実 loader による検証は tests/smoke/codex-rules-loader.test.mjs で別途行う。
 // プレフィックス照合の fidelity リスクについては helpers/codexRules.ts の冒頭コメントを参照。
 
 import {

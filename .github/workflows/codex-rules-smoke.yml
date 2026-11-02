@@ -1,0 +1,26 @@
+name: Codex rules smoke
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codex-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - name: Codex CLI でルールの読み込みを検証
+        run: npm exec --yes --ignore-scripts --min-release-age=7 --package=@openai/codex@0.164.0 -- node --test tests/smoke/codex-rules-loader.test.mjs
