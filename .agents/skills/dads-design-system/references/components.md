@@ -14,7 +14,7 @@ Claude Design の DADS デザインシステム（`project/components/components
 | Checkbox / Radio        | 現状は専用コンポーネントなし                                        |
 | Accordion / Breadcrumbs | 現状は使用箇所なし                                                  |
 
-DS にない `ToggleGroup` / `ToggleChips` は Button（outline / solid-fill）と ChipLabel の規約から派生させる。
+DS にない `ToggleGroup` / `ToggleChips` は Button（outline / solid-fill）と ChipLabel の規約から派生させ、`RemoveButton` は Button（text）から派生させる。
 
 ## Button
 
@@ -29,6 +29,16 @@ DS にない `ToggleGroup` / `ToggleChips` は Button（outline / solid-fill）�
 | text       | 透明・`blue-900` 文字・下線（offset 3px）        | `blue-50` 地・`blue-1000` 文字・下線 3px | `blue-100` 地・`blue-1200` 文字        | `solid-gray-300` 文字                       |
 
 disabled は pointer-events を止める。hover と `:focus-visible` は同じ視覚反応で定義する（`ui-conventions.md` 2.1）。
+
+## RemoveButton（削除の ×）
+
+DS にない。繰り返しリストの行・カードから 1 項目を取り除く、アイコンのみのボタン（`src/components/ui/RemoveButton.tsx`）。Button の text variant から派生。
+
+- 32×32px・枠なし・角丸 6px・`CloseIcon` 20px。通常は `muted`（赤はエラー表現と紛れるため使わない）、hover / `:focus-visible` は `blue-50` の地と `blue-1000` の文字、active は `blue-100` の地、disabled は `solid-gray-300`
+- タップ領域は `::after` で 44×44px に広げる。`label`（必須）を `aria-label` にして、行を特定できる文言にする
+- クリア・ダイアログの閉じる・検索クリア・カメラ停止には使わない。確認が必要な削除はラベル付きの danger ボタン
+- DADS はテキストのラベルを原則とし、表示領域の都合等がある場合に限ってアイコンだけのボタンを認める。行ごとに並ぶ削除はこの例外で、代替テキスト（`aria-label`）・44×44px 以上のターゲット・アイコン色 4.5:1 以上（muted は 8.45:1）の 3 条件を満たす
+- 詳細 → `docs/decisions.md [162]`
 
 ## Input / Textarea / Select
 
