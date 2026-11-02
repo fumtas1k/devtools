@@ -81,12 +81,12 @@ test.describe('コントラスト比マトリクス', () => {
   }) => {
     await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
       // 初期 4 行から enabled な削除ボタンを押して 2 行まで減らす
-      const deleteButtons = page.getByRole('button', { name: '削除' });
+      const deleteButtons = page.getByRole('button', { name: /を削除$/ });
       await deleteButtons.first().click();
       await deleteButtons.first().click();
       // 2 色残るのでテーブルは表示され、残る削除ボタンは全て無効
       await expect(page.getByRole('table')).toBeVisible();
-      const remaining = page.getByRole('button', { name: '削除' });
+      const remaining = page.getByRole('button', { name: /を削除$/ });
       await expect(remaining).toHaveCount(2);
       await expect(remaining.first()).toBeDisabled();
       await expect(remaining.last()).toBeDisabled();
