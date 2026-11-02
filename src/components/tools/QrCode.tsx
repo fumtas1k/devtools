@@ -140,6 +140,8 @@ export function QrCodeGenerator() {
               ref={containerRef}
               data-testid="qr-code-container"
               className="w-[200px] h-[200px]"
+              // createQrSvg の図形に加えるユーザー入力は generateQrSvg で title 用に
+              // XML エスケープする。この境界は QR SVG の回帰テストで検証する。
               dangerouslySetInnerHTML={{ __html: svgHtml }}
             />
           </div>

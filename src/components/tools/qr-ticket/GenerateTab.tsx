@@ -341,6 +341,8 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                   <div
                     data-testid="qr-code-container"
                     className="w-40 h-40"
+                    // qr.svg は createQrSvg が入力データを図形に変換した出力。
+                    // 生のチケット文字列や任意の SVG をここに渡さない。
                     dangerouslySetInnerHTML={{ __html: qr.svg }}
                   />
                   <span className="caption font-mono font-bold text-default">{qr.ticket.t}</span>
