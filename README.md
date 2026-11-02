@@ -66,7 +66,7 @@
 
 ## 技術スタック
 
-- **フレームワーク**: [Astro](https://astro.build/) 6
+- **フレームワーク**: [Astro](https://astro.build/)（バージョンは `package.json` を参照）
 - **UI**: [React](https://react.dev/) 19 + [Tailwind CSS](https://tailwindcss.com/) v4
 - **言語**: TypeScript
 - **ランタイム**: Node.js 24（開発・CI・ビルドで使う版は `.node-version` で指定）
