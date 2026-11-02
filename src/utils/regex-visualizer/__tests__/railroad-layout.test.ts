@@ -20,6 +20,31 @@ import {
   CHOICE_LEAD,
 } from '../railroad-layout';
 
+describe.each([
+  ['terminal', measureTerminal],
+  ['charclass', measureCharClass],
+  ['fallback', measureFallback],
+  ['backreference', measureBackreference],
+] as const)('%s のボックス寸法', (kind, measure) => {
+  it.each([
+    ['', 26],
+    ['a', 28.5],
+    ['abcd', 54],
+    ['😀', 37],
+  ])('ラベル %j の幅は %s', (label, width) => {
+    const loc = { start: 2, end: 4 };
+    expect(measure(label, loc)).toEqual({
+      kind,
+      width,
+      height: 34,
+      connectY: 17,
+      label,
+      children: [],
+      loc,
+    });
+  });
+});
+
 describe('railroad-layout measure', () => {
   it('terminal は文字数で幅が決まり connectY は中央', () => {
     const t = measureTerminal('ab', undefined);
