@@ -50,19 +50,23 @@ export const LABEL_H = 16; // 量指定子ラベル用の下バンド（loop が
 
 type Loc = { start: number; end: number } | undefined;
 
+function boxWidth(label: string): number {
+  return Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+}
+
 export function measureTerminal(label: string, loc: Loc): RailNode {
-  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  const width = boxWidth(label);
   return { kind: 'terminal', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
 }
 
 /** 文字クラス・メタ文字（[..] \s \d \w . 等）。寸法は terminal と同じで種別のみ異なる。 */
 export function measureCharClass(label: string, loc: Loc): RailNode {
-  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  const width = boxWidth(label);
   return { kind: 'charclass', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
 }
 
 export function measureFallback(label: string, loc: Loc): RailNode {
-  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  const width = boxWidth(label);
   return { kind: 'fallback', width, height: BOX_H, connectY: BOX_H / 2, label, children: [], loc };
 }
 
@@ -138,7 +142,7 @@ export function measureRepetition(
 
 /** 後方参照（\1 / \k<name>）。ラベル付きノード。 */
 export function measureBackreference(label: string, loc: Loc): RailNode {
-  const width = Math.max(label.length * CHAR_W + BOX_PAD_X * 2, MIN_BOX_W);
+  const width = boxWidth(label);
   return {
     kind: 'backreference',
     width,
