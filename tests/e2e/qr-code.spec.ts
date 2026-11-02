@@ -167,4 +167,18 @@ test.describe('QRコード生成（production CSP 適用）', () => {
       expect(await container.locator('script').count()).toBe(0);
     });
   });
+
+  test('title を閉じる入力も文字列として保持し、要素や属性を注入しない', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      const payload = `</title><script>alert(1)</script><svg onload="alert(1)">&'"`;
+      await page.getByLabel('テキスト / URL').fill(payload);
+      const container = page.getByTestId('qr-code-container');
+      const svg = container.locator('svg[role="img"]');
+      await expect(svg.locator('> title')).toHaveText(`QRコード: ${payload}`);
+      await expect(svg.locator('> title')).toHaveCount(1);
+      await expect(container.locator('svg')).toHaveCount(1);
+      await expect(container.locator('script, [onload]')).toHaveCount(0);
+      await expect(svg).not.toHaveAttribute('aria-label', /.*/);
+    });
+  });
 });
