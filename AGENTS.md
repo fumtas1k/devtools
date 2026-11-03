@@ -5,7 +5,7 @@
 ## プロジェクトの前提
 
 - ブラウザ内で完結する開発者ツール集（Astro 7 + React 19 + Tailwind CSS v4）。**ユーザー入力データを外部送信する処理を追加しない**。
-- `public/_headers` の strict CSP を前提にしており、inline `style` は使えない（色・状態は `src/styles/components/` の semantic class で表現する）。
+- `public/_headers` の strict CSP を前提にしており、inline `style` は使えない（色・状態は `src/styles/components/` / `src/styles/tools/` の semantic class で表現する）。
 
 ## Codex 固有の注意事項
 

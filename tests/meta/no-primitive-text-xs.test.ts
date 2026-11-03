@@ -13,8 +13,7 @@ import { join, relative, resolve } from 'node:path';
  * 許可リスト: なし（14px 未満全般は min-font-size-dads.test.ts が検知する）。
  *
  * 対象: `src/` 配下の tsx / astro ファイル（再帰）
- * 除外: css ファイル（`src/styles/components/typography.css` の `.hint-xs` 説明コメント内の "text-xs" を
- *        誤検知しないため）/ `tests/` ディレクトリ
+ * 除外: css ファイル / `tests/` ディレクトリ
  */
 
 const REPO_ROOT = resolve(__dirname, '..', '..');

@@ -13,6 +13,19 @@ import postcss, { type ChildNode } from 'postcss';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync('src/styles/global.css', 'utf8');
+
+// src/styles/ 配下の全 CSS（global.css が @import する分割ファイルを含む）を連結して返す。
+// fixture にはこれらをすべて写すので、番兵 class が混入していないことも全体で確かめる。
+function readAllStyles(dir = 'src/styles'): string {
+  return readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return [readAllStyles(path)];
+      return entry.name.endsWith('.css') ? [readFileSync(path, 'utf8')] : [];
+    })
+    .join('\n');
+}
+const allStyles = readAllStyles();
 const excludedPaths = [
   '../../docs',
   '../../.agents',
@@ -137,8 +150,11 @@ describe('Tailwind scan 除外', () => {
   });
 
   it('通常の build は source の utility だけを生成する', () => {
-    expect(css).not.toContain('grid-cols-7');
-    expect(css).not.toContain('bg-fuchsia-700');
+    // 収集が global.css だけに戻っていないこと（サブディレクトリの CSS まで読めている）
+    expect(allStyles.length).toBeGreaterThan(css.length);
+    expect(allStyles).toContain('.cert-chevron');
+    expect(allStyles).not.toContain('grid-cols-7');
+    expect(allStyles).not.toContain('bg-fuchsia-700');
     const output = buildFixture(css);
     expect(output.length).toBeGreaterThan(0);
     expect(output).toMatch(/\.grid-cols-7\s*\{/);

@@ -5,6 +5,7 @@
    - @layer の外で優先したい一括ルール（cursor / フォーカスリング / リンク）→ base.css
    - 複数のツールで使う意味クラス → components/ の用途に合うファイル（@layer components）
    - 1 つのツールでしか使わないクラス → tools/<ツール名>.css（@layer components）
+   - QR 系のツール（qr-ticket / QrReader）で共有するクラス → tools/qr.css にまとめる
    - 印刷 → print.css、prefers-reduced-motion → motion.css（どちらもレイヤー外）
    新しいファイルを作ったら下の @import に足す（足し忘れは tests/meta/styles-imports.test.ts が検出する）。
    @layer components 内の順序は cascade に効く（後ろが勝つ）ので、import 順を変えない。
@@ -28,6 +29,7 @@
 @import './tools/jwt-decoder.css';
 @import './tools/uuid-v7.css';
 @import './tools/gs1-databar.css';
+@import './tools/cert-decoder.css';
 @import './tools/qr.css';
 @import './tools/regex-visualizer.css';
 @import './tools/json-formatter.css';
