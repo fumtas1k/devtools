@@ -5689,4 +5689,4 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 ### 却下した選択肢
 
 - 層ごとの分割に加えて、`@layer components` のクラスをレイヤー外へ移す／その逆: cascade が変わり見た目が変わるリスクがある
-- `.githooks/pre-commit` の `src/styles/global.css` 監視を `src/styles/` 全体に広げる: `.githooks` はユーザー承認が要るため（common.md 9.1）、この決断の範囲外にした。分割後は `global.css` を触らない変更で decisions.md の更新確認が出なくなる
+- `.githooks/pre-commit` の `src/styles/global.css` 監視を `src/styles/` 全体に広げる: `.githooks` はユーザー承認が要るため（common.md 9.1）、この決断の範囲外にした。分割後は `global.css` を触らない変更で decisions.md の更新確認が出なくなるので、#886 で扱う
