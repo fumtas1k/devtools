@@ -1,0 +1,146 @@
+/* レイヤー外の一括ルール（cursor / フォーカスリング / [hidden] / skip-link / テキストリンク / ツール説明）。
+   @layer の外なので @layer components より優先される。base → print → motion の順を保つ。 */
+
+/* ボタン・リンク類のカーソルを pointer に統一 */
+:where(button, a, [role='button']) {
+  cursor: pointer;
+}
+/* disabled のボタンは not-allowed。上の rule は @layer の外にあり、@layer components 内の
+   `.btn-action:disabled { cursor: not-allowed }` 等を詳細度に関係なく上書きしてしまうため、
+   同じくレイヤー外で後に置く（docs/decisions.md [140]） */
+:where(button):disabled,
+:where(button)[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+/* focus-visible を CSS で一括適用（JS の onFocusRing/onBlurRing ハンドラは不要）。
+   [role='textbox'] は contenteditable な貼り付け受付領域（clipboard-inspector）用 */
+:where(
+  button,
+  a,
+  [role='button'],
+  [role='textbox'],
+  input,
+  textarea,
+  select,
+  summary
+):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring-shadow);
+}
+
+/* 上の一括ルールは @layer の外にあるため、@layer components 内の自前の box-shadow（影）を
+   詳細度に関係なく上書きする。focus 中も影を残したい要素は、ここ（レイヤー外）で黄リングと重ねる */
+.btn-toggle[aria-pressed='true']:focus-visible {
+  box-shadow: var(--focus-ring-shadow), var(--elevation-2);
+}
+
+/* 親の overflow（横スクロール領域・overflow-hidden の箱）で外側の表示が切れる要素用。
+   フォーカス表示を要素の内側に描く（縁から黒 4px → 黄 2px）。一括ルールの対象外の
+   要素（キーボードでフォーカスできるスクロール領域の div 等）にも付けられる */
+.focus-inset:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -4px;
+  box-shadow: inset 0 0 0 6px var(--color-focus-ring);
+}
+
+/* `hidden` 属性は UA 既定 display:none が Tailwind の `.flex` / `.block` 等
+   (同一詳細度) に source order で負けて効かないことがある。`hidden` 指定時は
+   常に非表示にしたいので !important で確定させる。inline style / CSSOM 直接
+   mutation を避けつつ JS から `el.hidden = true/false` で CSP 安全に表示制御できる。 */
+[hidden] {
+  display: none !important;
+}
+
+/* スキップリンク（キーボードユーザー向け） */
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 0;
+  transform: translateY(-100%);
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem; /* タップ領域 44px（[152]） */
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.skip-link:focus-visible {
+  /* フォーカス表示（外側 6px）が画面外に切れないよう端から離す */
+  top: 6px;
+  left: 6px;
+  transform: translateY(0);
+}
+
+/* ツール説明セクションのテキストスタイル（DADS の文字スケール: docs/decisions.md [138]） */
+/* Std-17B-170 */
+.tool-info-heading {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+}
+
+/* Std-17N-170 */
+.tool-info-body {
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+/* Std-16N-170（複数行に折り返す説明文のため本文と同じ Std を使う） */
+.tool-info-list {
+  font-size: 1rem;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+/* 下線なしのプレーンリンク色クラス */
+.text-link-plain {
+  color: var(--color-link);
+  transition: color 0.2s;
+}
+
+.text-link-plain:hover {
+  color: var(--color-primary);
+}
+
+.text-link-plain:visited {
+  color: var(--color-link-visited);
+}
+
+/* 汎用テキストリンクのスタイル（下線あり） */
+.text-link {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition:
+    color 0.2s,
+    text-decoration-color 0.2s;
+}
+
+.text-link:hover {
+  color: var(--color-primary);
+  text-decoration-thickness: 2px;
+}
+
+.text-link:visited {
+  color: var(--color-link-visited);
+}
+
+/* テキストリンクのフォーカス: DADS の Link と同じく地を yellow-300、文字を blue-1000 にする
+   （outline / 黄リングは global の :focus-visible）。visited より後に置いて文字色を上書きする */
+.text-link:focus-visible,
+.text-link-plain:focus-visible {
+  background: var(--color-focus-ring);
+  color: var(--color-link);
+  border-radius: var(--radius-sm);
+}

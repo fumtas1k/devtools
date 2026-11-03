@@ -1,0 +1,16 @@
+/* レイアウト用の意味クラス（scroll-snap-x）。 */
+
+@layer components {
+  /* Horizontal scroll snap container: index hero carousel (1 occurrence、5 prop)
+     注: 単発だが property 数が多く、Tailwind arbitrary 6連
+     (`overflow-x-scroll snap-x snap-mandatory scroll-smooth
+     [scrollbar-width:none] [-webkit-overflow-scrolling:touch]`) より
+     class 化が読みやすい (単発でも property 数が多ければ class 化する方針)。 */
+  .scroll-snap-x {
+    overflow-x: scroll;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+}

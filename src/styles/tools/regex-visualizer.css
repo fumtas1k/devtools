@@ -1,0 +1,147 @@
+/* RegexVisualizer 専用（AST ツリー・鉄道図・マッチ箇所ハイライト）。.rr-box-hot は .rr-box より後。 */
+
+@layer components {
+  /* === RegexVisualizer: AST ツリー描画クラス === */
+
+  /* ツリーの入れ子インデントと左ボーダーライン */
+  .regex-ast-tree {
+    margin-left: 1rem;
+    border-left: 1px solid var(--color-border);
+    padding-left: 0.75rem;
+  }
+
+  /* 各ノードのラベルバッジ（モノスペースフォント・薄いグレー背景） */
+  .regex-ast-node {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.375rem;
+    background: var(--color-bg-subtle);
+    font-family: var(--font-mono, monospace);
+    margin: 0.125rem 0;
+  }
+
+  /* ReDoS 危険箇所にマッチするノードをエラー色（赤）で強調 */
+  .regex-ast-node-hot {
+    background: var(--color-error-bg);
+    color: var(--color-error-text); /* red-50 上は error-1 だと 4.08:1 のため error-2 */
+  }
+
+  /* === 鉄道図（RegexRailroad）用意味クラス === */
+  /* variant prefix（hover: 等）は Tailwind v4 @layer components 手書き class では
+     CSS rule 生成されないため付けない（§7.1）。 */
+  /* max-width:100% は付けない。wrapper の overflow-x-auto と競合し、横長の図が
+     スクロールではなく縮小表示になるため（PR #491 レビュー指摘）。svg は自然幅を保ち
+     wrapper 側で横スクロールさせる。 */
+  .rr-svg {
+    display: block;
+  }
+  .rr-rail {
+    stroke: var(--color-border-strong);
+    stroke-width: 2;
+    fill: none;
+  }
+  /* 始点・終点マーカー（鉄道図の入口/出口の点）。黒に近い濃色で明示する。 */
+  .rr-marker {
+    fill: var(--color-text);
+  }
+  .rr-box {
+    fill: var(--color-bg);
+    stroke: var(--color-border-strong);
+    stroke-width: 1;
+  }
+  .rr-box-fallback {
+    stroke-dasharray: 4 3;
+  }
+  /* 文字クラス・メタ文字（[..] \s \d \w . 等）。青塗りに加え、色以外の手がかりとして
+     太い枠（2px）と角の小さい矩形（rx は RegexRailroad.tsx で 2、リテラルは 6）で区別する
+     （WCAG 1.4.1、[150]）。破線は後方参照・フォールバックが使うので使わない。
+     枠は primary（白地 9:1 超）で非テキスト 3:1 を満たす。 */
+  .rr-charclass {
+    fill: var(--color-bg-active);
+    stroke: var(--color-primary);
+    stroke-width: 2;
+  }
+  .rr-text {
+    fill: var(--color-text);
+    font-family: var(--font-mono, monospace);
+    font-size: 14px;
+  }
+  .rr-group {
+    fill: var(--color-bg-subtle);
+    stroke: var(--color-border);
+    stroke-width: 1;
+  }
+  .rr-group-title {
+    fill: var(--color-muted);
+    font-size: 14px;
+  }
+  /* アンカー（ゼロ幅の位置: ^ $ \b \B）。紫塗りの円/pill で位置系を示す。 */
+  .rr-anchor {
+    fill: var(--color-anchor-bg);
+    stroke: var(--color-anchor);
+    stroke-width: 1;
+  }
+  /* アンカーのラベル文字。枠・塗りと同系の紫にして種別を強調する。 */
+  .rr-anchor-text {
+    fill: var(--color-anchor);
+  }
+  /* .rr-box-hot は .rr-box より後に置き fill/stroke を上書きする（hotspot ハイライト）。 */
+  .rr-box-hot {
+    fill: var(--color-warning-bg);
+    stroke: var(--color-warning);
+    stroke-width: 1.5;
+  }
+  /* hotspot 中の文字クラスも、リテラルより太い枠で形の差を残す。 */
+  .rr-charclass.rr-box-hot {
+    stroke-width: 2.5;
+  }
+  /* 後方参照（\1 / \k<name>）: 破線枠でリテラルと視覚的に区別する。 */
+  .rr-backref {
+    stroke-dasharray: 3 2;
+  }
+  /* 量指定子ラベル（+ * ? {n,m}）: rail 下に小さく表示する。 */
+  .rr-quant {
+    fill: var(--color-muted);
+    font-size: 14px;
+    font-family: var(--font-mono, monospace);
+  }
+  /* ループ弧（反復方向）の矢印ヘッド。rr-rail と同系の中間グレー。 */
+  .rr-arrow-head {
+    fill: var(--color-border-strong);
+  }
+  /* 鉄道図の凡例。SVG 直下に破線区切りで種別の見本を並べる。 */
+  .rr-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--color-border);
+  }
+  .rr-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* === マッチテスト: マッチ箇所ハイライト === */
+  .match-highlight {
+    border-radius: var(--radius-sm);
+    padding: 0 1px;
+    cursor: pointer;
+  }
+  .match-highlight-a {
+    background: var(--color-blue-100);
+  }
+  .match-highlight-b {
+    background: var(--color-blue-300);
+  }
+  .match-highlight-active {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+  /* 空マッチ（幅ゼロ）の位置を示す細いマーカー */
+  .match-highlight-empty {
+    border-left: 2px solid var(--color-primary);
+  }
+}

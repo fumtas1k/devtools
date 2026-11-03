@@ -1,0 +1,108 @@
+/* 状態を伝える部品（progress-* / notification-banner / badge-category / status-badge / chip-label）。 */
+
+@layer components {
+  /* === ProgressBar (CharCount SNS / 任意上限) === */
+  /* 幅は useDynamicStyleSheet 経由の CSS カスタムプロパティ で制御 */
+  .progress-track {
+    background: var(--color-bg-subtle);
+    border-radius: 9999px;
+    height: 0.5rem; /* 8px */
+    overflow: hidden;
+    display: flex;
+  }
+  .progress-fill {
+    background: var(--color-primary);
+    height: 100%;
+    width: var(--progress-fill-width, 0%);
+    transition: width 0.2s ease-out;
+  }
+  .progress-overflow {
+    background: var(--color-error);
+    height: 100%;
+    width: var(--progress-overflow-width, 0%);
+    transition: width 0.2s ease-out;
+  }
+
+  /* Notification banner (DADS 通知バナー color-chip 型: 2px の全周ボーダー + 左 16px のカラーチップ)
+     枠・チップ・アイコンは currentColor（種類ごとの色）で描き、見出しと本文は本文色にする。
+     左帯は inset box-shadow で表現し、角丸に沿ってクリップされる（docs/decisions.md [141]）。 */
+  .notification-banner {
+    border: 2px solid currentColor;
+    box-shadow: inset 16px 0 0 0 currentColor;
+    background: var(--color-bg);
+  }
+  .notification-banner--warning {
+    color: var(--color-warning);
+  }
+  .notification-banner--error {
+    color: var(--color-error);
+  }
+  .notification-banner--info {
+    color: var(--color-info);
+  }
+  .notification-banner--success {
+    color: var(--color-success);
+  }
+
+  /* Category badge pill (GenerateTab 生成結果) */
+  .badge-category {
+    display: inline-block;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    border-radius: 9999px;
+    padding: 0.1rem 0.5rem;
+  }
+
+  /* === StatusBadge: DADS の StatusBadge（塗りのピル、16px / 400 / 行高 1、padding 8px、白文字） ===
+     地色は白文字で 4.5:1 を満たす semantic 色（docs/decisions.md [141]） */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 400;
+    font-size: 1rem;
+    line-height: 1;
+    white-space: nowrap; /* 1 行のラベル。狭いセル（ContrastMatrix）で「AAA」と「○」が割れないように */
+    color: var(--color-text-on-primary);
+  }
+  .status-badge--error {
+    background: var(--color-error);
+  }
+  .status-badge--success {
+    background: var(--color-success);
+  }
+  .status-badge--warning {
+    background: var(--color-warning);
+  }
+  .status-badge--info {
+    background: var(--color-info);
+  }
+
+  /* === ChipLabel: DADS の ChipLabel（outline 型。最小高 32px、16px / 400 / 行高 1、枠 1px currentColor） ===
+     地は白で固定する。tint の行（.regex-ast-node-hot の red-50 等）に載っても error-1 の文字が
+     4.5:1 を保つため（docs/decisions.md [141]） */
+  .chip-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2rem;
+    padding: 3px 7px;
+    border-radius: var(--radius-md);
+    border: 1px solid currentColor;
+    background: var(--color-bg);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1;
+    overflow-wrap: anywhere;
+  }
+  .chip-label--error {
+    color: var(--color-error);
+  }
+  .chip-label--info {
+    color: var(--color-info);
+  }
+  .chip-label--neutral {
+    color: var(--color-muted);
+  }
+}

@@ -1,0 +1,17 @@
+/* QR コード系ツール（QrGenerator / QrReader）専用。 */
+
+@layer components {
+  /* QR result auto-fill grid (GenerateTab 生成結果カード列) */
+  .qr-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  /* === QrReader: video プレビューの背景 ===
+     QRリーダーの <video> 要素は getUserMedia 開始前 (display:none で隠蔽中) の
+     コントラスト確保 + 起動失敗時のフォールバック (黒画面) として黒背景を維持する。
+     一意の用途のため component-scoped class とする。黒は意図的な固定色なので色 token 化しない。 */
+  .qr-video-preview {
+    background: #000;
+  }
+}

@@ -1,0 +1,28 @@
+/* JwtDecoder 専用。 */
+
+@layer components {
+  /* JwtDecoder: Section accent borders */
+  .section-jwt-header {
+    border-left: 4px solid var(--color-error);
+  }
+  .section-jwt-payload {
+    border-left: 4px solid var(--color-jwt-payload);
+  }
+  .section-jwt-signature {
+    border-left: 4px solid var(--color-primary);
+  }
+
+  /* JwtDecoder: JSON syntax colors */
+  .jwt-json-key {
+    color: var(--color-link);
+  }
+  .jwt-json-value {
+    color: var(--color-jwt-value);
+  }
+
+  /* JwtDecoder: <pre> (decoded JSON) typography */
+  .jwt-pre {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+}
