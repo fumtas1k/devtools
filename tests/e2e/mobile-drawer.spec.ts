@@ -122,19 +122,63 @@ test.describe('モバイルドロワー（production CSP 適用）', () => {
     });
   });
 
+  test('パネル内で押して暗幕の上で離しても閉じない（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/url-encode', async (page) => {
+      await page.setViewportSize(MOBILE_VIEWPORT);
+      await page.getByRole('button', { name: 'メニューを開く' }).click();
+      const dialog = page.getByRole('dialog', { name: 'ナビゲーション' });
+      await expect(dialog).toBeVisible();
+
+      // パネル内（x: 134〜390）の余白で押し、暗幕（x < 134）まで動かして離す。
+      // この click は共通祖先の dialog に暗幕側の座標で届く
+      await page.mouse.move(140, 400);
+      await page.mouse.down();
+      await page.mouse.move(40, 400);
+      await page.mouse.up();
+
+      await expect(dialog).toBeVisible();
+    });
+  });
+
+  test('dialog 自身への合成 click（座標 0,0）では閉じない（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/url-encode', async (page) => {
+      await page.setViewportSize(MOBILE_VIEWPORT);
+      await page.getByRole('button', { name: 'メニューを開く' }).click();
+      const dialog = page.getByRole('dialog', { name: 'ナビゲーション' });
+      await expect(dialog).toBeVisible();
+
+      // 実ポインタ操作では作れない click（pointerdown が先行しない）を直接送る
+      await dialog.evaluate((el) => {
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
+
+      await expect(dialog).toBeVisible();
+    });
+  });
+
+  // ダイアログの外の要素にフォーカスがあるときに 1 件ヒットするセレクタ。
+  // モーダルでは末尾の次にブラウザ側へ抜けて何もフォーカスされない状態もあり得るので、
+  // 「ダイアログ内にある」ではなく「ダイアログの外にない」を検査する
+  const FOCUS_OUTSIDE_DIALOG = 'body :focus:not(dialog, dialog *)';
+
+  test('陽性対照: 閉じている間の Tab はページ側に移り、フォーカス検知セレクタが捉える（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/url-encode', async (page) => {
+      await page.setViewportSize(MOBILE_VIEWPORT);
+
+      await page.keyboard.press('Tab');
+
+      await expect(page.locator(FOCUS_OUTSIDE_DIALOG)).toHaveCount(1);
+    });
+  });
+
   test('開いている間はフォーカスがページ側（ダイアログの外）に移らない（Tab / Shift+Tab）（CSP 違反なし）', async ({
     browser,
   }) => {
     await withProductionCsp(browser, '/tools/url-encode', async (page) => {
       await page.setViewportSize(MOBILE_VIEWPORT);
-      // ダイアログの外の要素にフォーカスがあるときに 1 件ヒットするセレクタ。
-      // モーダルでは末尾の次にブラウザ側へ抜けて何もフォーカスされない状態もあり得るので、
-      // 「ダイアログ内にある」ではなく「ダイアログの外にない」を検査する
-      const focusOutside = page.locator('body :focus:not(dialog, dialog *)');
-
-      // 陽性対照: 閉じている間の Tab はページ側（スキップリンク等）に移り、上のセレクタが検知する
-      await page.keyboard.press('Tab');
-      await expect(focusOutside).toHaveCount(1);
+      const focusOutside = page.locator(FOCUS_OUTSIDE_DIALOG);
 
       await page.getByRole('button', { name: 'メニューを開く' }).click();
       const dialog = page.getByRole('dialog', { name: 'ナビゲーション' });
@@ -192,7 +236,10 @@ test.describe('モバイルドロワー（production CSP 適用）', () => {
       // スマホ幅に戻しても開いたままにならない
       await page.setViewportSize(MOBILE_VIEWPORT);
       await expect(dialog).not.toBeVisible();
-      await expect(page.getByRole('button', { name: 'メニューを開く' })).toBeEnabled();
+
+      // inert が残っていれば、click の actionability チェックで失敗する
+      await page.getByRole('button', { name: 'メニューを開く' }).click();
+      await expect(dialog).toBeVisible();
     });
   });
 });

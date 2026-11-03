@@ -5720,12 +5720,12 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 
 ### 決断
 
-- パネルを `<dialog id="mobile-drawer" aria-label="ナビゲーション">` にし、`showModal()` / `close()` で開閉する。暗幕は `::backdrop`、背面の操作不能（inert）・フォーカストラップ・Esc・閉じた後のフォーカス復帰はブラウザに任せる。`#mobile-drawer-overlay` と `#mobile-drawer-backdrop` の div、`.drawer-backdrop`（`color.css`）は削除した
+- パネルを `<dialog id="mobile-drawer" aria-label="ナビゲーション">` にし、`showModal()` / `close()` で開閉する。暗幕は `::backdrop`、背面の操作不能（inert）・フォーカストラップ・Esc はブラウザに任せる（閉じた後のフォーカス復帰はトグルへの `focus()` で補う）。`#mobile-drawer-overlay` と `#mobile-drawer-backdrop` の div、`.drawer-backdrop`（`color.css`）は削除した
 - **`role="dialog"` と `aria-modal="true"` は外した**。`<dialog>` を `showModal()` で開くと暗黙に付くので、a11y ツリー上の意味は変わらない（E2E の `getByRole('dialog', { name: 'ナビゲーション' })` で確認）。`aria-label`、トグルの `aria-controls` / `aria-expanded` は残す。overlay の `aria-hidden` / `hidden` は、閉じた `dialog` が UA の `display: none` で a11y ツリーから外れるので不要になった
 - 初期フォーカスは閉じるボタンの `autofocus` で明示する。手書きの `focus()` は持たない
-- body のスクロール禁止は `body:has(.mobile-drawer[open]) { overflow: hidden; }`（`components/layout.css`）、PC 幅でトグルを隠す処理は `toggle.hidden = true` にする（global の `[hidden] { display: none !important }` が効く）。`element.style` は残っていない
-- スクリプトに残したのは次の 5 つだけ: トグルで `showModal()` と `aria-expanded="true"`、閉じるボタンで `close()`、`close` イベントで `aria-expanded="false"`（Esc でも閉じ方を問わず同期される）、暗幕のクリックで閉じる、`(min-width: 64rem)` になったら閉じる
-  - **暗幕のクリックは残した**。`<dialog>` に既定の「外側クリックで閉じる」は無い（`closedby="any"` は対応ブラウザが限られる）。`::backdrop` のクリックは `dialog` 要素自身に届くが、パネルの padding のクリックも同じく `dialog` 自身に届くので、`event.target === dialog` かつクリック座標がパネルの矩形の外のときだけ `close()` する
+- body のスクロール禁止は `body:has(.mobile-drawer[open]) { overflow: hidden; }`（`components/layout.css`）、ドロワーの無いページでトグルを隠す fallback は `toggle.hidden = true` にする（global の `[hidden] { display: none !important }` が効く。PC 幅で隠しているのは `Header.astro` の `lg:hidden`）。`element.style` は残っていない
+- スクリプトに残したのは次の 5 つだけ: トグルで `showModal()` と `aria-expanded="true"`、閉じるボタンで `close()`、`close` イベントで `aria-expanded="false"` とトグルへの `focus()`（Esc でも閉じ方を問わず同期される。`<dialog>` が戻すのは showModal 時にフォーカスがあった要素で、WebKit はクリック / タップでボタンにフォーカスを移さず、Safari で閉じた後に body へ戻るため明示する）、暗幕のクリックで閉じる、`(min-width: 64rem)` になったら閉じる
+  - **暗幕のクリックは残した**。`<dialog>` に既定の「外側クリックで閉じる」は無い（`closedby="any"` は対応ブラウザが限られる）。`::backdrop` のクリックは `dialog` 要素自身に届くが、パネルの padding のクリックも同じく `dialog` 自身に届くので、`pointerdown` の時点で「target が dialog 自身で座標が矩形の外」だったかを記録し、click でも同じ条件を満たしたときだけ `close()` する。パネル内で押して暗幕の上で離した click は共通祖先の dialog に暗幕側の座標で届くのと、pointerdown を伴わない合成 click を、これで閉じないようにする
   - **PC 幅で閉じる処理は残した**。パネルは `lg:hidden` なので、開いたまま PC 幅に広げると、見えないままモーダルとして残り、背面が inert のままページが操作できなくなる。`matchMedia` の `change` で `close()` する
 - アニメーション（`@starting-style` 等）は足さない。移行前に無かったので、見た目は変えない。変更前後のスクリーンショット（スマホの開閉・PC の閉）の差は、パネルの左の影の裾の最大 2/255 だけだった
 - テストは `tests/e2e/mobile-drawer.spec.ts` を書き換えた。手書きトラップの代わりに、Tab / Shift+Tab を要素数より多く押してもフォーカスがダイアログの外に移らないこと（陽性対照として、閉じている間は外に移ることも確認）、閉じた後にトグルへフォーカスが戻ること、開いている間の body の `overflow: hidden`、開いたまま PC 幅にすると閉じることを確かめる

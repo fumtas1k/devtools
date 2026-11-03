@@ -103,8 +103,13 @@ const { currentSlug } = Astro.props;
     // ドロワーが存在しないページではボタンを非表示にする
     if (toggle) toggle.hidden = true;
   } else {
-    // Esc・暗幕のクリック・閉じるボタン・PC 幅への切替のどれで閉じても close イベントが来る
-    drawer.addEventListener('close', () => toggle.setAttribute('aria-expanded', 'false'));
+    // Esc・暗幕のクリック・閉じるボタン・PC 幅への切替のどれで閉じても close イベントが来る。
+    // <dialog> が戻すのは showModal 時にフォーカスがあった要素で、WebKit はクリック / タップでは
+    // ボタンにフォーカスを移さないため、明示的にトグルへ戻す（PC 幅で閉じた場合は display: none なので何も起きない）
+    drawer.addEventListener('close', () => {
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.focus();
+    });
 
     toggle.addEventListener('click', () => {
       drawer.showModal();
@@ -112,14 +117,21 @@ const { currentSlug } = Astro.props;
     });
     closeBtn?.addEventListener('click', () => drawer.close());
 
-    // ::backdrop のクリックは dialog 自身に届く。パネル内の余白（padding）のクリックも
-    // 同じく dialog 自身に届くので、座標がパネルの矩形の外のときだけ閉じる
-    drawer.addEventListener('click', (e) => {
-      if (e.target !== drawer) return;
+    // ::backdrop のクリックは dialog 自身に届く。パネル内の余白（padding）のクリックも同じく届くので、
+    // 座標がパネルの矩形の外かどうかで見分ける。パネル内で押して暗幕の上で離した click も共通祖先の dialog に
+    // 暗幕側の座標で届くため、pointerdown の時点で暗幕を押していたかを記録し、click でも同じ条件のときだけ閉じる。
+    // 合成 click（pointerdown が来ない）もこれで閉じなくなる
+    let downOnBackdrop = false;
+    const outside = (e: MouseEvent) => {
       const r = drawer.getBoundingClientRect();
-      const inside =
-        e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-      if (!inside) drawer.close();
+      return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+    };
+    drawer.addEventListener('pointerdown', (e) => {
+      downOnBackdrop = e.target === drawer && outside(e);
+    });
+    drawer.addEventListener('click', (e) => {
+      if (downOnBackdrop && e.target === drawer && outside(e)) drawer.close();
+      downOnBackdrop = false;
     });
 
     // 開いたまま PC 幅になると、パネルは lg:hidden で見えないままモーダルとして残り、ページを操作できなくなる
