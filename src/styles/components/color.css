@@ -96,11 +96,6 @@
     color: var(--color-footer-meta);
   }
 
-  /* MobileDrawer backdrop (modal 背景の半透明 overlay、`--color-overlay`) */
-  .drawer-backdrop {
-    background: var(--color-overlay);
-  }
-
   /* トップページ hero の下罫線（blue-100） */
   .border-hero {
     border-color: var(--color-blue-100);

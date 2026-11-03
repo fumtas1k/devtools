@@ -9,78 +9,71 @@ interface Props {
 const { currentSlug } = Astro.props;
 ---
 
-<!-- モバイルドロワー (lg未満のみ表示) -->
-<div id="mobile-drawer-overlay" class="lg:hidden fixed inset-0 z-[60]" aria-hidden="true" hidden>
-  <!-- 背景 -->
-  <div id="mobile-drawer-backdrop" class="absolute inset-0 drawer-backdrop"></div>
-
-  <!-- ドロワーパネル -->
-  <div
-    id="mobile-drawer"
-    role="dialog"
-    aria-label="ナビゲーション"
-    aria-modal="true"
-    class="absolute right-0 top-0 h-full w-64 overflow-y-auto shadow-xl p-4 bg-default"
-  >
-    <!-- 閉じるボタン -->
-    <div class="flex justify-start mb-2">
-      <button
-        id="mobile-drawer-close"
-        type="button"
-        class="drawer-close-btn flex items-center justify-center rounded-md transition-colors w-11 h-11 text-icon"
-        aria-label="メニューを閉じる"
+<!-- モバイルドロワー (lg未満のみ表示)。showModal() で開くので、暗幕・フォーカストラップ・Esc・背面の inert はブラウザが担う -->
+<dialog
+  id="mobile-drawer"
+  aria-label="ナビゲーション"
+  class="mobile-drawer lg:hidden h-full w-64 overflow-y-auto shadow-xl p-4 bg-default"
+>
+  <!-- 閉じるボタン -->
+  <div class="flex justify-start mb-2">
+    <button
+      id="mobile-drawer-close"
+      type="button"
+      autofocus
+      class="drawer-close-btn flex items-center justify-center rounded-md transition-colors w-11 h-11 text-icon"
+      aria-label="メニューを閉じる"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-
-    <!-- ツール一覧 -->
-    <nav aria-label="ツール一覧">
-      {
-        categories.map((cat) => (
-          <div class="mb-6">
-            <h2 class="mb-2 px-3 font-bold uppercase caption-wide text-muted">
-              {categoryLabel[cat]}
-            </h2>
-            <ul>
-              {tools
-                .filter((t) => t.category === cat)
-                .map((tool) => {
-                  const isActive = currentSlug === tool.slug;
-                  return (
-                    <li>
-                      <a
-                        href={`/tools/${tool.slug}`}
-                        aria-current={isActive ? 'page' : undefined}
-                        class={`flex items-center gap-2 rounded-md px-3 transition-colors drawer-link min-h-11 caption ${isActive ? 'font-bold drawer-link--active' : 'drawer-link--inactive'}`}
-                      >
-                        <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
-                        <span>{tool.name}</span>
-                      </a>
-                    </li>
-                  );
-                })}
-            </ul>
-          </div>
-        ))
-      }
-    </nav>
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
   </div>
-</div>
+
+  <!-- ツール一覧 -->
+  <nav aria-label="ツール一覧">
+    {
+      categories.map((cat) => (
+        <div class="mb-6">
+          <h2 class="mb-2 px-3 font-bold uppercase caption-wide text-muted">
+            {categoryLabel[cat]}
+          </h2>
+          <ul>
+            {tools
+              .filter((t) => t.category === cat)
+              .map((tool) => {
+                const isActive = currentSlug === tool.slug;
+                return (
+                  <li>
+                    <a
+                      href={`/tools/${tool.slug}`}
+                      aria-current={isActive ? 'page' : undefined}
+                      class={`flex items-center gap-2 rounded-md px-3 transition-colors drawer-link min-h-11 caption ${isActive ? 'font-bold drawer-link--active' : 'drawer-link--inactive'}`}
+                    >
+                      <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
+                      <span>{tool.name}</span>
+                    </a>
+                  </li>
+                );
+              })}
+          </ul>
+        </div>
+      ))
+    }
+  </nav>
+</dialog>
 
 <style>
   .drawer-close-btn:hover {
@@ -103,71 +96,35 @@ const { currentSlug } = Astro.props;
 
 <script>
   const toggle = document.getElementById('mobile-menu-toggle') as HTMLButtonElement | null;
-  const overlay = document.getElementById('mobile-drawer-overlay') as HTMLElement | null;
-  const backdrop = document.getElementById('mobile-drawer-backdrop') as HTMLElement | null;
-  const drawer = document.getElementById('mobile-drawer') as HTMLElement | null;
+  const drawer = document.getElementById('mobile-drawer') as HTMLDialogElement | null;
   const closeBtn = document.getElementById('mobile-drawer-close') as HTMLButtonElement | null;
 
-  if (!overlay || !toggle) {
+  if (!drawer || !toggle) {
     // ドロワーが存在しないページではボタンを非表示にする
-    if (toggle) toggle.style.display = 'none';
+    if (toggle) toggle.hidden = true;
   } else {
-    function openDrawer(): void {
-      overlay!.hidden = false;
-      overlay!.removeAttribute('aria-hidden');
-      toggle!.setAttribute('aria-expanded', 'true');
-      document.body.style.overflow = 'hidden';
-      // 閉じるボタンにフォーカス移動
-      closeBtn?.focus();
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    // Esc・暗幕のクリック・閉じるボタン・PC 幅への切替のどれで閉じても close イベントが来る
+    drawer.addEventListener('close', () => toggle.setAttribute('aria-expanded', 'false'));
 
-    function closeDrawer(): void {
-      overlay!.hidden = true;
-      overlay!.setAttribute('aria-hidden', 'true');
-      toggle!.setAttribute('aria-expanded', 'false');
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', handleKeyDown);
-      toggle!.focus();
-    }
+    toggle.addEventListener('click', () => {
+      drawer.showModal();
+      toggle.setAttribute('aria-expanded', 'true');
+    });
+    closeBtn?.addEventListener('click', () => drawer.close());
 
-    function getFocusable(): HTMLElement[] {
-      if (!drawer) return [];
-      return Array.from(
-        drawer.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
-      );
-    }
+    // ::backdrop のクリックは dialog 自身に届く。パネル内の余白（padding）のクリックも
+    // 同じく dialog 自身に届くので、座標がパネルの矩形の外のときだけ閉じる
+    drawer.addEventListener('click', (e) => {
+      if (e.target !== drawer) return;
+      const r = drawer.getBoundingClientRect();
+      const inside =
+        e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      if (!inside) drawer.close();
+    });
 
-    function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') {
-        closeDrawer();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-
-      const focusable = getFocusable();
-      if (!focusable.length) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    }
-
-    toggle.addEventListener('click', openDrawer);
-    backdrop?.addEventListener('click', closeDrawer);
-    closeBtn?.addEventListener('click', closeDrawer);
+    // 開いたまま PC 幅になると、パネルは lg:hidden で見えないままモーダルとして残り、ページを操作できなくなる
+    window.matchMedia('(min-width: 64rem)').addEventListener('change', (e) => {
+      if (e.matches && drawer.open) drawer.close();
+    });
   }
 </script>
