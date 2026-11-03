@@ -281,7 +281,7 @@ export function escapeHtml(text: string): string {
  * ## 色
  * `<text>` の `fill="currentColor"` で親要素の `color` を継承する。`Gs1Databar.tsx`
  * の preview wrapper は `.gs1-svg-container` クラスで `color: var(--color-text)` を
- * 設定する前提 (`global.css`)。親 className を変更する際は color 設定を維持すること。
+ * 設定する前提 (`src/styles/tools/gs1-databar.css`)。親 className を変更する際は color 設定を維持すること。
  */
 export function injectCompositeText(svg: string, text: string): string {
   if (!text) return svg;

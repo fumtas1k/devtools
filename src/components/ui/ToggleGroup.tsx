@@ -1,4 +1,3 @@
-import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
 import { cx } from '@/utils/cx';
 
 interface Option<T> {
@@ -26,14 +25,13 @@ interface Props<T extends string> {
 /**
  * 排他選択トグル。
  *
- * style: global.css `@layer components` の `.toggle-grid`（CSS 変数 --toggle-cols 経由で
- * 動的列数）/ `.btn-toggle` / `.btn-toggle[aria-pressed="true"]` を参照。
+ * style: `src/styles/components/button.css`（`@layer components`）の `.toggle-grid` / `.btn-toggle` /
+ * `.btn-toggle[aria-pressed="true"]` を参照。
  *
- * 動的列数は `useDynamicStyleSheet` 経由で per-instance scoped rule
- * (`.dyn-XXX { --toggle-cols: N; }`) として注入する。`setProperty` 経由 inline
- * style は CSP3 `style-src` 制約に抵触するため不採用 (`docs/decisions.md [067]`)。
- * `layout='wrap'` 時は dynamic rule 不要 (`.toggle-grid` 自体が unused) のため
- * sheet 生成を skip する。
+ * `layout='grid'` の列数は常に選択肢の数（全ボタンを等幅で 1 行に並べる）なので、
+ * `.toggle-grid` が `grid-auto-flow: column` + `grid-auto-columns: minmax(0, 1fr)` で受ける。
+ * 列数を動的な値で渡さないため、動的スタイルシートも inline style も要らない
+ * （`style-src` に `'unsafe-inline'` が無い本番 CSP でそのまま通る。`docs/decisions.md [166]`）。
  */
 export function ToggleGroup<T extends string>({
   options,
@@ -45,21 +43,13 @@ export function ToggleGroup<T extends string>({
   matchField = false,
 }: Props<T>) {
   const isWrap = layout === 'wrap';
-  const dynClassName = useDynamicStyleSheet((className) =>
-    isWrap ? '' : `.${className} { --toggle-cols: ${options.length}; }`
-  );
-
   const fieldHeightClass = matchField && size === 'md' ? 'min-h-12 content-center' : '';
   const containerClass = isWrap
     ? cx(
         'bg-subtle rounded-md border border-input p-1 flex flex-wrap gap-1 w-max max-w-full',
         fieldHeightClass
       )
-    : cx(
-        'bg-subtle rounded-md border border-input p-1 toggle-grid',
-        dynClassName,
-        fieldHeightClass
-      );
+    : cx('bg-subtle rounded-md border border-input p-1 toggle-grid', fieldHeightClass);
   // md: DADS の sm ボタン相当（高さ 36px・16px Bold）、sm: xs 相当（28px・14px Bold）。
   // 土台の角丸 8px から枠 1px と余白 4px を引いた内側のボタンは rounded-sm（4px）にする
   const buttonSizeClass =

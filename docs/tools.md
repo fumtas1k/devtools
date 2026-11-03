@@ -25,6 +25,7 @@
   - [SSL/TLS証明書デコーダ](#ssltls証明書デコーダ)
   - [SAMLデコーダ](#samlデコーダ)
 - [変換・解析](#変換解析)
+  - [MCP 設定リスクインスペクタ](#mcp-設定リスクインスペクタ)
   - [JSON / XML 変換](#json--xml-変換)
   - [JSON / CSV 変換](#json--csv-変換)
   - [文字コード判定・変換](#文字コード判定変換)
@@ -394,6 +395,18 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - 「共有用マスク XML」は構造上の PII フィールド（NameID・AttributeValue）と `secret-scrubber` の既知パターンの除去であり、完全な匿名化を保証するものではない。共有前に必ず目視で確認すること
 
 ## 変換・解析
+
+### MCP 設定リスクインスペクタ
+
+#### 仕組み・アルゴリズム
+
+`mcpServers` を持つJSONの限定形式を、サイズ・深さ・token・件数の上限付きで検証する。stdio のコマンドと引数、HTTP / SSE の接続先、環境変数・ヘッダーのキーを整理し、値をマスクして表示する。明白な設定パターンに対して確認事項と見直し方法を示す。処理はブラウザ内で完結する。
+
+#### 制限・エッジケース
+
+JSONC、YAML、TOML、VS Code形式および未対応の拡張キーは受け付けない。環境変数は展開せず、サーバ接続・コマンド実行・外部照会はしない。検査は完全ではなく、検出なしでも安全性、実際の権限、認証結果を保証しない。マスクの見逃しにも注意する。
+
+解析前の安全上限は256 KiB・深さ16・非空白token 32,768。対応する設定の構造は `mcpServers`・サーバ・`env` / `headers` / `args` までの最大4階層のため、深さ16と17の境界は形式検証前のガードで試験する。token上限と確認事項1,000件の境界は対応設定を使って試験する。
 
 ### JSON / XML 変換
 
@@ -774,7 +787,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **XSS 対策**: 生成 HTML は必ず既存の `sanitizeHtml(html)` に通してから返す（`src/utils/sanitizeHtml.ts`）。許可リスト方式（`<script>` / style / 危険属性 / `javascript:` URL を除去）でガード。新規サニタイザは導入せず既存資産を再利用。
 - **描画**: `sanitizeHtml` 済みの HTML 文字列を `<div className="markdown-preview" dangerouslySetInnerHTML={{ __html: sanitized }}>` でインライン描画する。`sanitizeHtml` が許可外要素・属性を全除去した後の文字列のみを渡すため XSS リスクはない。
 - **パフォーマンス**: `useMemo(() => renderMarkdown(input), [input])` で入力単位に memo 化し、毎レンダーでのパース再実行を回避する。
-- **スタイリング**: `sanitizeHtml` は `class` 属性を除去するため、生成要素にクラスを付けられない。`global.css` の `@layer components` に `.markdown-preview` を定義し、子孫要素セレクタ（`.markdown-preview h1`、`.markdown-preview table` 等）で整形する。
+- **スタイリング**: `sanitizeHtml` は `class` 属性を除去するため、生成要素にクラスを付けられない。`src/styles/tools/markdown-editor.css` の `@layer components` に `.markdown-preview` を定義し、子孫要素セレクタ（`.markdown-preview h1`、`.markdown-preview table` 等）で整形する。
 
 #### 準拠仕様・RFC
 

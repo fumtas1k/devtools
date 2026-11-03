@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { waitForReactHydration } from './helpers';
 import { PAGES, STATIC_PAGES } from './visual-regression-pages';
 
@@ -23,6 +23,22 @@ const VIEWPORTS = [
   { name: 'desktop', width: 1280, height: 800 },
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
+
+async function prepareOutputHeader(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.goto('/tools/json-csv');
+  await waitForReactHydration(page);
+  await page.getByLabel('入力').fill('[{"id":1,"name":"example"}]');
+  await expect(page.getByLabel('変換結果')).toHaveValue('id,name\n1,example');
+
+  const header = page.getByText('出力', { exact: true }).locator('..');
+  await expect(header.getByRole('button', { name: 'CSVダウンロード' })).toBeEnabled();
+  await expect(header.getByRole('button', { name: 'コピー', exact: true })).toBeVisible();
+  return header;
+}
 
 for (const viewport of VIEWPORTS) {
   test.describe(`visual regression - ${viewport.name} (${viewport.width}x${viewport.height})`, () => {
@@ -91,5 +107,20 @@ for (const viewport of VIEWPORTS) {
         });
       });
     }
+
+    test('JSON → CSV の出力ヘッダーが baseline と一致', async ({ page }) => {
+      const header = await prepareOutputHeader(page);
+      await expect(header).toHaveScreenshot(`json-csv-output-header-${viewport.name}.png`);
+    });
+
+    test('陽性対照: 出力ヘッダーのボタンの見た目の崩れを検出する', async ({ page }) => {
+      const header = await prepareOutputHeader(page);
+      // 実際の DownloadButton の高さ・角丸・太さを崩し、同じ baseline と比較する。
+      await header.getByRole('button', { name: 'CSVダウンロード' }).evaluate((button) => {
+        button.classList.remove('min-h-9', 'rounded-button-sm', 'font-bold');
+        button.classList.add('min-h-12', 'rounded-md');
+      });
+      await expect(header).not.toHaveScreenshot(`json-csv-output-header-${viewport.name}.png`);
+    });
   });
 }

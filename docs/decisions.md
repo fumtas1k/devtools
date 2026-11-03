@@ -5665,3 +5665,91 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 - **対象外**: 入力のクリア（`ClearButton`）、ダイアログの閉じる、トップ検索のクリア（`.btn-clear`）、カメラ停止（danger の「停止」）
 - **確認が必要な削除**（一括削除・取り消せない削除）は、ラベル付きの danger `ActionButton` にする。現状は該当なし
 - [152] の `.btn-row-remove` / `.btn-remove-card` は `.btn-remove` に置き換えた。CSR の SAN 削除は、見た目も 44px にする代わりに 32px + hit area に戻した。入力欄との重なりは `touch-targets.spec.ts` で PC・スマホとも確認する
+
+---
+
+## [163] global.css を DADS の層ごとのファイルに分割する
+
+**2026-11-03 | ステータス: 採用**
+
+### 背景
+
+`src/styles/global.css` が 1,926 行に育ち、トークン・一括ルール・共通 UI・ツール固有のクラスが 1 つの `@layer components` に混ざっていた。新しいクラスをどこに書けばよいか、ファイルを見ても分からず、見出しも「PR 7a」のような経緯ベースだった。
+
+### 決断
+
+- DADS の層ごとにファイルを分ける。`global.css` は `@import` の順番・`@source not`・`@variant` だけのエントリにする
+  - `tokens.css`（`@theme` / `:root`。値の正本）→ `base.css`（レイヤー外の一括ルール）→ `components/`（`@layer components`: color / typography / form / button / toggle-chip / table / feedback / disclosure / layout / hit-area）→ `tools/`（`@layer components`: 1 つのツールでしか使わないクラス）→ `print.css` → `motion.css`
+- 分割は宣言を変えずに行い（ビルド CSS のルール集合が分割前と完全一致、全ページの computed style が一致）、直書きの値のトークン化は別コミットにした。トークンに置き換えたのは `9999px` / `0.25rem` の角丸（`.json-line` / `.json-toggle:focus-visible` は `0.25rem` から `var(--radius-sm)`（4px 固定）になり、ブラウザの既定文字サイズを変えた利用者では 1px 程度ずれうるが、DADS の角丸が px 定義なのでそれに揃えた）、`.skip-link` の白文字、JSON ツリーの構文色（`--color-syntax-string` / `number` / `boolean`）。`.qr-video-preview` と印刷の `#000`（意図的な固定色）、`--shadow-md` / `--shadow-xl`（Tailwind が shadow 値を解析する）、`.toggle-chip__token` / `__count` の rgba は置き換えない
+- **import 順は cascade に効く**。`@layer components` 内は後ろが勝つので、`.uuid-field-key` は `.caption` より後（`tools/` は `components/` の後）、`.json-toggle::after` は `hit-area.css` より後（`tools/json-formatter.css`）に置く。レイヤー外のルールは `base.css` → `print.css` → `motion.css` の順を保つ。レイヤー外 ↔ `@layer components` の移動は cascade が変わるため行わない
+- `@source not` は `global.css` に残す（パスが `global.css` 基準で、`tailwind-source-exclusions.test.ts` もそこを検査する）。同テストの fixture は `src/styles/` 全体を写してから `global.css` だけを差し替える
+- `tests/meta/styles-imports.test.ts` で、`src/styles/` の CSS がすべて `global.css` から import され、import 先が実在することを検証する（import し忘れたファイルは黙って効かない）。陽性対照つき
+- **`src/styles/README.md` は置かない**。`src/` は Tailwind の scan 対象で、md に書いた class 名が本番 CSS に混入する。置き場所の判断基準は `global.css` 冒頭のコメントに書く
+
+### 却下した選択肢
+
+- 層ごとの分割に加えて、`@layer components` のクラスをレイヤー外へ移す／その逆: cascade が変わり見た目が変わるリスクがある
+- `.githooks/pre-commit` の `src/styles/global.css` 監視を `src/styles/` 全体に広げる: `.githooks` はユーザー承認が要るため（common.md 9.1）、この決断の範囲外にした。分割後は `global.css` を触らない変更で decisions.md の更新確認が出なくなるので、#886 で扱う
+
+---
+
+## [164] 角丸と ON 時のバッジの地を DADS のトークンにそろえる
+
+**2026-11-03 | ステータス: 採用**
+
+### 背景
+
+[163] の分割後に残っていた、トークンを通さず直書きしていた角丸（`0.375rem` / `0.125rem`。後者は DADS のスケールにない）と、ON のトグルチップ内のバッジで値がずれていた半透明白（0.22 / 0.25）を整理する（#887）。
+
+### 決断
+
+- `.regex-ast-node`（`0.375rem`）と `.har-chip`（`0.125rem`）の角丸は `var(--radius-sm)`（4px）にする。DADS の小さい要素の角丸に合わせる
+- `.json-row-actions` の角丸は `var(--radius-button-sm)`（6px）にする。中に並ぶ compact の `CopyButton` が `rounded-button-sm` なので外枠も同じトークンにそろえた。#887 は「`--radius-button-sm` は sm ボタン用なので使わない」としていたが、外枠は上下右に余白がなく、右端の CopyButton と接している。4px にすると hover 時のボタンの地（6px）の外側の角に隙間が見えるため、入れ子として同じ半径にした。値は同じで見た目は変わらない
+- ON のトグルチップ内のバッジ（`.toggle-chip__token` / `__count`）の地は、`tokens.css` の `--color-bg-on-primary-badge`（`rgba(255, 255, 255, 0.22)`）に一本化する。変わるのは件数バッジの `0.25` から `0.22` だけ
+  - 0.22 を採るのは、primary `#0017c1` に白 22% を重ねた色（`#384acf` 相当）と白文字のコントラストが 6.89:1 と高い側だから（0.25 は 6.35:1）。どちらも 4.5:1 以上。hover（`#00118f`）では 8.12:1、active（`#000060`）では 10.19:1 と、さらに高くなる
+
+---
+
+## [165] モバイルのドロワーを `<dialog>` にする
+
+**2026-11-03 | ステータス: 採用**
+
+### 背景
+
+`MobileDrawer.astro` は、`role="dialog"` と `aria-modal="true"` を付けた `div` を、手書きのスクリプトで開閉していた。スクリプトは Tab の循環（フォーカストラップ）・Esc・暗幕のクリック・`document.body.style.overflow`・`toggle.style.display = 'none'` を自前で持ち、後ろの 2 つは `element.style` の書き換えで、common.md 7 章の禁止事項に当たる（#888）。
+
+### 決断
+
+- パネルを `<dialog id="mobile-drawer" aria-label="ナビゲーション">` にし、`showModal()` / `close()` で開閉する。暗幕は `::backdrop`、背面の操作不能（inert）・フォーカストラップ・Esc はブラウザに任せる（閉じた後のフォーカス復帰はトグルへの `focus()` で補う）。`#mobile-drawer-overlay` と `#mobile-drawer-backdrop` の div、`.drawer-backdrop`（`color.css`）は削除した
+- **`role="dialog"` と `aria-modal="true"` は外した**。`<dialog>` を `showModal()` で開くと暗黙に付くので、a11y ツリー上の意味は変わらない（E2E の `getByRole('dialog', { name: 'ナビゲーション' })` で確認）。`aria-label`、トグルの `aria-controls` / `aria-expanded` は残す。overlay の `aria-hidden` / `hidden` は、閉じた `dialog` が UA の `display: none` で a11y ツリーから外れるので不要になった
+- 初期フォーカスは閉じるボタンの `autofocus` で明示する。手書きの `focus()` は持たない
+- body のスクロール禁止は `body:has(.mobile-drawer[open]) { overflow: hidden; }`（`components/layout.css`）、ドロワーの無いページでトグルを隠す fallback は `toggle.hidden = true` にする（global の `[hidden] { display: none !important }` が効く。PC 幅で隠しているのは `Header.astro` の `lg:hidden`）。`element.style` は残っていない
+- スクリプトに残したのは次の 5 つだけ: トグルで `showModal()` と `aria-expanded="true"`、閉じるボタンで `close()`、`close` イベントで `aria-expanded="false"` とトグルへの `focus()`（Esc でも閉じ方を問わず同期される。`<dialog>` が戻すのは showModal 時にフォーカスがあった要素で、WebKit はクリック / タップでボタンにフォーカスを移さず、Safari で閉じた後に body へ戻るため明示する）、暗幕のクリックで閉じる、`(min-width: 64rem)` になったら閉じる
+  - **暗幕のクリックは残した**。`<dialog>` に既定の「外側クリックで閉じる」は無い（`closedby="any"` は対応ブラウザが限られる）。`::backdrop` のクリックは `dialog` 要素自身に届くが、パネルの padding のクリックも同じく `dialog` 自身に届くので、`pointerdown` の時点で「target が dialog 自身で座標が矩形の外」だったかを記録し、click でも同じ条件を満たしたときだけ `close()` する。パネル内で押して暗幕の上で離した click は共通祖先の dialog に暗幕側の座標で届くのと、pointerdown を伴わない合成 click を、これで閉じないようにする
+  - **PC 幅で閉じる処理は残した**。パネルは `lg:hidden` なので、開いたまま PC 幅に広げると、見えないままモーダルとして残り、背面が inert のままページが操作できなくなる。`matchMedia` の `change` で `close()` する
+- アニメーション（`@starting-style` 等）は足さない。移行前に無かったので、見た目は変えない。変更前後のスクリーンショット（スマホの開閉・PC の閉）の差は、パネルの左の影の裾の最大 2/255 だけだった
+- テストは `tests/e2e/mobile-drawer.spec.ts` を書き換えた。手書きトラップの代わりに、Tab / Shift+Tab を要素数より多く押してもフォーカスがダイアログの外に移らないこと（陽性対照として、閉じている間は外に移ることも確認）、閉じた後にトグルへフォーカスが戻ること、開いている間の body の `overflow: hidden`、開いたまま PC 幅にすると閉じることを確かめる
+
+### 却下した選択肢
+
+- **Invoker Commands（`command="show-modal"` / `commandfor`）**: JS が要らなくなるが、対応ブラウザの方針（#894）が未決。fallback の分岐を持つと、属性とスクリプトの二重構造になる。方針が決まったら、`showModal()` を呼ぶ小さなスクリプトを置き換える形で再検討する
+- `::backdrop` を使わず `dialog` 内に暗幕の div を残す: `dialog` の外側は `::backdrop` が担うので、div は重複になる
+
+### 結果・トレードオフ
+
+- `::backdrop` は originating element のカスタムプロパティを継承する。`var(--color-overlay)` が解決されるのは、継承に対応した比較的新しいブラウザ。未対応のブラウザでは暗幕が透明になる（操作は inert のまま）
+- UA 既定の `dialog:modal`（中央寄せの `margin`、`border`、`max-width` / `max-height`）は `.mobile-drawer` で打ち消している。`@layer components` でも author 側のスタイルは UA より優先される
+
+---
+
+## [166] ToggleGroup の列数を動的スタイルシートなしの CSS にする
+
+**2026-11-03 | ステータス: 採用**
+
+`ToggleGroup`（`layout='grid'`）の列数は常に選択肢の数で、全ボタンを等幅で 1 行に並べる。このため `.toggle-grid` を `grid-auto-flow: column` + `grid-auto-columns: minmax(0, 1fr)` にすれば足り、`useDynamicStyleSheet` で `--toggle-cols` を注入する必要がなくなった。hydration 後の見た目は変わらない（全ページの computed style とボタンの矩形を変更前後で比較して確認）。変更前は `--toggle-cols` を `useEffect` で注入していたため、SSR から hydration までの間（と hydration に失敗したとき）は fallback の 2 列が効き、3 個以上の選択肢が折り返していた。変更後は SSR の時点から 1 行に並ぶので、この初期描画のずれもなくなった。`layout='wrap'` は変更なし。（#889）
+
+[067] / PR 9 の「ToggleGroup も `useDynamicStyleSheet` を使う」記述は、この時点の経緯として残す。現在 `useDynamicStyleSheet` を使うのは `ResultTable` などで、`ToggleGroup` は使わない。
+
+## MCP 設定リスクインスペクタの初版
+
+設定情報を外部送信せず確認できるよう、`mcpServers` JSONの一部を有界に読み、静的な確認事項とマスク済み情報を提示する。接続や実行はせず、検出なしを安全性の認定と扱わない。対応クライアントの追加は別途検討する。

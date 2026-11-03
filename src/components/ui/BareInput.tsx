@@ -21,7 +21,7 @@ interface Props extends Omit<
  * - `InputField` はラベル前提のため、ラベル不要のグリッド内 input はこちらを使う
  * - `outline: none` を component base から外し、global CSS の `:focus-visible` に委ねる（a11y 向上）
  *
- * style: global.css `@layer components` の `.field-control`（DADS の Input。docs/decisions.md [143]）。
+ * style: `src/styles/components/form.css`（`@layer components`） の `.field-control`（DADS の Input。docs/decisions.md [143]）。
  * エラー時は `aria-invalid="true"` で枠が error 色になる。
  */
 export function BareInput({

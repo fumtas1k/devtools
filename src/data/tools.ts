@@ -12,6 +12,13 @@ export interface Tool {
 // ソース上は追加順のまま（可読性維持）。表示順は末尾で yomi 五十音順にソートして export する
 const toolEntries: Tool[] = [
   {
+    slug: 'mcp-config-inspector',
+    name: 'MCP 設定リスクインスペクタ',
+    description: 'MCP設定JSONの起動方法と接続先をブラウザ内で確認します',
+    category: 'convert',
+    yomi: 'えむしーぴーせっていりすくいんすぺくた',
+  },
+  {
     slug: 'url-encode',
     name: 'URLエンコード/デコード',
     description: 'テキストとURLエンコード形式を相互変換します',

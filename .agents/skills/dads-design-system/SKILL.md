@@ -9,12 +9,12 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 - **正本**: Claude Design のデザインシステム「デジタル庁デザインシステム DADS」<https://claude.ai/artifact/EtVbTVMBx7yd6FJ1SAwrAh>（DADS 公式の `digital-go-jp/design-tokens` と `design-system-example-components-react` からの転記）。値に迷ったら公式 `figma/tokens.json` を確認する。
 - **移行状況**: 完了（Phase 0〜7、`docs/decisions.md [134]`〜[148]）。色・フォーカスリング・タイポグラフィ・角丸と影・コンポーネント・レイアウトは DADS に合っている。経緯は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md`。
-- **値の正本は `src/styles/global.css`**（`@theme` / `:root`）。Blue の 13 段は `@theme` に置いてある。他の色相やグレーは、使う段だけを semantic token（utility が要るものは `@theme`、それ以外は `:root`）の値として DS か公式 `figma/tokens.json` から転記する。コンポーネントの見た目仕様は `references/components.md`。
+- **値の正本は `src/styles/tokens.css`**（`@theme` / `:root`）。Blue の 13 段は `@theme` に置いてある。他の色相やグレーは、使う段だけを semantic token（utility が要るものは `@theme`、それ以外は `:root`）の値として DS か公式 `figma/tokens.json` から転記する。コンポーネントの見た目仕様は `references/components.md`。
 
 ### 新しく書くコードのルール
 
 - `src/components/ui/` の既存コンポーネントと、既存の semantic token / 意味クラス（2 章の「対応先」列）を使う。DADS の hex の直書き、`rounded-[12px]` 等の任意値、独自のフォーカスリングや hover 下線は使わない
-- 必要な意味クラスが無ければ `global.css` に追加する（common.md 7 章）
+- 必要な意味クラスが無ければ `src/styles/components/`（ツール固有なら `src/styles/tools/`）に追加する（置き場所の判断基準は `src/styles/global.css` 冒頭のコメント、common.md 7 章）
 
 ## 1. 原則
 
@@ -60,7 +60,7 @@ description: このプロジェクト（devtools）のフロントエンド UI �
 
 DADS の象徴。全インタラクティブ要素で同じ見た目にし、消さない（`outline-none` を付けない）。黒 4px の outline（offset 2px）+ `yellow-300` `#ffd43d` の 2px ring（box-shadow）。
 
-本リポジトリでは `global.css` の `:where(...):focus-visible` で一括適用している（JS ハンドラ不要）。トークンは outline 用の `--focus-ring`（`4px solid` 黒）と、黄リング用の `--focus-ring-shadow`（`0 0 0 2px` yellow-300）。
+本リポジトリでは `src/styles/base.css` の `:where(...):focus-visible` で一括適用している（JS ハンドラ不要）。トークンは outline 用の `--focus-ring`（`4px solid` 黒）と、黄リング用の `--focus-ring-shadow`（`0 0 0 2px` yellow-300）。
 
 - コンポーネント側で `outline` / `box-shadow` を独自に指定しない。一括ルールは `@layer` の外にあり、focus 中は `@layer` 内（components / utilities）の影や outline の指定をすべて上書きする。focus 中も影を残したい要素は、一括ルールの直後（レイヤー外）で `box-shadow: var(--focus-ring-shadow), <自前の影>` と重ねる（例: `.btn-toggle[aria-pressed='true']`）
 - 親の `overflow`（横スクロール領域・`overflow-hidden` の箱）で外側の表示が切れる要素、一括対象外の要素（キーボードでフォーカスできるスクロール領域の div 等）には `focus-inset` クラスを付けて内側に描く（縁から黒 4px → 黄 2px）

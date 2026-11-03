@@ -1,0 +1,103 @@
+/* 色の意味クラス（text-* / bg-* / border-* / alert-* / footer-bar 等）。
+   @theme に同名トークンがあるもの（text-error 等）は utilities の自動 utility が勝つ。 */
+
+@layer components {
+  /* === @theme に無い色トークンの意味クラス（Tailwind の自動 utility が無い） === */
+  .text-default {
+    color: var(--color-text);
+  }
+  .text-muted {
+    color: var(--color-muted);
+  }
+  .bg-default {
+    background: var(--color-bg);
+  }
+  .bg-subtle {
+    background: var(--color-bg-subtle);
+  }
+  .bg-active {
+    background: var(--color-bg-active);
+  }
+  .border-default {
+    border-color: var(--color-border);
+  }
+  .border-input {
+    border-color: var(--color-border-input);
+  }
+
+  /* divide-y の境界線色（Tailwind v4 は divide-{color} を auto-generate しないため手書き定義）*/
+  .divide-subtle > :not(:last-child) {
+    border-color: var(--color-border);
+  }
+
+  /* === 自動 utility の名前が扱いにくい色の別名（error / success の tint 地） === */
+  .bg-error-tint {
+    background: var(--color-error-bg);
+  }
+  .bg-success-tint {
+    background: var(--color-success-bg);
+  }
+
+  /* === 表面の背景色（InputField の readOnly 等） === */
+  .bg-surface {
+    background: var(--color-bg-surface);
+  }
+
+  /* 色 token の text utility */
+  .text-error {
+    color: var(--color-error);
+  }
+  .text-error-text {
+    color: var(--color-error-text);
+  }
+  .text-success {
+    color: var(--color-success);
+  }
+
+  /* Validation alert box (VerifyTab 検証結果) */
+  .alert-success {
+    background: var(--color-success-bg);
+    border-color: var(--color-success);
+  }
+  .alert-error {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+  }
+
+  /* Checkbox accent (link color) */
+  .accent-link {
+    accent-color: var(--color-link);
+  }
+
+  /* Warning semantic palette (expBadge no-exp 用) */
+  .text-warning {
+    color: var(--color-warning);
+  }
+  .bg-warning-tint {
+    background: var(--color-warning-bg);
+  }
+
+  /* Icon button color (44x44 SVG ボタン) */
+  .text-icon {
+    color: var(--color-text);
+  }
+
+  /* CategoryBadge: badge background (`--color-badge-bg` は `:root` 定義、auto-utility 不在のため意味クラス維持) */
+  .bg-badge {
+    background: var(--color-badge-bg);
+  }
+
+  /* Footer container & meta text (Footer 専用、neutral 系 primitive 色を意味クラス化) */
+  .footer-bar {
+    background: var(--color-footer-bg);
+    color: var(--color-footer-text);
+  }
+  .text-footer-meta {
+    color: var(--color-footer-meta);
+  }
+
+  /* トップページ hero の下罫線（blue-100） */
+  .border-hero {
+    border-color: var(--color-blue-100);
+  }
+}

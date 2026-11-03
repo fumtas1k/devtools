@@ -1,0 +1,32 @@
+/* UuidV7Generator 専用。.uuid-field-key は components の .caption より後に置く（font-size を上書きする）。 */
+
+@layer components {
+  /* UuidV7Generator: 5 field colors (UUID hex parts) */
+  .uuid-field-ts {
+    color: var(--color-primary);
+  }
+  .uuid-field-ver {
+    color: var(--color-uuid-ver);
+  }
+  .uuid-field-rand-a {
+    color: var(--color-uuid-rand-a);
+  }
+  .uuid-field-var {
+    color: var(--color-uuid-var);
+  }
+  .uuid-field-rand-b {
+    color: var(--color-uuid-rand-b);
+  }
+
+  /* UuidV7Generator: field key label typography
+     `.caption` (font-size 0.875rem) と組み合わせて使い、font-size のみ override する。
+     consumer 側は `caption text-muted uuid-field-key` で適用。
+     `.caption` の後に定義することで source 順位で勝つ (specificity 同等のため)。 */
+  .uuid-field-key {
+    font-size: 0.875rem;
+  }
+  /* 色は親の .text-muted を継承する（opacity で薄めると gray-50 上で 4.5:1 を割るため使わない） */
+  .uuid-field-bits {
+    font-size: 0.875rem;
+  }
+}

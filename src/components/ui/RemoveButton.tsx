@@ -17,7 +17,7 @@ interface Props {
  * - タップ領域は `.btn-remove::after` で 44×44px に広げる（[152]）
  * - クリア・ダイアログの閉じる・検索クリア・カメラ停止には使わない
  *
- * style: global.css `@layer components` の `.btn-remove` を参照。
+ * style: `src/styles/components/button.css`（`@layer components`） の `.btn-remove` を参照。
  */
 export function RemoveButton({ label, onClick, disabled, className = '' }: Props) {
   return (

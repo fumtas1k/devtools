@@ -288,7 +288,7 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       expect(inspection?.y).toBe('21');
       expect(inspection?.textAnchor).toBe('middle');
       expect(inspection?.fontSize).toBe('18');
-      // <text> の塗り色は `.gs1-svg-container` の color から継承 (global.css)
+      // <text> の塗り色は `.gs1-svg-container` の color から継承 (src/styles/tools/gs1-databar.css)
       expect(inspection?.fill).toBe('currentColor');
     });
   });

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
-// DADS の Table（docs/decisions.md [142]）。色は global.css のトークン値を rgb で書く
+// DADS の Table（docs/decisions.md [142]）。色は src/styles/tokens.css のトークン値を rgb で書く
 const GRAY_50 = 'rgb(242, 242, 242)'; // --color-bg-surface（thead の地）
 const WHITE = 'rgb(255, 255, 255)'; // --color-bg（縞なし）
 const BLUE_50 = 'rgb(232, 241, 254)'; // --color-bg-active（行 hover）

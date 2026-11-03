@@ -1,0 +1,25 @@
+/* details / summary の開閉まわり（summary-no-marker / hover-bg-subtle）。 */
+
+@layer components {
+  /* === <details> / <summary> の開閉マーカーを消す（Gs1Databar / JanCode / CertDecoder） === */
+  .summary-no-marker {
+    list-style: none;
+  }
+  .summary-no-marker::-webkit-details-marker {
+    display: none;
+  }
+
+  /* === hover 用の専用クラス ===
+     Tailwind v4 で `@layer components` 内で手書き定義した class は
+     variant (`hover:`, `focus:` 等) に **対応しない** ため、
+     `hover:bg-{custom}` は CSS rule が生成されず silent regression する。
+     `.btn-clear` (PR 1) と同じパターンで専用 hover class を定義する。 */
+
+  /* <summary> 共通 (hover で bg-subtle): Gs1Databar / JanCode / CertDecoder */
+  .hover-bg-subtle {
+    transition: background-color 0.15s;
+  }
+  .hover-bg-subtle:hover {
+    background: var(--color-bg-subtle);
+  }
+}
