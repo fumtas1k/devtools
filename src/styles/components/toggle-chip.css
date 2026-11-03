@@ -87,11 +87,11 @@
     line-height: 1;
   }
   .toggle-chip[aria-pressed='true'] .toggle-chip__token {
-    background: rgba(255, 255, 255, 0.22);
+    background: var(--color-bg-on-primary-badge);
     color: var(--color-text-on-primary);
   }
 
-  /* 件数バッジ（マスク用丸バッジ）。OFF は薄グレー、ON は半透明白。文字は 14px。 */
+  /* 件数バッジ（マスク用丸バッジ）。OFF は薄グレー、ON は半透明白（文字トークンと同じ地）。文字は 14px。 */
   .toggle-chip__count {
     display: inline-flex;
     align-items: center;
@@ -108,7 +108,7 @@
     line-height: 1;
   }
   .toggle-chip[aria-pressed='true'] .toggle-chip__count {
-    background: rgba(255, 255, 255, 0.25);
+    background: var(--color-bg-on-primary-badge);
     color: var(--color-text-on-primary);
   }
   /* disabled の塗りの上では、バッジは白地のままだと浮くので透明にして文字色を引き継ぐ */
