@@ -5,7 +5,7 @@
  *
  * CSP 対応: style-src 'unsafe-inline' 撤去済みのため inline style は使用不可。
  * セルのプレビュー色（ユーザー入力の任意色）は useDynamicStyleSheet で
- * per-instance scoped な CSS ルール（.cell-fg / .cell-bg への color / background）を
+ * per-instance scoped な CSS ルール（色ごとの color / background）を
  * 注入して適用する。
  * 淡色化フィルタは .cell-dimmed class（opacity: 0.3）で表現する。
  */
@@ -52,30 +52,6 @@ function toHex(input: string): string {
   return `#${h(rgb.r)}${h(rgb.g)}${h(rgb.b)}`;
 }
 
-/**
- * マトリクスのセルプレビュー色を CSS 変数として注入するコンポーネント。
- * CSP 制約により inline style は使用できないため、useDynamicStyleSheet で
- * per-instance scoped CSS rule を生成し .cell-fg / .cell-bg class に適用する。
- */
-interface CellPreviewProps {
-  fgCss: string;
-  bgCss: string;
-}
-
-function CellPreview({ fgCss, bgCss }: CellPreviewProps) {
-  const dynClass = useDynamicStyleSheet(
-    (cls) => `.${cls} .cell-fg { color: ${fgCss}; }` + `.${cls} .cell-bg { background: ${bgCss}; }`
-  );
-
-  return (
-    <div className={`rounded p-2 cell-preview-wrap ${dynClass}`} data-cell-preview>
-      <span className="cell-fg">
-        <span className="cell-bg rounded px-1">サンプル</span>
-      </span>
-    </div>
-  );
-}
-
 export function ContrastMatrixTool() {
   const [rows, setRows] = useState<ColorRow[]>(INITIAL_ROWS);
   const [filter, setFilter] = useState<FilterMode>('all');
@@ -98,9 +74,18 @@ export function ContrastMatrixTool() {
   );
 
   const matrix = useMemo(() => buildMatrix(validColors), [validColors]);
+  // セレクタは内部の連番、色は検証済み RGB から生成する。
+  const dynClass = useDynamicStyleSheet((cls) =>
+    validColors
+      .map(({ rgb }, index) => {
+        const color = rgbToCss(rgb);
+        return `.${cls} .cell-fg-${index} { color: ${color}; }\n.${cls} .cell-bg-${index} { background: ${color}; }`;
+      })
+      .join('\n')
+  );
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${dynClass}`}>
       <section className="space-y-3">
         <h2 className="body-emphasis text-default">色の一覧</h2>
         {/* 列見出しは行ごとに繰り返さず、独立したヘッダ行に一度だけ表示する。
@@ -211,7 +196,11 @@ export function ContrastMatrixTool() {
                         key={bg.id}
                         className={`p-2 align-top border border-input${dimmed ? ' cell-dimmed' : ''}`}
                       >
-                        <CellPreview fgCss={rgbToCss(fg.rgb)} bgCss={rgbToCss(bg.rgb)} />
+                        <div className="rounded p-2 cell-preview-wrap" data-cell-preview>
+                          <span className={`cell-fg-${rowIdx}`}>
+                            <span className={`cell-bg-${colIdx} rounded px-1`}>サンプル</span>
+                          </span>
+                        </div>
                         <div className="caption font-mono mt-1">{cell.ratio.toFixed(2)}:1</div>
                         <div className="mt-1 flex flex-wrap gap-1">
                           <StatusBadge tone={cell.levels.aaNormal ? 'success' : 'error'}>
