@@ -58,6 +58,17 @@ const ALL_OFF = {
 };
 
 describe('sanitizeHar', () => {
+  it('#908: 本文の代入構造を保ち、専用キーに部分一致する秘密の全体を消す', () => {
+    const source = makeHar();
+    source.log.entries[0]!.response.content = {
+      mimeType: 'text/plain',
+      text: 'aws_access_key=Qz7vWx2RtYpL-AKIAIOSFODNN7EXAMPLE-pQ9sKd4FhB8nJc6',
+    };
+    const { har } = sanitizeHar(source, ALL_ON);
+    expect(har.log.entries[0]!.response.content.text).toBe('aws_access_key=[REDACTED:API_KEY_1]');
+    expect(sanitizeHar(har, ALL_ON).har).toEqual(har);
+  });
+
   it('陽性対照: Cookie 値が redact される', () => {
     const { har } = sanitizeHar(makeHar(), ALL_ON);
     const e = har.log.entries[0]!;
