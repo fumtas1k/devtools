@@ -34,8 +34,8 @@ const toolEntries: Tool[] = [
   },
   {
     slug: 'uuid-v7',
-    name: 'UUID v7 生成',
-    description: 'UUID v7を一括生成します。タイムスタンプ・フィールド分解表示付き',
+    name: 'UUID 生成',
+    description: 'UUID v4 / v7を一括生成します。v7はタイムスタンプ・フィールド分解表示付き',
     category: 'generate',
     yomi: 'ゆーゆーあいでぃーせいせい',
   },

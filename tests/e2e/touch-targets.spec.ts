@@ -32,8 +32,7 @@ const CATEGORIES = [
   'btn-copy',
   'btn-action',
   'btn-link-plain',
-  'btn-row-remove',
-  'btn-remove-card',
+  'btn-remove',
   'json-toggle',
   'footer-link',
   'hit-area',
@@ -343,15 +342,6 @@ test.describe('見た目の寸法も 44px にした箇所', () => {
     expect((await size(label)).height).toBeGreaterThanOrEqual(44);
   });
 
-  test('CSR ジェネレータの SAN 削除は 44x44px 以上', async ({ page }) => {
-    await page.goto('/tools/csr-generator');
-    await waitForReactHydration(page);
-    await click(page, '＋ SAN を追加');
-    const remove = await size(page.getByRole('button', { name: 'SAN 1 を削除' }));
-    expect(remove.width).toBeGreaterThanOrEqual(44);
-    expect(remove.height).toBeGreaterThanOrEqual(44);
-  });
-
   test('ToggleGroup sm のボタンは幅 44px 以上（隣のボタンに食い込まない）', async ({ page }) => {
     await page.goto('/tools/json-formatter');
     await waitForReactHydration(page);
@@ -396,4 +386,86 @@ test.describe('JSON ツリーの行末コピー（hover で現れる）', () => 
     expect(await hitAt(p.x - 5)).toMatch(/^パスをコピー/);
     expect(await hitAt(v.x + v.width + 5)).toMatch(/^値をコピー/);
   });
+});
+
+/**
+ * RemoveButton（削除の ×、[162]）は見た目 32×32px で、タップ領域だけを ::after で 44×44px に広げる。
+ * 同じ行の SAN 入力欄に、そのタップ領域が食い込まないこと（PC・スマホ）を確認する。
+ *
+ * 陽性対照（別 test）: ::after を 80px に広げると、同じ検査が「重なる」と判定する。
+ * 見た目の寸法のテストは、.btn-remove の width / height を変えると fail する。
+ */
+test.describe('RemoveButton のタップ領域（CSR ジェネレータの SAN 削除）', () => {
+  const measure = async (page: Page) => {
+    const remove = page.getByRole('button', { name: 'SAN 1 を削除' });
+    const input = page.getByRole('textbox', { name: 'SAN 1', exact: true });
+    const buttonBox = await remove.boundingBox();
+    const inputBox = await input.boundingBox();
+    const after = await remove.evaluate((el) => {
+      const s = getComputedStyle(el, '::after');
+      return { width: parseFloat(s.width), height: parseFloat(s.height) };
+    });
+    expect(buttonBox).not.toBeNull();
+    expect(inputBox).not.toBeNull();
+    // ::after は中心から広がる
+    const cx = buttonBox!.x + buttonBox!.width / 2;
+    const cy = buttonBox!.y + buttonBox!.height / 2;
+    const hit = {
+      left: cx - after.width / 2,
+      right: cx + after.width / 2,
+      top: cy - after.height / 2,
+      bottom: cy + after.height / 2,
+    };
+    const overlaps =
+      hit.left < inputBox!.x + inputBox!.width &&
+      hit.right > inputBox!.x &&
+      hit.top < inputBox!.y + inputBox!.height &&
+      hit.bottom > inputBox!.y;
+    return { buttonBox: buttonBox!, after, overlaps };
+  };
+
+  const open = async (page: Page) => {
+    await page.goto('/tools/csr-generator');
+    await waitForReactHydration(page);
+    await click(page, '＋ SAN を追加');
+    await expect(page.getByRole('button', { name: 'SAN 1 を削除' })).toBeVisible();
+  };
+
+  for (const viewport of [
+    { name: 'PC', width: 1280, height: 800 },
+    { name: 'スマホ', width: 390, height: 844 },
+  ]) {
+    test.describe(viewport.name, () => {
+      test.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+      test('見た目は 32×32px で、タップ領域は 44×44px 以上、SAN 入力欄に重ならない', async ({
+        page,
+      }) => {
+        await open(page);
+        const { buttonBox, after, overlaps } = await measure(page);
+        expect(buttonBox.width).toBeCloseTo(32, 0);
+        expect(buttonBox.height).toBeCloseTo(32, 0);
+        expect(after.width).toBeGreaterThanOrEqual(44);
+        expect(after.height).toBeGreaterThanOrEqual(44);
+        expect(overlaps).toBe(false);
+      });
+
+      test('陽性対照: ::after を 80px に広げると SAN 入力欄との重なりを検出する', async ({
+        browser,
+      }) => {
+        const context = await browser.newContext({
+          viewport: { width: viewport.width, height: viewport.height },
+          // 本番 CSP は inline style を拒否するため、検査用に注入する style だけ通す
+          bypassCSP: true,
+        });
+        const page = await context.newPage();
+        await open(page);
+        await page.addStyleTag({
+          content: '.btn-remove::after { width: 80px !important; height: 80px !important; }',
+        });
+        expect((await measure(page)).overlaps).toBe(true);
+        await context.close();
+      });
+    });
+  }
 });

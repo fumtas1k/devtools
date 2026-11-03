@@ -12,11 +12,13 @@ const tool = tools.find((t) => t.slug === 'uuid-v7')!;
 
   <ToolInfoSection>
     <p class="tool-info-body">
-      UUID v7 は RFC 9562 で標準化された、時刻順ソートが可能なバージョンの UUID です。 先頭 48
-      ビットにミリ秒精度の UNIX タイムスタンプを埋め込むため、データベースのインデックス効率が高く、
-      UUID v4 の代替として注目されています。
+      UUID v4 と UUID v7 を選択して生成できます。UUID v4
+      はランダムな値を使い、タイムスタンプを含みません。 UUID v7 は RFC 9562
+      で標準化された、時刻順ソートが可能なバージョンの UUID です。 先頭 48 ビットにミリ秒精度の UNIX
+      タイムスタンプを埋め込むため、データベースのインデックス効率が高く、 UUID v4
+      の代替として注目されています。
     </p>
-    <h3 class="mb-2 mt-4 tool-info-heading">フィールド構成</h3>
+    <h3 class="mb-2 mt-4 tool-info-heading">UUID v7 のフィールド構成</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li><strong>unix_ts_ms</strong> (48bit): ミリ秒 UNIX タイムスタンプ</li>
       <li><strong>ver</strong> (4bit): バージョン番号（常に <code>7</code>）</li>

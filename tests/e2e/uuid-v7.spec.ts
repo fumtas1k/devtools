@@ -21,6 +21,46 @@ test.describe('UUID v7 生成（production CSP 適用）', () => {
     });
   });
 
+  test('v4 を選択して一括生成し、v7 に戻せる（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+      const versions = page.getByRole('group', { name: 'UUID バージョン' });
+      const v7 = versions.getByRole('button', { name: 'UUID v7' });
+      const v4 = versions.getByRole('button', { name: 'UUID v4' });
+      await expect(v7).toHaveAttribute('aria-pressed', 'true');
+      await page.getByRole('button', { name: '生成' }).click();
+      await v4.focus();
+      await page.keyboard.press('Enter');
+      await expect(v4).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('table')).toHaveCount(0);
+      await page.getByLabel('生成数').fill('5');
+      await page.getByRole('button', { name: '生成' }).click();
+      const rows = page.locator('table tbody tr');
+      await expect(rows).toHaveCount(5);
+      await expect(rows.first()).toHaveAttribute('data-selected', 'false');
+      const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const ids = await rows.locator('td:nth-child(2)').allTextContents();
+      expect(ids.every((id) => uuidV4.test(id))).toBe(true);
+      expect(new Set(ids).size).toBe(5);
+      await expect(page.getByRole('columnheader', { name: 'UUID v4' })).toBeVisible();
+      await expect(page.getByText('タイムスタンプ（ISO 8601）')).toHaveCount(0);
+      await expect(page.getByText('フィールド分解', { exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: '"..."' }).click();
+      await rows.first().getByRole('button', { name: 'コピー' }).click();
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`"${ids[0]}"`);
+      await page.getByRole('button', { name: 'すべてコピー' }).click();
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toBe(ids.map((id, i) => `"${id}"${i < ids.length - 1 ? ',' : ''}`).join('\n'));
+      await v7.click();
+      await expect(page.locator('table')).toHaveCount(0);
+      await page.getByRole('button', { name: '生成' }).click();
+      await expect(page.locator('table tbody tr').first().locator('td').nth(1)).toHaveText(
+        /^"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"$/i
+      );
+      await expect(page.getByText('unix_ts_ms', { exact: true })).toBeVisible();
+    });
+  });
+
   test('UUIDを複数件一括生成できる（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       const countInput = page.getByLabel('生成数');

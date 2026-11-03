@@ -24,7 +24,9 @@ git config core.hooksPath .githooks
 
 ステージ済みのフォーマット対象拡張子（`.js / .ts / .tsx / .jsx / .css / .md / .json / .astro`）を Prettier で整形し、再ステージします。lint-staged が内部で未ステージ変更を一時退避するため、partial-commit（同一ファイル内の staged 変更と unstaged 変更を分けてコミットする運用）を壊しません。
 
-対象拡張子と整形コマンドは `package.json` の `"lint-staged"` 設定で管理しています。
+`.tsx / .jsx` は整形前に ESLint を実行し、エラーまたは警告があればコミットを中止します。ESLint のルール対象は `eslint.config.js` で管理しています。
+
+対象拡張子とコマンドは `package.json` の `"lint-staged"` 設定で管理しています。
 
 #### 2. ドキュメント更新チェック
 

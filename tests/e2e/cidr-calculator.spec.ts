@@ -156,6 +156,18 @@ for (const [name, viewport, desktop] of [
 }
 
 test.describe('CIDR/サブネット計算機（production CSP 適用）', () => {
+  test('計算モード: 省略なしの IPv4 埋め込み IPv6 を計算する（回帰の陽性対照）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/cidr-calculator', async (page) => {
+      await page.getByLabel('CIDR', { exact: true }).fill('2001:db8:0:0:0:0:192.168.1.1/128');
+      const result = page.getByRole('region', { name: '計算結果' });
+      await expect(result).toBeVisible();
+      await expect(result).toContainText('2001:db8::c0a8:101/128');
+      await expect(page.getByRole('alert')).toHaveCount(0);
+    });
+  });
+
   test('計算モード: 有効な CIDR を入力するとネットワーク情報が表示される（CSP 違反なし）', async ({
     browser,
   }) => {

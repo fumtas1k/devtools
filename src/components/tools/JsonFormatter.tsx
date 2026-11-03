@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
@@ -18,6 +18,7 @@ import {
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { downloadText } from '@/utils/download';
 import { useCodecWithMeta } from '@/hooks/useCodec';
+import { useDynamicStyleSheet } from '@/hooks/useDynamicStyleSheet';
 
 type Mode = 'format' | 'minify';
 type View = 'text' | 'tree' | 'mask' | 'type';
@@ -57,6 +58,34 @@ export function JsonFormatter() {
   const [indent, setIndent] = useState<IndentStyle>('2');
   const [mode, setMode] = useState<Mode>('format');
   const [view, setView] = useState<View>('text');
+  const inputWrapperRef = useRef<HTMLDivElement>(null);
+  const [inputHeight, setInputHeight] = useState<number | null>(null);
+  const treeSizeClass = useDynamicStyleSheet((className) =>
+    inputHeight === null
+      ? ''
+      : `@media (min-width: 48rem) { .${className} .json-tree-box { height: ${inputHeight}px; } }`
+  );
+
+  useEffect(() => {
+    if (view !== 'tree') return;
+    const textarea = inputWrapperRef.current?.querySelector('textarea');
+    if (!textarea) return;
+    const desktop = window.matchMedia('(min-width: 48rem)');
+    const measure = () => {
+      if (desktop.matches) {
+        const height = textarea.getBoundingClientRect().height;
+        if (height > 0) setInputHeight(height);
+      }
+    };
+    measure();
+    desktop.addEventListener('change', measure);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(textarea, { box: 'border-box' });
+    return () => {
+      desktop.removeEventListener('change', measure);
+      observer?.disconnect();
+    };
+  }, [view]);
 
   // ツリーの全展開/全折りたたみ。key を変えて再マウントすることで全行の
   // 開閉状態を defaultOpen にリセットする。
@@ -206,7 +235,7 @@ export function JsonFormatter() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${treeSizeClass}`}>
       {/* オプション行（上端配置。表示切替をここに置きヘッダ高さを固定する） */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex items-center gap-2">
@@ -277,7 +306,7 @@ export function JsonFormatter() {
 
       {/* 入力・結果（PC 横並び・モバイル縦並び） */}
       <div className="flex flex-col md:flex-row gap-4 items-start">
-        <div className="w-full md:flex-1 min-w-0">
+        <div ref={inputWrapperRef} className="w-full md:flex-1 min-w-0">
           <InputField
             id="json-formatter-input"
             label="入力"

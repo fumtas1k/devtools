@@ -98,6 +98,25 @@ test.describe('QRチケット（production CSP 適用）', () => {
   // QR生成フロー
   // ──────────────────────────────────────────────────────────
 
+  test('チケット入力のマークアップは QR SVG に注入されない', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/qr-ticket', async (page) => {
+      const payload = `<svg onload="alert(1)"><script>alert(1)</script>&'"`;
+      await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
+      await expect(page.getByLabel('秘密鍵（主催者が保管）')).not.toHaveValue('');
+      await page.getByLabel('イベントID').fill('event');
+      await page.getByLabel('有効期限').fill('2099-12-31T23:59');
+      await page.getByLabel('参加者名 1').fill(payload);
+      await page.getByRole('button', { name: '一括生成' }).click();
+
+      const container = page.getByTestId('qr-code-container').first();
+      await expect(container.locator('svg')).toHaveCount(1);
+      await expect(container.locator('svg > rect')).toHaveCount(1);
+      await expect(container.locator('svg > path')).toHaveCount(1);
+      await expect(container.locator('script, [onload], title')).toHaveCount(0);
+      await expect(page.getByText(payload, { exact: true })).toBeVisible();
+    });
+  });
+
   test('鍵生成→イベント情報入力→一括生成でQRコードグリッドが表示される（CSP 違反なし）', async ({
     browser,
   }) => {

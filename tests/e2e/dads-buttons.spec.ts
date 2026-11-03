@@ -3,8 +3,8 @@ import { waitForReactHydration } from './helpers';
 
 /**
  * DADS Button の見た目（docs/decisions.md [140]）。
- * solid-fill / outline / danger / text と、FileInputButton・CopyButton の
- * 通常・hover・:focus-visible・disabled の computed style を検証する。
+ * solid-fill / outline / danger（カメラ停止）/ text と、FileInputButton・CopyButton・
+ * RemoveButton（削除の ×）の通常・hover・:focus-visible・disabled の computed style を検証する。
  *
  * 陽性対照: Phase 5 以前の実装（primary の枠が 1px solid、outline が灰色地、hover に下線なし、
  * disabled が bg-subtle + muted 文字、compact が 32px）では、ラベル行の高さのテストを除く各テストが
@@ -21,6 +21,8 @@ const DISABLED = 'rgb(179, 179, 179)'; // solid-gray-300
 const TEXT_ON_DISABLED = 'rgb(242, 242, 242)'; // solid-gray-50
 const ERROR_BG = 'rgb(253, 238, 238)'; // red-50
 const ERROR_TEXT = 'rgb(206, 0, 0)'; // error-2
+const MUTED = 'rgb(77, 77, 77)'; // solid-gray-700
+const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 
 /** キーボード操作でフォーカスを当てる（:focus-visible を確実に成立させる） */
 async function focusByKeyboard(page: Page, target: Locator): Promise<void> {
@@ -103,7 +105,7 @@ test.describe('DADS Button の見た目', () => {
     });
   });
 
-  test.describe('dsn-builder（outline / danger の sm）', () => {
+  test.describe('dsn-builder（outline の sm）', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/tools/dsn-builder');
       await waitForReactHydration(page);
@@ -133,15 +135,6 @@ test.describe('DADS Button の見た目', () => {
       await expect(btn).toHaveCSS('text-decoration-line', 'underline');
     });
 
-    test('danger は白地で、hover で red-50 の地・error-2 の文字 + 下線', async ({ page }) => {
-      const btn = page.getByRole('button', { name: 'パラメータ 1 を削除' });
-      await expect(btn).toHaveCSS('background-color', WHITE);
-      await btn.hover();
-      await expect(btn).toHaveCSS('background-color', ERROR_BG);
-      await expect(btn).toHaveCSS('color', ERROR_TEXT);
-      await expect(btn).toHaveCSS('text-decoration-line', 'underline');
-    });
-
     test('CopyButton は outline の sm で、hover で blue-200 の地 + 下線', async ({ page }) => {
       const btn = page.getByRole('button', { name: /コピー/ }).first();
       await expect(btn).toHaveCSS('background-color', WHITE);
@@ -150,6 +143,94 @@ test.describe('DADS Button の見た目', () => {
       await btn.hover();
       await expect(btn).toHaveCSS('background-color', BG_PRIMARY_HOVER);
       await expect(btn).toHaveCSS('text-decoration-line', 'underline');
+    });
+  });
+
+  test.describe('qr-reader（danger: カメラ停止）', () => {
+    // danger の対象は、カメラ停止だけになった（行の削除は RemoveButton、[162]）。
+    // 本物の MediaStream（canvas.captureStream）を返す getUserMedia に差し替えて、停止ボタンを出す。
+    // 陽性対照: .btn-action--danger:hover の rule を壊す（地・文字色を外す）と hover のテストが fail する
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'mediaDevices', {
+          configurable: true,
+          value: {
+            getUserMedia: () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = 64;
+              canvas.height = 48;
+              canvas.getContext('2d')?.fillRect(0, 0, 64, 48);
+              return Promise.resolve(canvas.captureStream(10));
+            },
+          },
+        });
+      });
+      await page.goto('/tools/qr-reader');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: 'カメラを起動' }).click();
+      await expect(page.getByRole('button', { name: 'カメラを停止' })).toBeVisible();
+    });
+
+    test('danger は白地で、hover で red-50 の地・error-2 の文字 + 下線', async ({ page }) => {
+      const btn = page.getByRole('button', { name: 'カメラを停止' });
+      await expect(btn).toHaveCSS('background-color', WHITE);
+      await btn.hover();
+      await expect(btn).toHaveCSS('background-color', ERROR_BG);
+      await expect(btn).toHaveCSS('color', ERROR_TEXT);
+      await expect(btn).toHaveCSS('text-decoration-line', 'underline');
+    });
+  });
+
+  test.describe('RemoveButton（削除の ×。text variant から派生、[162]）', () => {
+    // 陽性対照: .btn-remove の hover / :focus-visible の rule を外す、または通常時を赤・枠付きにすると fail する
+    test.describe('dsn-builder', () => {
+      test.beforeEach(async ({ page }) => {
+        await page.goto('/tools/dsn-builder');
+        await waitForReactHydration(page);
+        await page.getByRole('button', { name: 'サンプルを入力' }).click();
+      });
+
+      test('通常時は 32×32px・背景透明・muted の色・角丸 6px・枠なし', async ({ page }) => {
+        const btn = page.getByRole('button', { name: 'パラメータ 1 を削除' });
+        const box = await btn.boundingBox();
+        expect(box?.width).toBeCloseTo(32, 0);
+        expect(box?.height).toBeCloseTo(32, 0);
+        await expect(btn).toHaveCSS('background-color', TRANSPARENT);
+        await expect(btn).toHaveCSS('color', MUTED);
+        await expect(btn).toHaveCSS('border-top-width', '0px');
+        await expect(btn).toHaveCSS('border-top-left-radius', '6px');
+        await expect(btn).toHaveCSS('cursor', 'pointer');
+      });
+
+      test('hover で blue-50 の地・blue-1000 の文字', async ({ page }) => {
+        const btn = page.getByRole('button', { name: 'パラメータ 1 を削除' });
+        await btn.hover();
+        await expect(btn).toHaveCSS('background-color', BG_ACTIVE);
+        await expect(btn).toHaveCSS('color', PRIMARY_HOVER);
+      });
+
+      test(':focus-visible でも hover と同じ見た目', async ({ page }) => {
+        const btn = page.getByRole('button', { name: 'パラメータ 1 を削除' });
+        await focusByKeyboard(page, btn);
+        await expect(btn).toHaveCSS('background-color', BG_ACTIVE);
+        await expect(btn).toHaveCSS('color', PRIMARY_HOVER);
+      });
+    });
+
+    test('qr-ticket: disabled は solid-gray-300 の文字・背景透明・not-allowed で、hover しても変わらない', async ({
+      page,
+    }) => {
+      await page.goto('/tools/qr-ticket');
+      await waitForReactHydration(page);
+      // 初期は 1 行なので「行 1 を削除」は disabled
+      const btn = page.getByRole('button', { name: '行 1 を削除' });
+      await expect(btn).toBeDisabled();
+      await expect(btn).toHaveCSS('color', DISABLED);
+      await expect(btn).toHaveCSS('background-color', TRANSPARENT);
+      await expect(btn).toHaveCSS('cursor', 'not-allowed');
+      await btn.hover({ force: true });
+      await expect(btn).toHaveCSS('background-color', TRANSPARENT);
+      await expect(btn).toHaveCSS('color', DISABLED);
     });
   });
 

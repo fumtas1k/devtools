@@ -21,7 +21,7 @@ import { Select } from '@/components/ui/Select';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { DownloadButtonGroup } from '@/components/ui/DownloadButtonGroup';
-import { CloseIcon } from '@/components/ui/CloseIcon';
+import { RemoveButton } from '@/components/ui/RemoveButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
   downloadSvg as downloadSvgFile,
@@ -231,16 +231,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
             <span className="font-mono ml-2 caption text-muted">— {gtinResult.fullGtin}</span>
           )}
         </span>
-        {canRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded px-2 py-1 caption btn-remove-card"
-            aria-label={`バーコード ${index + 1} を削除`}
-          >
-            削除
-          </button>
-        )}
+        {canRemove && <RemoveButton label={`バーコード ${index + 1} を削除`} onClick={onRemove} />}
       </div>
 
       {/* カード本体 */}
@@ -332,14 +323,13 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                         </p>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeAiField(i)}
-                      className="hit-area rounded-md p-2 shrink-0 caption text-muted bg-transparent hover-bg-subtle mt-0.5 inline-flex items-center justify-center"
-                      aria-label="フィールドを削除"
-                    >
-                      <CloseIcon size={16} />
-                    </button>
+                    {/* 入力欄（48px）の縦中央に合わせる */}
+                    <div className="flex h-12 shrink-0 items-center">
+                      <RemoveButton
+                        label={`バーコード ${index + 1} の AI フィールド ${i + 1} を削除`}
+                        onClick={() => removeAiField(i)}
+                      />
+                    </div>
                   </div>
                 </div>
               );
