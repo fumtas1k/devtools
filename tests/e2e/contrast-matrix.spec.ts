@@ -92,4 +92,33 @@ test.describe('コントラスト比マトリクス', () => {
       await expect(remaining.last()).toBeDisabled();
     });
   });
+  test('色の編集とフィルタ後もプレビューと通常テキスト判定が一致する（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
+      const colors = page.getByLabel('色', { exact: true });
+      await colors.first().fill('invalid');
+      await expect(page.getByRole('row')).toHaveCount(4);
+      await colors.first().fill('#777');
+      const row = page
+        .getByRole('row')
+        .filter({ has: page.getByRole('rowheader', { name: 'テキスト' }) });
+      const cell = row.getByRole('cell').filter({ hasText: '4.48:1' });
+      await expect(cell.getByText('AA ×', { exact: true })).toBeVisible();
+      await expect(cell.getByText('AAA ×', { exact: true })).toBeVisible();
+      await expect(cell.getByText('サンプル')).toHaveCSS('color', 'rgb(119, 119, 119)');
+      await expect(cell.getByText('サンプル')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      await page.getByRole('button', { name: 'AA 以上', exact: true }).click();
+      await expect(cell).toHaveCSS('opacity', '0.3');
+      await colors.first().fill('rgb(0, 0, 0)');
+      const updated = row.getByRole('cell').filter({ hasText: '21.00:1' });
+      await expect(updated.getByText('AA ○', { exact: true })).toBeVisible();
+      await expect(updated).toHaveCSS('opacity', '1');
+      await expect(
+        page.getByText('セルのバッジと合否フィルタは通常テキストの基準で判定します。', {
+          exact: false,
+        })
+      ).toBeVisible();
+    });
+  });
 });

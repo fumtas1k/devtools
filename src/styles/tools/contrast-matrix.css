@@ -12,7 +12,7 @@
   }
 
   /* CellPreview ラッパ: プレビュー色の受け口。実際の前景/背景色は
-     useDynamicStyleSheet が .cell-fg / .cell-bg への CSS ルールとして注入する。 */
+     useDynamicStyleSheet が色ごとの CSS ルールとして注入する。 */
   .cell-preview-wrap {
     min-width: 4rem;
   }
