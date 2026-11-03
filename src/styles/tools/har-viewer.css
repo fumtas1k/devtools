@@ -65,7 +65,7 @@
     display: inline-block;
     width: 0.75rem;
     height: 0.75rem;
-    border-radius: 0.125rem;
+    border-radius: var(--radius-sm);
     vertical-align: middle;
   }
 }

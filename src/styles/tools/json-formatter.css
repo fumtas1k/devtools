@@ -96,7 +96,8 @@
     align-items: center;
     gap: 0.75rem; /* 各ボタンの hit area（幅 44px）が隣の見た目に食い込まない間隔 */
     padding-left: 0.5rem;
-    border-radius: 0.375rem;
+    /* 中の compact CopyButton（rounded-button-sm）と同じ角丸にそろえる */
+    border-radius: var(--radius-button-sm);
     background: var(--color-bg-active);
     opacity: 0;
     pointer-events: none;
