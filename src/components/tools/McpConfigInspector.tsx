@@ -7,6 +7,17 @@ import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { Section } from '@/components/ui/Section';
 import { inspectMcpConfig, type InspectionResult } from '@/utils/mcp-config-inspector';
 
+const SAMPLE = JSON.stringify(
+  {
+    mcpServers: {
+      'example-local': { command: 'example-mcp-server', args: ['--read-only'] },
+      'example-remote': { type: 'http', url: 'https://example.invalid/mcp' },
+    },
+  },
+  null,
+  2
+);
+
 export function McpConfigInspector() {
   const [input, setInput] = useState('');
   const [result, setResult] = useState<InspectionResult | null>(null);
@@ -58,6 +69,10 @@ export function McpConfigInspector() {
         rows={12}
         mono
         autoComplete="off"
+        onSampleClick={() => {
+          if (input && !window.confirm('入力済みの内容をサンプルに置き換えますか？')) return;
+          edit(SAMPLE);
+        }}
         error={error || (result?.ok === false ? result.error : undefined)}
         hint="mcpServers形式のJSONのみ対応。JSONC、YAML、TOML、VS Code形式や拡張設定は対象外です。最大256 KiB。"
       />
