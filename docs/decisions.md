@@ -1872,7 +1872,7 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - ✅ `connect-src 'self'` により、万一 XSS が成立しても外部送信経路を断つ。
 - ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。なお dev / preview server の挙動差で security.csp が未検証だった件は [063] で解消、`script-src 'unsafe-inline'` の実質削減 (meta strict layer 採用) は [064] で実施。
 - ⚠️ Cloudflare Pages 以外のホスティング（Netlify は同形式で動作するが、Vercel は `vercel.json` 形式）に切り替える際は別途設定追加が必要。
-- ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする → **[063] で E2E を preview ベースに移行して解消**。
+- ℹ️ 本 PR 時点の E2E は `npm run dev`（Astro dev server）経由で、dev server は `_headers` を解釈しないため、`public/_headers` ファイル内容の Vitest 単体テストに留めた。その後、**[061] で本番 CSP をレスポンスヘッダに注入する E2E 検証を導入し、[063] で E2E を build/preview ベースに移行した**。これは preview サーバー自体による `_headers` の適用や実デプロイ先のヘッダ検証を意味しない。
 
 ---
 
