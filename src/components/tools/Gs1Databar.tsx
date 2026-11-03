@@ -326,7 +326,7 @@ function BarcodeCard({ cardId, index, canRemove, onRemove, onSvgChange }: Barcod
                     {/* 入力欄（48px）の縦中央に合わせる */}
                     <div className="flex h-12 shrink-0 items-center">
                       <RemoveButton
-                        label={`AI フィールド ${i + 1} を削除`}
+                        label={`バーコード ${index + 1} の AI フィールド ${i + 1} を削除`}
                         onClick={() => removeAiField(i)}
                       />
                     </div>

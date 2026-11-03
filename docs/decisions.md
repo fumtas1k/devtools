@@ -5558,6 +5558,7 @@ DADS のチェックリストは操作要素のタップ領域を 44×44px 以�
 - ⚠️ hit area は透明で、見た目の外側 4〜11px でもクリックが効く（隣の文字を押しても反応する）。隣の操作要素の見た目の範囲には食い込ませない（E2E が検知）。hit area どうしが重なる余白は、DOM で後ろにある要素が取る
 - ⚠️ トップのタブ（38 → 44px）・検索クリア（30 → 44px）・CSR の SAN 削除・QR チケット / GS1 / CSR のリンクの間隔・ToggleGroup sm の幅は見た目が変わる。VRT の差分は目視確認のうえ baseline を更新する
 - ⚠️ 要素に `position: relative` が付く。`@layer utilities` の `absolute` / `fixed` / `sticky` は後から勝つので配置は変わらないが、新しく `.btn-action` 等に z-index を付けるときは `::after` も同じ積み順に入る点に注意する
+- ⚠️ `.btn-row-remove` / `.btn-remove-card` と CSR の SAN 削除の寸法は [162] で変更した（`.btn-remove` に置き換え、SAN 削除は見た目 32px + hit area）
 
 ---
 
@@ -5643,22 +5644,22 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 
 ### 決断
 
-- **編集中の繰り返しリストから 1 項目を取り除く操作は、`RemoveButton`（アイコンのみの ×）にする**。`label`（必須）を `aria-label` に入れ、何を削除するか行を特定できる文言にする（`SAN 2 を削除` / `AI フィールド 1 を削除` 等）。`title` は付けない。ContrastMatrix は `${ラベル || HEX || '色'} を削除`
+- **編集中の繰り返しリストから 1 項目を取り除く操作は、`RemoveButton`（アイコンのみの ×）にする**。`label`（必須）を `aria-label` に入れ、何を削除するか行を特定できる文言にする（`SAN 2 を削除` / `バーコード 1 の AI フィールド 2 を削除` 等。同じ名前が並ばないよう行番号を入れる）。`title` は付けない。ContrastMatrix は `色 n（ラベルまたは HEX）を削除`（どちらも空なら `色 n を削除`）
 - DADS Button の text variant から派生させる。実装は `global.css` の `.btn-remove`
-- **アイコンのみにする根拠**: DADS はボタンにテキストのラベルを持たせることを原則とし、表示領域の都合や既存システムの制約等がある場合に限って、アイコンだけのボタンを認めている。行・カードの削除は入力欄の横に各行ごとに並び、スマホ幅では場所がないため、この例外として扱う。例外の条件は 3 つで、すべて満たす: (1) 本来のラベルの内容を代替テキストにする（`aria-label` の「〇〇 n を削除」）、(2) 44×44 CSS px 以上のターゲットサイズ（`::after`）、(3) アイコンの色が背景に対して 4.5:1 以上（muted は 8.45:1）。DADS にはラベルをアイコンの一部に含めた専用アイコンもあるが、ボタンの大型化を避けるため採らなかった。出典: <https://design.digital.go.jp/dads/components/button/accessibility/> / <https://design.digital.go.jp/dads/foundations/icon/accessibility/>
+- **アイコンのみにする根拠**: DADS はボタンにテキストのラベルを持たせることを原則とし、表示領域の都合や既存システムの制約等がある場合に限って、アイコンだけのボタンを認めている。行・カードの削除は入力欄の横に各行ごとに並び、スマホ幅では場所がないため、この例外として扱う。例外の条件は 3 つで、すべて満たす: (1) 本来のラベルの内容を代替テキストにする（`aria-label` の「〇〇 n を削除」）、(2) 44×44 CSS px 以上のターゲットサイズ（`::after`）、(3) アイコンの色が背景に対して 4.5:1 以上（muted は白地で 8.45:1、gray-50 地で約 7.5:1）。DADS にはラベルをアイコンの一部に含めた専用アイコンもあるが、ボタンの大型化を避けるため採らなかった。出典: <https://design.digital.go.jp/dads/components/button/accessibility/> / <https://design.digital.go.jp/dads/foundations/icon/accessibility/>
 
-| 状態             | 見た目                                                                         |
-| :--------------- | :----------------------------------------------------------------------------- |
-| 寸法             | 32×32px、角丸 `--radius-button-sm`（6px）、枠なし、padding 0、`CloseIcon` 20px |
-| 通常             | 背景透明、`--color-muted`                                                      |
-| hover / focus    | `--color-bg-active`（blue-50）の地、`--color-primary-hover` の文字             |
-| active           | `--color-bg-text-button-active`（blue-100）の地、`--color-primary-active`      |
-| disabled         | 背景透明、`--color-disabled` の文字、`not-allowed`（hover に反応しない）       |
-| フォーカスリング | global の `:focus-visible` ルールに任せる（outline を上書きしない）            |
-| タップ領域       | `.hit-area` 系に登録し、`::after` で 44×44px（[152]）                          |
+| 状態                     | 見た目                                                                         |
+| :----------------------- | :----------------------------------------------------------------------------- |
+| 寸法                     | 32×32px、角丸 `--radius-button-sm`（6px）、枠なし、padding 0、`CloseIcon` 20px |
+| 通常                     | 背景透明、`--color-muted`                                                      |
+| hover / `:focus-visible` | `--color-bg-active`（blue-50）の地、`--color-primary-hover` の文字             |
+| active                   | `--color-bg-text-button-active`（blue-100）の地、`--color-primary-active`      |
+| disabled                 | 背景透明、`--color-disabled` の文字、`not-allowed`（hover に反応しない）       |
+| フォーカスリング         | global の `:focus-visible` ルールに任せる（outline を上書きしない）            |
+| タップ領域               | `.hit-area` 系に登録し、`::after` で 44×44px（[152]）                          |
 
 - **色は赤ではなくグレー（muted）にする**。赤はエラー表現と紛れる。特に CSR の IP エラー表示の隣では、削除ボタンが赤いと入力エラーの一部に見える
-- **hover は text variant から派生させ、地の形で示す**。アイコンのみで下線を付けられないため。GS1 のカードヘッダー（gray-50 地）の上でも blue-50 は見える
+- **hover は text variant から派生させ、地の形とアイコン色で示す**。アイコンのみで下線を付けられないため。GS1 のカードヘッダー（gray-50 地）では blue-50 との差がほぼ見えない（約 1.02:1）ので、hover は主にアイコン色の変化（muted → primary-hover）で示す
 - **32px にした理由**: sm（36px）のボタンは行に対して大きい。48px の入力欄の中に収まる。隣と 8px 離せば、44px のタップ領域が隣の見た目に食い込まない（`touch-targets.spec.ts` で確認）
 - 配置は変えない。行が `items-start` の箇所（ContrastMatrix・GS1 の AI フィールド）は `flex h-12 items-center` のラッパで包み、48px の入力欄の縦中央に合わせる
 - **対象外**: 入力のクリア（`ClearButton`）、ダイアログの閉じる、トップ検索のクリア（`.btn-clear`）、カメラ停止（danger の「停止」）

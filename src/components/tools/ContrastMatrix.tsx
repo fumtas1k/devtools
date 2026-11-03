@@ -112,7 +112,7 @@ export function ContrastMatrixTool() {
           <span className="body-emphasis text-default min-w-0 max-w-40 flex-1">ラベル</span>
           <span className="w-8 shrink-0" />
         </div>
-        {rows.map((row) => {
+        {rows.map((row, i) => {
           const invalid = parseColor(row.hex) === null;
           return (
             // items-start: エラー文言で HEX 列が縦に伸びても入力ボックスの上端が揃い、
@@ -149,7 +149,7 @@ export function ContrastMatrixTool() {
               {/* 入力欄（48px）の縦中央に合わせる */}
               <div className="flex h-12 shrink-0 items-center">
                 <RemoveButton
-                  label={`${row.label || row.hex || '色'} を削除`}
+                  label={`色 ${i + 1}${row.label || row.hex ? `（${row.label || row.hex}）` : ''} を削除`}
                   onClick={() => removeRow(row.id)}
                   disabled={rows.length <= 2}
                 />

@@ -62,7 +62,9 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
       await expect(page.getByLabel('AI コード 1')).toBeVisible();
       await expect(page.getByLabel('AI コード 2')).toBeVisible();
 
-      await page.getByRole('button', { name: 'AI フィールド 1 を削除' }).click();
+      await page
+        .getByRole('button', { name: 'バーコード 1 の AI フィールド 1 を削除', exact: true })
+        .click();
 
       await expect(page.getByLabel('AI コード 2')).toBeHidden();
       await expect(page.getByLabel('AI コード 1')).toBeVisible();
@@ -72,7 +74,9 @@ test.describe('GS1 DataBar 生成（production CSP 適用）', () => {
   test('+ フィールド追加でフィールドが増える（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/gs1-databar', async (page) => {
       // 初期状態: 2 フィールド。1 行削除してから追加
-      await page.getByRole('button', { name: 'AI フィールド 1 を削除' }).click();
+      await page
+        .getByRole('button', { name: 'バーコード 1 の AI フィールド 1 を削除', exact: true })
+        .click();
       await expect(page.getByLabel('AI コード 1')).toBeVisible();
 
       await page.getByRole('button', { name: '+ フィールド追加' }).click();

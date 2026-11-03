@@ -6,7 +6,7 @@ import { waitForReactHydration } from './helpers';
  *
  * 陽性対照（いずれも変更前に戻すと失敗することを確認済み）:
  * - DSN ビルダー: スキームをユーザー名・パスワードと同じ 3 カラムに戻すと、長い選択肢が入りきらず fail
- * - ContrastMatrix: 削除ボタンを包む `flex h-12 items-center` の h-12 / items-center を外すと（上端そろえに戻ると）fail
+ * - ContrastMatrix / GS1 の AI フィールド: 削除ボタンを包む `flex h-12 items-center` の h-12 / items-center を外すと（上端そろえに戻ると）fail
  * - CharCount: 行の items-baseline を items-center / items-start にすると fail
  * - ToggleGroup: matchField を外すと（土台 46px）fail
  */
@@ -32,6 +32,21 @@ for (const viewport of [
       const remove = await box(page.getByRole('button', { name: /を削除$/ }).first());
       const input = await box(page.getByRole('textbox', { name: '色' }).first());
       expect(remove.height).toBeCloseTo(32, 0);
+      const center = (b: { top: number; bottom: number }) => (b.top + b.bottom) / 2;
+      expect(Math.abs(center(remove) - center(input))).toBeLessThan(1);
+    });
+
+    test('GS1 DataBar: AI フィールドの削除ボタンは 32px で、値の入力欄と縦中央がそろう', async ({
+      page,
+    }) => {
+      await page.goto('/tools/gs1-databar');
+      await waitForReactHydration(page);
+      const remove = await box(
+        page.getByRole('button', { name: 'バーコード 1 の AI フィールド 1 を削除', exact: true })
+      );
+      const input = await box(page.getByRole('textbox', { name: 'AI フィールド値 1' }));
+      expect(remove.height).toBeCloseTo(32, 0);
+      expect(input.height).toBeCloseTo(48, 0);
       const center = (b: { top: number; bottom: number }) => (b.top + b.bottom) / 2;
       expect(Math.abs(center(remove) - center(input))).toBeLessThan(1);
     });

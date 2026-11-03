@@ -3,8 +3,8 @@ import { waitForReactHydration } from './helpers';
 
 /**
  * DADS Button の見た目（docs/decisions.md [140]）。
- * solid-fill / outline / danger / text と、FileInputButton・CopyButton の
- * 通常・hover・:focus-visible・disabled の computed style を検証する。
+ * solid-fill / outline / danger（カメラ停止）/ text と、FileInputButton・CopyButton・
+ * RemoveButton（削除の ×）の通常・hover・:focus-visible・disabled の computed style を検証する。
  *
  * 陽性対照: Phase 5 以前の実装（primary の枠が 1px solid、outline が灰色地、hover に下線なし、
  * disabled が bg-subtle + muted 文字、compact が 32px）では、ラベル行の高さのテストを除く各テストが
@@ -19,6 +19,8 @@ const BG_PRIMARY_HOVER = 'rgb(197, 215, 251)'; // blue-200
 const BG_ACTIVE = 'rgb(232, 241, 254)'; // blue-50
 const DISABLED = 'rgb(179, 179, 179)'; // solid-gray-300
 const TEXT_ON_DISABLED = 'rgb(242, 242, 242)'; // solid-gray-50
+const ERROR_BG = 'rgb(253, 238, 238)'; // red-50
+const ERROR_TEXT = 'rgb(206, 0, 0)'; // error-2
 const MUTED = 'rgb(77, 77, 77)'; // solid-gray-700
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 
@@ -140,6 +142,41 @@ test.describe('DADS Button の見た目', () => {
       await expectHeight(btn, 36);
       await btn.hover();
       await expect(btn).toHaveCSS('background-color', BG_PRIMARY_HOVER);
+      await expect(btn).toHaveCSS('text-decoration-line', 'underline');
+    });
+  });
+
+  test.describe('qr-reader（danger: カメラ停止）', () => {
+    // danger の対象は、カメラ停止だけになった（行の削除は RemoveButton、[162]）。
+    // 本物の MediaStream（canvas.captureStream）を返す getUserMedia に差し替えて、停止ボタンを出す。
+    // 陽性対照: .btn-action--danger:hover の rule を壊す（地・文字色を外す）と hover のテストが fail する
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'mediaDevices', {
+          configurable: true,
+          value: {
+            getUserMedia: () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = 64;
+              canvas.height = 48;
+              canvas.getContext('2d')?.fillRect(0, 0, 64, 48);
+              return Promise.resolve(canvas.captureStream(10));
+            },
+          },
+        });
+      });
+      await page.goto('/tools/qr-reader');
+      await waitForReactHydration(page);
+      await page.getByRole('button', { name: 'カメラを起動' }).click();
+      await expect(page.getByRole('button', { name: 'カメラを停止' })).toBeVisible();
+    });
+
+    test('danger は白地で、hover で red-50 の地・error-2 の文字 + 下線', async ({ page }) => {
+      const btn = page.getByRole('button', { name: 'カメラを停止' });
+      await expect(btn).toHaveCSS('background-color', WHITE);
+      await btn.hover();
+      await expect(btn).toHaveCSS('background-color', ERROR_BG);
+      await expect(btn).toHaveCSS('color', ERROR_TEXT);
       await expect(btn).toHaveCSS('text-decoration-line', 'underline');
     });
   });

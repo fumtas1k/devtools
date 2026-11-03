@@ -28,7 +28,7 @@ test.describe('コントラスト比マトリクス', () => {
   test('無効な色を入力するとエラーメッセージを表示する（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
       // 最初の色の HEX 入力欄を取得して不正値を入力
-      const hexInputs = page.getByLabel('色');
+      const hexInputs = page.getByLabel('色', { exact: true });
       await hexInputs.first().fill('notacolor');
       await expect(page.getByText('不正な色').first()).toBeVisible();
     });
@@ -37,11 +37,11 @@ test.describe('コントラスト比マトリクス', () => {
   test('エラー表示時も HEX 欄とラベル欄の上端が揃う（段差防止）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
       // 先頭行の HEX を不正値にしてエラー文言を表示させる
-      await page.getByLabel('色').first().fill('notacolor');
+      await page.getByLabel('色', { exact: true }).first().fill('notacolor');
       await expect(page.getByText('不正な色').first()).toBeVisible();
       // items-start により、エラーで HEX 列が縦に伸びても入力ボックスの上端は揃う。
       // 同一行の HEX 欄とラベル欄の top 座標が一致することを検証（段差の回帰ガード）。
-      const hexBox = await page.getByLabel('色').first().boundingBox();
+      const hexBox = await page.getByLabel('色', { exact: true }).first().boundingBox();
       const labelBox = await page.getByLabel('ラベル').first().boundingBox();
       expect(hexBox).not.toBeNull();
       expect(labelBox).not.toBeNull();
@@ -65,7 +65,7 @@ test.describe('コントラスト比マトリクス', () => {
     await withProductionCsp(browser, '/tools/contrast-matrix', async (page) => {
       // 削除では最低 2 行が保持され UI 上 1 色には到達できないため、
       // 全行の HEX 欄に無効値を入力して validColors.length < 2 の分岐へ到達させる
-      const hexInputs = page.getByLabel('色');
+      const hexInputs = page.getByLabel('色', { exact: true });
       const count = await hexInputs.count();
       for (let i = 0; i < count; i++) {
         await hexInputs.nth(i).fill('notacolor');

@@ -32,13 +32,10 @@ disabled は pointer-events を止める。hover と `:focus-visible` は同じ�
 
 ## RemoveButton（削除の ×）
 
-DS にない。繰り返しリストの行・カードから 1 項目を取り除く、アイコンのみのボタン（`src/components/ui/RemoveButton.tsx`）。Button の text variant から派生。
+DS にない。繰り返しリストの行・カードから 1 項目を取り除く、アイコンのみのボタン（`src/components/ui/RemoveButton.tsx`）。Button の text variant から派生し、32×32px・通常は `muted`・hover / `:focus-visible` は `blue-50` の地と `blue-1000` の文字。
 
-- 32×32px・枠なし・角丸 6px・`CloseIcon` 20px。通常は `muted`（赤はエラー表現と紛れるため使わない）、hover / `:focus-visible` は `blue-50` の地と `blue-1000` の文字、active は `blue-100` の地、disabled は `solid-gray-300`
-- タップ領域は `::after` で 44×44px に広げる。`label`（必須）を `aria-label` にして、行を特定できる文言にする
-- クリア・ダイアログの閉じる・検索クリア・カメラ停止には使わない。確認が必要な削除はラベル付きの danger ボタン
-- DADS はテキストのラベルを原則とし、表示領域の都合等がある場合に限ってアイコンだけのボタンを認める。行ごとに並ぶ削除はこの例外で、代替テキスト（`aria-label`）・44×44px 以上のターゲット・アイコン色 4.5:1 以上（muted は 8.45:1）の 3 条件を満たす
-- 詳細 → `docs/decisions.md [162]`
+- アイコンのみは DADS が認める例外（代替テキスト・44×44px 以上のターゲット・色 4.5:1 以上の 3 条件）。クリア・閉じる・検索クリア・カメラ停止には使わない
+- 仕様・根拠の詳細 → `docs/decisions.md [162]`
 
 ## Input / Textarea / Select
 
