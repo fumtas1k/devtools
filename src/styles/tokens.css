@@ -116,7 +116,8 @@
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
   /* primary 塗り（ON のトグルチップ）の上に置くバッジの地。primary #0017c1 に白 22% を重ねた色
      （#384acf 相当）と白文字（--color-text-on-primary）のコントラストは 6.89:1（4.5:1 以上）。
-     0.25 だと 6.35:1 なので、高い側の 0.22 を採る（docs/decisions.md [164]） */
+     0.25 だと 6.35:1 なので、高い側の 0.22 を採る。hover 地では 8.12:1、active 地では 10.19:1
+     （docs/decisions.md [164]） */
   --color-bg-on-primary-badge: rgba(255, 255, 255, 0.22);
   --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景・トグルと表の行の hover・text ボタンの hover 地 */
   --color-bg-selected: #d9e6ff; /* blue-100: 選択中の表の行（hover の blue-50 と区別。本文 10.06:1 / muted 6.73:1） */
