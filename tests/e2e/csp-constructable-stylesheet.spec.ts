@@ -90,7 +90,7 @@ test.describe('CSP style-src strict 下の Constructable Stylesheets 検証', ()
     }
   });
 
-  test('陰性対照: CSS 変数注入経路でも違反を起こさない (ResultTable / ToggleGroup の本物形態)', async ({
+  test('陰性対照: CSS 変数注入経路でも違反を起こさない (ResultTable の本物形態)', async ({
     browser,
   }) => {
     const context = await browser.newContext();

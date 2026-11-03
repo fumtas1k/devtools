@@ -184,10 +184,11 @@
      土台（8px・p-1・1px 枠）の内側に角丸 4px のボタンを置き、入れ子の角丸が同じ 8px で重ならないようにする。
      選択中は白地・primary の文字と 1px 枠（outline の通常）、未選択は透明・muted の文字。
      枠は常に 1px 透明で持ち、選択の切り替えで大きさが変わらないようにする。
-     動的列数は --toggle-cols で受ける。 */
+     列数は常に選択肢の数なので、grid-auto-flow: column と等幅の暗黙列で受ける（docs/decisions.md [166]）。 */
   .toggle-grid {
     display: grid;
-    grid-template-columns: repeat(var(--toggle-cols, 2), minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 0.25rem;
   }
   .btn-toggle {
