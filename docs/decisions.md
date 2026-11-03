@@ -5749,3 +5749,7 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 `ToggleGroup`（`layout='grid'`）の列数は常に選択肢の数で、全ボタンを等幅で 1 行に並べる。このため `.toggle-grid` を `grid-auto-flow: column` + `grid-auto-columns: minmax(0, 1fr)` にすれば足り、`useDynamicStyleSheet` で `--toggle-cols` を注入する必要がなくなった。hydration 後の見た目は変わらない（全ページの computed style とボタンの矩形を変更前後で比較して確認）。変更前は `--toggle-cols` を `useEffect` で注入していたため、SSR から hydration までの間（と hydration に失敗したとき）は fallback の 2 列が効き、3 個以上の選択肢が折り返していた。変更後は SSR の時点から 1 行に並ぶので、この初期描画のずれもなくなった。`layout='wrap'` は変更なし。（#889）
 
 [067] / PR 9 の「ToggleGroup も `useDynamicStyleSheet` を使う」記述は、この時点の経緯として残す。現在 `useDynamicStyleSheet` を使うのは `ResultTable` などで、`ToggleGroup` は使わない。
+
+## MCP 設定リスクインスペクタの初版
+
+設定情報を外部送信せず確認できるよう、`mcpServers` JSONの一部を有界に読み、静的な確認事項とマスク済み情報を提示する。接続や実行はせず、検出なしを安全性の認定と扱わない。対応クライアントの追加は別途検討する。

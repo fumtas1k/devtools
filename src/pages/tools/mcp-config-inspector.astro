@@ -1,0 +1,16 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { McpConfigInspector } from '@/components/tools/McpConfigInspector';
+import { tools } from '@/data/tools';
+const tool = tools.find((t) => t.slug === 'mcp-config-inspector')!;
+---
+
+<ToolLayout tool={tool}>
+  <McpConfigInspector client:load />
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      MCPクライアントの設定JSONに記載された起動方法と接続先をブラウザ内で確認します。対応するmcpServers形式の一部だけを読み、実行や接続は行いません。検査は限定的であり、安全性を保証するものではありません。
+    </p>
+  </ToolInfoSection>
+</ToolLayout>
