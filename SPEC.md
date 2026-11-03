@@ -206,7 +206,13 @@ devtools/
     │   ├── useCodec.ts         # 入力→デバウンス→変換→出力＋エラーの共通フック
     │   └── useQrCamera.ts
     ├── styles/
-    │   └── global.css
+    │   ├── global.css          # エントリ（@import の順番・@source not・@variant のみ）
+    │   ├── tokens.css          # @theme / :root（DADS のトークン。値の正本）
+    │   ├── base.css            # レイヤー外の一括ルール（フォーカスリング・[hidden]・テキストリンク等）
+    │   ├── components/         # @layer components: 共通 UI の意味クラス（color / typography / form / button / table / feedback ほか）
+    │   ├── tools/              # @layer components: 1 つのツールでしか使わないクラス
+    │   ├── print.css           # レイヤー外: GS1 DataBar の A4 印刷
+    │   └── motion.css          # レイヤー外: prefers-reduced-motion の一括 reset
     └── utils/
         ├── base64.ts           # Base64 ツール用 UTF-8 ⇄ 文字列変換
         ├── base64url.ts        # base64url 共通ヘルパー（jwt/qr-ticket が利用）
@@ -1510,7 +1516,7 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ### 8.2 カラーパレット
 
-DADS v2 のカラートークンを使用（`src/styles/global.css` の `@theme` / `:root` で定義。DADS への移行は完了済みで、経緯は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md` と `docs/decisions.md [134]`〜[148]）。
+DADS v2 のカラートークンを使用（`src/styles/tokens.css` の `@theme` / `:root` で定義。DADS への移行は完了済みで、経緯は `docs/superpowers/plans/2026-10-30-claude-design-dads-migration.md` と `docs/decisions.md [134]`〜[148]）。
 
 | 役割               | 値                          |
 | ------------------ | --------------------------- |

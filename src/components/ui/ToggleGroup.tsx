@@ -26,7 +26,7 @@ interface Props<T extends string> {
 /**
  * 排他選択トグル。
  *
- * style: global.css `@layer components` の `.toggle-grid`（CSS 変数 --toggle-cols 経由で
+ * style: `src/styles/components/button.css`（`@layer components`） の `.toggle-grid`（CSS 変数 --toggle-cols 経由で
  * 動的列数）/ `.btn-toggle` / `.btn-toggle[aria-pressed="true"]` を参照。
  *
  * 動的列数は `useDynamicStyleSheet` 経由で per-instance scoped rule

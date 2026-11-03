@@ -124,7 +124,7 @@ test.describe('DownloadButton（production CSP 適用）', () => {
   });
 
   // hover フィードバック（issue #238）
-  // ActionButton は variant 別に :hover:not(:disabled) を global.css の @layer components で定義する。
+  // ActionButton は variant 別に :hover:not(:disabled) を src/styles/components/button.css の @layer components で定義する。
   // DownloadButton は ActionButton の thin wrapper のため、その hover 挙動を経路として検証する。
   test('SVGダウンロードボタン（secondary）の hover で背景が var(--color-bg-primary-hover) になる（CSP 違反なし）', async ({
     browser,

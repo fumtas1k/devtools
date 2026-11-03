@@ -130,7 +130,11 @@ describe('src 配下で 14px 未満の文字サイズを使わない', () => {
   });
 
   it('許可リストの各項目に理由があり、実在するセレクタを指している', () => {
-    const css = readFileSync(join(REPO_ROOT, 'src/styles/global.css'), 'utf-8');
+    // CSS は src/styles/ 配下の複数ファイルに分かれている（global.css はエントリ）ので全体から探す
+    const css = collectSrcFiles(join(REPO_ROOT, 'src/styles'))
+      .filter((p) => p.endsWith('.css'))
+      .map((p) => readFileSync(p, 'utf-8'))
+      .join('\n');
     for (const a of ALLOWLIST) {
       expect(a.reason.length).toBeGreaterThan(0);
       if (a.selector) expect(css).toContain(a.selector);

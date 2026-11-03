@@ -5665,3 +5665,28 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 - **対象外**: 入力のクリア（`ClearButton`）、ダイアログの閉じる、トップ検索のクリア（`.btn-clear`）、カメラ停止（danger の「停止」）
 - **確認が必要な削除**（一括削除・取り消せない削除）は、ラベル付きの danger `ActionButton` にする。現状は該当なし
 - [152] の `.btn-row-remove` / `.btn-remove-card` は `.btn-remove` に置き換えた。CSR の SAN 削除は、見た目も 44px にする代わりに 32px + hit area に戻した。入力欄との重なりは `touch-targets.spec.ts` で PC・スマホとも確認する
+
+---
+
+## [163] global.css を DADS の層ごとのファイルに分割する
+
+**2026-11-03 | ステータス: 採用**
+
+### 背景
+
+`src/styles/global.css` が 1,926 行に育ち、トークン・一括ルール・共通 UI・ツール固有のクラスが 1 つの `@layer components` に混ざっていた。新しいクラスをどこに書けばよいか、ファイルを見ても分からず、見出しも「PR 7a」のような経緯ベースだった。
+
+### 決断
+
+- DADS の層ごとにファイルを分ける。`global.css` は `@import` の順番・`@source not`・`@variant` だけのエントリにする
+  - `tokens.css`（`@theme` / `:root`。値の正本）→ `base.css`（レイヤー外の一括ルール）→ `components/`（`@layer components`: color / typography / form / button / toggle-chip / table / feedback / disclosure / layout / hit-area）→ `tools/`（`@layer components`: 1 つのツールでしか使わないクラス）→ `print.css` → `motion.css`
+- 分割は宣言を変えずに行い（ビルド CSS のルール集合が分割前と完全一致、全ページの computed style が一致）、直書きの値のトークン化は別コミットにした。トークンに置き換えたのは `9999px` / `0.25rem` の角丸、`.skip-link` の白文字、JSON ツリーの構文色（`--color-syntax-string` / `number` / `boolean`）。`.qr-video-preview` と印刷の `#000`（意図的な固定色）、`--shadow-md` / `--shadow-xl`（Tailwind が shadow 値を解析する）、`.toggle-chip__token` / `__count` の rgba は置き換えない
+- **import 順は cascade に効く**。`@layer components` 内は後ろが勝つので、`.uuid-field-key` は `.caption` より後（`tools/` は `components/` の後）、`.json-toggle::after` は `hit-area.css` より後（`tools/json-formatter.css`）に置く。レイヤー外のルールは `base.css` → `print.css` → `motion.css` の順を保つ。レイヤー外 ↔ `@layer components` の移動は cascade が変わるため行わない
+- `@source not` は `global.css` に残す（パスが `global.css` 基準で、`tailwind-source-exclusions.test.ts` もそこを検査する）。同テストの fixture は `src/styles/` 全体を写してから `global.css` だけを差し替える
+- `tests/meta/styles-imports.test.ts` で、`src/styles/` の CSS がすべて `global.css` から import され、import 先が実在することを検証する（import し忘れたファイルは黙って効かない）。陽性対照つき
+- **`src/styles/README.md` は置かない**。`src/` は Tailwind の scan 対象で、md に書いた class 名が本番 CSS に混入する。置き場所の判断基準は `global.css` 冒頭のコメントに書く
+
+### 却下した選択肢
+
+- 層ごとの分割に加えて、`@layer components` のクラスをレイヤー外へ移す／その逆: cascade が変わり見た目が変わるリスクがある
+- `.githooks/pre-commit` の `src/styles/global.css` 監視を `src/styles/` 全体に広げる: `.githooks` はユーザー承認が要るため（common.md 9.1）、この決断の範囲外にした。分割後は `global.css` を触らない変更で decisions.md の更新確認が出なくなる

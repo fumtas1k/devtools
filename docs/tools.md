@@ -774,7 +774,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **XSS 対策**: 生成 HTML は必ず既存の `sanitizeHtml(html)` に通してから返す（`src/utils/sanitizeHtml.ts`）。許可リスト方式（`<script>` / style / 危険属性 / `javascript:` URL を除去）でガード。新規サニタイザは導入せず既存資産を再利用。
 - **描画**: `sanitizeHtml` 済みの HTML 文字列を `<div className="markdown-preview" dangerouslySetInnerHTML={{ __html: sanitized }}>` でインライン描画する。`sanitizeHtml` が許可外要素・属性を全除去した後の文字列のみを渡すため XSS リスクはない。
 - **パフォーマンス**: `useMemo(() => renderMarkdown(input), [input])` で入力単位に memo 化し、毎レンダーでのパース再実行を回避する。
-- **スタイリング**: `sanitizeHtml` は `class` 属性を除去するため、生成要素にクラスを付けられない。`global.css` の `@layer components` に `.markdown-preview` を定義し、子孫要素セレクタ（`.markdown-preview h1`、`.markdown-preview table` 等）で整形する。
+- **スタイリング**: `sanitizeHtml` は `class` 属性を除去するため、生成要素にクラスを付けられない。`src/styles/tools/markdown-editor.css` の `@layer components` に `.markdown-preview` を定義し、子孫要素セレクタ（`.markdown-preview h1`、`.markdown-preview table` 等）で整形する。
 
 #### 準拠仕様・RFC
 

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
 
-// global.css の CSS 変数と対応
+// src/styles/tokens.css の CSS 変数と対応
 const COLOR_LINK = 'rgb(0, 17, 143)'; // --color-link: #00118f (blue-1000)
 const COLOR_PRIMARY = 'rgb(0, 23, 193)'; // --color-primary: #0017c1 (blue-900)
 const COLOR_TEXT = 'rgb(51, 51, 51)'; // --color-text: #333333 (solid-gray-800)

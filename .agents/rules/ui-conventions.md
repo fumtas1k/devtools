@@ -29,11 +29,11 @@ UI コンポーネントの変更時と、Playwright で UI 確認・E2E テス�
 
 ### 2.1 ホバー・フォーカス時の色変化
 
-CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、JSX の `style={{}}` と `e.currentTarget.style.X = Y` は用途を問わず使わない。ホバー / 状態色は `global.css` の `@layer components` に `:hover` / `[aria-pressed="true"]` 擬似クラスごと semantic class を定義し、`className` で適用する（`hover:` variant が使えない理由は common.md 7.1 章）。
+CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、JSX の `style={{}}` と `e.currentTarget.style.X = Y` は用途を問わず使わない。ホバー / 状態色は `src/styles/components/`（ツール固有なら `src/styles/tools/`）の `@layer components` に `:hover` / `[aria-pressed="true"]` 擬似クラスごと semantic class を定義し、`className` で適用する（`hover:` variant が使えない理由は common.md 7.1 章）。
 
 - 既存例: `.btn-clear`（透過 → `--color-bg-subtle`）、`ActionButton` の `.btn-action--{variant}`
 - ボタンの hover は **`:hover:not(:disabled)` と `:focus-visible:not(:disabled)` を同じ視覚反応で定義**する（キーボード利用者にも同等のフィードバックを出し、disabled 時は反応させない）
-- **`outline-none` を付けない**。global の `:where(...):focus-visible` ルール（specificity 0）を上書きしてキーボードのフォーカスリングが消える
+- **`outline-none` を付けない**。global の `:where(...):focus-visible` ルール（`src/styles/base.css`、specificity 0）を上書きしてキーボードのフォーカスリングが消える
 
 ### 2.2 ボタン高さの揃え
 
@@ -56,7 +56,7 @@ CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、J
 
 ### 2.6 操作要素は 44×44px
 
-見た目が 44px 未満の操作要素は、`.hit-area`（または `global.css` の `.hit-area` 系に登録済みの class）で透明な `::after` のタップ領域を 44×44px に広げる。隣の操作要素の見た目の範囲に食い込まないよう、直前・直後の要素とは `(44 − 見た目の高さ) / 2` 以上離す。奪う・届かないは `tests/e2e/touch-targets.spec.ts` が全ツールで検知する。文中のインラインリンク（`.text-link` を段落内で使う場合）には付けない（パンくずなど単独のリンクは `.hit-area` を足す）（`docs/decisions.md [152]`）。
+見た目が 44px 未満の操作要素は、`.hit-area`（または `src/styles/components/hit-area.css` の `.hit-area` 系に登録済みの class）で透明な `::after` のタップ領域を 44×44px に広げる。隣の操作要素の見た目の範囲に食い込まないよう、直前・直後の要素とは `(44 − 見た目の高さ) / 2` 以上離す。奪う・届かないは `tests/e2e/touch-targets.spec.ts` が全ツールで検知する。文中のインラインリンク（`.text-link` を段落内で使う場合）には付けない（パンくずなど単独のリンクは `.hit-area` を足す）（`docs/decisions.md [152]`）。
 
 ---
 

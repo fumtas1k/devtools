@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import {
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -58,6 +59,8 @@ function buildFixture(styles: string): string {
     mkdirSync(join(root, '.claude/skills'), { recursive: true });
     symlinkSync(resolve('node_modules'), join(root, 'node_modules'), 'dir');
     symlinkSync('../../.agents/skills/probe', join(root, '.claude/skills/probe'), 'dir');
+    // global.css は @import で tokens.css / components/ 等を読むので、src/styles/ 全体を写してから global.css だけ差し替える
+    cpSync(resolve('src/styles'), join(root, 'src/styles'), { recursive: true });
     writeFileSync(join(root, 'src/styles/global.css'), styles);
     writeFileSync(join(root, '.agents/skills/probe/SKILL.md'), 'bg-fuchsia-700');
     writeFileSync(

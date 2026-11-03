@@ -5,7 +5,7 @@ import { waitForReactHydration } from './helpers';
 /**
  * タップ領域 44×44px（docs/decisions.md [152]、DADS のチェックリスト、issue #662）。
  *
- * 見た目が 44px 未満の操作要素は、透明な ::after（global.css の `.hit-area` 系）で
+ * 見た目が 44px 未満の操作要素は、透明な ::after（`src/styles/components/hit-area.css` の `.hit-area` 系）で
  * 操作できる範囲だけを中心から 44×44px に広げている。全ツールの PC / スマホで、次の 2 つを hit-test で調べる。
  *   1. 奪わない: 各操作要素の見た目の範囲の内側（四隅・辺の中点・中心）をクリックすると、その要素自身に当たる
  *      （隣の要素の ::after が食い込んでいない）

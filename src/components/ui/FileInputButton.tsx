@@ -21,7 +21,7 @@ interface Props {
  *
  * input を label の子に置くことで `:has(input:focus-visible)` が parent label に効き、
  * キーボードフォーカス時に outline ring (`.btn-file-input:has(input:focus-visible)`) が可視化される。
- * スタイルは `src/styles/global.css` の `.btn-file-input` クラスで定義（DADS Button の outline・md と同じ見た目。
+ * スタイルは `src/styles/components/button.css` の `.btn-file-input` クラスで定義（DADS Button の outline・md と同じ見た目。
  * hover とキーボードフォーカス時は同じ見た目。docs/decisions.md [140]）。
  *
  * @param accept - 許可する MIME タイプ / 拡張子 (例: "image/*")
