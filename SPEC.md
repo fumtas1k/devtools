@@ -233,6 +233,7 @@ devtools/
         ├── key/                # 鍵フォーマット変換（types.ts / detect.ts / convert.ts / index.ts）
         ├── har/                # HARビューア＆サニタイザ（types.ts / rules.ts / parse.ts / sanitize.ts / index.ts、__tests__ colocated）
         ├── csr/                # CSR・鍵ペアジェネレータ（types.ts / generate.ts / parse.ts / index.ts）
+        ├── mcp-config-inspector/ # MCP設定の静的検査
         ├── saml/               # SAMLデコーダ（types.ts / decode.ts / parse.ts / checks.ts / format.ts / index.ts）
         ├── dummy-personal-data/ # 日本語ダミー個人データ生成（types.ts / dictionaries.ts / generate.ts / serialize.ts、__tests__ colocated）
         ├── dataTransferSnapshot.ts  # DataTransfer 捕捉・フレーバー列挙（clipboard-inspector が利用）
@@ -304,7 +305,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全33ツール）
+## 4. ツール一覧（全34ツール）
 
 ### カテゴリ A: 生成ツール（`generate`）
 
@@ -339,26 +340,27 @@ devtools/
 
 ### カテゴリ D: 変換・解析ツール（`convert`）
 
-| #   | ツール名                          | slug                  | 概要                                                                                                                                                                                                                                                    |
-| --- | --------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 13  | JSON / XML 変換                   | `json-xml`            | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式                                                                                                                                                                          |
-| 14  | JSON / CSV 変換                   | `json-csv`            | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                                                                                                                                                                                           |
-| 15  | 文字コード判定・変換              | `encoding-converter`  | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                                                                                                                                                    |
-| 16  | 設定ファイル相互変換              | `config-converter`    | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート）                                                                                                                                |
-| 17  | 文字カウント                      | `char-count`          | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応                                                                                                                                                       |
-| 18  | SQL整形・パラメータ埋め込み       | `sql-formatter`       | 汚れた SQL をインデント・キーワード大文字化で整形し、プレースホルダ（? / $n / :name）にJSONパラメータを埋め込む。MySQL / PostgreSQL / SQLite / SQL Server 方言対応                                                                                      |
-| 19  | 正規表現ビジュアライザ＆ReDoS検出 | `regex-visualizer`    | 正規表現を AST ツリー・鉄道図で可視化し、ReDoS 脆弱性を検出。テスト文字列に対するマッチハイライトとキャプチャグループ表示に対応。JavaScript（ECMAScript）正規表現対応                                                                                   |
-| 20  | JSON整形・ビューア                | `json-formatter`      | JSON を整形（2/4/タブ）・最小化し、折りたたみツリーで閲覧。構文エラーは行・列付きで表示。数値リテラル・大きな整数の精度を保持し、全処理をブラウザ内で完結。JMESPath クエリで値を抽出可能。PII/シークレットを検出してマスク。TypeScript 型を生成         |
-| 21  | CIDR/サブネット計算機             | `cidr-calculator`     | CIDR 記法でアドレスを入力しネットワーク情報を計算。IPv4/IPv6 対応。ネットワーク・ブロードキャスト・ホスト範囲・サブネットマスク・利用可能ホスト数を表示。BigInt による 128bit 統一処理。外部ライブラリなし                                              |
-| 22  | シークレットスクラバー            | `secret-scrubber`     | ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換。全処理ブラウザ内完結・外部ライブラリなし                                                                                         |
-| 23  | クリップボードインスペクタ        | `clipboard-inspector` | 貼り付け・ドラッグ&ドロップの DataTransfer を捕捉し、全 MIME フレーバー（text/plain・text/html・カスタム型・画像・ファイル）の種別と中身を可視化。HTML はサニタイズ後 sandbox iframe プレビュー付き。追加依存なし（DOMParser・Web API のみ）            |
-| 24  | DSN/接続文字列ビルダ              | `dsn-builder`         | 接続文字列（DSN）をフォームと URI で双方向編集。パスワードをマスクした共有用 URI も生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応（PostgreSQL・MySQL は JDBC URL も対応）。自前パーサで percent-encode を自動処理。外部ライブラリなし           |
-| 26  | 鍵フォーマット変換                | `key-converter`       | RSA / ECDSA（P-256/P-384/P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK で相互変換。入力形式と鍵種別を自動判定。Web Crypto API 主体で asn1js による OID 判定。全処理ブラウザ内完結                                                                  |
-| 27  | HARビューア＆サニタイザ           | `har-viewer`          | HAR ファイルをリクエスト/レスポンス一覧・詳細表示し、Cookie・認証ヘッダ・機密クエリ・POST ボディを構造的に redact。scrubText で本文の取りこぼしを追加検出。一貫トークン化（同一値=同一プレースホルダ）。全処理ブラウザ内完結・新規ライブラリなし        |
-| 28  | CSR・鍵ペアジェネレータ           | `csr-generator`       | RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力。Subject DN（CN/O/OU/C/ST/L/email）と SAN（DNS/IP/email）を設定可能。既存 CSR の Subject/SAN/公開鍵/署名アルゴリズム抽出と自己署名検証に対応。pkijs + Web Crypto。全処理ブラウザ内完結 |
-| 29  | markdownエディタ                  | `markdown-editor`     | markdown を 2 ペインでリアルタイム HTML プレビュー。GFM（表・取り消し線・コードブロック）対応。`marked` で HTML 変換後に既存 `sanitizeHtml` でサニタイズ。HTML クリップボードコピー・.md ダウンロード。全処理ブラウザ内完結                             |
-| 30  | コントラスト比マトリクス          | `contrast-matrix`     | 任意の N 色の全組合せ（N×N）のコントラスト比を一覧表示。WCAG 2.x の AA/AAA 合否と APCA-W3 0.1.9 の Lc 値を併記。HEX / rgb() 形式の不透明色に対応。外部ライブラリなし・全処理ブラウザ内完結                                                              |
-| 31  | DDL → ER図ジェネレータ            | `ddl-er-diagram`      | `CREATE TABLE` 文（MySQL/PostgreSQL）を貼り付けると ER 図を即描画。明示的な外部キー（`FOREIGN KEY ... REFERENCES` / 列定義内 `REFERENCES`）からリレーション線を自動生成。Mermaid ER 記法のコピー・SVG/PNG ダウンロード対応。全処理ブラウザ内完結        |
+| #   | ツール名                          | slug                   | 概要                                                                                                                                                                                                                                                    |
+| --- | --------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 13  | JSON / XML 変換                   | `json-xml`             | JSON⇔XML 相互変換。ルートタグは `root` 固定、XML属性は `@_` プレフィックス形式                                                                                                                                                                          |
+| 14  | JSON / CSV 変換                   | `json-csv`             | JSON⇔CSV 相互変換。ネストオブジェクトはドット記法でフラット化                                                                                                                                                                                           |
+| 15  | 文字コード判定・変換              | `encoding-converter`   | ファイル/テキストの文字コードを自動判定し、UTF-8・Shift_JIS (CP932)・EUC-JP 等へ変換                                                                                                                                                                    |
+| 16  | 設定ファイル相互変換              | `config-converter`     | YAML・JSON・TOML・.env を相互変換。同形式整形時は YAML のコメントを保持。JSON Schema 検証（draft-04/07、動的インポート）                                                                                                                                |
+| 17  | 文字カウント                      | `char-count`           | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応                                                                                                                                                       |
+| 18  | SQL整形・パラメータ埋め込み       | `sql-formatter`        | 汚れた SQL をインデント・キーワード大文字化で整形し、プレースホルダ（? / $n / :name）にJSONパラメータを埋め込む。MySQL / PostgreSQL / SQLite / SQL Server 方言対応                                                                                      |
+| 19  | 正規表現ビジュアライザ＆ReDoS検出 | `regex-visualizer`     | 正規表現を AST ツリー・鉄道図で可視化し、ReDoS 脆弱性を検出。テスト文字列に対するマッチハイライトとキャプチャグループ表示に対応。JavaScript（ECMAScript）正規表現対応                                                                                   |
+| 20  | JSON整形・ビューア                | `json-formatter`       | JSON を整形（2/4/タブ）・最小化し、折りたたみツリーで閲覧。構文エラーは行・列付きで表示。数値リテラル・大きな整数の精度を保持し、全処理をブラウザ内で完結。JMESPath クエリで値を抽出可能。PII/シークレットを検出してマスク。TypeScript 型を生成         |
+| 21  | CIDR/サブネット計算機             | `cidr-calculator`      | CIDR 記法でアドレスを入力しネットワーク情報を計算。IPv4/IPv6 対応。ネットワーク・ブロードキャスト・ホスト範囲・サブネットマスク・利用可能ホスト数を表示。BigInt による 128bit 統一処理。外部ライブラリなし                                              |
+| 22  | シークレットスクラバー            | `secret-scrubber`      | ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換。全処理ブラウザ内完結・外部ライブラリなし                                                                                         |
+| 23  | クリップボードインスペクタ        | `clipboard-inspector`  | 貼り付け・ドラッグ&ドロップの DataTransfer を捕捉し、全 MIME フレーバー（text/plain・text/html・カスタム型・画像・ファイル）の種別と中身を可視化。HTML はサニタイズ後 sandbox iframe プレビュー付き。追加依存なし（DOMParser・Web API のみ）            |
+| 24  | DSN/接続文字列ビルダ              | `dsn-builder`          | 接続文字列（DSN）をフォームと URI で双方向編集。パスワードをマスクした共有用 URI も生成。PostgreSQL / MySQL / MongoDB / Redis / AMQP 対応（PostgreSQL・MySQL は JDBC URL も対応）。自前パーサで percent-encode を自動処理。外部ライブラリなし           |
+| 26  | 鍵フォーマット変換                | `key-converter`        | RSA / ECDSA（P-256/P-384/P-521）の公開鍵・秘密鍵を PEM / DER（Base64）/ JWK で相互変換。入力形式と鍵種別を自動判定。Web Crypto API 主体で asn1js による OID 判定。全処理ブラウザ内完結                                                                  |
+| 27  | HARビューア＆サニタイザ           | `har-viewer`           | HAR ファイルをリクエスト/レスポンス一覧・詳細表示し、Cookie・認証ヘッダ・機密クエリ・POST ボディを構造的に redact。scrubText で本文の取りこぼしを追加検出。一貫トークン化（同一値=同一プレースホルダ）。全処理ブラウザ内完結・新規ライブラリなし        |
+| 28  | CSR・鍵ペアジェネレータ           | `csr-generator`        | RSA / ECDSA の鍵ペアを生成し PKCS#10 CSR（証明書署名要求）を出力。Subject DN（CN/O/OU/C/ST/L/email）と SAN（DNS/IP/email）を設定可能。既存 CSR の Subject/SAN/公開鍵/署名アルゴリズム抽出と自己署名検証に対応。pkijs + Web Crypto。全処理ブラウザ内完結 |
+| 29  | markdownエディタ                  | `markdown-editor`      | markdown を 2 ペインでリアルタイム HTML プレビュー。GFM（表・取り消し線・コードブロック）対応。`marked` で HTML 変換後に既存 `sanitizeHtml` でサニタイズ。HTML クリップボードコピー・.md ダウンロード。全処理ブラウザ内完結                             |
+| 30  | コントラスト比マトリクス          | `contrast-matrix`      | 任意の N 色の全組合せ（N×N）のコントラスト比を一覧表示。WCAG 2.x の AA/AAA 合否と APCA-W3 0.1.9 の Lc 値を併記。HEX / rgb() 形式の不透明色に対応。外部ライブラリなし・全処理ブラウザ内完結                                                              |
+| 31  | DDL → ER図ジェネレータ            | `ddl-er-diagram`       | `CREATE TABLE` 文（MySQL/PostgreSQL）を貼り付けると ER 図を即描画。明示的な外部キー（`FOREIGN KEY ... REFERENCES` / 列定義内 `REFERENCES`）からリレーション線を自動生成。Mermaid ER 記法のコピー・SVG/PNG ダウンロード対応。全処理ブラウザ内完結        |
+| 34  | MCP 設定リスクインスペクタ        | `mcp-config-inspector` | MCP設定をローカルで静的に確認し、値をマスクして表示                                                                                                                                                                                                     |
 
 ---
 
@@ -1428,6 +1430,12 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.34 MCP 設定リスクインスペクタ（`mcp-config-inspector`）
+
+`mcpServers` JSONの限定形式について、stdioのcommand / args / envとHTTP・SSEのurl / headersをブラウザ内で確認する。秘密値のマスクと静的な確認事項の提示を行い、接続・コマンド実行・入力の送信や永続保存は行わない。未対応の構造は拒否し、安全性や実際の権限は判定しない。
+
+---
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1606,6 +1614,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] 日本語ダミー個人データ生成（`dummy-personal-data`）
   - [x] DDL → ER図ジェネレータ（`ddl-er-diagram`）
   - [x] SAMLデコーダ（`saml-decoder`）
+  - [x] MCP 設定リスクインスペクタ（`mcp-config-inspector`）
   - [ ] Diff、パスワード生成、ハッシュ等
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
