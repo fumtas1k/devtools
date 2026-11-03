@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActionButton } from '@/components/ui/ActionButton';
+import { RemoveButton } from '@/components/ui/RemoveButton';
 import { BareInput } from '@/components/ui/BareInput';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
@@ -207,14 +208,7 @@ export function DsnBuilderTool() {
                     />
                   </div>
                   {model.hosts.length > 1 && (
-                    <ActionButton
-                      size="compact"
-                      variant="danger"
-                      onClick={() => removeHost(i)}
-                      aria-label={`ホスト ${i + 1} を削除`}
-                    >
-                      削除
-                    </ActionButton>
+                    <RemoveButton label={`ホスト ${i + 1} を削除`} onClick={() => removeHost(i)} />
                   )}
                 </div>
               ))}
@@ -257,14 +251,10 @@ export function DsnBuilderTool() {
                     placeholder="require"
                     className="flex-1 min-w-0"
                   />
-                  <ActionButton
-                    size="compact"
-                    variant="danger"
+                  <RemoveButton
+                    label={`パラメータ ${i + 1} を削除`}
                     onClick={() => removeParam(i)}
-                    aria-label={`パラメータ ${i + 1} を削除`}
-                  >
-                    削除
-                  </ActionButton>
+                  />
                 </div>
               ))}
             </div>

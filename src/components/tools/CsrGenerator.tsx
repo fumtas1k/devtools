@@ -5,6 +5,7 @@ import { InputField } from '@/components/ui/InputField';
 import { BareInput } from '@/components/ui/BareInput';
 import { OutputField } from '@/components/ui/OutputField';
 import { ActionButton } from '@/components/ui/ActionButton';
+import { RemoveButton } from '@/components/ui/RemoveButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { FileInputButton } from '@/components/ui/FileInputButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -245,14 +246,10 @@ export function CsrGenerator() {
                       />
                     </div>
                     {san.length > 1 && (
-                      <button
-                        type="button"
-                        className="caption btn-remove-card inline-flex rounded-md min-h-11 min-w-11 items-center justify-center leading-none"
-                        aria-label={`SAN ${i + 1} を削除`}
+                      <RemoveButton
+                        label={`SAN ${i + 1} を削除`}
                         onClick={() => setSan((prev) => prev.filter((_, idx) => idx !== i))}
-                      >
-                        削除
-                      </button>
+                      />
                     )}
                   </div>
                   {ipError && (

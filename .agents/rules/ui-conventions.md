@@ -21,6 +21,7 @@ UI コンポーネントの変更時と、Playwright で UI 確認・E2E テス�
 | `NotificationBanner`  | DADS color-chip 型の通知バナー（variant: warning/error/info/success、title + 本文）                                                                                                                                                                                                 |
 | `StatusBadge`         | 状態を表す filled ピルバッジ（tone: error/success/warning/info）。`decorative` prop で `aria-hidden` を付与し、隣接する通知バナー等が意味を担保する文脈での二重読み上げを抑制できる                                                                                                 |
 | `ChipLabel`           | アウトライン型ラベルチップ（tone: error/info/neutral、任意 icon）                                                                                                                                                                                                                   |
+| `RemoveButton`        | 繰り返しリストの行・カードを取り除くアイコンのみの × ボタン。`label` 必須。クリア・閉じるには使わない                                                                                                                                                                               |
 
 ---
 

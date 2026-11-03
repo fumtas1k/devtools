@@ -14,7 +14,7 @@ Claude Design の DADS デザインシステム（`project/components/components
 | Checkbox / Radio        | 現状は専用コンポーネントなし                                        |
 | Accordion / Breadcrumbs | 現状は使用箇所なし                                                  |
 
-DS にない `ToggleGroup` / `ToggleChips` は Button（outline / solid-fill）と ChipLabel の規約から派生させる。
+DS にない `ToggleGroup` / `ToggleChips` は Button（outline / solid-fill）と ChipLabel の規約から派生させ、`RemoveButton` は Button（text）から派生させる。
 
 ## Button
 
@@ -29,6 +29,13 @@ DS にない `ToggleGroup` / `ToggleChips` は Button（outline / solid-fill）�
 | text       | 透明・`blue-900` 文字・下線（offset 3px）        | `blue-50` 地・`blue-1000` 文字・下線 3px | `blue-100` 地・`blue-1200` 文字        | `solid-gray-300` 文字                       |
 
 disabled は pointer-events を止める。hover と `:focus-visible` は同じ視覚反応で定義する（`ui-conventions.md` 2.1）。
+
+## RemoveButton（削除の ×）
+
+DS にない。繰り返しリストの行・カードから 1 項目を取り除く、アイコンのみのボタン（`src/components/ui/RemoveButton.tsx`）。Button の text variant から派生し、32×32px・通常は `muted`・hover / `:focus-visible` は `blue-50` の地と `blue-1000` の文字。
+
+- アイコンのみは DADS が認める例外（代替テキスト・44×44px 以上のターゲット・色 4.5:1 以上の 3 条件）。クリア・閉じる・検索クリア・カメラ停止には使わない
+- 仕様・根拠の詳細 → `docs/decisions.md [162]`
 
 ## Input / Textarea / Select
 

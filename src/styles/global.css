@@ -792,15 +792,38 @@
     padding: 0.1rem 0.5rem;
   }
 
-  /* Row remove button (GenerateTab チケット行削除) */
-  .btn-row-remove {
-    background: transparent;
+  /* RemoveButton: 繰り返しリストの行・カードを取り除くアイコンのみの × ボタン
+     （DADS Button の text variant から派生。docs/decisions.md [162]）。
+     focus ring は global の :focus-visible ルールに任せる（outline を上書きしない） */
+  .btn-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
     border: 0;
-    color: var(--color-error);
-    cursor: pointer;
-  }
-  .btn-row-remove:disabled {
+    border-radius: var(--radius-button-sm);
+    background: transparent;
     color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+  .btn-remove:hover:not(:disabled),
+  .btn-remove:focus-visible:not(:disabled) {
+    background: var(--color-bg-active);
+    color: var(--color-primary-hover);
+  }
+  .btn-remove:active:not(:disabled) {
+    background: var(--color-bg-text-button-active);
+    color: var(--color-primary-active);
+  }
+  .btn-remove:disabled {
+    background: transparent;
+    color: var(--color-disabled);
     cursor: not-allowed;
   }
 
@@ -817,8 +840,7 @@
   .btn-link-plain,
   button.text-link-plain,
   .json-toggle,
-  .btn-row-remove,
-  .btn-remove-card {
+  .btn-remove {
     position: relative;
   }
   .hit-area::after,
@@ -829,8 +851,7 @@
   .btn-link-plain::after,
   button.text-link-plain::after,
   .json-toggle::after,
-  .btn-row-remove::after,
-  .btn-remove-card::after {
+  .btn-remove::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -968,18 +989,7 @@
      `hover:bg-{custom}` は CSS rule が生成されず silent regression する。
      `.btn-clear` (PR 1) と同じパターンで専用 hover class を定義する。 */
 
-  /* Gs1Databar: BarcodeCard 削除ボタン (caption + text-error + hover で error-bg) */
-  .btn-remove-card {
-    color: var(--color-error);
-    background: transparent;
-    transition: background-color 0.15s;
-  }
-  .btn-remove-card:hover {
-    background: var(--color-error-bg);
-    color: var(--color-error-text); /* red-50 上は error-2（5.14:1） */
-  }
-
-  /* Gs1Databar: AI フィールド ✕ ボタン / GS1 文字列 <summary> 共通 (hover で bg-subtle) */
+  /* <summary> 共通 (hover で bg-subtle): Gs1Databar / JanCode / CertDecoder */
   .hover-bg-subtle {
     transition: background-color 0.15s;
   }

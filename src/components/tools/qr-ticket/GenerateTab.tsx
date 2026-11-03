@@ -1,6 +1,6 @@
 import { cx } from '@/utils/cx';
 import { ChevronIcon } from '@/components/ui/ChevronIcon';
-import { CloseIcon } from '@/components/ui/CloseIcon';
+import { RemoveButton } from '@/components/ui/RemoveButton';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { InputField } from '@/components/ui/InputField';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -276,15 +276,11 @@ export function GenerateTab({ keyPair, generation }: GenerateTabProps) {
                     >
                       {byteSize} B
                     </span>
-                    <button
-                      type="button"
-                      className="flex items-center justify-center caption min-w-10 min-h-10 p-3 btn-row-remove"
+                    <RemoveButton
+                      label={`行 ${i + 1} を削除`}
                       onClick={() => onRemoveTicket(i)}
                       disabled={tickets.length <= 1}
-                      aria-label={`行 ${i + 1} を削除`}
-                    >
-                      <CloseIcon size={16} />
-                    </button>
+                    />
                   </div>
                 </div>
               );
