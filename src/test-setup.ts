@@ -2,7 +2,7 @@
  * Vitest global setup — jsdom polyfill for Constructable Stylesheets API.
  *
  * jsdom 26 は CSSStyleSheet.replaceSync / document.adoptedStyleSheets 未実装のため polyfill する。
- * useDynamicStyleSheet を使うコンポーネント（ToggleGroup, ResultTable 等）を jsdom 環境で
+ * useDynamicStyleSheet を使うコンポーネント（ResultTable 等）を jsdom 環境で
  * render する全テストに適用される。
  */
 if (typeof CSSStyleSheet !== 'undefined' && !CSSStyleSheet.prototype.replaceSync) {
