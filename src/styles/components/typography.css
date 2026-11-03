@@ -1,0 +1,94 @@
+/* 文字スタイルの意味クラス（body-emphasis / caption / section-heading / text-body 等）。
+   太さは使う側で font-bold を併用するものが多い（DADS の文字スケール: docs/decisions.md [138]）。 */
+
+@layer components {
+  /* === 本文・補足の文字スタイル === */
+  /* Std-17B-170 */
+  .body-emphasis {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+  /* `font-weight: 400` を明示的に指定。bold 親要素の文脈で使う場合に
+     継承を断ち切る (Sidebar/MobileDrawer の link が bold 親に置かれた際の
+     意図せぬ太字化を防ぐ)。bold が必要な場合は consumer 側で
+     Tailwind `font-bold` を併用 (cascade layer 順で utilities が勝つ)。 */
+  .caption {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+
+  /* 補足テキスト用 semantic class（DADS の下限 14px / 行高 170%。docs/decisions.md [145]）。
+     名前の `xs` は旧 0.75rem の名残。Tailwind primitive の極小文字 utility 直書きの代替（issue #399）。 */
+  .hint-xs {
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  /* Caption variant: nav カテゴリラベル等 (letter-spacing wider than .caption) */
+  .caption-wide {
+    font-size: 0.875rem;
+    line-height: 1.7;
+    letter-spacing: 0.08em;
+  }
+
+  /* Section heading: about/privacy h2 + index card title (10 occurrences)
+     注: color は class に含めない (10 件中 1 件 = index L112 card title が色無し
+     なため、consumer 側で text-default を選択的に併用)。
+     **使い方**: 通常は `.section-heading .text-default` を併用 (= 9/10 ケース)。
+     親要素から色継承で十分なケースのみ単独適用 (例: index.astro の card title が
+     親 .tool-card-title から var(--color-text) を継承)。新規 consumer は
+     原則 `.text-default` 併用が安全 (silent regression 予防)。 */
+  /* Std-18B-160（太さはクラスに含めず、使う側で font-bold を併用する） */
+  .section-heading {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+  }
+
+  /* Body prose text: about/privacy 本文段落（typography + color baked-in） */
+  /* Std-16N-175 */
+  .text-body {
+    font-size: 1rem;
+    line-height: 1.75;
+    letter-spacing: 0.02em;
+    color: var(--color-text);
+  }
+
+  /* トップページ hero h1 見出し (2rem)。.page-heading (1.75rem) / .section-heading (1.125rem) より
+     一段大きい hero 用見出しスケールの SoT。color は class に含めず consumer 側で text-default を併用
+     (既存 hero h1 は text-default 付き)。(issue #565) */
+  /* Std-32B-150（太さは使う側で font-bold） */
+  .hero-heading {
+    font-size: 2rem;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+  }
+
+  /* ページ h1 見出し: about/privacy/404 の静的ページ共通 (1.75rem)。
+     .section-heading (h2, 1.125rem) より一段大きい page タイトル用。
+     color は .section-heading と同様 class に含めず consumer 側で text-default を併用 (issue #535)。 */
+  /* Std-28B-150（太さは使う側で font-bold） */
+  .page-heading {
+    font-size: 1.75rem;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+  }
+
+  /* 404 ページの装飾的エラーコード (大型数字 "404")。色は text-primary を併用 (issue #535)。 */
+  .error-code {
+    font-size: 4rem;
+    line-height: 1;
+  }
+
+  /* 静的ページのリンクテキスト typography: about/404 のツール/ホームリンク。
+     色は text-link を併用 (typography のみ定義) (issue #535)。 */
+  .link-text {
+    font-size: 1rem;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+}

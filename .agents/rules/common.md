@@ -154,7 +154,7 @@ pixel diff が小さくても（例: 0.07%）「微小だから baseline 更新�
 Tailwind の **primitive scale のカラークラス**（`text-blue-500` / `bg-red-50` / `text-neutral-700` 等）は使わない。
 
 - `@theme` 登録の **semantic token** の auto-utility（`text-primary` / `text-success` 等）は使ってよい。判断基準は「token 名から用途が読み取れるか」。
-- それ以外の色は `src/styles/global.css` の `@layer components` の意味クラス（`bg-subtle` / `alert-success` 等）を使う。無ければ先に意味クラスを追加する。
+- それ以外の色は `src/styles/components/color.css` の意味クラス（`bg-subtle` / `alert-success` 等）を使う。無ければ先に意味クラスを追加する。新しいクラスの置き場所（`components/` か `tools/` か、レイヤー外か）の判断基準は `src/styles/global.css` 冒頭のコメントにある。
 - Astro の既存 `style="var(--color-*)"` は [#289](https://github.com/fumtas1k/devtools/issues/289) で移行済み（`src/**/*.astro` に `style="` は無い）。新規は React と同じ意味クラスを使う。
 - 角丸はコントロール `rounded-md`（8px）、カード・パネル `rounded-lg`（12px）。`rounded-xl` は使わない（`docs/decisions.md [139]` / `[148]`）。
 
@@ -164,13 +164,15 @@ UI 変更時は **PC (1280x800)** と **スマホ (390x844)** の両方でスク
 
 ### 7.1 `@layer components` の手書き class は variant 非対応
 
-`global.css` の `@layer components` 内で手書き定義した class に `hover:` / `focus:` / `aria-pressed:` 等を付けても CSS rule が生成されず、silent regression する（PR #277）。`@theme` 由来の utility は variant 対応する。
+`src/styles/components/` と `src/styles/tools/` の `@layer components` 内で手書き定義した class に `hover:` / `focus:` / `aria-pressed:` 等を付けても CSS rule が生成されず、silent regression する（PR #277）。`@theme` 由来の utility は variant 対応する。
 
 hover 等が必要なら、専用 class を `:hover` 擬似クラスごと `@layer components` に定義する（`.btn-clear` / `.hover-bg-subtle` 等）。追加後は `npm run build` して `dist/_astro/BaseLayout.*.css` に rule が出ているか確認する。
 
 ### 7.2 Tailwind の scan 除外（`docs/` 等）を消さない
 
 `src/styles/global.css` の `@source not` 群（対象と理由は同ファイルのコメントが正本）は、実装コード以外に書かれた class 名が本番 CSS に混入するのを防いでいる。不要に見えても削除しない。実装コード以外のディレクトリを新設したら同じ箇所に足す。
+
+`@source not` は `global.css` にだけ置く（パスが `global.css` 基準で、`tests/meta/tailwind-source-exclusions.test.ts` もそこを検査する）。`src/styles/` は Tailwind の scan 対象なので、md（README 等）を置かない。CSS ファイルを足したら `global.css` に `@import` する（漏れは `tests/meta/styles-imports.test.ts` が検出する）。
 
 ---
 

@@ -41,7 +41,7 @@ const SIZE_CLASS: Record<Size, string> = {
  *   （primary は solid-gray-300 の塗り、outline / danger / text は solid-gray-300 の文字と枠）
  * - `aria-*` など ButtonHTMLAttributes のほとんどの属性を渡せる
  *
- * style: global.css `@layer components` の `.btn-action` / `.btn-action--{variant}` を参照。
+ * style: `src/styles/components/button.css`（`@layer components`） の `.btn-action` / `.btn-action--{variant}` を参照。
  */
 export function ActionButton({
   onClick,

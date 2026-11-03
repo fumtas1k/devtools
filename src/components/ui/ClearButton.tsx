@@ -9,7 +9,7 @@ interface Props {
 /**
  * クリアボタン。DADS Button の text variant・sm サイズ（docs/decisions.md [140]）。
  *
- * style: global.css `@layer components` の `.btn-action` / `.btn-action--text` を参照
+ * style: `src/styles/components/button.css`（`@layer components`） の `.btn-action` / `.btn-action--text` を参照
  * （ActionButton の text variant と同じ class。寸法は COMPACT_BUTTON_SHAPE_CLASSES）。
  */
 export function ClearButton({ onClick, className = '' }: Props) {

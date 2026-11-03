@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 /**
  * issue #387: prefers-reduced-motion グローバルリセットの E2E。
  *
- * `src/styles/global.css` の `@media (prefers-reduced-motion: reduce)` で
+ * `src/styles/motion.css` の `@media (prefers-reduced-motion: reduce)` で
  * すべての要素の transition-duration を 0.01ms に抑止していることを検証する。
  *
  * 陽性 / 陰性対照を **同一スペック内に併設** することで「セレクタが

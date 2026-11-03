@@ -229,7 +229,7 @@ const jsonLd = {
   const searchStatus = document.getElementById('search-status')!;
   const resultCards = Array.from(searchResults.querySelectorAll<HTMLElement>('[data-search]'));
 
-  // 表示制御は `hidden` 属性で行う（global.css の `[hidden]{display:none!important}`
+  // 表示制御は `hidden` 属性で行う（`src/styles/base.css` の `[hidden]{display:none!important}`
   // が Tailwind の `.flex` / `.block` に勝つ）。inline style / CSSOM mutation を
   // 避けることで CSP style-src を侵さない。
   function applySearch() {

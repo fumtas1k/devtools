@@ -75,7 +75,7 @@ interface Props {
  * `text` prop に string または遅延生成用のコールバック（`() => string`）を渡せる。
  * コールバック形式はクリック時のみ評価されるため、大きなデータの逐次 stringify に使用できる。
  *
- * style: global.css `@layer components` の `.btn-copy` / `.btn-copy.is-copied` /
+ * style: `src/styles/components/button.css`（`@layer components`） の `.btn-copy` / `.btn-copy.is-copied` /
  * `.btn-copy.is-compact` / `.btn-copy:disabled` を参照。状態は `is-copied` / `is-compact` className で切替。
  * default 表示は DADS Button の outline、compact（アイコンのみ）は枠なしで hover に text ボタンの地を出す。
  *
