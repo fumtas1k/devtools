@@ -65,7 +65,7 @@
   min-height: 2.75rem; /* タップ領域 44px（[152]） */
   padding: 0.5rem 1rem;
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-text-on-primary);
   font-weight: 700;
   text-decoration: none;
 }

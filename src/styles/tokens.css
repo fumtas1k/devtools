@@ -110,6 +110,9 @@
   --color-uuid-rand-b: #004c59; /* cyan-1100: 選択行 7.67:1 */
   --color-jwt-payload: #6f23d0; /* purple-700: payload 枠（gray-50 上 6.64:1） */
   --color-jwt-value: #6e5600; /* yellow-1100: JSON の値（gray-50 上 6.27:1） */
+  --color-syntax-string: #197a4b; /* green-800: JSON ツリーの文字列。hover 行（blue-50）上 4.70:1 */
+  --color-syntax-number: #ac3e00; /* orange-900: JSON ツリーの数値。hover 行上 5.36:1 */
+  --color-syntax-boolean: #6f23d0; /* purple-700: JSON ツリーの真偽値。hover 行上 6.52:1 */
   --color-text-on-primary: #ffffff; /* プライマリ色背景上の文字（白抜き）。ダークモード時も白を維持 */
   --color-bg-active: #e8f1fe; /* blue-50: アクティブなナビ項目背景・トグルと表の行の hover・text ボタンの hover 地 */
   --color-bg-selected: #d9e6ff; /* blue-100: 選択中の表の行（hover の blue-50 と区別。本文 10.06:1 / muted 6.73:1） */

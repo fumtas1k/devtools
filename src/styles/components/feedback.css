@@ -5,7 +5,7 @@
   /* 幅は useDynamicStyleSheet 経由の CSS カスタムプロパティ で制御 */
   .progress-track {
     background: var(--color-bg-subtle);
-    border-radius: 9999px;
+    border-radius: var(--radius-full);
     height: 0.5rem; /* 8px */
     overflow: hidden;
     display: flex;
@@ -49,7 +49,7 @@
     display: inline-block;
     border: 1px solid var(--color-primary);
     color: var(--color-primary);
-    border-radius: 9999px;
+    border-radius: var(--radius-full);
     padding: 0.1rem 0.5rem;
   }
 

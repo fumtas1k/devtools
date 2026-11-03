@@ -32,7 +32,7 @@
     display: flex;
     align-items: center;
     gap: 0.125rem;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     padding: 0.0625rem 0.25rem;
   }
   .json-line:hover {
@@ -48,7 +48,7 @@
     text-align: center;
   }
   .json-toggle:focus-visible {
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
   }
   .json-toggle-spacer {
     width: 1.1rem;
@@ -61,15 +61,15 @@
   .json-punct {
     color: var(--color-muted);
   }
-  /* JSON 値の構文色（UI トークンではないローカル色。jwt-json-* と同方針） */
+  /* JSON 値の構文色（値とコントラスト比は tokens.css の --color-syntax-*） */
   .json-string {
-    color: #197a4b; /* green-800: hover 行（blue-50）上 4.70:1 */
+    color: var(--color-syntax-string);
   }
   .json-number {
-    color: #ac3e00; /* orange-900: hover 行上 5.36:1 */
+    color: var(--color-syntax-number);
   }
   .json-boolean {
-    color: #6f23d0; /* purple-700: hover 行上 6.52:1 */
+    color: var(--color-syntax-boolean);
   }
   .json-null {
     color: var(--color-muted);
