@@ -52,7 +52,9 @@
 
 `page.goto` の既定は `load`。`domcontentloaded` は画像等の完了を待たないが、どちらも React のイベントハンドラ登録を保証しない。`networkidle` を操作準備完了の代用とすることも公式は推奨していない。変更時は目的の状態を assertion で検証し、必要な hydration 待ちを別途確保する（[Navigations](https://playwright.dev/docs/navigations)、[page.goto](https://playwright.dev/docs/api/class-page#page-goto)）。
 
-#193 (c) に列挙された 20 spec は現在 `withProductionCsp` を使用しており、共通経路は `goto(path)` → hydration 待ち → テスト本体（`link-styles` の静的ページは既存の `skipHydration` 指定で待機しない）。`config-converter` / `qr-reader` には直接 `goto` → hydration の経路もあり、`config-converter` / `uuid-v7` / `ulid-generator` にはレスポンスを調べる直接 `goto` もある。#219 の `a11y-live-region` も現在は共通ヘルパー経由で、当時の `domcontentloaded` 指定は残っていない。一律置換は共通ヘルパー利用先へ広く波及するため、現在の `load` を維持し、遅いリソースを再現した比較と画像・ダウンロード等の待機条件の確認を先に行う。
+#193 (c) に列挙された 20 spec は現在 `withProductionCsp` を使用しており、共通経路は `goto(path)` → hydration 待ち → テスト本体（`link-styles` の静的ページは既存の `skipHydration` 指定で待機しない）。`config-converter` / `qr-reader` には直接 `goto` → hydration の経路もあり、`config-converter` / `uuid-v7` / `ulid-generator` にはレスポンスを調べる直接 `goto` もある。#219 の `a11y-live-region` も現在は共通ヘルパー経由で、当時の `domcontentloaded` 指定は残っていない。一律置換は共通ヘルパー利用先へ広く波及するため、現在の `load` を維持する。
+
+遅延画像・遅延 React module と代表ページでの動的比較、および再実行手順は [navigation 手動診断](../../tests/diagnostics/README.md) を参照。画像保留時は `domcontentloaded` が先に戻る一方、両方式とも hydration 完了を保証しなかった。通常 CI の spec / project は増やさず、共通 helper の待機方式も変更しない。画像 decode・ダウンロード完了等、操作対象ごとの条件を明示した上で採用を判断する。
 
 hydration ヘルパーは `astro-island` 配下の**いずれか**の要素に `__react*` キーがあるかを調べる。全 island の完了や effect の完了を証明せず、React の非公開実装に依存する。`clipboard-inspector` の診断テストも `__reactDiagnostic` を注入してこの経路を使うため、置換時に追従が必要。
 
@@ -62,7 +64,7 @@ hydration ヘルパーは `astro-island` 配下の**いずれか**の要素に `
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
 | (a) action / navigation timeout のグローバル明示 | **deferred**: 未指定の実効値 0 を記録。有限値の導入は既存の時間予算を変えるため別途判断。設定自体の明示は未実施 |
 | (b) server / test timeout の関係                 | **done**: 環境別の実値と別予算であることを記録                                                                  |
-| (c) `goto` 横展開判断                            | **partial**: 現行経路を調査し今回は維持。再現条件を用いた比較は未実施                                           |
+| (c) `goto` 横展開判断                            | **partial**: 代表ページ・遅延条件の手動比較を実施し現行維持。全 20 spec への採用判断は未完了                    |
 | (d) React 非公開キー依存の解消                   | **partial**: 代替候補と検証条件を整理。置換・動的検証は未実施                                                   |
 
 個別例外の全件の数値根拠確定と規約の必須化も未完了。残作業は [#193](https://github.com/fumtas1k/devtools/issues/193) で追跡し、この文書更新だけでは Issue を閉じない。

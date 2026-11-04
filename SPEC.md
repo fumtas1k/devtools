@@ -121,7 +121,8 @@ devtools/
 ├── docs/
 │   └── decisions.md        # 設計・実装の決断ログ
 ├── tests/
-│   └── e2e/                # Playwright E2E テスト
+│   ├── e2e/                # Playwright E2E テスト
+│   └── diagnostics/        # 明示実行する手動診断（通常 CI の探索対象外）
 ├── public/
 │   ├── favicon.svg
 │   ├── og-image.png
