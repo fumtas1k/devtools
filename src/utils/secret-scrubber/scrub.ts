@@ -67,11 +67,35 @@ export function resolveMaskRange(
 }
 
 /**
+ * 高エントロピー候補の置換範囲から除外できるキーと区切りを等長の空白で示す。
+ * 小文字 snake_case（2〜4 語、各語 16 字以下）の単一代入だけを対象にする。
+ * URL・引用符・複数代入・値の途中の = は曖昧なので元の走査を維持する。
+ * 検出・エントロピー判定は元の入力を使う。キー除外で閾値未満になる候補も失わず、
+ * union による秘密の断片の保護を維持する。
+ */
+function assignmentMaskInput(input: string): string {
+  const assignment =
+    /^[\t ]*([a-z][a-z0-9]{0,15}(?:_[a-z][a-z0-9]{0,15}){1,3})[\t ]*=[\t ]*([A-Za-z0-9+/_-]+(?:\.[A-Za-z0-9+/_-]+)*={0,2})[\t ]*\r?$/dgm;
+  const parts: string[] = [];
+  let cursor = 0;
+  for (const match of input.matchAll(assignment)) {
+    const valueRange = match.indices?.[2];
+    // indices が取れない場合はキーを除外せず、従来の over-mask に倒す。
+    if (!valueRange) continue;
+    parts.push(input.slice(cursor, match.index), ' '.repeat(valueRange[0] - match.index));
+    cursor = valueRange[0];
+  }
+  parts.push(input.slice(cursor));
+  return parts.join('');
+}
+
+/**
  * テキストを検査して機密情報を [REDACTED:<CATEGORY>_<n>] に置換する。
  * 純関数・入力非破壊。
  */
 export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>): ScrubResult {
   const rawMatches: RawMatch[] = [];
+  const assignmentInput = enabled.HIGH_ENTROPY ? assignmentMaskInput(input) : input;
 
   // ステップ 1: 全ルールでマッチを収集
   for (const rule of SCRUB_RULES) {
@@ -101,6 +125,15 @@ export function scrubText(input: string, enabled: Record<ScrubCategory, boolean>
 
       // バリデーション（validate は元のマッチ全体に対して適用）
       if (rule.validate && !rule.validate(m[0])) continue;
+
+      if (rule.category === 'HIGH_ENTROPY') {
+        // 元の候補を維持したまま、確定したキーだけを置換対象から外す。
+        // 値で閾値を再判定すると、既知トークンの前後を覆う候補を失い得る。
+        const prefix = assignmentInput.slice(maskStart, maskEnd).match(/^ +/)?.[0].length ?? 0;
+        maskStart += prefix;
+        if (maskStart === maskEnd) continue;
+        maskValue = input.slice(maskStart, maskEnd);
+      }
 
       rawMatches.push({
         start: maskStart,

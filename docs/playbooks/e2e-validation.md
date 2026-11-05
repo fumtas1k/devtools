@@ -13,7 +13,61 @@
 - 本番 (Cloudflare Pages) のビルド成果物に対して E2E を回し、prod-parity を確保するため（`docs/decisions.md` [063]）。後続 [#176](https://github.com/fumtas1k/devtools/issues/176) 採用時には `<meta>` ベース CSP も生成されるため、その評価基盤を先回りで整備する位置付けでもある
 - Astro の `security.csp` 機能は dev mode で動作せず build/preview のみで有効（[公式 docs](https://docs.astro.build/en/reference/configuration-reference/#securitycsp)）
 
-`webServer.timeout` は CI で 30s / Local で 120s（[#248] で分岐。判定は `GITHUB_ACTIONS`、`docs/decisions.md` [065]）。CI では `.github/workflows/test.yml` 側で事前 build 済みのため preview 起動の早期検知に倒し、Local は build 込みのため余裕を持たせている。
+`webServer.timeout` は preview が GitHub Actions で 30s / Local で 120s、併走する hydration-dev 用 dev server がそれぞれ 30s / 60s（判定は `GITHUB_ACTIONS === 'true'`）。Actions は事前 build 済みのため preview 起動のみ、Local は build 込みで待つ（`docs/decisions.md` [065]）。`CI=1` だけでは Actions 側に切り替わらない。
+
+### 0.1 timeout の対象と現在値（#193）
+
+`playwright.config.ts` と Playwright 1.59.1 を確認した時点（develop `a323b46`）の記録。以下は既存の実効値であり、timeout を延長する提案ではない。
+
+| 対象                    | 現在値                                                                          | 待つ範囲                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| test                    | 未指定（既定 30,000ms）                                                         | テスト関数・fixture setup・`beforeEach` の合計                                   |
+| expect                  | 5,000ms を明示                                                                  | 各 auto-retrying assertion。通常の即時 assertion を待機型にはしない              |
+| action / navigation     | `use.actionTimeout` / `use.navigationTimeout` とも未指定（Test の既定 0）       | 独立した上限なし。ただし実行中の test の残り時間で中断される                     |
+| webServer               | preview: Actions 30,000 / Local 120,000ms、dev: Actions 30,000 / Local 60,000ms | テスト開始前のサーバー利用可能性確認。各テストの予算とは別                       |
+| `waitForReactHydration` | 10,000ms（引数で上書き可能）                                                    | `page.waitForFunction` による検出。test の残り時間が短ければ先に test が失敗する |
+
+`expect` や hydration の上限を足して test の予算が増えるわけではない。`afterEach` と fixture teardown には test と同値の別予算があり、`beforeAll` / `afterAll` も各 test と予算を共有しない。server と test がともに 30s でも、同じ時計で競合するわけではない。起動失敗と、起動後の navigation / hydration / assertion 失敗をログで区別する。
+
+出典: [Playwright Timeouts](https://playwright.dev/docs/test-timeouts)、[TestOptions](https://playwright.dev/docs/api/class-testoptions)、[Web server](https://playwright.dev/docs/test-webserver)。パッケージ更新時は設定と既定値を再確認する。
+
+### 0.2 個別 timeout の監査メモ
+
+再調査の入口は `rg -n 'timeout|setTimeout|test\.slow|setDefault' tests/e2e playwright.config.ts`。ブラウザ内の `setTimeout`、固定待機、Playwright の上限は区別する。以下は静的な用途分類であり、値の妥当性を計測で証明したものではない。
+
+| 分類・該当 spec / helper                                                                              | 現状と残作業（#193）                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| test 全体: `filename-sanitize` / `qr-reader` / `qr-ticket`                                            | 30s の再指定は現在の既定と同値。延長ではない。削除は今回行わない                                                                                                                |
+| test 全体: `char-count`                                                                               | 大量入力の実 worker 起動・差し替え・クリアを行う 1 件が 60s。操作と worker 終了には別途 5s 未満の検証がある。全体 60s の数値根拠は再計測が必要                                  |
+| hydration: `helpers` / `csr-generator`                                                                | 共通 10s は test 予算を使い切る前の失敗検出が目的。CSR の 2 箇所は初回ロードを理由に 20s とコメント済み。ただし `goto` 後の待機であり、navigation 自体の上限は変えない          |
+| 10–15s の assertion: `csr-generator` / `qr-ticket` / `filename-sanitize` / `qr-reader` / `har-viewer` | 鍵生成・署名・画像読取・ファイル処理・結果表示が混在。処理が非同期というだけでは各数値の根拠にならず、通常の表示確認も含め個別の計測・理由追記が必要                            |
+| 既定と同じ 5s の assertion / poll                                                                     | `totp-hotp`、`secret-scrubber`、`clipboard-inspector`、CSP / hydration の gate spec、CSR / char-count の一部。冗長指定と検証意図を区別する（例: gate は違反を観測する陽性対照） |
+| 短い assertion: `json-csv` / `mcp-config-inspector`                                                   | 2–3s。`json-csv` の 3s は 300ms debounce に対する余裕とコメント済み。他の数値も同じ理由とは断定できない                                                                         |
+| action / wait: `touch-targets` / `char-count`                                                         | touch-targets は準備クリック 2s と準備後要素待ち 5s、char-count は応答性を検証する操作 5s。assertion の既定 5s と役割が異なる                                                   |
+| ゼロ件の assertion / poll: `config-converter` / `csp-and-evaluation`                                  | 500ms / 1s。条件が最初から成立すれば即成功するため、「その時間ずっと現れない」の証明にはならない。観測窓の設計・陽性対照は #193 の残作業                                        |
+
+例外を見直す際は、待つ状態・遅延の原因・数値の根拠をコメントに残すか、意味が伝わる定数へ切り出す案をレビューする。まず web-first assertion で目的の結果を観測できるかを確認し、timeout の増加だけで flake の修正としない。
+
+### 0.3 navigation / hydration の調査結果と未完了範囲
+
+`page.goto` の既定は `load`。`domcontentloaded` は画像等の完了を待たないが、どちらも React のイベントハンドラ登録を保証しない。`networkidle` を操作準備完了の代用とすることも公式は推奨していない。変更時は目的の状態を assertion で検証し、必要な hydration 待ちを別途確保する（[Navigations](https://playwright.dev/docs/navigations)、[page.goto](https://playwright.dev/docs/api/class-page#page-goto)）。
+
+#193 (c) に列挙された 20 spec は現在 `withProductionCsp` を使用しており、共通経路は `goto(path)` → hydration 待ち → テスト本体（`link-styles` の静的ページは既存の `skipHydration` 指定で待機しない）。`config-converter` / `qr-reader` には直接 `goto` → hydration の経路もあり、`config-converter` / `uuid-v7` / `ulid-generator` にはレスポンスを調べる直接 `goto` もある。#219 の `a11y-live-region` も現在は共通ヘルパー経由で、当時の `domcontentloaded` 指定は残っていない。一律置換は共通ヘルパー利用先へ広く波及するため、現在の `load` を維持する。
+
+遅延画像・遅延 React module と代表ページでの動的比較、および再実行手順は [navigation 手動診断](../../tests/diagnostics/README.md) を参照。画像保留時は `domcontentloaded` が先に戻る一方、両方式とも hydration 完了を保証しなかった。通常 CI の spec / project は増やさず、共通 helper の待機方式も変更しない。画像 decode・ダウンロード完了等、操作対象ごとの条件を明示した上で採用を判断する。
+
+hydration ヘルパーは `astro-island` 配下の**いずれか**の要素に `__react*` キーがあるかを調べる。全 island の完了や effect の完了を証明せず、React の非公開実装に依存する。`clipboard-inspector` の診断テストも `__reactDiagnostic` を注入してこの経路を使うため、置換時に追従が必要。
+
+代替候補は対象コンポーネントの effect で立てる `data-hydrated="true"` と、その対象への locator assertion。SSR 時は立てず、遅延 hydration / 複数 island / ハンドラが未登録のケースで早期成功しない陽性対照が必要になる。単なる可視性チェックでは SSR DOM と区別できない。Astro 7.3.3 の `astro:hydrate` / `ssr` 属性除去も即座に代用しない。`@astrojs/react` 6.0.6 の `dist/client.js` は `startTransition` 内で `hydrateRoot` / `render` を呼び、React commit 完了を待つ Promise を返さないため、Astro 側の通知との同等性は未検証。
+
+| #193 のチェック項目                              | この文書更新での状態                                                                                            |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| (a) action / navigation timeout のグローバル明示 | **deferred**: 未指定の実効値 0 を記録。有限値の導入は既存の時間予算を変えるため別途判断。設定自体の明示は未実施 |
+| (b) server / test timeout の関係                 | **done**: 環境別の実値と別予算であることを記録                                                                  |
+| (c) `goto` 横展開判断                            | **partial**: 代表ページ・遅延条件の手動比較を実施し現行維持。全 20 spec への採用判断は未完了                    |
+| (d) React 非公開キー依存の解消                   | **partial**: 代替候補と検証条件を整理。置換・動的検証は未実施                                                   |
+
+個別例外の全件の数値根拠確定と規約の必須化も未完了。残作業は [#193](https://github.com/fumtas1k/devtools/issues/193) で追跡し、この文書更新だけでは Issue を閉じない。
 
 ---
 

@@ -1872,7 +1872,7 @@ YAML・JSON・TOML・.env の相互変換ブラウザ完結ツールを実装す
 - ✅ `connect-src 'self'` により、万一 XSS が成立しても外部送信経路を断つ。
 - ⚠️ `script-src` と `style-src` に `'unsafe-inline'` を残しているため、インラインスクリプト/スタイル経由の XSS 緩和効果は限定的。Astro の nonce 対応 or インラインスタイル削減を将来課題として継続的に検討する（追跡 issue: [#176](https://github.com/fumtas1k/devtools/issues/176)）。なお dev / preview server の挙動差で security.csp が未検証だった件は [063] で解消、`script-src 'unsafe-inline'` の実質削減 (meta strict layer 採用) は [064] で実施。
 - ⚠️ Cloudflare Pages 以外のホスティング（Netlify は同形式で動作するが、Vercel は `vercel.json` 形式）に切り替える際は別途設定追加が必要。
-- ℹ️ E2E テストでのヘッダ検証は、Playwright が `npm run dev`（Astro dev server）経由で起動しており dev server は `_headers` を解釈しないため、本 PR では `public/_headers` ファイル内容の Vitest 単体テストに留めた。preview サーバーまたは実デプロイ後の検証は将来課題とする → **[063] で E2E を preview ベースに移行して解消**。
+- ℹ️ 本 PR 時点の E2E は `npm run dev`（Astro dev server）経由で、dev server は `_headers` を解釈しないため、`public/_headers` ファイル内容の Vitest 単体テストに留めた。その後、**[061] で本番 CSP をレスポンスヘッダに注入する E2E 検証を導入し、[063] で E2E を build/preview ベースに移行した**。これは preview サーバー自体による `_headers` の適用や実デプロイ先のヘッダ検証を意味しない。
 
 ---
 
@@ -2119,7 +2119,7 @@ of script: script-src 'self' 'unsafe-inline'.
 
 直接原因は `src/utils/config-converter/schema-validator.ts` で使用していた Ajv 8.x が、スキーマを `new Function()` で JIT コンパイルする設計のため `script-src 'unsafe-eval'` を要求すること。`public/_headers` の CSP は `unsafe-eval` を許可していないため本番のみで失敗していた。
 
-より深刻な問題は **CI で検知できなかった** こと。`playwright.config.ts` は `npm run dev`（Astro dev server）で起動するが、dev / preview server は `public/_headers` を解釈しない。結果、ユニット (jsdom) も E2E (Astro dev) も CSP 制約無しで実行され、本番限定の eval 依存違反が素通りした。これは [054] 末尾で「将来課題」と明記していた既知の穴で、本決定でその穴を塞ぐ。
+より深刻な問題は **CI で検知できなかった** こと。当時の `playwright.config.ts` は `npm run dev`（Astro dev server）で起動していたが、dev / preview server は `public/_headers` を解釈しない。結果、ユニット (jsdom) も E2E (Astro dev) も CSP 制約無しで実行され、本番限定の eval 依存違反が素通りした。[054] で残っていたこの検証の穴は、本決定の CSP ヘッダ注入 E2E で補った（PR #233）。
 
 ### 決断
 
@@ -2155,7 +2155,7 @@ of script: script-src 'self' 'unsafe-inline'.
 ### 関連 PR / issue
 
 - 本 PR (config-converter CSP 修正 + デグレ検知ゲート)
-- 決定 [054]（CSP 初実装。末尾の「dev/preview 非適用 CSP の検証は将来課題」が本件で具体化）
+- 決定 [054]（CSP 初実装。当時未実施だった CSP 制約下の E2E 検証を PR #233 で導入）
 
 ---
 
@@ -2219,7 +2219,7 @@ PR #240（ルールファイル整理）の派生検証で、上記いずれも 
   - `docs/playbooks/e2e-validation.md` — step 0 を `npm ci` に変更、補足注に npm install シナリオ別 caveats を追加
   - `docs/playbooks/pr-creation.md` — ブランチ作成完成形に `npm ci` 追加、step 0 を `npm ci` に変更
   - `docs/agent-lessons.md` — 2026-05-01 entry に「2026-05-03 追記」セクション
-  - `.claude/settings.json` — SessionStart hook 条件緩和（本 PR の別 commit で対応予定）
+  - `.claude/settings.json` — SessionStart hook 条件緩和（PR #243 で実施済み。その後 [090] / PR #495 で lockfile ハッシュガードへ変更）
 - **後方互換**: `bash scripts/agent-worktree-setup.sh` を呼ぶ既存の指示書 / プロンプトテンプレートが残っていたら `npm ci` に置換する必要あり
 
 ### npm install シナリオ別の sandbox caveats（補足）
@@ -2251,7 +2251,7 @@ PR #240（ルールファイル整理）の派生検証で、上記いずれも 
 
 しかし [Astro 公式ドキュメント](https://docs.astro.build/en/reference/configuration-reference/#securitycsp) は明確に、`security.csp` は **dev mode で動作せず build/preview モードのみで有効** と記載している。`playwright.config.ts:webServer.command` は `npm run dev` を起動していたため、このまま [#176] を採用しても E2E は `<meta>` 不在の環境で回り、本番との prod-parity が崩れる（[061] で同種の dev/prod 乖離による事故が発生済み）。
 
-[054] 末尾の「preview サーバーまたは実デプロイ後の検証は将来課題とする」の解消にもあたる。
+[054] で残っていたビルド成果物の E2E 検証を、PR #247（#246）で build/preview ベースに移行して実施する。[061] の CSP ヘッダ注入は維持し、preview 自体による `_headers` の適用や実デプロイ先のヘッダ検証は行わない。
 
 ### 決断
 
@@ -2549,7 +2549,7 @@ PR 9 の Phase 2 (13 ツール spec を strict CSP local run) で **Astro 島ラ
 
 ### Follow-up decisions (PR 10 着手前、2026-05-08)
 
-PR 9 merge 後の review で 2 件の follow-up issue が起票され、PR 10 着手前に方針を確定した。
+PR 9 merge 後の review で #309（ResultTable FOUC）と #308（sheet 再利用）が起票され、PR #313 で PR 10 着手前の方針を確定した。
 
 #### #309 ResultTable FOUC → option A (現状容認)
 
@@ -2706,7 +2706,7 @@ B 案完了後も継続運用する検出網:
 - **CSP3 仕様の事前確認**: PR 1.5 で `setProperty('--var', value)` パターンを導入した時、「CSSOM API は CSP 観点で `style="..."` HTML 属性とは別経路」という前提で設計したが、これは誤りだった (`[067]` で発覚)。CSP3 仕様 (`https://www.w3.org/TR/CSP3/#directive-style-src`) では `setProperty` 経由の DOM mutation も `style-src` 対象と明記されている。**教訓**: 新規 CSP 関連パターン導入時は仕様を熟読し、E2E `applyProductionCsp` gate を 1.5 段階で導入していれば早期検知できた。
 - **Astro island runtime の暗黙 inline style**: PR 9 Phase 2 で発覚。Astro 自身が injection する inline style は `<meta>` 側 hash には自動取り込みされるが `_headers` 側には自動反映されない。**教訓**: build 出力の HTML 全体を grep して全 inline style 経路を網羅するチェックを strict 化前に実施。
 - **ガード/バリデータには陽性対照を必須とする**: PR 5b の `withProductionCsp` meta-test (#281) や本 PR の Astro hash 検出網メタテストのように、検出網自体が silent pass しないことを陽性対照で能動確認する運用が定着。memory `feedback_positive_control_for_gates.md`。
-- **段階的 PR の本数管理**: B 案は当初 PR 1〜6 想定だったが、実際は PR 0〜10 + follow-up で計 15 PR (含む scope 縮小 PR / 計画外発覚での分割)。「PR の自然分割は infra / foundation / 個別 migration / docs」の方針 (memory `feedback_pr_size.md`) に従ったため、各 PR は review 単位で適切な大きさを維持できた。
+- **段階的 PR の本数管理**: B 案は当初 PR 1〜6 想定だったが、実際は PR 0〜10 と PR #313 の追加対応を含め計 15 PR (含む scope 縮小 PR / 計画外発覚での分割)。「PR の自然分割は infra / foundation / 個別 migration / docs」の方針 (memory `feedback_pr_size.md`) に従ったため、各 PR は review 単位で適切な大きさを維持できた。
 - **subagent 委譲方針の使い分け**: PR 4 / 5a / 5b で「subagent 非 commit + 親で順次 commit」運用を確立、PR 7a / 7b / 8 / 9 / 10 では「親 Opus 直接実装」へ移行 (CSP flip / 高 stakes 検証は subagent verification trust の観点で親直接が安全)。memory `feedback_subagent_verification_trust.md` / `feedback_subagent_model.md`。
 
 ## [069] 2026-05-09 — VRT baseline 更新経路の audit + secret 焼き付き防御 2 層導入 (`#255`)
@@ -3385,7 +3385,7 @@ descender 仮説は本 PR で **明確に否定** された。GS1 仕様の「co
 - **方言サポート**: MySQL / PostgreSQL / SQLite / SQL Server の 4 方言をセレクトで切り替え可能にする。
 - **整形オプション**: `keywordCase: "upper"`（キーワード大文字化）+ `tabWidth: 2`（インデント 2 スペース）を固定設定とし、UI 上の設定項目を最小限に抑える。
 - **リアルタイム整形**: 入力変更・方言変更をトリガーに `useCodec` フック（既定 300ms デバウンス）で整形し、ユーザーが確定操作なしに結果を確認できる。
-- **スコープ**: PR1 はインデント・キーワード大文字化の整形のみ。バインド変数展開（パラメータ埋め込み）は別 PR で対応予定。
+- **スコープ**: PR1 はインデント・キーワード大文字化の整形のみ。バインド変数展開（パラメータ埋め込み）は PR2（#486）で追加した（下記追記参照）。
 
 ### 却下した選択肢
 
@@ -3621,7 +3621,7 @@ regex-visualizer は PR1（AST + ReDoS）/ PR2（鉄道図）で構造可視化�
 
 - ✅ 整形・最小化テキストは数値精度・エスケープを保持（lossless）。一方ツリー表示の値は `Node.value`（JS number）由来のため、超大整数はツリー上の表示のみ精度が落ちる（コピー対象の raw / 整形テキストは正確）。
 - ✅ `jsonc-parser` は v3.3.1 が 2024-06-24 公開で `.npmrc` の `min-release-age=7` を満たし、`save-exact=true` によりバージョン固定で導入。
-- ⚠️ v1 はツリー仮想化なし。大容量 JSON のツリー描画パフォーマンスは後続「機密データ保護」PR で Web Worker + 仮想スクロールとして対応予定。
+- ⚠️ v1 はツリー仮想化なし。当初は後続「機密データ保護」PR で Web Worker + 仮想スクロールを扱う想定だったが、[094] で #512 に分離した。その後、ツリー仮想化は [103] / PR #622 で実装し、Worker オフロードは [104] / PR #624 で計測の結果、見送った。
 - 検証（不正 JSON 検知）は検知機構のため陽性対照を併設（`parse.test.ts` / `index.test.ts` / E2E）。
 
 ---
@@ -3673,7 +3673,7 @@ json-formatter 段階リリース第 3 段。ブラウザ内完結を活かし�
 ### 却下した選択肢
 
 - **完全伏字（`\***`）/ 部分マスク（`ab**\*@`）**: 前者は種別が分からず、後者は残部から原値が推測されるリスク。種別ラベル方式を採用。
-- **大容量対応（Web Worker + 仮想スクロール）を同梱**: 独立 subsystem かつ CSP（blob worker 不可）で別途設計を要するため別 issue に分離。
+- **大容量対応（Web Worker + 仮想スクロール）を同梱**: 独立 subsystem かつ CSP（blob worker 不可）で別途設計を要するため #512 に分離。その後、ツリー仮想化は [103] / PR #622 で実装し、Worker オフロードは [104] / PR #624 で計測の結果、見送った。
 
 ### 結果・トレードオフ
 
@@ -3710,7 +3710,7 @@ json-formatter 段階リリースの最終段（クエリ・マスク・型生�
 
 - ✅ 依存ゼロ・CSP 安全・小バンドル。推論コアと emitter を分離し将来の Go/Zod 追加に再利用可能。
 - ⚠️ 推論は構造ベースで、リテラル型・enum・日付等の意味推論は行わない。
-- `JsonFormatter.tsx` が 4 モード（text/tree/mask/type）＋クエリで肥大化。モード切り出し refactor は別 issue に分離。
+- `JsonFormatter.tsx` が 4 モード（text/tree/mask/type）＋クエリで肥大化したため、モード切り出し refactor を #515 に分離し、PR #517 で結果パネルを切り出した。
 
 ---
 
@@ -4365,7 +4365,7 @@ issue の root-cause 表は「白画面の主因は DOM ノード爆発（`HarEn
 
 ### 却下した選択肢
 
-- **ページング / バイト cap 調整のみ（sanitize 非同期化を別 issue へ分離）**: 初版 PR の方針。しかし user 実機検証で主因が同期 sanitize と判明し、これでは見出しの症状（読み込み時フリーズ）が消えないため撤回。Worker 化を本 PR に取り込んだ。
+- **ページング / バイト cap 調整のみ（sanitize 非同期化は同梱しない）**: 初版 PR では非同期化を分離する方針だった。しかし user 実機検証で主因が同期 sanitize と判明し、これでは見出しの症状（読み込み時フリーズ）が消えないため撤回。Worker 化を PR #680 に取り込んだ。
 - **メインスレッドで chunk 分割 async**: Worker より単純だが完全な off-thread ではなく、長い同期区間が残りうる。確実にフリーズを消す Worker を採用。
 - **ページング / 仮想スクロールで描画を抑制**: 当初ページングを入れたが、実 HAR の主因は描画ではなく sanitize であり、エントリ数も数百件で描画は軽い。撤去して全件描画に戻した（YAGNI）。
 
@@ -4657,7 +4657,7 @@ SAMLデコーダの HTTP-Redirect binding では、SAMLResponse/SAMLRequest が 
 
 **deflate 展開ライブラリとして `fflate` を採用する。** 定番の `pako` と比較し、バンドルサイズが小さく TypeScript 型定義を同梱するため型定義用の追加パッケージが不要。`decompressSync` が raw deflate / zlib / gzip を自動判定するため、SAML の仕様上は raw deflate のみ想定されていても、仕様外の zlib ラッパー付き実装で送出する IdP にも耐性がある。
 
-XMLDSig 署名検証は C14N（正規化）の実装コストが大きく、初版スコープ外とした（詳細は `docs/superpowers/specs/2026-07-17-saml-decoder-design.md` 参照。第2版候補として別 issue 化）。
+XMLDSig 署名検証は C14N（正規化）の実装コストが大きく、初版スコープ外とした（詳細は `docs/superpowers/specs/2026-07-17-saml-decoder-design.md` 参照。未実装の第2版候補として #745 で追跡中）。
 
 ### 却下した選択肢
 
@@ -5753,3 +5753,9 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 ## MCP 設定リスクインスペクタの初版
 
 設定情報を外部送信せず確認できるよう、`mcpServers` JSONの一部を有界に読み、静的な確認事項とマスク済み情報を提示する。接続や実行はせず、検出なしを安全性の認定と扱わない。対応クライアントの追加は別途検討する。
+
+## [167] Secret Scrubber の明確な設定行だけ置換範囲からキーを除く
+
+**2026-11-03 | ステータス: 採用 | 関連: #908**
+
+`aws_access_key=` 等を含む高エントロピー候補が専用トークン候補と union され、キー名まで消えていた。重複候補の破棄は長い秘密の断片を漏らすため、union を変更しない。限定した小文字 snake_case の単一設定行だけ、同じ長さの空白でキーを示した補助文字列を作り、検出済み高エントロピー候補の置換範囲からキーだけを外す。検出・エントロピー判定は元の文字列で行う。値だけで再判定すると閾値を下回る秘密の候補が失われ、専用トークン前後の断片が露出するためである。置換・採番の位置は維持する。文中・URL・複数代入・内部の `=` 等の曖昧な形式や indices 不在では従来の over-mask を保つ。対応文法は `docs/tools.md` に記載し、一般的な設定ファイルパーサーへの拡張は行わない。

@@ -6,6 +6,40 @@ const DUMMY_AWS_KEY = 'AKIAIOSFODNN7EXAMPLE';
 const DUMMY_EMAIL = 'admin@example.com';
 
 test.describe('シークレットスクラバー（production CSP 適用）', () => {
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`#908: ${viewport.width}px でサンプルのキー保持・未知秘密・カテゴリ切替`, async ({
+      browser,
+    }, testInfo) => {
+      await withProductionCsp(browser, '/tools/secret-scrubber', async (page) => {
+        await page.setViewportSize(viewport);
+        const output = page.getByRole('textbox', { name: 'マスク済みテキスト' });
+        await page.getByRole('button', { name: 'サンプルを入力' }).click();
+        await expect(output).toHaveValue(/aws_access_key=\[REDACTED:API_KEY_\d+\]/);
+        for (const key of ['aws_secret', 'support_phone', 'jwt_token']) {
+          await expect(output).toHaveValue(new RegExp(`${key}=\\[REDACTED:`));
+        }
+        await expect(output).not.toHaveValue(new RegExp(DUMMY_AWS_KEY));
+        await page.screenshot({
+          path: testInfo.outputPath(`sample-${viewport.width}.png`),
+          fullPage: true,
+        });
+        const secret = 'Qz7vWx2RtYpL9pQ9sKd4FhB8nJc6';
+        await page.getByLabel('テキストを貼り付け').fill(`custom_value=${secret}`);
+        await expect(output).toHaveValue('custom_value=[REDACTED:HIGH_ENTROPY_1]');
+        await page.getByRole('button', { name: /高エントロピー/ }).click();
+        await expect(output).toHaveValue(`custom_value=${secret}`);
+        await page.getByRole('button', { name: /高エントロピー/ }).click();
+        // 値だけでエントロピーを再判定すると前後が漏れる境界例。
+        const wrapped = `abcabc-${DUMMY_AWS_KEY}-abcabc`;
+        await page.getByLabel('テキストを貼り付け').fill(`custom_value=${wrapped}`);
+        await expect(output).toHaveValue('custom_value=[REDACTED:API_KEY_1]');
+      });
+    });
+  }
+
   // ─── 陽性対照: 実際に検出・マスクされることを確認 ───────────────────────
 
   test('陽性対照: AWS ダミーキー貼付 → [REDACTED: が表示され元の値が出力に存在しない（CSP 違反なし）', async ({
