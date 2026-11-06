@@ -58,6 +58,10 @@ CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、J
 
 見た目が 44px 未満の操作要素は、`.hit-area`（または `src/styles/components/hit-area.css` の `.hit-area` 系に登録済みの class）で透明な `::after` のタップ領域を 44×44px に広げる。隣の操作要素の見た目の範囲に食い込まないよう、直前・直後の要素とは `(44 − 見た目の高さ) / 2` 以上離す。奪う・届かないは `tests/e2e/touch-targets.spec.ts` が全ツールで検知する。文中のインラインリンク（`.text-link` を段落内で使う場合）には付けない（パンくずなど単独のリンクは `.hit-area` を足す）（`docs/decisions.md [152]`）。
 
+### 2.7 ボタンサイズの使い分け
+
+操作ボタン（`ActionButton` / `DownloadButton` / `FileInputButton`）は compact（36px）が基本で、既定のまま使う。入力欄（48px）と横に並ぶときだけ `ActionButton` に `size="field"`（48px）を指定する。トグルは compact ボタンと並ぶとき `ToggleGroup size="sm"` にする（根拠 `docs/decisions.md [168]`）。
+
 ---
 
 ## 3. Playwright での確認手順
