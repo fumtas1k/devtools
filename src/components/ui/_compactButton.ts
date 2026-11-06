@@ -1,6 +1,6 @@
 /**
  * compact ボタン共通 utility クラス群（DADS Button の sm: 高さ 36px・最小幅 80px・角丸 6px・16px Bold・行高 1）。
- * CopyButton (default) と ActionButton (size="compact") / DownloadButton / ClearButton の
+ * CopyButton (default) と ActionButton (既定の compact) / DownloadButton / ClearButton の
  * 高さ・角丸・パディング・文字を一箇所で管理し、両者の不一致（border-radius drift）を防ぐ。
  *
  * 歴史: PR #318 後も CopyButton は rounded(0.25rem) / ActionButton compact は rounded-lg(0.5rem)

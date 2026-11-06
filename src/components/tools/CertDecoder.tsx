@@ -635,6 +635,7 @@ export function CertDecoder() {
             </div>
             <ActionButton
               variant="primary"
+              size="field"
               onClick={() => handleDecryptPkcs12(decodeState.bytes, password)}
               disabled={password.length === 0}
             >

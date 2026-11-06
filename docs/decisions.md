@@ -5186,6 +5186,7 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 - variant の対応: `primary` → solid-fill、`secondary` → outline、`text`（新設）→ text。`default` は DADS に灰色のボタンが無いため outline にそろえる（`secondary` と同じ見た目。名前の整理は Phase 7）。`danger` は DS に無いため outline を error 色（`--color-error`）にし、hover は red-50 の地に error-2 の文字 + 下線（`:active` も同じ。red の押下中用のトークンは足さない）
 - サイズの対応: `size="default"` → md（高さ 48px・最小幅 96px・角丸 8px）、`size="compact"`（`COMPACT_BUTTON_SHAPE_CLASSES`）→ sm（36px・80px・角丸 6px）。6px は `--radius-button-sm`（`rounded-button-sm`）として `@theme` に足した。文字は両サイズとも 16px Bold・行高 1（Oln-16B-100）
+- 注記: [168] で `ActionButton` の既定を compact に変え、`size="default"` は `size="field"`（入力欄と横に並ぶときだけ）に改名した。`FileInputButton` も compact（sm）にした（下の「`FileInputButton` は outline の md と同じ見た目」の md は旧仕様）
 - solid-fill は DADS 公式と同じく 4px double の透明な枠を持つ（通常は塗りに埋もれ、強制カラーモードで輪郭になる）。hover / `:focus-visible` は blue-1000、`:active` は blue-1200（`--color-primary-active`）
 - outline の hover / `:focus-visible` は blue-200 の地・blue-1000 の文字、`:active` は blue-300 の地・blue-1200 の文字。text の hover は blue-50 の地 + 3px の下線、`:active` は blue-100 の地。地の色は `:root` のトークン（`--color-bg-primary-hover` / `--color-bg-primary-active` / `--color-bg-text-button-active`）にした
 - hover と `:focus-visible` は同じ見た目（地の色 + 下線）にし、disabled には付けない。disabled は solid-fill が solid-gray-300 の塗り + solid-gray-50 の文字、outline / danger が白地に solid-gray-300 の文字と枠、text が solid-gray-300 の文字（`--color-disabled` / `--color-text-on-disabled`）。danger の disabled も中立のグレー（issue #259 の方針を維持）
@@ -5197,7 +5198,7 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 - **sm / xs の高さ 44px 未満のボタンに、DADS 公式の透明な `::after` でタップ領域を 44px に広げる**: 縦に詰めて並ぶ行（DSN ビルダーの削除ボタン等）で隣の要素に重なり、クリックを奪う。今回の変更で sm の高さは 32px → 36px に広がっている
 - **disabled で `pointer-events: none` にする（DADS 公式）**: `cursor: not-allowed` が出なくなる。`disabled` 属性でクリックは発火しないため、カーソルの表示を優先した。なお、レイヤー外の `:where(button) { cursor: pointer }` が `@layer components` の `cursor: not-allowed` を上書きしていて、disabled のボタンも pointer になっていたため、レイヤー外に `:where(button):disabled { cursor: not-allowed }` を足した（E2E で検知）
-- **`size="default"` を sm（36px）にして現状の高さ（約 42px）に近づける**: DADS の主要ボタンは md で、入力欄（DADS md 48px）と並べたときに高さがそろう
+- **`size="default"` を sm（36px）にして現状の高さ（約 42px）に近づける**: DADS の主要ボタンは md で、入力欄（DADS md 48px）と並べたときに高さがそろう（注記: [168] は、入力欄と並ぶ箇所だけ field（48px）の例外に残す形で、既定を sm（36px）にした）
 
 ### 結果・トレードオフ
 
@@ -5505,6 +5506,7 @@ Phase 1〜5 で色・角丸・影・文字が DADS に寄ったため、レイ�
 - **ContrastMatrix の削除ボタン: 直す**。約 40px → 48px（`h-12 inline-flex items-center`）にして、同じ行の入力欄・カラーピッカー（48px）と上端・下端をそろえた。列見出し行の透明な見本は幅だけを合わせるものなので従来の class のまま（高さを付けると見出し行が約 8px 高くなる）。ボタン自体の DADS 化（`ActionButton`）は本件に含めない
 - **CharCount の任意上限欄: 既存で十分**。行は `items-baseline` で、「/」は input の文字行（枠 1px + 縦余白 11px = 上端から 12px）と同じ位置・同じ行高にあり、等幅の件数とも 0 幅 probe でベースラインが一致する。`inline-block` の中で `display: block` の input になっても崩れていない。再発検知として E2E に固定した（`items-baseline` を `items-center` / `items-start` にすると失敗する）
 - **ToggleGroup と入力欄の横並び: `matchField` prop を足し、並ぶ 3 か所だけ使う**。全ツールの横並びを実測した結果、土台 46px と 48px が上端・下端でずれるのは SQL フォーマッタ（カンマ位置 × SQL 方言）、日本語ダミーテキスト（改行 × 間隔）、日本語ダミー個人データ（出力形式 × 生成ボタン）の 3 か所だった。`matchField`（`size="md"` のときだけ有効）は土台を `min-h-12 content-center` にし、ボタンは 36px のまま中央に置く。実質の余白は縦 5px（4px + 1px の枠の分の差）になる
+- 注記: [168] でダミー個人データは出力形式を sm にして `matchField` を外した。現在の使用は SQL フォーマッタと日本語ダミーテキストの 2 か所
 - sm（38px）は 48px と並ぶ CSR ジェネレータ（SAN 欄）でも `items-center` の中央揃えのまま。小さいトグルを意図的に使っているため、そろえない
 
 ### 却下した選択肢
@@ -5533,6 +5535,7 @@ DADS のチェックリストは操作要素のタップ領域を 44×44px 以�
 ### 決断
 
 - **見た目の大きさは変えず、透明な `::after` で操作できる範囲だけを中心から 44×44px に広げる**（`global.css` の `.hit-area` 系。`width: max(100%, 2.75rem)` なので、すでに 44px 以上の辺は広げない）。対象は `.btn-action` / `.btn-copy` / `.btn-toggle` / `.toggle-chip` / `.btn-link-plain` / `button.text-link-plain` / `.btn-row-remove` / `.btn-remove-card` / `.json-toggle` と、class を持たない要素に足す `.hit-area`（GS1 の ✕・ロゴ・パンくず・フッターのリンク）。文中のインラインリンク（`.text-link`）には付けない（行間で隣の行のリンクを奪う）
+- 注記: [168] で `.btn-file-input`（FileInputButton が 36px になった）も対象に加えた
 - **隣の操作要素に食い込む箇所は、見た目の寸法か間隔を直す**。hit area を一律に付けると [140] が却下したとおり詰んだ並びでクリックを奪う。奪う箇所を E2E で洗い出し、次のように直した
   - ToggleGroup sm は `min-w-11`（44px）にした。「2」「4」のような狭いボタンが横に並ぶと、隣へ食い込むため
   - CSR ジェネレータの SAN 削除（29×14px）は見た目も `min-h-11 min-w-11` にした（スマホで入力欄の下に積まれ、hit area では入力欄を奪うため）。その下の「＋ SAN を追加」は `mt-3` で離した
@@ -5759,3 +5762,29 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 **2026-11-03 | ステータス: 採用 | 関連: #908**
 
 `aws_access_key=` 等を含む高エントロピー候補が専用トークン候補と union され、キー名まで消えていた。重複候補の破棄は長い秘密の断片を漏らすため、union を変更しない。限定した小文字 snake_case の単一設定行だけ、同じ長さの空白でキーを示した補助文字列を作り、検出済み高エントロピー候補の置換範囲からキーだけを外す。検出・エントロピー判定は元の文字列で行う。値だけで再判定すると閾値を下回る秘密の候補が失われ、専用トークン前後の断片が露出するためである。置換・採番の位置は維持する。文中・URL・複数代入・内部の `=` 等の曖昧な形式や indices 不在では従来の over-mask を保つ。対応文法は `docs/tools.md` に記載し、一般的な設定ファイルパーサーへの拡張は行わない。
+
+## [168] 操作ボタンは compact（36px）を基本にし、入力欄と横に並ぶときだけ field（48px）にする
+
+**2026-11-06 | ステータス: 採用 | 関連: #915**
+
+### 背景
+
+ダミー個人データ生成の操作行で、「生成」だけが `ActionButton` の既定（48px）で、隣のダウンロード（36px）と形式トグルの内部ボタンより大きかった。調べると 48px のボタンは他の画面にも多く、入力欄と並ばない画面で操作ボタンの大きさが混在していた。
+
+### 決断
+
+- **操作ボタンは compact（DADS の sm。高さ 36px）を基本にする。入力欄（48px）と横に並ぶときだけ field（48px）にする**。入力欄と並ぶ箇所は `CountInput` と CertDecoder の PKCS#12 パスワード欄の 2 か所だけだった
+- **`ActionButton` の `size` を `'compact' | 'field'` にし、既定を `'compact'` に変えた**（旧 `'default'` は `'field'` に改名）。各画面での `size="compact"` の指定は不要になったので外した
+- **`FileInputButton`（`.btn-file-input`）も compact の寸法にした**（高さ 36px・最小幅 80px・角丸 6px）。利用箇所はどれも入力欄と並ばない。36px なので `hit-area.css` の対象に加えた。`COMPACT_BUTTON_SHAPE_CLASSES` との一致は `tests/meta/file-input-button-compact.test.ts` が検知する
+- **トグルは compact ボタンと並ぶとき `size="sm"`（外枠 38px・内部ボタン 28px）にする**。単独のモード切替（md）は対象外
+- [151] で「並ぶ 3 か所」に数えたダミー個人データ（出力形式 × 生成ボタン）の前提がなくなった。出力形式のトグルを sm にして `matchField` を外した。`matchField` を使うのは SQL フォーマッタと日本語ダミーテキストの 2 か所になる
+- 実寸は `tests/e2e/dummy-personal-data.spec.ts`（生成・ダウンロード 36px、トグル内部 28px・外枠 38px、PC とスマホで上下中央）と `tests/e2e/dads-buttons.spec.ts` で検証する
+
+### 却下した選択肢
+
+- **画面ごとに `size` を指定し、既定は 48px のままにする**: 新しい画面で大きいボタンが既定になり、同じ失敗が繰り返される。入力欄と並ぶ例外のほうが少ないので、例外側に印を付ける
+
+### 結果・トレードオフ
+
+- ✅ 新しい画面で何も指定しなければ、他の画面と同じ 36px になる。大きくするのは入力欄と並ぶときだけで、指定する理由が明確になる
+- ⚠️ `ActionButton` と `FileInputButton` を使う多くの画面で、ボタンが 48px から 36px になる。VRT の差分は目視確認のうえ baseline を更新する

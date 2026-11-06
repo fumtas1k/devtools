@@ -79,7 +79,7 @@ interface Props {
  * `.btn-copy.is-compact` / `.btn-copy:disabled` を参照。状態は `is-copied` / `is-compact` className で切替。
  * default 表示は DADS Button の outline、compact（アイコンのみ）は枠なしで hover に text ボタンの地を出す。
  *
- * default 表示の寸法は COMPACT_BUTTON_SHAPE_CLASSES 経由で ActionButton (size="compact") /
+ * default 表示の寸法は COMPACT_BUTTON_SHAPE_CLASSES 経由で ActionButton (既定の compact) /
  * DownloadButton と統一（DADS の sm ボタン / issue #320 / docs/decisions.md [140]）。
  */
 export function CopyButton({

@@ -38,22 +38,22 @@ async function expectHeight(target: Locator, px: number): Promise<void> {
 }
 
 test.describe('DADS Button の見た目', () => {
-  test.describe('qr-ticket（solid-fill / outline md / disabled）', () => {
+  test.describe('qr-ticket（solid-fill / outline / disabled。いずれも既定の compact）', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/tools/qr-ticket');
       await waitForReactHydration(page);
     });
 
-    test('solid-fill は blue-900 の塗り・4px double の枠・md の 48px', async ({ page }) => {
+    test('solid-fill は blue-900 の塗り・4px double の枠・compact の 36px', async ({ page }) => {
       const btn = page.getByRole('button', { name: '鍵ペアを新規生成' });
       await expect(btn).toHaveCSS('background-color', PRIMARY);
       await expect(btn).toHaveCSS('color', WHITE);
       await expect(btn).toHaveCSS('border-top-style', 'double');
       await expect(btn).toHaveCSS('border-top-width', '4px');
-      await expect(btn).toHaveCSS('border-top-left-radius', '8px');
+      await expect(btn).toHaveCSS('border-top-left-radius', '6px');
       await expect(btn).toHaveCSS('font-size', '16px');
       await expect(btn).toHaveCSS('text-decoration-line', 'none');
-      await expectHeight(btn, 48);
+      await expectHeight(btn, 36);
     });
 
     test('solid-fill は hover で blue-1000 + 下線', async ({ page }) => {
@@ -101,7 +101,7 @@ test.describe('DADS Button の見た目', () => {
       await expect(btn).toHaveCSS('color', PRIMARY);
       await expect(btn).toHaveCSS('border-top-color', PRIMARY);
       await expect(btn).toHaveCSS('border-top-width', '1px');
-      await expectHeight(btn, 48);
+      await expectHeight(btn, 36);
     });
   });
 
@@ -295,13 +295,14 @@ test.describe('DADS Button の見た目', () => {
       await waitForReactHydration(page);
     });
 
-    test('outline の md で、hover とキーボードフォーカスで blue-200 の地 + 下線', async ({
+    test('outline の compact（36px）で、hover とキーボードフォーカスで blue-200 の地 + 下線', async ({
       page,
     }) => {
       const label = page.locator('label').filter({ hasText: 'ファイルを選択' });
       await expect(label).toHaveCSS('background-color', WHITE);
       await expect(label).toHaveCSS('border-top-color', PRIMARY);
-      await expectHeight(label, 48);
+      await expect(label).toHaveCSS('border-top-left-radius', '6px');
+      await expectHeight(label, 36);
 
       await label.hover();
       await expect(label).toHaveCSS('background-color', BG_PRIMARY_HOVER);

@@ -156,7 +156,7 @@ test.describe('DSN ビルダー: スキームの選択中表示', () => {
   }
 });
 
-test.describe('ToggleGroup の matchField（入力欄・ボタンと横並び）', () => {
+test.describe('ToggleGroup の matchField（入力欄と横並び）', () => {
   test('日本語ダミーテキスト: 改行の「あり」/「なし」と間隔の入力欄で上端・下端がそろう', async ({
     page,
   }) => {
@@ -169,18 +169,6 @@ test.describe('ToggleGroup の matchField（入力欄・ボタンと横並び）
     expect(group.height).toBeCloseTo(48, 0);
     expect(group.top).toBeCloseTo(chunk.top, 0);
     expect(group.bottom).toBeCloseTo(chunk.bottom, 0);
-  });
-
-  test('ダミー個人データ: 出力形式のトグルと「生成」ボタンで上端・下端がそろう', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/tools/dummy-personal-data');
-    await waitForReactHydration(page);
-    const group = await box(page.getByRole('group', { name: '出力形式' }));
-    const generate = await box(page.getByRole('button', { name: '生成', exact: true }));
-    expect(group.top).toBeCloseTo(generate.top, 0);
-    expect(group.bottom).toBeCloseTo(generate.bottom, 0);
   });
 
   test('matchField を付けない ToggleGroup（md）は従来どおり 46px', async ({ page }) => {
