@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * cross-component メタテスト: CopyButton(default) と ActionButton(size="compact") の
+ * cross-component メタテスト: CopyButton(default) と ActionButton(既定の compact) の
  * border-radius ・パディング・行高さが共有定数 COMPACT_BUTTON_SHAPE_CLASSES 経由で
  * 一致していることを検証する drift 検知器。
  *
@@ -59,12 +59,8 @@ describe('compact ボタン border-radius drift 検知 (陰性対照)', () => {
     expect(btn.className).toContain(tokens.fontWeight); // 'font-bold'
   });
 
-  it('ActionButton(size="compact") は COMPACT_BUTTON_SHAPE_CLASSES の全 token を含む', () => {
-    render(
-      <ActionButton onClick={() => {}} size="compact">
-        ダウンロード
-      </ActionButton>
-    );
+  it('ActionButton(既定の compact) は COMPACT_BUTTON_SHAPE_CLASSES の全 token を含む', () => {
+    render(<ActionButton onClick={() => {}}>ダウンロード</ActionButton>);
     const btn = screen.getByRole('button', { name: 'ダウンロード' }) as HTMLButtonElement;
     const tokens = extractCompactTokens(COMPACT_BUTTON_SHAPE_CLASSES);
 
@@ -80,11 +76,7 @@ describe('compact ボタン border-radius drift 検知 (陰性対照)', () => {
     const copyBtn = screen.getByRole('button', { name: 'コピー' }) as HTMLButtonElement;
     cleanup();
 
-    render(
-      <ActionButton onClick={() => {}} size="compact">
-        ダウンロード
-      </ActionButton>
-    );
+    render(<ActionButton onClick={() => {}}>ダウンロード</ActionButton>);
     const actionBtn = screen.getByRole('button', { name: 'ダウンロード' }) as HTMLButtonElement;
 
     const copyTokens = extractCompactTokens(copyBtn.className);
@@ -130,11 +122,7 @@ describe('compact ボタン border-radius drift 検知 (陽性対照)', () => {
   });
 
   it('[陽性対照] ActionButton(compact) の角丸が rounded-button-sm であることを確認する', () => {
-    render(
-      <ActionButton onClick={() => {}} size="compact">
-        ダウンロード
-      </ActionButton>
-    );
+    render(<ActionButton onClick={() => {}}>ダウンロード</ActionButton>);
     const btn = screen.getByRole('button', { name: 'ダウンロード' }) as HTMLButtonElement;
     const classes = btn.className.split(' ');
 
