@@ -142,6 +142,7 @@ pixel diff が小さくても（例: 0.07%）「微小だから baseline 更新�
 
 委譲するとき:
 
+- 委譲の前に計画（10 章の ATC か plan）を書く。範囲・共通部品の既定値など設計判断は親が決め、必要ならユーザーと合意してから渡す。判断を subagent に預けない（PR #916 で計画なしに渡し、範囲の認識がユーザーとずれて実装をやり直した）
 - 目的・制約・完了条件・スコープ外を初回プロンプトで完結させ、矛盾する設計指示を混ぜない（PR #217 で「memo 化した派生値を依存配列に保つ」と「依存配列を一次入力に展開する」の併記が `eslint-disable` 2 箇所の実装になった）。両論併記が避けられないなら「`eslint-disable` は使わず、それで済まない設計なら知らせる」と明記する
 - 完了報告は依頼項目ごとに「実装 / 既存で十分 / スキップ理由」を要求し、親が依頼数と突き合わせる（PR #218 で 3 件中 1 件のみ実装で「完了」報告）
 - subagent が `package.json` を変えたら、`git diff origin/develop --name-only` に `package-lock.json` も含まれるか親が確認する。漏れていれば `npm install --package-lock-only --cache "$TMPDIR/npm-cache" --no-audit --no-fund` で同期し、別コミットで push する（PR #181）
