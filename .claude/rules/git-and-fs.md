@@ -20,6 +20,7 @@
 - `astro dev` / `astro preview` を調査目的で手動起動しない。astro 7 はエージェント検知時に detached で起動し、`astro dev stop` でも止まらず残ることがある（sandbox 内からは `kill` 不可）。残存サーバがあるとローカル E2E は `is already used` で止まる。残ったら `npm run pretest:e2e:dev` を単独実行して 4321 / 4322 を空ける（PR #769 / #772）。
 - loopback への connect 自体が deny される環境（`astro preview` の listen は成功するのに `127.0.0.1` への接続が EPERM / exit 000）では in-session E2E は実行不能。接続 probe が 2〜3 回失敗したら workaround 探索を打ち切り、CI を最終ゲートにして PR 本文にローカル E2E 未実行と理由を書く。UI の目視確認は claude-in-chrome（ユーザーの実 Chrome）で代替できる（PR #749）。
 - `webServer` が `listen EPERM ::1:4321` で失敗したら `astro preview --host 127.0.0.1` を別途起動して `baseURL` で参照する。
+- web セッションのコンテナで流したローカル VRT は、CI と文字のアンチエイリアスがわずかに違い、文字の多いページ（`/`・`/about`・`secret-scrubber` 等）は閾値を超えて fail する。VRT の判定は CI の結果を正とする。fail を報告するときは「既存の fail」で済ませず、差分画像を見て内容の違いか描画差かを書く（PR #916）。
 
 ### macOS ローカルセッションのみ
 
