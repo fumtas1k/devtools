@@ -226,7 +226,7 @@ export function DummyPersonalDataTool() {
             ariaLabel="出力形式"
             matchField
           />
-          <ActionButton variant="primary" onClick={generate}>
+          <ActionButton variant="primary" size="compact" onClick={generate}>
             生成
           </ActionButton>
           <DownloadButton
