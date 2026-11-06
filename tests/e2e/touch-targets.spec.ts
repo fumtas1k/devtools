@@ -30,6 +30,7 @@ const CATEGORIES = [
   'btn-toggle',
   'toggle-chip',
   'btn-copy',
+  'btn-file-input',
   'btn-action',
   'btn-link-plain',
   'btn-remove',
@@ -275,6 +276,7 @@ test.describe('検知器の陽性対照', () => {
       ['/tools/gs1-databar', ['サンプルを入力', 'バーコードを追加']],
       ['/tools/qr-ticket', []],
       ['/tools/csr-generator', []],
+      ['/tools/har-viewer', []],
     ];
     for (const [path, clicks] of pages) {
       await page.goto(path);

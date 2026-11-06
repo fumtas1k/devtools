@@ -156,7 +156,7 @@ test.describe('DSN ビルダー: スキームの選択中表示', () => {
   }
 });
 
-test.describe('ToggleGroup の matchField（入力欄・ボタンと横並び）', () => {
+test.describe('ToggleGroup の matchField（入力欄と横並び）', () => {
   test('日本語ダミーテキスト: 改行の「あり」/「なし」と間隔の入力欄で上端・下端がそろう', async ({
     page,
   }) => {

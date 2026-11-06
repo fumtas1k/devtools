@@ -5186,7 +5186,7 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 - variant の対応: `primary` → solid-fill、`secondary` → outline、`text`（新設）→ text。`default` は DADS に灰色のボタンが無いため outline にそろえる（`secondary` と同じ見た目。名前の整理は Phase 7）。`danger` は DS に無いため outline を error 色（`--color-error`）にし、hover は red-50 の地に error-2 の文字 + 下線（`:active` も同じ。red の押下中用のトークンは足さない）
 - サイズの対応: `size="default"` → md（高さ 48px・最小幅 96px・角丸 8px）、`size="compact"`（`COMPACT_BUTTON_SHAPE_CLASSES`）→ sm（36px・80px・角丸 6px）。6px は `--radius-button-sm`（`rounded-button-sm`）として `@theme` に足した。文字は両サイズとも 16px Bold・行高 1（Oln-16B-100）
-- 注記: [168] で既定を compact に変え、`size="default"` は `size="field"`（入力欄と横に並ぶときだけ）に改名した
+- 注記: [168] で `ActionButton` の既定を compact に変え、`size="default"` は `size="field"`（入力欄と横に並ぶときだけ）に改名した。`FileInputButton` も compact（sm）にした（下の「`FileInputButton` は outline の md と同じ見た目」の md は旧仕様）
 - solid-fill は DADS 公式と同じく 4px double の透明な枠を持つ（通常は塗りに埋もれ、強制カラーモードで輪郭になる）。hover / `:focus-visible` は blue-1000、`:active` は blue-1200（`--color-primary-active`）
 - outline の hover / `:focus-visible` は blue-200 の地・blue-1000 の文字、`:active` は blue-300 の地・blue-1200 の文字。text の hover は blue-50 の地 + 3px の下線、`:active` は blue-100 の地。地の色は `:root` のトークン（`--color-bg-primary-hover` / `--color-bg-primary-active` / `--color-bg-text-button-active`）にした
 - hover と `:focus-visible` は同じ見た目（地の色 + 下線）にし、disabled には付けない。disabled は solid-fill が solid-gray-300 の塗り + solid-gray-50 の文字、outline / danger が白地に solid-gray-300 の文字と枠、text が solid-gray-300 の文字（`--color-disabled` / `--color-text-on-disabled`）。danger の disabled も中立のグレー（issue #259 の方針を維持）
@@ -5198,7 +5198,7 @@ hydration race（issue #750）は全 spec の `waitForReactHydration` 必須化�
 
 - **sm / xs の高さ 44px 未満のボタンに、DADS 公式の透明な `::after` でタップ領域を 44px に広げる**: 縦に詰めて並ぶ行（DSN ビルダーの削除ボタン等）で隣の要素に重なり、クリックを奪う。今回の変更で sm の高さは 32px → 36px に広がっている
 - **disabled で `pointer-events: none` にする（DADS 公式）**: `cursor: not-allowed` が出なくなる。`disabled` 属性でクリックは発火しないため、カーソルの表示を優先した。なお、レイヤー外の `:where(button) { cursor: pointer }` が `@layer components` の `cursor: not-allowed` を上書きしていて、disabled のボタンも pointer になっていたため、レイヤー外に `:where(button):disabled { cursor: not-allowed }` を足した（E2E で検知）
-- **`size="default"` を sm（36px）にして現状の高さ（約 42px）に近づける**: DADS の主要ボタンは md で、入力欄（DADS md 48px）と並べたときに高さがそろう
+- **`size="default"` を sm（36px）にして現状の高さ（約 42px）に近づける**: DADS の主要ボタンは md で、入力欄（DADS md 48px）と並べたときに高さがそろう（注記: [168] は、入力欄と並ぶ箇所だけ field（48px）の例外に残す形で、既定を sm（36px）にした）
 
 ### 結果・トレードオフ
 
@@ -5778,7 +5778,7 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 - **`FileInputButton`（`.btn-file-input`）も compact の寸法にした**（高さ 36px・最小幅 80px・角丸 6px）。利用箇所はどれも入力欄と並ばない。36px なので `hit-area.css` の対象に加えた。`COMPACT_BUTTON_SHAPE_CLASSES` との一致は `tests/meta/file-input-button-compact.test.ts` が検知する
 - **トグルは compact ボタンと並ぶとき `size="sm"`（外枠 38px・内部ボタン 28px）にする**。単独のモード切替（md）は対象外
 - [151] で「並ぶ 3 か所」に数えたダミー個人データ（出力形式 × 生成ボタン）の前提がなくなった。出力形式のトグルを sm にして `matchField` を外した。`matchField` を使うのは SQL フォーマッタと日本語ダミーテキストの 2 か所になる
-- 実寸は `tests/e2e/dummy-personal-data.spec.ts`（生成・ダウンロード 36px、トグル内部 28px・外枠 38px、PC とスマホで上下中央）と `tests/e2e/dads-buttons.spec.ts` で検証する。タップ領域 44×44px は `.btn-action::after` / `.btn-file-input::after` が担保する
+- 実寸は `tests/e2e/dummy-personal-data.spec.ts`（生成・ダウンロード 36px、トグル内部 28px・外枠 38px、PC とスマホで上下中央）と `tests/e2e/dads-buttons.spec.ts` で検証する
 
 ### 却下した選択肢
 
