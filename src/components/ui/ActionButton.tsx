@@ -3,7 +3,7 @@ import { COMPACT_BUTTON_SHAPE_CLASSES } from './_compactButton';
 import { cx } from '@/utils/cx';
 
 type Variant = 'default' | 'primary' | 'secondary' | 'danger' | 'text';
-type Size = 'default' | 'compact';
+type Size = 'compact' | 'field';
 
 interface Props extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -17,23 +17,24 @@ interface Props extends Omit<
   /**
    * 高さプリセット（DADS Button のサイズ）。角丸は両サイズとも SIZE_CLASS 経由で供給し、
    * base className には持たせない（issue #320: 共有定数を角丸の単一の真実源にするため）。
-   * - 'default'（既定）: DADS の md。高さ 48px・最小幅 96px・角丸 8px・16px Bold・行高 1
-   * - 'compact': DADS の sm（COMPACT_BUTTON_SHAPE_CLASSES）。高さ 36px・最小幅 80px・角丸 6px。
+   * - 'compact'（既定）: DADS の sm（COMPACT_BUTTON_SHAPE_CLASSES）。高さ 36px・最小幅 80px・角丸 6px。
    *   CopyButton (default) と同じ高さ・角丸（issue #320 で統一）
+   * - 'field': DADS の md。高さ 48px・最小幅 96px・角丸 8px・16px Bold・行高 1。
+   *   入力欄（48px）と横に並ぶときだけ指定する（docs/decisions.md [168]）
    */
   size?: Size;
 }
 
 const SIZE_CLASS: Record<Size, string> = {
-  default: 'min-h-12 min-w-24 px-4 py-2 rounded-md text-base font-bold leading-none',
   compact: COMPACT_BUTTON_SHAPE_CLASSES,
+  field: 'min-h-12 min-w-24 px-4 py-2 rounded-md text-base font-bold leading-none',
 };
 
 /**
  * 汎用アクションボタン（DADS Button。docs/decisions.md [140]）。
  * - `variant`: 'primary'（solid-fill。主要操作）/ 'secondary'・'default'（outline。副次操作）/
  *   'text'（軽い操作）/ 'danger'（outline を error 色にしたもの）
- * - `size`: 'default' | 'compact'（'compact' は CopyButton と同じ高さ・角丸に揃える）
+ * - `size`: 'compact'（既定。CopyButton と同じ高さ・角丸）| 'field'（入力欄と横に並ぶときだけ。48px）
  * - `loading`: true のとき `aria-busy="true"` を付与し、disabled 状態にする
  * - ローディング中の子要素はそのまま表示するため、呼び出し元でローディング文言に切り替えること
  *   （例: `{loading ? '生成中…' : '生成'}`）
@@ -49,7 +50,7 @@ export function ActionButton({
   children,
   variant = 'default',
   loading = false,
-  size = 'default',
+  size = 'compact',
   ...rest
 }: Props) {
   const isDisabled = disabled || loading;

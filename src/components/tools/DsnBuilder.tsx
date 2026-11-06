@@ -215,7 +215,7 @@ export function DsnBuilderTool() {
             </div>
             {dialect.multiHost && (
               <div className="mt-2">
-                <ActionButton size="compact" variant="secondary" onClick={addHost}>
+                <ActionButton variant="secondary" onClick={addHost}>
                   ホストを追加
                 </ActionButton>
               </div>
@@ -259,7 +259,7 @@ export function DsnBuilderTool() {
               ))}
             </div>
             <div className="mt-2">
-              <ActionButton size="compact" variant="secondary" onClick={addParam}>
+              <ActionButton variant="secondary" onClick={addParam}>
                 パラメータを追加
               </ActionButton>
             </div>

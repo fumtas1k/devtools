@@ -178,9 +178,7 @@ export function QrReaderTool() {
             {/* コピー & 再スキャンボタン */}
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton text={content.raw} />
-              <ActionButton onClick={handleRescan} size="compact">
-                再スキャン
-              </ActionButton>
+              <ActionButton onClick={handleRescan}>再スキャン</ActionButton>
             </div>
 
             {/* URLの場合のフィッシング警告 */}

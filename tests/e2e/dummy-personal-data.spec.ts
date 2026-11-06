@@ -77,17 +77,18 @@ test.describe('日本語ダミー個人データ生成', () => {
     await expect(page.getByText('生成条件が変更されました。再生成してください')).toHaveCount(0);
   });
 
-  // 操作行のボタンサイズ回帰（issue #915）。クラス名ではなく実寸で見る。
-  // 生成・ダウンロード・トグル内部ボタンは compact（36px）、トグル外枠は matchField の 48px。
+  // 操作行のボタンサイズ回帰（issue #915、docs/decisions.md [168]）。クラス名ではなく実寸で見る。
+  // 生成・ダウンロードは compact（36px）、トグル内部ボタンは sm（28px）、トグル外枠は 28px + 余白と枠で 38px。
   test.describe('操作行のボタンサイズ', () => {
     const BUTTON_HEIGHT = 36;
-    const TOGGLE_GROUP_HEIGHT = 48;
+    const TOGGLE_BUTTON_HEIGHT = 28;
+    const TOGGLE_GROUP_HEIGHT = 38;
 
     async function measureOperationRow(page: Page) {
       const box = async (loc: Locator) => {
         const b = await loc.boundingBox();
         if (b === null) throw new Error('要素の boundingBox を取得できません');
-        return { height: b.height, centerY: b.y + b.height / 2 };
+        return { height: b.height, top: b.y, bottom: b.y + b.height, centerY: b.y + b.height / 2 };
       };
       return {
         generate: await box(page.getByRole('button', { name: '生成', exact: true })),
@@ -103,14 +104,19 @@ test.describe('日本語ダミー個人データ生成', () => {
     function expectButtonHeights(row: Row) {
       expect(row.generate.height).toBeCloseTo(BUTTON_HEIGHT, 0);
       expect(row.download.height).toBeCloseTo(BUTTON_HEIGHT, 0);
-      expect(row.csv.height).toBeCloseTo(BUTTON_HEIGHT, 0);
-      expect(row.json.height).toBeCloseTo(BUTTON_HEIGHT, 0);
+      expect(row.csv.height).toBeCloseTo(TOGGLE_BUTTON_HEIGHT, 0);
+      expect(row.json.height).toBeCloseTo(TOGGLE_BUTTON_HEIGHT, 0);
       // ボタン本体と別に、トグル外枠（グループ）の高さを検証する
       expect(row.group.height).toBeCloseTo(TOGGLE_GROUP_HEIGHT, 0);
       // 生成とダウンロードは同じ高さ
       expect(Math.abs(row.generate.height - row.download.height)).toBeLessThanOrEqual(0.5);
     }
 
+    function expectCenterAligned(a: { centerY: number }, b: { centerY: number }) {
+      expect(Math.abs(a.centerY - b.centerY)).toBeLessThanOrEqual(1);
+    }
+
+    // PC: 4 要素すべてが 1 行に並び、上下中央がそろう
     function expectSameRowCenters(row: Row) {
       const centers = [
         row.generate.centerY,
@@ -122,51 +128,52 @@ test.describe('日本語ダミー個人データ生成', () => {
       expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1);
     }
 
-    test('PC: 生成前後・形式切替後も各ボタンが 36px で上下中央がそろう', async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 800 });
+    // スマホ: ダウンロードは折り返す。生成・トグルは同じ行に残り中央がそろう
+    function expectMobileLayout(row: Row) {
+      expectCenterAligned(row.generate, row.csv);
+      expectCenterAligned(row.generate, row.json);
+      expectCenterAligned(row.generate, row.group);
+      // ダウンロードは次の行（トグル外枠の下端より下）に折り返している
+      expect(row.download.top).toBeGreaterThanOrEqual(row.group.bottom);
+      expect(row.download.centerY).toBeGreaterThan(row.generate.centerY);
+    }
 
-      // 生成前（ダウンロード disabled）
-      await expect(page.getByRole('button', { name: 'ダウンロード' })).toBeDisabled();
-      const before = await measureOperationRow(page);
-      expectButtonHeights(before);
-      expectSameRowCenters(before);
-
-      // 生成後（ダウンロード enabled）
-      await page.getByRole('button', { name: '生成', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'ダウンロード' })).toBeEnabled();
-      const after = await measureOperationRow(page);
-      expectButtonHeights(after);
-      expectSameRowCenters(after);
-
-      // CSV → JSON 切替後
+    async function switchToJson(page: Page) {
       await page.getByRole('button', { name: 'JSON', exact: true }).click();
       await expect(page.getByRole('button', { name: 'JSON', exact: true })).toHaveAttribute(
         'aria-pressed',
         'true'
       );
-      const json = await measureOperationRow(page);
-      expectButtonHeights(json);
-      expectSameRowCenters(json);
-    });
+    }
 
-    test('スマホ: 生成前後・形式切替後も各ボタンが 36px で、生成はトグルと同じ行で中央がそろう', async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width: 390, height: 844 });
+    for (const viewport of [
+      { name: 'PC', width: 1280, height: 800, expectLayout: expectSameRowCenters },
+      { name: 'スマホ', width: 390, height: 844, expectLayout: expectMobileLayout },
+    ]) {
+      test(`${viewport.name}: 生成前後・形式切替後も寸法が保たれ、レイアウトが崩れない`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
-      const before = await measureOperationRow(page);
-      expectButtonHeights(before);
-      // スマホ幅ではダウンロードが折り返すため、同じ行に残る生成・トグルだけで比べる
-      expect(Math.abs(before.generate.centerY - before.csv.centerY)).toBeLessThanOrEqual(1);
-      expect(Math.abs(before.generate.centerY - before.group.centerY)).toBeLessThanOrEqual(1);
+        // 生成前（ダウンロード disabled）
+        await expect(page.getByRole('button', { name: 'ダウンロード' })).toBeDisabled();
+        const before = await measureOperationRow(page);
+        expectButtonHeights(before);
+        viewport.expectLayout(before);
 
-      await page.getByRole('button', { name: '生成', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'ダウンロード' })).toBeEnabled();
-      await page.getByRole('button', { name: 'JSON', exact: true }).click();
-      const after = await measureOperationRow(page);
-      expectButtonHeights(after);
-      expect(Math.abs(after.generate.centerY - after.json.centerY)).toBeLessThanOrEqual(1);
-      expect(Math.abs(after.generate.centerY - after.group.centerY)).toBeLessThanOrEqual(1);
-    });
+        // 生成後（ダウンロード enabled、CSV のまま）
+        await page.getByRole('button', { name: '生成', exact: true }).click();
+        await expect(page.getByRole('button', { name: 'ダウンロード' })).toBeEnabled();
+        const after = await measureOperationRow(page);
+        expectButtonHeights(after);
+        viewport.expectLayout(after);
+
+        // CSV → JSON 切替後
+        await switchToJson(page);
+        const json = await measureOperationRow(page);
+        expectButtonHeights(json);
+        viewport.expectLayout(json);
+      });
+    }
   });
 });

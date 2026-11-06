@@ -162,8 +162,44 @@ describe('ActionButton', () => {
     expect(btn.disabled).toBe(true);
   });
 
-  it('size 未指定（default）は DADS の md（min-h-12 / min-w-24 / rounded-md / text-base font-bold leading-none）', () => {
+  it('size 未指定は compact（DADS の sm: min-h-9 / min-w-20 / rounded-button-sm）', () => {
     render(<ActionButton onClick={() => {}}>標準</ActionButton>);
+    const classes = (screen.getByRole('button') as HTMLButtonElement).className.split(' ');
+    for (const c of [
+      'min-h-9',
+      'min-w-20',
+      'px-3',
+      'rounded-button-sm',
+      'text-base',
+      'font-bold',
+      'leading-none',
+    ]) {
+      expect(classes).toContain(c);
+    }
+    expect(classes).not.toContain('min-h-12');
+    expect(classes).not.toContain('px-4');
+    expect(classes).not.toContain('rounded-md');
+    // 14px の caption は使わない（DADS のボタン文字は 16px）
+    expect(classes).not.toContain('caption');
+  });
+
+  it('size="compact" の明示指定も未指定と同じクラスになる', () => {
+    const { rerender } = render(<ActionButton onClick={() => {}}>A</ActionButton>);
+    const implicit = (screen.getByRole('button') as HTMLButtonElement).className;
+    rerender(
+      <ActionButton onClick={() => {}} size="compact">
+        A
+      </ActionButton>
+    );
+    expect((screen.getByRole('button') as HTMLButtonElement).className).toBe(implicit);
+  });
+
+  it('size="field" は入力欄と並べる DADS の md（min-h-12 / min-w-24 / rounded-md）', () => {
+    render(
+      <ActionButton onClick={() => {}} size="field">
+        フィールド
+      </ActionButton>
+    );
     const classes = (screen.getByRole('button') as HTMLButtonElement).className.split(' ');
     for (const c of [
       'min-h-12',
@@ -177,30 +213,9 @@ describe('ActionButton', () => {
     ]) {
       expect(classes).toContain(c);
     }
-    // 14px の caption は使わない（DADS のボタン文字は 16px）
+    expect(classes).not.toContain('min-h-9');
+    expect(classes).not.toContain('rounded-button-sm');
     expect(classes).not.toContain('caption');
-  });
-
-  it('size="compact" は DADS の sm（min-h-9 / min-w-20 / rounded-button-sm）', () => {
-    render(
-      <ActionButton onClick={() => {}} size="compact">
-        コンパクト
-      </ActionButton>
-    );
-    const classes = (screen.getByRole('button') as HTMLButtonElement).className.split(' ');
-    for (const c of [
-      'min-h-9',
-      'min-w-20',
-      'px-3',
-      'rounded-button-sm',
-      'text-base',
-      'font-bold',
-      'leading-none',
-    ]) {
-      expect(classes).toContain(c);
-    }
-    expect(classes).not.toContain('px-4');
-    expect(classes).not.toContain('rounded-md');
   });
 
   it('variant="text" は btn-action--text クラスを持つ', () => {

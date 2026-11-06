@@ -50,7 +50,7 @@ export function CountInput({
           className="field-control w-24"
           aria-describedby={`${id}-hint`}
         />
-        <ActionButton onClick={handleGenerate} variant="primary">
+        <ActionButton onClick={handleGenerate} variant="primary" size="field">
           {buttonLabel}
         </ActionButton>
       </div>

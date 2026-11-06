@@ -87,7 +87,7 @@ test.describe('DADS の入力欄', () => {
     await expect(count).toHaveCSS('border-top-color', DISABLED_BORDER);
   });
 
-  test('CountInput: 高さ 48px・padding 16px・文字 16px で、md の「生成」ボタンと高さ・上端がそろう', async ({
+  test('CountInput: 高さ 48px・padding 16px・文字 16px で、size="field" の「生成」ボタン（48px・角丸 8px）と高さ・上端がそろう', async ({
     page,
   }) => {
     await page.goto('/tools/uuid-v7');
@@ -100,6 +100,10 @@ test.describe('DADS の入力欄', () => {
     expect(input?.height).toBeCloseTo(48, 0);
     expect(button?.height).toBeCloseTo(48, 0);
     expect(input?.y).toBeCloseTo(button?.y ?? -1, 0);
+    await expect(page.getByRole('button', { name: '生成', exact: true })).toHaveCSS(
+      'border-top-left-radius',
+      '8px'
+    );
   });
 
   test('Select: 高さ 48px・appearance none・右 padding で chevron を避ける', async ({ page }) => {

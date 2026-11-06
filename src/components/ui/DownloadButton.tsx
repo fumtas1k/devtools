@@ -31,7 +31,7 @@ function DownloadIcon() {
 
 /**
  * ダウンロードアイコン付きのアクションボタン。
- * `ActionButton` を `size="compact"` で内部使用する薄いラッパー。
+ * `ActionButton`（既定の compact）を内部使用する薄いラッパー。
  * - 高さは CopyButton (default) と pixel-perfect に揃う（横並び崩れ回避、#288）
  * - `variant="primary"`: DADS の solid-fill（primary の塗り + 白文字。デフォルト）
  * - `variant="secondary"`: DADS の outline（白地 + primary の文字と枠）
@@ -48,7 +48,6 @@ export function DownloadButton({
   return (
     <ActionButton
       variant={variant}
-      size="compact"
       onClick={onClick}
       disabled={disabled}
       loading={loading}

@@ -171,21 +171,6 @@ test.describe('ToggleGroup の matchField（入力欄・ボタンと横並び）
     expect(group.bottom).toBeCloseTo(chunk.bottom, 0);
   });
 
-  test('ダミー個人データ: 出力形式のトグル（外枠 48px）と compact の「生成」ボタンで上下中央がそろう', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/tools/dummy-personal-data');
-    await waitForReactHydration(page);
-    const group = await box(page.getByRole('group', { name: '出力形式' }));
-    const generate = await box(page.getByRole('button', { name: '生成', exact: true }));
-    // 「生成」は同じ行の compact 操作に合わせた 36px。外枠は matchField の 48px のままで、
-    // 上端・下端はそろわず中央がそろう（docs/decisions.md [168]）
-    expect(generate.height).toBeCloseTo(36, 0);
-    expect(group.height).toBeCloseTo(48, 0);
-    expect(group.top + group.height / 2).toBeCloseTo(generate.top + generate.height / 2, 0);
-  });
-
   test('matchField を付けない ToggleGroup（md）は従来どおり 46px', async ({ page }) => {
     await page.goto('/tools/base64');
     await waitForReactHydration(page);
