@@ -17,7 +17,9 @@ function NameValueTable({ rows, label }: { rows: HarNameValue[]; label: string }
         <tbody>
           {rows.map((r, i) => (
             <tr key={i} className="align-top">
-              <td className="w-1/3 break-all px-2 py-1 font-mono text-muted">{r.name}</td>
+              <td className="w-2/5 wrap-anywhere px-2 py-1 font-mono text-muted sm:w-1/3">
+                {r.name}
+              </td>
               <td className="break-all px-2 py-1 font-mono">{r.value}</td>
             </tr>
           ))}
@@ -88,7 +90,9 @@ function TimingBreakdown({ entry }: { entry: HarEntry }) {
           ))}
           <tr className="align-middle font-normal">
             <td className="px-2 py-1">合計</td>
-            <td className="px-2 py-1 text-right font-mono">{Math.round(row.totalMs)} ms</td>
+            <td className="whitespace-nowrap px-2 py-1 text-right font-mono">
+              {Math.round(row.totalMs)} ms
+            </td>
             <td className="px-2 py-1" />
           </tr>
         </tbody>

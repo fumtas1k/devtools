@@ -144,6 +144,98 @@ test.describe('HAR ビューア', () => {
     await expect(page.getByText('https://example.com/api/item/119')).toBeVisible();
   });
 
+  for (const viewport of [
+    { name: 'PC', width: 1280, height: 800 },
+    { name: 'スマホ', width: 390, height: 844 },
+  ]) {
+    test(`${viewport.name}の詳細は短い項目を1行に保ち長いヘッダもはみ出さない`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await openHarViewer(page);
+
+      const har = JSON.parse(buildTestHar(1));
+      const entry = har.log.entries[0];
+      entry.time = 105;
+      entry.timings = { send: 5, wait: 90, receive: 10 };
+      const longName = `X-${'longheader'.repeat(12)}`;
+      const longValue = 'longvalue'.repeat(30);
+      entry.response.headers.push({ name: longName, value: longValue });
+      await uploadHar(page, JSON.stringify(har));
+
+      const contentType = page.getByRole('cell', { name: 'Content-Type', exact: true });
+      const total = page
+        .getByRole('row', { name: /^合計 105 ms$/ })
+        .getByRole('cell', { name: '105 ms' });
+      const nameCell = page.getByRole('cell', { name: longName, exact: true });
+      const valueCell = page.getByRole('cell', { name: longValue, exact: true });
+      await expect(contentType).toBeVisible();
+      await expect(total).toBeVisible();
+      await expect(nameCell).toBeVisible();
+      await expect(valueCell).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+
+      for (const [label, cell] of [
+        ['Content-Type', contentType],
+        ['105 ms', total],
+      ] as const) {
+        await expect
+          .configure({ soft: true })
+          .poll(
+            () =>
+              cell.evaluate((element) => {
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                return new Set(Array.from(range.getClientRects(), (rect) => Math.round(rect.top)))
+                  .size;
+              }),
+            { message: `${label} は1行で表示する` }
+          )
+          .toBe(1);
+      }
+
+      for (const cell of [nameCell, valueCell]) {
+        await expect
+          .poll(() =>
+            cell.evaluate((element) => {
+              const range = document.createRange();
+              range.selectNodeContents(element);
+              return new Set(Array.from(range.getClientRects(), (rect) => Math.round(rect.top)))
+                .size;
+            })
+          )
+          .toBeGreaterThan(1);
+        await expect
+          .poll(() =>
+            cell.evaluate((element) => {
+              const range = document.createRange();
+              range.selectNodeContents(element);
+              const bounds = element.getBoundingClientRect();
+              return Array.from(range.getClientRects()).every(
+                (rect) => rect.left >= bounds.left && rect.right <= bounds.right
+              );
+            })
+          )
+          .toBe(true);
+      }
+      await expect
+        .poll(() =>
+          nameCell.evaluate((element) => {
+            const table = element.closest('table');
+            return (
+              !!table &&
+              !!table.parentElement &&
+              table.offsetWidth <= table.parentElement.clientWidth
+            );
+          })
+        )
+        .toBe(true);
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+        .toBe(true);
+    });
+  }
+
   test('固定文言カラムの見出しが nowrap で1文字ずつ縦折り返ししない（狭幅でも）', async ({
     page,
   }) => {
