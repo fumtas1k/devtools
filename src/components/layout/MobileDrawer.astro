@@ -116,6 +116,11 @@ const { currentSlug } = Astro.props;
       toggle.focus();
     });
 
+    // bfcache から復元したページに開いたモーダルを残さない
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted && drawer.open) drawer.close();
+    });
+
     toggle.addEventListener('click', () => {
       drawer.showModal();
       toggle.setAttribute('aria-expanded', 'true');

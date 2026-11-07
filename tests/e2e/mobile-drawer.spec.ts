@@ -36,6 +36,71 @@ test.describe('モバイルドロワー（production CSP 適用）', () => {
     });
   });
 
+  test('bfcache 復元時は開いたドロワーを閉じて再操作できる（CSP 違反なし）', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/url-encode', async (page) => {
+      await page.setViewportSize(MOBILE_VIEWPORT);
+      const toggle = page.getByRole('button', { name: 'メニューを開く' });
+      const dialog = page.getByRole('dialog', { name: 'ナビゲーション' });
+      const body = page.locator('body');
+      await toggle.click();
+      await expect(dialog).toBeVisible();
+      await expect(body).toHaveCSS('overflow', 'hidden');
+
+      // Playwright の Chromium は通常 bfcache を無効にするため、復元イベントを明示する
+      await page.evaluate(() =>
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+      );
+
+      await expect(dialog).not.toBeVisible();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      await expect(toggle).toBeFocused();
+      await expect(body).not.toHaveCSS('overflow', 'hidden');
+      await toggle.click();
+      await expect(dialog).toBeVisible();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    });
+  });
+
+  test('通常の pageshow では開いたドロワーを維持する（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/url-encode', async (page) => {
+      await page.setViewportSize(MOBILE_VIEWPORT);
+      const toggle = page.getByRole('button', { name: 'メニューを開く' });
+      await toggle.click();
+
+      await page.evaluate(() =>
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }))
+      );
+
+      await expect(page.getByRole('dialog', { name: 'ナビゲーション' })).toBeVisible();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.getByRole('button', { name: 'メニューを閉じる' })).toBeFocused();
+      await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
+    });
+  });
+
+  test('閉じた状態の bfcache 復元ではフォーカスを移さない（CSP 違反なし）', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/url-encode', async (page) => {
+      await page.setViewportSize(MOBILE_VIEWPORT);
+      const input = page.getByLabel('入力', { exact: true });
+      await input.focus();
+      await expect(input).toBeFocused();
+
+      await page.evaluate(() =>
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+      );
+
+      await expect(page.getByRole('dialog', { name: 'ナビゲーション' })).not.toBeVisible();
+      await expect(page.getByRole('button', { name: 'メニューを開く' })).toHaveAttribute(
+        'aria-expanded',
+        'false'
+      );
+      await expect(input).toBeFocused();
+      await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+    });
+  });
+
   test('閉じるボタンでドロワーが閉じる（CSP 違反なし）', async ({ browser }) => {
     await withProductionCsp(browser, '/tools/url-encode', async (page) => {
       await page.setViewportSize(MOBILE_VIEWPORT);
