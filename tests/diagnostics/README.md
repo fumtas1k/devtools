@@ -66,9 +66,46 @@ npx playwright test --config tests/diagnostics/navigation.config.ts --grep '遅�
 
 ## 横展開の判断と残作業
 
-今回の比較は代表 4 ツールと静的 1 ページであり、#193 (c) の全 20 spec を変更候補として検証した結果ではない。ローカル・無スロットリング・Chromium の結果から、低速端末・他ブラウザ・CI の flake 頻度改善は断定しない。
+上記は最初の代表診断の記録。後続の全 20 spec に対する代表経路の比較は下記を参照する。ローカル・無スロットリング・Chromium の結果から、低速端末・他ブラウザ・CI の flake 頻度改善は断定しない。
 
 - 画像と無関係な変換では `domcontentloaded` + hydration + 目的の結果 assertion が候補。ただし、遅いリソースが実際の失敗原因かをログで確認してから spec ごとに判断する（#193 (c)）。
-- QR 読取・QR チケットの画像から canvas への描画は既存の `Image.onload` / エラー処理、PNG 生成やダウンロードは生成結果・保存完了を待つ。ページの `load` で操作後に生成される画像や download の完了は保証されない。今回未検証の QR 読取・チケット等は #193 (c) の残作業。
+- QR 読取・QR チケットの画像から canvas への描画は既存の `Image.onload` / エラー処理、PNG 生成やダウンロードは生成結果・保存完了を待つ。ページの `load` で操作後に生成される画像や download の完了は保証されない。
 - リンクの CSS 検証・モバイル drawer は computed style / 開閉状態、クリップボードは結果やフィードバックをそれぞれ確認する。フォント・レイアウトを比較する場合は目的に応じた font / 描画完了待ちも別途検討する（#193 (c)）。
 - グローバル action / navigation timeout の明示は #193 (a)、React 非公開キー依存の解消は #193 (d) で追跡する。診断は既存 helper を使用し、代替方式の採用を決めない。
+
+## 20 spec の代表経路と現行維持の判断（#193 (c)）
+
+2026-11-08 JST、`653a056` 起点、Linux・Node 24.22.1・Chromium、1 worker / retry 0 / fresh context / production CSP。20 spec × 2 mode × 3 回の **120 件が成功**。各セルは各 3 回の中央値 `navigation / ready / checked`（ms、同じ開始点からの累積）。`ready` は現行 hydration helper 後、静的ページは navigation 後。`checked` は表の実操作と結果確認後。順序は load → domcontentloaded を繰り返し、cold / warm・ブラウザやマシン負荷の差を分離していない。小さな時間差から一律変更や flake 改善を結論づけない。
+
+| spec               | 実測経路と操作・結果                                                                                 | load            | domcontentloaded |
+| ------------------ | ---------------------------------------------------------------------------------------------------- | --------------- | ---------------- |
+| base64             | `/tools/base64`: 入力→変換結果                                                                       | 177 / 234 / 618 | 49 / 174 / 552   |
+| config-converter   | `/tools/config-converter`: JSON→YAML。既存に直接 goto / response 確認もある                          | 153 / 211 / 589 | 96 / 185 / 567   |
+| copy-button        | `/tools/jan-code`: 結果生成、clipboard と成功通知                                                    | 144 / 186 / 387 | 93 / 171 / 382   |
+| download-button    | `/tools/json-csv`: CSV の保存完了と内容。他に `/tools/jan-code` と `/tools/gs1-databar`              | 141 / 172 / 585 | 112 / 181 / 588  |
+| dummy-text         | `/tools/dummy-text`: 文字数変更・結果                                                                | 130 / 174 / 204 | 115 / 162 / 189  |
+| encoding-converter | `/tools/encoding-converter`: 日本語入力・文字コード判定                                              | 148 / 189 / 565 | 46 / 190 / 573   |
+| filename-sanitize  | `/tools/encoding-converter`: ファイル変換と保存名・内容。他に `/tools/qr-ticket`                     | 157 / 205 / 435 | 106 / 198 / 426  |
+| gs1-databar        | `/tools/gs1-databar`: GTIN 入力・バーコード生成                                                      | 173 / 224 / 264 | 125 / 197 / 231  |
+| jan-code           | `/tools/jan-code`: サンプル生成・PNG 保存と署名                                                      | 130 / 171 / 279 | 100 / 189 / 297  |
+| json-csv           | `/tools/json-csv`: JSON→CSV の出力                                                                   | 139 / 166 / 544 | 48 / 179 / 559   |
+| json-xml           | `/tools/json-xml`: JSON→XML の出力                                                                   | 118 / 170 / 552 | 43 / 184 / 564   |
+| jwt-decoder        | `/tools/jwt-decoder`: 架空 JWT の payload                                                            | 126 / 164 / 195 | 92 / 162 / 188   |
+| link-styles        | `/privacy`: 通常・hover の computed CSS。他に `/about`・`/`・`/tools/base64`                         | 43 / 43 / 505   | 31 / 31 / 489    |
+| mobile-drawer      | `/tools/url-encode`: 390px で開閉・aria-expanded。既存には `/tools/jwt-decoder` へのリンク遷移もある | 109 / 143 / 337 | 37 / 129 / 342   |
+| qr-code            | `/tools/qr-code`: QR SVG と保存内容                                                                  | 135 / 162 / 299 | 47 / 166 / 309   |
+| qr-reader          | `/tools/qr-code`→直接 goto `/tools/qr-reader`: QR 画像を生成・upload・読取                           | 131 / 175 / 551 | 48 / 162 / 549   |
+| qr-ticket          | `/tools/qr-ticket`: 鍵生成・署名 QR の画像 upload・検証                                              | 158 / 219 / 605 | 50 / 200 / 582   |
+| ulid-generator     | `/tools/ulid-generator`: 生成結果。既存に response 確認の直接 goto もある                            | 121 / 158 / 223 | 99 / 150 / 211   |
+| url-encode         | `/tools/url-encode`: 日本語入力・変換結果                                                            | 124 / 159 / 183 | 102 / 173 / 197  |
+| uuid-v7            | `/tools/uuid-v7`: 生成件数・形式。既存に response 確認の直接 goto もある                             | 146 / 182 / 240 | 47 / 176 / 237   |
+
+各行は該当 spec の **1 代表経路**であり、同 spec の全テストや上記以外の経路を検証した意味ではない。QR reader の `navigation` / `ready` は最初の QR 生成ページ、`checked` は 2 回目の直接 goto・hydration・画像読取を含む。添付の `PerformanceNavigationTiming` は最後に開いた QR reader 文書の値で、Node 側の累積時計とは異なる。drawer は Header の通常 JS の開閉結果を検証しており、ツール island の hydration は共通 helper に合わせた付随待機である。静的 `/privacy` は hydration を待たず、CSS の実値と hover を確認する。
+
+すべての spec で現行 `load` / hydration 待ちを維持する。各行の結果は該当代表操作が両方式で成功した証拠であり、遅延画像などで差が生じる条件・未測定の経路・端末を含めた一律変更の根拠にはならない。QR の画像生成・読取、署名検証、download は各完了結果を別に待つ。`navigation-cases.ts` に操作を、`navigation.json` 添付に各計測を記録する。診断の fresh context で、本番 CSP ヘッダの一致と意図的な inline script 違反の捕捉・不実行も別途確認する。
+
+## 公開 hydration signal の比較（#193 (d)）
+
+Astro 7.3.3 は hydrator 呼び出しを await 後に `ssr` を除去し `astro:hydrate` を発火するが、`@astrojs/react` 6.0.6 は `startTransition` の React commit を待たず戻る。実 Base64 component と同じ React chunk を使う診断専用 wrapper で、公開 `React.use(Promise)` により commit を保留し、公開 `useEffect` で対象 commit の sentinel を付けた。3 回とも、保留中に event 発火・`ssr` 不在となる一方、effect 未実行・入力後の変換結果は空だった。現行 helper と同じ非公開キー predicate のその瞬間の値は false。解除後は別 test で effect と既存 helper、実変換結果を確認した。
+
+検知能力の確認として barrier を一時的に無効化し、effect 完了後に未commit assertion が fail することを確認、元に戻して成功させた。これは **対象 wrapper / Base64 の実 React 経路に限る**。effect sentinel は全 island、全 effect、非同期処理の完了を一般保証しない。wrapper の実 component と React chunk の抽出は build のファイル名・minified export に依存し、検出できないと診断は失敗する。これは製品 helper へ minified alias を採用する提案ではない。React 非公開キー依存の実運用置換は未完であり、現行 helper を維持する。

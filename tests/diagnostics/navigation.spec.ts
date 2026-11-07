@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import { applyProductionCsp, waitForReactHydration } from '../e2e/helpers';
+import { PRODUCTION_CSP } from '../../src/utils/csp';
+import { cases } from './navigation-cases';
+import { releaseHeldReact, withHeldReact } from './hydration-barrier';
 
 const modes = ['load', 'domcontentloaded'] as const;
 
@@ -39,6 +42,100 @@ async function download(page: Page, info: TestInfo, name: string) {
   expect(await result.failure()).toBeNull();
   return readFile(path);
 }
+
+for (const waitUntil of modes) {
+  for (const sample of cases) {
+    test(`20spec ${waitUntil} ${sample.spec}`, async ({ browser }, info) => {
+      const context = await browser.newContext({
+        viewport: sample.mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 },
+      });
+      try {
+        const page = await context.newPage();
+        const guard = await applyProductionCsp(page);
+        const start = performance.now();
+        expect((await page.goto(sample.path, { waitUntil }))?.status()).toBe(200);
+        const navigationMs = performance.now() - start;
+        if (!sample.static) await waitForReactHydration(page);
+        const readyMs = performance.now() - start;
+        await sample.run(page, info, waitUntil);
+        const checkedMs = performance.now() - start;
+        guard.assertNoViolations();
+        await record(page, info, {
+          spec: sample.spec,
+          path: sample.path,
+          waitUntil,
+          navigationMs,
+          readyMs,
+          checkedMs,
+        });
+      } finally {
+        await context.close();
+      }
+    });
+  }
+}
+
+test('公開 signal の陽性対照: commit 保留中も Astro signal は発火する', async ({
+  browser,
+}, info) => {
+  await withHeldReact(browser, async (page) => {
+    const island = page.locator('astro-island[component-export="Base64CodecTool"]');
+    await expect.poll(() => island.evaluate((element) => element.hasAttribute('ssr'))).toBe(false);
+    await expect(island).not.toHaveAttribute('data-diagnostic-effect', 'done');
+    await page.getByLabel('入力', { exact: true }).fill('premature');
+    await expect(page.getByLabel('変換結果')).toHaveValue('');
+    // 現行 helper の private-key 判定をその瞬間だけ比較する。代替方式として採用しない。
+    const currentHelperSignal = await page.evaluate(() =>
+      [...document.querySelectorAll('astro-island *')].some((element) =>
+        Object.keys(element).some((key) => key.startsWith('__react'))
+      )
+    );
+    if (currentHelperSignal) await waitForReactHydration(page);
+    await record(page, info, {
+      candidateEventObserved: true,
+      ssrRemoved: true,
+      effectCommitted: false,
+      currentHelperSignal,
+      prematureOutput: '',
+    });
+  });
+});
+
+test('公開 effect の対照: commit 保留解除後に実操作が成功する', async ({ browser }, info) => {
+  await withHeldReact(browser, async (page) => {
+    const island = page.locator('astro-island[component-export="Base64CodecTool"]');
+    await expect(island).not.toHaveAttribute('data-diagnostic-effect', 'done');
+    await releaseHeldReact(page);
+    await expect(island).toHaveAttribute('data-diagnostic-effect', 'done');
+    await waitForReactHydration(page);
+    await encode(page);
+    await record(page, info, {
+      released: true,
+      effectCommitted: true,
+      functionalOutput: 'SGVsbG8=',
+    });
+  });
+});
+
+test('CSP 陽性対照: fresh context の違反を診断ガードが捕捉する', async ({ browser }) => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const guard = await applyProductionCsp(page);
+    const response = await page.goto('/tools/base64');
+    expect(response?.status()).toBe(200);
+    expect(response?.headers()['content-security-policy']).toBe(PRODUCTION_CSP);
+    await page.evaluate(() => {
+      const script = document.createElement('script');
+      script.textContent = 'window.__diagnosticCspViolation = true';
+      document.head.appendChild(script);
+    });
+    await expect.poll(() => guard.violations.length).toBeGreaterThan(0);
+    expect(await page.evaluate(() => '__diagnosticCspViolation' in window)).toBe(false);
+  } finally {
+    await context.close();
+  }
+});
 
 for (const waitUntil of modes) {
   for (const path of [
