@@ -1538,7 +1538,7 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 ### 却下した選択肢
 
 - **`curl*` / `wget*` 全体を deny にする**: 将来 curl を読み取り用に使うユースケース（例: API レスポンス確認）を排除しすぎるため、ask に留めた。
-- **PreToolUse hook による引数制約の強化**: glob では `gh api graphql`（空白の数・絶対パス経由）や `curl|sh`（リダイレクト・変数展開）の完全遮断ができない。hook 化で Gemini 側 `commandRegex` と同等の精度を確保できるが、実装・メンテコストとの兼ね合いから別 issue で判断する。
+- **PreToolUse hook による引数制約の強化**: glob では `gh api graphql`（空白の数・絶対パス経由）や `curl|sh`（リダイレクト・変数展開）の完全遮断ができない。hook 化で Gemini 側 `commandRegex` と同等の精度を確保できるが、実装・メンテコストとの兼ね合いから別 issue で判断する。現状は未実装で、採用判断は #927 で追跡する。設定変更には別途承認が必要。
 
 ### 結果・トレードオフ
 
@@ -2921,7 +2921,7 @@ trade-off:
 - ✅ pros: IDN / cashtag / mention 等の周辺仕様を含む完全互換、メンテナンスは Twitter 側
 - ❌ cons: bundle 増 (1MB 超の正規表現テーブル含む)、依存追加の保守コスト、本ツールはブラウザ完結型で軽量重視
 
-→ devtools プロジェクトは「依存最小化 + 軽量」が core value のため自前 regex 採用。完全互換が必要になった時点で別 issue で再検討。
+→ devtools プロジェクトは「依存最小化 + 軽量」が core value のため自前 regex 採用。完全互換が必要になった時点で別 issue で再検討。#378 は URL の括弧等への対応に限り、現在も完全互換は未採用。
 
 ### 不採用案: 「概算」ラベル維持 + 簡易ロジックのまま
 
@@ -2936,7 +2936,7 @@ trade-off:
 
 - 一致率 ~95% (typical http(s) URL はカバー、t.co の正規化や IDN ドメインは非対応)
 - バンドルサイズ増 ~0 KB (依存追加なし、関数 30 行程度)
-- twitter-text の `extractUrls()` 完全互換が必要になった場合は別 issue で再検討
+- twitter-text の `extractUrls()` 完全互換が必要になった場合は別 issue で再検討。#378 は URL の括弧等への対応に限り、現在も完全互換は未採用
 
 ### 既知制約
 
@@ -3170,7 +3170,7 @@ PR #450 (`height` オプション削除) と PR #453 (`shape-rendering="crispEdg
 - ✅ PR #450 の GS1 仕様誤読がコード comment 上から除去され、将来「~1X×1X」を根拠にした逆走 fix を防げる
 - ✅ non-composite (`databarlimited` 単独) は従来通りの symbol 幅を維持。VRT baseline 差分は composite 経路に限定される
 - ⚠️ composite シンボル (`databarlimitedcomposite`) の SVG / PNG 全幅は 60 svg-px 拡張される → composite ケースの VRT baseline 差分が発生する可能性がある。CLAUDE.md 6.8 に従い数値根拠で baseline 更新を recommend せず、user 目視確認後に CI `workflow_dispatch` で更新
-- ⚠️ 実機スキャナで decode 改善するかは user 検証次第。改善しない場合は `paddingheight: 2` (CC 上下 2X 追加) / `rowmult: 1` (spec 違反だが scanner 寛容性に賭ける) を段階的に試す別 issue を起票する
+- ⚠️ 実機スキャナで decode 改善するかは user 検証次第。改善しない場合は `paddingheight: 2` (CC 上下 2X 追加) / `rowmult: 1` (spec 違反だが scanner 寛容性に賭ける) を段階的に試す別 issue を起票する。後続の PR #458 / [082] で Canvas の透明背景が真因と判明し、白背景化による実機 decode を確認。`paddingheight` 試行は撤回し、`rowmult` 変更は未採用
 
 ### 関連
 
@@ -4002,7 +4002,7 @@ Node v22 で各純粋関数の CPU 時間（中央値）と `structuredClone` �
 
 - ✅ 空振り実装（複雑な Worker 通信基盤）を回避。measure-first の本来の使い方で対象を数値で除外できた。
 - ✅ ベンチは `.bench.ts` で `npm run test` の include glob（`*.test.{ts,tsx}`）外。CI を汚染しない。実行は `npx vitest bench src/utils/json-formatter/__tests__/offload.bench.ts`。
-- ⚠️ 超大入力（~15MB+）を将来サポートする場合は、本ベンチの数値を起点に「parse+format を Worker 内完結・文字列返し」の狭い設計から再検討する（別 issue/サイクル）。
+- ⚠️ 超大入力（~15MB+）を将来サポートする場合は、本ベンチの数値を起点に「parse+format を Worker 内完結・文字列返し」の狭い設計から再検討する（別 issue/サイクル）。#512 / PR #624 の最終判断は measure-first no-go であり、ベンチとレポートを残して Worker 採用は需要・要件化まで見送り。
 - ⚠️ ブラウザ実測は実 `parseJson`(jsonc-parser) でなく native `JSON.parse`/`stringify` を代理に使ったため、実パスの long task 有無は厳密には未検証。ただし同一 V8 エンジンの Node 実関数値で像は確定しており、結論は変わらない。
 
 ## [105] 2026-06-11 — json-formatter getNodeValue の遅延評価は見送り（#512 残スコープ③・measure-first no-go）
@@ -4084,7 +4084,7 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 
 - **ML 検出（言語モデルやベクトル類似度）**: ブラウザ完結・外部送信なし・依存ライブラリなしの制約と相容れないため却下。
 - **json-formatter/mask.ts との統合**: 既存ツールの挙動変更リスクが高く、2 つのユースケースで異なる API が必要（MaskOptions vs ScrubOptions）。S2-3 実装タイミングで改めて判断。
-- **File System Access API でのフォルダ走査**: C2-16 として別 PR スコープ。
+- **File System Access API でのフォルダ走査**: C2-16 として別 PR スコープ。PR #631 の採用範囲は貼り付けテキストの scrubber で、C2-16 は現在も `docs/tool-candidates.md` の未採用候補。
 
 ### 結果・トレードオフ
 
@@ -4287,7 +4287,7 @@ cert-decoder v1（decision [111]）では PKCS#12 をスコープ外としてい
 
 ### 決断
 
-- **ルールを `react/button-has-type` 1 本に限定**: recommended ルールセットは有効化しない。最小 blast radius で受け入れ基準を満たし、既存コードの大量違反リスクを排除する（将来のルール追加は別 issue）。
+- **ルールを `react/button-has-type` 1 本に限定**: recommended ルールセットは有効化しない。最小 blast radius で受け入れ基準を満たし、既存コードの大量違反リスクを排除する（将来のルール追加は別 issue）。#569 の最終採用と現行設定はこのルールのみで、追加 lint は採用範囲外。
 - **依存最小化**: `eslint`（^9） + `@typescript-eslint/parser`（^8, .tsx パース用） + `eslint-plugin-react`（^7）のみ。typescript-eslint の recommended プラグインは入れない。
 - **バージョン固定**: eslint-plugin-react@7.37.5 の peer が `eslint ^9.7` までのため eslint は `^9` 系に固定（eslint 10 は peer conflict）。
 - **`.astro` は対象外**: HTML button は全件 type 付与済み（#566 等）で、`react/button-has-type` は JSX 専用。astro 用 parser/plugin の追加は YAGNI。
@@ -4298,7 +4298,7 @@ cert-decoder v1（decision [111]）では PKCS#12 をスコープ外としてい
 
 - ✅ button type 漏れを CI で恒久的に機械検出。陽性対照で検知能力を継続検証。
 - ✅ ルール 1 本限定で導入時の既存違反・レビュー負荷が最小。
-- ⚠️ 他の lint 観点（hooks 依存配列・未使用変数等）は未カバー。必要になれば別 issue で recommended 化を検討する。
+- ⚠️ 他の lint 観点（hooks 依存配列・未使用変数等）は未カバー。必要になれば別 issue で recommended 化を検討する。#569 の最終採用と現行設定は `react/button-has-type` のみで、追加 lint は採用範囲外。
 
 ## [116] HARビューア: 新規ライブラリ不採用・secret-scrubber 再利用・ウォーターフォール分離
 
@@ -4379,10 +4379,10 @@ issue の root-cause 表（「DOM 描画が最有力」）は**実プロファ�
 - ✅ 読み込み時の「ページが応答しません」を解消（sanitize がメインスレッドを固めない）。
 - ✅ 大きな HAR でも進捗バーで処理状況が見える。
 - ✅ `JSON.stringify` が copy/DL 時のみ実行され、毎レンダリングの数 MB 直列化を排除。
-- ⚠️ 差分 sanitize（トグル時に変更カテゴリのみ再処理）は未対応。大きな HAR ではトグルのたびに全件再 sanitize するが、worker 上のため UI は固まらない（進捗表示）。将来課題。
+- ⚠️ 差分 sanitize（トグル時に変更カテゴリのみ再処理）は未対応。大きな HAR ではトグルのたびに全件再 sanitize するが、worker 上のため UI は固まらない（進捗表示）。将来課題。Worker 化は #677 / PR #680 で実施済みで、この最適化の計測・採用判断は #928 で追跡。
 - ⚠️ worker 化で parse/sanitize は非同期になり、結果反映前に短時間ローディング状態を経由する（E2E は `toBeVisible` の auto-retry で吸収）。
 - ⚠️ 全件描画のため、数千エントリ級の巨大 HAR では DOM 行数が多くなる（固まりはしないが描画が重くなりうる）。その規模が問題になれば仮想スクロール等を別途検討する。
-- ⚠️ 進捗バーの粒度はエントリ件数基準（`PROGRESS_INTERVAL = 100`）。実ボトルネックである「少数エントリ × 巨大レスポンスボディの正規表現スキャン」では 1 ボディの scan 中は進捗が進まず、数百件規模だとバーがほとんど動かないことがある（固着ではない）。バイト基準の進捗化は将来課題。
+- ⚠️ 進捗バーの粒度はエントリ件数基準（`PROGRESS_INTERVAL = 100`）。実ボトルネックである「少数エントリ × 巨大レスポンスボディの正規表現スキャン」では 1 ボディの scan 中は進捗が進まず、数百件規模だとバーがほとんど動かないことがある（固着ではない）。バイト基準の進捗化は将来課題。Worker 化は #677 / PR #680 で実施済みで、この最適化の計測・採用判断は #928 で追跡。
 - 堅牢性: worker の `onmessage` を try/catch で包み、`useHarSanitizer` に `worker.onerror` を設定。プロトコル外の例外でも `error` 状態に落とし、`busy` が永久 true で固着するのを防ぐ（PR #680 レビュー反映）。`reset()` は worker に `{ type: 'reset' }` を post して保持中 HAR（最大 25MB）を解放する。
 
 ## [118] HAR サニタイザ: サニタイズ監査由来の堅牢化（漏れ修正・ReDoS 解消・カバレッジ拡張）
