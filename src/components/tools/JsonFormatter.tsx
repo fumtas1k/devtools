@@ -258,7 +258,7 @@ export function JsonFormatter() {
   );
 
   return (
-    <div className={`space-y-6 ${treeSizeClass}`}>
+    <div className={`json-formatter-layout ${treeSizeClass}`}>
       {/* PC は従来の操作順、スマホは詳細設定を折りたたむ。 */}
       <div className="json-options">
         <div className="json-desktop-indent items-center gap-2">{indentControl}</div>

@@ -1,5 +1,60 @@
 import { test, expect } from '@playwright/test';
-import { withProductionCsp } from './helpers';
+import { applyProductionCsp, waitForReactHydration, withProductionCsp } from './helpers';
+
+test('スマホでは詳細設定と入力側の移動操作を適度な間隔にする', async ({ browser }) => {
+  await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const detail = page.getByRole('button', { name: '詳細設定' });
+    const forward = page.getByRole('button', { name: '結果へ移動' });
+    const gap = async () => {
+      const options = await page.locator('.json-options').boundingBox();
+      const button = await forward.boundingBox();
+      return button!.y - (options!.y + options!.height);
+    };
+    await expect.poll(gap).toBeCloseTo(8, 1);
+    const detailBox = await detail.boundingBox();
+    const forwardBox = await forward.boundingBox();
+    expect(forwardBox!.y - (detailBox!.y + detailBox!.height)).toBeCloseTo(8, 1);
+    await detail.click();
+    await expect(detail).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByLabel('クエリ (JMESPath)')).toBeVisible();
+    await expect.poll(gap).toBeCloseTo(8, 1);
+  });
+});
+
+test('タッチ端末で詳細設定と移動操作が互いの操作領域を奪わない', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const guard = await applyProductionCsp(page);
+    await page.goto('/tools/json-formatter');
+    await waitForReactHydration(page);
+    for (const name of ['詳細設定', '結果へ移動']) {
+      const button = page.getByRole('button', { name });
+      const result = await button.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const xs = [rect.left + 1, rect.left + rect.width / 2, rect.right - 1];
+        const ys = [rect.top + 1, rect.top + rect.height / 2, rect.bottom - 1];
+        const hits = xs.flatMap((x) =>
+          ys.map((y) => {
+            const hit = document.elementFromPoint(x, y);
+            return hit === element || (hit !== null && element.contains(hit));
+          })
+        );
+        return { width: rect.width, height: rect.height, hits };
+      });
+      expect(result.width).toBeGreaterThanOrEqual(44);
+      expect(result.height).toBeGreaterThanOrEqual(44);
+      expect(result.hits).toEqual(Array(9).fill(true));
+    }
+    guard.assertNoViolations();
+  } finally {
+    await context.close();
+  }
+});
 
 test('スマホでは詳細設定を閉じても主要操作を表示する', async ({ browser }) => {
   await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
@@ -202,6 +257,9 @@ test('新しい操作は 44px 以上で、PC では左右に並ぶ', async ({ br
     await page.setViewportSize({ width: 1280, height: 800 });
     const input = await page.getByLabel('入力', { exact: true }).boundingBox();
     const output = await page.getByRole('textbox', { name: '整形結果' }).boundingBox();
+    const options = await page.locator('.json-options').boundingBox();
+    const inputRegion = await page.locator('#json-formatter-input-region').boundingBox();
+    expect(inputRegion!.y - (options!.y + options!.height)).toBeCloseTo(24, 1);
     expect(output!.x).toBeGreaterThan(input!.x + input!.width);
     expect(Math.abs(output!.y - input!.y)).toBeLessThanOrEqual(1);
     await expect(page.getByRole('button', { name: '結果へ移動' })).toBeHidden();
