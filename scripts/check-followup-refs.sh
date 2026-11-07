@@ -30,174 +30,198 @@ HAS_ISSUE_REF='#[0-9]+'
 
 found=0
 checked=0
-QUOTE_PREFIX='^[[:space:]]*>[[:space:]]?'
-HEADING='^[[:space:]]*#+[[:space:]]'
-FENCE='^[[:space:]]*(`{3,}|~{3,})'
-CLOSE_FENCE='^[[:space:]]*(`{3,}|~{3,})[[:space:]]*$'
-LIST_ITEM='^[[:space:]]*([-+*]|[0-9]+[.)])[[:space:]]+'
-BACKTICKS='^(`+)'
-
-# 引用記号の深さを数え、残りの行を REPLY に返す。
-strip_quote_prefix() {
-  REPLY="$1"
-  quote_depth=0
-  while [[ "$REPLY" =~ $QUOTE_PREFIX ]]; do
-    REPLY="${REPLY:${#BASH_REMATCH[0]}}"
-    quote_depth=$((quote_depth + 1))
-  done
-}
-
-# 前後の行が同じ段落または箇条書き項目に属するか判定する。
-# 後の行が新しい項目なら、前の項目に付いた issue 番号は共有しない。
-same_block() {
-  local before after before_depth REPLY quote_depth
-  strip_quote_prefix "$1"
-  before="$REPLY" before_depth="$quote_depth"
-  strip_quote_prefix "$2"
-  after="$REPLY"
-  [[ "$before_depth" -eq "$quote_depth" ]] || return 1
-  [[ "$before" =~ ^[[:space:]]*$ || "$after" =~ ^[[:space:]]*$ ]] && return 1
-  [[ "$before" =~ $HEADING || "$after" =~ $HEADING ]] && return 1
-  [[ "$before" =~ $FENCE || "$after" =~ $FENCE ]] && return 1
-  [[ "$after" =~ $LIST_ITEM ]] && return 1
-  return 0
-}
+# mawk はマルチバイト空白を [:space:] と認識しないため、Bash のロケール判定に合わせる。
+unicode_spaces=''
+for char in $'\u0085' $'\u00a0' $'\u1680' $'\u2000' $'\u2001' $'\u2002' $'\u2003' $'\u2004' $'\u2005' $'\u2006' $'\u2007' $'\u2008' $'\u2009' $'\u200a' $'\u2028' $'\u2029' $'\u202f' $'\u205f' $'\u3000'; do
+  if [[ "$char" =~ ^[[:space:]]$ ]]; then
+    unicode_spaces+="${unicode_spaces:+,}$char"
+  fi
+done
 
 for file in "$@"; do
   [ -f "$file" ] || { echo "[SKIP] $file: ファイルが見つかりません" >&2; continue; }
   checked=$((checked + 1))
+  # 次行を解析した時点で現在行を判定し、前後各 1 行だけを保持する。
+  # 候補は旧来の grep 判定を使い、awk は 1 件先読みして行番号を照合する。
+  # パスは awk の引数にするとオプションや変数代入として解釈され得る。
+  if FOLLOWUP_FILE="$file" FOLLOWUP_CANDIDATES="/dev/fd/3" FOLLOWUP_REF="$HAS_ISSUE_REF" FOLLOWUP_SPACES="$unicode_spaces" awk '
+    function normalize(line,    i) {
+      for (i = 1; i <= space_count; i++) gsub(spaces[i], " ", line)
+      return line
+    }
 
-  # ファイルを配列に読み込む（前後行チェックのため）
-  mapfile -t lines < "$file"
-  total=${#lines[@]}
+    function strip_quote(line) {
+      depth = 0
+      while (match(line, /^[[:space:]]*>[[:space:]]?/)) {
+        line = substr(line, RLENGTH + 1)
+        depth++
+      }
+      return line
+    }
 
-  # コードブロックの行番号セットと、HTML コメントを除いた参照用の行を構築する。
-  unset in_code_block
-  declare -A in_code_block
-  unset ref_lines
-  declare -a ref_lines
-  code_fence=''
-  fence_depth=0
-  in_comment=0
-  for ((i=0; i<total; i++)); do
-    strip_quote_prefix "${lines[$i]}"
-    if [ -n "$code_fence" ] && [ "$quote_depth" -lt "$fence_depth" ]; then
-      code_fence=''
-    fi
-    if [ -n "$code_fence" ]; then
-      if [ "$quote_depth" -eq "$fence_depth" ] && [[ "$REPLY" =~ $CLOSE_FENCE ]] &&
-        [[ "${BASH_REMATCH[1]:0:1}" = "${code_fence:0:1}" ]] &&
-        [ "${#BASH_REMATCH[1]}" -ge "${#code_fence}" ]; then
-        in_code_block[$((i+1))]=1
-        code_fence=''
-        ref_lines[$i]=''
-        continue
-      fi
-    elif [ "$in_comment" -eq 0 ] && [[ "$REPLY" =~ $FENCE ]]; then
-      code_fence="${BASH_REMATCH[1]}"
-      fence_depth="$quote_depth"
-    fi
-    if [ -n "$code_fence" ]; then
-      in_code_block[$((i+1))]=1
-      ref_lines[$i]=''
-      continue
-    fi
+    function same_block(before, after,    before_depth) {
+      before = strip_quote(before)
+      before_depth = depth
+      after = strip_quote(after)
+      if (before_depth != depth) return 0
+      if (before ~ /^[[:space:]]*$/ || after ~ /^[[:space:]]*$/) return 0
+      if (before ~ /^[[:space:]]*#+[[:space:]]/ || after ~ /^[[:space:]]*#+[[:space:]]/) return 0
+      if (before ~ /^[[:space:]]*(```+|~~~+)/ || after ~ /^[[:space:]]*(```+|~~~+)/) return 0
+      if (after ~ /^[[:space:]]*([-+*]|[0-9]+[.)])[[:space:]]+/) return 0
+      return 1
+    }
 
-    remaining="${lines[$i]}"
-    visible=''
-    while :; do
-      if [ "$in_comment" -eq 1 ]; then
-        case "$remaining" in
-          *'-->'*) remaining="${remaining#*-->}"; in_comment=0 ;;
-          *) break ;;
-        esac
-      else
-        case "$remaining" in
-          *'<!--'*)
-            # 同じ行で閉じるインラインコード中の <!-- はコメントではない。
-            before_comment="${remaining%%<!--*}"
-            before_tick="${remaining%%\`*}"
-            if [ "${#before_tick}" -lt "${#before_comment}" ]; then
-              after_tick="${remaining:${#before_tick}}"
-              [[ "$after_tick" =~ $BACKTICKS ]]
-              open_ticks="${BASH_REMATCH[1]}"
-              search="${after_tick:${#open_ticks}}"
-              span="$open_ticks"
-              matched=0
-              while [[ "$search" == *'`'* ]]; do
-                segment="${search%%\`*}"
-                search="${search:${#segment}}"
-                [[ "$search" =~ $BACKTICKS ]]
-                ticks="${BASH_REMATCH[1]}"
-                span+="$segment$ticks"
-                search="${search:${#ticks}}"
-                if [ "$ticks" = "$open_ticks" ]; then
-                  matched=1
-                  break
-                fi
-              done
-              if [ "$matched" -eq 1 ]; then
-                visible+="$before_tick$span"
-                remaining="$search"
-              else
-                visible+="$before_tick$open_ticks"
-                remaining="${after_tick:${#open_ticks}}"
-              fi
-              continue
-            fi
-            visible+="${remaining%%<!--*}"
-            remaining="${remaining#*<!--}"
-            in_comment=1
-            ;;
-          *) visible+="$remaining"; break ;;
-        esac
-      fi
-    done
-    ref_lines[$i]="$visible"
-  done
+    # コメントを除いた参照用テキストと、コードブロック内かを返す。
+    function analyze(line,    stripped, line_depth, fence, rest, visible, pos, tick_pos, before_tick, after_tick, open_ticks, search, span, segment, ticks, matched) {
+      stripped = strip_quote(line)
+      line_depth = depth
+      is_code = 0
+      ref_line = ""
+      if (code_fence != "" && line_depth < fence_depth) code_fence = ""
+      if (code_fence != "") {
+        if (line_depth == fence_depth && match(stripped, /^[[:space:]]*(```+|~~~+)[[:space:]]*$/)) {
+          fence = substr(stripped, RSTART, RLENGTH)
+          sub(/^[[:space:]]*/, "", fence)
+          sub(/[[:space:]]*$/, "", fence)
+          if (substr(fence, 1, 1) == substr(code_fence, 1, 1) && length(fence) >= length(code_fence)) {
+            is_code = 1
+            code_fence = ""
+            return
+          }
+        }
+      } else if (!in_comment && match(stripped, /^[[:space:]]*(```+|~~~+)/)) {
+        code_fence = substr(stripped, RSTART, RLENGTH)
+        sub(/^[[:space:]]*/, "", code_fence)
+        fence_depth = line_depth
+      }
+      if (code_fence != "") {
+        is_code = 1
+        return
+      }
 
-  # grep でヒット行番号を取得（1-indexed）
-  while IFS=: read -r lineno line; do
-    lineno=$((lineno))  # 数値化
-    idx=$((lineno - 1)) # 0-indexed
+      rest = line
+      visible = ""
+      while (1) {
+        if (in_comment) {
+          pos = index(rest, "-->")
+          if (!pos) break
+          rest = substr(rest, pos + 3)
+          in_comment = 0
+        } else {
+          pos = index(rest, "<!--")
+          if (!pos) {
+            visible = visible rest
+            break
+          }
+          tick_pos = index(rest, "`")
+          if (tick_pos && tick_pos < pos) {
+            before_tick = substr(rest, 1, tick_pos - 1)
+            after_tick = substr(rest, tick_pos)
+            match(after_tick, /^`+/)
+            open_ticks = substr(after_tick, 1, RLENGTH)
+            search = substr(after_tick, RLENGTH + 1)
+            span = open_ticks
+            matched = 0
+            while ((tick_pos = index(search, "`")) != 0) {
+              segment = substr(search, 1, tick_pos - 1)
+              search = substr(search, tick_pos)
+              match(search, /^`+/)
+              ticks = substr(search, 1, RLENGTH)
+              span = span segment ticks
+              search = substr(search, RLENGTH + 1)
+              if (ticks == open_ticks) {
+                matched = 1
+                break
+              }
+            }
+            if (matched) {
+              visible = visible before_tick span
+              rest = search
+            } else {
+              visible = visible before_tick open_ticks
+              rest = substr(after_tick, length(open_ticks) + 1)
+            }
+          } else {
+            visible = visible substr(rest, 1, pos - 1)
+            rest = substr(rest, pos + 4)
+            in_comment = 1
+          }
+        }
+      }
+      ref_line = visible
+    }
 
-    # Markdown の見出し行（# で始まる行）はセクションタイトルのため除外
-    if [[ "$line" =~ $HEADING ]]; then
-      continue
-    fi
+    # Bash の IFS=: read が末尾単独の区切り文字を除去する動作も再現する。
+    function read_candidate(    record, separator) {
+      if ((getline record < candidate_path) <= 0) {
+        candidate_number = 0
+        return
+      }
+      separator = index(record, ":")
+      if (!separator) {
+        candidate_number = 0
+        return
+      }
+      candidate_number = substr(record, 1, separator - 1) + 0
+      candidate_text = substr(record, separator + 1)
+      if (candidate_text ~ /^[^:]*:$/) candidate_text = substr(candidate_text, 1, length(candidate_text) - 1)
+    }
 
-    # コードブロック内の行は除外
-    if [ -n "${in_code_block[$lineno]+x}" ]; then
-      continue
-    fi
+    function check_current(has_next,    candidate_view) {
+      candidate_view = normalize(candidate_text)
+      if (candidate_view ~ /^[[:space:]]*#+[[:space:]]/ || current_code) return
+      if (current_ref ~ ref_pattern) return
+      if (has_previous && !previous_code && same_block(previous, candidate_view) && previous_ref ~ ref_pattern) return
+      if (has_next && !is_code && same_block(candidate_view, next_line) && ref_line ~ ref_pattern) return
+      printf "[WARN] %s:%d: %s\n", file, current_number, candidate_text
+      found = 1
+    }
 
-    # 同じ行に issue 番号があれば OK
-    if [[ "${ref_lines[$idx]}" =~ $HAS_ISSUE_REF ]]; then
-      continue
-    fi
-
-    # 前行 (idx-1) をチェック
-    if [ $idx -gt 0 ]; then
-      if [ -z "${in_code_block[$((lineno - 1))]+x}" ] &&
-        same_block "${lines[$((idx - 1))]}" "$line" &&
-        [[ "${ref_lines[$((idx - 1))]}" =~ $HAS_ISSUE_REF ]]; then
-        continue
-      fi
-    fi
-
-    # 後行 (idx+1) をチェック
-    if [ $((idx + 1)) -lt $total ]; then
-      if [ -z "${in_code_block[$((lineno + 1))]+x}" ] &&
-        same_block "$line" "${lines[$((idx + 1))]}" &&
-        [[ "${ref_lines[$((idx + 1))]}" =~ $HAS_ISSUE_REF ]]; then
-        continue
-      fi
-    fi
-
-    # issue 番号なし → 警告出力
-    echo "[WARN] $file:$lineno: $line"
+    BEGIN {
+      file = ENVIRON["FOLLOWUP_FILE"]
+      candidate_path = ENVIRON["FOLLOWUP_CANDIDATES"]
+      ref_pattern = ENVIRON["FOLLOWUP_REF"]
+      if (ENVIRON["FOLLOWUP_SPACES"] != "") space_count = split(ENVIRON["FOLLOWUP_SPACES"], spaces, ",")
+      nul = sprintf("%c", 0)
+      read_candidate()
+    }
+    {
+      # Bash の mapfile が NUL 以降を切り捨てていた動作を維持する。
+      raw_line = $0
+      nul_pos = index(raw_line, nul)
+      if (nul_pos) raw_line = substr(raw_line, 1, nul_pos - 1)
+      next_line = normalize(raw_line)
+      analyze(next_line)
+      if (has_current) {
+        if (candidate_number == current_number) {
+          check_current(1)
+          read_candidate()
+        }
+        previous = current
+        previous_ref = current_ref
+        previous_code = current_code
+        has_previous = 1
+      }
+      current = next_line
+      current_ref = ref_line
+      current_code = is_code
+      current_number = NR
+      has_current = 1
+    }
+    END {
+      if (has_current && candidate_number == current_number) check_current(0)
+      if (found) exit 1
+    }
+  ' < "$file" 3< <(grep -nE "$PATTERN" "$file" 2>/dev/null || true); then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$status" -eq 1 ]; then
     found=1
-  done < <(grep -nE "$PATTERN" "$file" 2>/dev/null || true)
+  elif [ "$status" -ne 0 ]; then
+    exit "$status"
+  fi
 done
 
 if [ "$checked" -eq 0 ]; then
