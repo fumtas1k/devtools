@@ -161,6 +161,61 @@ test.describe('QRチケット（production CSP 適用）', () => {
   // 生成→検証ラウンドトリップ（画像アップロード経由）
   // ──────────────────────────────────────────────────────────
 
+  test('160px の上限サイズのチケット画像をそのままアップロードして検証できる', async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-ticket', async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
+      await expect(page.getByLabel('秘密鍵（主催者が保管）')).not.toHaveValue('');
+      await page.getByLabel('イベントID').fill('event');
+      await page.getByLabel('有効期限').fill('2099-12-31T23:59');
+      await page.getByLabel('参加者名 1').fill('a'.repeat(137));
+      await page.getByRole('button', { name: '一括生成' }).click();
+
+      const qr = page.getByTestId('qr-code-container').first();
+      await expect(qr.locator('svg')).toHaveCount(1);
+      await expect(qr).toHaveCSS('width', '160px');
+      const image = await qr.screenshot();
+
+      await page.getByRole('button', { name: '検証', exact: true }).click();
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+      await expect(page.getByLabel('画像を選択')).toBeEnabled();
+      await page.getByLabel('画像を選択').setInputFiles({
+        name: 'ticket-160.png',
+        mimeType: 'image/png',
+        buffer: image,
+      });
+      await expect(page.getByText('有効なチケット', { exact: true })).toBeVisible({
+        timeout: 15000,
+      });
+    });
+  });
+
+  test('QR を含まない小画像は読み取れないと表示する', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/qr-ticket', async (page) => {
+      await page.getByRole('button', { name: '鍵ペアを新規生成' }).click();
+      await expect(page.getByLabel('公開鍵（検証スタッフへ共有）')).not.toHaveValue('');
+      const image = await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 160;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, 160, 160);
+        return canvas.toDataURL('image/png').split(',')[1];
+      });
+      await page.getByRole('button', { name: '検証', exact: true }).click();
+      await page.getByRole('button', { name: '画像アップロード' }).click();
+      await expect(page.getByLabel('画像を選択')).toBeEnabled();
+      await page.getByLabel('画像を選択').setInputFiles({
+        name: 'blank.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(image, 'base64'),
+      });
+      await expect(page.getByText('QRコードが見つかりませんでした', { exact: true })).toBeVisible();
+    });
+  });
+
   test('生成したQRを画像アップロードで検証すると有効と判定される（CSP 違反なし）', async ({
     browser,
   }) => {
