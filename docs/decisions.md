@@ -1985,6 +1985,7 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 - PR #197（起票忘れ事例: force-with-lease push 運用ルール）
 - PR #198（起票忘れ事例: permissions precedence 実機確認）
 - `.agents/rules/common.md` 6.4 章「先送り時は issue 化必須」
+- [check-followup-refs.sh の使い方](../scripts/README.md#check-followup-refssh)（#202 E）
 
 ---
 

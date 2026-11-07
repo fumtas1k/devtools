@@ -112,6 +112,8 @@
 
 レビュー指摘や作業中の課題を「別 PR で対応」とするなら、その場で issue を起票し、PR の返信に `#<番号>` を貼る。issue 番号のない口頭の「後で」は禁止。本 PR で完結できる軽微な対応は先送りしない。
 
+既存の [`check-followup-refs.sh`](../../scripts/check-followup-refs.sh) を手動で実行して確認できる。使い方は [scripts/README.md](../../scripts/README.md#check-followup-refssh) を参照（#202 E）。
+
 ### 6.5 再利用候補スクリプトの提案
 
 3 行以上の bash・繰り返し書く手順・覚えにくいフラグを伴う複合コマンドは、実行前に `scripts/` への切り出しをユーザーに提案する（同意を得てから作る）。使い分けは `scripts/README.md`。
