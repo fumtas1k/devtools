@@ -1548,6 +1548,10 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ sandbox の egress ドメインと WebFetch 許可ドメインが一致した。
 - ⚠️ `gh api graphql` のバイパス（空白2個、絶対パス経由 `/usr/bin/gh`）は glob 制約のため残存。完全対策は hook 化が必要。
 
+### 2026-11-07 追記: force push の扱い（#126）
+
+現状維持の A 案として、Claude の `Bash(git push --force*)` deny を維持する。`git push --force-with-lease` もこの glob の対象であり、lease は remote ref を確認するが強制更新であることは変わらない。ask の追加や例外 hook は導入しない。人が直接行う git 操作はエージェント設定の対象外。
+
 ---
 
 ## [048] PR #122 6 回目レビュー反映（npm グローバルインストール補完・Bash メタ防御追加）

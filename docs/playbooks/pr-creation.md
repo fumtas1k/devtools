@@ -44,14 +44,11 @@ git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 
 ---
 
-## 2. rebase 後の force-with-lease push は親セッションが引き取る
+## 2. rebase 後の push 判断は親セッションに引き継ぐ
 
-サブエージェントが `git rebase --onto` 等で履歴を書き換えた場合、`git push --force-with-lease` は **親セッションで実行する** こと。サブエージェント側は完了報告に「rebase したので親が `--force-with-lease` で push する必要がある旨」を明記する。
+サブエージェントが `git rebase --onto` 等で履歴を書き換えた場合、完了報告に rebase の内容・対象 branch・必要な更新を明記する。親は履歴と差分を確認し、利用中の harness の許可とユーザーの認可を確認したうえで push を判断する。
 
-理由:
-
-- `git push --force*` は `permissions.deny` または `ask`、サブエージェントから非対話で実行できない
-- 親セッションは push 前に `git diff origin/<branch>...HEAD` で履歴の正当性を確認できる立場にある（commander checklist の C 章「スコープ外差分の確認」と整合）
+親への移管は責任分担であり、Claude の `Bash(git push --force*)` deny は親にも適用される。`--force-with-lease` も同 deny の対象である（[決定記録 047](../decisions.md#047-claudesettingsjson-セキュリティレビュー反映)）。操作が拒否された場合は別ツール・表記・認証で迂回せず、対象 branch・差分・必要操作を説明してユーザーの手動操作に引き継ぐ。
 
 ---
 
