@@ -1,0 +1,99 @@
+---
+interface Props {
+  inputId: string;
+  listId: string;
+}
+
+const { inputId, listId } = Astro.props;
+---
+
+<div class="mb-4" data-menu-search>
+  <label for={inputId} class="block mb-1 body-emphasis text-default">ツールを検索</label>
+  <div class="relative">
+    <input
+      id={inputId}
+      type="search"
+      aria-controls={listId}
+      autocomplete="off"
+      placeholder="ツール名・用途"
+      class="field-control pr-12"
+    />
+    <button
+      type="button"
+      aria-label="検索をクリア"
+      class="btn-clear absolute right-0.5 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md border-0 text-muted"
+      hidden
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+  <p role="status" class="mt-2 empty:mt-0 caption text-muted"></p>
+</div>
+
+<style>
+  input[type='search']::-webkit-search-cancel-button {
+    display: none;
+  }
+</style>
+
+<script>
+  import { queryTokens } from '@/utils/tool-search';
+
+  for (const menu of document.querySelectorAll<HTMLElement>('[data-tool-menu]')) {
+    const input = menu.querySelector<HTMLInputElement>('[data-menu-search] input');
+    const clear = menu.querySelector<HTMLButtonElement>('[data-menu-search] button');
+    const status = menu.querySelector<HTMLElement>('[data-menu-search] [role="status"]');
+    const categories = menu.querySelectorAll<HTMLElement>('[data-menu-category]');
+    if (!input || !clear || !status) continue;
+
+    const applySearch = () => {
+      const tokens = queryTokens(input.value);
+      const searching = tokens.length > 0;
+      let total = 0;
+      for (const category of categories) {
+        let count = 0;
+        for (const item of category.querySelectorAll<HTMLElement>('[data-search]')) {
+          const hit =
+            !searching || tokens.every((token) => (item.dataset.search ?? '').includes(token));
+          item.hidden = !hit;
+          if (hit) count++;
+        }
+        category.hidden = count === 0;
+        total += count;
+      }
+      clear.hidden = !searching;
+      status.textContent = !searching
+        ? ''
+        : total > 0
+          ? `${total} 件のツールが見つかりました`
+          : '該当するツールがありません';
+    };
+    input.addEventListener('input', applySearch);
+    input.addEventListener('keydown', (event) => {
+      const drawer = menu.closest('dialog');
+      if (event.key === 'Escape' && !event.isComposing && drawer?.open) {
+        event.preventDefault();
+        drawer.close();
+      }
+    });
+    clear.addEventListener('click', () => {
+      input.value = '';
+      applySearch();
+      input.focus();
+    });
+  }
+</script>

@@ -1,5 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { withProductionCsp } from './helpers';
+
+const toolStatus = (page: Page) => page.getByRole('main').getByRole('status');
 
 /**
  * issue #163 で追加した live region / aria-expanded / アイコン分離 のスモーク E2E。
@@ -12,11 +14,11 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
   }) => {
     await withProductionCsp(browser, '/tools/jan-code', async (page) => {
       // 入力前は status が存在しない
-      await expect(page.getByRole('status')).toHaveCount(0);
+      await expect(toolStatus(page)).toHaveCount(0);
 
       await page.getByRole('button', { name: 'サンプルを入力' }).click();
 
-      const status = page.getByRole('status').first();
+      const status = toolStatus(page).first();
       await expect(status).toBeVisible();
       await expect(status).toContainText('チェックディジット');
       await expect(status).toContainText('完成コード');
@@ -27,7 +29,7 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
     await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
       await page.getByRole('button', { name: '生成' }).click();
 
-      const status = page.getByRole('status').first();
+      const status = toolStatus(page).first();
       await expect(status).toBeVisible();
       await expect(status).toContainText('件生成');
     });
@@ -58,7 +60,7 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
   }) => {
     await withProductionCsp(browser, '/tools/base64', async (page) => {
       // OutputField は常時 role="status" aria-live="polite" を持つ
-      const statusEl = page.getByRole('status').first();
+      const statusEl = toolStatus(page).first();
       await expect(statusEl).toBeVisible();
       await expect(statusEl).toHaveAttribute('aria-live', 'polite');
 
@@ -74,7 +76,7 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
   }) => {
     await withProductionCsp(browser, '/tools/dummy-text', async (page) => {
       // ページ読込時に auto-generate されるため status は即時存在する
-      const status = page.getByRole('status').first();
+      const status = toolStatus(page).first();
       await expect(status).toHaveAttribute('aria-live', 'polite');
       await expect(status).toContainText('ダミーテキストを生成しました');
 
@@ -89,7 +91,7 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
   }) => {
     await withProductionCsp(browser, '/tools/json-csv', async (page) => {
       // OutputField は常時 role="status" aria-live="polite" を持つ
-      const statusEl = page.getByRole('status').first();
+      const statusEl = toolStatus(page).first();
       await expect(statusEl).toBeVisible();
       await expect(statusEl).toHaveAttribute('aria-live', 'polite');
 
@@ -97,6 +99,17 @@ test.describe('a11y live region (issue #163, production CSP 適用)', () => {
       await page.getByLabel('入力').fill('[{"id":1,"name":"太郎"}]');
       await expect(page.getByLabel('変換結果')).toHaveValue(/id,name/);
       await expect(statusEl.locator('textarea')).toHaveValue(/id,name/);
+    });
+  });
+
+  test('陽性対照: メニューの通知は本体の通知欠落を隠さない', async ({ browser }) => {
+    await withProductionCsp(browser, '/tools/uuid-v7', async (page) => {
+      await page.getByRole('button', { name: '生成' }).click();
+      const outputStatus = page.getByRole('main').getByRole('status').first();
+      await expect(outputStatus).toContainText('件生成');
+      await expect(page.locator('aside').getByRole('status')).toBeAttached();
+      await outputStatus.evaluate((element) => element.removeAttribute('role'));
+      await expect(toolStatus(page)).toHaveCount(0);
     });
   });
 
