@@ -1585,6 +1585,7 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ `gh *` の sandbox 外実行が macOS sandbox-exec による **TLS 証明書ストアアクセスの制限** という技術的制約に起因することが実機検証で確定し（`x509: OSStatus -26276`）、permissions による deny / ask が唯一の防御線である旨が確定した。
 - ✅ `ai.google.dev` の意図（ドキュメントサイト、API エンドポイントではない）が明示され、将来のドリフトが防止される。
 - ⚠️ Claude 側 Bash メタ防御は glob 近似であり、`rm -rf .claude/foo/bar` のように深いパスや複雑なコマンドは完全にはカバーできない。Gemini 側 regex との精度差は残存。
+- ⚠️ `rm` / `sed` / `tee` の ask glob は、`> .claude/...` / `>> .claude/...` によるリダイレクト書き換えを対象とする保護ではなく、それだけで安全性を保証できない。繰り返し実行される `statusline-command.sh` が改変されると、継続的なコード実行経路になり得る（#125）。このリダイレクトを検知する Bash PreToolUse hook は未実装で、導入する場合は別途承認と検証が必要。
 
 ---
 
