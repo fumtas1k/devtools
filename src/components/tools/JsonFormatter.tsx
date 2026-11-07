@@ -58,7 +58,9 @@ export function JsonFormatter() {
   const [indent, setIndent] = useState<IndentStyle>('2');
   const [mode, setMode] = useState<Mode>('format');
   const [view, setView] = useState<View>('text');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const inputWrapperRef = useRef<HTMLDivElement>(null);
+  const resultWrapperRef = useRef<HTMLDivElement>(null);
   const [inputHeight, setInputHeight] = useState<number | null>(null);
   const treeSizeClass = useDynamicStyleSheet((className) =>
     inputHeight === null
@@ -221,6 +223,10 @@ export function JsonFormatter() {
     setTreeOpen(false);
     setTreeKey((k) => k + 1);
   };
+  const focusRegion = (region: HTMLDivElement | null) => {
+    region?.focus({ preventScroll: true });
+    region?.scrollIntoView({ block: 'start' });
+  };
 
   // 入力欄（InputField）と結果欄（OutputField / ツリー）はどちらも min-h-9 + mb-3 の
   // 単一行ヘッダを持たせ、入力前後で上端がずれない（がたつかない）ようにする。
@@ -233,38 +239,43 @@ export function JsonFormatter() {
       disabled={isPending || !effectiveOutput}
     />
   );
+  const indentControl = (
+    <>
+      <span className="caption text-muted">インデント</span>
+      <ToggleGroup
+        options={[
+          { value: '2', label: '2' },
+          { value: '4', label: '4' },
+          { value: 'tab', label: 'タブ' },
+        ]}
+        value={indent}
+        onChange={setIndent}
+        ariaLabel="インデント"
+        size="sm"
+        layout="wrap"
+      />
+    </>
+  );
 
   return (
-    <div className={`space-y-6 ${treeSizeClass}`}>
-      {/* オプション行（上端配置。表示切替をここに置きヘッダ高さを固定する） */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div className="flex items-center gap-2">
-          <span className="caption text-muted">インデント</span>
+    <div className={`json-formatter-layout ${treeSizeClass}`}>
+      {/* PC は従来の操作順、スマホは詳細設定を折りたたむ。 */}
+      <div className="json-options">
+        <div className="json-desktop-indent items-center gap-2">{indentControl}</div>
+        <div className="json-option-mode">
           <ToggleGroup
             options={[
-              { value: '2', label: '2' },
-              { value: '4', label: '4' },
-              { value: 'tab', label: 'タブ' },
+              { value: 'format', label: '整形' },
+              { value: 'minify', label: '最小化' },
             ]}
-            value={indent}
-            onChange={setIndent}
-            ariaLabel="インデント"
+            value={mode}
+            onChange={setMode}
+            ariaLabel="出力モード"
             size="sm"
             layout="wrap"
           />
         </div>
-        <ToggleGroup
-          options={[
-            { value: 'format', label: '整形' },
-            { value: 'minify', label: '最小化' },
-          ]}
-          value={mode}
-          onChange={setMode}
-          ariaLabel="出力モード"
-          size="sm"
-          layout="wrap"
-        />
-        <div className="flex items-center gap-2">
+        <div className="json-option-view flex items-center gap-2">
           <span className="caption text-muted">表示</span>
           <ToggleGroup
             options={[
@@ -280,19 +291,47 @@ export function JsonFormatter() {
             layout="wrap"
           />
         </div>
+        <div className="json-settings-toggle">
+          <button
+            type="button"
+            className="btn-link-plain text-link-plain"
+            aria-expanded={settingsOpen}
+            aria-controls="json-formatter-settings"
+            onClick={() => setSettingsOpen((open) => !open)}
+          >
+            <span aria-hidden="true">{settingsOpen ? '▾ ' : '▸ '}</span>
+            詳細設定
+          </button>
+          {!settingsOpen && query.trim() && (
+            <span className="caption text-muted" role="status">
+              {queryError
+                ? 'クエリエラー'
+                : error
+                  ? '入力エラーでクエリを実行できません'
+                  : 'クエリ適用中'}
+            </span>
+          )}
+        </div>
+        <div
+          id="json-formatter-settings"
+          className={settingsOpen ? 'json-settings is-open' : 'json-settings'}
+        >
+          <div className="json-setting-indent items-center gap-2">{indentControl}</div>
+          {/* クエリ欄（JMESPath） */}
+          <div className="json-setting-query">
+            <InputField
+              id="json-formatter-query"
+              label="クエリ (JMESPath)"
+              value={query}
+              onChange={setQuery}
+              placeholder="例: location.lat ／ items[?price > `1000`].name"
+              error={queryError || undefined}
+              hint={queryHint}
+              mono
+            />
+          </div>
+        </div>
       </div>
-
-      {/* クエリ欄（JMESPath） */}
-      <InputField
-        id="json-formatter-query"
-        label="クエリ (JMESPath)"
-        value={query}
-        onChange={setQuery}
-        placeholder="例: location.lat ／ items[?price > `1000`].name"
-        error={queryError || undefined}
-        hint={queryHint}
-        mono
-      />
 
       {/* マスク操作部（全幅）。結果カラム内に置くと入力欄と上端がずれるため、
           入力/結果行の上に出して両カラムの textarea 上端を揃える。 */}
@@ -306,7 +345,21 @@ export function JsonFormatter() {
 
       {/* 入力・結果（PC 横並び・モバイル縦並び） */}
       <div className="flex flex-col md:flex-row gap-4 items-start">
-        <div ref={inputWrapperRef} className="w-full md:flex-1 min-w-0">
+        <div
+          ref={inputWrapperRef}
+          id="json-formatter-input-region"
+          tabIndex={-1}
+          className="w-full md:flex-1 min-w-0 json-focus-region"
+        >
+          <div className="json-mobile-navigation">
+            <button
+              type="button"
+              className="btn-link-plain text-link-plain"
+              onClick={() => focusRegion(resultWrapperRef.current)}
+            >
+              結果へ移動
+            </button>
+          </div>
           <InputField
             id="json-formatter-input"
             label="入力"
@@ -322,49 +375,65 @@ export function JsonFormatter() {
           />
         </div>
 
-        <div className="w-full md:flex-1 min-w-0">
-          {view === 'mask' ? (
-            <OutputField
-              id="json-formatter-mask-output"
-              label="結果（マスク済み）"
-              value={effectiveOutput}
-              rows={18}
-              ariaLabel="マスク済み結果"
-              rightSlot={downloadButton}
-            />
-          ) : view === 'type' ? (
-            <OutputField
-              id="json-formatter-type-output"
-              label="結果（TypeScript）"
-              value={effectiveOutput}
-              rows={18}
-              ariaLabel="生成された型"
-              rightSlot={downloadButton}
-            />
-          ) : view === 'text' ? (
-            <OutputField
-              id="json-formatter-output"
-              label="結果"
-              value={displayOutput}
-              rows={18}
-              ariaLabel="整形結果"
-              rightSlot={downloadButton}
-            />
-          ) : (
-            // tree モードでは effectiveOutput === displayOutput。両結果パネルに
-            // 一貫して effectiveOutput を渡し、prop の取り違えを防ぐ（レビュー #517）。
-            <JsonTreeResult
-              tree={displayTree}
-              output={effectiveOutput}
-              treeKey={treeKey}
-              defaultOpen={treeOpen}
-              rightSlot={downloadButton}
-              tooLarge={treeTooLarge}
-              onForceRender={() => setTreeForced(true)}
-              onExpandAll={expandAll}
-              onCollapseAll={collapseAll}
-            />
-          )}
+        <div
+          ref={resultWrapperRef}
+          id="json-formatter-result-region"
+          tabIndex={-1}
+          className="json-result-region w-full md:flex-1 min-w-0 json-focus-region"
+        >
+          <div className="json-mobile-navigation">
+            <button
+              type="button"
+              className="btn-link-plain text-link-plain"
+              onClick={() => focusRegion(inputWrapperRef.current)}
+            >
+              入力へ戻る
+            </button>
+          </div>
+          <div className="json-result-content">
+            {view === 'mask' ? (
+              <OutputField
+                id="json-formatter-mask-output"
+                label="結果（マスク済み）"
+                value={effectiveOutput}
+                rows={18}
+                ariaLabel="マスク済み結果"
+                rightSlot={downloadButton}
+              />
+            ) : view === 'type' ? (
+              <OutputField
+                id="json-formatter-type-output"
+                label="結果（TypeScript）"
+                value={effectiveOutput}
+                rows={18}
+                ariaLabel="生成された型"
+                rightSlot={downloadButton}
+              />
+            ) : view === 'text' ? (
+              <OutputField
+                id="json-formatter-output"
+                label="結果"
+                value={displayOutput}
+                rows={18}
+                ariaLabel="整形結果"
+                rightSlot={downloadButton}
+              />
+            ) : (
+              // tree モードでは effectiveOutput === displayOutput。両結果パネルに
+              // 一貫して effectiveOutput を渡し、prop の取り違えを防ぐ（レビュー #517）。
+              <JsonTreeResult
+                tree={displayTree}
+                output={effectiveOutput}
+                treeKey={treeKey}
+                defaultOpen={treeOpen}
+                rightSlot={downloadButton}
+                tooLarge={treeTooLarge}
+                onForceRender={() => setTreeForced(true)}
+                onExpandAll={expandAll}
+                onCollapseAll={collapseAll}
+              />
+            )}
+          </div>
         </div>
       </div>
 
