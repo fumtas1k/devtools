@@ -946,7 +946,8 @@ const tool = tools.find((t) => t.slug === 'clipboard-inspector')!;
     <p class="tool-info-body">
       貼り付け（Ctrl+V / Cmd+V）またはドラッグ&ドロップした瞬間の
       <code class="rounded px-1 font-mono bg-subtle text-sm">DataTransfer</code>
-      を検査し、クリップボード上の全 MIME フレーバー（テキスト・HTML・カスタム型・画像・ファイル）の種別と中身を表示します。クリップボードの内容はブラウザ内でのみ処理され、外部に送信されません。
+      を検査し、クリップボード上の全 MIME
+      フレーバー（テキスト・HTML・カスタム型・画像・ファイル）の種別と中身を表示します。クリップボードの内容はブラウザ内でのみ処理され、外部に送信されません。
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">仕組み</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">

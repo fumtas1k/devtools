@@ -243,13 +243,12 @@ L27-30 (`<section>` hero card):
 <!-- 元 -->
 <section
   class="text-center px-4 py-8"
-  style="background: var(--color-background); border-bottom: 1px solid var(--color-blue-100);"
+  style="background: var(--color-background); border-bottom: 1px solid var(--color-blue-100)"
 >
   <!-- 新 -->
   <section
     class="text-center px-4 py-8 bg-[var(--color-background)] border-b border-[var(--color-blue-100)]"
-  >
-  </section>
+  ></section>
 </section>
 ```
 
@@ -259,7 +258,7 @@ L31-34 (`<h1>` H1):
 <!-- 元 -->
 <h1
   class="mb-2 font-bold"
-  style="font-size: 2rem; line-height: 1.4; letter-spacing: 0.01em; color: var(--color-text);"
+  style="font-size: 2rem; line-height: 1.4; letter-spacing: 0.01em; color: var(--color-text)"
 >
   <!-- 新 -->
   <h1 class="mb-2 font-bold text-[2rem] leading-[1.4] tracking-[0.01em] text-default"></h1>
@@ -271,7 +270,7 @@ L37-39 (`<p>` hero subtitle):
 ```astro
 <!-- 元 -->
 <p
-  style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-neutral-600);"
+  style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-neutral-600)"
 >
   <!-- 新 -->
   <p class="text-base leading-[1.7] tracking-[0.02em] text-[var(--color-neutral-600)]"></p>
@@ -287,7 +286,7 @@ L48-54 (`<div>` tab-bar、border-color のみ):
   role="tablist"
   aria-label="カテゴリ絞り込み"
   class="mb-6 flex gap-1 border-b"
-  style="border-color: var(--color-border);"
+  style="border-color: var(--color-border)"
 >
   <!-- 新 -->
   <div
@@ -295,8 +294,7 @@ L48-54 (`<div>` tab-bar、border-color のみ):
     role="tablist"
     aria-label="カテゴリ絞り込み"
     class="mb-6 flex gap-1 border-b border-default"
-  >
-  </div>
+  ></div>
 </div>
 ```
 
@@ -311,7 +309,7 @@ L55-63 (`<button>` 「すべて」 tab L62 small label):
   aria-controls="panel-0"
   data-index="0"
   class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
-  style="font-size: 0.875rem; letter-spacing: 0.02em;"
+  style="font-size: 0.875rem; letter-spacing: 0.02em"
 >
   <!-- 新 -->
   <button
@@ -321,8 +319,8 @@ L55-63 (`<button>` 「すべて」 tab L62 small label):
     aria-controls="panel-0"
     data-index="0"
     class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
-  ></button></button
->
+  ></button>
+</button>
 ```
 
 L66-80 (categories.map `<button>` L75 small label):
@@ -336,7 +334,7 @@ L66-80 (categories.map `<button>` L75 small label):
   aria-controls={`panel-${i + 1}`}
   data-index={i + 1}
   class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors"
-  style="font-size: 0.875rem; letter-spacing: 0.02em;"
+  style="font-size: 0.875rem; letter-spacing: 0.02em"
 >
   <!-- 新 -->
   <button
@@ -346,8 +344,8 @@ L66-80 (categories.map `<button>` L75 small label):
     aria-controls={`panel-${i + 1}`}
     data-index={i + 1}
     class="tab-btn px-4 py-2 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
-  ></button></button
->
+  ></button>
+</button>
 ```
 
 L84-88 (`<div id="panels">` carousel container L87):
@@ -357,7 +355,13 @@ L84-88 (`<div id="panels">` carousel container L87):
 <div
   id="panels"
   class="flex"
-  style="overflow-x: scroll; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; -webkit-overflow-scrolling: touch;"
+  style="
+    overflow-x: scroll;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  "
 >
   <!-- 新 -->
   <div id="panels" class="flex scroll-snap-x"></div>
@@ -372,7 +376,7 @@ L90-96 (carousel item `<div>` L95):
   role="tabpanel"
   id={`panel-${i}`}
   aria-labelledby={`tab-${i}`}
-  style="flex: 0 0 100%; scroll-snap-align: start; min-width: 0;"
+  style="flex: 0 0 100%; scroll-snap-align: start; min-width: 0"
 >
   <!-- 新 -->
   <div
@@ -380,8 +384,7 @@ L90-96 (carousel item `<div>` L95):
     id={`panel-${i}`}
     aria-labelledby={`tab-${i}`}
     class="basis-full shrink-0 grow-0 snap-start min-w-0"
-  >
-  </div>
+  ></div>
 </div>
 ```
 
@@ -392,14 +395,13 @@ L101-105 (tool-card `<a>` L104):
 <a
   href={`/tools/${tool.slug}`}
   class="tool-card rounded-lg p-6 block transition-shadow hover:shadow-md"
-  style="background: var(--color-bg); border: 1px solid var(--color-border);"
+  style="background: var(--color-bg); border: 1px solid var(--color-border)"
 >
   <!-- 新 -->
   <a
     href={`/tools/${tool.slug}`}
     class="tool-card rounded-lg p-6 block transition-shadow hover:shadow-md bg-default border border-default"
-  ></a></a
->
+  ></a></a>
 ```
 
 L107 (ToolIcon component prop):
@@ -418,7 +420,7 @@ L110-113 (`<h2>` card title L112):
 <!-- 元 -->
 <h2
   class="tool-card-title mb-2 font-bold transition-colors"
-  style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em;"
+  style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em"
 >
   <!-- 新 -->
   <h2 class="tool-card-title mb-2 font-bold transition-colors section-heading"></h2>
@@ -431,7 +433,7 @@ L116-119 (`<p>` card description L118):
 <!-- 元 -->
 <p
   class="mb-4"
-  style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
+  style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted)"
 >
   <!-- 新 -->
   <p class="mb-4 caption text-muted"></p>
@@ -442,13 +444,9 @@ L122-125 (`<span>` 「開く ›」 link L124):
 
 ```astro
 <!-- 元 -->
-<span
-  class="text-link-color"
-  style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em;"
->
+<span class="text-link-color" style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em">
   <!-- 新 -->
-  <span class="text-link-color caption"></span></span
->
+  <span class="text-link-color caption"></span></span>
 ```
 
 - [ ] **Step 3: index.astro の inline 残存ゼロ確認**
@@ -515,7 +513,7 @@ L21-24 (H1):
 <!-- 元 -->
 <h1
   class="mb-8 font-bold"
-  style="font-size: 1.75rem; line-height: 1.4; letter-spacing: 0.02em; color: var(--color-text);"
+  style="font-size: 1.75rem; line-height: 1.4; letter-spacing: 0.02em; color: var(--color-text)"
 >
   <!-- 新 -->
   <h1 class="mb-8 font-bold text-[1.75rem] leading-[1.4] tracking-[0.02em] text-default"></h1>
@@ -528,7 +526,7 @@ L29-32 (H2 「DevTools とは」):
 <!-- 元 -->
 <h2
   class="mb-3 font-bold"
-  style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em; color: var(--color-text);"
+  style="font-size: 1.125rem; line-height: 1.5; letter-spacing: 0.02em; color: var(--color-text)"
 >
   <!-- 新 -->
   <h2 class="mb-3 font-bold section-heading text-default"></h2>
@@ -540,7 +538,7 @@ L35-37 (`<p>` body 「DevTools は...」):
 ```astro
 <!-- 元 -->
 <p
-  style="font-size: 1rem; line-height: 1.8; letter-spacing: 0.02em; color: var(--color-neutral-700);"
+  style="font-size: 1rem; line-height: 1.8; letter-spacing: 0.02em; color: var(--color-neutral-700)"
 >
   <!-- 新 -->
   <p class="text-body"></p>
@@ -560,7 +558,7 @@ L51-54 (`<ul>` body 「設計方針」 list、L35-37 と同 pattern だが ul �
 <!-- 元 -->
 <ul
   class="space-y-2"
-  style="font-size: 1rem; line-height: 1.8; letter-spacing: 0.02em; color: var(--color-neutral-700);"
+  style="font-size: 1rem; line-height: 1.8; letter-spacing: 0.02em; color: var(--color-neutral-700)"
 >
   <!-- 新 -->
   <ul class="space-y-2 text-body"></ul>
@@ -583,12 +581,13 @@ L80-83 (tool list `<a>` link L82、line-height 1.7、色無、独自 pattern):
 <a
   href={`/tools/${tool.slug}`}
   class="text-link"
-  style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em;"
+  style="font-size: 1rem; line-height: 1.7; letter-spacing: 0.02em"
 >
   <!-- 新 -->
-  <a href={`/tools/${tool.slug}`} class="text-link text-base leading-[1.7] tracking-[0.02em]"
-  ></a></a
->
+  <a
+    href={`/tools/${tool.slug}`}
+    class="text-link text-base leading-[1.7] tracking-[0.02em]"
+  ></a></a>
 ```
 
 L86-89 (tool description `<span>` L88、caption + muted):
@@ -597,11 +596,10 @@ L86-89 (tool description `<span>` L88、caption + muted):
 <!-- 元 -->
 <span
   class="ml-2"
-  style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
+  style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted)"
 >
   <!-- 新 -->
-  <span class="ml-2 caption text-muted"></span></span
->
+  <span class="ml-2 caption text-muted"></span></span>
 ```
 
 L99-102 (H2 「技術スタック」、L29-32 と同):
@@ -645,7 +643,7 @@ L28-31 (last updated `<p>` L30、caption + muted):
 <!-- 元 -->
 <p
   class="mb-10"
-  style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted);"
+  style="font-size: 0.875rem; line-height: 1.7; letter-spacing: 0.02em; color: var(--color-muted)"
 >
   <!-- 新 -->
   <p class="mb-10 caption text-muted"></p>
@@ -786,9 +784,8 @@ L15-18 (`<code>.</code>` chip):
 
 ```astro
 <!-- 元 -->
-<code
-  class="rounded px-1 font-mono"
-  style="background: var(--color-bg-subtle); font-size: 0.875rem;">.</code
+<code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem"
+  >.</code
 >
 
 <!-- 新 -->
@@ -824,9 +821,8 @@ L16-19 (`<code>%XX</code>` chip):
 
 ```astro
 <!-- 元 -->
-<code
-  class="rounded px-1 font-mono"
-  style="background: var(--color-bg-subtle); font-size: 0.875rem;">%XX</code
+<code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem"
+  >%XX</code
 >
 
 <!-- 新 -->
@@ -839,9 +835,8 @@ L15-18 (`<code>root</code>` chip):
 
 ```astro
 <!-- 元 -->
-<code
-  class="rounded px-1 font-mono"
-  style="background: var(--color-bg-subtle); font-size: 0.875rem;">root</code
+<code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem"
+  >root</code
 >
 
 <!-- 新 -->
@@ -854,9 +849,8 @@ L16-19 (`<code>address.city</code>` chip):
 
 ```astro
 <!-- 元 -->
-<code
-  class="rounded px-1 font-mono"
-  style="background: var(--color-bg-subtle); font-size: 0.875rem;">address.city</code
+<code class="rounded px-1 font-mono" style="background: var(--color-bg-subtle); font-size: 0.875rem"
+  >address.city</code
 >
 
 <!-- 新 -->

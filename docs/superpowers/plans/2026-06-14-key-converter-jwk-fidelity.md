@@ -309,7 +309,8 @@ git commit -m "fix: key-converter の RSA PUBLIC KEY openssl 案内に -RSAPubli
 
 ```astro
 <li>
-  JWK（JSON Web Key、RFC 7517）。入力 JWK の <code>kid</code> / <code>use</code> / <code>alg</code> は出力に保持されます
+  JWK（JSON Web Key、RFC 7517）。入力 JWK の <code>kid</code> / <code>use</code> / <code>alg</code>
+  は出力に保持されます
 </li>
 ```
 
