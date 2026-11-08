@@ -191,3 +191,36 @@ describe('署名プロファイルの拒否', () => {
     }
   );
 });
+
+describe('名前空間の署名検証プロファイル', () => {
+  const xml = fixture('response.xml');
+  const inputs = [
+    ['query の &', 'xmlns:extra="https://example.test/ns?a=1&amp;b=2"'],
+    ['空白', 'xmlns:extra="urn:example:one two"'],
+    ['二重引用符', 'xmlns:extra="urn:example:&quot;value"'],
+    ['タブ', 'xmlns:extra="urn:example:&#x9;value"'],
+    ['改行', 'xmlns:extra="urn:example:&#xA;value"'],
+    ['復帰', 'xmlns:extra="urn:example:&#xD;value"'],
+    ['小なり', 'xmlns:extra="urn:example:&lt;value"'],
+    ['大なり', 'xmlns:extra="urn:example:&gt;value"'],
+    ['非 ASCII prefix', 'xmlns:日本語="urn:example:namespace"'],
+  ] as const;
+  it.each(inputs)('%s の名前空間を検証前に拒否する', async (_label, declaration) => {
+    const input = xml.replace('<samlp:Response ', `<samlp:Response ${declaration} `);
+    const doc = new browserParser().parseFromString(input, 'text/xml');
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    expect(() => signatureSnapshot(doc)).toThrow('名前空間');
+    const { verifySignatures } = await import('../saml/signature-verify');
+    await expect(verifySignatures(input, '', fixture('certificate.pem'))).rejects.toThrow(
+      '名前空間'
+    );
+  });
+  it('通常のテキストと属性値に含まれる日本語と & は受け入れる', () => {
+    const input = xml
+      .replace('Destination="https://sp.example.test/acs"', 'Destination="日本語 &amp; value"')
+      .replace('alice@example.test', '日本語 &amp; Alice');
+    const doc = new browserParser().parseFromString(input, 'text/xml');
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    expect(() => signatureSnapshot(doc)).not.toThrow();
+  });
+});

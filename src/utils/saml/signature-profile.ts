@@ -4,6 +4,16 @@ const EXC = 'http://www.w3.org/2001/10/xml-exc-c14n#';
 const RSA = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
 const SHA = 'http://www.w3.org/2001/04/xmlenc#sha256';
 const ENV = 'http://www.w3.org/2000/09/xmldsig#enveloped-signature';
+const XMLNS = 'http://www.w3.org/2000/xmlns/';
+const ASCII_PREFIX = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
+
+/** 正規化ライブラリの名前空間出力における対応範囲を限定する。 */
+function checkNamespace(prefix: string | null, uri: string | null): void {
+  if (prefix && !ASCII_PREFIX.test(prefix))
+    throw new Error('名前空間 prefix は ASCII 英字・数字・_・.・- の形式のみ対応しています');
+  if (uri && /[&<>"\s]/u.test(uri))
+    throw new Error('名前空間 URI にエスケープを要する文字または空白があるため対応していません');
+}
 export const MAX_SIGNATURE_XML_BYTES = 2 * 1024 * 1024;
 export const MAX_CERT_BYTES = 64 * 1024;
 
@@ -70,7 +80,14 @@ export function signatureSnapshot(doc: Document): string {
       const el = node as Element;
       if (named(el, 'Signature') && ++signatures > 16)
         throw new Error('署名が 16 個を超えています');
-      const attrs = Array.from(el.attributes).map((a) => [a.namespaceURI || '', a.name, a.value]);
+      checkNamespace(el.prefix, el.namespaceURI);
+      const attrs = Array.from(el.attributes).map((a) => {
+        checkNamespace(a.prefix, a.namespaceURI);
+        if (a.namespaceURI === XMLNS) {
+          checkNamespace(a.name === 'xmlns' ? null : a.localName, a.value);
+        }
+        return [a.namespaceURI || '', a.name, a.value];
+      });
       attrs.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
       rows.push([1, depth, el.namespaceURI || '', el.nodeName, attrs]);
     } else if (

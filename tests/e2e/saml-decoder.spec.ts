@@ -438,3 +438,43 @@ test.describe('独立生成 fixture の実 worker 検証', () => {
     });
   }
 });
+
+test.describe('名前空間プロファイル', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/tools/saml-decoder');
+    await waitForReactHydration(page);
+  });
+
+  test('名前空間の未対応文字は表示を維持し署名検証だけ拒否する', async ({ page }) => {
+    const xml = readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8');
+    const declarations = [
+      'xmlns:extra="https://example.test/ns?a=1&amp;b=2"',
+      'xmlns:extra="urn:example:one two"',
+      'xmlns:extra="urn:example:&quot;value"',
+      'xmlns:日本語="urn:example:namespace"',
+    ];
+    const input = page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/);
+    for (const declaration of declarations) {
+      await input.fill(xml.replace('<samlp:Response ', `<samlp:Response ${declaration} `));
+      await expect(page.getByText('alice@example.test', { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: '署名を検証する' }).click();
+      await expect(page.getByRole('list', { name: '署名検証の結果' })).toContainText('未対応');
+      await expect(page.getByRole('list', { name: '署名検証の結果' })).toContainText('名前空間');
+    }
+  });
+
+  test('通常の属性値とテキストの日本語と & は名前空間の制限対象にならない', async ({ page }) => {
+    const xml = readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8')
+      .replace('Destination="https://sp.example.test/acs"', 'Destination="日本語 &amp; value"')
+      .replace('alice@example.test', '日本語 &amp; Alice');
+    await page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/).fill(xml);
+    await expect(page.getByText('日本語 & Alice', { exact: true })).toBeVisible();
+    await page
+      .getByLabel('公開証明書（PEM）')
+      .fill(readFileSync('tests/fixtures/saml-signature/certificate.pem', 'utf8'));
+    await page.getByRole('button', { name: '署名を検証する' }).click();
+    const results = page.getByRole('list', { name: '署名検証の結果' });
+    await expect(results).toContainText('Response［_response］：不一致');
+    await expect(results).not.toContainText('名前空間');
+  });
+});
