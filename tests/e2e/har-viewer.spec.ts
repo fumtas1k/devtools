@@ -677,7 +677,7 @@ test.describe('HAR ビューア', () => {
     await page.addInitScript(() => {
       const OriginalWorker = window.Worker;
       window.Worker = class extends OriginalWorker {
-        set onmessage(handler) {
+        set onmessage(handler: Worker['onmessage']) {
           super.onmessage = (event) => {
             handler?.call(this, event);
             if (
