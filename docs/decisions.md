@@ -5846,3 +5846,29 @@ Widely available のみを採用する案は判断が単純だが、新機能に
 prettier-plugin-astro 1 系は Astro 7 のコンパイラに合わせて空白を扱うため、`astroCompressHTML: 'html'` をトップレベルに指定し、Markdown 内の Astro コードにも適用する。これはビルドの `compressHTML: true` と同じ設定であり、1 系の既定値 `'jsx'` を使うと空白の扱いが一致しない。既存のテキストや表示を保ち、formatter の更新に伴う整形だけを行う。
 
 出典: [prettier-plugin-astro 1.0.0 リリースノート](https://github.com/withastro/prettier-plugin-astro/releases/tag/v1.0.0)、[設定の説明](https://github.com/withastro/prettier-plugin-astro#astro-compress-html)。
+
+## [174] Codex hook の trust 境界
+
+**2026-11-08 | ステータス: 設計採用・設定適用未実施 | 関連: [#544](https://github.com/fumtas1k/devtools/issues/544)**
+
+### 背景と根拠
+
+現在の `.codex/hooks.json` は `bash` と相対パスで、SessionStart に `session-install.sh`、PreToolUse に `block-direct-git-add.sh` / `test-edit-context.sh` を登録する。`.codex/config.toml` は `hooks = true`、`on-request`、`workspace-write`、`network_access = false`、`writable_roots = ["/tmp/codex"]` である。
+
+[公式仕様](https://learn.chatgpt.com/docs/hooks)では非 managed hook の正確な定義の hash に trust を記録し、変更された hook はレビューまで skip する。`/hooks` で確認・レビューでき、managed hook はポリシーで trust される。CI 固定版 codex-cli 0.164.0 の commit `6aaac694803004a63c6f393d153c96d22521a6b9` では、[hook_hash](https://github.com/openai/codex/blob/6aaac694803004a63c6f393d153c96d22521a6b9/codex-rs/hooks/src/engine/discovery.rs#L868) は設定から正規化した識別情報を使う。通常の project layer は [plugin content hash を持たない](https://github.com/openai/codex/blob/6aaac694803004a63c6f393d153c96d22521a6b9/codex-rs/hooks/src/engine/discovery.rs#L157)。手元の 0.163.0 の固定版 commit `83086188ae0614bd882818ff1aa23f3194962012` でも [hook_hash](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/hooks/src/engine/discovery.rs#L767) は参照 script を読まない。定義の trust は script の bytes を固定せず、script だけの変更で再確認される保証はない。公式仕様と 0.164.0 実装の plugin bundle 内 script の変更検知は plugin 固有であり、repo の script には一般化しない。
+
+両固定版の command runner（[0.164.0](https://github.com/openai/codex/blob/6aaac694803004a63c6f393d153c96d22521a6b9/codex-rs/hooks/src/engine/command_runner.rs#L209)、[0.163.0](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/hooks/src/engine/command_runner.rs#L198)）は command を直接 spawn するため、通常の tool 承認・execpolicy・sandbox が再利用されると期待しない。外側の OS / Cloud 境界は別である。これは公式仕様と両固定版実装の静的確認であり、再 trust 操作や実 hook の E2E 実行は行っていない。
+
+### 決断と移行条件
+
+solo 開発では、user 側の hook 設定から repo 外に置いたレビュー済み固定版コードを絶対パスで呼ぶ移行設計を採用する。定義だけ user 側に移して repo の script を呼んでも解決しない。user hook は未信頼 project でも読み込まれるため、固定版コードは repo 外の信頼できる明示許可リストで対象 repo / worktree を識別し、未知・対象外の cwd、未信頼 repo、未許可 worktree では処理せず終了する。repo の入力で許可リストを自動登録・更新しない。実行コード、`source` や間接呼出し先などの補助コード、更新経路、承認状態を repo の変更や当該セッションの書換えから保護し、更新時は commit と digest を明示的に確認する。user ディレクトリでもこれらがセッションから書換え可能なら完全な境界にはならない。組織の配布・権限管理がある場合は managed 配布も代替となる。外部コードの配置・更新には運用と配布の負担が生じる。
+
+公式仕様では user / project の hook は置換されず加算されるため、元の 3 登録を残せば重複し、repo の hook も実行される。実移行には `.codex/hooks.json` の登録の移設・削除、各 user 設定と外部コードの配置、および必要な権限・書込範囲の承認が必要である。対象パスの決め方（実パス・symlink 等）と許可リストの保護も移行時の承認事項とする。hook や権限の変更は禁止されているため今回は適用せず、未適用作業は #544 で追跡する。移行時には、許可対象内で各 hook が意図どおり 1 回実行され、対象外・未信頼 repo・未許可 worktree では `npm ci` や git add 制約等の副作用が発生しないこと、および保護・更新手順を検証する。
+
+### 比較と当面の運用
+
+- repo 内 wrapper と repo 内 checksum: 検証器と期待値を同時に変更できるため trust の境界にならない。
+- hook command 内に literal digest を含める案: 定義更新が再 trust の契機になるが、別ファイルの期待値だけでは足りない。検証器・期待値・推移的コードの保護と、検証後に同じ内容を実行する仕組み（TOCTOU 対策）が必要なため今回は採用しない。
+- 別の matching hook に checksum を検査させる案: 公式仕様では同じイベントの複数 matching command hook は並行起動されるため、危険な hook の起動を防げない。
+
+当面は初回だけでなく取得・ブランチ更新後も、既承認の SessionStart が発火する起動・再開より前に、人が hook 定義、script 本体、推移的な実行入力を確認する。起動後に Codex にレビューを依頼しても発火後になりうる。これは運用上の緩和であり、自動変更検知・再承認・改ざん防止を実装したものではない。また、`npm ci` が読む repo の入力や npm 設定・依存、interpreter / PATH まで安全になる保証ではない。
