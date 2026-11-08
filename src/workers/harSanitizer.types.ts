@@ -23,7 +23,7 @@ export type HarWorkerRequest =
   | { type: 'reset' };
 
 export type HarWorkerResponse =
-  | { type: 'progress'; requestId: number; processed: number; total: number }
+  | { type: 'progress'; requestId: number; phase: 'parse' | 'sanitize' }
   | {
       type: 'result';
       requestId: number;

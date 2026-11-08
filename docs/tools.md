@@ -736,7 +736,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 純関数・入力非破壊: `structuredClone` でディープコピーしてから処理するため元オブジェクトを mutate しない
 - parse + sanitize は **Web Worker**（`src/workers/harSanitizer.worker.ts`）で実行する。`sanitizeHar` は `structuredClone` + 全 response body の正規表現スキャンで中規模 HAR でも数秒かかり、メインスレッド同期実行だと「ページが応答しません」になる（issue #677）。worker に逃がしメインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する
 - レスポンス本文スキャンの結果と件数は現在の HAR に限り Worker 内で再利用する。出力も未検出情報を含みうる機密相当として扱い、最初の保存から30秒、UTF-16 推計と固定 metadata 予算の合計16 MiB、最大4096本文に制限する。load 開始・reset・例外・本文スキャン OFF で破棄し、超過時は通常走査に戻る。事前判定は base64 等の走査対象外本文も数えるため保守的で、実 heap や GC の即時消去は保証しない（#928、詳細は `docs/decisions.md [117]`）
-- フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` の `onProgress` コールバックで処理済みエントリ数を逐次受け取り、`ProgressBar` で進捗表示する
+- フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。Worker の解析・サニタイズ開始だけを入力を含まない通知で表示し、処理割合は表示しない。経過時間はファイル選択（ファイル読み込みを含む）またはトグル操作ごとにメイン側で測定し、進捗量や残り時間を意味しない。キャンセル・再読込時は Worker を終了して保持入力を破棄し、遅れて届いた結果やファイル読み込みは無視する
 - カテゴリ別の redact 件数は worker が返す `counts` を `ToggleChips` のバッジに表示する
 - エントリ一覧（`HarEntryList`）は全件描画する。フリーズの主因は描画ではなく sanitize であり Worker 化で解消したため、ページングは導入しない（実 HAR の検証でエントリ数は数百件程度で、その規模の `<tr>` 描画は問題にならないことを確認。`loadSeq` は新規読込時の選択リセット判定にのみ使い、トグル時は選択を保持する）
 - 出力 HAR の `JSON.stringify(.., null, 2)` はコピー/ダウンロード押下時のみ遅延生成する（`CopyButton` の `text` prop は `string | (() => string)` を受け付け、関数はクリック時に評価される）。毎レンダリングでの数 MB 直列化を避ける
@@ -751,7 +751,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 #### 制限・エッジケース
 
 - ウォーターフォール: `timings` を持たないエントリはバーを非表示にして degrade する（`—` を表示）。`startedDateTime` の欠落時も同様。スマホ（390px）では一覧のタイミング列を非表示にし、詳細パネルで内訳を確認できる
-- ファイルサイズ上限 25MB（メモリ防御ガード）。読み込み時のフリーズは sanitize の Web Worker 化で解消済みのため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。大きな HAR は worker 上で時間がかかる（実測 ~6MB/5000 エントリで約 2.6 秒、~18MB/10000 エントリで約 17 秒）が、メインスレッドは固まらず進捗バーを表示する。redact トグルのたびに全エントリを再 sanitize する（worker 上のため非ブロッキング。差分 sanitize は将来課題）
+- ファイルサイズ上限 25MB（メモリ防御ガード）。読み込み時のフリーズは sanitize の Web Worker 化で解消済みのため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。大きな HAR は worker 上で時間がかかる（実測 ~6MB/5000 エントリで約 2.6 秒、~18MB/10000 エントリで約 17 秒）が、メインスレッドは固まらず処理段階を表示する。単一本文の走査中は段階が変わらず、経過時間は Worker の生存や残り時間を保証しない。redact トグルのたびに全エントリを再 sanitize し、条件内のレスポンス本文は再利用する
 - 辞書に無い独自ヘッダ名・独自名のクエリ/フォームパラメータは `scrubText` が拾える範囲のみ redact される（任意名のセッショントークン等は残りうる。完全な網羅は保証せず、出力は共有前の目視確認が前提）
 - レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする。`HIGH_ENTROPY_BASE64` ルールが base64 ブロック自体にマッチして本文を破壊し、デコード不能な HAR を出力するのを防ぐため（その代わり base64 本文内の秘密は検出されない）
 - 全処理はブラウザ内で完結し、HAR データは外部に送信しない
