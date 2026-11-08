@@ -1420,7 +1420,7 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 **モジュール構成:** `src/utils/saml/`（`types.ts` 型定義 / `decode.ts` 自動判定デコードチェーン / `parse.ts` XML → 構造化モデル / `checks.ts` 定番チェックリスト / `format.ts` XML 整形 / `mask.ts` 共有用マスク出力 / `index.ts`）/ `src/components/tools/SamlDecoder.tsx` / `src/pages/tools/saml-decoder.astro`
 
-**署名検証:** 指定された PEM 公開証明書 1 件の RSA 公開鍵で、Response と直下の各 Assertion を個別に検証する。対象自身の単一 ID 参照（ASCII 英字または `_` で始まり英数字・`_`・`.`・`-` からなる ID）、RSA-SHA256、SHA256、enveloped と Exclusive C14N のみ対応する。原文 DOM と worker の解析結果を照合し、ID の曖昧さ・隠れた署名・未対応構造を検証前に拒否する。名前空間 URI と宣言値の `&`・`<`・`>`・`"`・空白、非 ASCII 形式の prefix は正規化ライブラリの対応範囲を考慮して未対応とする（既定名前空間は可）。通常のテキスト・属性値やデコード表示は制限しない。各対象の一致は証明書の信頼連鎖や IdP の正当性を保証しない。マスク XML に原文の結果は適用されない。入力変更時は結果と worker を破棄する。
+**署名検証:** 指定された PEM 公開証明書 1 件の RSA 公開鍵で、Response と直下の各 Assertion を個別に検証する。対象自身の単一 ID 参照（ASCII 英字または `_` で始まり英数字・`_`・`.`・`-` からなる ID）、RSA-SHA256、SHA256、enveloped と Exclusive C14N のみ対応する。原文 DOM と worker の解析結果を照合し、ID の曖昧さ・隠れた署名・未対応構造を検証前に拒否する。名前空間 URI と宣言値の `&`・`<`・`>`・`"`・空白、非 ASCII 形式の prefix は正規化ライブラリの対応範囲を考慮して未対応とする（既定名前空間は可）。通常のテキスト・属性値やデコード表示は制限しない。各対象の一致は証明書の信頼連鎖や IdP の正当性を保証しない。マスク XML に原文の結果は適用されない。入力変更・pagehide・bfcache 復元時は結果と worker を破棄し、画面離脱時も worker を停止する。
 
 **追加依存:** `fflate`（raw deflate 展開）、`xmldsigjs`（XMLDSig）、`@xmldom/xmldom`（worker XML パース）。
 

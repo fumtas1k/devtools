@@ -13,7 +13,7 @@
 3. 署名検証前に文書全体の名前空間 URI と宣言値を調べ、`&`・`<`・`>`・`"` または空白を含む場合は未対応とする。prefix は ASCII 英字か `_` で始まり、英数字・`_`・`.`・`-` からなる形式のみ許可する（既定名前空間は可）。正規化ライブラリの名前空間出力と prefix 処理に合わせた防御的制約であり、正当な XML でも対象外となりうる。通常のテキストや属性値は制限せず、デコードと表示は維持する。RSA-SHA256、SHA256、enveloped → Exclusive C14N（コメントなし・パラメータなし）だけを扱う。SignedInfo は Exclusive C14N。全 Reference digest と SignatureValue を確認し、C14N はライブラリに委ねる。すべてのテキスト値要素は子要素を拒否する。
 4. 未対応方式・構造と暗号学的不一致を区別する。空 / 外部 / XPointer URI、複数 Reference、XPath / XSLT / base64 transform、Object / Manifest、C14N1.1、コメント付き C14N、InclusiveNamespaces、SHA1 / HMAC、Redirect クエリ署名、Response 以外の署名検証は初版対象外。
 5. 利用者が明示した信頼する公開 X.509 証明書（PEM）1 件だけを使う。埋込み証明書 / KeyValue にフォールバックしない。PRIVATE KEY・複数証明書・不正証明書を入力エラーにする。CA / chain 信頼・失効・IdP 正当性・SSO 成功を保証しない。
-6. 未署名・未検証・処理中・一致・不一致・未対応・入力エラーを対象と理由付きで区別する。一致の文言は「指定証明書の公開鍵で Response / Assertion［ID］の署名が一致」。証明書・XML の変更、clear、navigation / unmount 時に非同期世代を無効化し、worker を停止する。共有用マスク出力には原文の一致結果が適用されないことを明示する。
+6. 未署名・未検証・処理中・一致・不一致・未対応・入力エラーを対象と理由付きで区別する。一致の文言は「指定証明書の公開鍵で Response / Assertion［ID］の署名が一致」。証明書・XML の変更、clear、navigation / unmount 時に非同期世代を無効化し、worker を停止する。pagehide 時および bfcache からの persisted pageshow 時も検証結果・エラー・処理中状態を破棄し、入力は保持する。共有用マスク出力には原文の一致結果が適用されないことを明示する。
 7. 既存 32 MiB のデコード受理範囲を維持する。追加の署名検証だけを XML 2 MiB・要素 10,000・深さ 64・署名 16 個・証明書 PEM 64 KiB・RSA 2048〜8192 bit に制限する。上限超えは理由付き未対応 / 入力エラーとし、通常表示は維持する。DTD / ENTITY は拒否し、外部解決しない。検証は worker で行い、15 秒上限で停止する。DOMParser の worker 移植は仮定せず、原文 DOM のスナップショットを明示して XML parser の差異を検証する。
 8. 検証操作時だけ依存と worker を遅延 load する。候補は `xmldsigjs@2.8.8` 固定、既存パッケージの版を変えない。worker parser の直接依存が必要なら同一解決版を明示する。新規依存の release age / license / advisory と npm audit を確認し、疑義があれば拡大しない。
 9. 共通 UI・日本語・strict CSP・既存 a11y 属性を維持する。証明書 / SAML の送信・永続化・URL 埋込み・ログは追加しない。原文 / mask / copy の既存経路を保つ。

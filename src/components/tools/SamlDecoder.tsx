@@ -313,13 +313,25 @@ export function SamlDecoderTool() {
       active.current = null;
     }
   };
-  useEffect(() => () => cancelVerification(), []);
   const resetVerification = () => {
     cancelVerification();
     setSignatureResults(null);
     setSignatureError('');
     setVerifying(false);
   };
+  useEffect(() => {
+    const onPageHide = () => resetVerification();
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) resetVerification();
+    };
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
+      cancelVerification();
+    };
+  }, []);
   const changeInput = (value: string) => {
     resetVerification();
     setInput(value);

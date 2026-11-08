@@ -307,7 +307,7 @@ test.describe('検証中の入力変更', () => {
     await waitForReactHydration(page);
   });
 
-  for (const action of ['XML', '証明書', 'クリア'] as const) {
+  for (const action of ['XML', '証明書', 'クリア', 'pagehide', 'pageshow'] as const) {
     test(`${action} の変更で実行中 worker を停止し、遅延結果を破棄する`, async ({ page }) => {
       const xml = readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8');
       const pem = readFileSync('tests/fixtures/saml-signature/certificate.pem', 'utf8');
@@ -319,12 +319,16 @@ test.describe('検証中の入力変更', () => {
       if (action === 'XML') await input.fill(xml.replace('reader', 'other'));
       if (action === '証明書') await page.getByLabel('公開証明書（PEM）').fill('changed');
       if (action === 'クリア') await page.getByRole('button', { name: 'クリア' }).click();
-      const terminated = await page.evaluate(() => {
+      const terminated = await page.evaluate((type) => {
         const worker = (
           window as unknown as {
             delayedWorker: { terminated: boolean; onmessage: (event: { data: unknown }) => void };
           }
         ).delayedWorker;
+        if (type === 'pagehide' || type === 'pageshow') {
+          window.dispatchEvent(new PageTransitionEvent(type, { persisted: true }));
+        }
+        const stopped = worker.terminated;
         worker.onmessage({
           data: {
             results: [
@@ -338,10 +342,21 @@ test.describe('検証中の入力変更', () => {
             ],
           },
         });
-        return worker.terminated;
-      });
+        return stopped;
+      }, action);
       expect(terminated).toBe(true);
-      await expect(page.getByText('古い一致')).toHaveCount(0);
+      if (action === 'pagehide' || action === 'pageshow') {
+        await expect(page.getByText('署名は未検証です', { exact: true }).first()).toBeVisible();
+        await expect(input).toHaveValue(xml);
+        await expect(page.getByLabel('公開証明書（PEM）')).toHaveValue(pem);
+      }
+      if (action === 'クリア') {
+        await expect(page.getByRole('list', { name: '署名検証の結果' })).toHaveCount(0);
+      } else {
+        await expect(page.getByRole('list', { name: '署名検証の結果' })).not.toContainText(
+          '古い一致'
+        );
+      }
     });
   }
   test('15 秒の期限で worker を停止して未対応を表示する', async ({ page }) => {
