@@ -5,12 +5,8 @@ import { InputField } from '@/components/ui/InputField';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { ResultTable, type TableColumn } from '@/components/ui/ResultTable';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
-import { useDebouncedTransform } from '@/hooks/useDebouncedTransform';
-// runMatch は match.ts から直接 import する（barrel 経由にしない）。barrel(index.ts) は
-// parse.ts/redos.ts も re-export しており、それらは CJS（regexp-tree / recheck）依存。
-// barrel から値を静的 import すると CJS が SSR グラフに載り dev SSR が `module is not defined`
-// で落ちる（PR1 で動的 import 回避した問題）。match.ts は native RegExp のみで CJS 非依存。
-import { runMatch, type MatchResult, type RegexMatch } from '@/utils/regex-visualizer/match';
+import { useRegexMatch } from '@/hooks/useRegexMatch';
+import type { RegexMatch } from '@/utils/regex-visualizer/match';
 // RedosStatus は型のみ（import type は実行時に完全消去されるので redos.ts の CJS は載らない）。
 import type { RedosStatus } from '@/utils/regex-visualizer/redos';
 
@@ -24,8 +20,7 @@ interface Props {
 }
 
 const UNKNOWN_CAP = 1000; // unknown verdict の force 実行時の入力長上限
-const TEXTAREA_MAX_LENGTH = 10000; // textarea の粗い上限（safe は線形マッチ）
-const EMPTY_MATCH: MatchResult | null = null; // useDebouncedTransform 用の安定参照
+const TEXTAREA_MAX_LENGTH = 10000; // textarea の粗い上限
 
 interface MatchHighlightsProps {
   text: string;
@@ -137,12 +132,20 @@ function MatchHighlights({ text, matches, selected, onSelect, hintId }: MatchHig
 export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Props) {
   const hintId = useId();
   const [testString, setTestString] = useState('');
-  const [forceUnknown, setForceUnknown] = useState(false);
+  const [permission, setPermission] = useState<{
+    pattern: string;
+    flags: string;
+    verdict: RedosStatus;
+  } | null>(null);
+  const forceUnknown =
+    permission?.pattern === pattern &&
+    permission.flags === flags &&
+    permission.verdict === redosStatus;
   const [selected, setSelected] = useState<number | null>(null);
 
   // 正規表現や ReDoS 判定が変わったら force 実行と選択をリセット
   useEffect(() => {
-    setForceUnknown(false);
+    setPermission(null);
     setSelected(null);
   }, [pattern, flags, redosStatus]);
 
@@ -151,14 +154,13 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
     testString.length > 0 &&
     (redosStatus === 'safe' || (redosStatus === 'unknown' && forceUnknown));
 
-  // parse/redos とは別の 2 つ目の debounce 変換でマッチを駆動する（既存コンポーネントと同方針）。
-  // runMatch は native RegExp（CJS 非依存）なので動的 import 不要。shouldRun=false の間は source=null。
-  const match = useDebouncedTransform<string, MatchResult | null>(
-    shouldRun ? testString : null,
-    (ts) => runMatch(pattern, flags, ts, redosStatus === 'unknown' ? UNKNOWN_CAP : undefined),
-    EMPTY_MATCH,
-    [pattern, flags, redosStatus, forceUnknown],
-    { fallbackError: 'マッチ実行に失敗しました' }
+  const match = useRegexMatch(
+    pattern,
+    flags,
+    testString,
+    redosStatus,
+    shouldRun,
+    redosStatus === 'unknown' ? UNKNOWN_CAP : undefined
   );
 
   // 判定が無効になった render で前回のマッチも直ちに隠す。
@@ -229,14 +231,33 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
           />
 
           {redosStatus === 'unknown' && !forceUnknown && (
-            <ActionButton onClick={() => setForceUnknown(true)} variant="secondary">
+            <ActionButton
+              onClick={() => setPermission({ pattern, flags, verdict: 'unknown' })}
+              variant="secondary"
+            >
               マッチを実行（先頭 {UNKNOWN_CAP} 文字まで）
             </ActionButton>
           )}
 
-          {match.isPending && <p className="caption text-muted">マッチ実行中…</p>}
+          {match.isPending && (
+            <div className="space-y-2">
+              <p className="caption text-muted">マッチ実行中…</p>
+              <ActionButton onClick={match.cancel} variant="secondary">
+                中断
+              </ActionButton>
+            </div>
+          )}
 
-          {match.error && <p className="caption text-warning">{match.error}</p>}
+          {match.error && (
+            <div className="space-y-2">
+              <p className="caption text-warning" role="alert">
+                {match.error}
+              </p>
+              <ActionButton onClick={match.retry} variant="secondary">
+                もう一度実行
+              </ActionButton>
+            </div>
+          )}
 
           {!match.isPending && !match.error && !result && testString === '' && (
             <p className="caption text-muted">テスト文字列を入力してください。</p>

@@ -5926,3 +5926,9 @@ solo 開発では、user 側の hook 設定から repo 外に置いたレビュ�
 長文の内容を確認しやすくするため、QRコード生成の入力欄に限り `@supports` 内で `field-sizing: content` を使う。3 行相当を下限とし、画面を占有しすぎないよう 20rem を上限に欄内スクロールへ移る。共通入力部品の既定は変えず、未対応時は従来の 3 行の固定高・スクロール・手動リサイズを維持する。Chromium では手動リサイズ後にネイティブの指定高さが維持され、自動伸縮は止まる。
 
 PC・スマホ幅は Chromium で確認した。未対応経路は CSS の `@supports` 条件を偽にして確認しており、未対応エンジンとモバイル実機での検証ではない。仕様と挙動の参考: [CSS Forms Module](https://drafts.csswg.org/css-forms-1/#field-sizing)、[Chrome Developers](https://developer.chrome.com/docs/modern-web-guidance/guides/forms/form-fields-automatically-fit-contents)。
+
+## [177] 正規表現マッチを Worker で中断可能にする
+
+**2026-11-08 | ステータス: 採用**
+
+ReDoS の静的判定は完全ではないため、安全判定と明示的に許可された不明判定の両方で native マッチを同一オリジンの専用 module Worker に隔離する。Worker 開始から 1000ms の期限とユーザーによる中断で計算を終了し、入力や判定の変更時は古い結果を破棄する。Worker が利用できない場合も同期実行へ戻さずエラーと再試行を提示する。既存の脆弱判定のブロックと入力長制限は維持する。
