@@ -28,7 +28,7 @@
     "@astrojs/react": "6.0.6",
     "@astrojs/sitemap": "3.7.4",
     "@cfworker/json-schema": "^4.1.1",
-    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/noto-sans-jp": "^5.2.9",
     "@tailwindcss/vite": "4.3.3",
     "@types/jszip": "^3.4.0",
