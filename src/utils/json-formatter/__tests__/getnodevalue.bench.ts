@@ -20,7 +20,7 @@
  *   各処理を前処理を除いた当該処理のみで計測する（root は事前計算）。
  */
 
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import { getNodeValue } from 'jsonc-parser';
 import { parseJson } from '../parse';
 import { formatJson } from '../format';
@@ -78,9 +78,8 @@ describe('json-formatter getNodeValue 遅延評価判断ベンチ', () => {
   // vitest bench は iterations 指定に関わらずコールバックを複数回呼ぶため、
   // 重い計測は最初の 1 回だけ実行する（rows の重複蓄積と多重実行を防ぐ）。
   let measured = false;
-  bench(
-    'getNodeValue CPU vs 必須仕事（parse+format）',
-    () => {
+  test('getNodeValue CPU vs 必須仕事（parse+format）', async ({ bench }) => {
+    await bench('getNodeValue CPU vs 必須仕事（parse+format）', () => {
       if (measured) return;
       measured = true;
 
@@ -115,7 +114,6 @@ describe('json-formatter getNodeValue 遅延評価判断ベンチ', () => {
         });
       }
       console.table(rows);
-    },
-    { iterations: 1, warmupIterations: 0, warmupTime: 0, time: 0 }
-  );
+    }).run({ iterations: 1, warmupIterations: 0, warmupTime: 0, time: 0 });
+  });
 });
