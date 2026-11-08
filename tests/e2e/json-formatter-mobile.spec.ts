@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { applyProductionCsp, waitForReactHydration, withProductionCsp } from './helpers';
+import { withProductionCsp } from './helpers';
 
 test('スマホでは詳細設定と入力側の移動操作を適度な間隔にする', async ({ browser }) => {
   await withProductionCsp(browser, '/tools/json-formatter', async (page) => {
@@ -23,37 +23,31 @@ test('スマホでは詳細設定と入力側の移動操作を適度な間隔�
 });
 
 test('タッチ端末で詳細設定と移動操作が互いの操作領域を奪わない', async ({ browser }) => {
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    hasTouch: true,
-  });
-  try {
-    const page = await context.newPage();
-    const guard = await applyProductionCsp(page);
-    await page.goto('/tools/json-formatter');
-    await waitForReactHydration(page);
-    for (const name of ['詳細設定', '結果へ移動']) {
-      const button = page.getByRole('button', { name });
-      const result = await button.evaluate((element) => {
-        const rect = element.getBoundingClientRect();
-        const xs = [rect.left + 1, rect.left + rect.width / 2, rect.right - 1];
-        const ys = [rect.top + 1, rect.top + rect.height / 2, rect.bottom - 1];
-        const hits = xs.flatMap((x) =>
-          ys.map((y) => {
-            const hit = document.elementFromPoint(x, y);
-            return hit === element || (hit !== null && element.contains(hit));
-          })
-        );
-        return { width: rect.width, height: rect.height, hits };
-      });
-      expect(result.width).toBeGreaterThanOrEqual(44);
-      expect(result.height).toBeGreaterThanOrEqual(44);
-      expect(result.hits).toEqual(Array(9).fill(true));
-    }
-    guard.assertNoViolations();
-  } finally {
-    await context.close();
-  }
+  await withProductionCsp(
+    browser,
+    '/tools/json-formatter',
+    async (page) => {
+      for (const name of ['詳細設定', '結果へ移動']) {
+        const button = page.getByRole('button', { name });
+        const result = await button.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          const xs = [rect.left + 1, rect.left + rect.width / 2, rect.right - 1];
+          const ys = [rect.top + 1, rect.top + rect.height / 2, rect.bottom - 1];
+          const hits = xs.flatMap((x) =>
+            ys.map((y) => {
+              const hit = document.elementFromPoint(x, y);
+              return hit === element || (hit !== null && element.contains(hit));
+            })
+          );
+          return { width: rect.width, height: rect.height, hits };
+        });
+        expect(result.width).toBeGreaterThanOrEqual(44);
+        expect(result.height).toBeGreaterThanOrEqual(44);
+        expect(result.hits).toEqual(Array(9).fill(true));
+      }
+    },
+    { contextOptions: { viewport: { width: 390, height: 844 }, hasTouch: true } }
+  );
 });
 
 test('スマホでは詳細設定を閉じても主要操作を表示する', async ({ browser }) => {
