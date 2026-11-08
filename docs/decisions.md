@@ -2006,6 +2006,8 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 
 ## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 宣言のみ採用、自動 install と `.mcp.json` は実証で却下し手動 install + harness 待ちに確定
 
+> **現行更新（2026-11-08）**: 以下は当時の観測と判断の記録。SessionStart hook は後に再導入され（[106]）、その後も反映されない事例があった（[108]）。現在の手順・cloud とローカルの区別は [プラグインガイド](setup/plugins.md) を参照。403 は当時の環境の観測であり、現在の全 cloud 環境への保証ではない。実機再確認は #205 / #206 で追跡する。
+
 **ステータス: 採用（A 案（hook 自動 install）/ `.mcp.json` 二重宣言は実証で却下、C 案（手動 install + upstream issue 追従）に確定。context7 Web 403 は harness 側 egress allowlist 対応待ち）**
 
 ### 背景
@@ -2071,8 +2073,8 @@ PR #204 で最終的に採用する変更は以下の **1 点のみ** に絞る�
 
 ### 後続タスク
 
-- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で context7 を再検証する → issue #205 で追跡。
-- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` / Skill 動的 reload 等が ship されたら本決定を更新（手動 install 手順を撤去）→ issue #206 で追跡。
+- cloud での context7 疎通を再検証する → issue #205 で追跡。
+- 現行の fresh / resume セッションで plugin 登録、Skill の reload、MCP 疎通を実機確認する → issue #206 で追跡。
 
 ### 関連 PR / issue
 
@@ -4050,6 +4052,8 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 
 ## [106] 2026-06-11 — Web セッションの enabledPlugins 自動 install を SessionStart hook で再導入
 
+> **現行更新（2026-11-08）**: 以下の成功は Claude Code 2.1.173 での当時の実測で、現在や次回セッションの成功を保証しない。その後も install が反映されないケースがあった（[108]）。公式資料は cloud で repo の plugin 宣言をロードしないと説明している。実際のフック条件、reload の範囲、未検証事項は [プラグインガイド](setup/plugins.md) を参照し、実機確認は #206 で追跡する。fake `claude` を使う meta テストはフックの分岐を検証するもので、本物の install やロードの証明ではない。
+
 **2026-06-11 | ステータス: 採用**
 
 ### 背景
@@ -4109,6 +4113,8 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 - ⚠️ IPv6・プロバイダ固有の非標準形式は対象外（docs/tools.md 制限事項に記載）。
 
 ## [108] 2026-06-12 — superpowers をプラグイン運用から `npx skills add` vendor 方式へ移行
+
+> **現行更新（2026-11-08）**: [106] の hook は残っているが、現在の install やロードの成功は未検証。現行運用は [プラグインガイド](setup/plugins.md) を参照。
 
 **2026-06-12 | ステータス: 採用**
 
