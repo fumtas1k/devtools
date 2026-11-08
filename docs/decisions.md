@@ -5811,7 +5811,7 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 
 ## [172] 対応ブラウザと新しい CSS / HTML 機能の採用方針
 
-**2026-11-08 | ステータス: 採用 | 関連: [#894](https://github.com/fumtas1k/devtools/issues/894) | 本 PR: 実装時に番号置換**
+**2026-11-08 | ステータス: 採用 | 関連: [#894](https://github.com/fumtas1k/devtools/issues/894) | 本 PR: [#937](https://github.com/fumtas1k/devtools/pull/937)**
 
 ### 背景・決断
 
