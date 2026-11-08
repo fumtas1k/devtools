@@ -5886,3 +5886,11 @@ solo 開発では、user 側の hook 設定から repo 外に置いたレビュ�
 `@typescript-eslint/typescript-estree@8.70.0` 直下の minimatch を 11.0.3 に限定して override する。現行の親依存は修正版を選べず、[上流の更新 PR](https://github.com/typescript-eslint/typescript-eslint/pull/13145) も未マージである。直接の呼出しは保持された `minimatch` 関数を使い、実行環境の Node 要件も満たす。メジャー更新による互換性は projectService の利用経路で確認する。
 
 現在の ESLint 設定は projectService を使わず、呼出しの既定の optimization level は advisory の対象条件に入らない。ただし、経路の非到達と lockfile 上の対象版が存在することは別であり、後者に対応するため修正版を固定する。上流の正式リリースが修正版を採用し、公開から 7 日を経て互換性を確認できたら、この override を削除する。
+
+## [176] QRコード入力欄の内容に応じた高さ
+
+**2026-11-08 | ステータス: 採用 | 関連: [#891](https://github.com/fumtas1k/devtools/issues/891)**
+
+長文の内容を確認しやすくするため、QRコード生成の入力欄に限り `@supports` 内で `field-sizing: content` を使う。3 行相当を下限とし、画面を占有しすぎないよう 20rem を上限に欄内スクロールへ移る。共通入力部品の既定は変えず、未対応時は従来の 3 行の固定高・スクロール・手動リサイズを維持する。Chromium では手動リサイズ後にネイティブの指定高さが維持され、自動伸縮は止まる。
+
+PC・スマホ幅は Chromium で確認した。未対応経路は CSS の `@supports` 条件を偽にして確認しており、未対応エンジンとモバイル実機での検証ではない。仕様と挙動の参考: [CSS Forms Module](https://drafts.csswg.org/css-forms-1/#field-sizing)、[Chrome Developers](https://developer.chrome.com/docs/modern-web-guidance/guides/forms/form-fields-automatically-fit-contents)。

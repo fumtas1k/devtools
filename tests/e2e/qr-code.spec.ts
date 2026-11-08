@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { withProductionCsp } from './helpers';
+import { applyProductionCsp, waitForReactHydration, withProductionCsp } from './helpers';
 
 test.describe('QRコード生成（production CSP 適用）', () => {
   test('テキスト入力でQRコードが生成される（CSP 違反なし）', async ({ browser }) => {
@@ -181,4 +181,150 @@ test.describe('QRコード生成（production CSP 適用）', () => {
       await expect(svg).not.toHaveAttribute('aria-label', /.*/);
     });
   });
+});
+
+for (const viewport of [
+  { name: 'PC', width: 1280, height: 800 },
+  { name: 'スマホ', width: 390, height: 844 },
+]) {
+  test(`${viewport.name}: 入力内容に合わせて高さが変わり、上限後はスクロールできる`, async ({
+    browser,
+  }) => {
+    await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      const input = page.getByLabel('テキスト / URL');
+      expect(await page.evaluate(() => CSS.supports('field-sizing', 'content'))).toBe(true);
+      const initial = await input.evaluate((el) => el.getBoundingClientRect().height);
+      // 既存 rows=3 の 107.5625px と描画上同じ高さを保つ。
+      expect(initial).toBeCloseTo(107.5625, 0);
+      await input.fill('短文');
+      expect(await input.evaluate((el) => el.getBoundingClientRect().height)).toBeCloseTo(
+        initial,
+        0
+      );
+
+      // 折返しと改行の双方で内容が 3 行を超える。
+      await input.fill('折り返しの確認です'.repeat(30));
+      const wrapped = await input.evaluate((el) => el.getBoundingClientRect().height);
+      expect(wrapped).toBeGreaterThan(initial);
+      await input.fill(Array.from({ length: 7 }, (_, i) => `行 ${i}`).join('\n'));
+      expect(await input.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(
+        initial
+      );
+
+      await input.fill(Array.from({ length: 40 }, (_, i) => `長い入力 ${i}`).join('\n'));
+      const dimensions = await input.evaluate((el) => ({
+        height: el.getBoundingClientRect().height,
+        client: el.clientHeight,
+        scroll: el.scrollHeight,
+        width: document.documentElement.scrollWidth,
+        viewport: document.documentElement.clientWidth,
+      }));
+      expect(dimensions.height).toBeLessThanOrEqual(320);
+      expect(dimensions.scroll).toBeGreaterThan(dimensions.client);
+      expect(dimensions.width).toBeLessThanOrEqual(dimensions.viewport);
+      await input.evaluate((el) => {
+        el.scrollTop = el.scrollHeight;
+      });
+      expect(await input.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+      await page.getByRole('button', { name: 'H', exact: true }).click();
+      await expect(page.getByText('復元率: 30%')).toBeVisible();
+      const download = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'SVGダウンロード' }).click();
+      expect((await download).suggestedFilename()).toBe('qrcode.svg');
+      await input.fill('');
+      expect(await input.evaluate((el) => el.getBoundingClientRect().height)).toBeCloseTo(
+        initial,
+        0
+      );
+      await page.getByRole('button', { name: 'サンプル' }).click();
+      await expect(input).toHaveValue('https://example.com');
+      expect(await input.evaluate((el) => el.getBoundingClientRect().height)).toBeCloseTo(
+        initial,
+        0
+      );
+      await input.focus();
+      await expect(input).toBeFocused();
+    });
+  });
+}
+
+test('手動リサイズ後も高さを保ち、追加した内容をスクロールできる', async ({ browser }) => {
+  await withProductionCsp(browser, '/tools/qr-code', async (page) => {
+    const input = page.getByLabel('テキスト / URL');
+    await input.fill(Array.from({ length: 5 }, (_, i) => `行 ${i}`).join('\n'));
+    const box = await input.boundingBox();
+    expect(box).not.toBeNull();
+    if (!box) return;
+    await page.mouse.move(box.x + box.width - 5, box.y + box.height - 5);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 5, box.y + box.height + 45, { steps: 10 });
+    await page.mouse.up();
+    const resized = await input.evaluate((el) => el.getBoundingClientRect().height);
+    expect(resized).toBeGreaterThan(box.height + 20);
+    await input.fill(Array.from({ length: 30 }, (_, i) => `追加した行 ${i}`).join('\n'));
+    const after = await input.evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      client: el.clientHeight,
+      scroll: el.scrollHeight,
+    }));
+    expect(after.height).toBeCloseTo(resized, 0);
+    expect(after.scroll).toBeGreaterThan(after.client);
+    await input.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    expect(await input.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  });
+});
+
+test('未対応時は従来の3行高さ、スクロール、手動リサイズを維持する', async ({ browser }) => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const guard = await applyProductionCsp(page);
+    let replaced = 0;
+    // 実際に配信される CSS の @supports 条件を偽にして未対応経路を通す。
+    await page.route('**/*.css', async (route) => {
+      const response = await route.fetch();
+      const css = await response.text();
+      const body = css.replace(/@supports\s*\(\s*field-sizing\s*:\s*content\s*\)/g, () => {
+        replaced++;
+        return '@supports (field-sizing: invalid-value)';
+      });
+      await route.fulfill({ response, body });
+    });
+    await page.goto('/tools/qr-code');
+    await waitForReactHydration(page);
+    expect(replaced).toBe(1);
+    const input = page.getByLabel('テキスト / URL');
+    const initial = await input.evaluate((el) => el.getBoundingClientRect().height);
+    expect(initial).toBeCloseTo(107.5625, 0);
+    await input.fill(Array.from({ length: 30 }, (_, i) => `行 ${i}`).join('\n'));
+    const fallback = await input.evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      client: el.clientHeight,
+      scroll: el.scrollHeight,
+      resize: getComputedStyle(el).resize,
+    }));
+    expect(fallback.height).toBeCloseTo(initial, 0);
+    expect(fallback.scroll).toBeGreaterThan(fallback.client);
+    expect(fallback.resize).toBe('vertical');
+    await input.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    expect(await input.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    const box = await input.boundingBox();
+    expect(box).not.toBeNull();
+    if (!box) return;
+    await page.mouse.move(box.x + box.width - 5, box.y + box.height - 5);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 5, box.y + box.height + 45, { steps: 10 });
+    await page.mouse.up();
+    expect(await input.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(
+      initial + 20
+    );
+    guard.assertNoViolations();
+  } finally {
+    await context.close();
+  }
 });

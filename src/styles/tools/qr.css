@@ -2,6 +2,16 @@
    .qr-result-grid は qr-ticket/GenerateTab.tsx、.qr-video-preview は QrReader.tsx と qr-ticket/VerifyTab.tsx が使う。 */
 
 @layer components {
+  /* 3 行分の行高 + 上下 padding + 枠を下限にし、長文は欄内でスクロールする。 */
+  @supports (field-sizing: content) {
+    .qr-text-input textarea {
+      field-sizing: content;
+      min-height: calc(5.1em + 1.5rem + 2px);
+      max-height: 20rem;
+      overflow-y: auto;
+    }
+  }
+
   /* QR result auto-fill grid (GenerateTab 生成結果カード列) */
   .qr-result-grid {
     display: grid;
