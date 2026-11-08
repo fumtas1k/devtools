@@ -5872,3 +5872,11 @@ solo 開発では、user 側の hook 設定から repo 外に置いたレビュ�
 - 別の matching hook に checksum を検査させる案: 公式仕様では同じイベントの複数 matching command hook は並行起動されるため、危険な hook の起動を防げない。
 
 当面は初回だけでなく取得・ブランチ更新後も、既承認の SessionStart が発火する起動・再開より前に、人が hook 定義、script 本体、推移的な実行入力を確認する。起動後に Codex にレビューを依頼しても発火後になりうる。これは運用上の緩和であり、自動変更検知・再承認・改ざん防止を実装したものではない。また、`npm ci` が読む repo の入力や npm 設定・依存、interpreter / PATH まで安全になる保証ではない。
+
+## [175] typescript-estree の minimatch を一時的に固定する
+
+**2026-11-08 | ステータス: 採用 | 関連: [#879](https://github.com/fumtas1k/devtools/issues/879)**
+
+`@typescript-eslint/typescript-estree@8.70.0` 直下の minimatch を 11.0.3 に限定して override する。現行の親依存は修正版を選べず、[上流の更新 PR](https://github.com/typescript-eslint/typescript-eslint/pull/13145) も未マージである。直接の呼出しは保持された `minimatch` 関数を使い、実行環境の Node 要件も満たす。メジャー更新による互換性は projectService の利用経路で確認する。
+
+現在の ESLint 設定は projectService を使わず、呼出しの既定の optimization level は advisory の対象条件に入らない。ただし、経路の非到達と lockfile 上の対象版が存在することは別であり、後者に対応するため修正版を固定する。上流の正式リリースが修正版を採用し、公開から 7 日を経て互換性を確認できたら、この override を削除する。
