@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { ResultTable, type TableColumn } from '@/components/ui/ResultTable';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
+import { assertSamlInputSize } from '@/utils/saml/limits';
 import {
   decodeSamlInput,
   parseSamlXml,
@@ -229,8 +230,9 @@ export function SamlDecoderTool() {
   const [xmlView, setXmlView] = useState<XmlView>('raw');
 
   const result: ParsedOk | ParsedNg | null = useMemo(() => {
-    if (!input.trim()) return null;
     try {
+      assertSamlInputSize(input);
+      if (!input.trim()) return null;
       const decoded = decodeSamlInput(input);
       return { decoded, message: parseSamlXml(decoded.xml) };
     } catch (e) {

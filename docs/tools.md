@@ -370,7 +370,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 #### 仕組み・アルゴリズム
 
-- 入力形式を `decode.ts` の `decodeSamlInput` で自動判定する。URL 全体なら `SAMLResponse` / `SAMLRequest` クエリパラメータを抽出（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から自前パースし percent エンコードのまま `+` を保持する。クエリキー名が percent エンコードされている場合も比較前に `decodeURIComponent` を試みる）→ 生 XML 判定 → URL デコード → base64 デコード（`-`/`_` を含む base64url 表記は標準 base64 へ変換しパディングを補完してから decode）→ UTF-8 として XML と解釈できれば HTTP-POST binding、できなければ `fflate` の `Decompress`（ストリーミング API。raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定する。展開後サイズが 32MB を超えた場合は zip bomb 対策としてエラーにする（圧縮データを 64KB 単位のチャンクに分けて渡すことで、上限超過を検知した時点で残りの展開処理を打ち切る）。適用した変換ステップは UI に表示する
+- 入力形式を `decode.ts` の `decodeSamlInput` で自動判定する。URL 全体なら `SAMLResponse` / `SAMLRequest` クエリパラメータを抽出（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から自前パースし percent エンコードのまま `+` を保持する。クエリキー名が percent エンコードされている場合も比較前に `decodeURIComponent` を試みる）→ 生 XML 判定 → URL デコード → base64 デコード（`-`/`_` を含む base64url 表記は標準 base64 へ変換しパディングを補完してから decode）→ UTF-8 として XML と解釈できれば HTTP-POST binding、できなければ `fflate` の `Decompress`（ストリーミング API。raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定する。展開後サイズが 32 MiB を超えた場合は zip bomb 対策としてエラーにする（圧縮データを 8 KiB 単位のチャンクに分けて渡すことで、上限超過を検知した時点で残りの展開処理を打ち切る）。適用した変換ステップは UI に表示する
 - `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy/RequestedAuthnContext、LogoutRequest は Issuer/Destination/NotOnOrAfter/Reason/NameID（EncryptedID は存在検出のみ）/SessionIndex（複数可）、LogoutResponse は Issuer/Status/Destination/InResponseTo を抽出する。`ds:Signature` の有無・`EncryptedAssertion` の件数も検出する（存在表示のみ、検証・復号はしない）
   - 二段階ステータス（外側 StatusCode の子にネストした内側 StatusCode）の内側コードも `statusSubCode` として抽出し、UI では Status 行の直後に表示する
   - `AudienceRestriction` は要素ごとに `string[]`（AND される制約）として保持し、各制約内の `Audience` は OR 列挙として扱う
@@ -393,7 +393,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - LogoutRequest の主体識別子は `NameID` / `EncryptedID` のみ対応（SAML 2.0 Core 3.7.1 で許容される `BaseID` は非対応。実運用例がほぼ皆無なため。`BaseID` のみのリクエストは NameID チェックが error 表示になる）
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない
-- deflate 展開後のサイズが 32MB を超える入力はエラーにする（zip bomb 対策）
+- XML は UTF-8 換算で 32 MiB 以下、deflate 展開後データも 32 MiB 以下に制限する。入力全体は trim や URL 解析前に 134,283,268 UTF-16 コード単位以下に制限する（全 percent エンコード base64 の最大長に URL・クエリ・空白の余裕 65,536 単位を加算）。これらはアプリの上限であり、SAML の仕様上限や総メモリ使用量の保証ではない。整形・マスクの直接呼び出しは XML 上限超過時に元の文字列を返す
 - 「共有用マスク XML」は構造上の PII フィールド（NameID・AttributeValue）と `secret-scrubber` の既知パターンの除去であり、完全な匿名化を保証するものではない。共有前に必ず目視で確認すること
 
 ## 変換・解析

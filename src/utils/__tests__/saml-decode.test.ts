@@ -153,6 +153,6 @@ describe('decodeSamlInput: deflate 展開サイズ上限（陽性対照）', () 
     let bin = '';
     for (const b of compressed) bin += String.fromCharCode(b);
     const b64 = btoa(bin);
-    expect(() => decodeSamlInput(b64)).toThrow(/上限（32MB）/);
+    expect(() => decodeSamlInput(b64)).toThrow(/上限（32 MiB）/);
   });
 });
