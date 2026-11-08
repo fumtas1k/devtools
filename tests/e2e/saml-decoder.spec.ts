@@ -128,6 +128,21 @@ test.describe('SAMLデコーダ', () => {
     await expect(page.getByText('チェックリスト')).toBeHidden();
   });
 
+  test('陽性対照: XML サイズ超過を表示し、通常の入力で復帰する', async ({ page }) => {
+    test.setTimeout(90_000);
+    const input = page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/);
+    // ブラウザ内で生成し、巨大な文字列を Playwright の転送経路に載せない。
+    await input.evaluate((element) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      setter?.call(element, `<a>${'x'.repeat(32 * 1024 * 1024 - 6)}</a>`);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await expect(page.getByText('XML のサイズが上限（UTF-8 で 32 MiB）を超えました')).toBeVisible();
+    await input.fill(AUTHN_REQUEST_XML);
+    await expect(page.getByText('AuthnRequest サマリ')).toBeVisible();
+    await expect(page.getByText('XML のサイズが上限（UTF-8 で 32 MiB）を超えました')).toBeHidden();
+  });
+
   test('不正な入力はエラーメッセージが表示される', async ({ page }) => {
     await page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/).fill('これはSAMLではない');
     await expect(page.getByText('base64 として解釈できません', { exact: false })).toBeVisible();
@@ -183,5 +198,68 @@ test.describe('SAMLデコーダ', () => {
 
     // 件数バッジが表示される
     await expect(page.getByText(/PII \d+ 件・機密 \d+ 件をマスク/)).toBeVisible();
+  });
+});
+
+test.describe('暗号化 Assertion の方式', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/tools/saml-decoder');
+    await waitForReactHydration(page);
+  });
+
+  test('宣言された方式をデータと鍵ごとに安全に表示し、既存の案内も維持する', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const requested: string[] = [];
+    page.on('request', (request) => requested.push(request.url()));
+    const longUri = `https://example.invalid/${'long'.repeat(40)}`;
+    const malicious = 'urn:example:<img src=x onerror=alert(1)>';
+    const xml = `<p:Response xmlns:p="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:a="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:x="http://www.w3.org/2001/04/xmlenc#" xmlns:d="http://www.w3.org/2000/09/xmldsig#" xmlns:f="urn:fake">
+      <d:Signature/><a:Assertion><a:Subject><a:NameID>plain-user</a:NameID></a:Subject></a:Assertion>
+      <a:EncryptedAssertion><x:EncryptedData><x:EncryptionMethod Algorithm="${longUri}"/><d:KeyInfo>
+        <x:EncryptedKey><x:EncryptionMethod Algorithm="urn:key:one"/></x:EncryptedKey>
+        <x:EncryptedKey><x:EncryptionMethod Algorithm="urn:example:&lt;img src=x onerror=alert(1)&gt;"/></x:EncryptedKey>
+      </d:KeyInfo><x:CipherData><x:EncryptionMethod Algorithm="urn:decoy"/></x:CipherData></x:EncryptedData>
+      <x:EncryptedData><x:EncryptionMethod Algorithm=""/></x:EncryptedData>
+      <x:EncryptedKey><x:EncryptionMethod Algorithm="urn:sibling"/></x:EncryptedKey></a:EncryptedAssertion>
+      <a:EncryptedAssertion><x:EncryptedData><x:EncryptionMethod f:Algorithm="urn:fake"/></x:EncryptedData></a:EncryptedAssertion>
+    </p:Response>`;
+    await page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/).fill(xml);
+    const first = page
+      .getByRole('heading', { name: '暗号化された Assertion 1 の方式' })
+      .locator('..');
+    const second = page
+      .getByRole('heading', { name: '暗号化された Assertion 2 の方式' })
+      .locator('..');
+    await expect(first).toContainText(longUri);
+    await expect(first).toContainText('urn:key:one');
+    await expect(first).toContainText(malicious);
+    await expect(first).toContainText('EncryptedData 2');
+    await expect(first).toContainText('Assertion 直下の鍵');
+    await expect(first).toContainText('urn:sibling');
+    await expect(first).toContainText('未指定');
+    await expect(first).not.toContainText('urn:decoy');
+    await expect(second).toContainText('未指定');
+    await expect(second).not.toContainText('urn:fake');
+    await expect(first.locator('img, a')).toHaveCount(0);
+    await expect(page.getByText('plain-user', { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(
+        'EncryptedAssertion が 2 件含まれています。復号（秘密鍵の入力）には対応していません。'
+      )
+    ).toBeVisible();
+    await expect(page.getByText('あり（このツールでは検証しません）')).toBeVisible();
+    await expect(page.getByText(/XMLDSig 署名の検証・EncryptedAssertion/)).toBeVisible();
+    expect(await first.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect(requested.some((url) => url.startsWith('https://example.invalid/'))).toBe(false);
+  });
+
+  test('平文のみでは暗号化方式カードを表示しない', async ({ page }) => {
+    await page
+      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
+      .fill(responseXml({ notOnOrAfterOffsetMs: 300_000 }));
+    await expect(
+      page.getByRole('heading', { name: /暗号化された Assertion .* の方式/ })
+    ).toHaveCount(0);
+    await expect(page.getByText('taro@example.com').first()).toBeVisible();
   });
 });

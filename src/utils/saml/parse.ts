@@ -1,6 +1,8 @@
 import type {
   SamlAssertion,
   SamlAttribute,
+  SamlEncryptedAssertion,
+  SamlEncryptedKey,
   SamlAuthnRequestData,
   SamlLogoutRequestData,
   SamlLogoutResponseData,
@@ -8,7 +10,8 @@ import type {
   SamlResponseData,
 } from './types';
 
-import { NS_P, NS_A, NS_DS } from './ns';
+import { NS_P, NS_A, NS_DS, NS_XENC } from './ns';
+import { assertSamlXmlSize } from './limits';
 
 /** 直下の子要素のみを名前空間 URI + localName で探す（prefix 非依存・ネスト混入防止） */
 function childNS(el: Element, ns: string, local: string): Element | undefined {
@@ -37,6 +40,7 @@ function hasDirectSignature(el: Element): boolean {
  * 対応: Response / AuthnRequest / LogoutRequest / LogoutResponse。それ以外の SAML メッセージ型はエラー。
  */
 export function parseSamlXml(xml: string): SamlMessage {
+  assertSamlXmlSize(xml);
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   if (doc.getElementsByTagName('parsererror').length > 0) {
     throw new Error('XML の構文エラーがあります');
@@ -76,6 +80,9 @@ function parseStatus(root: Element): ParsedStatus {
 }
 
 function parseResponse(root: Element): SamlResponseData {
+  const encryptedAssertions = childrenNS(root, NS_A, 'EncryptedAssertion').map(
+    parseEncryptedAssertion
+  );
   return {
     type: 'response',
     issuer: textOf(childNS(root, NS_A, 'Issuer')),
@@ -85,7 +92,34 @@ function parseResponse(root: Element): SamlResponseData {
     issueInstant: attrOf(root, 'IssueInstant'),
     signed: hasDirectSignature(root),
     assertions: childrenNS(root, NS_A, 'Assertion').map(parseAssertion),
-    encryptedAssertionCount: childrenNS(root, NS_A, 'EncryptedAssertion').length,
+    encryptedAssertionCount: encryptedAssertions.length,
+    encryptedAssertions,
+  };
+}
+
+function encryptionAlgorithms(el: Element): (string | undefined)[] {
+  const methods = childrenNS(el, NS_XENC, 'EncryptionMethod');
+  return methods.length
+    ? methods.map((method) => {
+        const value = method.getAttributeNS(null, 'Algorithm');
+        return value?.trim() ? value : undefined;
+      })
+    : [undefined];
+}
+
+function parseEncryptedKey(el: Element): SamlEncryptedKey {
+  return { algorithms: encryptionAlgorithms(el) };
+}
+
+function parseEncryptedAssertion(el: Element): SamlEncryptedAssertion {
+  return {
+    encryptedData: childrenNS(el, NS_XENC, 'EncryptedData').map((data) => ({
+      algorithms: encryptionAlgorithms(data),
+      encryptedKeys: childrenNS(data, NS_DS, 'KeyInfo').flatMap((keyInfo) =>
+        childrenNS(keyInfo, NS_XENC, 'EncryptedKey').map(parseEncryptedKey)
+      ),
+    })),
+    encryptedKeys: childrenNS(el, NS_XENC, 'EncryptedKey').map(parseEncryptedKey),
   };
 }
 
