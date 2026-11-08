@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useId, useState, useRef } from 'react';
 import { cx } from '@/utils/cx';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { InputField } from '@/components/ui/InputField';
@@ -32,6 +32,7 @@ interface MatchHighlightsProps {
   matches: RegexMatch[];
   selected: number | null;
   onSelect: (i: number) => void;
+  hintId: string;
 }
 
 /**
@@ -39,7 +40,7 @@ interface MatchHighlightsProps {
  * 1 つの tab stop に集約する（issue #666）。常に 1 個の <mark> だけ tabIndex=0、残りは -1。
  * 矢印 / Home / End で focus を移動（選択は変えない）、Enter / Space で onSelect を呼ぶ。
  */
-function MatchHighlights({ text, matches, selected, onSelect }: MatchHighlightsProps) {
+function MatchHighlights({ text, matches, selected, onSelect, hintId }: MatchHighlightsProps) {
   const [roving, setRoving] = useState<{ matches: RegexMatch[]; index: number } | null>(null);
   const markRefs = useRef<Array<HTMLElement | null>>([]);
 
@@ -100,6 +101,7 @@ function MatchHighlights({ text, matches, selected, onSelect }: MatchHighlightsP
         tabIndex={i === safeRoving ? 0 : -1}
         aria-pressed={selected === i}
         aria-label={ariaLabel}
+        aria-describedby={hintId}
         className={cx(
           'match-highlight text-default',
           colorClass,
@@ -133,6 +135,7 @@ function MatchHighlights({ text, matches, selected, onSelect }: MatchHighlightsP
 }
 
 export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Props) {
+  const hintId = useId();
   const [testString, setTestString] = useState('');
   const [forceUnknown, setForceUnknown] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
@@ -255,6 +258,7 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
                     matches={matches}
                     selected={selectedIndex}
                     onSelect={setSelected}
+                    hintId={hintId}
                   />
                 ) : (
                   <span className="text-muted" aria-live="polite">
@@ -265,6 +269,10 @@ export function RegexMatchTester({ pattern, flags, redosStatus, regexValid }: Pr
 
               {matches.length > 0 && (
                 <>
+                  <p id={hintId} className="caption text-muted">
+                    Tab でマッチに移動します。左右矢印で前後、Home / End で先頭 /
+                    末尾へフォーカスを移動し、Enter / Space で選択できます。
+                  </p>
                   <p className="caption text-muted" aria-live="polite">
                     {matches.length} 件マッチ
                     {!flags.includes('g') && '（g フラグを付けると全マッチを表示します）'}

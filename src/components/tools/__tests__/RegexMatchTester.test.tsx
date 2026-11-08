@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { RegexMatchTester } from '../RegexMatchTester';
 
 afterEach(() => {
@@ -8,6 +8,8 @@ afterEach(() => {
 });
 
 const FIND = { timeout: 2000 } as const;
+const HINT =
+  'Tab でマッチに移動します。左右矢印で前後、Home / End で先頭 / 末尾へフォーカスを移動し、Enter / Space で選択できます。';
 
 function typeTest(value: string) {
   fireEvent.change(screen.getByLabelText('テスト文字列'), { target: { value } });
@@ -32,6 +34,31 @@ describe('RegexMatchTester', () => {
     render(<RegexMatchTester pattern="z+" flags="g" redosStatus="safe" regexValid />);
     typeTest('aaa');
     expect(await screen.findByText('マッチしませんでした。', undefined, FIND)).toBeTruthy();
+    expect(screen.queryByText(HINT)).toBeNull();
+  });
+
+  it('各マッチが可視ヒントを説明として参照し、インスタンス間で ID が衝突しない', async () => {
+    const { container } = render(
+      <>
+        <RegexMatchTester pattern="a" flags="g" redosStatus="safe" regexValid />
+        <RegexMatchTester pattern="b" flags="g" redosStatus="safe" regexValid />
+      </>
+    );
+    expect(screen.queryByText(HINT)).toBeNull();
+    const regions = within(container).getAllByRole('region', { name: 'マッチテスト' });
+    fireEvent.change(within(regions[0]).getByRole('textbox'), { target: { value: 'aa' } });
+    fireEvent.change(within(regions[1]).getByRole('textbox'), { target: { value: 'bb' } });
+    const hints = await Promise.all(
+      regions.map((region) => within(region).findByText(HINT, undefined, FIND))
+    );
+    expect(hints[0].id).not.toBe(hints[1].id);
+    for (const [index, region] of regions.entries()) {
+      const marks = within(region).getAllByRole('button', { name: /マッチ \d/, description: HINT });
+      expect(marks).toHaveLength(2);
+      for (const mark of marks) expect(mark.getAttribute('aria-describedby')).toBe(hints[index].id);
+      expect(hints[index].closest('[aria-live], [role="status"]')).toBeNull();
+      expect(hints[index].closest('.font-mono')).toBeNull();
+    }
   });
 
   it('vulnerable 判定ではマッチ実行を無効化する（陽性確認）', () => {
@@ -169,8 +196,16 @@ describe('RegexMatchTester', () => {
     fireEvent.keyDown(marks[0], { key: 'Enter' });
     expect(marks[0].getAttribute('aria-pressed')).toBe('true');
 
+    fireEvent.keyDown(marks[0], { key: 'End' });
+    expect(document.activeElement).toBe(marks[1]);
+    expect(marks[0].getAttribute('aria-pressed')).toBe('true');
+    expect(marks[1].getAttribute('aria-pressed')).toBe('false');
+
     expect(marks[1].getAttribute('aria-pressed')).toBe('false');
     fireEvent.keyDown(marks[1], { key: ' ' });
     expect(marks[1].getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(marks[0]);
+    expect(marks[0].getAttribute('aria-pressed')).toBe('true');
+    expect(marks[1].getAttribute('aria-pressed')).toBe('false');
   });
 });
