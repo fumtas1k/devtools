@@ -286,6 +286,41 @@ test.describe('HAR ビューア', () => {
     await expect(page.getByText(/redact:\s*5\s*件/)).toBeVisible({ timeout: 10000 });
   });
 
+  test('本文再利用中も切替・別ファイル・本文スキャン OFF の出力が正しい', async ({ page }) => {
+    await openHarViewer(page);
+    const make = (body: string) => {
+      const har = JSON.parse(buildTestHar(1));
+      har.log.entries[0].request.headers.push({ name: 'Authorization', value: 'Bearer secret' });
+      har.log.entries[0].response.content.text = body;
+      return JSON.stringify(har);
+    };
+    const download = async () => {
+      const pending = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'サニタイズ済み HAR をダウンロード' }).click();
+      const file = await pending;
+      const stream = await file.createReadStream();
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+      return JSON.parse(Buffer.concat(chunks).toString());
+    };
+    await uploadHar(page, make('password=abc12345 first'));
+    await expect(page.getByText(/redact:\s*2\s*件/)).toBeVisible();
+    const initial = await download();
+    expect(initial.log.entries[0].response.content.text).toContain('[REDACTED:');
+    await page.getByRole('button', { name: /認証ヘッダ/ }).click();
+    await expect(page.getByText(/redact:\s*1\s*件/)).toBeVisible();
+    expect((await download()).log.entries[0].response.content.text).toBe(
+      initial.log.entries[0].response.content.text
+    );
+    await uploadHar(page, make('password=xyz12345 other'));
+    await expect(page.getByText(/\[REDACTED:.*other/)).toBeVisible();
+    await expect(page.getByText(/redact:\s*1\s*件/)).toBeVisible();
+    expect((await download()).log.entries[0].response.content.text).toContain('other');
+    await page.getByRole('button', { name: /本文スキャン/ }).click();
+    await expect(page.getByText(/redact:\s*0\s*件/)).toBeVisible();
+    expect((await download()).log.entries[0].response.content.text).toBe('password=xyz12345 other');
+  });
+
   test('壊れた entry（request/response 欠落）を含んでもクラッシュせず描画する', async ({
     page,
   }) => {

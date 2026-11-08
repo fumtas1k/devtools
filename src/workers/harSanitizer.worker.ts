@@ -10,6 +10,7 @@
  */
 import { parseHar, sanitizeHar, type Har, type HarRedactCategory } from '../utils/har';
 import type { HarWorkerRequest, HarWorkerResponse } from './harSanitizer.types';
+import { mayCacheResponseBodies, WorkerResponseBodyScanCache } from './responseBodyScanCache';
 
 // worker グローバルスコープのうち本ファイルで使う API のみを型付けする。
 // `/// <reference lib="webworker" />` で webworker lib を取り込むと、グローバル型が
@@ -24,6 +25,8 @@ const ctx = self as unknown as HarWorkerScope;
 
 // parse 済みの元 HAR。sanitize は毎回ここから structuredClone して非破壊で処理する。
 let parsed: Har | null = null;
+const bodyScanCache = new WorkerResponseBodyScanCache();
+let bodyScanCacheEligible = false;
 
 function post(msg: HarWorkerResponse): void {
   ctx.postMessage(msg);
@@ -32,9 +35,13 @@ function post(msg: HarWorkerResponse): void {
 function runSanitize(requestId: number, enabled: Record<HarRedactCategory, boolean>): void {
   if (!parsed) return;
   const total = parsed.log.entries.length;
-  const { har, counts } = sanitizeHar(parsed, enabled, (processed) => {
-    post({ type: 'progress', requestId, processed, total });
-  });
+  if (!enabled.BODY_SCAN) bodyScanCache.clear();
+  const { har, counts } = sanitizeHar(
+    parsed,
+    enabled,
+    (processed) => post({ type: 'progress', requestId, processed, total }),
+    enabled.BODY_SCAN && bodyScanCacheEligible ? bodyScanCache : undefined
+  );
   post({ type: 'result', requestId, har, counts, entryCount: total });
 }
 
@@ -43,6 +50,8 @@ ctx.onmessage = (e: MessageEvent<HarWorkerRequest>) => {
 
   // 保持中の HAR を解放（最大 25MB を抱え続けないため）。requestId を持たない。
   if (msg.type === 'reset') {
+    bodyScanCache.clear();
+    bodyScanCacheEligible = false;
     parsed = null;
     return;
   }
@@ -52,6 +61,8 @@ ctx.onmessage = (e: MessageEvent<HarWorkerRequest>) => {
   // 固着するのを防ぐ。必ず requestId 付きの error メッセージに変換して返す。
   try {
     if (msg.type === 'load') {
+      bodyScanCache.clear();
+      bodyScanCacheEligible = false;
       const result = parseHar(msg.text);
       if (!result.ok) {
         parsed = null;
@@ -59,6 +70,7 @@ ctx.onmessage = (e: MessageEvent<HarWorkerRequest>) => {
         return;
       }
       parsed = result.har;
+      bodyScanCacheEligible = mayCacheResponseBodies(parsed);
       runSanitize(msg.requestId, msg.enabled);
     } else if (msg.type === 'sanitize') {
       if (!parsed) {
@@ -68,6 +80,7 @@ ctx.onmessage = (e: MessageEvent<HarWorkerRequest>) => {
       runSanitize(msg.requestId, msg.enabled);
     }
   } catch (err) {
+    bodyScanCache.clear();
     const message = err instanceof Error ? err.message : String(err);
     post({
       type: 'error',

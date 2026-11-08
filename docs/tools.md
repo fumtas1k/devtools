@@ -735,6 +735,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 一貫トークン化: `makeTokenizer` がカテゴリ × 値 → `[REDACTED:COOKIE_1]` 等のプレースホルダを発行する。同一値には同一プレースホルダを割り当て、HAR 全体で値の同一性が保たれる。**ただしこの HAR 全体一貫性は構造的 redact（tokenize 由来）に限る**。`scrubText` 由来の redaction（本文・辞書外ヘッダ・URLパス等）は呼び出しごとに採番されるため、異なるフィールドに跨る同一秘密値の一貫トークン化は保証されない（安全側であり漏えいはしない）
 - 純関数・入力非破壊: `structuredClone` でディープコピーしてから処理するため元オブジェクトを mutate しない
 - parse + sanitize は **Web Worker**（`src/workers/harSanitizer.worker.ts`）で実行する。`sanitizeHar` は `structuredClone` + 全 response body の正規表現スキャンで中規模 HAR でも数秒かかり、メインスレッド同期実行だと「ページが応答しません」になる（issue #677）。worker に逃がしメインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する
+- レスポンス本文スキャンの結果と件数は現在の HAR に限り Worker 内で再利用する。出力も未検出情報を含みうる機密相当として扱い、最初の保存から30秒、UTF-16 推計と固定 metadata 予算の合計16 MiB、最大4096本文に制限する。load 開始・reset・例外・本文スキャン OFF で破棄し、超過時は通常走査に戻る。事前判定は base64 等の走査対象外本文も数えるため保守的で、実 heap や GC の即時消去は保証しない（#928、詳細は `docs/decisions.md [117]`）
 - フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` の `onProgress` コールバックで処理済みエントリ数を逐次受け取り、`ProgressBar` で進捗表示する
 - カテゴリ別の redact 件数は worker が返す `counts` を `ToggleChips` のバッジに表示する
 - エントリ一覧（`HarEntryList`）は全件描画する。フリーズの主因は描画ではなく sanitize であり Worker 化で解消したため、ページングは導入しない（実 HAR の検証でエントリ数は数百件程度で、その規模の `<tr>` 描画は問題にならないことを確認。`loadSeq` は新規読込時の選択リセット判定にのみ使い、トグル時は選択を保持する）
