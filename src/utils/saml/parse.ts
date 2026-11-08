@@ -9,6 +9,7 @@ import type {
 } from './types';
 
 import { NS_P, NS_A, NS_DS } from './ns';
+import { assertSamlXmlSize } from './limits';
 
 /** 直下の子要素のみを名前空間 URI + localName で探す（prefix 非依存・ネスト混入防止） */
 function childNS(el: Element, ns: string, local: string): Element | undefined {
@@ -37,6 +38,7 @@ function hasDirectSignature(el: Element): boolean {
  * 対応: Response / AuthnRequest / LogoutRequest / LogoutResponse。それ以外の SAML メッセージ型はエラー。
  */
 export function parseSamlXml(xml: string): SamlMessage {
+  assertSamlXmlSize(xml);
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   if (doc.getElementsByTagName('parsererror').length > 0) {
     throw new Error('XML の構文エラーがあります');

@@ -1,9 +1,12 @@
+import { exceedsUtf8ByteLimit } from './limits';
+
 /**
  * 表示用の簡易 XML 整形。
  * 要素・属性・テキストのみを再構成する（コメント・mixed content は SAML メッセージでは
  * 実質使われないため対象外）。parse 不能な入力はそのまま返す。
  */
 export function formatXml(xml: string): string {
+  if (exceedsUtf8ByteLimit(xml)) return xml;
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   if (doc.getElementsByTagName('parsererror').length > 0) return xml;
   const lines: string[] = [];
