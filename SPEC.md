@@ -1656,8 +1656,10 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 
 ### 10.3 ブラウザサポート
 
-- Chrome / Edge / Firefox / Safari（最新2版）
-- iOS Safari / Android Chrome
+- 対応対象は Chrome / Edge / Firefox / Safari、Android Chrome / Firefox、iOS Safari の最新安定版と、実際のリリース順で直前のメジャー版。上記以外の旧版と OS の WebView は正式対象外とする。
+- 必須動作は Baseline Widely available（主要ブラウザでの対応から 30 か月）を基本とする。それより新しい CSS / HTML 機能は、未対応時にも従来の操作・表示・アクセシビリティ・CSP を維持する fallback 付きで採用する。
+- Baseline は対象ブラウザすべてや支援技術の動作を保証しない。実際に使う構文・値の互換性と、対応時・fallback 時の両経路を検証する。`@supports` の判定だけで操作やアクセシビリティの同等性を証明したとはしない。
+- 現在の Playwright / CI は Desktop Chrome プリセットの Chromium 中心で、モバイルの viewport 確認も同じエンジンを使う。この方針は既存全機能の互換性監査や Firefox / Safari・実機モバイルでの検証が完了したことを意味しない。採用理由は [決定記録 172](docs/decisions.md#172-対応ブラウザと新しい-css--html-機能の採用方針) を参照。
 
 ---
 
