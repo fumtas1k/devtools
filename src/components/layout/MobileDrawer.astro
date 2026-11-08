@@ -1,6 +1,8 @@
 ---
 import { tools, categoryLabel, categories } from '@/data/tools';
 import ToolIcon from '@/components/ui/ToolIcon.astro';
+import ToolMenuSearch from '@/components/layout/ToolMenuSearch.astro';
+import { buildSearchText } from '@/utils/tool-search';
 
 interface Props {
   currentSlug?: string;
@@ -43,35 +45,32 @@ const { currentSlug } = Astro.props;
   </div>
 
   <!-- ツール一覧 -->
-  <nav aria-label="ツール一覧">
-    {
-      categories.map((cat) => (
-        <div class="mb-6">
-          <h2 class="mb-2 px-3 font-bold uppercase caption-wide text-muted">
-            {categoryLabel[cat]}
-          </h2>
-          <ul>
-            {tools
-              .filter((t) => t.category === cat)
-              .map((tool) => {
-                const isActive = currentSlug === tool.slug;
-                return (
-                  <li>
-                    <a
-                      href={`/tools/${tool.slug}`}
-                      aria-current={isActive ? 'page' : undefined}
-                      class={`flex items-center gap-2 rounded-md px-3 transition-colors drawer-link min-h-11 caption ${isActive ? 'font-bold drawer-link--active' : 'drawer-link--inactive'}`}
-                    >
-                      <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
-                      <span>{tool.name}</span>
-                    </a>
-                  </li>
-                );
-              })}
-          </ul>
-        </div>
-      ))
-    }
+  <nav aria-label="ツール一覧" data-tool-menu>
+    <ToolMenuSearch inputId="drawer-tool-search" listId="drawer-tool-list" />
+    <div id="drawer-tool-list">
+      {categories.map((cat) => <div class="mb-6" data-menu-category>
+        <h2 class="mb-2 px-3 font-bold uppercase caption-wide text-muted">
+          {categoryLabel[cat]}
+        </h2>
+        <ul>
+          {tools
+            .filter((t) => t.category === cat)
+            .map((tool) => {
+              const isActive = currentSlug === tool.slug;
+              return <li data-search={buildSearchText(tool, categoryLabel)}>
+                <a
+                  href={`/tools/${tool.slug}`}
+                  aria-current={isActive ? 'page' : undefined}
+                  class={`flex items-center gap-2 rounded-md px-3 transition-colors drawer-link min-h-11 caption ${isActive ? 'font-bold drawer-link--active' : 'drawer-link--inactive'}`}
+                >
+                  <ToolIcon slug={tool.slug} size={16} class="shrink-0" />
+                  <span>{tool.name}</span>
+                </a>
+              </li>;
+            })}
+        </ul>
+      </div>)}
+    </div>
   </nav>
 </dialog>
 
@@ -109,6 +108,11 @@ const { currentSlug } = Astro.props;
     drawer.addEventListener('close', () => {
       toggle.setAttribute('aria-expanded', 'false');
       toggle.focus();
+    });
+
+    // bfcache から復元したページに開いたモーダルを残さない
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted && drawer.open) drawer.close();
     });
 
     toggle.addEventListener('click', () => {

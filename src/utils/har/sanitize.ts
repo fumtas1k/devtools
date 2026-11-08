@@ -25,6 +25,13 @@ export interface SanitizeResult {
   counts: Record<HarRedactCategory, number>;
 }
 
+/** Worker が現在の不変な入力についてだけ提供する、レスポンス本文走査の再利用先。 */
+export interface ResponseBodyScanCache {
+  bind(input: Har): void;
+  get(index: number): { text: string; count: number } | undefined;
+  set(index: number, text: string, count: number): void;
+}
+
 /** 一貫トークン発行器。カテゴリ別カウンタと値→トークンの Map を保持する。 */
 function makeTokenizer(counts: Record<HarRedactCategory, number>) {
   const map = new Map<string, string>();
@@ -438,8 +445,10 @@ export function sanitizeHar(
    * Web Worker から呼び、メインスレッドに進捗バーを表示するために使う。
    * 純粋な計算には影響しない（省略可）。
    */
-  onProgress?: (processed: number) => void
+  onProgress?: (processed: number) => void,
+  bodyScanCache?: ResponseBodyScanCache
 ): SanitizeResult {
+  bodyScanCache?.bind(input);
   const har: Har = structuredClone(input);
   const counts = emptyRedactCounts();
   const tokenize = makeTokenizer(counts);
@@ -451,7 +460,7 @@ export function sanitizeHar(
   // entries が配列でも各要素が壊れている（request/response 欠落・型不正）ことは
   // 手編集・切り詰めた HAR で起こりうる。Web Worker 内で走るため例外で worker が
   // 落ちないよう、各 entry を防御的に扱う。
-  for (const entry of har.log.entries) {
+  for (const [index, entry] of har.log.entries.entries()) {
     if (typeof entry !== 'object' || entry === null) continue;
     const request = entry.request;
     const response = entry.response;
@@ -544,7 +553,15 @@ export function sanitizeHar(
         content.encoding !== 'base64' &&
         !isBinaryMimeType(content.mimeType)
       ) {
-        content.text = scrubInto(content.text, counts, 'BODY_SCAN');
+        const cached = bodyScanCache?.get(index);
+        if (cached) {
+          content.text = cached.text;
+          counts.BODY_SCAN += cached.count;
+        } else {
+          const before = counts.BODY_SCAN;
+          content.text = scrubInto(content.text, counts, 'BODY_SCAN');
+          bodyScanCache?.set(index, content.text, counts.BODY_SCAN - before);
+        }
       }
     }
 

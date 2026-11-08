@@ -22,9 +22,8 @@ const tool = tools.find((t) => t.slug === 'key-converter')!;
       <li>PEM（PUBLIC KEY / PRIVATE KEY ヘッダ、SPKI / PKCS#8 構造）</li>
       <li>DER バイナリ（.der / .cer ファイル選択、または Base64 テキスト貼り付け）</li>
       <li>
-        JWK（JSON Web Key、RFC 7517）。入力 JWK の <code>kid</code> / <code>use</code> / <code
-          >alg</code
-        > は出力に保持されます
+        JWK（JSON Web Key、RFC 7517）。入力 JWK の <code>kid</code> / <code>use</code> /
+        <code>alg</code> は出力に保持されます
       </li>
     </ul>
     <h3 class="mb-2 mt-4 tool-info-heading">対応鍵種別</h3>
@@ -43,13 +42,12 @@ const tool = tools.find((t) => t.slug === 'key-converter')!;
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>
         PKCS#1 形式（RSA PUBLIC KEY / RSA PRIVATE KEY）・SEC1 形式（EC PRIVATE KEY）のレガシー PEM
-        は非対応。<code>openssl pkcs8 -topk8 -nocrypt</code>
-        でPKCS#8へ変換してください
+        は非対応。<code>openssl pkcs8 -topk8 -nocrypt</code> でPKCS#8へ変換してください
       </li>
       <li>
-        暗号化秘密鍵（ENCRYPTED PRIVATE KEY / パスフレーズ付き PEM）は非対応。<code
-          >openssl pkcs8 -in key.pem -nocrypt -out key_plain.pem</code
-        > で復号してから変換してください
+        暗号化秘密鍵（ENCRYPTED PRIVATE KEY / パスフレーズ付き
+        PEM）は非対応。<code>openssl pkcs8 -in key.pem -nocrypt -out key_plain.pem</code>
+        で復号してから変換してください
       </li>
       <li>Ed25519 / Ed448（EdDSA）は非対応</li>
       <li>秘密鍵からの公開鍵抽出は非対応</li>

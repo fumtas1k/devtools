@@ -4,8 +4,7 @@
 
 - 共通ルール化すべき内容は `.agents/rules/common.md` に昇格させ、本ファイルから削除する。
 - セッション開始時に必ず読む必要はない（PR 作成前や定期整理時に見直す）。
-- 詳細な運用ルールは `.agents/rules/common.md` 11 章（教訓の運用）を参照。
-- 「（規約昇格候補）」と注記した項目は、次回 `agent-lessons.md` の整理タイミングで `.agents/rules/common.md` への昇格 / issue 化 / 削除のいずれかを判断する。
+- 「（規約昇格候補）」の記載時に Issue で追跡する。詳細は [共通規約 11 章](../.agents/rules/common.md#11-教訓の運用-docsagent-lessonsmd) を参照。
 
 ---
 

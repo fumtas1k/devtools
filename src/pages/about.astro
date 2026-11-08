@@ -33,7 +33,8 @@ const jsonLd = {
       <h2 class="mb-3 font-bold section-heading text-default">設計方針</h2>
       <ul class="space-y-2 text-body">
         <li>
-          <strong>ブラウザ完結</strong> — すべての処理はブラウザ内で完結します。データは外部に送信されません。
+          <strong>ブラウザ完結</strong> —
+          すべての処理はブラウザ内で完結します。データは外部に送信されません。
         </li>
         <li><strong>依存最小化</strong> — ツールごとに必要な最小限のライブラリのみ使用します。</li>
         <li>
@@ -48,16 +49,12 @@ const jsonLd = {
     <section class="mb-10">
       <h2 class="mb-4 font-bold section-heading text-default">ツール一覧</h2>
       <ul class="space-y-2">
-        {
-          tools.map((tool) => (
-            <li>
-              <a href={`/tools/${tool.slug}`} class="text-link link-text">
-                {tool.name}
-              </a>
-              <span class="ml-2 caption text-muted">— {tool.description}</span>
-            </li>
-          ))
-        }
+        {tools.map((tool) => <li>
+          <a href={`/tools/${tool.slug}`} class="text-link link-text">
+            {tool.name}
+          </a>
+          <span class="ml-2 caption text-muted">— {tool.description}</span>
+        </li>)}
       </ul>
     </section>
 

@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import jsQR from 'jsqr';
 import { detectQrContent, decodeQrFromFile } from '@/utils/qr-reader';
+
+vi.mock('jsqr', () => ({ default: vi.fn() }));
 
 describe('detectQrContent', () => {
   describe('HTTP/HTTPS URL', () => {
@@ -220,5 +223,110 @@ describe('decodeQrFromFile — AbortSignal キャンセル', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       globalThis.Image = OrigImage as any;
     }
+  });
+});
+
+describe('decodeQrFromFile — 小画像の再試行', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.mocked(jsQR).mockReset();
+  });
+
+  function setupImage(width: number, height: number) {
+    class FakeImage {
+      width = width;
+      height = height;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      set src(_: string) {
+        Promise.resolve().then(() => this.onload?.());
+      }
+    }
+    vi.stubGlobal('Image', FakeImage);
+    URL.createObjectURL = vi.fn(() => 'blob:stub');
+    URL.revokeObjectURL = vi.fn();
+    const drawImage = vi.fn();
+    const getImageData = vi.fn((_x: number, _y: number, w: number, h: number) => ({
+      data: new Uint8ClampedArray(w * h * 4),
+      width: w,
+      height: h,
+    }));
+    const ctx = { drawImage, getImageData, imageSmoothingEnabled: false };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D
+    );
+    return { drawImage, getImageData, ctx };
+  }
+
+  const file = new File(['image'], 'test.png', { type: 'image/png' });
+  const found = { data: 'qr-data' } as NonNullable<ReturnType<typeof jsQR>>;
+
+  it('初回で読めた場合は追加描画・デコードをしない', async () => {
+    const { drawImage } = setupImage(160, 80);
+    vi.mocked(jsQR).mockReturnValue(found);
+    await expect(decodeQrFromFile(file, { maxDim: 1600 })).resolves.toEqual({
+      ok: true,
+      data: 'qr-data',
+    });
+    expect(drawImage).toHaveBeenCalledTimes(1);
+    expect(jsQR).toHaveBeenCalledTimes(1);
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  it('小画像の初回失敗後、上限内で縦横比を保ち拡大して一度だけ再試行する', async () => {
+    const { drawImage, getImageData, ctx } = setupImage(160, 80);
+    vi.mocked(jsQR).mockReturnValueOnce(null).mockReturnValueOnce(found);
+    await expect(decodeQrFromFile(file, { maxDim: 400.5 })).resolves.toEqual({
+      ok: true,
+      data: 'qr-data',
+    });
+    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(drawImage.mock.calls[1].slice(1)).toEqual([0, 0, 400, 200]);
+    expect(getImageData.mock.calls[1]).toEqual([0, 0, 400, 200]);
+    expect(ctx.imageSmoothingEnabled).toBe(true);
+    expect(jsQR).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [160, 80, 160],
+    [800, 400, 1600],
+  ])('拡大不要の %i×%i 画像は失敗しても再試行しない', async (width, height, maxDim) => {
+    const { drawImage } = setupImage(width, height);
+    vi.mocked(jsQR).mockReturnValue(null);
+    await expect(decodeQrFromFile(file, { maxDim })).resolves.toEqual({
+      ok: false,
+      reason: 'not-found',
+    });
+    expect(drawImage).toHaveBeenCalledTimes(1);
+    expect(jsQR).toHaveBeenCalledTimes(1);
+  });
+
+  it('再試行でも失敗した画像は not-found を返す', async () => {
+    const { getImageData } = setupImage(160, 160);
+    vi.mocked(jsQR).mockReturnValue(null);
+    await expect(decodeQrFromFile(file, { maxDim: 1600 })).resolves.toEqual({
+      ok: false,
+      reason: 'not-found',
+    });
+    expect(jsQR).toHaveBeenCalledTimes(2);
+    expect(getImageData.mock.calls[1]).toEqual([0, 0, 768, 768]);
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  it('再試行中にキャンセルされたら成功結果を返さず AbortError にする', async () => {
+    setupImage(160, 160);
+    const controller = new AbortController();
+    vi.mocked(jsQR)
+      .mockReturnValueOnce(null)
+      .mockImplementationOnce(() => {
+        controller.abort();
+        return found;
+      });
+    await expect(
+      decodeQrFromFile(file, { maxDim: 1600, signal: controller.signal })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(jsQR).toHaveBeenCalledTimes(2);
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 });

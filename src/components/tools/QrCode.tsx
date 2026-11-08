@@ -89,17 +89,19 @@ export function QrCodeGenerator() {
   return (
     <div className="space-y-6">
       {/* テキスト入力 */}
-      <InputField
-        id="qr-text"
-        label="テキスト / URL"
-        value={text}
-        onChange={setText}
-        placeholder="https://example.com"
-        multiline
-        rows={3}
-        resize
-        onSampleClick={() => setText('https://example.com')}
-      />
+      <div className="qr-text-input">
+        <InputField
+          id="qr-text"
+          label="テキスト / URL"
+          value={text}
+          onChange={setText}
+          placeholder="https://example.com"
+          multiline
+          rows={3}
+          resize
+          onSampleClick={() => setText('https://example.com')}
+        />
+      </div>
 
       {/* 誤り訂正レベル */}
       <div>

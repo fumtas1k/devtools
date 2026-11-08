@@ -1525,28 +1525,42 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 
 ### 決断
 
-1. **`gh api graphql*` deny パターンの word-boundary 補強**: 公式仕様上、`Bash(gh api graphql*)` は `gh api graphqlfoo` のような誤コマンドにも当たってしまう（`*` は word boundary を持たない）。`Bash(gh api graphql)` と `Bash(gh api graphql *)` の 2 本に分割し、同様に `Bash(gh api * graphql*)` も 2 本に分割することで誤マッチを排除した。
+1. **`gh api graphql*` deny パターンの絞り込み**: `Bash(gh api graphql*)` は `gh api graphqlfoo` にも一致する。`Bash(gh api graphql)` と `Bash(gh api graphql *)` に分割し、同様に `Bash(gh api * graphql*)` も分割して、その過剰一致を避けた。これは任意の呼び出し形式を網羅する境界ではない。
 
-2. **`npm install` 系 allow の統合**: `Bash(npm install)` / `Bash(npm install --save-dev *)` / `Bash(npm install --save *)` の 3 本を `Bash(npm install *)` 1 本に統合。glob の `*` は空文字列を含むため引数なし呼び出しもカバーする。`deny: Bash(npm install -g*)` が deny → ask → allow の順で先評価されるため、グローバルインストールの拒否は維持される。
+2. **当時の `npm install` 系 allow の統合**: `Bash(npm install)` / `Bash(npm install --save-dev *)` / `Bash(npm install --save *)` を `Bash(npm install *)` に統合した。一致した deny は allow に優先する。後続の設定変更により、現在は `Bash(npm install *)` は ask にある。
 
-3. **`curl` / `wget` 全体を ask へ移動**: 公式が「Bash パターンでの引数制約は脆弱（オプション挿入・空白・引用符でバイパス可能）」と明示警告しており、既存の `Bash(curl * | sh*)` 等のパイプ deny は `curl https://...|sh`（パイプ直前の空白省略）でバイパス可能。curl/wget 全体を ask にすることで一律確認を要求し、WebFetch ベースの運用に誘導する。既存パイプ deny は defense-in-depth として残置。
+3. **`curl` / `wget` の ask 追加**: 引数の文字列パターンには呼び出し形式による限界があるため、`Bash(curl*)` / `Bash(wget*)` を ask に追加し、既存のパイプ deny も残した。現在の公式仕様ではパイプを含む複合コマンドは分割評価されるため、空白省略だけでバイパスできるとは断定しない。ask もあらゆる呼び出し形式を保証するものではない。
 
 4. **`sandbox.network.allowedDomains` に `docs.anthropic.com` と `code.claude.com` を追加**: `permissions.allow` に `WebFetch(domain:docs.anthropic.com)` / `WebFetch(domain:code.claude.com)` は宣言済みだったが、sandbox の egress allowedDomains 側に未同期だった。Anthropic 公式ドキュメントは現在 `code.claude.com` が正典 URL。
 
-5. **`settings.local.json` の `Bash(gh api:*)` allow を削除**: グローバル `ask: Bash(gh api *)` をローカルで上書きしており、対称ポリシーの主旨（gh api 系は実行前に確認）に反する。
+5. **`settings.local.json` の `Bash(gh api:*)` allow を削除**: 当時はグローバルの `ask: Bash(gh api *)` を上書きすると判断して削除した。現在の[公式 settings](https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding) では permission 配列は各設定から統合され、[公式 permissions](https://code.claude.com/docs/en/permissions#manage-permissions) では一致する ask が allow より優先されるため、local allow だけで ask を上書きできない。当時の実効挙動は未検証。
 
 ### 却下した選択肢
 
 - **`curl*` / `wget*` 全体を deny にする**: 将来 curl を読み取り用に使うユースケース（例: API レスポンス確認）を排除しすぎるため、ask に留めた。
-- **PreToolUse hook による引数制約の強化**: glob では `gh api graphql`（空白の数・絶対パス経由）や `curl|sh`（リダイレクト・変数展開）の完全遮断ができない。hook 化で Gemini 側 `commandRegex` と同等の精度を確保できるが、実装・メンテコストとの兼ね合いから別 issue で判断する。
+- **任意の Bash 文字列を正規表現で検査する汎用 PreToolUse hook を完全な保護境界とする案**: [#927](https://github.com/fumtas1k/devtools/issues/927) で不採用とした。理由と限定的な補助用途の再評価条件は下記参照。
 
 ### 結果・トレードオフ
 
-- ✅ `gh api graphql` の deny パターンが意図通りの word-boundary で機能するようになった。
-- ✅ `npm install` 系の allow が 1 本に整理され、deny との連携が明確になった。
-- ✅ `curl` / `wget` が ask 化され、パイプ実行の glob 脆弱性が軽減された。
+- ✅ `gh api graphql` の deny パターンで `graphqlfoo` への過剰一致を避けた。
+- ✅ 当時の `npm install` 系 allow を整理した（現在は ask）。
+- ✅ `curl` / `wget` の ask パターンを追加した。
 - ✅ sandbox の egress ドメインと WebFetch 許可ドメインが一致した。
-- ⚠️ `gh api graphql` のバイパス（空白2個、絶対パス経由 `/usr/bin/gh`）は glob 制約のため残存。完全対策は hook 化が必要。
+- ⚠️ Bash の文字列ルールは異なる呼び出し形式すべてを対象とせず、完全な保護境界ではない。
+
+### 2026-11-08 追記: Bash 引数検査の採用判断（#927）
+
+[公式 permissions](https://code.claude.com/docs/en/permissions) は `&&` / `|` 等の複合コマンドを分割し、確認なしの実行には全サブコマンドの許可が必要で、いずれかに一致する ask / deny を適用すると説明する。一方、絶対パスなど別形式で起動した同じプログラムには文字列ルールが一致しない場合があり、規則だけではプログラムの保護境界にならない。[公式 hooks](https://code.claude.com/docs/en/hooks) の PreToolUse は入力を検査して allow / deny / ask 等を返せるが、その機能自体は検査の完全性を保証しない。
+
+任意のシェル文字列から、ダウンロード URL やリダイレクト、変数展開、別プロセス、実行ファイルの解決先まで正規表現だけで意味を判定することはできない。GraphQL の query やファイル入力も同様で、[gh api 公式資料](https://cli.github.com/manual/gh_api) は `--input` や `-F` の `@file` による外部入力を説明する。形式やツールの変化に追随する検査と検証の保守コストも大きく、汎用 regex hook を完全な保護境界として採用しない。特定形式の検知を補助する限定 hook も、対象構文・許容する漏れや誤検知・検証条件が未確定で、保守負担に見合う追加効果を示せないため今回は採用せず、現行設定を維持する。対象・漏れ・誤検知・失敗時の動作と検証条件を定め、承認と検証を得られる場合に再評価するが、現時点で実装予定はない。
+
+静的確認では、現行 `.claude/settings.json` に `gh api` / `curl` / `wget` の ask と GraphQL / パイプ等の deny があり、sandbox は有効、`autoAllowBashIfSandboxed` は `true`、これらのコマンドは `excludedCommands` に含まれる。PreToolUse の matcher は `Edit|Write|MultiEdit` のみで、Bash hook はない。[公式 sandbox 資料](https://code.claude.com/docs/en/sandboxing) は sandbox 内のファイル・ネットワーク制限と、除外コマンドが sandbox 外で動くことを説明する。設定の静的確認は有効な最終設定や実行結果の確認ではない。
+
+公式資料の確認日: 2026-11-08。この環境には Claude Code 実行ファイルがなく、現在の空白・絶対パス・パイプ等の具体的な回避挙動や安全性は実機検証していない。statusline のリダイレクト保護は #125、PR / Issue 本文の扱いは #230 の別範囲とする。
+
+### 2026-11-07 追記: force push の扱い（#126）
+
+現状維持の A 案として、Claude の `Bash(git push --force*)` deny を維持する。`git push --force-with-lease` もこの glob の対象であり、lease は remote ref を確認するが強制更新であることは変わらない。ask の追加や例外 hook は導入しない。人が直接行う git 操作はエージェント設定の対象外。
 
 ---
 
@@ -1585,6 +1599,7 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 - ✅ `gh *` の sandbox 外実行が macOS sandbox-exec による **TLS 証明書ストアアクセスの制限** という技術的制約に起因することが実機検証で確定し（`x509: OSStatus -26276`）、permissions による deny / ask が唯一の防御線である旨が確定した。
 - ✅ `ai.google.dev` の意図（ドキュメントサイト、API エンドポイントではない）が明示され、将来のドリフトが防止される。
 - ⚠️ Claude 側 Bash メタ防御は glob 近似であり、`rm -rf .claude/foo/bar` のように深いパスや複雑なコマンドは完全にはカバーできない。Gemini 側 regex との精度差は残存。
+- ⚠️ `rm` / `sed` / `tee` の ask glob は、`> .claude/...` / `>> .claude/...` によるリダイレクト書き換えを対象とする保護ではなく、それだけで安全性を保証できない。繰り返し実行される `statusline-command.sh` が改変されると、継続的なコード実行経路になり得る（#125）。このリダイレクトを検知する Bash PreToolUse hook は未実装で、導入する場合は別途承認と検証が必要。
 
 ---
 
@@ -1985,10 +2000,13 @@ exit 1 で `[WARN] file:line: 該当行` を出力し、issue 番号併記がな
 - PR #197（起票忘れ事例: force-with-lease push 運用ルール）
 - PR #198（起票忘れ事例: permissions precedence 実機確認）
 - `.agents/rules/common.md` 6.4 章「先送り時は issue 化必須」
+- [check-followup-refs.sh の使い方](../scripts/README.md#check-followup-refssh)（#202 E）
 
 ---
 
 ## [059] 2026-05-02 — Web セッション向けプラグイン運用：marketplace 宣言のみ採用、自動 install と `.mcp.json` は実証で却下し手動 install + harness 待ちに確定
+
+> **現行更新（2026-11-08）**: 以下は当時の観測と判断の記録。SessionStart hook は後に再導入され（[106]）、その後も反映されない事例があった（[108]）。現在の手順・cloud とローカルの区別は [プラグインガイド](setup/plugins.md) を参照。403 は当時の環境の観測であり、現在の全 cloud 環境への保証ではない。実機再確認は #205 / #206 で追跡する。
 
 **ステータス: 採用（A 案（hook 自動 install）/ `.mcp.json` 二重宣言は実証で却下、C 案（手動 install + upstream issue 追従）に確定。context7 Web 403 は harness 側 egress allowlist 対応待ち）**
 
@@ -2055,8 +2073,8 @@ PR #204 で最終的に採用する変更は以下の **1 点のみ** に絞る�
 
 ### 後続タスク
 
-- harness 側の `context7.com` / `mcp.context7.com` egress allowlist 追加が確認できたら Web で context7 を再検証する → issue #205 で追跡。
-- upstream issue #23737 / #17832 / #19275 の進捗を監視し、`autoInstallEnabledPlugins` / Skill 動的 reload 等が ship されたら本決定を更新（手動 install 手順を撤去）→ issue #206 で追跡。
+- cloud での context7 疎通を再検証する → issue #205 で追跡。
+- 現行の fresh / resume セッションで plugin 登録、Skill の reload、MCP 疎通を実機確認する → issue #206 で追跡。
 
 ### 関連 PR / issue
 
@@ -2920,7 +2938,7 @@ trade-off:
 - ✅ pros: IDN / cashtag / mention 等の周辺仕様を含む完全互換、メンテナンスは Twitter 側
 - ❌ cons: bundle 増 (1MB 超の正規表現テーブル含む)、依存追加の保守コスト、本ツールはブラウザ完結型で軽量重視
 
-→ devtools プロジェクトは「依存最小化 + 軽量」が core value のため自前 regex 採用。完全互換が必要になった時点で別 issue で再検討。
+→ devtools プロジェクトは「依存最小化 + 軽量」が core value のため自前 regex 採用。完全互換が必要になった時点で別 issue で再検討。#378 は URL の括弧等への対応に限り、現在も完全互換は未採用。
 
 ### 不採用案: 「概算」ラベル維持 + 簡易ロジックのまま
 
@@ -2935,7 +2953,7 @@ trade-off:
 
 - 一致率 ~95% (typical http(s) URL はカバー、t.co の正規化や IDN ドメインは非対応)
 - バンドルサイズ増 ~0 KB (依存追加なし、関数 30 行程度)
-- twitter-text の `extractUrls()` 完全互換が必要になった場合は別 issue で再検討
+- twitter-text の `extractUrls()` 完全互換が必要になった場合は別 issue で再検討。#378 は URL の括弧等への対応に限り、現在も完全互換は未採用
 
 ### 既知制約
 
@@ -3169,7 +3187,7 @@ PR #450 (`height` オプション削除) と PR #453 (`shape-rendering="crispEdg
 - ✅ PR #450 の GS1 仕様誤読がコード comment 上から除去され、将来「~1X×1X」を根拠にした逆走 fix を防げる
 - ✅ non-composite (`databarlimited` 単独) は従来通りの symbol 幅を維持。VRT baseline 差分は composite 経路に限定される
 - ⚠️ composite シンボル (`databarlimitedcomposite`) の SVG / PNG 全幅は 60 svg-px 拡張される → composite ケースの VRT baseline 差分が発生する可能性がある。CLAUDE.md 6.8 に従い数値根拠で baseline 更新を recommend せず、user 目視確認後に CI `workflow_dispatch` で更新
-- ⚠️ 実機スキャナで decode 改善するかは user 検証次第。改善しない場合は `paddingheight: 2` (CC 上下 2X 追加) / `rowmult: 1` (spec 違反だが scanner 寛容性に賭ける) を段階的に試す別 issue を起票する
+- ⚠️ 実機スキャナで decode 改善するかは user 検証次第。改善しない場合は `paddingheight: 2` (CC 上下 2X 追加) / `rowmult: 1` (spec 違反だが scanner 寛容性に賭ける) を段階的に試す別 issue を起票する。後続の PR #458 / [082] で Canvas の透明背景が真因と判明し、白背景化による実機 decode を確認。`paddingheight` 試行は撤回し、`rowmult` 変更は未採用
 
 ### 関連
 
@@ -4001,7 +4019,7 @@ Node v22 で各純粋関数の CPU 時間（中央値）と `structuredClone` �
 
 - ✅ 空振り実装（複雑な Worker 通信基盤）を回避。measure-first の本来の使い方で対象を数値で除外できた。
 - ✅ ベンチは `.bench.ts` で `npm run test` の include glob（`*.test.{ts,tsx}`）外。CI を汚染しない。実行は `npx vitest bench src/utils/json-formatter/__tests__/offload.bench.ts`。
-- ⚠️ 超大入力（~15MB+）を将来サポートする場合は、本ベンチの数値を起点に「parse+format を Worker 内完結・文字列返し」の狭い設計から再検討する（別 issue/サイクル）。
+- ⚠️ 超大入力（~15MB+）を将来サポートする場合は、本ベンチの数値を起点に「parse+format を Worker 内完結・文字列返し」の狭い設計から再検討する（別 issue/サイクル）。#512 / PR #624 の最終判断は measure-first no-go であり、ベンチとレポートを残して Worker 採用は需要・要件化まで見送り。
 - ⚠️ ブラウザ実測は実 `parseJson`(jsonc-parser) でなく native `JSON.parse`/`stringify` を代理に使ったため、実パスの long task 有無は厳密には未検証。ただし同一 V8 エンジンの Node 実関数値で像は確定しており、結論は変わらない。
 
 ## [105] 2026-06-11 — json-formatter getNodeValue の遅延評価は見送り（#512 残スコープ③・measure-first no-go）
@@ -4033,6 +4051,8 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 - ⚠️ `makeTree` は thunk で遅延化済みなのに `value` だけ eager という非対称は残る。整合性のための thunk 化（~15 行）は安価だが、数値上の便益がノイズレベルのため YAGNI で見送り。将来 `processJson` 周りを触る機会があれば ride-along で揃えてよい。
 
 ## [106] 2026-06-11 — Web セッションの enabledPlugins 自動 install を SessionStart hook で再導入
+
+> **現行更新（2026-11-08）**: 以下の成功は Claude Code 2.1.173 での当時の実測で、現在や次回セッションの成功を保証しない。その後も install が反映されないケースがあった（[108]）。公式資料は cloud で repo の plugin 宣言をロードしないと説明している。実際のフック条件、reload の範囲、未検証事項は [プラグインガイド](setup/plugins.md) を参照し、実機確認は #206 で追跡する。fake `claude` を使う meta テストはフックの分岐を検証するもので、本物の install やロードの証明ではない。
 
 **2026-06-11 | ステータス: 採用**
 
@@ -4083,7 +4103,7 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 
 - **ML 検出（言語モデルやベクトル類似度）**: ブラウザ完結・外部送信なし・依存ライブラリなしの制約と相容れないため却下。
 - **json-formatter/mask.ts との統合**: 既存ツールの挙動変更リスクが高く、2 つのユースケースで異なる API が必要（MaskOptions vs ScrubOptions）。S2-3 実装タイミングで改めて判断。
-- **File System Access API でのフォルダ走査**: C2-16 として別 PR スコープ。
+- **File System Access API でのフォルダ走査**: C2-16 として別 PR スコープ。PR #631 の採用範囲は貼り付けテキストの scrubber で、C2-16 は現在も `docs/tool-candidates.md` の未採用候補。
 
 ### 結果・トレードオフ
 
@@ -4093,6 +4113,8 @@ Node v22、ウォームアップ後 10 回中央値。判定基準は [104] と�
 - ⚠️ IPv6・プロバイダ固有の非標準形式は対象外（docs/tools.md 制限事項に記載）。
 
 ## [108] 2026-06-12 — superpowers をプラグイン運用から `npx skills add` vendor 方式へ移行
+
+> **現行更新（2026-11-08）**: [106] の hook は残っているが、現在の install やロードの成功は未検証。現行運用は [プラグインガイド](setup/plugins.md) を参照。
 
 **2026-06-12 | ステータス: 採用**
 
@@ -4286,7 +4308,7 @@ cert-decoder v1（decision [111]）では PKCS#12 をスコープ外としてい
 
 ### 決断
 
-- **ルールを `react/button-has-type` 1 本に限定**: recommended ルールセットは有効化しない。最小 blast radius で受け入れ基準を満たし、既存コードの大量違反リスクを排除する（将来のルール追加は別 issue）。
+- **ルールを `react/button-has-type` 1 本に限定**: recommended ルールセットは有効化しない。最小 blast radius で受け入れ基準を満たし、既存コードの大量違反リスクを排除する（将来のルール追加は別 issue）。#569 の最終採用と現行設定はこのルールのみで、追加 lint は採用範囲外。
 - **依存最小化**: `eslint`（^9） + `@typescript-eslint/parser`（^8, .tsx パース用） + `eslint-plugin-react`（^7）のみ。typescript-eslint の recommended プラグインは入れない。
 - **バージョン固定**: eslint-plugin-react@7.37.5 の peer が `eslint ^9.7` までのため eslint は `^9` 系に固定（eslint 10 は peer conflict）。
 - **`.astro` は対象外**: HTML button は全件 type 付与済み（#566 等）で、`react/button-has-type` は JSX 専用。astro 用 parser/plugin の追加は YAGNI。
@@ -4297,7 +4319,7 @@ cert-decoder v1（decision [111]）では PKCS#12 をスコープ外としてい
 
 - ✅ button type 漏れを CI で恒久的に機械検出。陽性対照で検知能力を継続検証。
 - ✅ ルール 1 本限定で導入時の既存違反・レビュー負荷が最小。
-- ⚠️ 他の lint 観点（hooks 依存配列・未使用変数等）は未カバー。必要になれば別 issue で recommended 化を検討する。
+- ⚠️ 他の lint 観点（hooks 依存配列・未使用変数等）は未カバー。必要になれば別 issue で recommended 化を検討する。#569 の最終採用と現行設定は `react/button-has-type` のみで、追加 lint は採用範囲外。
 
 ## [116] HARビューア: 新規ライブラリ不採用・secret-scrubber 再利用・ウォーターフォール分離
 
@@ -4358,6 +4380,22 @@ issue の root-cause 表は「白画面の主因は DOM ノード爆発（`HarEn
 **`MAX_BYTES` は 25MB を維持（メモリ防御ガード）**
 読み込み時のフリーズは Worker 化で解消したため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。実測（~6MB/5000 エントリで sanitize 約 2.6s、~18MB/10000 エントリで約 17s）では大きな HAR ほど時間がかかるが、worker 上のためメインスレッドは固まらず進捗バーで状況が分かる。
 
+**レスポンス本文の限定再利用（#928）**
+Worker は現在の不変な HAR の `response.content.text` の走査結果と採用件数だけを entry index で再利用する。構造的 redact や request body は毎回処理し、本文以外の設定による採番順と件数を維持する。未検出情報を含みうる出力は機密相当として Worker 内のみで保持し、load 開始・reset・例外・BODY_SCAN OFF で参照を破棄する。最初の保存から30秒の固定期限を設け、timer と lookup 時の単調時計で期限を検査する。timer は同期処理中に遅れ、参照破棄後の GC・メモリ消去の即時実行は保証されない。
+
+保持予算は出力文字列の UTF-16 推計（2 bytes/文字）と entry 当たり64 bytes の固定予算を合計して16 MiB、さらに entry 数は厳密に4096件までとする。これは実 heap の厳密な上限ではない。出力膨張を含めて超過すれば世代全体を破棄し通常走査に戻す。原文の長さだけで予算を超える場合は保存を試みない。この事前判定は base64・バイナリ等の走査対象外本文も数える保守的なため、実際の保存可能量より早く再利用を諦める場合がある。Worker に届いた不正 load も破棄するが、UI が送信前に拒否したファイルでは既存結果が維持される。
+
+本番 build の Chromium Worker で架空 HAR を使用し、同一ブラウザで旧版 e85e5119 と新版を AB/BA 交互に各5回、load 完了と AUTH_HEADER 切替完了を測定した（中央値、ms）。本文は通常テキスト＋架空 password、各行の容量は本文サイズ。Worker 往復と結果の複製を含む。切替時にも測定器が text を同送するため、実 UI にはない入力の複製を含む。
+
+| 件数 × 本文            |  load 旧 → 新 |  切替 旧 → 新 |
+| ---------------------- | ------------: | ------------: |
+| 200 × 2 KiB            |   32.6 → 33.8 |    21.0 → 2.4 |
+| 2 × 2 MiB              | 168.4 → 179.2 |  174.6 → 21.9 |
+| 2 × 4 MiB（予算超過）  | 340.7 → 349.0 | 330.9 → 319.3 |
+| 1 × 12 MiB（予算超過） | 491.5 → 502.7 | 495.9 → 474.4 |
+
+別の UI 経路測定では同じ4条件の切替5回中央値は旧 41.9 / 189.9 / 341.6 / 561.0 ms、新 22.6 / 37.3 / 422.0 / 487.6 ms。UI は描画を含み、計測順・JIT・GC の影響があるため一般化できない。別ファイルの load と切替5回を含む各 Worker 出力の HAR 全体と全 counts の JSON の SHA-256 は旧版と一致した。少数回測定であり、境界超過時の UI 時間にはばらつきが残る。
+
 ### 実装上の注意
 
 - `sanitize.ts` は worker の依存グラフに含まれるため `@/` ではなく**相対 import** を使う。Vite の worker Rollup サブビルドには tsconfig paths / `@/` エイリアスが伝播せず、`@/utils/...` 形式だと worker ビルドが解決に失敗する（build5 で確認）。`secret-scrubber/*` は内部が相対 import のため、`sanitize.ts` の 2 行を相対化するだけで worker グラフ全体が alias-free になる。
@@ -4378,10 +4416,10 @@ issue の root-cause 表（「DOM 描画が最有力」）は**実プロファ�
 - ✅ 読み込み時の「ページが応答しません」を解消（sanitize がメインスレッドを固めない）。
 - ✅ 大きな HAR でも進捗バーで処理状況が見える。
 - ✅ `JSON.stringify` が copy/DL 時のみ実行され、毎レンダリングの数 MB 直列化を排除。
-- ⚠️ 差分 sanitize（トグル時に変更カテゴリのみ再処理）は未対応。大きな HAR ではトグルのたびに全件再 sanitize するが、worker 上のため UI は固まらない（進捗表示）。将来課題。
+- ⚠️ 本文以外の差分 sanitize は未対応。予算超過や期限切れでもレスポンス本文を再走査する。
 - ⚠️ worker 化で parse/sanitize は非同期になり、結果反映前に短時間ローディング状態を経由する（E2E は `toBeVisible` の auto-retry で吸収）。
 - ⚠️ 全件描画のため、数千エントリ級の巨大 HAR では DOM 行数が多くなる（固まりはしないが描画が重くなりうる）。その規模が問題になれば仮想スクロール等を別途検討する。
-- ⚠️ 進捗バーの粒度はエントリ件数基準（`PROGRESS_INTERVAL = 100`）。実ボトルネックである「少数エントリ × 巨大レスポンスボディの正規表現スキャン」では 1 ボディの scan 中は進捗が進まず、数百件規模だとバーがほとんど動かないことがある（固着ではない）。バイト基準の進捗化は将来課題。
+- ⚠️ 進捗バーの粒度はエントリ件数基準（`PROGRESS_INTERVAL = 100`）。実ボトルネックである「少数エントリ × 巨大レスポンスボディの正規表現スキャン」では 1 ボディの scan 中は進捗が進まず、数百件規模だとバーがほとんど動かないことがある（固着ではない）。バイト基準の進捗化は将来課題。Worker 化は #677 / PR #680 で実施済みで、この最適化の計測・採用判断は #928 で追跡。
 - 堅牢性: worker の `onmessage` を try/catch で包み、`useHarSanitizer` に `worker.onerror` を設定。プロトコル外の例外でも `error` 状態に落とし、`busy` が永久 true で固着するのを防ぐ（PR #680 レビュー反映）。`reset()` は worker に `{ type: 'reset' }` を post して保持中 HAR（最大 25MB）を解放する。
 
 ## [118] HAR サニタイザ: サニタイズ監査由来の堅牢化（漏れ修正・ReDoS 解消・カバレッジ拡張）
@@ -5788,3 +5826,87 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 
 - ✅ 新しい画面で何も指定しなければ、他の画面と同じ 36px になる。大きくするのは入力欄と並ぶときだけで、指定する理由が明確になる
 - ⚠️ `ActionButton` と `FileInputButton` を使う多くの画面で、ボタンが 48px から 36px になる。VRT の差分は目視確認のうえ baseline を更新する
+
+## [169] JSON 整形・ビューアのスマホ操作
+
+48rem 未満では整形・最小化と表示形式を常に表示し、インデントと JMESPath を初期状態で閉じた詳細設定にまとめる。閉じても設定値を保持し、クエリ適用中やエラーを示す。入力と結果は縦並びのまま、各パネル先頭の操作から移動先にフォーカスしてスクロールする。48rem 以上では従来の操作配置と左右ペインを維持し、同じ入力と状態を画面幅で共有する。
+
+両画面で視覚順と Tab 順をそろえるため、インデントのトグルのみ PC 用とスマホ用を描画し、単一の状態を共有して CSS で片方を非表示にする。クエリ入力は一つに保つ。
+
+## [170] ツールメニュー内の検索
+
+長い一覧から別のツールへ移りやすくするため、PC のサイドバーとスマホのドロワーに検索を設ける。[086] の正規化・検索対象・複数語 AND を共有し、各メニューの入力状態は独立させる。ドロワーの開閉では検索語を保持し、検索欄での Escape はブラウザの入力クリアより先にドロワーを閉じる。ホームのカテゴリ表示や JSON の操作は変更せず、VRT baseline は更新しない。
+
+## [171] ホームのスマホカテゴリを折り返す
+
+狭い画面で後続のカテゴリが隠れないよう、ホームのタブを 48rem 未満で折り返す。48rem 以上の一列表示と既存のタブ・パネル同期、検索、共通タブの既定は維持する。
+
+## [172] 対応ブラウザと新しい CSS / HTML 機能の採用方針
+
+**2026-11-08 | ステータス: 採用 | 関連: [#894](https://github.com/fumtas1k/devtools/issues/894) | 本 PR: [#937](https://github.com/fumtas1k/devtools/pull/937)**
+
+### 背景・決断
+
+新しい CSS / HTML 機能で実装を改善する際に、対象ブラウザと fallback の要否を判断できるようにする。方針の正本は [SPEC 10.3](../SPEC.md#103-ブラウザサポート) とする。
+
+必須動作は Baseline Widely available を基本とし、それより新しい機能も未対応時に従来の操作・表示・アクセシビリティ・CSP を維持する fallback があれば採用できる。対象は Chrome / Edge / Firefox / Safari、Android Chrome / Firefox、iOS Safari の最新安定版と実際のリリース順で直前のメジャー版とする。上記以外の旧版と OS の WebView は正式対象外とする。
+
+Baseline の Widely available は主要ブラウザで対応してから 30 か月を経た目安であり、対象の全ブラウザや支援技術の保証ではない。機能名だけでなく実際に使う構文・値の互換性を確認し、対応時と fallback 時の両経路で操作・表示・アクセシビリティ・CSP を検証する。`@supports` の判定だけで操作やアクセシビリティの同等性を証明したとはしない。
+
+### 選択理由と検証範囲
+
+Widely available のみを採用する案は判断が単純だが、新機能による改善を待つ必要がある。新しい機能を fallback なしで必須動作に使う案は、対象版で操作を失う可能性がある。両経路を検証する負担を受け入れ、互換性を維持しながら段階的な改善を可能にする。
+
+現在の Playwright / CI は Desktop Chrome プリセットの Chromium 中心で、モバイルの viewport 確認も同じエンジンを使う。この決定は既存全機能の互換性監査や Firefox / Safari・実機モバイルでの検証完了を示すものではない。
+
+出典: [MDN Baseline の定義](https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility)、[Tailwind CSS のブラウザ対応](https://tailwindcss.com/docs/compatibility#browser-support)。Tailwind の下限だけではアプリ固有の機能の互換性は判断できない。
+
+## [173] Astro formatter の空白設定をビルド設定にそろえる
+
+**2026-11-08 | ステータス: 採用 | 関連: Refs #774**
+
+prettier-plugin-astro 1 系は Astro 7 のコンパイラに合わせて空白を扱うため、`astroCompressHTML: 'html'` をトップレベルに指定し、Markdown 内の Astro コードにも適用する。これはビルドの `compressHTML: true` と同じ設定であり、1 系の既定値 `'jsx'` を使うと空白の扱いが一致しない。既存のテキストや表示を保ち、formatter の更新に伴う整形だけを行う。
+
+出典: [prettier-plugin-astro 1.0.0 リリースノート](https://github.com/withastro/prettier-plugin-astro/releases/tag/v1.0.0)、[設定の説明](https://github.com/withastro/prettier-plugin-astro#astro-compress-html)。
+
+## [174] Codex hook の trust 境界
+
+**2026-11-08 | ステータス: 設計採用・設定適用未実施 | 関連: [#544](https://github.com/fumtas1k/devtools/issues/544)**
+
+### 背景と根拠
+
+現在の `.codex/hooks.json` は `bash` と相対パスで、SessionStart に `session-install.sh`、PreToolUse に `block-direct-git-add.sh` / `test-edit-context.sh` を登録する。`.codex/config.toml` は `hooks = true`、`on-request`、`workspace-write`、`network_access = false`、`writable_roots = ["/tmp/codex"]` である。
+
+[公式仕様](https://learn.chatgpt.com/docs/hooks)では非 managed hook の正確な定義の hash に trust を記録し、変更された hook はレビューまで skip する。`/hooks` で確認・レビューでき、managed hook はポリシーで trust される。CI 固定版 codex-cli 0.164.0 の commit `6aaac694803004a63c6f393d153c96d22521a6b9` では、[hook_hash](https://github.com/openai/codex/blob/6aaac694803004a63c6f393d153c96d22521a6b9/codex-rs/hooks/src/engine/discovery.rs#L868) は設定から正規化した識別情報を使う。通常の project layer は [plugin content hash を持たない](https://github.com/openai/codex/blob/6aaac694803004a63c6f393d153c96d22521a6b9/codex-rs/hooks/src/engine/discovery.rs#L157)。手元の 0.163.0 の固定版 commit `83086188ae0614bd882818ff1aa23f3194962012` でも [hook_hash](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/hooks/src/engine/discovery.rs#L767) は参照 script を読まない。定義の trust は script の bytes を固定せず、script だけの変更で再確認される保証はない。公式仕様と 0.164.0 実装の plugin bundle 内 script の変更検知は plugin 固有であり、repo の script には一般化しない。
+
+両固定版の command runner（[0.164.0](https://github.com/openai/codex/blob/6aaac694803004a63c6f393d153c96d22521a6b9/codex-rs/hooks/src/engine/command_runner.rs#L209)、[0.163.0](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/hooks/src/engine/command_runner.rs#L198)）は command を直接 spawn するため、通常の tool 承認・execpolicy・sandbox が再利用されると期待しない。外側の OS / Cloud 境界は別である。これは公式仕様と両固定版実装の静的確認であり、再 trust 操作や実 hook の E2E 実行は行っていない。
+
+### 決断と移行条件
+
+solo 開発では、user 側の hook 設定から repo 外に置いたレビュー済み固定版コードを絶対パスで呼ぶ移行設計を採用する。定義だけ user 側に移して repo の script を呼んでも解決しない。user hook は未信頼 project でも読み込まれるため、固定版コードは repo 外の信頼できる明示許可リストで対象 repo / worktree を識別し、未知・対象外の cwd、未信頼 repo、未許可 worktree では処理せず終了する。repo の入力で許可リストを自動登録・更新しない。実行コード、`source` や間接呼出し先などの補助コード、更新経路、承認状態を repo の変更や当該セッションの書換えから保護し、更新時は commit と digest を明示的に確認する。user ディレクトリでもこれらがセッションから書換え可能なら完全な境界にはならない。組織の配布・権限管理がある場合は managed 配布も代替となる。外部コードの配置・更新には運用と配布の負担が生じる。
+
+公式仕様では user / project の hook は置換されず加算されるため、元の 3 登録を残せば重複し、repo の hook も実行される。実移行には `.codex/hooks.json` の登録の移設・削除、各 user 設定と外部コードの配置、および必要な権限・書込範囲の承認が必要である。対象パスの決め方（実パス・symlink 等）と許可リストの保護も移行時の承認事項とする。hook や権限の変更は禁止されているため今回は適用せず、未適用作業は #544 で追跡する。移行時には、許可対象内で各 hook が意図どおり 1 回実行され、対象外・未信頼 repo・未許可 worktree では `npm ci` や git add 制約等の副作用が発生しないこと、および保護・更新手順を検証する。
+
+### 比較と当面の運用
+
+- repo 内 wrapper と repo 内 checksum: 検証器と期待値を同時に変更できるため trust の境界にならない。
+- hook command 内に literal digest を含める案: 定義更新が再 trust の契機になるが、別ファイルの期待値だけでは足りない。検証器・期待値・推移的コードの保護と、検証後に同じ内容を実行する仕組み（TOCTOU 対策）が必要なため今回は採用しない。
+- 別の matching hook に checksum を検査させる案: 公式仕様では同じイベントの複数 matching command hook は並行起動されるため、危険な hook の起動を防げない。
+
+当面は初回だけでなく取得・ブランチ更新後も、既承認の SessionStart が発火する起動・再開より前に、人が hook 定義、script 本体、推移的な実行入力を確認する。起動後に Codex にレビューを依頼しても発火後になりうる。これは運用上の緩和であり、自動変更検知・再承認・改ざん防止を実装したものではない。また、`npm ci` が読む repo の入力や npm 設定・依存、interpreter / PATH まで安全になる保証ではない。
+
+## [175] typescript-estree の minimatch を一時的に固定する
+
+**2026-11-08 | ステータス: 採用 | 関連: [#879](https://github.com/fumtas1k/devtools/issues/879)**
+
+`@typescript-eslint/typescript-estree@8.70.0` 直下の minimatch を 11.0.3 に限定して override する。現行の親依存は修正版を選べず、[上流の更新 PR](https://github.com/typescript-eslint/typescript-eslint/pull/13145) も未マージである。直接の呼出しは保持された `minimatch` 関数を使い、実行環境の Node 要件も満たす。メジャー更新による互換性は projectService の利用経路で確認する。
+
+現在の ESLint 設定は projectService を使わず、呼出しの既定の optimization level は advisory の対象条件に入らない。ただし、経路の非到達と lockfile 上の対象版が存在することは別であり、後者に対応するため修正版を固定する。上流の正式リリースが修正版を採用し、公開から 7 日を経て互換性を確認できたら、この override を削除する。
+
+## [176] QRコード入力欄の内容に応じた高さ
+
+**2026-11-08 | ステータス: 採用 | 関連: [#891](https://github.com/fumtas1k/devtools/issues/891)**
+
+長文の内容を確認しやすくするため、QRコード生成の入力欄に限り `@supports` 内で `field-sizing: content` を使う。3 行相当を下限とし、画面を占有しすぎないよう 20rem を上限に欄内スクロールへ移る。共通入力部品の既定は変えず、未対応時は従来の 3 行の固定高・スクロール・手動リサイズを維持する。Chromium では手動リサイズ後にネイティブの指定高さが維持され、自動伸縮は止まる。
+
+PC・スマホ幅は Chromium で確認した。未対応経路は CSS の `@supports` 条件を偽にして確認しており、未対応エンジンとモバイル実機での検証ではない。仕様と挙動の参考: [CSS Forms Module](https://drafts.csswg.org/css-forms-1/#field-sizing)、[Chrome Developers](https://developer.chrome.com/docs/modern-web-guidance/guides/forms/form-fields-automatically-fit-contents)。

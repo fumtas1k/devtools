@@ -3,12 +3,15 @@
   "overrides": [
     {
       "files": "*.astro",
-      "options": { "parser": "astro" }
+      "options": {
+        "parser": "astro"
+      }
     }
   ],
   "printWidth": 100,
   "singleQuote": true,
   "semi": true,
   "tabWidth": 2,
-  "trailingComma": "es5"
+  "trailingComma": "es5",
+  "astroCompressHTML": "html"
 }

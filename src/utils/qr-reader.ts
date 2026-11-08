@@ -71,7 +71,7 @@ export async function decodeQrFromFile(
         return;
       }
 
-      const found = jsQR(imageData.data, imageData.width, imageData.height);
+      let found = jsQR(imageData.data, imageData.width, imageData.height);
 
       // jsQR 呼び出し後にキャンセルを確認
       if (opts.signal?.aborted) {
@@ -79,11 +79,43 @@ export async function decodeQrFromFile(
         return;
       }
 
-      if (!found) {
-        resolve({ ok: false, reason: 'not-found' });
+      if (found) {
+        resolve({ ok: true, data: found.data });
         return;
       }
-      resolve({ ok: true, data: found.data });
+
+      // 小画像は一度だけ平滑化して拡大し、読取を再試行する。
+      const originalMax = Math.max(img.width, img.height);
+      const target = Math.floor(Math.min(768, opts.maxDim));
+      if (originalMax < 768 && target > originalMax) {
+        const retryScale = target / originalMax;
+        const retryWidth = Math.round(img.width * retryScale);
+        const retryHeight = Math.round(img.height * retryScale);
+        canvas.width = retryWidth;
+        canvas.height = retryHeight;
+        ctx.imageSmoothingEnabled = true;
+        if (opts.signal?.aborted) {
+          reject(new DOMException('Aborted', 'AbortError'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, retryWidth, retryHeight);
+        if (opts.signal?.aborted) {
+          reject(new DOMException('Aborted', 'AbortError'));
+          return;
+        }
+        const retryData = ctx.getImageData(0, 0, retryWidth, retryHeight);
+        if (opts.signal?.aborted) {
+          reject(new DOMException('Aborted', 'AbortError'));
+          return;
+        }
+        found = jsQR(retryData.data, retryData.width, retryData.height);
+        if (opts.signal?.aborted) {
+          reject(new DOMException('Aborted', 'AbortError'));
+          return;
+        }
+      }
+
+      resolve(found ? { ok: true, data: found.data } : { ok: false, reason: 'not-found' });
     };
 
     img.onerror = () => {

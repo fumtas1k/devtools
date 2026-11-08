@@ -93,14 +93,15 @@ const jsonLd = {
           aria-live="polite"
           class="mt-2 caption text-muted"
           hidden
-        >
-        </p>
+        ></p>
       </div>
 
       <!-- 検索結果（横断絞り込み） -->
       <div id="search-results" hidden>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tools.map((tool) => <ToolCard tool={tool} />)}
+          {tools.map((tool) => (
+            <ToolCard tool={tool} />
+          ))}
         </div>
       </div>
 
@@ -109,7 +110,7 @@ const jsonLd = {
         id="tab-bar"
         role="tablist"
         aria-label="カテゴリ絞り込み"
-        class="mb-6 flex gap-1 border-b border-hero overflow-x-auto"
+        class="mb-6 flex flex-wrap gap-1 border-b border-hero overflow-visible md:flex-nowrap md:overflow-x-auto"
       >
         <button
           type="button"
@@ -122,43 +123,35 @@ const jsonLd = {
         >
           すべて
         </button>
-        {
-          categories.map((cat, i) => (
-            <button
-              type="button"
-              role="tab"
-              id={`tab-${i + 1}`}
-              aria-selected="false"
-              aria-controls={`panel-${i + 1}`}
-              data-index={i + 1}
-              class="tab-btn focus-inset shrink-0 whitespace-nowrap px-4 py-2 min-h-11 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
-            >
-              {categoryLabel[cat]}
-            </button>
-          ))
-        }
+        {categories.map((cat, i) => <button
+          type="button"
+          role="tab"
+          id={`tab-${i + 1}`}
+          aria-selected="false"
+          aria-controls={`panel-${i + 1}`}
+          data-index={i + 1}
+          class="tab-btn focus-inset shrink-0 whitespace-nowrap px-4 py-2 min-h-11 font-bold border-b-2 -mb-px transition-colors text-sm tracking-[0.02em]"
+        >
+          {categoryLabel[cat]}
+        </button>)}
       </div>
 
       <!-- スワイプパネル -->
       <div id="panels" class="-m-4 flex scroll-snap-x">
-        {
-          allCategories.map((cat, i) => (
-            <div
-              role="tabpanel"
-              id={`panel-${i}`}
-              aria-labelledby={`tab-${i}`}
-              class="basis-full shrink-0 grow-0 snap-start min-w-0 p-4"
-            >
-              <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {tools
-                  .filter((t) => cat === 'all' || t.category === cat)
-                  .map((tool) => (
-                    <ToolCard tool={tool} />
-                  ))}
-              </div>
-            </div>
-          ))
-        }
+        {allCategories.map((cat, i) => <div
+          role="tabpanel"
+          id={`panel-${i}`}
+          aria-labelledby={`tab-${i}`}
+          class="basis-full shrink-0 grow-0 snap-start min-w-0 p-4"
+        >
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {tools
+              .filter((t) => cat === 'all' || t.category === cat)
+              .map((tool) => (
+                <ToolCard tool={tool} />
+              ))}
+          </div>
+        </div>)}
       </div>
     </PageContainer>
   </main>

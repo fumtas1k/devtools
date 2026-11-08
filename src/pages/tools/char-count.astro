@@ -17,9 +17,10 @@ const tool = tools.find((t) => t.slug === 'char-count')!;
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">VARCHAR 最小長について</h3>
     <p class="tool-info-body">
-      「VARCHAR 最小長 (utf8mb4)」は MySQL utf8mb4 / PostgreSQL の <code>VARCHAR(N)</code> に対応する値です（Unicode
-      code point 単位）。 SQL Server <code>NVARCHAR(N)</code> や Java <code>String.length()</code> は
-      UTF-16 code unit 単位（サロゲートペアで 2 消費）のため、 上の「JS .length (UTF-16)」の値を参照してください。
+      「VARCHAR 最小長 (utf8mb4)」は MySQL utf8mb4 / PostgreSQL の <code>VARCHAR(N)</code>
+      に対応する値です（Unicode code point 単位）。 SQL Server <code>NVARCHAR(N)</code> や Java
+      <code>String.length()</code> は UTF-16 code unit 単位（サロゲートペアで 2 消費）のため、
+      上の「JS .length (UTF-16)」の値を参照してください。
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">DBエラー予測の使い方</h3>
     <p class="tool-info-body">
@@ -28,19 +29,16 @@ const tool = tools.find((t) => t.slug === 'char-count')!;
     </p>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>
-        <strong>MySQL utf8mb3</strong> (旧来の <code>utf8</code>): BMP外の文字（絵文字・一部CJK）は<strong
-          class="text-error">不可</strong
-        >。
+        <strong>MySQL utf8mb3</strong> (旧来の <code>utf8</code>):
+        BMP外の文字（絵文字・一部CJK）は<strong class="text-error">不可</strong>。
         <code>utf8mb4</code>カラムへの移行を検討してください
       </li>
       <li>
-        <strong>Shift_JIS / EUC-JP</strong>: 絵文字・一部記号・CJK拡張文字は<strong
-          class="text-error">不可</strong
-        >。 round-tripが一致しない文字は不可と判定します
+        <strong>Shift_JIS / EUC-JP</strong>:
+        絵文字・一部記号・CJK拡張文字は<strong class="text-error">不可</strong>。
+        round-tripが一致しない文字は不可と判定します
       </li>
-      <li>
-        <strong>UTF-8 (utf8mb4) / UTF-16</strong>: すべてのUnicode文字を表現できます
-      </li>
+      <li><strong>UTF-8 (utf8mb4) / UTF-16</strong>: すべてのUnicode文字を表現できます</li>
     </ul>
     <h3 class="mb-2 mt-4 tool-info-heading">? 置換バイト数を表示しない理由</h3>
     <p class="tool-info-body">
@@ -58,8 +56,9 @@ const tool = tools.find((t) => t.slug === 'char-count')!;
     </ul>
     <h3 class="mb-2 mt-4 tool-info-heading">推定読了時間について</h3>
     <p class="tool-info-body">
-      推定読了時間は日本語の標準的な黙読速度 <strong>600 字/分</strong> を基準に書記素数から算出した概算値です（最小
-      1 分）。 英語主体の文章や音読・速読、専門性の高い内容では実際の読了時間と乖離する場合があります。
+      推定読了時間は日本語の標準的な黙読速度 <strong>600 字/分</strong>
+      を基準に書記素数から算出した概算値です（最小 1 分）。
+      英語主体の文章や音読・速読、専門性の高い内容では実際の読了時間と乖離する場合があります。
     </p>
   </ToolInfoSection>
 </ToolLayout>

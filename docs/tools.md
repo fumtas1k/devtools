@@ -172,6 +172,8 @@ UUID v4 / v7 の生成は `uuid` パッケージの `v4()` / `v7()` に委譲す
 
 出力は SVG。アクセシビリティのため `role="img"` と `<title>QRコード: …</title>` を SVG 先頭に注入する（`aria-label` は付けない。付けると ARIA の名前計算で `<title>` が除外され URL 等の本文が読まれなくなるため）。`<title>` に入れる本文は `escapeXml` で実体参照化し、XSS の二次防衛線も兼ねる。
 
+入力欄は `field-sizing: content` 対応ブラウザでは内容に合わせて 3 行から最大 20rem まで伸縮し、上限以降は欄内をスクロールする。未対応ブラウザでは従来どおり 3 行の固定高でスクロールできる。いずれも手動リサイズ可能で、Chromium では手動操作後は指定した高さが維持され、自動伸縮は止まる。
+
 #### 準拠仕様・RFC
 
 - QR Code（ISO/IEC 18004 / JIS X 0510）。
@@ -264,7 +266,7 @@ ECDSA 署名付きチケットを生成し、公開鍵でオフライン検証�
 
 カメラまたは画像ファイルから QR コードを読み取る。デコードは `jsQR`。
 
-- **画像ファイル**: `URL.createObjectURL` → `Image` → `<canvas>` に描画 → `getImageData` → `jsQR` でデコードする（`decodeQrFromFile`）。長辺が `maxDim`（既定 1600px）を超える画像はアスペクト比を保ってダウンスケールしてから処理する。各 `await` ポイントで `AbortSignal` を確認し、処理中のキャンセルに対応する。
+- **画像ファイル**: `URL.createObjectURL` → `Image` → `<canvas>` に描画 → `getImageData` → `jsQR` でデコードする（`decodeQrFromFile`）。長辺が `maxDim`（既定 1600px）を超える画像はアスペクト比を保ってダウンスケールしてから処理する。初回に読めない小画像は、`maxDim` を超えない範囲で長辺 768px まで平滑化して拡大し、一度だけ再試行する。処理中は `AbortSignal` を確認し、キャンセルに対応する。
 - **ファイル検証**: アップロード前に `validateFile`（`@/utils/file-validation`）で検証する。画像判定は `file.type`（OS / browser 由来の advisory 値で拡張子偽装を検知できない）に依存せず、先頭バイトの magic number（PNG / JPEG / GIF / WebP）で行う。SVG はバイナリ magic を持たないため先頭テキストを sniff（`<svg>` 始まり、または `<?xml>` 始まり かつ `<svg>` 出現）する。拡張子だけ画像に偽装した非画像ファイルは canvas 到達前に拒否される。
 - **カメラ**: `useQrCamera` フックでライブ映像から読み取る。
 - **結果判定**: デコード文字列を `detectQrContent` で解析し、`http:` / `https:` の URL ならホスト名付きの URL として、それ以外はテキストとして表示する。
@@ -520,6 +522,8 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 
 テスト文字列に対するマッチ機能は `runMatch` が担い、マッチ範囲のハイライトとキャプチャグループを表示する。
 
+- ハイライトは `group` 内の `button` として、Tab で入り、左右矢印 / Home / End でフォーカスを移し、Enter / Space またはクリックで選択する。マッチがある場合は操作ヒントを表示し、各ボタンから `aria-describedby` で参照する。
+
 #### 準拠仕様・RFC
 
 - 解析対象は JavaScript の `RegExp` 構文（native `new RegExp` での検証を前提とするため、JS エンジンが受理するパターン・フラグに準拠）。
@@ -731,6 +735,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 一貫トークン化: `makeTokenizer` がカテゴリ × 値 → `[REDACTED:COOKIE_1]` 等のプレースホルダを発行する。同一値には同一プレースホルダを割り当て、HAR 全体で値の同一性が保たれる。**ただしこの HAR 全体一貫性は構造的 redact（tokenize 由来）に限る**。`scrubText` 由来の redaction（本文・辞書外ヘッダ・URLパス等）は呼び出しごとに採番されるため、異なるフィールドに跨る同一秘密値の一貫トークン化は保証されない（安全側であり漏えいはしない）
 - 純関数・入力非破壊: `structuredClone` でディープコピーしてから処理するため元オブジェクトを mutate しない
 - parse + sanitize は **Web Worker**（`src/workers/harSanitizer.worker.ts`）で実行する。`sanitizeHar` は `structuredClone` + 全 response body の正規表現スキャンで中規模 HAR でも数秒かかり、メインスレッド同期実行だと「ページが応答しません」になる（issue #677）。worker に逃がしメインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する
+- レスポンス本文スキャンの結果と件数は現在の HAR に限り Worker 内で再利用する。出力も未検出情報を含みうる機密相当として扱い、最初の保存から30秒、UTF-16 推計と固定 metadata 予算の合計16 MiB、最大4096本文に制限する。load 開始・reset・例外・本文スキャン OFF で破棄し、超過時は通常走査に戻る。事前判定は base64 等の走査対象外本文も数えるため保守的で、実 heap や GC の即時消去は保証しない（#928、詳細は `docs/decisions.md [117]`）
 - フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` の `onProgress` コールバックで処理済みエントリ数を逐次受け取り、`ProgressBar` で進捗表示する
 - カテゴリ別の redact 件数は worker が返す `counts` を `ToggleChips` のバッジに表示する
 - エントリ一覧（`HarEntryList`）は全件描画する。フリーズの主因は描画ではなく sanitize であり Worker 化で解消したため、ページングは導入しない（実 HAR の検証でエントリ数は数百件程度で、その規模の `<tr>` 描画は問題にならないことを確認。`loadSeq` は新規読込時の選択リセット判定にのみ使い、トグル時は選択を保持する）

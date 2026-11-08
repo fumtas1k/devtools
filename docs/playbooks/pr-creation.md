@@ -44,14 +44,11 @@ git rebase --onto origin/develop $(git merge-base HEAD origin/develop) HEAD
 
 ---
 
-## 2. rebase 後の force-with-lease push は親セッションが引き取る
+## 2. rebase 後の push 判断は親セッションに引き継ぐ
 
-サブエージェントが `git rebase --onto` 等で履歴を書き換えた場合、`git push --force-with-lease` は **親セッションで実行する** こと。サブエージェント側は完了報告に「rebase したので親が `--force-with-lease` で push する必要がある旨」を明記する。
+サブエージェントが `git rebase --onto` 等で履歴を書き換えた場合、完了報告に rebase の内容・対象 branch・必要な更新を明記する。親は履歴と差分を確認し、利用中の harness の許可とユーザーの認可を確認したうえで push を判断する。
 
-理由:
-
-- `git push --force*` は `permissions.deny` または `ask`、サブエージェントから非対話で実行できない
-- 親セッションは push 前に `git diff origin/<branch>...HEAD` で履歴の正当性を確認できる立場にある（commander checklist の C 章「スコープ外差分の確認」と整合）
+親への移管は責任分担であり、Claude の `Bash(git push --force*)` deny は親にも適用される。`--force-with-lease` も同 deny の対象である（[決定記録 047](../decisions.md#047-claudesettingsjson-セキュリティレビュー反映)）。操作が拒否された場合は別ツール・表記・認証で迂回せず、対象 branch・差分・必要操作を説明してユーザーの手動操作に引き継ぐ。
 
 ---
 
@@ -80,8 +77,17 @@ gh pr create --base develop --title "..." --body-file "$TMPDIR/pr_body.md"
 
 - `--base develop` は **必ず明示**（`gh` のデフォルトは `main`）。
 - 本文は **必ず日本語**。
-- バックティック含有時は `-F` / `--body-file` 経由で投稿（`.agents/rules/common.md` 6.1）。
+- 本文は常に `-F` / `--body-file` 経由で投稿（`.agents/rules/common.md` 6.1）。
 - 一時ファイルは Codex では `/tmp/codex/`、Claude Code では `/tmp/claude/` 配下に置く。汎用 fallback として `$TMPDIR` も使用可。
+
+本文の原則は `.agents/rules/common.md` 1.1 章を正本とし、以下を短い見出しと箇条書きに分ける。GitHub の PR テンプレートも入力の補助として使える。
+
+- **目的**: 何を解決するか。
+- **変更内容**: レビューに必要な変更点。
+- **検証結果**: 実行した検証と結果。未実行の検証があれば理由も書く。
+- **残課題・リスク**: 該当する場合に記載し、スコープ外や先送りする課題も明らかにする（先送りは共通規約 6.4 章に従う）。
+
+各箇条書きは 1 項目 1 論点とし、内容が重なる項目や該当しない見出しは省く。
 
 ### 4.1 `decisions.md` の `本 PR:` 行は PR 作成直後に番号置換する
 
@@ -142,7 +148,7 @@ gh api "repos/<owner>/<repo>/pulls/<n>/reviews" --jq '.[].body'
 
 GitHub の squash はデフォルトで **ブランチ内の全コミットメッセージを箇条書きで丸ごと連結** する（`* feat: ...` / `* refactor: レビュー対応` / `---------` / 重複した `Co-authored-by` が並ぶ）。レビュー往復の途中経過まで永久に残るノイズなので、**この自動連結は消して PR 概要を 1〜5 行に要約** したものに置き換える:
 
-- PR 説明文（概要セクション）を数行に要約する。検証コマンドや scratch なやり取りは含めない
+- PR 説明文の目的・変更内容を数行に要約する。検証コマンドや scratch なやり取りは含めない
 - `---------` 区切りや重複した `Co-authored-by` 行は残さない（必要なら `Co-authored-by` は 1 つに集約）
 - ❌ 避ける: コミット列の機械連結をそのまま残す / PR 説明文を全文貼り付ける
 
