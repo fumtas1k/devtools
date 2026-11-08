@@ -1525,28 +1525,38 @@ Issue #122 にて `.claude/settings.json` の一貫性・不要記載・セキ�
 
 ### 決断
 
-1. **`gh api graphql*` deny パターンの word-boundary 補強**: 公式仕様上、`Bash(gh api graphql*)` は `gh api graphqlfoo` のような誤コマンドにも当たってしまう（`*` は word boundary を持たない）。`Bash(gh api graphql)` と `Bash(gh api graphql *)` の 2 本に分割し、同様に `Bash(gh api * graphql*)` も 2 本に分割することで誤マッチを排除した。
+1. **`gh api graphql*` deny パターンの絞り込み**: `Bash(gh api graphql*)` は `gh api graphqlfoo` にも一致する。`Bash(gh api graphql)` と `Bash(gh api graphql *)` に分割し、同様に `Bash(gh api * graphql*)` も分割して、その過剰一致を避けた。これは任意の呼び出し形式を網羅する境界ではない。
 
-2. **`npm install` 系 allow の統合**: `Bash(npm install)` / `Bash(npm install --save-dev *)` / `Bash(npm install --save *)` の 3 本を `Bash(npm install *)` 1 本に統合。glob の `*` は空文字列を含むため引数なし呼び出しもカバーする。`deny: Bash(npm install -g*)` が deny → ask → allow の順で先評価されるため、グローバルインストールの拒否は維持される。
+2. **当時の `npm install` 系 allow の統合**: `Bash(npm install)` / `Bash(npm install --save-dev *)` / `Bash(npm install --save *)` を `Bash(npm install *)` に統合した。一致した deny は allow に優先する。後続の設定変更により、現在は `Bash(npm install *)` は ask にある。
 
-3. **`curl` / `wget` 全体を ask へ移動**: 公式が「Bash パターンでの引数制約は脆弱（オプション挿入・空白・引用符でバイパス可能）」と明示警告しており、既存の `Bash(curl * | sh*)` 等のパイプ deny は `curl https://...|sh`（パイプ直前の空白省略）でバイパス可能。curl/wget 全体を ask にすることで一律確認を要求し、WebFetch ベースの運用に誘導する。既存パイプ deny は defense-in-depth として残置。
+3. **`curl` / `wget` の ask 追加**: 引数の文字列パターンには呼び出し形式による限界があるため、`Bash(curl*)` / `Bash(wget*)` を ask に追加し、既存のパイプ deny も残した。現在の公式仕様ではパイプを含む複合コマンドは分割評価されるため、空白省略だけでバイパスできるとは断定しない。ask もあらゆる呼び出し形式を保証するものではない。
 
 4. **`sandbox.network.allowedDomains` に `docs.anthropic.com` と `code.claude.com` を追加**: `permissions.allow` に `WebFetch(domain:docs.anthropic.com)` / `WebFetch(domain:code.claude.com)` は宣言済みだったが、sandbox の egress allowedDomains 側に未同期だった。Anthropic 公式ドキュメントは現在 `code.claude.com` が正典 URL。
 
-5. **`settings.local.json` の `Bash(gh api:*)` allow を削除**: グローバル `ask: Bash(gh api *)` をローカルで上書きしており、対称ポリシーの主旨（gh api 系は実行前に確認）に反する。
+5. **`settings.local.json` の `Bash(gh api:*)` allow を削除**: 当時はグローバルの `ask: Bash(gh api *)` を上書きすると判断して削除した。現在の[公式 settings](https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding) では permission 配列は各設定から統合され、[公式 permissions](https://code.claude.com/docs/en/permissions#manage-permissions) では一致する ask が allow より優先されるため、local allow だけで ask を上書きできない。当時の実効挙動は未検証。
 
 ### 却下した選択肢
 
 - **`curl*` / `wget*` 全体を deny にする**: 将来 curl を読み取り用に使うユースケース（例: API レスポンス確認）を排除しすぎるため、ask に留めた。
-- **PreToolUse hook による引数制約の強化**: glob では `gh api graphql`（空白の数・絶対パス経由）や `curl|sh`（リダイレクト・変数展開）の完全遮断ができない。hook 化で Gemini 側 `commandRegex` と同等の精度を確保できるが、実装・メンテコストとの兼ね合いから別 issue で判断する。現状は未実装で、採用判断は #927 で追跡する。設定変更には別途承認が必要。
+- **任意の Bash 文字列を正規表現で検査する汎用 PreToolUse hook を完全な保護境界とする案**: [#927](https://github.com/fumtas1k/devtools/issues/927) で不採用とした。理由と限定的な補助用途の再評価条件は下記参照。
 
 ### 結果・トレードオフ
 
-- ✅ `gh api graphql` の deny パターンが意図通りの word-boundary で機能するようになった。
-- ✅ `npm install` 系の allow が 1 本に整理され、deny との連携が明確になった。
-- ✅ `curl` / `wget` が ask 化され、パイプ実行の glob 脆弱性が軽減された。
+- ✅ `gh api graphql` の deny パターンで `graphqlfoo` への過剰一致を避けた。
+- ✅ 当時の `npm install` 系 allow を整理した（現在は ask）。
+- ✅ `curl` / `wget` の ask パターンを追加した。
 - ✅ sandbox の egress ドメインと WebFetch 許可ドメインが一致した。
-- ⚠️ `gh api graphql` のバイパス（空白2個、絶対パス経由 `/usr/bin/gh`）は glob 制約のため残存。完全対策は hook 化が必要。
+- ⚠️ Bash の文字列ルールは異なる呼び出し形式すべてを対象とせず、完全な保護境界ではない。
+
+### 2026-11-08 追記: Bash 引数検査の採用判断（#927）
+
+[公式 permissions](https://code.claude.com/docs/en/permissions) は `&&` / `|` 等の複合コマンドを分割し、確認なしの実行には全サブコマンドの許可が必要で、いずれかに一致する ask / deny を適用すると説明する。一方、絶対パスなど別形式で起動した同じプログラムには文字列ルールが一致しない場合があり、規則だけではプログラムの保護境界にならない。[公式 hooks](https://code.claude.com/docs/en/hooks) の PreToolUse は入力を検査して allow / deny / ask 等を返せるが、その機能自体は検査の完全性を保証しない。
+
+任意のシェル文字列から、ダウンロード URL やリダイレクト、変数展開、別プロセス、実行ファイルの解決先まで正規表現だけで意味を判定することはできない。GraphQL の query やファイル入力も同様で、[gh api 公式資料](https://cli.github.com/manual/gh_api) は `--input` や `-F` の `@file` による外部入力を説明する。形式やツールの変化に追随する検査と検証の保守コストも大きく、汎用 regex hook を完全な保護境界として採用しない。特定形式の検知を補助する限定 hook も、対象構文・許容する漏れや誤検知・検証条件が未確定で、保守負担に見合う追加効果を示せないため今回は採用せず、現行設定を維持する。対象・漏れ・誤検知・失敗時の動作と検証条件を定め、承認と検証を得られる場合に再評価するが、現時点で実装予定はない。
+
+静的確認では、現行 `.claude/settings.json` に `gh api` / `curl` / `wget` の ask と GraphQL / パイプ等の deny があり、sandbox は有効、`autoAllowBashIfSandboxed` は `true`、これらのコマンドは `excludedCommands` に含まれる。PreToolUse の matcher は `Edit|Write|MultiEdit` のみで、Bash hook はない。[公式 sandbox 資料](https://code.claude.com/docs/en/sandboxing) は sandbox 内のファイル・ネットワーク制限と、除外コマンドが sandbox 外で動くことを説明する。設定の静的確認は有効な最終設定や実行結果の確認ではない。
+
+公式資料の確認日: 2026-11-08。この環境には Claude Code 実行ファイルがなく、現在の空白・絶対パス・パイプ等の具体的な回避挙動や安全性は実機検証していない。statusline のリダイレクト保護は #125、PR / Issue 本文の扱いは #230 の別範囲とする。
 
 ### 2026-11-07 追記: force push の扱い（#126）
 
