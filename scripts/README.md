@@ -43,10 +43,14 @@ issue 番号は同じ行、または同じ段落・箇条書き項目の直前�
 ### テスト
 
 ```bash
+# 通常のテストに含まれる（この回帰テストだけを実行する場合）
+npm run test -- tests/meta/check-followup-refs.test.ts
+
+# shell テストを直接実行する場合
 bash tests/scripts/check-followup-refs.test.sh
 ```
 
-正規表現の調整時はこのテストで回帰を防ぐ。
+`npm test` は既存の shell 回帰テストを実行する。実文書や PR 投稿本文の自動検査は含まない（#202 F）。
 
 ### 関連
 
