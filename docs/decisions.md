@@ -350,15 +350,17 @@ CLAUDE.md にルールを記載するだけでは実効性が低かった。
 `.githooks/pre-commit` スクリプトを追加し、重要ファイルの変更時に対応ドキュメントが未更新であれば警告を出す。
 コミットはブロックしない（exit 0）。
 
-| トリガー                       | 警告対象                                    |
-| ------------------------------ | ------------------------------------------- |
-| `package.json` 変更            | `docs/decisions.md`・`SPEC.md`              |
-| `.npmrc` 変更                  | `docs/decisions.md`                         |
-| `.github/workflows/` 変更      | `docs/decisions.md`                         |
-| `global.css`・`styles.ts` 変更 | `docs/decisions.md`                         |
-| 新規ツールページ追加           | `README.md`・`SPEC.md`・`docs/decisions.md` |
+| トリガー                                             | 警告対象                                    |
+| ---------------------------------------------------- | ------------------------------------------- |
+| `package.json` 変更                                  | `docs/decisions.md`・`SPEC.md`              |
+| `.npmrc` 変更                                        | `docs/decisions.md`                         |
+| `.github/workflows/` 変更                            | `docs/decisions.md`                         |
+| `src/styles/` 配下の CSS・`src/utils/styles.ts` 変更 | `docs/decisions.md`                         |
+| 新規ツールページ追加                                 | `README.md`・`SPEC.md`・`docs/decisions.md` |
 
 `git config core.hooksPath .githooks` を初回セットアップ時に実行することで有効になる。
+
+`global.css` の分割後も更新確認が必要なため、#886 で CSS 全体に対象を広げた。警告のみでコミットを妨げず、既存の lint-staged による検証は維持する。
 
 ### 却下した選択肢
 

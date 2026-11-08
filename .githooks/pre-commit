@@ -43,7 +43,7 @@ if echo "$staged" | grep -q "^\.github/workflows/"; then
 fi
 
 # デザインシステム → docs/decisions.md
-if echo "$staged" | grep -qE "^src/styles/global\.css$|^src/utils/styles\.ts$"; then
+if echo "$staged" | grep -qE "^src/styles/.*\.css$|^src/utils/styles\.ts$"; then
   [ "$decisions_updated" -eq 0 ] && warn "デザインシステムファイルが変更されています。重要な変更は docs/decisions.md に記録してください。"
 fi
 
