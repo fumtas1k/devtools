@@ -20,6 +20,8 @@ import {
   type SamlAssertion,
   type SamlAttribute,
   type SamlBinding,
+  type SamlEncryptedAssertion,
+  type SamlEncryptedKey,
   type SamlMessage,
 } from '@/utils/saml';
 
@@ -215,6 +217,67 @@ function AssertionSection({
   );
 }
 
+function EncryptionMethods({ algorithms }: { algorithms: (string | undefined)[] }) {
+  return (
+    <dl className="space-y-1">
+      {algorithms.map((algorithm, i) => (
+        <div key={i} className="flex flex-col md:flex-row md:gap-2">
+          <dt className="caption text-muted md:w-56 shrink-0">
+            {`EncryptionMethod${algorithms.length > 1 ? ` ${i + 1}` : ''}`}
+          </dt>
+          <dd className="caption font-mono break-all text-default min-w-0">
+            {algorithm ?? '未指定'}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function EncryptedKeys({ keys }: { keys: SamlEncryptedKey[] }) {
+  return keys.map((key, i) => (
+    <div key={i} className="space-y-1">
+      <h5 className="caption text-default">EncryptedKey {i + 1}</h5>
+      <EncryptionMethods algorithms={key.algorithms} />
+    </div>
+  ));
+}
+
+function EncryptedAssertionSection({
+  assertion,
+  index,
+}: {
+  assertion: SamlEncryptedAssertion;
+  index: number;
+}) {
+  return (
+    <section className="rounded-lg p-4 bg-subtle space-y-3">
+      <h3 className="body-emphasis text-default">暗号化された Assertion {index + 1} の方式</h3>
+      <p className="caption text-muted">XML に宣言された方式 URI です。</p>
+      {assertion.encryptedData.map((data, i) => (
+        <div key={i} className="space-y-2">
+          <h4 className="caption text-default">EncryptedData {i + 1}</h4>
+          <EncryptionMethods algorithms={data.algorithms} />
+          {data.encryptedKeys.length > 0 && (
+            <div className="pl-4 space-y-2">
+              <EncryptedKeys keys={data.encryptedKeys} />
+            </div>
+          )}
+        </div>
+      ))}
+      {assertion.encryptedKeys.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="caption text-default">Assertion 直下の鍵</h4>
+          <EncryptedKeys keys={assertion.encryptedKeys} />
+        </div>
+      )}
+      {assertion.encryptedData.length === 0 && assertion.encryptedKeys.length === 0 && (
+        <p className="caption text-muted">対象の EncryptedData / EncryptedKey はありません。</p>
+      )}
+    </section>
+  );
+}
+
 interface ParsedOk {
   decoded: DecodedInput;
   message: SamlMessage;
@@ -393,6 +456,10 @@ export function SamlDecoderTool() {
               件含まれています。復号（秘密鍵の入力）には対応していません。
             </NotificationBanner>
           )}
+
+          {response?.encryptedAssertions.map((assertion, i) => (
+            <EncryptedAssertionSection key={i} assertion={assertion} index={i} />
+          ))}
 
           {/* Assertion 詳細 */}
           {response?.assertions.map((a, i) => (
