@@ -520,6 +520,8 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 
 テスト文字列に対するマッチ機能は `runMatch` が担い、マッチ範囲のハイライトとキャプチャグループを表示する。
 
+- ハイライトは `group` 内の `button` として、Tab で入り、左右矢印 / Home / End でフォーカスを移し、Enter / Space またはクリックで選択する。マッチがある場合は操作ヒントを表示し、各ボタンから `aria-describedby` で参照する。
+
 #### 準拠仕様・RFC
 
 - 解析対象は JavaScript の `RegExp` 構文（native `new RegExp` での検証を前提とするため、JS エンジンが受理するパターン・フラグに準拠）。

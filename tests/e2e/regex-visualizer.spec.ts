@@ -210,19 +210,32 @@ test.describe('正規表現ビジュアライザ', () => {
     await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
       await page.getByRole('button', { name: 'g: 全マッチ' }).click();
       await page.getByLabel('正規表現').fill('\\d+');
-      await page.getByLabel('テスト文字列').fill('a1 b22');
+      const input = page.getByLabel('テスト文字列');
+      const hintText =
+        'Tab でマッチに移動します。左右矢印で前後、Home / End で先頭 / 末尾へフォーカスを移動し、Enter / Space で選択できます。';
+      const hint = page.getByText(hintText);
+      await expect(hint).toBeHidden();
+      await input.fill('abc');
+      await expect(page.getByText('マッチしませんでした。')).toBeVisible();
+      await expect(hint).toBeHidden();
+      await input.fill('a1 b22');
 
       await expect(page.getByText(/2 件マッチ/)).toBeVisible();
+      await expect(hint).toBeVisible();
 
       const m1 = page.getByRole('button', { name: /マッチ 1/ }).first();
       const m2 = page.getByRole('button', { name: /マッチ 2/ }).first();
+      await expect(m1).toHaveAccessibleDescription(hintText);
+      await expect(m2).toHaveAccessibleDescription(hintText);
 
       // roving 初期状態: 1 件目だけ tab stop（0）、2 件目は -1（旧実装＝両方 0 と区別）
       await expect(m1).toHaveAttribute('tabindex', '0');
       await expect(m2).toHaveAttribute('tabindex', '-1');
 
       // 1 件目に focus → ArrowRight で 2 件目へ roving（focus と tabindex が移動）
-      await m1.focus();
+      await input.focus();
+      await input.press('Tab');
+      await expect(m1).toBeFocused();
       await m1.press('ArrowRight');
       await expect(m2).toBeFocused();
       await expect(m2).toHaveAttribute('tabindex', '0');
@@ -235,6 +248,15 @@ test.describe('正規表現ビジュアライザ', () => {
       // Enter は focus 移動ではなく選択（aria-pressed=true）
       await m1.press('Enter');
       await expect(m1).toHaveAttribute('aria-pressed', 'true');
+      await m1.press('End');
+      await expect(m2).toBeFocused();
+      await expect(m1).toHaveAttribute('aria-pressed', 'true');
+      await expect(m2).toHaveAttribute('aria-pressed', 'false');
+      await m2.press('Space');
+      await expect(m2).toHaveAttribute('aria-pressed', 'true');
+      await m1.click();
+      await expect(m1).toHaveAttribute('aria-pressed', 'true');
+      await expect(m2).toHaveAttribute('aria-pressed', 'false');
     });
   });
 
