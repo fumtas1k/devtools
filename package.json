@@ -84,6 +84,11 @@
     "typescript": "5.9.3",
     "vitest": "4.1.12"
   },
+  "overrides": {
+    "@typescript-eslint/typescript-estree@8.70.0": {
+      "minimatch": "11.0.3"
+    }
+  },
   "lint-staged": {
     "*.{tsx,jsx}": [
       "eslint --max-warnings=0 --no-warn-ignored",
