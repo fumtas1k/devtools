@@ -5,7 +5,7 @@ import { DownloadButton } from '@/components/ui/DownloadButton';
 import { CopyButton } from '@/components/ui/CopyButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ClearButton } from '@/components/ui/ClearButton';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { HarEntryList } from './HarEntryList';
 import { HarEntryDetail } from './HarEntryDetail';
 import { useHarSanitizer } from '@/hooks/useHarSanitizer';
@@ -21,7 +21,7 @@ import {
 
 // メモリ防御ガード。読み込み時のフリーズ（同期 sanitize）は Web Worker 化で解消したため
 // バイト数は「処理能力の指標」ではなくメモリ確保の上限として残す。大きな HAR は
-// worker 上で時間がかかるが、進捗バーを表示しメインスレッドは固まらない（issue #677）。
+// worker 上で時間がかかるが、処理段階を表示しメインスレッドは固まらない（issue #677）。
 const MAX_BYTES = 25 * 1024 * 1024;
 
 export function HarViewer() {
@@ -31,6 +31,15 @@ export function HarViewer() {
     ...HAR_REDACT_DEFAULT,
   });
   const [fileError, setFileError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
+  const [operation, setOperation] = useState(0);
+  const fileSeq = useRef(0);
+  useEffect(
+    () => () => {
+      fileSeq.current += 1;
+    },
+    []
+  );
 
   // 新規ファイル読込（loadSeq 変化）のときだけ選択をリセットする。
   // redact トグル（loadSeq 不変の再 sanitize）では選択・ページを保持する。
@@ -47,6 +56,7 @@ export function HarViewer() {
 
   const handleToggle = useCallback(
     (cat: HarRedactCategory) => {
+      setOperation((n) => n + 1);
       const next = { ...enabled, [cat]: !enabled[cat] };
       setEnabled(next);
       resanitize(next);
@@ -56,22 +66,36 @@ export function HarViewer() {
 
   const handleFile = useCallback(
     async (file: File) => {
+      const seq = ++fileSeq.current;
+      setOperation((n) => n + 1);
+      reset();
+      setReading(true);
       setFileError(null);
-      const v = await validateFile(file, {
-        maxBytes: MAX_BYTES,
-        kind: 'text',
-        acceptExtensions: ['.har', '.json'],
-      });
-      if (!v.ok) {
-        setFileError(v.message);
-        return;
+      try {
+        const v = await validateFile(file, {
+          maxBytes: MAX_BYTES,
+          kind: 'text',
+          acceptExtensions: ['.har', '.json'],
+        });
+        if (seq !== fileSeq.current) return;
+        if (!v.ok) {
+          setFileError(v.message);
+          return;
+        }
+        const text = await v.file.text();
+        if (seq === fileSeq.current) load(text, enabled);
+      } catch {
+        if (seq === fileSeq.current) setFileError('ファイルを読み込めませんでした');
+      } finally {
+        if (seq === fileSeq.current) setReading(false);
       }
-      load(await v.file.text(), enabled);
     },
-    [enabled, load]
+    [enabled, load, reset]
   );
 
   const handleReset = useCallback(() => {
+    fileSeq.current += 1;
+    setReading(false);
     reset();
     setSelectedIndex(null);
     setFileError(null);
@@ -101,6 +125,7 @@ export function HarViewer() {
           accept=".har,.json,application/json"
           onChange={(e) => {
             const f = e.target.files?.[0];
+            e.target.value = '';
             if (f) void handleFile(f);
           }}
         >
@@ -115,17 +140,24 @@ export function HarViewer() {
 
       {displayError && <ErrorMessage message={displayError} />}
 
-      {/* 処理中インジケータ（初回 load / トグル再計算 共通） */}
-      {busy && (
-        <div
-          className="rounded-lg border border-default bg-subtle p-4"
-          role="status"
-          aria-live="polite"
-        >
-          <p className="caption mb-2 text-muted">サニタイズ処理中…（ブラウザ内で完結します）</p>
-          {progress && progress.total > 0 && (
-            <ProgressBar current={progress.processed} max={progress.total} />
-          )}
+      {/* 秒刻みの経過時間は live region の外に置く。 */}
+      {(busy || reading) && (
+        <div className="rounded-lg border border-default bg-subtle p-4">
+          <div role="status" aria-live="polite">
+            <p className="caption mb-2 text-muted">
+              {reading
+                ? 'ファイルを読み込み中…'
+                : progress === 'parse'
+                  ? 'HAR を解析中…'
+                  : progress === 'sanitize'
+                    ? 'サニタイズ処理中…'
+                    : '処理を開始中…'}
+              （ブラウザ内で完結します）
+            </p>
+            <span role="progressbar" aria-label="処理中" className="har-busy-indicator" />
+          </div>
+          <ElapsedTime key={operation} />
+          <ActionButton onClick={handleReset}>キャンセル</ActionButton>
         </div>
       )}
 
@@ -192,5 +224,23 @@ export function HarViewer() {
         </>
       )}
     </div>
+  );
+}
+
+/** 経過時間は進捗量や残り時間を意味しない。 */
+function ElapsedTime() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const started = performance.now();
+    const timer = window.setInterval(
+      () => setSeconds(Math.floor((performance.now() - started) / 1000)),
+      1000
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+  return (
+    <p className="caption my-2 text-muted">
+      操作開始からの経過時間: {seconds} 秒（進捗量や残り時間ではありません）
+    </p>
   );
 }

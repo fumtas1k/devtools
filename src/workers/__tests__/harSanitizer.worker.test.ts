@@ -81,3 +81,26 @@ describe('HAR Worker の本文 cache 境界', () => {
     send({ type: 'reset' });
   });
 });
+
+describe('進捗通知', () => {
+  it('入力を含まない固定数の処理段階だけを送り、再 sanitize では解析を通知しない', () => {
+    send({ type: 'load', requestId: 1, text: text('password=abc12345'), enabled });
+    expect(scope.postMessage.mock.calls.map(([message]) => message.type)).toEqual([
+      'progress',
+      'progress',
+      'result',
+    ]);
+    expect(scope.postMessage.mock.calls.slice(0, 2).map(([message]) => message)).toEqual([
+      { type: 'progress', requestId: 1, phase: 'parse' },
+      { type: 'progress', requestId: 1, phase: 'sanitize' },
+    ]);
+    scope.postMessage.mockClear();
+    send({ type: 'sanitize', requestId: 2, enabled });
+    expect(scope.postMessage.mock.calls[0][0]).toEqual({
+      type: 'progress',
+      requestId: 2,
+      phase: 'sanitize',
+    });
+    expect(scope.postMessage).toHaveBeenCalledTimes(2);
+  });
+});

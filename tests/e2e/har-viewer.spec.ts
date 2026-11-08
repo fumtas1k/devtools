@@ -572,7 +572,7 @@ test.describe('HAR ビューア', () => {
 
     // Cookie チップをトグル → worker への sanitize が 1.5 秒遅れ、その間は busy
     await page.getByRole('button', { name: /Cookie/ }).click();
-    await expect(page.getByText('サニタイズ処理中…（ブラウザ内で完結します）')).toBeVisible();
+    await expect(page.getByText('処理を開始中…（ブラウザ内で完結します）')).toBeVisible();
 
     // 修正前は busy を見ずに旧 result を出力できてしまうため、ここで fail する
     await expect(copyButton).toBeDisabled();
@@ -595,5 +595,117 @@ test.describe('HAR ビューア', () => {
     await expect(
       page.getByRole('button', { name: 'サニタイズ済み HAR をダウンロード' })
     ).toBeEnabled();
+  });
+
+  test('再計算のキャンセルは旧結果を破棄し、経過時間は live region の外にある', async ({
+    page,
+  }) => {
+    await delaySanitizeMessages(page, 2500);
+    await openHarViewer(page);
+    await uploadHar(page, buildCookieHar(3));
+    await expect(page.getByText(/redact:\s*3\s*件/)).toBeVisible();
+    await page.getByRole('button', { name: /Cookie/ }).click();
+    const status = page.getByRole('status');
+    const progress = status.getByRole('progressbar');
+    await expect(progress).toBeVisible();
+    await expect(progress).not.toHaveAttribute('aria-valuenow');
+    await expect(page.getByText(/操作開始からの経過時間: 1 秒/)).toBeVisible();
+    await expect(status.getByText(/経過時間/)).toHaveCount(0);
+    await page.getByRole('button', { name: /Cookie/ }).click();
+    await expect(page.getByText(/操作開始からの経過時間: 0 秒/)).toBeVisible();
+    await page.getByRole('button', { name: 'キャンセル' }).click();
+    await expect(page.getByRole('button', { name: 'サニタイズ済み HAR をコピー' })).toHaveCount(0);
+    await page.waitForTimeout(2700);
+    await expect(page.getByRole('button', { name: 'サニタイズ済み HAR をコピー' })).toHaveCount(0);
+    await uploadHar(page, buildCookieHar(2));
+    await expect(page.getByLabel('ファイルを選択')).toHaveValue('');
+    await expect(page.getByText(/リクエスト:\s*2\s*件/)).toBeVisible();
+  });
+
+  test('遅いファイル読込の後から選んだファイルだけを表示する', async ({ page }) => {
+    await page.addInitScript(() => {
+      const original = File.prototype.text;
+      File.prototype.text = async function () {
+        if (this.name === 'slow.har') await new Promise((resolve) => setTimeout(resolve, 2500));
+        if (this.name === 'fast.har') await new Promise((resolve) => setTimeout(resolve, 500));
+        return original.call(this);
+      };
+    });
+    await openHarViewer(page);
+    const fileInput = page.getByLabel('ファイルを選択');
+    await fileInput.setInputFiles({
+      name: 'slow.har',
+      mimeType: 'application/json',
+      buffer: Buffer.from(buildTestHar(3)),
+    });
+    await expect(page.getByText(/操作開始からの経過時間: 1 秒/)).toBeVisible();
+    await fileInput.setInputFiles({
+      name: 'fast.har',
+      mimeType: 'application/json',
+      buffer: Buffer.from(buildTestHar(2)),
+    });
+    await expect(page.getByText(/操作開始からの経過時間: 0 秒/)).toBeVisible();
+    await expect(page.getByText(/リクエスト:\s*2\s*件/)).toBeVisible();
+    await page.waitForTimeout(1700);
+    await expect(page.getByText(/リクエスト:\s*2\s*件/)).toBeVisible();
+  });
+
+  test('ファイル読み込みをキャンセルした後に同じファイルを再選択できる', async ({ page }) => {
+    await page.addInitScript(() => {
+      const original = File.prototype.text;
+      File.prototype.text = async function () {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        return original.call(this);
+      };
+    });
+    await openHarViewer(page);
+    const input = page.getByLabel('ファイルを選択');
+    const file = {
+      name: 'same.har',
+      mimeType: 'application/json',
+      buffer: Buffer.from(buildTestHar(2)),
+    };
+    await input.setInputFiles(file);
+    await expect(page.getByText(/ファイルを読み込み中/)).toBeVisible();
+    await page.getByRole('button', { name: 'キャンセル' }).click();
+    await expect(input).toHaveValue('');
+    await input.setInputFiles(file);
+    await expect(page.getByText(/リクエスト:\s*2\s*件/)).toBeVisible();
+  });
+
+  test('巨大本文の処理開始通知後にキャンセルし、別ファイルを読み直せる', async ({ page }) => {
+    await page.addInitScript(() => {
+      const OriginalWorker = window.Worker;
+      window.Worker = class extends OriginalWorker {
+        set onmessage(handler) {
+          super.onmessage = (event) => {
+            handler?.call(this, event);
+            if (
+              event.data?.type === 'progress' &&
+              event.data.phase === 'sanitize' &&
+              !document.documentElement.dataset.cancelledDuringSanitize
+            ) {
+              const button = [...document.querySelectorAll('button')].find(
+                (b) => b.textContent === 'キャンセル'
+              );
+              if (button) {
+                button.click();
+                document.documentElement.dataset.cancelledDuringSanitize = 'yes';
+              }
+            }
+          };
+        }
+      };
+    });
+    await openHarViewer(page);
+    const har = JSON.parse(buildTestHar(1));
+    har.log.entries[0].response.content.text = 'ordinary text with spaces. '.repeat(350000);
+    await uploadHar(page, JSON.stringify(har));
+    await expect(page.locator('html')).toHaveAttribute('data-cancelled-during-sanitize', 'yes');
+    await expect(page.getByRole('button', { name: 'サニタイズ済み HAR をコピー' })).toHaveCount(0);
+    await uploadHar(page, buildTestHar(2));
+    await expect(page.getByText(/リクエスト:\s*2\s*件/)).toBeVisible();
+    await page.waitForTimeout(1000);
+    await expect(page.getByText(/リクエスト:\s*2\s*件/)).toBeVisible();
   });
 });
