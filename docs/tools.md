@@ -371,7 +371,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 #### 仕組み・アルゴリズム
 
 - 入力形式を `decode.ts` の `decodeSamlInput` で自動判定する。URL 全体なら `SAMLResponse` / `SAMLRequest` クエリパラメータを抽出（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から自前パースし percent エンコードのまま `+` を保持する。クエリキー名が percent エンコードされている場合も比較前に `decodeURIComponent` を試みる）→ 生 XML 判定 → URL デコード → base64 デコード（`-`/`_` を含む base64url 表記は標準 base64 へ変換しパディングを補完してから decode）→ UTF-8 として XML と解釈できれば HTTP-POST binding、できなければ `fflate` の `Decompress`（ストリーミング API。raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定する。展開後サイズが 32 MiB を超えた場合は zip bomb 対策としてエラーにする（圧縮データを 8 KiB 単位のチャンクに分けて渡すことで、上限超過を検知した時点で残りの展開処理を打ち切る）。適用した変換ステップは UI に表示する
-- `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy/RequestedAuthnContext、LogoutRequest は Issuer/Destination/NotOnOrAfter/Reason/NameID（EncryptedID は存在検出のみ）/SessionIndex（複数可）、LogoutResponse は Issuer/Status/Destination/InResponseTo を抽出する。`ds:Signature` の有無・`EncryptedAssertion` の件数も検出する（存在表示のみ、検証・復号はしない）
+- `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy/RequestedAuthnContext、LogoutRequest は Issuer/Destination/NotOnOrAfter/Reason/NameID（EncryptedID は存在検出のみ）/SessionIndex（複数可）、LogoutResponse は Issuer/Status/Destination/InResponseTo を抽出する。`ds:Signature` の有無と `EncryptedAssertion` の件数を検出する。各 EncryptedAssertion 直下の XML Encryption 名前空間の EncryptedData と EncryptedKey、および各 EncryptedData 直下の ds:KeyInfo 内の EncryptedKey について、直下の EncryptionMethod の無修飾 Algorithm 属性を URI のまま表示する。欠落・空値・空白のみは未指定とし、複数のデータ・鍵は個別に表示する
   - 二段階ステータス（外側 StatusCode の子にネストした内側 StatusCode）の内側コードも `statusSubCode` として抽出し、UI では Status 行の直後に表示する
   - `AudienceRestriction` は要素ごとに `string[]`（AND される制約）として保持し、各制約内の `Audience` は OR 列挙として扱う
 - `checks.ts` の `runResponseChecks` が Response の定番チェック（Status / 有効期間 / Audience・Recipient / NameID）を現在時刻基準で実行する。`NotOnOrAfter` は SAML 仕様どおりその時刻自体を含まない排他境界（`now >= notOnOrAfter` で期限切れ）として判定する
@@ -389,7 +389,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 #### 制限・エッジケース
 
-- XMLDSig 署名検証・EncryptedAssertion / EncryptedID の復号・ArtifactResolve 等のその他メッセージ型は非対応（署名・暗号化は存在の有無のみ表示。第2版候補）
+- XMLDSig 署名検証・EncryptedAssertion / EncryptedID の復号・ArtifactResolve 等のその他メッセージ型は非対応（署名は存在のみ表示し、暗号化方式は宣言値のみ表示する。方式の安全性判定や参照先の解決・取得は行わない）
 - LogoutRequest の主体識別子は `NameID` / `EncryptedID` のみ対応（SAML 2.0 Core 3.7.1 で許容される `BaseID` は非対応。実運用例がほぼ皆無なため。`BaseID` のみのリクエストは NameID チェックが error 表示になる）
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない
