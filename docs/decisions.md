@@ -5808,3 +5808,23 @@ JS ミラーと実 loader の仕様差による読み込み失敗を検知する
 ## [171] ホームのスマホカテゴリを折り返す
 
 狭い画面で後続のカテゴリが隠れないよう、ホームのタブを 48rem 未満で折り返す。48rem 以上の一列表示と既存のタブ・パネル同期、検索、共通タブの既定は維持する。
+
+## [172] 対応ブラウザと新しい CSS / HTML 機能の採用方針
+
+**2026-11-08 | ステータス: 採用 | 関連: [#894](https://github.com/fumtas1k/devtools/issues/894) | 本 PR: 実装時に番号置換**
+
+### 背景・決断
+
+新しい CSS / HTML 機能で実装を改善する際に、対象ブラウザと fallback の要否を判断できるようにする。方針の正本は [SPEC 10.3](../SPEC.md#103-ブラウザサポート) とする。
+
+必須動作は Baseline Widely available を基本とし、それより新しい機能も未対応時に従来の操作・表示・アクセシビリティ・CSP を維持する fallback があれば採用できる。対象は Chrome / Edge / Firefox / Safari、Android Chrome / Firefox、iOS Safari の最新安定版と実際のリリース順で直前のメジャー版とする。上記以外の旧版と OS の WebView は正式対象外とする。
+
+Baseline の Widely available は主要ブラウザで対応してから 30 か月を経た目安であり、対象の全ブラウザや支援技術の保証ではない。機能名だけでなく実際に使う構文・値の互換性を確認し、対応時と fallback 時の両経路で操作・表示・アクセシビリティ・CSP を検証する。`@supports` の判定だけで操作やアクセシビリティの同等性を証明したとはしない。
+
+### 選択理由と検証範囲
+
+Widely available のみを採用する案は判断が単純だが、新機能による改善を待つ必要がある。新しい機能を fallback なしで必須動作に使う案は、対象版で操作を失う可能性がある。両経路を検証する負担を受け入れ、互換性を維持しながら段階的な改善を可能にする。
+
+現在の Playwright / CI は Desktop Chrome プリセットの Chromium 中心で、モバイルの viewport 確認も同じエンジンを使う。この決定は既存全機能の互換性監査や Firefox / Safari・実機モバイルでの検証完了を示すものではない。
+
+出典: [MDN Baseline の定義](https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility)、[Tailwind CSS のブラウザ対応](https://tailwindcss.com/docs/compatibility#browser-support)。Tailwind の下限だけではアプリ固有の機能の互換性は判断できない。
