@@ -357,9 +357,7 @@ L81〜82 の existing `class={...}` (template literal) はそのままで、L82 
 注意: L81 は template literal を使う conditional class なので、表記:
 
 ```astro
-class={
-  `flex items-center gap-2 rounded px-3 transition-colors drawer-link min-h-11 caption ${isActive ? 'font-bold drawer-link--active' : 'drawer-link--inactive'}`
-}
+class={`flex items-center gap-2 rounded px-3 transition-colors drawer-link min-h-11 caption ${isActive ? 'font-bold drawer-link--active' : 'drawer-link--inactive'}`}
 ```
 
 - [ ] **Step 8: MobileDrawer.astro の inline 残存ゼロ確認**

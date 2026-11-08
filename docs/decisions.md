@@ -5828,3 +5828,11 @@ Widely available のみを採用する案は判断が単純だが、新機能に
 現在の Playwright / CI は Desktop Chrome プリセットの Chromium 中心で、モバイルの viewport 確認も同じエンジンを使う。この決定は既存全機能の互換性監査や Firefox / Safari・実機モバイルでの検証完了を示すものではない。
 
 出典: [MDN Baseline の定義](https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility)、[Tailwind CSS のブラウザ対応](https://tailwindcss.com/docs/compatibility#browser-support)。Tailwind の下限だけではアプリ固有の機能の互換性は判断できない。
+
+## [173] Astro formatter の空白設定をビルド設定にそろえる
+
+**2026-11-08 | ステータス: 採用 | 関連: Refs #774**
+
+prettier-plugin-astro 1 系は Astro 7 のコンパイラに合わせて空白を扱うため、`astroCompressHTML: 'html'` をトップレベルに指定し、Markdown 内の Astro コードにも適用する。これはビルドの `compressHTML: true` と同じ設定であり、1 系の既定値 `'jsx'` を使うと空白の扱いが一致しない。既存のテキストや表示を保ち、formatter の更新に伴う整形だけを行う。
+
+出典: [prettier-plugin-astro 1.0.0 リリースノート](https://github.com/withastro/prettier-plugin-astro/releases/tag/v1.0.0)、[設定の説明](https://github.com/withastro/prettier-plugin-astro#astro-compress-html)。

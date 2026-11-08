@@ -32,16 +32,12 @@ const featured = FEATURED_404_SLUGS.map((slug) => tools.find((tool) => tool.slug
         よく使われるツール
       </h2>
       <ul class="space-y-2">
-        {
-          featured.map((tool) => (
-            <li>
-              <a href={`/tools/${tool.slug}`} class="text-link link-text">
-                {tool.name}
-              </a>
-              <span class="ml-2 caption text-muted">— {tool.description}</span>
-            </li>
-          ))
-        }
+        {featured.map((tool) => <li>
+          <a href={`/tools/${tool.slug}`} class="text-link link-text">
+            {tool.name}
+          </a>
+          <span class="ml-2 caption text-muted">— {tool.description}</span>
+        </li>)}
       </ul>
     </section>
   </main>

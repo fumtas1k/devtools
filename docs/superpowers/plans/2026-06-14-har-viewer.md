@@ -1195,8 +1195,8 @@ const tool = tools.find((t) => t.slug === 'har-viewer')!;
     <h3 class="mb-2 mt-4 tool-info-heading">仕組み</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">
       <li>
-        HAR は JSON のため <code class="rounded px-1 font-mono bg-subtle text-sm">JSON.parse</code> でパースし、log.entries
-        を一覧化
+        HAR は JSON のため <code class="rounded px-1 font-mono bg-subtle text-sm">JSON.parse</code>
+        でパースし、log.entries を一覧化
       </li>
       <li>Cookie / 認証ヘッダ / 機密クエリ / POST ボディをフィールド名ベースで確実に redact</li>
       <li>本文スキャンは secret-scrubber の検出ルールで API キー・JWT・メール等を追加検出</li>
