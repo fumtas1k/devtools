@@ -2,6 +2,12 @@
 # scripts/check-followup-refs.sh の回帰テスト
 set -euo pipefail
 
+# fixture が呼び出し元の repository、index、Git 設定を変更しないようにする。
+# alternate index は専用テスト内で明示的に指定する。
+for git_env_name in $(compgen -e GIT_); do
+  unset "$git_env_name"
+done
+
 SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/scripts/check-followup-refs.sh"
 TMPDIR_TEST="$(mktemp -d "${TMPDIR:-/tmp}/check-followup-refs-test.XXXXXX")"
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
