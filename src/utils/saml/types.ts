@@ -65,6 +65,7 @@ export interface SamlEncryptedAssertion {
 
 export interface SamlResponseData {
   type: 'response';
+  id?: string;
   issuer?: string;
   statusCode?: string;
   /** 外側 StatusCode の直下にネストした内側 StatusCode の Value */

@@ -380,6 +380,9 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
   - `Date` でパース不能な日時は「有効期間内」と誤って表示しないよう warning 扱いにする
   - SP entityID 入力時の Audience 照合は、複数の `AudienceRestriction` がある場合、空でないすべての制約に entityID が含まれる場合のみ一致とする（AND 判定）
   - `runLogoutRequestChecks` は LogoutRequest の NotOnOrAfter（任意属性のため未指定は info、期限切れは error）と NameID の存在（EncryptedID は復号非対応のため warning、いずれもなしは仕様違反として error）を、`runLogoutResponseChecks` は Status を同じ規則で判定する
+- `signature-profile.ts` は表示モデルと同じ原文 DOM から Response と直下 Assertion を識別し、全ノード・属性・テキストのスナップショットを worker の `@xmldom/xmldom` と照合する。ID は ASCII 英字または `_` で始まり英数字・`_`・`.`・`-` からなる形式に限定し、検索式の解釈を避ける。重複 ID・ID 別名・隠れた署名や別対象参照を拒否してから `xmldsigjs` で単一 Reference の digest と署名を検証する。KeyInfo の鍵は使用せず、利用者指定の PEM 公開証明書だけを使う
+- 検証は RSA-SHA256 / SHA256 と enveloped → Exclusive C14N のみ。XML 2 MiB、10,000 要素、深さ 64、署名 16 個、証明書 64 KiB、RSA 2048〜8192 bit、15 秒に制限し、DTD / ENTITY を拒否する。入力変更時と画面離脱時に worker を停止する。通常デコードの 32 MiB 上限は維持する
+- 個別の一致は公開鍵による暗号学的一致であり、証明書チェーン・失効・IdP の正当性や SSO 成功を保証しない。マスク XML は別の内容であり原文の検証結果を適用しない
 - `format.ts` が表示用に生 XML を簡易整形する（要素・属性・テキストのみを再構成するため、タグ間に混在するテキスト（mixed content）は表示されない場合がある旨を UI に注記）
 - `mask.ts` の `maskSamlXml` が「共有用マスク XML」トグル用の 2 フェーズマスクを行う。フェーズ1（構造ベース）は再パースした DOM 上の `saml:NameID` / `saml:AttributeValue` のテキストを値ベース一貫トークン `[REDACTED:PII_n]`（同一値は同一トークン）に置換し、フェーズ2 は再シリアライズ後の文字列に `secret-scrubber` の `scrubText` を `HIGH_ENTROPY` カテゴリ除外で適用して URL クエリ埋め込みメール等の構造で拾えない残余を救済する。`HIGH_ENTROPY` を除外するのは `ds:SignatureValue` / `ds:X509Certificate` 等の base64（非 PII・公開情報）を over-mask しないため。署名値・証明書・タイムスタンプ・ID・要素名は構造情報としてそのまま残す
 
@@ -389,7 +392,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 #### 制限・エッジケース
 
-- XMLDSig 署名検証・EncryptedAssertion / EncryptedID の復号・ArtifactResolve 等のその他メッセージ型は非対応（署名は存在のみ表示し、暗号化方式は宣言値のみ表示する。方式の安全性判定や参照先の解決・取得は行わない）
+- Response 以外の XMLDSig と Redirect クエリ署名、その他の署名方式、EncryptedAssertion / EncryptedID の復号、ArtifactResolve 等のその他メッセージ型は非対応。暗号化方式は宣言値のみ表示する
 - LogoutRequest の主体識別子は `NameID` / `EncryptedID` のみ対応（SAML 2.0 Core 3.7.1 で許容される `BaseID` は非対応。実運用例がほぼ皆無なため。`BaseID` のみのリクエストは NameID チェックが error 表示になる）
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない

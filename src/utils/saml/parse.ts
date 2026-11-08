@@ -39,23 +39,29 @@ function hasDirectSignature(el: Element): boolean {
  * SAML XML を構造化モデルへパースする。
  * 対応: Response / AuthnRequest / LogoutRequest / LogoutResponse。それ以外の SAML メッセージ型はエラー。
  */
-export function parseSamlXml(xml: string): SamlMessage {
+export function parseSamlDocument(xml: string): { message: SamlMessage; document: Document } {
   assertSamlXmlSize(xml);
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   if (doc.getElementsByTagName('parsererror').length > 0) {
     throw new Error('XML の構文エラーがあります');
   }
   const root = doc.documentElement;
-  if (root.namespaceURI === NS_P && root.localName === 'Response') return parseResponse(root);
+  if (root.namespaceURI === NS_P && root.localName === 'Response')
+    return { message: parseResponse(root), document: doc };
   if (root.namespaceURI === NS_P && root.localName === 'AuthnRequest')
-    return parseAuthnRequest(root);
+    return { message: parseAuthnRequest(root), document: doc };
   if (root.namespaceURI === NS_P && root.localName === 'LogoutRequest')
-    return parseLogoutRequest(root);
+    return { message: parseLogoutRequest(root), document: doc };
   if (root.namespaceURI === NS_P && root.localName === 'LogoutResponse')
-    return parseLogoutResponse(root);
+    return { message: parseLogoutResponse(root), document: doc };
   throw new Error(
     `対応していない SAML メッセージです（${root.namespaceURI ?? '名前空間なし'} の ${root.localName}）。SAML 2.0 の Response / AuthnRequest / LogoutRequest / LogoutResponse のみ対応しています`
   );
+}
+
+/** 従来の呼び出し元にはモデルのみを返す。 */
+export function parseSamlXml(xml: string): SamlMessage {
+  return parseSamlDocument(xml).message;
 }
 
 interface ParsedStatus {
@@ -85,6 +91,7 @@ function parseResponse(root: Element): SamlResponseData {
   );
   return {
     type: 'response',
+    id: attrOf(root, 'ID'),
     issuer: textOf(childNS(root, NS_A, 'Issuer')),
     ...parseStatus(root),
     destination: attrOf(root, 'Destination'),
