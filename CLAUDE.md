@@ -34,7 +34,7 @@ Claude Code 固有の補足は `.claude/rules/` に分割し、上記 `@import` 
 
 ## プラグイン / vendor skill
 
-- リポジトリで共有するプラグインは **必ず `.claude/settings.json` の `enabledPlugins` に宣言する**（`context7` / `claude-md-management`）。`claude plugin install` はユーザーレベル設定に書くため、宣言しないと web セッションでは入らない（`.claude/scripts/session-install.sh` が `enabledPlugins` を読んで install する）。
+- 共有プラグインは `.claude/settings.json` の `enabledPlugins` に宣言する（`context7` / `claude-md-management`）。cloud では宣言だけでロードされず、SessionStart hook は条件付きで install を試行する。成功やロードは別途確認する → `docs/setup/plugins.md`。
 - superpowers はプラグインではなく `.agents/skills/` に vendor 済み（`skills-lock.json` 管理、出典は `.agents/skills/README.md`）。
 - UI のデザイン判断は `dads-design-system` skill を使う（frontend-design は使わない。`docs/decisions.md [134]`）。
 - セットアップ・トラブルシュート → `docs/setup/plugins.md`
