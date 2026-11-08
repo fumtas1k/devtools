@@ -1,6 +1,21 @@
 import { test, expect } from '@playwright/test';
 import { watchHydrationWarnings, waitForReactHydration } from './helpers';
 import { PAGES, STATIC_PAGES } from './visual-regression-pages';
+import {
+  HydrationRecorder,
+  reportHydrationFailure,
+  withCleanup,
+} from '../diagnostics/hydration-recorder';
+
+let recorder: HydrationRecorder;
+
+test.beforeEach(() => {
+  recorder = new HydrationRecorder();
+});
+
+test.afterEach(async ({}, testInfo) => {
+  await reportHydrationFailure(recorder, testInfo);
+});
 
 /**
  * 陰性対照 (dev mode): astro dev server + React dev build で hydration warning を全種類 catch。
@@ -18,26 +33,28 @@ import { PAGES, STATIC_PAGES } from './visual-regression-pages';
  * 検知能力の陽性対照は `hydration-check-dev.gate.spec.ts` で保証 (test-gates skill)。
  */
 test('PAGES 全件で hydration warning が出ない (陰性対照・dev mode)', async ({ browser }) => {
-  const context = await browser.newContext();
-  try {
+  const context = await recorder.run(null, 'context.newContext', () => browser.newContext());
+  await withCleanup(async () => {
     for (const path of PAGES) {
-      const page = await context.newPage();
+      const page = await recorder.run(path, 'context.newPage', () => context.newPage());
       const guard = watchHydrationWarnings(page);
-      try {
-        await page.goto(path);
+      await withCleanup(async () => {
+        await recorder.run(path, 'page.goto', () => page.goto(path));
         if (!STATIC_PAGES.has(path)) {
-          await waitForReactHydration(page);
+          await recorder.run(path, 'hydration', () => waitForReactHydration(page));
         }
         // hydration warning は load 直後の microtask / 次 task で発火するため
         // ブラウザ側で 1 task 進めて React の error commit を確実に flush する
-        await page.evaluate(() => new Promise<void>((r) => setTimeout(r, 0)));
-        expect(guard.warnings, `hydration warning at ${path} (dev mode)`).toEqual([]);
-      } finally {
-        guard.dispose();
-        await page.close();
-      }
+        await recorder.run(path, 'task flush', () =>
+          page.evaluate(() => new Promise<void>((r) => setTimeout(r, 0)))
+        );
+        await recorder.run(path, 'assert', () =>
+          expect(guard.warnings, `hydration warning at ${path} (dev mode)`).toEqual([])
+        );
+      }, [
+        () => recorder.run(path, 'guard.dispose', () => guard.dispose()),
+        () => recorder.run(path, 'page.close', () => page.close()),
+      ]);
     }
-  } finally {
-    await context.close();
-  }
+  }, [() => recorder.run(null, 'context.close', () => context.close())]);
 });
