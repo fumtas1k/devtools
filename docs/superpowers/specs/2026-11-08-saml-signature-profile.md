@@ -10,7 +10,7 @@
 
 1. 原文 XML の DOM から表示モデルと署名対象を同時に作る。対象は Response と直下 Assertion の DOM 要素で対応付け、ID と Assertion 順序を表示する。整形・マスクした XML を検証材料にしない。
 2. 対象の直下 Signature は 1 個、Reference は 1 個、URI は対象自身の非修飾 ID と完全一致する `#ID` のみ。ID は検索式の別解釈を避けるため ASCII 英字または `_` で始まる英数字・`_`・`.`・`-` の形式に限定し、それ以外は未対応とする。文書全体で重複 ID、ID の別名属性・名前空間による曖昧さ、隠れた Signature、別対象参照、wrapping を拒否する。各対象の結果を独立表示し、文書全体の成功バッジは作らない。
-3. 署名検証前に文書全体の名前空間 URI と宣言値を調べ、`&`・`<`・`>`・`"` または空白を含む場合は未対応とする。prefix は ASCII 英字か `_` で始まり、英数字・`_`・`.`・`-` からなる形式のみ許可する（既定名前空間は可）。正規化ライブラリの名前空間出力と prefix 処理に合わせた防御的制約であり、正当な XML でも対象外となりうる。通常のテキストや属性値は制限せず、デコードと表示は維持する。RSA-SHA256、SHA256、enveloped → Exclusive C14N（コメントなし・パラメータなし）だけを扱う。SignedInfo は Exclusive C14N。全 Reference digest と SignatureValue を確認し、C14N はライブラリに委ねる。すべてのテキスト値要素は子要素を拒否する。
+3. 署名検証前に文書全体の名前空間 URI と宣言値を調べ、`&`・`<`・`>`・`"` または空白を含む場合は未対応とする。prefix は ASCII 英字か `_` で始まり、英数字・`_`・`.`・`-` からなる形式のみ許可する。名前空間宣言ではない属性の修飾名に `xmlns:` を含む場合と、空の既定名前空間宣言 `xmlns=""` を含む場合も未対応とする。非空の既定名前空間は他の制約を満たせば許可する。正規化ライブラリの名前空間出力と prefix 処理に合わせた防御的制約であり、正当な XML でも対象外となりうる。通常のテキストや属性値そのものは制限せず、デコードと表示は維持する。RSA-SHA256、SHA256、enveloped → Exclusive C14N（コメントなし・パラメータなし）だけを扱う。SignedInfo は Exclusive C14N。全 Reference digest と SignatureValue を確認し、C14N はライブラリに委ねる。すべてのテキスト値要素は子要素を拒否する。
 4. 未対応方式・構造と暗号学的不一致を区別する。空 / 外部 / XPointer URI、複数 Reference、XPath / XSLT / base64 transform、Object / Manifest、C14N1.1、コメント付き C14N、InclusiveNamespaces、SHA1 / HMAC、Redirect クエリ署名、Response 以外の署名検証は初版対象外。
 5. 利用者が明示した信頼する公開 X.509 証明書（PEM）1 件だけを使う。埋込み証明書 / KeyValue にフォールバックしない。PRIVATE KEY・複数証明書・不正証明書を入力エラーにする。CA / chain 信頼・失効・IdP 正当性・SSO 成功を保証しない。
 6. 未署名・未検証・処理中・一致・不一致・未対応・入力エラーを対象と理由付きで区別する。一致の文言は「指定証明書の公開鍵で Response / Assertion［ID］の署名が一致」。証明書・XML の変更、clear、navigation / unmount 時に非同期世代を無効化し、worker を停止する。pagehide 時および bfcache からの persisted pageshow 時も検証結果・エラー・処理中状態を破棄し、入力は保持する。共有用マスク出力には原文の一致結果が適用されないことを明示する。
@@ -33,7 +33,7 @@
 
 ## 名前空間制約の根拠・検証・レビュー記録
 
-- コードで確認した根拠: `xmldsigjs@2.8.8` の `canonicalizer.js` / `WriteNamespacesAxis` は名前空間 URI を属性エスケープせず出力し、宣言 prefix の抽出に ASCII ベースの式を使う。このため原文 DOM と worker DOM の一致に加え、C14N 前に文書全体の名前空間を制限する。URI・宣言値は `[&<>"\s]`、prefix は `^[A-Za-z_][A-Za-z0-9_.-]*$` で判定し、既定名前空間を許容する。`\s` は JavaScript の空白文字集合であり、TAB / LF / CR も含む。
+- コードで確認した根拠: `xmldsigjs@2.8.8` の `canonicalizer.js` / `WriteNamespacesAxis` は名前空間 URI を属性エスケープせず出力し、宣言 prefix の抽出に ASCII ベースの式を使う。このため原文 DOM と worker DOM の一致に加え、C14N 前に文書全体の名前空間を制限する。URI・宣言値は `[&<>"\s]`、prefix は `^[A-Za-z_][A-Za-z0-9_.-]*$` で判定し、当時は既定名前空間を許容した（現行の追加制限は受入条件 3 を参照）。`\s` は JavaScript の空白文字集合であり、TAB / LF / CR も含む。
 - 再現済みの範囲: Astra は依存単体の限定したローカル実験で異なる DOM の同一正規化出力を報告した。SAML 全経路の誤一致は未確認。起動済み Chromium / Firefox の parser 確認は結果未取得であり、安全判定による拒否後は追加照会・再試行を行っていない。全経路の成立を確認済みとは扱わない。
 - 陽性対照: 変更前 `bcc5c1206f07afb9d38e797c9f23eb064bc6efd1` の profile に新しい入力拒否テストだけを適用すると、query の `&`、空白、二重引用符、TAB / LF / CR、`<` / `>`、非 ASCII prefix の 9 件が失敗した。制約を復旧すると 9 件とも成功する。署名衝突の生成や拒否された実験の再実行はしていない。
 - 陰性対照: 通常の日本語・`&` を含む属性値と本文を受理するテストは変更前後とも成功する。独立生成した ASCII namespace / default namespace の正当署名 5 種も unit で維持した。ブラウザ E2E はデコード表示が残ること、未対応理由、通常本文の受理と署名の一致を確認する。

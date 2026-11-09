@@ -381,7 +381,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
   - SP entityID 入力時の Audience 照合は、複数の `AudienceRestriction` がある場合、空でないすべての制約に entityID が含まれる場合のみ一致とする（AND 判定）
   - `runLogoutRequestChecks` は LogoutRequest の NotOnOrAfter（任意属性のため未指定は info、期限切れは error）と NameID の存在（EncryptedID は復号非対応のため warning、いずれもなしは仕様違反として error）を、`runLogoutResponseChecks` は Status を同じ規則で判定する
 - `signature-profile.ts` は表示モデルと同じ原文 DOM から Response と直下 Assertion を識別し、全ノード・属性・テキストのスナップショットを worker の `@xmldom/xmldom` と照合する。ID は ASCII 英字または `_` で始まり英数字・`_`・`.`・`-` からなる形式に限定し、検索式の解釈を避ける。重複 ID・ID 別名・隠れた署名や別対象参照を拒否してから `xmldsigjs` で単一 Reference の digest と署名を検証する。KeyInfo の鍵は使用せず、利用者指定の PEM 公開証明書だけを使う
-- 正規化ライブラリの名前空間出力と prefix 処理を踏まえ、文書全体の名前空間 URI・宣言値に `&`・`<`・`>`・`"`・空白を含む場合と、prefix が ASCII 英字または `_` で始まる英数字・`_`・`.`・`-` の形式以外の場合は未対応とする。既定名前空間は許可する。この制約は通常のテキスト・属性値やデコード表示には適用せず、妥当な XML でも署名検証が未対応になる場合がある
+- 正規化ライブラリの名前空間出力と prefix 処理を踏まえ、文書全体の名前空間 URI・宣言値に `&`・`<`・`>`・`"`・空白を含む場合と、prefix が ASCII 英字または `_` で始まる英数字・`_`・`.`・`-` の形式以外の場合は署名検証を未対応とする。名前空間宣言ではない属性の修飾名に `xmlns:` を含む場合と、空の既定名前空間宣言 `xmlns=""` を含む場合も未対応とする。非空の既定名前空間は他の制約を満たせば許可する。通常のテキストや属性値そのものはこれらの制限対象ではなく、デコード表示は維持する。妥当な XML でも署名検証が未対応になる場合がある
 - 検証は RSA-SHA256 / SHA256 と enveloped → Exclusive C14N のみ。XML 2 MiB、10,000 要素、深さ 64、署名 16 個、証明書 64 KiB、RSA 2048〜8192 bit、15 秒に制限し、DTD / ENTITY を拒否する。入力変更、pagehide、bfcache からの復元時に worker と検証状態を破棄し、画面の unmount 時も worker を停止する。通常デコードの 32 MiB 上限は維持する
 - 個別の一致は公開鍵による暗号学的一致であり、証明書チェーン・失効・IdP の正当性や SSO 成功を保証しない。マスク XML は別の内容であり原文の検証結果を適用しない
 - `format.ts` が表示用に生 XML を簡易整形する（要素・属性・テキストのみを再構成するため、タグ間に混在するテキスト（mixed content）は表示されない場合がある旨を UI に注記）
