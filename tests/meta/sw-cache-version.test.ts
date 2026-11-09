@@ -1,6 +1,15 @@
-import { describe, it, expect } from 'vitest';
-import { readFile, access } from 'node:fs/promises';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import * as fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const original = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...original,
+    access: vi.fn(original.access),
+    readFile: vi.fn(original.readFile),
+  };
+});
 
 /**
  * meta test: SW cache versioning 検証 (issue #358)
@@ -27,12 +36,55 @@ function hasInvalidCacheName(content: string): boolean {
 
 async function readSwDist(): Promise<string> {
   try {
-    await access(swDistPath);
-  } catch {
-    throw new Error('dist/sw.js が存在しません。先に `npm run build` を実行してください。');
+    return await fs.readFile(swDistPath, 'utf8');
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
+      throw new Error('dist/sw.js が存在しません。先に `npm run build` を実行してください。');
+    }
+    throw error;
   }
-  return readFile(swDistPath, 'utf8');
 }
+
+describe('readSwDist', () => {
+  afterEach(() => {
+    vi.mocked(fs.access).mockRestore();
+    vi.mocked(fs.readFile).mockRestore();
+  });
+
+  it('UTF-8 でファイルを読み取る', async () => {
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    const read = vi.mocked(fs.readFile).mockResolvedValue('キャッシュ');
+
+    await expect(readSwDist()).resolves.toBe('キャッシュ');
+    expect(read).toHaveBeenCalledWith(swDistPath, 'utf8');
+    expect(fs.access).not.toHaveBeenCalled();
+  });
+
+  it('読み取り時の ENOENT をビルド案内に変換する', async () => {
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    const error = Object.assign(new Error('missing'), { code: 'ENOENT' });
+    vi.mocked(fs.readFile).mockRejectedValue(error);
+
+    await expect(readSwDist()).rejects.toThrow(
+      'dist/sw.js が存在しません。先に `npm run build` を実行してください。'
+    );
+  });
+
+  it.each(['EACCES', 'EIO'])('%s は元のエラーをそのまま返す', async (code) => {
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    const error = Object.assign(new Error(code), { code });
+    vi.mocked(fs.readFile).mockRejectedValue(error);
+
+    await expect(readSwDist()).rejects.toBe(error);
+  });
+
+  it.each([null, 'unexpected'])('Error 以外の拒否値 %s をそのまま返す', async (value) => {
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    vi.mocked(fs.readFile).mockRejectedValue(value);
+
+    await expect(readSwDist()).rejects.toBe(value);
+  });
+});
 
 describe('SW cache versioning (build artifact 検証)', () => {
   it('dist/sw.js に placeholder __BUILD_ID__ が残っていない', async () => {
