@@ -85,6 +85,11 @@ export function signatureSnapshot(doc: Document): string {
         checkNamespace(a.prefix, a.namespaceURI);
         if (a.namespaceURI === XMLNS) {
           checkNamespace(a.name === 'xmlns' ? null : a.localName, a.value);
+          if (a.name === 'xmlns' && a.value === '')
+            throw new Error('空の default 名前空間宣言を含む XML の署名検証には対応していません');
+        } else if (/xmlns:/.test(a.name)) {
+          // xmldsigjs が通常の属性を名前空間宣言と誤認して正規化から除外する。
+          throw new Error('名前空間宣言と誤認される属性を含む XML の署名検証には対応していません');
         }
         return [a.namespaceURI || '', a.name, a.value];
       });

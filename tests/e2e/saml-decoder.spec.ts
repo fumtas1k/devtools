@@ -493,3 +493,78 @@ test.describe('名前空間プロファイル', () => {
     await expect(results).not.toContainText('名前空間');
   });
 });
+
+test.describe('署名結果と入力エラーの表示', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/tools/saml-decoder');
+    await waitForReactHydration(page);
+  });
+  test('Response の一致時のみ直下 Assertion を署名範囲として説明し入力変更で消す', async ({
+    page,
+  }) => {
+    const xml = readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8');
+    const input = page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/);
+    const certificate = page.getByLabel('公開証明書（PEM）');
+    const list = page.getByRole('list', { name: '署名検証の結果' });
+    await input.fill(xml);
+    await certificate.fill(readFileSync('tests/fixtures/saml-signature/certificate.pem', 'utf8'));
+    await expect(list).not.toContainText('Response の署名はこの Assertion の内容を含みます');
+    await page.getByRole('button', { name: '署名を検証する' }).click();
+    await expect(list).toContainText('Response の署名はこの Assertion の内容を含みます');
+    await expect(list).toContainText('Assertion 1［_assertion］：未署名');
+    await input.fill(xml.replace('reader', 'changed'));
+    await expect(list).not.toContainText('Response の署名はこの Assertion の内容を含みます');
+    await page.getByRole('button', { name: '署名を検証する' }).click();
+    await expect(list).toContainText('Response［_response］：不一致');
+    await expect(list).not.toContainText('Response の署名はこの Assertion の内容を含みます');
+  });
+  test('不正な証明書と RSA 鍵長エラーを証明書欄に表示し、入力変更で消す', async ({ page }) => {
+    await page
+      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
+      .fill(readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8'));
+    const certificate = page.getByLabel('公開証明書（PEM）');
+    for (const [pem, reason] of [
+      ['invalid', '公開 X.509 証明書 PEM を 1 件入力してください'],
+      [
+        readFileSync('tests/fixtures/saml-signature/weak-certificate.pem', 'utf8'),
+        'RSA 鍵長は 2048〜8192 bit',
+      ],
+    ] as const) {
+      await certificate.fill(pem);
+      await page.getByRole('button', { name: '署名を検証する' }).click();
+      await expect(page.getByRole('alert')).toContainText(reason);
+      await expect(page.getByRole('list', { name: '署名検証の結果' })).toContainText(reason);
+      await certificate.fill('changed');
+      await expect(page.getByRole('alert')).toHaveCount(0);
+    }
+  });
+  test('Assertion バッジは未検証、一致、リセットを区別する', async ({ page }) => {
+    await page
+      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
+      .fill(readFileSync('tests/fixtures/saml-signature/assertion.xml', 'utf8'));
+    const certificate = page.getByLabel('公開証明書（PEM）');
+    await certificate.fill(readFileSync('tests/fixtures/saml-signature/certificate.pem', 'utf8'));
+    await expect(page.getByText('署名あり（未検証）')).toBeVisible();
+    await page.getByRole('button', { name: '署名を検証する' }).click();
+    await expect(page.getByText('署名あり（一致）')).toBeVisible();
+    await certificate.fill('changed');
+    await expect(page.getByText('署名あり（未検証）')).toBeVisible();
+  });
+  test('空の default 宣言と偽の名前空間属性はデコードを保ち検証のみ未対応', async ({ page }) => {
+    const xml = readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8');
+    const input = page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/);
+    for (const modified of [
+      xml.replace('<saml:Subject>', '<saml:Subject xmlns="">'),
+      xml.replace(
+        '<samlp:Response ',
+        '<samlp:Response xmlns:xxmlns="urn:extra" xxmlns:role="admin" '
+      ),
+    ]) {
+      await input.fill(modified);
+      await expect(page.getByText('alice@example.test', { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: '署名を検証する' }).click();
+      await expect(page.getByRole('list', { name: '署名検証の結果' })).toContainText('未対応');
+      await expect(page.getByRole('list', { name: '署名検証の結果' })).toContainText('名前空間');
+    }
+  });
+});

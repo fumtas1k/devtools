@@ -224,3 +224,52 @@ describe('名前空間の署名検証プロファイル', () => {
     expect(() => signatureSnapshot(doc)).not.toThrow();
   });
 });
+
+describe('名前空間属性の正規化ガード', () => {
+  it.each([
+    ['Response', 'response.xml', '<samlp:Response ', 'xxmlns'],
+    ['Assertion', 'assertion.xml', '<saml:Assertion ', 'xxmlns'],
+    ['別 prefix', 'response.xml', '<samlp:Response ', 'a-xmlns'],
+  ])('%s の偽の名前空間属性を検証前に拒否する', async (_label, name, target, prefix) => {
+    const xml = fixture(name).replace(
+      target,
+      `${target}xmlns:${prefix}="urn:example:extra" ${prefix}:role="admin" `
+    );
+    const doc = new browserParser().parseFromString(xml, 'text/xml');
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    await expect(verifyXml(xml)).rejects.toThrow('名前空間');
+    const { verifySignatures } = await import('../saml/signature-verify');
+    await expect(verifySignatures(xml, '', fixture('certificate.pem'))).rejects.toThrow('名前空間');
+  });
+  it('通常の名前空間付き属性の追加は署名不一致になる', async () => {
+    const xml = fixture('response.xml').replace(
+      '<samlp:Response ',
+      '<samlp:Response xmlns:extra="urn:example:extra" extra:role="admin" '
+    );
+    expect((await verifyXml(xml))[0].status).toBe('mismatch');
+  });
+});
+
+describe('空の default 名前空間宣言', () => {
+  it('表示用 XML はそのまま解析し、署名検証では未対応として拒否する', async () => {
+    const xml = fixture('response.xml').replace('<saml:Subject>', '<saml:Subject xmlns="">');
+    const doc = new browserParser().parseFromString(xml, 'text/xml');
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    expect(
+      doc.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'NameID')[0].textContent
+    ).toBe('alice@example.test');
+    await expect(verifyXml(xml)).rejects.toThrow('空の default 名前空間宣言');
+    const { verifySignatures } = await import('../saml/signature-verify');
+    await expect(verifySignatures(xml, '', fixture('certificate.pem'))).rejects.toThrow(
+      '空の default 名前空間宣言'
+    );
+  });
+  it('同じ文字列が通常のテキストや属性値にあっても拒否しない', () => {
+    const xml = fixture('response.xml')
+      .replace('alice@example.test', 'xmlns=""')
+      .replace('Destination="https://sp.example.test/acs"', 'Destination="xmlns=&quot;&quot;"');
+    expect(() =>
+      signatureSnapshot(new browserParser().parseFromString(xml, 'text/xml'))
+    ).not.toThrow();
+  });
+});

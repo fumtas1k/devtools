@@ -139,3 +139,108 @@ it('検証済み結果も pagehide で未検証に戻す', () => {
   expect(results.textContent).not.toContain('一致した結果');
   expect(screen.getByText('署名は未検証です')).toBeTruthy();
 });
+
+it('Response の一致時だけ署名範囲を表示し、入力変更で消す', () => {
+  let worker: DelayedWorker | undefined;
+  class DelayedWorker {
+    onmessage: ((event: MessageEvent) => void) | null = null;
+    terminate = vi.fn();
+    postMessage = vi.fn();
+    constructor() {
+      worker = this;
+    }
+  }
+  vi.stubGlobal('Worker', DelayedWorker);
+  render(<SamlDecoderTool />);
+  const input = screen.getByLabelText(/SAMLResponse \/ SAMLRequest を貼り付け/);
+  const xml = readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8');
+  fireEvent.change(input, { target: { value: xml } });
+  fireEvent.click(screen.getByRole('button', { name: '署名を検証する' }));
+  act(() =>
+    worker?.onmessage?.({
+      data: {
+        results: [
+          { label: 'Response', id: '_response', signed: true, status: 'match', reason: '一致' },
+          {
+            label: 'Assertion 1',
+            id: '_assertion',
+            signed: false,
+            status: 'unsigned',
+            reason: '直下に署名がありません',
+          },
+        ],
+      },
+    } as MessageEvent)
+  );
+  expect(screen.getByText(/Response の署名はこの Assertion の内容を含みます/)).toBeTruthy();
+  fireEvent.change(input, { target: { value: xml.replace('reader', 'changed') } });
+  expect(screen.queryByText(/Response の署名はこの Assertion の内容を含みます/)).toBeNull();
+});
+
+it('Assertion の署名バッジは検証状態を反映し、証明書エラーは入力欄にも表示する', () => {
+  let worker: DelayedWorker | undefined;
+  class DelayedWorker {
+    onmessage: ((event: MessageEvent) => void) | null = null;
+    terminate = vi.fn();
+    postMessage = vi.fn();
+    constructor() {
+      worker = this;
+    }
+  }
+  vi.stubGlobal('Worker', DelayedWorker);
+  render(<SamlDecoderTool />);
+  fireEvent.change(screen.getByLabelText(/SAMLResponse \/ SAMLRequest を貼り付け/), {
+    target: { value: readFileSync('tests/fixtures/saml-signature/assertion.xml', 'utf8') },
+  });
+  expect(screen.getByText('署名あり（未検証）')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '署名を検証する' }));
+  expect(screen.getByText('署名あり（検証中）')).toBeTruthy();
+  act(() =>
+    worker?.onmessage?.({
+      data: {
+        results: [
+          {
+            label: 'Response',
+            id: '_response',
+            signed: false,
+            status: 'unsigned',
+            reason: '直下に署名がありません',
+          },
+          {
+            label: 'Assertion 1',
+            id: '_assertion',
+            signed: true,
+            status: 'input-error',
+            reason: '証明書が不正です',
+          },
+        ],
+      },
+    } as MessageEvent)
+  );
+  expect(screen.getByRole('alert').textContent).toContain('証明書が不正です');
+  expect(screen.getByText('署名あり（未検証）')).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('公開証明書（PEM）'), { target: { value: 'changed' } });
+  expect(screen.queryByRole('alert')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '署名を検証する' }));
+  act(() =>
+    worker?.onmessage?.({
+      data: {
+        results: [
+          {
+            label: 'Response',
+            id: '_response',
+            signed: false,
+            status: 'unsigned',
+            reason: '直下に署名がありません',
+          },
+          { label: 'Assertion 1', id: '_assertion', signed: true, status: 'match', reason: '一致' },
+        ],
+      },
+    } as MessageEvent)
+  );
+  expect(screen.getByText('署名あり（一致）')).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('公開証明書（PEM）'), {
+    target: { value: 'changed again' },
+  });
+  expect(screen.getByText('署名あり（未検証）')).toBeTruthy();
+});

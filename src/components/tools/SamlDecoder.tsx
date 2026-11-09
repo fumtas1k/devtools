@@ -162,16 +162,28 @@ function AssertionSection({
   assertion,
   index,
   total,
+  signatureStatus,
 }: {
   assertion: SamlAssertion;
   index: number;
   total: number;
+  signatureStatus?: SignatureResult['status'];
 }) {
   return (
     <section className="rounded-lg p-4 bg-subtle space-y-3">
       <div className="flex items-center gap-2">
         <h3 className="body-emphasis text-default">Assertion{total > 1 ? ` ${index + 1}` : ''}</h3>
-        <StatusBadge tone="info">{assertion.signed ? '署名あり' : '署名なし'}</StatusBadge>
+        <StatusBadge tone="info">
+          {assertion.signed
+            ? signatureStatus === 'match'
+              ? '署名あり（一致）'
+              : signatureStatus === 'mismatch'
+                ? '署名あり（不一致）'
+                : signatureStatus === 'processing'
+                  ? '署名あり（検証中）'
+                  : '署名あり（未検証）'
+            : '署名なし'}
+        </StatusBadge>
       </div>
       <dl className="space-y-1">
         <SummaryRow label="ID" value={assertion.id} />
@@ -418,8 +430,12 @@ export function SamlDecoderTool() {
         if (current !== generation.current) return;
         cancelVerification();
         setVerifying(false);
-        if (event.data.results) setSignatureResults(event.data.results);
-        else fail(event.data.error || '署名検証に失敗しました');
+        if (event.data.results) {
+          setSignatureResults(event.data.results);
+          setSignatureError(
+            event.data.results.find((item) => item.status === 'input-error')?.reason || ''
+          );
+        } else fail(event.data.error || '署名検証に失敗しました');
       };
       worker.onerror = (event) => {
         event.preventDefault();
@@ -616,6 +632,11 @@ export function SamlDecoderTool() {
                       )[item.status]
                     }{' '}
                     — {item.reason}
+                    {index > 0 &&
+                    item.status === 'unsigned' &&
+                    signatureResults?.[0]?.status === 'match'
+                      ? '（Response の署名はこの Assertion の内容を含みます）'
+                      : ''}
                   </li>
                 ))}
               </ul>
@@ -639,7 +660,17 @@ export function SamlDecoderTool() {
 
           {/* Assertion 詳細 */}
           {response?.assertions.map((a, i) => (
-            <AssertionSection key={i} assertion={a} index={i} total={response.assertions.length} />
+            <AssertionSection
+              key={i}
+              assertion={a}
+              index={i}
+              total={response.assertions.length}
+              signatureStatus={
+                signatureResults?.find(
+                  (item) => item.label === `Assertion ${i + 1}` && item.id === (a.id ?? null)
+                )?.status
+              }
+            />
           ))}
 
           {/* 生 XML / マスク XML */}
