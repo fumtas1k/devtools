@@ -90,6 +90,8 @@
 | `recheck`                   | ReDoS 脆弱性検出。browser エントリ（`lib/browser.js`）を使用し `checkSync` で同期判定。型同梱・install script なし | 正規表現ビジュアライザ                   |
 | `jsonc-parser`              | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア                       |
 | `jmespath`                  | JMESPath クエリ評価（eval 非使用・CSP 安全）。フィルタ・射影に対応                                                 | JSON整形・ビューア                       |
+| `xmldsigjs`                 | 限定 XMLDSig 署名検証                                                                                              | SAMLデコーダ                             |
+| `@xmldom/xmldom`            | Worker の XML パーサー                                                                                             | SAMLデコーダ                             |
 | `pkijs`                     | X.509 証明書・PKCS#7 のパースと署名検証（Web Crypto エンジン経由）                                                 | SSL/TLS証明書デコーダ                    |
 | `asn1js`                    | ASN.1 DER のデコード（pkijs の基盤。拡張領域の生バイト取得にも使用）                                               | SSL/TLS証明書デコーダ                    |
 | `marked`                    | Markdown パース・HTML 変換（GFM 対応。`gfm: true`, `breaks: true`）。出力は既存 `sanitizeHtml` でサニタイズ        | markdownエディタ                         |
@@ -337,7 +339,7 @@ devtools/
 | 11  | Base64エンコード/デコード | `base64`       | テキスト⇔Base64 相互変換。通常の Base64 と URL-safe Base64 に対応                                                                                                                                                                                                       |
 | 12  | JWTデコーダー             | `jwt-decoder`  | JWTトークン貼り付け → Header/Payload/署名を分解表示。HS/RS/ES署名検証対応                                                                                                                                                                                               |
 | 25  | SSL/TLS証明書デコーダ     | `cert-decoder` | PEM/DER/PKCS#7/PKCS#12（.pfx/.p12）証明書を解析し Subject/SAN/有効期限/署名アルゴリズム/SCT を表示。複数証明書のチェーン並べ替え・署名検証（pkijs + Web Crypto）対応。PKCS#12 はパスワード復号・秘密鍵（メタ情報常時／PKCS#8 PEM トグル開示）含む。全処理ブラウザ内完結 |
-| 32  | SAMLデコーダ              | `saml-decoder` | SSO の SAMLResponse / AuthnRequest を URL/URLエンコード/base64/base64+deflate/生XML の5形式から自動判定デコードし、Assertion の内容と Status・有効期限・Audience の定番チェックを表示。XMLDSig 署名検証・EncryptedAssertion 復号は非対応。全処理ブラウザ内完結          |
+| 32  | SAMLデコーダ              | `saml-decoder` | SSO の SAMLResponse / AuthnRequest を URL/URLエンコード/base64/base64+deflate/生XML の5形式から自動判定デコードし、Assertion の内容と Status・有効期限・Audience の定番チェックを表示。限定 XMLDSig 署名検証に対応。復号は非対応。全処理ブラウザ内完結                  |
 
 ### カテゴリ D: 変換・解析ツール（`convert`）
 
@@ -1398,7 +1400,7 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 適用した変換ステップを UI に表示する。
 
-**パース（`parseSamlXml`）:** `DOMParser` で名前空間 URI ベース（`getElementsByTagNameNS` 等）に解決し prefix 非依存でパースする。Response は Issuer / Status（StatusMessage 含む）/ Destination / InResponseTo / IssueInstant と、Assertion ごとの NameID・属性テーブル・Conditions・AuthnStatement・SubjectConfirmationData を構造化する。AuthnRequest は Issuer / Destination / AssertionConsumerServiceURL / ProtocolBinding / NameIDPolicy / RequestedAuthnContext を構造化する。Response・Assertion 直下の `ds:Signature` 有無、`EncryptedAssertion` の件数も検出する（署名検証・復号は非対応、存在表示のみ）。
+**パース（`parseSamlXml`）:** `DOMParser` で名前空間 URI ベース（`getElementsByTagNameNS` 等）に解決し prefix 非依存でパースする。Response は Issuer / Status（StatusMessage 含む）/ Destination / InResponseTo / IssueInstant と、Assertion ごとの NameID・属性テーブル・Conditions・AuthnStatement・SubjectConfirmationData を構造化する。AuthnRequest は Issuer / Destination / AssertionConsumerServiceURL / ProtocolBinding / NameIDPolicy / RequestedAuthnContext を構造化する。Response・Assertion 直下の `ds:Signature` 有無、`EncryptedAssertion` の件数も検出する（署名の有無と暗号化方式は独立して表示する）。
 
 **定番チェック（`runResponseChecks`、Response のみ・現在時刻基準）:**
 
@@ -1418,16 +1420,18 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 **モジュール構成:** `src/utils/saml/`（`types.ts` 型定義 / `decode.ts` 自動判定デコードチェーン / `parse.ts` XML → 構造化モデル / `checks.ts` 定番チェックリスト / `format.ts` XML 整形 / `mask.ts` 共有用マスク出力 / `index.ts`）/ `src/components/tools/SamlDecoder.tsx` / `src/pages/tools/saml-decoder.astro`
 
-**追加依存:** `fflate`（raw deflate 展開）。
+**署名検証:** 指定された PEM 公開証明書 1 件の RSA 公開鍵で、Response と直下の各 Assertion を個別に検証する。対象自身の単一 ID 参照（ASCII 英字または `_` で始まり英数字・`_`・`.`・`-` からなる ID）、RSA-SHA256、SHA256、enveloped と Exclusive C14N のみ対応する。原文 DOM と worker の解析結果を照合し、ID の曖昧さ・隠れた署名・未対応構造を検証前に拒否する。名前空間 URI と宣言値の `&`・`<`・`>`・`"`・空白、非 ASCII 形式の prefix は正規化ライブラリの対応範囲を考慮して未対応とする（既定名前空間は可）。通常のテキスト・属性値やデコード表示は制限しない。各対象の一致は証明書の信頼連鎖や IdP の正当性を保証しない。マスク XML に原文の結果は適用されない。入力変更・pagehide・bfcache 復元時は結果と worker を破棄し、画面離脱時も worker を停止する。
+
+**追加依存:** `fflate`（raw deflate 展開）、`xmldsigjs`（XMLDSig）、`@xmldom/xmldom`（worker XML パース）。
 
 **既知の制限:**
 
-- XMLDSig 署名検証・`EncryptedAssertion` の復号・LogoutRequest/LogoutResponse 等の他メッセージ型は非対応（署名・暗号化は存在の有無のみ表示）
+- 署名検証は Response と直下 Assertion の限定プロファイルのみ。Redirect クエリ署名、他方式、`EncryptedAssertion` の復号は非対応。XML 2 MiB・10,000 要素・深さ 64・署名 16 個・証明書 64 KiB・RSA 2048〜8192 bit・15 秒の上限を設け、通常のデコード上限 32 MiB は維持する
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる PII を含む）を外部サーバーに送信しない
 - 「共有用マスク XML」は構造上の PII フィールドと `secret-scrubber` の既知パターンの除去であり、完全な匿名化を保証しない（共有前の目視確認が必要）
 
-**スコープ外（v1）:** XMLDSig 署名検証（C14N 実装）・EncryptedAssertion 復号・LogoutRequest/LogoutResponse 等の他メッセージ型
+**スコープ外:** その他の署名方式・証明書信頼判定・EncryptedAssertion の復号
 
 ---
 

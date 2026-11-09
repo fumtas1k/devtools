@@ -15,8 +15,9 @@ const tool = tools.find((t) => t.slug === 'saml-decoder')!;
       SSO の SAMLResponse / SAMLRequest（AuthnRequest）をデコードして内容を表示します。 URL
       全体・URLエンコード・base64（HTTP-POST binding）・base64 + deflate（HTTP-Redirect
       binding）・生 XML を自動判定します。Assertion には氏名・メールアドレス等の個人情報が
-      含まれますが、全処理はブラウザ内で完結し、データを外部へ送信しません。 XMLDSig 署名の検証と
-      EncryptedAssertion の復号には対応していません。
+      含まれますが、全処理はブラウザ内で完結し、データを外部へ送信しません。 Response と直下
+      Assertion の限定 XMLDSig 署名を指定した公開証明書で個別に検証できます。 EncryptedAssertion
+      の復号には対応していません。
     </p>
     <h3 class="mb-2 mt-4 tool-info-heading">ユースケース</h3>
     <ul class="list-inside list-disc space-y-1 tool-info-list">

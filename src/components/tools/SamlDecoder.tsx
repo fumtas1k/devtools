@@ -1,4 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActionButton } from '@/components/ui/ActionButton';
+import {
+  MAX_CERT_BYTES,
+  MAX_SIGNATURE_XML_BYTES,
+  signatureSnapshot,
+  targetsFor,
+  type SignatureResult,
+} from '@/utils/saml/signature-profile';
 import { InputField } from '@/components/ui/InputField';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -6,10 +14,10 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { ResultTable, type TableColumn } from '@/components/ui/ResultTable';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { assertSamlInputSize } from '@/utils/saml/limits';
+import { assertSamlInputSize, exceedsUtf8ByteLimit } from '@/utils/saml/limits';
 import {
   decodeSamlInput,
-  parseSamlXml,
+  parseSamlDocument,
   runResponseChecks,
   runLogoutRequestChecks,
   runLogoutResponseChecks,
@@ -154,20 +162,31 @@ function AssertionSection({
   assertion,
   index,
   total,
+  signatureStatus,
 }: {
   assertion: SamlAssertion;
   index: number;
   total: number;
+  signatureStatus?: SignatureResult['status'];
 }) {
   return (
     <section className="rounded-lg p-4 bg-subtle space-y-3">
       <div className="flex items-center gap-2">
         <h3 className="body-emphasis text-default">Assertion{total > 1 ? ` ${index + 1}` : ''}</h3>
         <StatusBadge tone="info">
-          {assertion.signed ? '署名あり（未検証）' : '署名なし'}
+          {assertion.signed
+            ? signatureStatus === 'match'
+              ? '署名あり（一致）'
+              : signatureStatus === 'mismatch'
+                ? '署名あり（不一致）'
+                : signatureStatus === 'processing'
+                  ? '署名あり（検証中）'
+                  : '署名あり（未検証）'
+            : '署名なし'}
         </StatusBadge>
       </div>
       <dl className="space-y-1">
+        <SummaryRow label="ID" value={assertion.id} />
         <SummaryRow label="NameID" value={assertion.nameId} />
         <SummaryRow label="NameID Format" value={assertion.nameIdFormat} />
         <SummaryRow label="NotBefore" value={assertion.conditions?.notBefore} />
@@ -281,6 +300,7 @@ function EncryptedAssertionSection({
 interface ParsedOk {
   decoded: DecodedInput;
   message: SamlMessage;
+  document: Document;
   error?: undefined;
 }
 interface ParsedNg {
@@ -291,13 +311,54 @@ export function SamlDecoderTool() {
   const [input, setInput] = useState('');
   const [spEntityId, setSpEntityId] = useState('');
   const [xmlView, setXmlView] = useState<XmlView>('raw');
+  const [certificate, setCertificate] = useState('');
+  const [signatureResults, setSignatureResults] = useState<SignatureResult[] | null>(null);
+  const [signatureError, setSignatureError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const active = useRef<{ worker: Worker; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const generation = useRef(0);
+  const cancelVerification = () => {
+    generation.current++;
+    if (active.current) {
+      clearTimeout(active.current.timer);
+      active.current.worker.terminate();
+      active.current = null;
+    }
+  };
+  const resetVerification = () => {
+    cancelVerification();
+    setSignatureResults(null);
+    setSignatureError('');
+    setVerifying(false);
+  };
+  useEffect(() => {
+    const onPageHide = () => resetVerification();
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) resetVerification();
+    };
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
+      cancelVerification();
+    };
+  }, []);
+  const changeInput = (value: string) => {
+    resetVerification();
+    setInput(value);
+  };
+  const changeCertificate = (value: string) => {
+    resetVerification();
+    setCertificate(value);
+  };
 
   const result: ParsedOk | ParsedNg | null = useMemo(() => {
     try {
       assertSamlInputSize(input);
       if (!input.trim()) return null;
       const decoded = decodeSamlInput(input);
-      return { decoded, message: parseSamlXml(decoded.xml) };
+      return { decoded, ...parseSamlDocument(decoded.xml) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : '解析に失敗しました' };
     }
@@ -321,18 +382,86 @@ export function SamlDecoderTool() {
   const maskedXml = useMemo(() => (masked ? formatXml(masked.xml) : ''), [masked]);
   const displayedXml = xmlView === 'masked' ? maskedXml : prettyXml;
 
+  const verify = () => {
+    if (!ok || !response) return;
+    resetVerification();
+    const entries = targetsFor(ok.document).map(({ target }) => target);
+    const fail = (reason: string) =>
+      setSignatureResults(entries.map((target) => ({ ...target, status: 'unsupported', reason })));
+    try {
+      if (exceedsUtf8ByteLimit(ok.decoded.xml, MAX_SIGNATURE_XML_BYTES))
+        throw new Error('署名検証は XML 2 MiB 以下に対応しています');
+      if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(ok.decoded.xml))
+        throw new Error('DTD / ENTITY は署名検証に対応していません');
+      if (exceedsUtf8ByteLimit(certificate, MAX_CERT_BYTES)) {
+        const reason = '証明書は 64 KiB 以下にしてください';
+        setSignatureError(reason);
+        setSignatureResults(
+          entries.map((target) => ({
+            ...target,
+            status: target.signed ? 'input-error' : 'unsigned',
+            reason: target.signed ? reason : '直下に署名がありません',
+          }))
+        );
+        return;
+      }
+      const snapshot = signatureSnapshot(ok.document);
+      const current = generation.current;
+      const worker = new Worker(
+        new URL('../../workers/saml-signature.worker.ts', import.meta.url),
+        { type: 'module' }
+      );
+      const timer = setTimeout(() => {
+        if (current !== generation.current) return;
+        cancelVerification();
+        setVerifying(false);
+        fail('検証が 15 秒を超えたため停止しました');
+      }, 15_000);
+      active.current = { worker, timer };
+      setVerifying(true);
+      setSignatureResults(
+        entries.map((target) => ({
+          ...target,
+          status: target.signed ? 'processing' : 'unsigned',
+          reason: target.signed ? '検証中です' : '直下に署名がありません',
+        }))
+      );
+      worker.onmessage = (event: MessageEvent<{ results?: SignatureResult[]; error?: string }>) => {
+        if (current !== generation.current) return;
+        cancelVerification();
+        setVerifying(false);
+        if (event.data.results) {
+          setSignatureResults(event.data.results);
+          setSignatureError(
+            event.data.results.find((item) => item.status === 'input-error')?.reason || ''
+          );
+        } else fail(event.data.error || '署名検証に失敗しました');
+      };
+      worker.onerror = (event) => {
+        event.preventDefault();
+        if (current !== generation.current) return;
+        cancelVerification();
+        setVerifying(false);
+        fail('署名検証を開始できませんでした');
+      };
+      worker.postMessage({ xml: ok.decoded.xml, snapshot, pem: certificate });
+    } catch (error) {
+      fail(error instanceof Error ? error.message : '署名検証を開始できませんでした');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <InputField
         id="saml-input"
         label="SAMLResponse / SAMLRequest を貼り付け（URL・base64・生 XML を自動判定）"
         value={input}
-        onChange={setInput}
+        onChange={changeInput}
         placeholder="PHNhbWxwOlJlc3BvbnNlIC4uLg== / https://sp.example.com/acs?SAMLResponse=... / <samlp:Response ...>"
         multiline
         rows={6}
         error={result?.error}
-        onSampleClick={() => setInput(buildSampleInput())}
+        onSampleClick={() => changeInput(buildSampleInput())}
         mono
       />
 
@@ -369,6 +498,7 @@ export function SamlDecoderTool() {
             </h3>
             {response && (
               <dl className="space-y-1">
+                <SummaryRow label="ID" value={response.id} />
                 <SummaryRow label="Issuer (IdP)" value={response.issuer} />
                 <SummaryRow label="Status" value={response.statusCode} />
                 <SummaryRow label="Status (内側)" value={response.statusSubCode} />
@@ -380,7 +510,7 @@ export function SamlDecoderTool() {
                   label="署名"
                   value={
                     response.signed || response.assertions.some((a) => a.signed)
-                      ? 'あり（このツールでは検証しません）'
+                      ? 'あり（個別に検証できます）'
                       : 'なし'
                   }
                 />
@@ -446,6 +576,73 @@ export function SamlDecoderTool() {
             )}
           </section>
 
+          {response && (
+            <section className="rounded-lg p-4 bg-subtle space-y-4">
+              <h3 className="body-emphasis text-default">署名の検証</h3>
+              <p className="caption text-muted">
+                信頼する公開 X.509 証明書を指定してください。証明書の信頼連鎖・失効、IdP
+                の正当性、SSO の成功は確認しません。Redirect クエリ署名には対応していません。
+              </p>
+              <InputField
+                id="saml-certificate"
+                label="公開証明書（PEM）"
+                value={certificate}
+                onChange={changeCertificate}
+                multiline
+                rows={5}
+                mono
+                autoComplete="off"
+                error={signatureError || undefined}
+              />
+              <ActionButton variant="primary" onClick={verify} loading={verifying}>
+                署名を検証する
+              </ActionButton>
+              <p role="status" className="caption text-muted">
+                {verifying
+                  ? '署名を検証中です'
+                  : signatureResults
+                    ? '署名の検証が終了しました'
+                    : '署名は未検証です'}
+              </p>
+              <ul className="space-y-2" aria-label="署名検証の結果">
+                {(
+                  signatureResults ??
+                  targetsFor(ok.document).map(({ target }) => ({
+                    ...target,
+                    status: target.signed ? ('unverified' as const) : ('unsigned' as const),
+                    reason: target.signed ? '署名は未検証です' : '直下に署名がありません',
+                  }))
+                ).map((item, index) => (
+                  <li key={index} className="caption text-default break-all">
+                    <strong>
+                      {item.label}［{item.id || 'ID なし'}］
+                    </strong>
+                    ：
+                    {
+                      (
+                        {
+                          unsigned: '未署名',
+                          unverified: '未検証',
+                          processing: '処理中',
+                          match: '一致',
+                          mismatch: '不一致',
+                          unsupported: '未対応',
+                          'input-error': '入力エラー',
+                        } as const
+                      )[item.status]
+                    }{' '}
+                    — {item.reason}
+                    {index > 0 &&
+                    item.status === 'unsigned' &&
+                    signatureResults?.[0]?.status === 'match'
+                      ? '（Response の署名はこの Assertion の内容を含みます）'
+                      : ''}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* チェックリスト（Response / Logout 2 型） */}
           {checks && <CheckList items={checks} />}
 
@@ -463,7 +660,17 @@ export function SamlDecoderTool() {
 
           {/* Assertion 詳細 */}
           {response?.assertions.map((a, i) => (
-            <AssertionSection key={i} assertion={a} index={i} total={response.assertions.length} />
+            <AssertionSection
+              key={i}
+              assertion={a}
+              index={i}
+              total={response.assertions.length}
+              signatureStatus={
+                signatureResults?.find(
+                  (item) => item.label === `Assertion ${i + 1}` && item.id === (a.id ?? null)
+                )?.status
+              }
+            />
           ))}
 
           {/* 生 XML / マスク XML */}
@@ -494,7 +701,8 @@ export function SamlDecoderTool() {
                       : 'マスク対象なし'}
                   </StatusBadge>
                   <p className="hint-xs text-muted">
-                    共有前に必ず目視で確認してください。構造上の PII
+                    原文の署名一致結果はマスク XML
+                    には適用されません。共有前に必ず目視で確認してください。構造上の PII
                     フィールドと既知パターンの除去であり、完全な匿名化を保証するものではありません。
                   </p>
                 </div>
@@ -508,9 +716,8 @@ export function SamlDecoderTool() {
           </details>
 
           <NotificationBanner variant="info" title="このツールの制限">
-            XMLDSig 署名の検証・EncryptedAssertion
-            の復号は行いません。表示内容の改ざん有無は保証されないため、署名検証が必要な場合は IdP /
-            SP 側のログと突き合わせてください。入力データはブラウザ外に送信しません。
+            署名検証は Response と直下 Assertion の限定方式に対応します。EncryptedAssertion
+            の復号は行いません。入力データはブラウザ外に送信しません。
           </NotificationBanner>
         </div>
       )}
@@ -519,7 +726,8 @@ export function SamlDecoderTool() {
         <div className="flex justify-end">
           <ClearButton
             onClick={() => {
-              setInput('');
+              changeInput('');
+              setCertificate('');
               setSpEntityId('');
               setXmlView('raw');
             }}
