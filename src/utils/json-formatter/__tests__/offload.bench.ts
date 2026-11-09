@@ -10,7 +10,7 @@
  *   - 正味便益: CPU - (serialize_in + serialize_out)
  */
 
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import { parseJson } from '../parse';
 import { formatJson, minifyJson } from '../format';
 import { buildTree } from '../tree';
@@ -264,9 +264,9 @@ describe('json-formatter Worker オフロード判断ベンチ', () => {
   // vitest bench は iterations 指定に関わらずコールバックを複数回呼ぶため、
   // 重い計測は最初の 1 回だけ実行する（rows の重複蓄積と多重実行を防ぐ）。
   let measured = false;
-  bench(
-    'CPU + clone + 正味便益（レポート表を再現）',
-    () => {
+  // 全 fixture の実測は約 90 秒かかるため、Vitest 5 の既定 60 秒より余裕を持たせる。
+  test('CPU + clone + 正味便益（レポート表を再現）', { timeout: 180000 }, async ({ bench }) => {
+    await bench('CPU + clone + 正味便益（レポート表を再現）', () => {
       if (measured) return;
       measured = true;
 
@@ -293,7 +293,6 @@ describe('json-formatter Worker オフロード判断ベンチ', () => {
         addRow(spec.処理, spec.サイズ, cpu, cloneIn, cloneOut);
       }
       console.table(rows);
-    },
-    { iterations: 1, warmupIterations: 0, warmupTime: 0, time: 0 }
-  );
+    }).run({ iterations: 1, warmupIterations: 0, warmupTime: 0, time: 0 });
+  });
 });

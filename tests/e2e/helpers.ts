@@ -1,4 +1,4 @@
-import type { Browser, ConsoleMessage, Page, Route } from '@playwright/test';
+import type { Browser, BrowserContextOptions, ConsoleMessage, Page, Route } from '@playwright/test';
 import { PRODUCTION_CSP } from '../../src/utils/csp';
 
 /**
@@ -232,6 +232,8 @@ export async function applyProductionCsp(page: Page, options?: ApplyCspOptions):
 export interface WithProductionCspOptions {
   /** true のときは `waitForReactHydration` を skip (static page 用) */
   skipHydration?: boolean;
+  /** context 作成時に適用する viewport とタッチ設定。未対応キーは実行時にも渡さない */
+  contextOptions?: Pick<BrowserContextOptions, 'viewport' | 'hasTouch'>;
 }
 
 export async function withProductionCsp(
@@ -240,7 +242,13 @@ export async function withProductionCsp(
   fn: (page: Page, guard: CspGuard) => Promise<void>,
   options?: WithProductionCspOptions
 ): Promise<void> {
-  const context = await browser.newContext();
+  const contextOptions = options?.contextOptions;
+  const context = contextOptions
+    ? await browser.newContext({
+        viewport: contextOptions.viewport,
+        hasTouch: contextOptions.hasTouch,
+      })
+    : await browser.newContext();
   try {
     const page = await context.newPage();
     const guard = await applyProductionCsp(page);
