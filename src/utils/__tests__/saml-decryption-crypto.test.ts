@@ -76,15 +76,23 @@ describe('復号 Worker の暗号処理', () => {
   });
 
   it('2048 bit 未満の鍵を拒否する', async () => {
-    const weak = generateKeyPairSync('rsa', { modulusLength: 1024 }).privateKey.export({
-      type: 'pkcs8',
-      format: 'pem',
-    });
+    const weak = read('trial-weak-1024.pem');
     const plan = createDecryptionPlan(read('xmlsec-aes128.xml'), 0);
     const der = parsePrivateKeyPem(weak);
+    const imported = await webcrypto.subtle.importKey(
+      'pkcs8',
+      der,
+      { name: 'RSA-OAEP', hash: 'SHA-1' },
+      false,
+      ['decrypt']
+    );
+    expect((imported.algorithm as RsaHashedKeyAlgorithm).modulusLength).toBe(1024);
+    // 暗号文長の別ガードが下限ガードの欠落を隠さないよう、実鍵の長さに合わせる。
+    plan.encryptedKey = plan.encryptedKey.slice(0, 128);
     await expect(
       decryptPlan(plan, der, webcrypto.subtle as unknown as SubtleCrypto)
     ).rejects.toThrow('RSA 鍵の長さ');
+    expect(der.every((byte) => byte === 0)).toBe(true);
   });
   it.each([
     [8192, true],

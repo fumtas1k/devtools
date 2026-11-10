@@ -43,7 +43,19 @@ describe('復号プロファイル', () => {
 
   it('SHA-256 と既定 MGF1-SHA1 の組合せを拒否する', async () => {
     const xml = readFileSync('tests/fixtures/saml-encryption/xmlsec-aes256-oaep11.xml', 'utf8');
-    await expect(plan(xml.replace(/<[^>]*MGF[^>]*\/>/, ''))).rejects.toThrow();
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    const mgfs = doc.getElementsByTagNameNS('http://www.w3.org/2009/xmlenc11#', 'MGF');
+    expect(mgfs.length).toBe(1);
+    expect(
+      doc
+        .getElementsByTagNameNS('http://www.w3.org/2000/09/xmldsig#', 'DigestMethod')[0]
+        .getAttribute('Algorithm')
+    ).toBe('http://www.w3.org/2001/04/xmlenc#sha256');
+    mgfs[0].remove();
+    expect(doc.getElementsByTagNameNS('http://www.w3.org/2009/xmlenc11#', 'MGF').length).toBe(0);
+    await expect(plan(new XMLSerializer().serializeToString(doc))).rejects.toThrow(
+      'OAEP digest / MGF'
+    );
   });
 
   it('明示した DigestMethod に Algorithm がない場合は拒否する', async () => {
