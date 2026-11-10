@@ -384,6 +384,9 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - 正規化ライブラリの名前空間出力と prefix 処理を踏まえ、文書全体の名前空間 URI・宣言値に `&`・`<`・`>`・`"`・空白を含む場合と、prefix が ASCII 英字または `_` で始まる英数字・`_`・`.`・`-` の形式以外の場合は署名検証を未対応とする。名前空間宣言ではない属性の修飾名に `xmlns:` を含む場合と、空の既定名前空間宣言 `xmlns=""` を含む場合も未対応とする。非空の既定名前空間は他の制約を満たせば許可する。通常のテキストや属性値そのものはこれらの制限対象ではなく、デコード表示は維持する。妥当な XML でも署名検証が未対応になる場合がある
 - 検証は RSA-SHA256 / SHA256 と enveloped → Exclusive C14N のみ。XML 2 MiB、10,000 要素、深さ 64、署名 16 個、証明書 64 KiB、RSA 2048〜8192 bit、15 秒に制限し、DTD / ENTITY を拒否する。入力変更、pagehide、bfcache からの復元時に worker と検証状態を破棄し、画面の unmount 時も worker を停止する。通常デコードの 32 MiB 上限は維持する
 - 個別の一致は公開鍵による暗号学的一致であり、証明書チェーン・失効・IdP の正当性や SSO 成功を保証しない。マスク XML は別の内容であり原文の検証結果を適用しない
+- EncryptedAssertion は明示選択して復号する。対象は直下の単一 EncryptedData と曖昧でない単一 EncryptedKey、AES-128/256-GCM、RSA-OAEP SHA-1 / MGF1-SHA1 または XML Encryption 1.1 の SHA-256 / MGF1-SHA256 に限る。鍵配置は inline、同一 Assertion 内の単純な `#Id` RetrievalMethod、または一対一の兄弟要素に対応する。平文は UTF-8 の独立した SAML Assertion のみ受理する
+- 復号は操作ごとの worker と 15 秒の期限を使い、RSA 秘密鍵は非暗号化 PKCS#8 の 2048〜8192 bit に限定する。PKCS#8 の非空の任意属性は追加データを判定できないため非対応とする。XML 2 MiB・10,000 要素・深さ 64・EncryptedAssertion 16 個、秘密鍵 PEM 64 KiB、平文 1 MiB、OAEP ラベル 1 KiB に制限する。入力・鍵・選択の変更、キャンセル、画面遷移などで処理と表示を破棄する。鍵欄は操作開始時に消す。JavaScript 文字列やブラウザ内部のメモリ消去は保証できない
+- 復号結果は原文と別に、初期状態でマスクして表示する。GCM の認証成功は送信者の正当性・署名・SSO の有効性を保証しない。Response の署名結果は原文の暗号文についてのみ示す
 - `format.ts` が表示用に生 XML を簡易整形する（要素・属性・テキストのみを再構成するため、タグ間に混在するテキスト（mixed content）は表示されない場合がある旨を UI に注記）
 - `mask.ts` の `maskSamlXml` が「共有用マスク XML」トグル用の 2 フェーズマスクを行う。フェーズ1（構造ベース）は再パースした DOM 上の `saml:NameID` / `saml:AttributeValue` のテキストを値ベース一貫トークン `[REDACTED:PII_n]`（同一値は同一トークン）に置換し、フェーズ2 は再シリアライズ後の文字列に `secret-scrubber` の `scrubText` を `HIGH_ENTROPY` カテゴリ除外で適用して URL クエリ埋め込みメール等の構造で拾えない残余を救済する。`HIGH_ENTROPY` を除外するのは `ds:SignatureValue` / `ds:X509Certificate` 等の base64（非 PII・公開情報）を over-mask しないため。署名値・証明書・タイムスタンプ・ID・要素名は構造情報としてそのまま残す
 
@@ -393,7 +396,7 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 #### 制限・エッジケース
 
-- Response 以外の XMLDSig と Redirect クエリ署名、その他の署名方式、EncryptedAssertion / EncryptedID の復号、ArtifactResolve 等のその他メッセージ型は非対応。暗号化方式は宣言値のみ表示する
+- Response 以外の XMLDSig と Redirect クエリ署名、その他の署名方式、EncryptedID の復号、ArtifactResolve 等のその他メッセージ型は非対応。EncryptedAssertion の CBC・RSA1_5・AES-KW・ECDH・外部参照・複数鍵・異なる OAEP digest / MGF・再帰的暗号化には対応しない
 - LogoutRequest の主体識別子は `NameID` / `EncryptedID` のみ対応（SAML 2.0 Core 3.7.1 で許容される `BaseID` は非対応。実運用例がほぼ皆無なため。`BaseID` のみのリクエストは NameID チェックが error 表示になる）
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない

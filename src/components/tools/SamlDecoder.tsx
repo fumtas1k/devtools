@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SamlDecryption } from './SamlDecryption';
 import { ActionButton } from '@/components/ui/ActionButton';
 import {
   MAX_CERT_BYTES,
@@ -650,13 +651,21 @@ export function SamlDecoderTool() {
           {response && response.encryptedAssertionCount > 0 && (
             <NotificationBanner variant="warning" title="暗号化された Assertion">
               EncryptedAssertion が {response.encryptedAssertionCount}{' '}
-              件含まれています。復号（秘密鍵の入力）には対応していません。
+              件含まれています。対応する方式は下の操作で復号できます。
             </NotificationBanner>
           )}
 
           {response?.encryptedAssertions.map((assertion, i) => (
             <EncryptedAssertionSection key={i} assertion={assertion} index={i} />
           ))}
+
+          {response && ok && response.encryptedAssertionCount > 0 && (
+            <SamlDecryption
+              key={input}
+              xml={ok.decoded.xml}
+              count={response.encryptedAssertionCount}
+            />
+          )}
 
           {/* Assertion 詳細 */}
           {response?.assertions.map((a, i) => (
@@ -716,8 +725,9 @@ export function SamlDecoderTool() {
           </details>
 
           <NotificationBanner variant="info" title="このツールの制限">
-            署名検証は Response と直下 Assertion の限定方式に対応します。EncryptedAssertion
-            の復号は行いません。入力データはブラウザ外に送信しません。
+            署名検証は Response と直下 Assertion
+            の限定方式に対応します。復号も限定方式に対応します。
+            入力データはブラウザ外に送信しません。
           </NotificationBanner>
         </div>
       )}

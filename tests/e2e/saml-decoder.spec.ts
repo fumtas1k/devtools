@@ -245,7 +245,7 @@ test.describe('暗号化 Assertion の方式', () => {
     await expect(page.getByText('plain-user', { exact: true })).toBeVisible();
     await expect(
       page.getByText(
-        'EncryptedAssertion が 2 件含まれています。復号（秘密鍵の入力）には対応していません。'
+        'EncryptedAssertion が 2 件含まれています。対応する方式は下の操作で復号できます。'
       )
     ).toBeVisible();
     await expect(page.getByText('あり（個別に検証できます）')).toBeVisible();
