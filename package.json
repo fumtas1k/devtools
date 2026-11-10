@@ -83,7 +83,7 @@
     "lint-staged": "16.4.0",
     "prettier": "3.9.8",
     "prettier-plugin-astro": "1.1.2",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "vitest": "5.0.5"
   },
   "overrides": {
