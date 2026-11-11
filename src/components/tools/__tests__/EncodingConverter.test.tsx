@@ -128,6 +128,22 @@ describe('EncodingConverterTool — 入力非依存の再 render では detect �
 // #391: file.arrayBuffer() の reject 時に error 表示が出る
 // ────────────────────────────────────────────
 describe('EncodingConverterTool — ファイル読込失敗時のエラー表示 (issue #391)', () => {
+  it('実際の DOM File の内容を読み込み判定する', async () => {
+    vi.useRealTimers();
+    const bytes = new Uint8Array([0xef, 0xbb, 0xbf, 0x68, 0x69]);
+    const file = new File([bytes], 'sample.txt', { type: 'text/plain' });
+    render(<EncodingConverterTool />);
+    fireEvent.click(screen.getByRole('button', { name: 'ファイル' }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('ファイルを選択'), { target: { files: [file] } });
+    });
+    await waitFor(() => {
+      expect(vi.mocked(detectEncoding)).toHaveBeenCalledWith(bytes);
+      expect(screen.getByTestId('detection-bom').textContent).toContain('あり');
+    });
+    expect(screen.getByText('sample.txt')).toBeTruthy();
+  });
+
   it('file.arrayBuffer() が reject すると ErrorMessage に fallback が表示される', async () => {
     // beforeEach の fakeTimers だと waitFor の内部 setTimeout が回らないため
     // 本 test だけ real timer に戻す

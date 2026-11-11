@@ -75,6 +75,7 @@
 | `typescript`                | TypeScript コンパイラ（devDependency）                                                                             | 開発ツール共通                           |
 | `@playwright/test`          | E2Eリグレッションテスト（devDependency）                                                                           | 開発ツール共通                           |
 | `@vitest/coverage-v8`       | テストカバレッジ測定（devDependency）                                                                              | 開発ツール共通                           |
+| `@noble/hashes`             | jsdom の推移依存が要求する optional peer を解決（devDependency）                                                   | DOM テスト                               |
 | `github-slugger`            | `docs/tools.md` の目次アンカー検証（devDependency）                                                                | meta テスト                              |
 | `lint-staged`               | コミット時の自動フォーマット (devDependency)                                                                       | 開発ツール共通                           |
 | `eslint`                    | button type 漏れ検出の lint 本体（devDependency / #569）                                                           | 開発ツール共通                           |
