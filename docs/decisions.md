@@ -5958,3 +5958,9 @@ Response と直下 Assertion の対象自身を参照する単一署名に限定
 各操作の専用 worker で非抽出可能な鍵を import し、15 秒の制限と世代破棄を適用する。GCM の認証成功後のみ、DTD を含まない独立した UTF-8 SAML Assertion を原文とは別の結果としてマスク表示する。元の Response の署名結果は暗号文に対するものであり、復号結果の署名や送信者、SSO の正当性は保証しない。秘密鍵・CEK の変更可能な配列は上書きするが、JavaScript 文字列・ブラウザ内部やネイティブ暗号処理の即時消去を保証しない。
 
 相互運用 fixture は libxmlsec 1.3.9 で合成した AES-128/256-GCM、RSA-OAEP SHA-1 および RSA-OAEP 1.1 SHA-256 / MGF1-SHA256 を使う。試験鍵と生成方法は `tests/fixtures/saml-encryption` に記録する。その他の方式や鍵配置についての互換性をこれだけで保証しない。
+
+## [181] jsdom の File API と optional peer
+
+**2026-11-11 | ステータス: 採用 | 関連: Refs #774**
+
+DOM File の実バイトを使うテストのため jsdom を 28.1.0 に固定する。推移依存 `@exodus/bytes` の optional peer は `@noble/hashes` の `^1.8.0 || ^2.0.0` を要求するため、開発用の直接依存として 1.8.0 を固定する。既存 `pkijs` が要求する 1.4.0 はその配下に保持する。両版はプロジェクトの Node 22.12.0 以上の下限に対応する。
