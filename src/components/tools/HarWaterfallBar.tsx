@@ -19,8 +19,7 @@ const PHASE_CLASS: Record<string, string> = {
 
 /**
  * 一覧テーブル用のタイミング横棒（表示専用）。
- * 幅・オフセットは親の useDynamicStyleSheet が `[data-har-bar]` / `[data-har-seg]`
- * 属性経由で当てる（inline style は CSP style-src 制約により使用しない）。
+ * 幅・オフセットは typed attr()、非対応時は親の stylesheet で当てる。
  */
 export function HarWaterfallBar({ row, rowIndex }: Props) {
   if (!row.hasTimeline || row.segments.length === 0) {
@@ -31,12 +30,21 @@ export function HarWaterfallBar({ row, rowIndex }: Props) {
     `, 合計 ${Math.round(row.totalMs)}ms`;
   return (
     <div className="har-track">
-      <div className="har-bar" data-har-bar={rowIndex} role="img" aria-label={label} title={label}>
+      <div
+        className="har-bar"
+        data-har-bar={rowIndex}
+        data-har-left={`${(row.offsetRatio * 100).toFixed(4)}%`}
+        data-har-width={`${(row.widthRatio * 100).toFixed(4)}%`}
+        role="img"
+        aria-label={label}
+        title={label}
+      >
         {row.segments.map((s, j) => (
           <span
             key={j}
             className={`har-seg ${PHASE_CLASS[s.phase] ?? ''}`}
             data-har-seg={`${rowIndex}-${j}`}
+            data-har-width={`${(s.widthRatio * 100).toFixed(4)}%`}
           />
         ))}
       </div>
