@@ -40,6 +40,64 @@ describe('jsonToXml', () => {
 });
 
 describe('xmlToJson', () => {
+  it('stopNodes を指定しない製品設定では入れ子をオブジェクトに変換する', () => {
+    const xml = '<root><raw><child id="1">value</child></raw></root>';
+
+    expect(JSON.parse(xmlToJson(xml))).toEqual({
+      root: { raw: { child: { '#text': 'value', '@_id': 1 } } },
+    });
+  });
+
+  it('stopNodes を指定した陽性対照では入れ子が生の文字列になる', () => {
+    const xml = '<root><raw><child id="1">value</child></raw></root>';
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: '@_',
+      textNodeName: '#text',
+      parseAttributeValue: true,
+      processEntities: false,
+      stopNodes: ['root.raw'],
+    });
+
+    expect(parser.parse(xml)).toEqual({ root: { raw: '<child id="1">value</child>' } });
+  });
+
+  it('数値・真偽値・名前空間・Unicode の既存変換を保持する', () => {
+    const xml =
+      '<r i="001" f="1.25" b="true" n="9007199254740993" e="1e3">' +
+      '<a>001</a><b>1.25</b><c>true</c><d>9007199254740993</d><e>1e3</e>' +
+      '<ns:item ns:id="42">日本語</ns:item></r>';
+
+    expect(JSON.parse(xmlToJson(xml))).toEqual({
+      r: {
+        a: 1,
+        b: 1.25,
+        c: true,
+        d: '9007199254740993',
+        e: 1000,
+        'ns:item': { '#text': '日本語', '@_ns:id': 42 },
+        '@_i': 1,
+        '@_f': 1.25,
+        '@_b': true,
+        '@_n': '9007199254740993',
+        '@_e': 1000,
+      },
+    });
+  });
+
+  it('先行ゼロ付きの指数表記を本文と属性の両方で数値に変換する', () => {
+    const xml = '<root><value n="00.e0">000.e5</value></root>';
+
+    expect(JSON.parse(xmlToJson(xml))).toEqual({
+      root: { value: { '#text': 0, '@_n': 0 } },
+    });
+  });
+
+  it('途中で切れた入力の既存の結果とエラーを保持する', () => {
+    expect(JSON.parse(xmlToJson('<root><a>unfinished'))).toEqual({ root: { a: '' } });
+    expect(() => xmlToJson('<root><a x="unfinished')).toThrow('有効なXMLではありません');
+  });
+
   it('シンプルなXMLをJSONに変換する', () => {
     const xml = `<?xml version="1.0"?><user><name>太郎</name><age>30</age></user>`;
     const result = JSON.parse(xmlToJson(xml));
