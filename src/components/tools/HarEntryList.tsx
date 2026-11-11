@@ -33,10 +33,23 @@ function formatTime(ms: number | undefined): string {
 }
 
 export function HarEntryList({ entries, waterfall, selectedIndex, onSelect }: Props) {
-  // 全行・全セグメントの幅/オフセットを 1 枚の stylesheet にまとめて注入する。
+  // 非対応環境では全行・全セグメントの幅/オフセットを 1 枚にまとめる。
   // inline style / setProperty は CSP style-src 制約により使用しない（decisions [067]）。
   // 行ごとに hook を呼ぶと sheet を量産するため、必ずここで 1 回だけ呼ぶ。
   const dynClassName = useDynamicStyleSheet((className) => {
+    const supportsTypedPercentage =
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('left', 'attr(data-har-left type(<percentage>), 0%)') &&
+      CSS.supports('width', 'attr(data-har-width type(<percentage>), 0%)');
+    const finiteGeometry = waterfall.rows.every(
+      (row) =>
+        !row.hasTimeline ||
+        (Number.isFinite(row.offsetRatio * 100) &&
+          Number.isFinite(row.widthRatio * 100) &&
+          row.segments.every((seg) => Number.isFinite(seg.widthRatio * 100)))
+    );
+    if (supportsTypedPercentage && finiteGeometry) return '';
     const rules: string[] = [];
     waterfall.rows.forEach((row, i) => {
       if (!row.hasTimeline) return;

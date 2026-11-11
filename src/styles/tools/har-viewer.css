@@ -46,6 +46,16 @@
     width: var(--seg-width, 0%);
     min-width: 1px;
   }
+  @supports (left: attr(data-har-left type(<percentage>), 0%)) and
+    (width: attr(data-har-width type(<percentage>), 0%)) {
+    .har-bar {
+      --bar-left: attr(data-har-left type(<percentage>), 0%);
+      --bar-width: attr(data-har-width type(<percentage>), 0%);
+    }
+    .har-seg {
+      --seg-width: attr(data-har-width type(<percentage>), 0%);
+    }
+  }
   .har-phase-blocked {
     background: var(--color-har-blocked);
   }
@@ -69,6 +79,7 @@
   }
   /* 詳細パネルのミニバー（1 行 1 フェーズ） */
   .har-mini-track {
+    display: block;
     position: relative;
     height: 0.5rem;
     width: 100%;
@@ -77,6 +88,7 @@
     overflow: hidden;
   }
   .har-mini-fill {
+    display: block;
     height: 100%;
     width: var(--mini-width, 0%);
     min-width: 1px;
