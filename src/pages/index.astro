@@ -259,7 +259,7 @@ const jsonLd = {
     }
   });
   tabBar.addEventListener('keydown', (event) => {
-    if (!supportsInert) return;
+    if (!supportsInert || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const current = tabs.findIndex((tab) => tab === document.activeElement);
     if (current === -1) return;
     let next: number;

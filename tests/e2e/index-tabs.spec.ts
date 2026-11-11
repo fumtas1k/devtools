@@ -160,6 +160,57 @@ test.describe('トップページ カテゴリタブ（production CSP 適用）'
     );
   });
 
+  test('修飾キー付きの移動キーはタブ操作で奪わない', async ({ browser }) => {
+    await withProductionCsp(
+      browser,
+      '/',
+      async (page) => {
+        const tabs = page.getByRole('tab');
+        await tabs.nth(0).focus();
+        await page.evaluate(() => {
+          window.addEventListener('keydown', (event) => {
+            if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+              document.documentElement.dataset.keyPrevented = String(event.defaultPrevented);
+              document.documentElement.dataset.keyObserved = event.key;
+              document.documentElement.dataset.keyModifiers = [
+                event.altKey,
+                event.ctrlKey,
+                event.metaKey,
+                event.shiftKey,
+              ].join(',');
+            }
+          });
+        });
+
+        // 陽性対照: 修飾なしでは既定動作を止め、選択せずフォーカスを移す。
+        await page.keyboard.press('ArrowRight');
+        await expect(page.locator('html')).toHaveAttribute('data-key-prevented', 'true');
+        await expect(tabs.nth(1)).toBeFocused();
+        await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+
+        for (const [modifier, flags] of [
+          ['Alt', 'true,false,false,false'],
+          ['Control', 'false,true,false,false'],
+          ['Meta', 'false,false,true,false'],
+          ['Shift', 'false,false,false,true'],
+        ]) {
+          for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) {
+            await page.evaluate(() => {
+              delete document.documentElement.dataset.keyObserved;
+            });
+            await page.keyboard.press(`${modifier}+${key}`);
+            await expect(page.locator('html')).toHaveAttribute('data-key-observed', key);
+            await expect(page.locator('html')).toHaveAttribute('data-key-modifiers', flags);
+            await expect(page.locator('html')).toHaveAttribute('data-key-prevented', 'false');
+            await expect(tabs.nth(1)).toBeFocused();
+            await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+          }
+        }
+      },
+      { skipHydration: true }
+    );
+  });
+
   test('検索中と幅ゼロの scrollend を無視し、表示中のスクロールは同期する', async ({ browser }) => {
     await withProductionCsp(
       browser,
