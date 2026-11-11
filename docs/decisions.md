@@ -5948,3 +5948,13 @@ Response と直下 Assertion の対象自身を参照する単一署名に限定
 正規化ライブラリの名前空間軸出力は URI の属性エスケープを行わず、prefix の処理は ASCII ベースのため、署名検証前に文書全体の URI・宣言値の `&`・`<`・`>`・`"`・空白と ASCII 形式外の prefix を未対応として拒否する。既定名前空間と通常のテキスト・属性値は許容する。これは防御的な互換性制限であり、正当な XML でも検証できない場合がある。デコードと表示の受理範囲は維持する。
 
 署名・証明書の利用を検証操作時に限定し、worker の時間・サイズ制限と世代破棄を設ける。個別の一致は信頼連鎖、失効、IdP の正当性や SSO 成功を表さない。詳細な許容方式と境界は上記仕様を正本とする。
+
+## [180] SAML EncryptedAssertion の限定復号
+
+**2026-11-10 | ステータス: 検証中 | 関連: [#745](https://github.com/fumtas1k/devtools/issues/745)**
+
+明示的に選択した Response 直下の EncryptedAssertion のうち、AES-128/256-GCM と RSA-OAEP の限定プロファイルのみを復号する。WebCrypto が digest と MGF に異なるハッシュを設定できないため、SHA-1 / MGF1-SHA1 または XML Encryption 1.1 の SHA-256 / MGF1-SHA256 を扱い、異なる組合せを拒否する。単一の非暗号化 RSA PKCS#8 鍵だけを使い、非空の任意属性と鍵配置・参照・ID の曖昧さを拒否する。詳細と制限は `docs/tools.md` を参照。
+
+各操作の専用 worker で非抽出可能な鍵を import し、15 秒の制限と世代破棄を適用する。GCM の認証成功後のみ、DTD を含まない独立した UTF-8 SAML Assertion を原文とは別の結果としてマスク表示する。元の Response の署名結果は暗号文に対するものであり、復号結果の署名や送信者、SSO の正当性は保証しない。秘密鍵・CEK の変更可能な配列は上書きするが、JavaScript 文字列・ブラウザ内部やネイティブ暗号処理の即時消去を保証しない。
+
+相互運用 fixture は libxmlsec 1.3.9 で合成した AES-128/256-GCM、RSA-OAEP SHA-1 および RSA-OAEP 1.1 SHA-256 / MGF1-SHA256 を使う。試験鍵と生成方法は `tests/fixtures/saml-encryption` に記録する。その他の方式や鍵配置についての互換性をこれだけで保証しない。
