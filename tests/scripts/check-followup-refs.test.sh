@@ -2,6 +2,12 @@
 # scripts/check-followup-refs.sh の回帰テスト
 set -euo pipefail
 
+# fixture が呼び出し元の repository、index、Git 設定を変更しないようにする。
+# alternate index は専用テスト内で明示的に指定する。
+for git_env_name in $(compgen -e GIT_); do
+  unset "$git_env_name"
+done
+
 SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/scripts/check-followup-refs.sh"
 TMPDIR_TEST="$(mktemp -d "${TMPDIR:-/tmp}/check-followup-refs-test.XXXXXX")"
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
@@ -226,6 +232,31 @@ else
   fail_count=$((fail_count + 1))
 fi
 
+# 継承したファイル記述子を通常モードの literal path として使う。
+printf '%s\n' 'follow up' > "$TMPDIR_TEST/inherited-fd.md"
+for fd in 3 4; do
+  if [ "$fd" = 3 ]; then
+    if "$SCRIPT" /dev/fd/3 3< "$TMPDIR_TEST/inherited-fd.md" > "$TMPDIR_TEST/actual-output" 2> "$TMPDIR_TEST/actual-error"; then actual=0; else actual=$?; fi
+  else
+    if "$SCRIPT" /dev/fd/4 4< "$TMPDIR_TEST/inherited-fd.md" > "$TMPDIR_TEST/actual-output" 2> "$TMPDIR_TEST/actual-error"; then actual=0; else actual=$?; fi
+  fi
+  printf '[WARN] /dev/fd/%s:1: follow up\n' "$fd" > "$TMPDIR_TEST/expected-output"
+  if [ "$actual" = 1 ] && cmp -s "$TMPDIR_TEST/expected-output" "$TMPDIR_TEST/actual-output"; then
+    echo "[OK] inherited fd $fd retains legacy warning"
+  else
+    echo "[FAIL] inherited fd $fd legacy warning (exit $actual)"
+    fail_count=$((fail_count + 1))
+  fi
+done
+printf '[WARN] %s:1: follow up\n[WARN] /dev/fd/3:1: follow up\n[WARN] /dev/fd/4:1: follow up\n' "$TMPDIR_TEST/inherited-fd.md" > "$TMPDIR_TEST/expected-output"
+if "$SCRIPT" "$TMPDIR_TEST/inherited-fd.md" /dev/fd/3 /dev/fd/4 3< "$TMPDIR_TEST/inherited-fd.md" 4< "$TMPDIR_TEST/inherited-fd.md" > "$TMPDIR_TEST/actual-output" 2> "$TMPDIR_TEST/actual-error"; then actual=0; else actual=$?; fi
+if [ "$actual" = 1 ] && cmp -s "$TMPDIR_TEST/expected-output" "$TMPDIR_TEST/actual-output"; then
+  echo '[OK] inherited descriptors survive multiple legacy inputs'
+else
+  echo "[FAIL] inherited descriptors survive multiple legacy inputs (exit $actual)"
+  fail_count=$((fail_count + 1))
+fi
+
 # grep が先行候補を出力後に NUL を見つけても、mapfile と同じ位置で行を切る。
 printf 'TBD\n%100000s\000#123\n' '' > "$TMPDIR_TEST/binary-late.md"
 assert_exit 1 "$TMPDIR_TEST/binary-late.md" 'NUL hides a later adjacent issue reference → detect'
@@ -245,6 +276,197 @@ if [[ '　' =~ ^[[:space:]]$ ]]; then
     echo '[FAIL] Unicode whitespace follows locale and preserves original text'
     fail_count=$((fail_count + 1))
   fi
+fi
+
+# index 入力は独立した fixture で検証する。hook と利用者の Git 設定は使わない。
+REPO_ROOT="$(cd "$(dirname "$SCRIPT")/.." && pwd)"
+FIXTURE="$TMPDIR_TEST/repo"
+mkdir -p "$FIXTURE" "$TMPDIR_TEST/bin" "$TMPDIR_TEST/snapshots"
+(
+  export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+  export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null
+  cd "$FIXTURE"
+  git init -q
+  mkdir special
+  printf '%s\n' 'follow up' > bad.md
+  printf '%s\n' 'follow up #123' > clean.md
+  printf '%s\n' 'follow up' > unchanged.md
+  printf '%s\n' 'follow up' > deleted.md
+  printf '%s\n' 'follow up' > removed.md
+  printf '%s\n' 'follow up' > ./-leading
+  printf '%s\n' 'follow up' > ./--index
+  printf '%s\n' 'follow up' > ./--
+  printf '%s\n' 'follow up' > ./--other
+  printf '%s\n' 'follow up' > special/'-name'
+  printf '%s\n' 'follow up' > special/'space tab'  # 他の特殊名もディレクトリ単位で明示 stage
+  printf '%s\n' 'follow up' > "special/$(printf 'tab\tnewline\nname')"
+  printf '%s\n' 'follow up' > 'special/*?[:=]'
+  ln -s bad.md link
+  bash "$REPO_ROOT/.codex/scripts/git-add-files.sh" bad.md clean.md unchanged.md deleted.md removed.md ./-leading ./--index ./-- ./--other special link
+  git -c user.name=Fixture -c user.email=fixture@example.invalid commit -qm fixture
+  printf '%s\n' 'follow up #123' > bad.md
+  printf '%s\n' 'follow up' > clean.md
+  rm deleted.md removed.md
+  bash "$REPO_ROOT/.codex/scripts/git-add-files.sh" removed.md
+  printf '%s\n' 'follow up #123' > removed.md
+  printf '%s\n' 'follow up' > untracked.md
+)
+
+REAL_GREP=$(command -v grep)
+index_check() {
+  local expected="$1" desc="$2"
+  shift 2
+  if (cd "$FIXTURE" && TMPDIR="$TMPDIR_TEST/snapshots" "$SCRIPT" "$@") > "$TMPDIR_TEST/index-out" 2> "$TMPDIR_TEST/index-err"; then
+    actual=0
+  else
+    actual=$?
+  fi
+  if [ "$actual" = "$expected" ] && { [ "$expected" != 2 ] || "$REAL_GREP" -q '\[ERROR\]' "$TMPDIR_TEST/index-err"; }; then
+    echo "[OK] $desc"
+  else
+    echo "[FAIL] $desc (expected $expected, got $actual)"
+    cat "$TMPDIR_TEST/index-err"
+    fail_count=$((fail_count + 1))
+  fi
+}
+
+# 陽性対照: WT では参照あり、index では参照なし。
+index_check 1 'index staged violation, WT referenced' --index -- bad.md
+if ! grep -Fxq '[WARN] bad.md:1: follow up' "$TMPDIR_TEST/index-out"; then
+  echo '[FAIL] index warning uses requested path and staged content'
+  fail_count=$((fail_count + 1))
+fi
+# 陰性対照: WT では違反、index では参照あり。
+index_check 0 'index staged reference, WT violation' --index -- clean.md
+index_check 1 'unchanged index blob is read' --index -- unchanged.md
+index_check 1 'index blob is read after WT deletion' --index -- deleted.md
+index_check 2 'staged deletion with recreated WT is rejected' --index -- removed.md
+index_check 2 'untracked target is rejected' --index -- untracked.md
+index_check 2 'missing target mixed with clean target is rejected' --index -- clean.md missing.md
+index_check 2 'directory is rejected' --index -- special
+index_check 2 'symlink is rejected' --index -- link
+index_check 2 'missing separator is rejected' --index bad.md
+index_check 2 'missing path is rejected' --index --
+for invalid in /absolute ../bad.md ././bad.md dir/../bad.md dir/./bad.md dir//bad.md bad.md/ . ''; do
+  index_check 2 "invalid index path: $invalid" --index -- "$invalid"
+done
+index_check 1 'leading ./ is accepted' --index -- ./bad.md
+index_check 1 'leading hyphen index path is read' --index -- -leading
+index_check 1 'reserved name is a legacy path when escaped' ./--index
+index_check 0 'standalone -- remains a legacy path' --
+index_check 0 'unknown flag name remains a legacy path' --other
+for special in 'special/-name' 'special/space tab' "special/$(printf 'tab\tnewline\nname')" 'special/*?[:=]'; do
+  index_check 1 "literal index path: $special" --index -- "$special"
+  printf '[WARN] %s:1: follow up\n' "$special" > "$TMPDIR_TEST/index-expected"
+  if ! cmp -s "$TMPDIR_TEST/index-expected" "$TMPDIR_TEST/index-out"; then
+    echo '[FAIL] literal path output'
+    fail_count=$((fail_count + 1))
+  fi
+done
+if (cd "$FIXTURE/special" && "$SCRIPT" --index -- ../bad.md) > "$TMPDIR_TEST/index-out" 2> "$TMPDIR_TEST/index-err"; then actual=0; else actual=$?; fi
+if [ "$actual" = 2 ] && grep -q '\[ERROR\]' "$TMPDIR_TEST/index-err"; then
+  echo '[OK] non-root invocation is rejected'
+else
+  echo '[FAIL] non-root invocation'
+  fail_count=$((fail_count + 1))
+fi
+
+# index の競合・submodule は対象の entry のみを調べる。
+(
+  export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+  cd "$FIXTURE"
+  oid=$(git hash-object -w bad.md)
+  printf '100644 %s 1\tconflict.md\n100644 %s 2\tconflict.md\n' "$oid" "$oid" | git update-index --index-info
+  printf '160000 %s 0\tsubmodule\n' "$(git rev-parse HEAD)" | git update-index --index-info
+)
+index_check 2 'unmerged target is rejected' --index -- conflict.md
+index_check 2 'submodule target is rejected' --index -- submodule
+index_check 0 'unrelated unmerged entry is ignored' --index -- clean.md
+
+# 代替 index と作業ツリー/index の不変性を確認する。
+cp "$FIXTURE/.git/index" "$TMPDIR_TEST/alternate-index"
+(
+  export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+  export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null
+  export GIT_INDEX_FILE="$TMPDIR_TEST/alternate-index"
+  cd "$FIXTURE"
+  bash "$REPO_ROOT/.codex/scripts/git-add-files.sh" bad.md clean.md
+)
+index_before=$(git -C "$FIXTURE" hash-object "$FIXTURE/.git/index")
+alt_before=$(git -C "$FIXTURE" hash-object "$TMPDIR_TEST/alternate-index")
+wt_before=$(git -C "$FIXTURE" diff --binary | git hash-object --stdin)
+GIT_INDEX_FILE="$TMPDIR_TEST/alternate-index" index_check 0 'alternate index contains reference' --index -- bad.md
+GIT_INDEX_FILE="$TMPDIR_TEST/alternate-index" index_check 1 'alternate index contains violation' --index -- clean.md
+index_check 1 'default index remains independent' --index -- bad.md
+if [ "$index_before" = "$(git -C "$FIXTURE" hash-object "$FIXTURE/.git/index")" ] &&
+  [ "$alt_before" = "$(git -C "$FIXTURE" hash-object "$TMPDIR_TEST/alternate-index")" ] &&
+  [ "$wt_before" = "$(git -C "$FIXTURE" diff --binary | git hash-object --stdin)" ]; then
+  echo '[OK] both indexes and WT remain unchanged'
+else
+  echo '[FAIL] checker changed an index or WT'
+  fail_count=$((fail_count + 1))
+fi
+
+# 外部コマンドの故障を注入し、エラーと後始末を検証する。
+REAL_GIT=$(command -v git)
+REAL_GREP=$(command -v grep)
+REAL_RM=$(command -v rm)
+export REAL_GIT REAL_GREP REAL_RM
+cat > "$TMPDIR_TEST/bin/git" <<'SH'
+#!/usr/bin/env bash
+if [ "${FAIL_COMMAND-}" = "${1-}" ]; then exit 42; fi
+if [ "${FAIL_COMMAND-}" = term ] && [ "${1-}" = cat-file ]; then kill -TERM "$PPID"; exit 42; fi
+if [ "${FAIL_COMMAND-}" = int ] && [ "${1-}" = cat-file ]; then kill -INT "$PPID"; exit 42; fi
+if [ "${FAIL_COMMAND-}" = truncated ] && [ "${1-}" = ls-files ]; then
+  IFS= read -r -d '' record < <("$REAL_GIT" "$@")
+  printf '%s' "$record"
+  exit 0
+fi
+exec "$REAL_GIT" "$@"
+SH
+cat > "$TMPDIR_TEST/bin/grep" <<'SH'
+#!/usr/bin/env bash
+if [ "${FAIL_COMMAND-}" = grep ]; then exit 42; fi
+if [ "${FAIL_COMMAND-}" = read ]; then
+  "$REAL_GREP" "$@"
+  result=$?
+  "$REAL_RM" -f -- "${@: -1}"
+  exit "$result"
+fi
+exec "$REAL_GREP" "$@"
+SH
+cat > "$TMPDIR_TEST/bin/mktemp" <<'SH'
+#!/usr/bin/env bash
+if [ "${FAIL_COMMAND-}" = mktemp ]; then exit 42; fi
+exec /usr/bin/mktemp "$@"
+SH
+cat > "$TMPDIR_TEST/bin/rm" <<'SH'
+#!/usr/bin/env bash
+if [ "${FAIL_COMMAND-}" = rm ]; then exit 42; fi
+exec "$REAL_RM" "$@"
+SH
+chmod +x "$TMPDIR_TEST/bin/"*
+for command in ls-files cat-file grep mktemp read rm truncated; do
+  PATH="$TMPDIR_TEST/bin:$PATH" FAIL_COMMAND="$command" index_check 2 "failure propagates: $command" --index -- clean.md
+done
+# rm 失敗で意図的に残した領域を片付けて signal の cleanup を検証する。
+"$REAL_RM" -rf "$TMPDIR_TEST/snapshots"/*
+for signal in term int; do
+  if [ "$signal" = term ]; then expected=143; else expected=130; fi
+  if (cd "$FIXTURE" && PATH="$TMPDIR_TEST/bin:$PATH" FAIL_COMMAND="$signal" TMPDIR="$TMPDIR_TEST/snapshots" "$SCRIPT" --index -- clean.md) > "$TMPDIR_TEST/index-out" 2> "$TMPDIR_TEST/index-err"; then actual=0; else actual=$?; fi
+  if [ "$actual" = "$expected" ] && [ -z "$(ls -A "$TMPDIR_TEST/snapshots")" ]; then
+    echo "[OK] $signal is not successful and cleans snapshots"
+  else
+    echo "[FAIL] $signal exit status: $actual"
+    fail_count=$((fail_count + 1))
+  fi
+done
+index_check 0 'successful check cleans snapshots' --index -- clean.md
+if [ -z "$(ls -A "$TMPDIR_TEST/snapshots")" ]; then
+  echo '[OK] temporary snapshots cleaned'
+else
+  echo '[FAIL] temporary snapshots remain'
+  fail_count=$((fail_count + 1))
 fi
 
 if [ "$fail_count" -gt 0 ]; then

@@ -1,6 +1,27 @@
-/* HarViewer 専用（ウォーターフォール）。 */
+/* HarViewer 専用（ウォーターフォール・処理中表示）。 */
 
 @layer components {
+  /* 値が不明な処理には割合を示さないインジケータを使う。 */
+  .har-busy-indicator {
+    display: block;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 3px solid var(--color-primary);
+    border-right-color: transparent;
+    border-radius: var(--radius-full);
+    animation: har-busy-spin 1s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .har-busy-indicator {
+      animation: none;
+    }
+  }
+  @keyframes har-busy-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   /* HAR ウォーターフォール */
   .har-track {
     position: relative;

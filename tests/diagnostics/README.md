@@ -1,5 +1,13 @@
 # navigation 待機の手動診断（Issue #193）
 
+## hydration 巡回の失敗診断
+
+通常の production / dev hydration 巡回が失敗した場合、各ページと context の段階を標準エラーの summary と `hydration-diagnostics` JSON 添付に記録する。`startMs` は recorder 開始からの単調時計による経過時間、`durationMs` は各段階の時間。`running` は snapshot 時点で未完了、`completed` / `failed` は段階の結果を表す。実行中の段階の時間は snapshot 時点までの値で、未到達の段階は含まれない。
+
+この開始点と Playwright のテスト開始点は異なるため、elapsed は 30 秒のテスト残 budget ではない。reporter の duration とも計測範囲が異なる。最後に記録されたページが失敗の原因とは限らず、先行ページを含む各段階の時間と既存のエラーを合わせて調べる。成功時に診断出力は生成しない。
+
+HTML report、trace、添付は次の実行で上書きされうるため必要に応じて退避する。worker の強制終了などでは summary や添付の保存は保証されない。この記録だけで特定の失敗原因を確定するものではない。
+
 `load` は画像待ちで navigation を長引かせうるが、`domcontentloaded` への一律変更だけでは React の操作準備を保証できない。今回の部分対応は比較用の手動診断と結果の記録に限定し、既存の `withProductionCsp` / `waitForReactHydration` / timeout / 通常 CI を維持する。[#193](https://github.com/fumtas1k/devtools/issues/193) は閉じない。
 
 ## 再実行

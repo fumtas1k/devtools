@@ -1,5 +1,16 @@
-import { test, expect, type Page } from '@playwright/test';
-import { withProductionCsp, type CspGuard } from './helpers';
+import { test, expect, type Browser, type Page } from '@playwright/test';
+import { withProductionCsp, type CspGuard, type WithProductionCspOptions } from './helpers';
+
+const touchOptions = { viewport: { width: 390, height: 844 }, hasTouch: true };
+
+// 未対応キーの object literal は型検査で拒否される。
+const invalidOptions: WithProductionCspOptions = {
+  contextOptions: {
+    // @ts-expect-error bypassCSP は公開しない
+    bypassCSP: true,
+  },
+};
+void invalidOptions;
 
 /**
  * 陽性対照: `withProductionCsp` ラッパ固有挙動を検証するメタテスト (issue #281)。
@@ -66,4 +77,105 @@ test('withProductionCsp: fn の throw は assertNoViolations の失敗に隠蔽�
       throw new Error('intentional-original');
     })
   ).rejects.toThrow('intentional-original');
+});
+
+test('withProductionCsp: contextOptions 未指定では既定の context を作る', async ({ browser }) => {
+  const calls: Parameters<Browser['newContext']>[] = [];
+  const observedBrowser = new Proxy(browser, {
+    get(target, property) {
+      if (property === 'newContext') {
+        return async (...args: Parameters<Browser['newContext']>) => {
+          calls.push(args);
+          return target.newContext(...args);
+        };
+      }
+      return Reflect.get(target, property);
+    },
+  });
+  await withProductionCsp(observedBrowser, '/tools/uuid-v7', async (page) => {
+    expect(page.viewportSize()).toEqual({ width: 1280, height: 720 });
+    expect(await page.evaluate(() => navigator.maxTouchPoints)).toBe(0);
+  });
+  expect(calls).toEqual([[]]);
+});
+
+test('withProductionCsp: viewport と hasTouch は初回ナビゲーションから有効', async ({
+  browser,
+}) => {
+  // 実 context に初期化スクリプトを追加し、callback より前の最初の文書で観測する。
+  const observedBrowser = new Proxy(browser, {
+    get(target, property) {
+      if (property === 'newContext') {
+        return async (...args: Parameters<Browser['newContext']>) => {
+          const context = await target.newContext(...args);
+          await context.addInitScript(() => {
+            Object.assign(window, {
+              initialContextState: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                touch: navigator.maxTouchPoints,
+              },
+            });
+          });
+          return context;
+        };
+      }
+      return Reflect.get(target, property);
+    },
+  });
+  await withProductionCsp(
+    observedBrowser,
+    '/tools/uuid-v7',
+    async (page, guard) => {
+      const initialState = await page.evaluate(
+        () => (window as unknown as { initialContextState: unknown }).initialContextState
+      );
+      expect(initialState).toEqual({ width: 390, height: 844, touch: 1 });
+      expect(guard.violations).toHaveLength(0);
+    },
+    { contextOptions: touchOptions }
+  );
+});
+
+test('withProductionCsp: contextOptions 指定時も終端で CSP 違反を検知する', async ({ browser }) => {
+  await expect(
+    withProductionCsp(
+      browser,
+      '/tools/uuid-v7',
+      async (page, guard) => injectCspViolation(page, guard),
+      { contextOptions: touchOptions }
+    )
+  ).rejects.toThrow(/CSP 違反/);
+});
+
+test('withProductionCsp: 未対応 bypassCSP は実行時にも無視する', async ({ browser }) => {
+  const unsupportedOptions = { ...touchOptions, bypassCSP: true };
+  await expect(
+    withProductionCsp(
+      browser,
+      '/tools/uuid-v7',
+      async (page, guard) => injectCspViolation(page, guard),
+      { contextOptions: unsupportedOptions }
+    )
+  ).rejects.toThrow(/CSP 違反/);
+});
+
+test('withProductionCsp: contextOptions 指定時も元例外を伝播し context を閉じる', async ({
+  browser,
+}) => {
+  let capturedPage: Page | undefined;
+  await expect(
+    withProductionCsp(
+      browser,
+      '/tools/uuid-v7',
+      async (page, guard) => {
+        capturedPage = page;
+        await injectCspViolation(page, guard);
+        throw new Error('intentional-options-original');
+      },
+      { contextOptions: touchOptions }
+    )
+  ).rejects.toThrow('intentional-options-original');
+  expect(capturedPage).toBeDefined();
+  expect(capturedPage!.isClosed()).toBe(true);
 });

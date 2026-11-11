@@ -340,3 +340,71 @@ test.describe('鉄道図: 種別の形状差', () => {
     });
   });
 });
+
+// 実 Worker で指数的なマッチを実行する。旧同期実装は Worker を生成できず陽性対照が失敗する。
+test('不明な危険パターンを Worker で中断・期限終了し通常入力へ復帰する', async ({ browser }) => {
+  await withProductionCsp(browser, '/tools/regex-visualizer', async (page) => {
+    await page.getByLabel('正規表現').fill('^(a+)+$\\1');
+    await expect(
+      page
+        .getByRole('region', { name: 'ReDoS 判定' })
+        .getByText(/判定不能/)
+        .first()
+    ).toBeVisible();
+    await page.getByLabel('テスト文字列').fill('a'.repeat(32) + '!');
+    await page.evaluate(() => {
+      (window as unknown as { ticks: number }).ticks = 0;
+      setInterval(() => {
+        (window as unknown as { ticks: number }).ticks++;
+      }, 50);
+    });
+    const firstWorker = page.waitForEvent('worker', { timeout: 3000 });
+    await page.getByRole('button', { name: /マッチを実行/ }).click();
+    const first = await firstWorker;
+    expect(new URL(first.url()).origin).toBe(new URL(page.url()).origin);
+    const closed = first.waitForEvent('close');
+    const baseline = await page.evaluate(() => (window as unknown as { ticks: number }).ticks);
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { ticks: number }).ticks))
+      .toBeGreaterThan(baseline + 2);
+    await page.getByRole('button', { name: '中断' }).click();
+    await closed;
+    await expect(page.getByText('マッチを中断しました。')).toBeVisible();
+    const secondWorker = page.waitForEvent('worker', { timeout: 3000 });
+    await page.getByRole('button', { name: 'もう一度実行' }).click();
+    const second = await secondWorker;
+    const closedOnTimeout = second.waitForEvent('close');
+    await expect(page.getByText(/制限時間を超えた/)).toBeVisible({ timeout: 4000 });
+    await closedOnTimeout;
+    const workerReplies = await page.evaluate(async (url) => {
+      const worker = new Worker(url, { type: 'module' });
+      const request = (data: object) =>
+        new Promise<unknown>((resolve, reject) => {
+          worker.onmessage = (event) => resolve(event.data);
+          worker.onerror = () => reject(new Error('Worker error'));
+          worker.postMessage(data);
+        });
+      try {
+        const invalid = await request({ requestId: 1, pattern: '(', flags: '', text: 'a' });
+        const valid = await request({ requestId: 2, pattern: '(a)', flags: 'gi', text: 'Aa' });
+        return { invalid, valid };
+      } finally {
+        worker.terminate();
+      }
+    }, first.url());
+    expect(workerReplies.invalid).toEqual({ type: 'error', requestId: 1 });
+    expect(workerReplies.valid).toMatchObject({
+      type: 'result',
+      requestId: 2,
+      result: {
+        matches: [
+          { value: 'A', groups: [{ index: 1, value: 'A' }] },
+          { value: 'a', groups: [{ index: 1, value: 'a' }] },
+        ],
+      },
+    });
+    await page.getByLabel('正規表現').fill('a+');
+    await page.getByLabel('テスト文字列').fill('aaa');
+    await expect(page.getByText(/1 件マッチ/)).toBeVisible();
+  });
+});

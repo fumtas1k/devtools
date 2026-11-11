@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"><saml:EncryptedAssertion><xenc:EncryptedData xmlns:xenc="http://www.w3.org/2001/04/xmlenc#" Type="http://www.w3.org/2001/04/xmlenc#Element">
+<xenc:EncryptionMethod Algorithm="http://www.w3.org/2009/xmlenc11#aes256-gcm"/>
+<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+<xenc:EncryptedKey>
+<xenc:EncryptionMethod Algorithm="http://www.w3.org/2009/xmlenc11#rsa-oaep"><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ns0:MGF xmlns:ns0="http://www.w3.org/2009/xmlenc11#" Algorithm="http://www.w3.org/2009/xmlenc11#mgf1sha256"/></xenc:EncryptionMethod>
+<ds:KeyInfo>
+<ds:KeyName>trial</ds:KeyName>
+</ds:KeyInfo>
+<xenc:CipherData>
+<xenc:CipherValue>DRPj49yfdZGPTDgD/ln0BkToDdvR3yEujL5Aa8V1uL1Wl432oHhzuhlr//0K5uS3
+qBccFKDVYHDXvjxKgvr1WTnUPmdPA6cpyrJzndHh9G6w13pQYZQBlFP44QE5xhlk
+zGtMyp7tk6Noz0CZJ5vs/cisaClFtk/uXPQyIn0oh6GBG9ANoZBwY4SgUJmb1yMJ
+0uYGmkjP2Renm6qVJhP5kBZ4Nz6gfaiwd8mn/NPUm+0sYF5Hq3tc2HBCIFxT/vvH
++TEMsmPEr5R2/ojsE+d+FNMZjyx/3Acgi0waSBzBj5SooYIJKJohqGDXE88JE7KQ
+AcvcxPS7xaYZMjF5AOwESw==</xenc:CipherValue>
+</xenc:CipherData>
+</xenc:EncryptedKey>
+</ds:KeyInfo>
+<xenc:CipherData>
+<xenc:CipherValue>u5+pEEiTwIOK6fIlkw13ZscYWPZWHt0Ahb7Geyk0FSYmK0x4VYFDuml/7eG47r9Y
+x3y4v+AvB7YeZkpyt7nATtOGtHLdqUuEF1Sq06CcgEWXUVyxaZzn8HtZN9ILqW3+
+hpjpXbFkOzE1a3xOk4ZRO0cqLSUUPaI/v0GAijnPUxMw5Wu2K1jMIIuMSeA/VIL2
+EwfKk/ABGrA4VVsMFiKKvp89fTIwmE8eOnJmWmji8E4AXFjgG/BNLMbf0tfO1ug/
+wcTq+PYHlr1WtaM7rxB3+09Qkcd5oESjQCbAbuv7j6E4Mx5x+dLe+LgGsxFmZrfA
+l68=</xenc:CipherValue>
+</xenc:CipherData>
+</xenc:EncryptedData></saml:EncryptedAssertion></samlp:Response>

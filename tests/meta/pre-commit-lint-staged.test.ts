@@ -22,6 +22,13 @@ describe('pre-commit lint-staged', () => {
     });
   const commit = () =>
     spawnSync('git', ['commit', '-m', 'test: 日本語'], { cwd: dir, env, encoding: 'utf8' });
+  const hook = () =>
+    spawnSync('sh', [join(dir, '.git/hooks/pre-commit')], { cwd: dir, env, encoding: 'utf8' });
+  const write = (file: string, content: string) => {
+    mkdirSync(join(dir, file, '..'), { recursive: true });
+    writeFileSync(join(dir, file), content);
+  };
+  const warning = 'デザインシステムファイルが変更されています。';
 
   beforeEach(() => {
     mkdirSync('/tmp/codex', { recursive: true });
@@ -60,6 +67,72 @@ describe('pre-commit lint-staged', () => {
   afterEach(() => {
     execFileSync('bash', [join(root, 'scripts/rm-tmp.sh'), '-r', dir]);
   });
+
+  it('陽性対照: 分割 CSS と既存対象の変更を警告する', () => {
+    const files = [
+      'src/styles/tokens.css',
+      'src/styles/base.css',
+      'src/styles/print.css',
+      'src/styles/motion.css',
+      'src/styles/components/button.css',
+      'src/styles/tools/example.css',
+      'src/styles/components/nested/example.css',
+      'src/styles/global.css',
+      'src/utils/styles.ts',
+    ];
+    for (const file of files) {
+      write(file, file.endsWith('.ts') ? 'export const value = 1;\n' : 'a { color: red; }\n');
+      stage(file);
+      const result = hook();
+      expect(result.status, file + result.stdout + result.stderr).toBe(0);
+      expect(result.stderr, file).toContain(warning);
+      git('reset', '-q', 'HEAD', '--', file);
+    }
+  }, 60_000);
+
+  it('陰性対照: 対象外のパスや拡張子では警告しない', () => {
+    const files = [
+      'src/styles/readme.txt',
+      'src/styles/example.css.map',
+      'src/styles/example.scss',
+      'src/stylesheets/example.css',
+      'src/styles-other/example.css',
+      'src/components/example.css',
+    ];
+    for (const file of files) {
+      write(file, 'a { color: red; }\n');
+      stage(file);
+      const result = hook();
+      expect(result.status, file + result.stdout + result.stderr).toBe(0);
+      expect(result.stderr, file).not.toContain('docs check:');
+      git('reset', '-q', 'HEAD', '--', file);
+    }
+  }, 60_000);
+
+  it('decisions.md はステージされた場合だけ警告を抑止する', () => {
+    const css = 'src/styles/tokens.css';
+    const decisions = 'docs/decisions.md';
+    write(css, 'a { color: red; }\n');
+    write(decisions, '# Decisions\n');
+    stage(css);
+    const unstaged = hook();
+    expect(unstaged.status, unstaged.stdout + unstaged.stderr).toBe(0);
+    expect(unstaged.stderr).toContain(warning);
+    stage(decisions);
+    const staged = hook();
+    expect(staged.status, staged.stdout + staged.stderr).toBe(0);
+    expect(staged.stderr).not.toContain(warning);
+  }, 30_000);
+
+  it('警告を出してもコミットは成功する', () => {
+    const file = 'src/styles/tokens.css';
+    write(file, 'a { color: red; }\n');
+    stage(file);
+    const result = commit();
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stderr).toContain(warning);
+    expect(git('show', `HEAD:${file}`)).toContain('color: red');
+  }, 30_000);
 
   it('別のグローバル hook と署名設定があっても fixture の hook で検証する', () => {
     expect(git('config', '--global', '--get', 'core.hooksPath').trim()).toBe(

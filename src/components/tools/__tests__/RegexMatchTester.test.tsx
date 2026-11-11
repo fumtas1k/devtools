@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { RegexMatchTester } from '../RegexMatchTester';
+import { mockRegexWorker } from './regexWorkerMock';
+
+beforeEach(mockRegexWorker);
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 const FIND = { timeout: 2000 } as const;
@@ -77,7 +81,7 @@ describe('RegexMatchTester', () => {
     expect(await screen.findByText(/2 件マッチ/, undefined, FIND)).toBeTruthy();
   });
 
-  it('unknown の手動実行は入力変更後に再度許可が必要', async () => {
+  it('unknown の手動実行はパターン変更後に再度許可が必要', async () => {
     const { rerender } = render(
       <RegexMatchTester pattern="a" flags="" redosStatus="unknown" regexValid />
     );
@@ -87,6 +91,17 @@ describe('RegexMatchTester', () => {
     rerender(<RegexMatchTester pattern="b" flags="" redosStatus="unknown" regexValid />);
     expect(screen.getByRole('button', { name: /マッチを実行/ })).toBeTruthy();
     expect(screen.queryByText(/件マッチ/)).toBeNull();
+  });
+
+  it('unknown の実行許可はテスト文字列の変更後も維持される', async () => {
+    render(<RegexMatchTester pattern="a" flags="g" redosStatus="unknown" regexValid />);
+    typeTest('a');
+    fireEvent.click(screen.getByRole('button', { name: /マッチを実行/ }));
+    await screen.findByText(/1 件マッチ/, undefined, FIND);
+    typeTest('aa');
+    expect(screen.queryByText(/1 件マッチ/)).toBeNull();
+    expect(await screen.findByText(/2 件マッチ/, undefined, FIND)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /マッチを実行/ })).toBeNull();
   });
 
   it('regexValid=false なら案内文のみ', () => {

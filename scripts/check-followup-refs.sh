@@ -13,6 +13,41 @@
 
 set -euo pipefail
 
+index_mode=0
+if [ "${1-}" = '--index' ]; then
+  index_mode=1
+  shift
+  if [ "${1-}" != '--' ] || [ "$#" -lt 2 ]; then
+    echo '[ERROR] 使用方法: --index -- <path>...' >&2
+    exit 2
+  fi
+  shift
+  root=$(GIT_OPTIONAL_LOCKS=0 git rev-parse --show-toplevel 2>/dev/null) || {
+    echo '[ERROR] リポジトリルートを取得できません' >&2
+    exit 2
+  }
+  if [ "$(pwd -P)" != "$root" ]; then
+    echo '[ERROR] リポジトリルートから実行してください' >&2
+    exit 2
+  fi
+  temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/check-followup-refs.XXXXXX") || {
+    echo '[ERROR] 一時ディレクトリを作成できません' >&2
+    exit 2
+  }
+  cleanup() {
+    status=$?
+    trap - EXIT
+    if ! rm -rf -- "$temp_dir"; then
+      echo '[ERROR] 一時ディレクトリを削除できません' >&2
+      [ "$status" -ne 0 ] || status=2
+    fi
+    exit "$status"
+  }
+  trap cleanup EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+fi
+
 # 先送り表現の正規表現パターン
 # 設計思想:
 #   - 「予定」は「issue 化予定」「対応予定」「追記予定」「追加予定」等の先送り文脈に限定し、
@@ -39,12 +74,67 @@ for char in $'\u0085' $'\u00a0' $'\u1680' $'\u2000' $'\u2001' $'\u2002' $'\u2003
 done
 
 for file in "$@"; do
-  [ -f "$file" ] || { echo "[SKIP] $file: ファイルが見つかりません" >&2; continue; }
+  if [ "$index_mode" -eq 1 ]; then
+    file=${file#./}
+    case "$file" in
+      '' | /* | . | .. | ./* | */ | */./* | */. | ../* | */../* | */.. | *//* )
+        echo "[ERROR] 不正なパス: $file" >&2
+        exit 2
+        ;;
+    esac
+    if ! GIT_OPTIONAL_LOCKS=0 GIT_LITERAL_PATHSPECS=1 git ls-files --stage -z -- "$file" > "$temp_dir/metadata"; then
+      echo "[ERROR] index を取得できません: $file" >&2
+      exit 2
+    fi
+    record=''
+    extra=''
+    if ! exec 5< "$temp_dir/metadata"; then
+      echo "[ERROR] index の情報を読めません: $file" >&2
+      exit 2
+    fi
+    if ! IFS= read -r -d '' record <&5; then
+      echo "[ERROR] index の情報を読めません: $file" >&2
+      exit 2
+    fi
+    IFS= read -r -d '' extra <&5 || :
+    metadata=${record%%$'\t'*}
+    indexed_path=${record#*$'\t'}
+    mode=${metadata%% *}
+    rest=${metadata#* }
+    oid=${rest%% *}
+    stage=${rest#* }
+    if [ -z "$record" ] || [ -n "$extra" ] || [ "$indexed_path" != "$file" ] ||
+      { [ "$mode" != 100644 ] && [ "$mode" != 100755 ]; } || [ "$stage" != 0 ]; then
+      echo "[ERROR] index の通常ファイルではありません: $file" >&2
+      exit 2
+    fi
+    source_file="$temp_dir/blob"
+    if ! GIT_OPTIONAL_LOCKS=0 git cat-file blob "$oid" > "$source_file"; then
+      echo "[ERROR] index の内容を取得できません: $file" >&2
+      exit 2
+    fi
+    if grep -nE "$PATTERN" "$source_file" > "$temp_dir/candidates"; then
+      :
+    else
+      status=$?
+      if [ "$status" -ne 1 ]; then
+        echo "[ERROR] 候補行を取得できません: $file" >&2
+        exit 2
+      fi
+    fi
+    if ! exec 3< "$temp_dir/candidates" || ! exec 4< "$source_file"; then
+      echo "[ERROR] 一時ファイルを読めません: $file" >&2
+      exit 2
+    fi
+  else
+    [ -f "$file" ] || { echo "[SKIP] $file: ファイルが見つかりません" >&2; continue; }
+  fi
   checked=$((checked + 1))
   # 次行を解析した時点で現在行を判定し、前後各 1 行だけを保持する。
   # 候補は旧来の grep 判定を使い、awk は 1 件先読みして行番号を照合する。
   # パスは awk の引数にするとオプションや変数代入として解釈され得る。
-  if FOLLOWUP_FILE="$file" FOLLOWUP_CANDIDATES="/dev/fd/3" FOLLOWUP_REF="$HAS_ISSUE_REF" FOLLOWUP_SPACES="$unicode_spaces" awk '
+  check_file() {
+    FOLLOWUP_FILE="$file" FOLLOWUP_CANDIDATES="/dev/fd/3" FOLLOWUP_REF="$HAS_ISSUE_REF" FOLLOWUP_SPACES="$unicode_spaces" awk '
     function normalize(line,    i) {
       for (i = 1; i <= space_count; i++) gsub(spaces[i], " ", line)
       return line
@@ -212,14 +302,20 @@ for file in "$@"; do
       if (has_current && candidate_number == current_number) check_current(0)
       if (found) exit 1
     }
-  ' < "$file" 3< <(grep -nE "$PATTERN" "$file" 2>/dev/null || true); then
-    status=0
+    '
+  }
+  if [ "$index_mode" -eq 1 ]; then
+    if check_file <&4 3<&3; then status=0; else status=$?; fi
   else
-    status=$?
+    if check_file < "$file" 3< <(grep -nE "$PATTERN" "$file" 2>/dev/null || true); then status=0; else status=$?; fi
   fi
   if [ "$status" -eq 1 ]; then
     found=1
   elif [ "$status" -ne 0 ]; then
+    if [ "$index_mode" -eq 1 ]; then
+      echo "[ERROR] 内容を検査できません: $file" >&2
+      exit 2
+    fi
     exit "$status"
   fi
 done

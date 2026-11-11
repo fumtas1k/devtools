@@ -1,0 +1,1 @@
+<saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_trial" Version="2.0" IssueInstant="2026-01-01T00:00:00Z"><saml:Subject><saml:NameID>試験太郎</saml:NameID></saml:Subject></saml:Assertion>

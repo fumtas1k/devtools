@@ -47,8 +47,25 @@ export interface SamlAssertion {
   signed: boolean;
 }
 
+/** 各 EncryptionMethod の宣言値。欠落・空値・空白のみは undefined。 */
+export interface SamlEncryptedKey {
+  algorithms: (string | undefined)[];
+}
+
+export interface SamlEncryptedData {
+  algorithms: (string | undefined)[];
+  encryptedKeys: SamlEncryptedKey[];
+}
+
+export interface SamlEncryptedAssertion {
+  encryptedData: SamlEncryptedData[];
+  /** EncryptedAssertion 直下の鍵。個々のデータとの対応は解決しない。 */
+  encryptedKeys: SamlEncryptedKey[];
+}
+
 export interface SamlResponseData {
   type: 'response';
+  id?: string;
   issuer?: string;
   statusCode?: string;
   /** 外側 StatusCode の直下にネストした内側 StatusCode の Value */
@@ -61,6 +78,7 @@ export interface SamlResponseData {
   signed: boolean;
   assertions: SamlAssertion[];
   encryptedAssertionCount: number;
+  encryptedAssertions: SamlEncryptedAssertion[];
 }
 
 export interface SamlAuthnRequestData {

@@ -36,10 +36,11 @@ function runSanitize(requestId: number, enabled: Record<HarRedactCategory, boole
   if (!parsed) return;
   const total = parsed.log.entries.length;
   if (!enabled.BODY_SCAN) bodyScanCache.clear();
+  post({ type: 'progress', requestId, phase: 'sanitize' });
   const { har, counts } = sanitizeHar(
     parsed,
     enabled,
-    (processed) => post({ type: 'progress', requestId, processed, total }),
+    undefined,
     enabled.BODY_SCAN && bodyScanCacheEligible ? bodyScanCache : undefined
   );
   post({ type: 'result', requestId, har, counts, entryCount: total });
@@ -63,6 +64,7 @@ ctx.onmessage = (e: MessageEvent<HarWorkerRequest>) => {
     if (msg.type === 'load') {
       bodyScanCache.clear();
       bodyScanCacheEligible = false;
+      post({ type: 'progress', requestId: msg.requestId, phase: 'parse' });
       const result = parseHar(msg.text);
       if (!result.ok) {
         parsed = null;

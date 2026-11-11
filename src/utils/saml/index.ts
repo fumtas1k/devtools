@@ -1,6 +1,6 @@
 export * from './types';
 export { decodeSamlInput } from './decode';
-export { parseSamlXml } from './parse';
+export { parseSamlXml, parseSamlDocument } from './parse';
 export {
   runResponseChecks,
   runLogoutRequestChecks,

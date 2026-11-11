@@ -1,5 +1,6 @@
 import { scrubText, type ScrubCategory } from '@/utils/secret-scrubber';
 import { NS_A } from './ns';
+import { exceedsUtf8ByteLimit } from './limits';
 
 export interface SamlMaskResult {
   /** マスク済み XML（シリアライズ後の文字列。表示側で formatXml して整形表示する） */
@@ -38,6 +39,7 @@ const SCRUB_ENABLED: Record<ScrubCategory, boolean> = {
  * 純関数。パース不能な入力は件数 0 で元の文字列を返す。
  */
 export function maskSamlXml(xml: string): SamlMaskResult {
+  if (exceedsUtf8ByteLimit(xml)) return { xml, piiCount: 0, secretCount: 0 };
   try {
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
     if (doc.getElementsByTagName('parsererror').length > 0) {

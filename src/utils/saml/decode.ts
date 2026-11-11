@@ -1,10 +1,9 @@
 import { Decompress } from 'fflate';
 import type { DecodedInput } from './types';
+import { assertSamlInputSize, assertSamlXmlSize, MAX_SAML_XML_BYTES } from './limits';
 
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
-/** 展開後サイズの上限（deflate 展開の zip bomb 対策） */
-const MAX_INFLATED_SIZE = 32 * 1024 * 1024;
 /**
  * 圧縮データを与える単位（ストリーミング展開で上限超過を早期検知するため小さく刻む）。
  * fflate の Decompress は 1 回の push から生成された展開結果を単一チャンクで ondata に渡すため、
@@ -30,7 +29,7 @@ function base64ToBytes(b64: string): Uint8Array {
  * 圧縮データを小さいチャンクに分けて渡すことで、上限超過を検知した時点で残りの展開を打ち切れる。
  *
  * 実効ピークメモリの目安: 上限チェックは push 単位でしか走らないため、実効ピークは
- * MAX_INFLATED_SIZE（32MB）+ 1 push あたりの最悪展開量（INFLATE_CHUNK_SIZE 分、~8MB）
+ * MAX_SAML_XML_BYTES（32 MiB）+ 1 push あたりの最悪展開量（INFLATE_CHUNK_SIZE 分、~8MB）
  * 程度になりうる。
  */
 function inflateWithLimit(bytes: Uint8Array): Uint8Array {
@@ -38,8 +37,8 @@ function inflateWithLimit(bytes: Uint8Array): Uint8Array {
   let total = 0;
   const inflator = new Decompress((chunk) => {
     total += chunk.length;
-    if (total > MAX_INFLATED_SIZE) {
-      throw new InflateLimitError('deflate 展開後のサイズが上限（32MB）を超えました');
+    if (total > MAX_SAML_XML_BYTES) {
+      throw new InflateLimitError('deflate 展開後のサイズが上限（32 MiB）を超えました');
     }
     chunks.push(chunk);
   });
@@ -93,6 +92,7 @@ function extractSamlParam(rawQuery: string): string | undefined {
  * URL 全体 / URL エンコード base64 / base64（POST）/ base64+deflate（Redirect）/ 生 XML に対応。
  */
 export function decodeSamlInput(raw: string): DecodedInput {
+  assertSamlInputSize(raw);
   const steps: string[] = [];
   let text = raw.trim();
   if (!text) throw new Error('入力が空です');
@@ -122,6 +122,7 @@ export function decodeSamlInput(raw: string): DecodedInput {
 
   // 2. 生 XML
   if (text.startsWith('<')) {
+    assertSamlXmlSize(text);
     return { xml: text, steps: [...steps, '生 XML と判定'], binding: 'xml' };
   }
 
@@ -137,6 +138,7 @@ export function decodeSamlInput(raw: string): DecodedInput {
 
   // 3.1 URL エンコードされた生 XML の救済（URL デコード後に改めて判定）
   if (text.startsWith('<')) {
+    assertSamlXmlSize(text);
     return { xml: text, steps: [...steps, '生 XML と判定'], binding: 'xml' };
   }
 
@@ -158,13 +160,15 @@ export function decodeSamlInput(raw: string): DecodedInput {
   steps.push('base64 デコード');
 
   // 5. そのまま XML → HTTP-POST binding
+  let asText: string | undefined;
   try {
-    const asText = utf8.decode(bytes);
-    if (asText.trimStart().startsWith('<')) {
-      return { xml: asText, steps, binding: 'post' };
-    }
+    asText = utf8.decode(bytes);
   } catch {
     /* UTF-8 でない → deflate 圧縮の可能性 */
+  }
+  if (asText !== undefined && asText.trimStart().startsWith('<')) {
+    assertSamlXmlSize(asText);
+    return { xml: asText, steps, binding: 'post' };
   }
 
   // 6. deflate 展開 → HTTP-Redirect binding（raw deflate / zlib / gzip を自動判定）
@@ -184,5 +188,6 @@ export function decodeSamlInput(raw: string): DecodedInput {
   if (!inflated.trimStart().startsWith('<')) {
     throw new Error('デコード結果が XML ではありません（SAML メッセージか確認してください）');
   }
+  assertSamlXmlSize(inflated);
   return { xml: inflated, steps: [...steps, 'deflate 展開'], binding: 'redirect' };
 }

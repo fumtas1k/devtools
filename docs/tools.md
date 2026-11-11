@@ -370,8 +370,8 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 #### 仕組み・アルゴリズム
 
-- 入力形式を `decode.ts` の `decodeSamlInput` で自動判定する。URL 全体なら `SAMLResponse` / `SAMLRequest` クエリパラメータを抽出（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から自前パースし percent エンコードのまま `+` を保持する。クエリキー名が percent エンコードされている場合も比較前に `decodeURIComponent` を試みる）→ 生 XML 判定 → URL デコード → base64 デコード（`-`/`_` を含む base64url 表記は標準 base64 へ変換しパディングを補完してから decode）→ UTF-8 として XML と解釈できれば HTTP-POST binding、できなければ `fflate` の `Decompress`（ストリーミング API。raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定する。展開後サイズが 32MB を超えた場合は zip bomb 対策としてエラーにする（圧縮データを 64KB 単位のチャンクに分けて渡すことで、上限超過を検知した時点で残りの展開処理を打ち切る）。適用した変換ステップは UI に表示する
-- `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy/RequestedAuthnContext、LogoutRequest は Issuer/Destination/NotOnOrAfter/Reason/NameID（EncryptedID は存在検出のみ）/SessionIndex（複数可）、LogoutResponse は Issuer/Status/Destination/InResponseTo を抽出する。`ds:Signature` の有無・`EncryptedAssertion` の件数も検出する（存在表示のみ、検証・復号はしない）
+- 入力形式を `decode.ts` の `decodeSamlInput` で自動判定する。URL 全体なら `SAMLResponse` / `SAMLRequest` クエリパラメータを抽出（`URLSearchParams` は `+` を空白に変換し base64 を破壊するため、生クエリ文字列から自前パースし percent エンコードのまま `+` を保持する。クエリキー名が percent エンコードされている場合も比較前に `decodeURIComponent` を試みる）→ 生 XML 判定 → URL デコード → base64 デコード（`-`/`_` を含む base64url 表記は標準 base64 へ変換しパディングを補完してから decode）→ UTF-8 として XML と解釈できれば HTTP-POST binding、できなければ `fflate` の `Decompress`（ストリーミング API。raw deflate/zlib/gzip 自動判定）で展開し HTTP-Redirect binding と判定する。展開後サイズが 32 MiB を超えた場合は zip bomb 対策としてエラーにする（圧縮データを 8 KiB 単位のチャンクに分けて渡すことで、上限超過を検知した時点で残りの展開処理を打ち切る）。適用した変換ステップは UI に表示する
+- `parse.ts` が `DOMParser` で XML をパースし、`getElementsByTagNameNS` 等の名前空間 URI ベースの解決で prefix（`saml:` / `samlp:` 等）非依存に構造化する。Response は Issuer/Status/Destination と Assertion ごとの NameID・属性・Conditions・AuthnStatement・SubjectConfirmationData、AuthnRequest は Issuer/Destination/AssertionConsumerServiceURL/ProtocolBinding/NameIDPolicy/RequestedAuthnContext、LogoutRequest は Issuer/Destination/NotOnOrAfter/Reason/NameID（EncryptedID は存在検出のみ）/SessionIndex（複数可）、LogoutResponse は Issuer/Status/Destination/InResponseTo を抽出する。`ds:Signature` の有無と `EncryptedAssertion` の件数を検出する。各 EncryptedAssertion 直下の XML Encryption 名前空間の EncryptedData と EncryptedKey、および各 EncryptedData 直下の ds:KeyInfo 内の EncryptedKey について、直下の EncryptionMethod の無修飾 Algorithm 属性を URI のまま表示する。欠落・空値・空白のみは未指定とし、複数のデータ・鍵は個別に表示する
   - 二段階ステータス（外側 StatusCode の子にネストした内側 StatusCode）の内側コードも `statusSubCode` として抽出し、UI では Status 行の直後に表示する
   - `AudienceRestriction` は要素ごとに `string[]`（AND される制約）として保持し、各制約内の `Audience` は OR 列挙として扱う
 - `checks.ts` の `runResponseChecks` が Response の定番チェック（Status / 有効期間 / Audience・Recipient / NameID）を現在時刻基準で実行する。`NotOnOrAfter` は SAML 仕様どおりその時刻自体を含まない排他境界（`now >= notOnOrAfter` で期限切れ）として判定する
@@ -380,6 +380,13 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
   - `Date` でパース不能な日時は「有効期間内」と誤って表示しないよう warning 扱いにする
   - SP entityID 入力時の Audience 照合は、複数の `AudienceRestriction` がある場合、空でないすべての制約に entityID が含まれる場合のみ一致とする（AND 判定）
   - `runLogoutRequestChecks` は LogoutRequest の NotOnOrAfter（任意属性のため未指定は info、期限切れは error）と NameID の存在（EncryptedID は復号非対応のため warning、いずれもなしは仕様違反として error）を、`runLogoutResponseChecks` は Status を同じ規則で判定する
+- `signature-profile.ts` は表示モデルと同じ原文 DOM から Response と直下 Assertion を識別し、全ノード・属性・テキストのスナップショットを worker の `@xmldom/xmldom` と照合する。ID は ASCII 英字または `_` で始まり英数字・`_`・`.`・`-` からなる形式に限定し、検索式の解釈を避ける。重複 ID・ID 別名・隠れた署名や別対象参照を拒否してから `xmldsigjs` で単一 Reference の digest と署名を検証する。KeyInfo の鍵は使用せず、利用者指定の PEM 公開証明書だけを使う
+- 正規化ライブラリの名前空間出力と prefix 処理を踏まえ、文書全体の名前空間 URI・宣言値に `&`・`<`・`>`・`"`・空白を含む場合と、prefix が ASCII 英字または `_` で始まる英数字・`_`・`.`・`-` の形式以外の場合は署名検証を未対応とする。名前空間宣言ではない属性の修飾名に `xmlns:` を含む場合と、空の既定名前空間宣言 `xmlns=""` を含む場合も未対応とする。非空の既定名前空間は他の制約を満たせば許可する。通常のテキストや属性値そのものはこれらの制限対象ではなく、デコード表示は維持する。妥当な XML でも署名検証が未対応になる場合がある
+- 検証は RSA-SHA256 / SHA256 と enveloped → Exclusive C14N のみ。XML 2 MiB、10,000 要素、深さ 64、署名 16 個、証明書 64 KiB、RSA 2048〜8192 bit、15 秒に制限し、DTD / ENTITY を拒否する。入力変更、pagehide、bfcache からの復元時に worker と検証状態を破棄し、画面の unmount 時も worker を停止する。通常デコードの 32 MiB 上限は維持する
+- 個別の一致は公開鍵による暗号学的一致であり、証明書チェーン・失効・IdP の正当性や SSO 成功を保証しない。マスク XML は別の内容であり原文の検証結果を適用しない
+- EncryptedAssertion は明示選択して復号する。対象は直下の単一 EncryptedData と曖昧でない単一 EncryptedKey、AES-128/256-GCM、RSA-OAEP SHA-1 / MGF1-SHA1 または XML Encryption 1.1 の SHA-256 / MGF1-SHA256 に限る。鍵配置は inline、同一 Assertion 内の単純な `#Id` RetrievalMethod、または一対一の兄弟要素に対応する。平文は UTF-8 の独立した SAML Assertion のみ受理する
+- 復号は操作ごとの worker と 15 秒の期限を使い、RSA 秘密鍵は非暗号化 PKCS#8 の 2048〜8192 bit に限定する。PKCS#8 の非空の任意属性は追加データを判定できないため非対応とする。XML 2 MiB・10,000 要素・深さ 64・EncryptedAssertion 16 個、秘密鍵 PEM 64 KiB、平文 1 MiB、OAEP ラベル 1 KiB に制限する。入力・鍵・選択の変更、キャンセル、画面遷移などで処理と表示を破棄する。鍵欄は操作開始時に消す。JavaScript 文字列やブラウザ内部のメモリ消去は保証できない
+- 復号結果は原文と別に、初期状態でマスクして表示する。GCM の認証成功は送信者の正当性・署名・SSO の有効性を保証しない。Response の署名結果は原文の暗号文についてのみ示す
 - `format.ts` が表示用に生 XML を簡易整形する（要素・属性・テキストのみを再構成するため、タグ間に混在するテキスト（mixed content）は表示されない場合がある旨を UI に注記）
 - `mask.ts` の `maskSamlXml` が「共有用マスク XML」トグル用の 2 フェーズマスクを行う。フェーズ1（構造ベース）は再パースした DOM 上の `saml:NameID` / `saml:AttributeValue` のテキストを値ベース一貫トークン `[REDACTED:PII_n]`（同一値は同一トークン）に置換し、フェーズ2 は再シリアライズ後の文字列に `secret-scrubber` の `scrubText` を `HIGH_ENTROPY` カテゴリ除外で適用して URL クエリ埋め込みメール等の構造で拾えない残余を救済する。`HIGH_ENTROPY` を除外するのは `ds:SignatureValue` / `ds:X509Certificate` 等の base64（非 PII・公開情報）を over-mask しないため。署名値・証明書・タイムスタンプ・ID・要素名は構造情報としてそのまま残す
 
@@ -389,11 +396,11 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 
 #### 制限・エッジケース
 
-- XMLDSig 署名検証・EncryptedAssertion / EncryptedID の復号・ArtifactResolve 等のその他メッセージ型は非対応（署名・暗号化は存在の有無のみ表示。第2版候補）
+- Response 以外の XMLDSig と Redirect クエリ署名、その他の署名方式、EncryptedID の復号、ArtifactResolve 等のその他メッセージ型は非対応。EncryptedAssertion の CBC・RSA1_5・AES-KW・ECDH・外部参照・複数鍵・異なる OAEP digest / MGF・再帰的暗号化には対応しない
 - LogoutRequest の主体識別子は `NameID` / `EncryptedID` のみ対応（SAML 2.0 Core 3.7.1 で許容される `BaseID` は非対応。実運用例がほぼ皆無なため。`BaseID` のみのリクエストは NameID チェックが error 表示になる）
 - ブラウザの `DOMParser` は外部エンティティを解決しないため XXE は発生しない
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない
-- deflate 展開後のサイズが 32MB を超える入力はエラーにする（zip bomb 対策）
+- XML は UTF-8 換算で 32 MiB 以下、deflate 展開後データも 32 MiB 以下に制限する。入力全体は trim や URL 解析前に 134,283,268 UTF-16 コード単位以下に制限する（全 percent エンコード base64 の最大長に URL・クエリ・空白の余裕 65,536 単位を加算）。これらはアプリの上限であり、SAML の仕様上限や総メモリ使用量の保証ではない。整形・マスクの直接呼び出しは XML 上限超過時に元の文字列を返す
 - 「共有用マスク XML」は構造上の PII フィールド（NameID・AttributeValue）と `secret-scrubber` の既知パターンの除去であり、完全な匿名化を保証するものではない。共有前に必ず目視で確認すること
 
 ## 変換・解析
@@ -520,7 +527,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 2. **鉄道図（railroad diagram）**: 同じ AST から `buildRailroad` でレイアウトを構築し、SVG の鉄道図として可視化する。ノードは種別ごとに色/形で区別する: 文字（リテラル）は白ボックス、文字クラス・メタ文字（`[..]` `\s` `\d` `.` 等）は青塗りで、枠を太く（2px）角を小さくして色以外でも区別する、アンカー（`^ $ \b \B`）は紫の円/pill。量指定子はループ弧（上・反復方向の矢印付き）とスキップ弧（下・バイパス）で表し、ラベルは「0回以上」「1回以上」「2〜5回」等の日本語で表示する（lazy は「（最短）」を付す）。図の下部に種別の凡例を表示する。
 3. **ReDoS 検出**: [recheck](https://github.com/makenowjust-labs/recheck) の `checkSync(pattern, flags, { timeout: 1000 })` で壊滅的バックトラッキングを静的解析する。結果は **安全 / 脆弱 / 不明** の 3 状態に正規化する。脆弱と判定された場合は攻撃文字列・複雑度（指数時間 / 多項式時間の次数）・パターン内の危険箇所（hotspot のオフセット範囲）を提示する。
 
-テスト文字列に対するマッチ機能は `runMatch` が担い、マッチ範囲のハイライトとキャプチャグループを表示する。
+テスト文字列に対するマッチは同一オリジンの専用 module Worker で `runMatch` を実行し、マッチ範囲のハイライトとキャプチャグループを表示する。300ms の入力待ち後に開始し、Worker 開始から 1000ms で終了しない場合は中断する。実行中の中断と再試行が可能で、入力・判定変更時や画面を離れた際にも Worker を終了する。Worker の利用に失敗した場合はエラーを表示し、同期実行には切り替えない。
 
 - ハイライトは `group` 内の `button` として、Tab で入り、左右矢印 / Home / End でフォーカスを移し、Enter / Space またはクリックで選択する。マッチがある場合は操作ヒントを表示し、各ボタンから `aria-describedby` で参照する。
 
@@ -533,7 +540,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 
 - **ReDoS 検出は静的解析であり完全ではない**。1000ms の timeout を超えると判定は「不明（unknown）」になり、recheck が想定外に throw した場合も「不明」に倒す。**「不明」は「安全」ではない**ため UI 上も区別して表示する。
 - ReDoS 解析はメインスレッドを占有するため timeout の上限を 1000ms に設定している。
-- 実装上の制約として、ReDoS / AST 解析モジュール（`regexp-tree` / `recheck`）は CommonJS 依存のため、マッチ機能 `runMatch` を barrel 経由で値として import すると兄弟モジュールの CJS が SSR グラフに巻き込まれ dev SSR が落ちる。クライアントコンポーネントからは `match.ts` を直接 import している。
+- 実装上の制約として、ReDoS / AST 解析モジュール（`regexp-tree` / `recheck`）は CommonJS 依存のため、マッチ機能 `runMatch` を barrel 経由で値として import すると兄弟モジュールの CJS が SSR グラフに巻き込まれ dev SSR が落ちる。Worker からは `match.ts` を直接 import している。
 
 ### JSON整形・ビューア
 
@@ -736,7 +743,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - 純関数・入力非破壊: `structuredClone` でディープコピーしてから処理するため元オブジェクトを mutate しない
 - parse + sanitize は **Web Worker**（`src/workers/harSanitizer.worker.ts`）で実行する。`sanitizeHar` は `structuredClone` + 全 response body の正規表現スキャンで中規模 HAR でも数秒かかり、メインスレッド同期実行だと「ページが応答しません」になる（issue #677）。worker に逃がしメインスレッドを固めない。worker は parse 済み HAR を保持し、redact トグル時は再 parse せず sanitize のみ再実行する
 - レスポンス本文スキャンの結果と件数は現在の HAR に限り Worker 内で再利用する。出力も未検出情報を含みうる機密相当として扱い、最初の保存から30秒、UTF-16 推計と固定 metadata 予算の合計16 MiB、最大4096本文に制限する。load 開始・reset・例外・本文スキャン OFF で破棄し、超過時は通常走査に戻る。事前判定は base64 等の走査対象外本文も数えるため保守的で、実 heap や GC の即時消去は保証しない（#928、詳細は `docs/decisions.md [117]`）
-- フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。`sanitizeHar` の `onProgress` コールバックで処理済みエントリ数を逐次受け取り、`ProgressBar` で進捗表示する
+- フック `useHarSanitizer`（`src/hooks/useHarSanitizer.ts`）が worker のライフサイクルとメッセージングを担う。各 load / sanitize に `requestId` を振り、最新リクエストの結果のみ反映（トグル連打時の stale result を破棄）。Worker の解析・サニタイズ開始だけを入力を含まない通知で表示し、処理割合は表示しない。経過時間はファイル選択（ファイル読み込みを含む）またはトグル操作ごとにメイン側で測定し、進捗量や残り時間を意味しない。キャンセル・再読込時は Worker を終了して保持入力を破棄し、遅れて届いた結果やファイル読み込みは無視する
 - カテゴリ別の redact 件数は worker が返す `counts` を `ToggleChips` のバッジに表示する
 - エントリ一覧（`HarEntryList`）は全件描画する。フリーズの主因は描画ではなく sanitize であり Worker 化で解消したため、ページングは導入しない（実 HAR の検証でエントリ数は数百件程度で、その規模の `<tr>` 描画は問題にならないことを確認。`loadSeq` は新規読込時の選択リセット判定にのみ使い、トグル時は選択を保持する）
 - 出力 HAR の `JSON.stringify(.., null, 2)` はコピー/ダウンロード押下時のみ遅延生成する（`CopyButton` の `text` prop は `string | (() => string)` を受け付け、関数はクリック時に評価される）。毎レンダリングでの数 MB 直列化を避ける
@@ -751,7 +758,7 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 #### 制限・エッジケース
 
 - ウォーターフォール: `timings` を持たないエントリはバーを非表示にして degrade する（`—` を表示）。`startedDateTime` の欠落時も同様。スマホ（390px）では一覧のタイミング列を非表示にし、詳細パネルで内訳を確認できる
-- ファイルサイズ上限 25MB（メモリ防御ガード）。読み込み時のフリーズは sanitize の Web Worker 化で解消済みのため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。大きな HAR は worker 上で時間がかかる（実測 ~6MB/5000 エントリで約 2.6 秒、~18MB/10000 エントリで約 17 秒）が、メインスレッドは固まらず進捗バーを表示する。redact トグルのたびに全エントリを再 sanitize する（worker 上のため非ブロッキング。差分 sanitize は将来課題）
+- ファイルサイズ上限 25MB（メモリ防御ガード）。読み込み時のフリーズは sanitize の Web Worker 化で解消済みのため、バイト数は処理能力の指標ではなくメモリ確保の上限として残す。大きな HAR は worker 上で時間がかかる（実測 ~6MB/5000 エントリで約 2.6 秒、~18MB/10000 エントリで約 17 秒）が、メインスレッドは固まらず処理段階を表示する。単一本文の走査中は段階が変わらず、経過時間は Worker の生存や残り時間を保証しない。redact トグルのたびに全エントリを再 sanitize し、条件内のレスポンス本文は再利用する
 - 辞書に無い独自ヘッダ名・独自名のクエリ/フォームパラメータは `scrubText` が拾える範囲のみ redact される（任意名のセッショントークン等は残りうる。完全な網羅は保証せず、出力は共有前の目視確認が前提）
 - レスポンスボディが base64 エンコード（`content.encoding: "base64"`）の場合は `scrubText` をスキップする。`HIGH_ENTROPY_BASE64` ルールが base64 ブロック自体にマッチして本文を破壊し、デコード不能な HAR を出力するのを防ぐため（その代わり base64 本文内の秘密は検出されない）
 - 全処理はブラウザ内で完結し、HAR データは外部に送信しない

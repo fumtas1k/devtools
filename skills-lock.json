@@ -5,7 +5,8 @@
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/brainstorming/SKILL.md",
-      "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
+      "computedHash": "f943e5e91b5e55ede2ab06d075662a96ed862762c9bc938ab0b24851e2518c9d",
+      "ref": "3a907d6a0a033eee1f6a3abce27fe97dbc2133e4"
     },
     "dispatching-parallel-agents": {
       "source": "obra/superpowers",
