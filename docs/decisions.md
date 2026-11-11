@@ -5877,6 +5877,8 @@ Widely available のみを採用する案は判断が単純だが、新機能に
 
 現在の Playwright / CI は Desktop Chrome プリセットの Chromium 中心で、モバイルの viewport 確認も同じエンジンを使う。この決定は既存全機能の互換性監査や Firefox / Safari・実機モバイルでの検証完了を示すものではない。
 
+ProgressBar の幅は対応環境では percentage 型の CSS `attr()` を使い、未対応環境と非有限の計算幅には従来の動的 stylesheet を使う（Refs #893）。他の動的スタイルは対象外。
+
 出典: [MDN Baseline の定義](https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility)、[Tailwind CSS のブラウザ対応](https://tailwindcss.com/docs/compatibility#browser-support)。Tailwind の下限だけではアプリ固有の機能の互換性は判断できない。
 
 ## [173] Astro formatter の空白設定をビルド設定にそろえる

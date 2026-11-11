@@ -20,7 +20,7 @@ type ProgressBarProps = {
  * - aria-valuemin / valuemax / valuenow (valuenow は max で clamp)
  * - aria-valuetext で 100% 超時に「上限超過」を通知
  *
- * 幅の動的変化は useDynamicStyleSheet 経由の CSS カスタムプロパティで制御。
+ * 対応ブラウザでは typed attr()、それ以外は動的 CSS で幅を制御。
  * inline style / setProperty() は CSP3 style-src 制約に抵触するため不採用
  * (docs/decisions.md [067])。
  */
@@ -30,6 +30,14 @@ export function ProgressBar({ current, max, 'aria-describedby': describedBy }: P
   const overflowPct = isOver ? Math.min(((current - max) / max) * 100, 100) : 0;
 
   const dynClassName = useDynamicStyleSheet((className) => {
+    if (
+      Number.isFinite(fillPct) &&
+      Number.isFinite(overflowPct) &&
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('width', 'attr(data-progress-width type(<percentage>), 0%)')
+    )
+      return '';
     if (max <= 0) return '';
     return [
       `.${className} .progress-fill { --progress-fill-width: ${fillPct}%; }`,
@@ -60,8 +68,14 @@ export function ProgressBar({ current, max, 'aria-describedby': describedBy }: P
       aria-describedby={describedBy}
       className={cx('progress-track', dynClassName)}
     >
-      <span className="progress-fill" aria-hidden="true" />
-      {isOver && <span className="progress-overflow" aria-hidden="true" />}
+      <span className="progress-fill" aria-hidden="true" data-progress-width={`${fillPct}%`} />
+      {isOver && (
+        <span
+          className="progress-overflow"
+          aria-hidden="true"
+          data-progress-width={`${overflowPct}%`}
+        />
+      )}
     </div>
   );
 }

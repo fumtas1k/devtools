@@ -2,7 +2,7 @@
 
 @layer components {
   /* === ProgressBar (CharCount SNS / 任意上限) === */
-  /* 幅は useDynamicStyleSheet 経由の CSS カスタムプロパティ で制御 */
+  /* 幅は CSS カスタムプロパティで制御 */
   .progress-track {
     background: var(--color-bg-subtle);
     border-radius: var(--radius-full);
@@ -21,6 +21,14 @@
     height: 100%;
     width: var(--progress-overflow-width, 0%);
     transition: width 0.2s ease-out;
+  }
+  @supports (width: attr(data-progress-width type(<percentage>), 0%)) {
+    .progress-track .progress-fill {
+      --progress-fill-width: attr(data-progress-width type(<percentage>), 0%);
+    }
+    .progress-track .progress-overflow {
+      --progress-overflow-width: attr(data-progress-width type(<percentage>), 0%);
+    }
   }
 
   /* Notification banner (DADS 通知バナー color-chip 型: 2px の全周ボーダー + 左 16px のカラーチップ)
