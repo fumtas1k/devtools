@@ -1,20 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import { ContrastMatrixTool } from '../ContrastMatrix';
-
-beforeAll(() => {
-  CSSStyleSheet.prototype.replaceSync = function (text: string) {
-    while (this.cssRules.length) this.deleteRule(0);
-    text
-      .split('\n')
-      .filter(Boolean)
-      .forEach((rule) => this.insertRule(rule, this.cssRules.length));
-  };
-  if (!('adoptedStyleSheets' in document)) {
-    Object.defineProperty(document, 'adoptedStyleSheets', { value: [], writable: true });
-  }
-});
 
 afterEach(() => {
   cleanup();

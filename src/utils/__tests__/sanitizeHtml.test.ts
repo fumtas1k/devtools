@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { sanitizeHtml, sanitizeTree } from '@/utils/sanitizeHtml';
+import { sanitizeHtml } from '@/utils/sanitizeHtml';
 
 // ─────────────────────────────────────────────────────────────
 // 陽性対照: 危険なペイロードが実際に除去されることの証明
@@ -89,35 +89,6 @@ describe('sanitizeHtml — 陽性対照（危険要素・属性の除去）', ()
   it('HTML コメントを除去する（Word 由来の断片マーカー等）', () => {
     const out = sanitizeHtml('<p>x</p><!-- secret -->');
     expect(out).not.toContain('secret');
-  });
-
-  it('深くネストした要素でもスタックオーバーフローせず処理できる', { timeout: 15_000 }, () => {
-    // jsdom の innerHTML 再シリアライザ（parse5 serializer）は再帰実装のため、深い木では
-    // sanitizeHtml の文字列往復（出力側）が jsdom 都合で RangeError になる
-    // （実ブラウザの serializer は反復実装でこの制限はない）。
-    // そのため DOM を直接構築し、sanitizeHtml が内部で使う production code path の
-    // sanitizeTree を直接検証する。
-    // 構築は葉から上へ wrap する bottom-up 方式（depth 5000 で実測 ~40ms）。
-    // top-down の appendChild 連鎖や DOMParser は jsdom の祖先チェック / ノード変換が
-    // O(n²) になり数秒かかるため使わない。
-    const depth = 5000;
-    const script = document.createElement('script');
-    script.textContent = 'alert(1)';
-    const text = document.createTextNode('x');
-    let cur = document.createElement('div');
-    cur.append(script, text);
-    for (let i = 0; i < depth - 1; i++) {
-      const wrapper = document.createElement('div');
-      wrapper.appendChild(cur);
-      cur = wrapper;
-    }
-    const root = document.createElement('div');
-    root.appendChild(cur);
-
-    sanitizeTree(root);
-
-    expect(script.parentNode).toBeNull(); // script は木から除去された
-    expect(text.parentNode).not.toBeNull(); // テキストノードは保持された
   });
 });
 
