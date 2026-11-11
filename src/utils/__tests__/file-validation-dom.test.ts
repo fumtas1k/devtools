@@ -25,4 +25,15 @@ describe('validateFile with DOM File', () => {
     const bytes = new Uint8Array(await file.slice(1, 5).arrayBuffer());
     expect([...bytes]).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
+
+  it('decodes actual Shift_JIS File bytes with FileReader', async () => {
+    const file = new File([new Uint8Array([0x82, 0xa0, 0x82, 0xa2])], 'sample.txt');
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(file, 'shift_jis');
+    });
+    expect(text).toBe('あい');
+  });
 });
