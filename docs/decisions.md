@@ -5975,4 +5975,4 @@ jsdom を 30.1.3 に更新する。29 では CSSOM が刷新され、30 では N
 
 `@exodus/bytes` の optional peer `@noble/hashes` は [181] の 1.8.0 を維持する。jsdom の optional peer `canvas` は導入せず、既存の DOM File テストを維持する。
 
-jsdom 30 の `CSSStyleSheet.replaceSync` はその実装を使い、未実装の `document.adoptedStyleSheets` のみ従来どおり補う。深さ 5000 のサニタイズ試験は jsdom 30 で DOM 構築が極端に遅いため、dev server の実モジュールを実ブラウザで読み込む E2E に移す。深度と script 除去・テキスト保持の検証は維持する。出典: [jsdom 29](https://github.com/jsdom/jsdom/releases/tag/29.0.0)、[jsdom 30 のリリースノート](https://github.com/jsdom/jsdom/releases/tag/v30.0.0)。
+jsdom 30 の `CSSStyleSheet.replaceSync` はその実装を使い、未実装の `document.adoptedStyleSheets` のみ従来どおり補う。深さ 5000 のサニタイズ試験は jsdom 30 で DOM 構築が極端に遅いため、dev server の実モジュールを実ブラウザで読み込む E2E に移す。深度と script 除去・テキスト保持の検証は維持する。出典: [jsdom 29](https://github.com/jsdom/jsdom/releases/tag/v29.0.0)、[jsdom 30 のリリースノート](https://github.com/jsdom/jsdom/releases/tag/v30.0.0)。
