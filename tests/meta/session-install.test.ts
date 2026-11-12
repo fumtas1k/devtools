@@ -234,10 +234,19 @@ describe('session-install.sh: enabledPlugins 自動 install（web 限定）', ()
     expect(installedPlugins(dir)).toEqual([]);
   });
 
-  // 失敗許容: install 失敗（exit 非 0）でも hook 全体は fail しない（次セッション再試行に委ねる）
-  it('plugin install が失敗しても hook は exit 0 のまま継続する', () => {
+  // 陽性対照: install 失敗時は警告し、残りの plugin も試行する。
+  it('plugin install が失敗しても警告し、後続の plugin を試行する', () => {
     setupFakeClaude(binDir, 1);
-    expect(() => runHook(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' })).not.toThrow();
+    const r = runHookCapture(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' });
+    expect(r.status).toBe(0);
+    expect(installedPlugins(dir)).toEqual([
+      'superpowers@claude-plugins-official',
+      'context7@claude-plugins-official',
+    ]);
+    expect(r.stderr).toBe(
+      'warn: plugin install failed: superpowers@claude-plugins-official（後続の処理を続行します）\n' +
+        'warn: plugin install failed: context7@claude-plugins-official（後続の処理を続行します）\n'
+    );
   });
 
   // 陽性対照: settings.json が malformed JSON なら warn を stderr に出して hook は exit 0 で継続する。
