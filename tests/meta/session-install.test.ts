@@ -191,6 +191,26 @@ describe('session-install.sh: enabledPlugins 自動 install（web 限定）', ()
     ]);
   });
 
+  // 陽性対照: CLI が stdin を読み切っても後続の enabled plugin を失わない。
+  it('plugin install が stdin を消費しても後続 plugin を順に install する', () => {
+    writeFileSync(
+      join(binDir, 'claude'),
+      '#!/bin/sh\necho "$3" >>plugin-install-log\ncat >/dev/null\n'
+    );
+    writeSettings(dir, {
+      'first@marketplace': true,
+      'disabled@marketplace': false,
+      'second@marketplace': true,
+      'third@marketplace': true,
+    });
+    runHook(dir, binDir, { CLAUDE_CODE_REMOTE: 'true' });
+    expect(installedPlugins(dir)).toEqual([
+      'first@marketplace',
+      'second@marketplace',
+      'third@marketplace',
+    ]);
+  });
+
   // 陰性対照: ローカル（CLI / Desktop）では trust dialog の自動 prompt に委ね、hook では触らない
   it('CLAUDE_CODE_REMOTE が true でなければ install しない', () => {
     runHook(dir, binDir);

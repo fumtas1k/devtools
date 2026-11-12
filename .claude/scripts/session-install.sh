@@ -62,7 +62,7 @@ if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -f .claude/settings.json ] && com
       console.log(name);
     }
   ' | while IFS= read -r plugin; do
-    claude plugin install "$plugin" || echo "warn: plugin install failed: $plugin（次セッションで再試行されます）" >&2
+    claude plugin install "$plugin" </dev/null || echo "warn: plugin install failed: $plugin（次セッションで再試行されます）" >&2
   done
 fi
 
