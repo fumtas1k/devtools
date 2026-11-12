@@ -191,14 +191,97 @@ const jsonLd = {
 
   const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab-btn'));
   const panels = document.getElementById('panels')!;
+  const tabBar = document.getElementById('tab-bar')!;
+  const panelItems = Array.from(panels.querySelectorAll<HTMLElement>('[role=tabpanel]'));
+  let selectedIndex = 0;
+  const supportsInert = 'inert' in HTMLElement.prototype;
+  function updateTabStops(index: number) {
+    tabs.forEach((tab, i) => {
+      tab.tabIndex = i === index ? 0 : -1;
+    });
+  }
+
+  // JS / inert 非対応時は元の操作可能な全パネルを維持する。
+  if (supportsInert) {
+    panelItems.forEach((panel, i) => {
+      panel.inert = i !== selectedIndex;
+    });
+    updateTabStops(selectedIndex);
+  }
 
   function activateTab(index: number) {
+    if (supportsInert) {
+      panelItems[index].inert = false;
+      if (index !== selectedIndex && panelItems[selectedIndex].contains(document.activeElement)) {
+        panelItems[index].tabIndex = -1;
+        panelItems[index].focus({ preventScroll: true });
+        if (document.activeElement !== panelItems[index]) {
+          // フォーカスの移動に失敗した場合、旧パネルを操作可能なまま保つ。
+          panelItems[index].inert = true;
+          panels.scrollTo({ left: selectedIndex * panels.clientWidth, behavior: 'instant' });
+          return;
+        }
+      }
+      panelItems.forEach((panel, i) => {
+        panel.inert = i !== index;
+      });
+    }
+    selectedIndex = index;
     tabs.forEach((t, i) => {
       t.setAttribute('aria-selected', String(i === index));
     });
-    // タブが溢れるスマホ幅でスワイプ時に active タブがタブバー外へ隠れないよう追従させる
-    tabs[index]?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    if (supportsInert) {
+      const focusedIndex = tabs.findIndex((tab) => tab === document.activeElement);
+      updateTabStops(focusedIndex === -1 ? index : focusedIndex);
+    }
+    // タブバーだけを横スクロールし、ページの縦位置は変えない。
+    const tab = tabs[index];
+    const barRect = tabBar.getBoundingClientRect();
+    const tabRect = tab.getBoundingClientRect();
+    if (tabRect.left < barRect.left || tabRect.right > barRect.right) {
+      tabBar.scrollTo({
+        left: tabBar.scrollLeft + tabRect.left - barRect.left - (barRect.width - tabRect.width) / 2,
+      });
+    }
   }
+
+  tabBar.addEventListener('focusin', (event) => {
+    if (!supportsInert) return;
+    const index = tabs.findIndex((tab) => tab === event.target);
+    if (index !== -1) updateTabStops(index);
+  });
+  tabBar.addEventListener('focusout', (event) => {
+    if (
+      supportsInert &&
+      (!(event.relatedTarget instanceof Node) || !tabBar.contains(event.relatedTarget))
+    ) {
+      updateTabStops(selectedIndex);
+    }
+  });
+  tabBar.addEventListener('keydown', (event) => {
+    if (!supportsInert || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const current = tabs.findIndex((tab) => tab === document.activeElement);
+    if (current === -1) return;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (current + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+        next = (current - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+  });
 
   // タブクリックでパネルにスクロール
   tabs.forEach((tab, i) => {
@@ -210,12 +293,12 @@ const jsonLd = {
 
   // スワイプ後にタブを同期
   panels.addEventListener('scrollend', () => {
+    if (panels.hidden || panels.clientWidth === 0) return;
     const i = Math.round(panels.scrollLeft / panels.clientWidth);
-    activateTab(i);
+    if (i >= 0 && i < tabs.length) activateTab(i);
   });
 
   // ── 検索: 入力中はタブ/パネルを隠し、全ツール横断の結果グリッドへ切り替える ──
-  const tabBar = document.getElementById('tab-bar')!;
   const searchInput = document.getElementById('tool-search') as HTMLInputElement;
   const searchClear = document.getElementById('search-clear')!;
   const searchResults = document.getElementById('search-results')!;

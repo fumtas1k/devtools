@@ -5877,6 +5877,8 @@ Widely available のみを採用する案は判断が単純だが、新機能に
 
 現在の Playwright / CI は Desktop Chrome プリセットの Chromium 中心で、モバイルの viewport 確認も同じエンジンを使う。この決定は既存全機能の互換性監査や Firefox / Safari・実機モバイルでの検証完了を示すものではない。
 
+ProgressBar の幅は対応環境では percentage 型の CSS `attr()` を使い、未対応環境と非有限の計算幅には従来の動的 stylesheet を使う（Refs #893）。他の動的スタイルは対象外。
+
 出典: [MDN Baseline の定義](https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility)、[Tailwind CSS のブラウザ対応](https://tailwindcss.com/docs/compatibility#browser-support)。Tailwind の下限だけではアプリ固有の機能の互換性は判断できない。
 
 ## [173] Astro formatter の空白設定をビルド設定にそろえる
@@ -5958,3 +5960,19 @@ Response と直下 Assertion の対象自身を参照する単一署名に限定
 各操作の専用 worker で非抽出可能な鍵を import し、15 秒の制限と世代破棄を適用する。GCM の認証成功後のみ、DTD を含まない独立した UTF-8 SAML Assertion を原文とは別の結果としてマスク表示する。元の Response の署名結果は暗号文に対するものであり、復号結果の署名や送信者、SSO の正当性は保証しない。秘密鍵・CEK の変更可能な配列は上書きするが、JavaScript 文字列・ブラウザ内部やネイティブ暗号処理の即時消去を保証しない。
 
 相互運用 fixture は libxmlsec 1.3.9 で合成した AES-128/256-GCM、RSA-OAEP SHA-1 および RSA-OAEP 1.1 SHA-256 / MGF1-SHA256 を使う。試験鍵と生成方法は `tests/fixtures/saml-encryption` に記録する。その他の方式や鍵配置についての互換性をこれだけで保証しない。
+
+## [181] jsdom の File API と optional peer
+
+**2026-11-11 | ステータス: 採用 | 関連: Refs #774**
+
+DOM File の実バイトを使うテストのため jsdom を 28.1.0 に固定する。推移依存 `@exodus/bytes` の optional peer は `@noble/hashes` の `^1.8.0 || ^2.0.0` を要求するため、開発用の直接依存として 1.8.0 を固定する。既存 `pkijs` が要求する 1.4.0 はその配下に保持する。両版はプロジェクトの Node 22.12.0 以上の下限に対応する。
+
+## [182] jsdom 30 と Node の対応範囲
+
+**2026-11-11 | ステータス: 採用 | 関連: Refs #774**
+
+jsdom を 30.1.3 に更新する。29 では CSSOM が刷新され、30 では Node 要件が変わるため、テストの DOM・CSSOM の挙動を確認する。jsdom の要求と既存の `>=22.12.0` の共通範囲に合わせ、`engines.node` を `^22.22.2 || ^24.15.0 || >=26.0.0` とする。[130] の engines を変更しない判断のみを置き換え、開発・CI・ビルドの固定版 `.node-version` は維持する。
+
+`@exodus/bytes` の optional peer `@noble/hashes` は [181] の 1.8.0 を維持する。jsdom の optional peer `canvas` は導入せず、既存の DOM File テストを維持する。
+
+jsdom 30 の `CSSStyleSheet.replaceSync` はその実装を使い、未実装の `document.adoptedStyleSheets` のみ従来どおり補う。深さ 5000 のサニタイズ試験は jsdom 30 で DOM 構築が極端に遅いため、dev server の実モジュールを実ブラウザで読み込む E2E に移す。深度と script 除去・テキスト保持の検証は維持する。出典: [jsdom 29](https://github.com/jsdom/jsdom/releases/tag/v29.0.0)、[jsdom 30 のリリースノート](https://github.com/jsdom/jsdom/releases/tag/v30.0.0)。

@@ -1,20 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import { ContrastMatrixTool } from '../ContrastMatrix';
-
-beforeAll(() => {
-  CSSStyleSheet.prototype.replaceSync = function (text: string) {
-    while (this.cssRules.length) this.deleteRule(0);
-    text
-      .split('\n')
-      .filter(Boolean)
-      .forEach((rule) => this.insertRule(rule, this.cssRules.length));
-  };
-  if (!('adoptedStyleSheets' in document)) {
-    Object.defineProperty(document, 'adoptedStyleSheets', { value: [], writable: true });
-  }
-});
 
 afterEach(() => {
   cleanup();
@@ -35,7 +22,7 @@ describe('ContrastMatrixTool のスタイルシート', () => {
     fireEvent.change(input, { target: { value: '#fff' } });
     fireEvent.change(input, { target: { value: 'rgb(1, 2, 3)' } });
     expect(sheet.cssRules).toHaveLength(8);
-    expect(sheet.cssRules[0].cssText).toContain('rgb(1 2 3)');
+    expect((sheet.cssRules[0] as CSSStyleRule).style.color).toBe('rgb(1, 2, 3)');
     fireEvent.click(getByRole('button', { name: '＋ 色を追加' }));
     expect(sheet.cssRules).toHaveLength(10);
     expect(document.adoptedStyleSheets).toHaveLength(1);
@@ -59,8 +46,8 @@ describe('ContrastMatrixTool のスタイルシート', () => {
     fireEvent.change(within(first.container).getAllByLabelText('色', { exact: true })[0], {
       target: { value: '#123456' },
     });
-    expect(firstSheet.cssRules[0].cssText).toContain('rgb(18 52 86)');
-    expect(secondSheet.cssRules[0].cssText).not.toContain('rgb(18 52 86)');
+    expect((firstSheet.cssRules[0] as CSSStyleRule).style.color).toBe('rgb(18, 52, 86)');
+    expect((secondSheet.cssRules[0] as CSSStyleRule).style.color).not.toBe('rgb(18, 52, 86)');
     first.unmount();
     expect(document.adoptedStyleSheets).toEqual([secondSheet]);
     second.unmount();
