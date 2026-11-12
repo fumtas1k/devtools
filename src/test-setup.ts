@@ -2,7 +2,7 @@
  * Vitest global setup — jsdom polyfill for Constructable Stylesheets API.
  *
  * 未実装の CSSStyleSheet.replaceSync / document.adoptedStyleSheets のみ polyfill する。
- * jsdom 30 の replaceSync はネイティブ実装を使う。
+ * jsdom 31 では両方ともネイティブ実装を使う。
  * useDynamicStyleSheet を使うコンポーネント（ResultTable 等）を jsdom 環境で
  * render する全テストに適用される。
  */

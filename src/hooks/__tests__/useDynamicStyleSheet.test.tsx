@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, afterEach, beforeAll } from 'vitest';
-import { renderHook, cleanup } from '@testing-library/react';
+import { render, renderHook, cleanup } from '@testing-library/react';
 import { useDynamicStyleSheet } from '../useDynamicStyleSheet';
 
-// jsdom 26 は CSSStyleSheet.replaceSync / document.adoptedStyleSheets 未実装のため polyfill
+// 実装がない環境に限り polyfill する。通常の jsdom 31 では native を使う。
 beforeAll(() => {
   if (!CSSStyleSheet.prototype.replaceSync) {
     CSSStyleSheet.prototype.replaceSync = function (cssText: string) {
@@ -61,6 +61,32 @@ describe('useDynamicStyleSheet', () => {
     const sheet = document.adoptedStyleSheets[0];
     expect(sheet.cssRules[0].cssText).toContain(`.${result.current}`);
     expect(sheet.cssRules[0].cssText).toContain('color: red');
+  });
+
+  it('native stylesheet の追加・更新・解除が対象の computed style に反映される', () => {
+    function Probe({ color }: { color: string }) {
+      const className = useDynamicStyleSheet((cn) => (color ? `.${cn} { color: ${color}; }` : ''));
+      return (
+        <>
+          <span data-testid="target" className={className} />
+          <span data-testid="other" />
+        </>
+      );
+    }
+    const { getByTestId, rerender } = render(<Probe color="" />);
+    const target = getByTestId('target');
+    const other = getByTestId('other');
+    const originalColor = getComputedStyle(target).color;
+    expect(getComputedStyle(other).color).toBe(originalColor);
+
+    rerender(<Probe color="rgb(1, 2, 3)" />);
+    expect(getComputedStyle(target).color).toBe('rgb(1, 2, 3)');
+    expect(getComputedStyle(other).color).toBe(originalColor);
+
+    rerender(<Probe color="rgb(4, 5, 6)" />);
+    expect(getComputedStyle(target).color).toBe('rgb(4, 5, 6)');
+    rerender(<Probe color="" />);
+    expect(getComputedStyle(target).color).toBe(originalColor);
   });
 
   it('空文字列を返すと sheet を生成しない', () => {

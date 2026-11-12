@@ -146,12 +146,14 @@ describe('ProgressBar', () => {
   });
 
   it('progress-fill の --progress-fill-width は current/max * 100% (clamped)', () => {
+    vi.stubGlobal('CSS', { supports: () => false });
     render(<ProgressBar current={50} max={100} />);
     const css = adoptedCssText();
     expect(css).toContain('--progress-fill-width: 50%');
   });
 
   it('current === max (ぴったり 100%): progress-fill は 100%、overflow なし', () => {
+    vi.stubGlobal('CSS', { supports: () => false });
     const { container } = render(<ProgressBar current={100} max={100} />);
     const bar = screen.getByRole('progressbar');
     expect(bar.getAttribute('aria-valuenow')).toBe('100');
@@ -163,6 +165,7 @@ describe('ProgressBar', () => {
   });
 
   it('100% 超時: progress-fill は 100%、progress-overflow は超過率 (clamp 100%)', () => {
+    vi.stubGlobal('CSS', { supports: () => false });
     render(<ProgressBar current={150} max={100} />);
     const css = adoptedCssText();
     expect(css).toContain('--progress-fill-width: 100%');
