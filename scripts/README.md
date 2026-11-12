@@ -57,7 +57,7 @@ npm run test -- tests/meta/check-followup-refs.test.ts
 bash tests/scripts/check-followup-refs.test.sh
 ```
 
-`npm test` は既存の shell 回帰テストを実行する。実文書や PR 投稿本文の自動検査は含まない（#202 F）。
+`npm test` は既存の shell 回帰テストと `docs/agent-lessons.md` / `docs/decisions.md` の検査を実行する。PR 投稿本文の自動検査は含まない。
 
 ### 関連
 
