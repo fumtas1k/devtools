@@ -144,11 +144,11 @@ it('15 秒で Worker を終了し、以後の応答を無視する', () => {
   expect(displayed).toContain('15 秒');
 });
 
-it('現行の postMessage 同期失敗は timeout で Worker が終了する', () => {
+it('postMessage 同期失敗では Worker を即時停止し遅延応答を無視する', () => {
   vi.useFakeTimers();
   class PostFailureWorker extends ControlledWorker {
     postMessage = vi.fn(() => {
-      throw new Error('送信失敗');
+      if (ControlledWorker.instances.length === 1) throw new Error('送信失敗');
     });
   }
   vi.stubGlobal('Worker', PostFailureWorker);
@@ -159,23 +159,93 @@ it('現行の postMessage 同期失敗は timeout で Worker が終了する', (
   fireEvent.click(screen.getByRole('button', { name: '署名を検証する' }));
   const worker = ControlledWorker.instances[0];
   expect(screen.getByRole('list', { name: '署名検証の結果' }).textContent).toContain('送信失敗');
-  expect(screen.getByText('署名を検証中です')).toBeTruthy();
-  expect(worker.terminate).not.toHaveBeenCalled();
+  expect(screen.queryByText('署名を検証中です')).toBeNull();
+  expect(worker.terminate).toHaveBeenCalledOnce();
+  expect(vi.getTimerCount()).toBe(0);
+  act(() =>
+    worker.onmessage?.({
+      data: {
+        results: [
+          { label: 'Response', id: '_response', signed: true, status: 'match', reason: '古い結果' },
+        ],
+      },
+    } as MessageEvent)
+  );
   act(() => vi.advanceTimersByTime(15_000));
   expect(worker.terminate).toHaveBeenCalledOnce();
-  expect(screen.getByRole('list', { name: '署名検証の結果' }).textContent).toContain('15 秒');
+  const displayed = screen.getByRole('list', { name: '署名検証の結果' }).textContent;
+  expect(displayed).toContain('送信失敗');
+  expect(displayed).not.toContain('古い結果');
+  fireEvent.click(screen.getByRole('button', { name: '署名を検証する' }));
+  const retry = ControlledWorker.instances[1];
+  expect(screen.getByText('署名を検証中です')).toBeTruthy();
+  act(() =>
+    retry.onmessage?.({
+      data: {
+        results: [
+          {
+            label: 'Response',
+            id: '_response',
+            signed: true,
+            status: 'match',
+            reason: '再試行成功',
+          },
+        ],
+      },
+    } as MessageEvent)
+  );
+  expect(screen.getByRole('list', { name: '署名検証の結果' }).textContent).toContain('再試行成功');
 });
 
-it('現行の messageerror は即時終了せず timeout で終了する', () => {
+it('messageerror では Worker を即時停止し遅延応答を無視する', () => {
   vi.useFakeTimers();
   prepare();
   const worker = ControlledWorker.instances[0];
   act(() => worker.onmessageerror?.(new MessageEvent('messageerror')));
-  expect(worker.terminate).not.toHaveBeenCalled();
-  expect(screen.getByText('署名を検証中です')).toBeTruthy();
+  expect(worker.terminate).toHaveBeenCalledOnce();
+  expect(screen.queryByText('署名を検証中です')).toBeNull();
+  expect(vi.getTimerCount()).toBe(0);
+  act(() =>
+    worker.onmessage?.({
+      data: {
+        results: [
+          { label: 'Response', id: '_response', signed: true, status: 'match', reason: '古い結果' },
+        ],
+      },
+    } as MessageEvent)
+  );
   act(() => vi.advanceTimersByTime(15_000));
   expect(worker.terminate).toHaveBeenCalledOnce();
-  expect(screen.getByRole('list', { name: '署名検証の結果' }).textContent).toContain('15 秒');
+  const displayed = screen.getByRole('list', { name: '署名検証の結果' }).textContent;
+  expect(displayed).toContain('署名検証の応答を読み取れませんでした');
+  expect(displayed).not.toContain('古い結果');
+});
+
+it('古い Worker の messageerror は新しい検証を停止しない', () => {
+  const certificate = prepare();
+  const old = ControlledWorker.instances[0];
+  fireEvent.change(certificate, { target: { value: 'second certificate' } });
+  fireEvent.click(screen.getByRole('button', { name: '署名を検証する' }));
+  const current = ControlledWorker.instances[1];
+  act(() => old.onmessageerror?.(new MessageEvent('messageerror')));
+  expect(current.terminate).not.toHaveBeenCalled();
+  expect(screen.getByText('署名を検証中です')).toBeTruthy();
+  act(() =>
+    current.onmessage?.({
+      data: {
+        results: [
+          {
+            label: 'Response',
+            id: '_response',
+            signed: true,
+            status: 'match',
+            reason: '新しい結果',
+          },
+        ],
+      },
+    } as MessageEvent)
+  );
+  expect(screen.getByRole('list', { name: '署名検証の結果' }).textContent).toContain('新しい結果');
 });
 
 it('Worker の error 返信は Worker を終了し、理由を表示する', () => {

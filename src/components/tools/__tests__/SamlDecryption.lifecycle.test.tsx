@@ -12,6 +12,7 @@ class ControlledWorker {
   static instances: ControlledWorker[] = [];
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
+  onmessageerror: ((event: MessageEvent) => void) | null = null;
   terminate = vi.fn();
   postMessage = vi.fn();
   constructor() {
@@ -51,6 +52,23 @@ it('Worker error は timer と Worker を停止し、遅延平文を消去する
   expect(stale.every((byte) => byte === 0)).toBe(true);
   act(() => vi.advanceTimersByTime(15_000));
   expect(screen.getByRole('alert').textContent).toContain('復号を開始できませんでした');
+  expect(screen.queryByRole('heading', { name: /復号結果/ })).toBeNull();
+});
+
+it('現行の復号 messageerror は timeout 後に停止し、遅延平文を消去する', () => {
+  vi.useFakeTimers();
+  prepare();
+  fireEvent.click(screen.getByRole('button', { name: '復号する' }));
+  const worker = ControlledWorker.instances[0];
+  act(() => worker.onmessageerror?.(new MessageEvent('messageerror')));
+  expect(worker.terminate).not.toHaveBeenCalled();
+  expect(screen.getByText('復号中です')).toBeTruthy();
+  act(() => vi.advanceTimersByTime(15_000));
+  expect(worker.terminate).toHaveBeenCalledOnce();
+  expect(screen.getByRole('alert').textContent).toContain('15 秒');
+  const stale = new TextEncoder().encode(fixture('expected.xml'));
+  act(() => worker.onmessage?.({ data: { plaintext: stale } } as MessageEvent));
+  expect(stale.every((byte) => byte === 0)).toBe(true);
   expect(screen.queryByRole('heading', { name: /復号結果/ })).toBeNull();
 });
 
