@@ -431,18 +431,35 @@ type DecodeState =
     };
 
 export function CertDecoder() {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState({ value: '', generation: 0 });
   const [decodeState, setDecodeState] = useState<DecodeState>({ status: 'idle' });
   const [password, setPassword] = useState('');
-  // awaiting-password 状態の bytes を useRef で保持（再レンダー時も安定）
-  const pendingBytesRef = useRef<Uint8Array | null>(null);
+  // 入力経路にかかわらず、最後の操作だけが非同期結果を反映できる。
+  const generationRef = useRef(0);
   // 最新の decodeState を effect から参照するための ref（依存配列に入れずに現在値を読む）
   const decodeStateRef = useRef<DecodeState>(decodeState);
   decodeStateRef.current = decodeState;
 
+  useEffect(
+    () => () => {
+      generationRef.current += 1;
+    },
+    []
+  );
+
+  const handleTextChange = useCallback((value: string) => {
+    const generation = ++generationRef.current;
+    setPassword('');
+    setDecodeState({ status: value.trim() ? 'loading' : 'idle' });
+    setInput({ value, generation });
+  }, []);
+
   // デバウンス + 非同期パース
   useEffect(() => {
-    const trimmed = input.trim();
+    const { value, generation } = input;
+    const isCurrent = () => generation === generationRef.current;
+    if (!isCurrent()) return;
+    const trimmed = value.trim();
     if (!trimmed) {
       // PKCS#12 ファイル選択時は handleFileChange が input を '' にクリアしつつ
       // awaiting-password へ遷移する。この effect が idle で上書きすると
@@ -461,14 +478,13 @@ export function CertDecoder() {
       try {
         const parseResult = await parseCertificates(trimmed);
 
-        if (cancelled) return;
+        if (cancelled || !isCurrent()) return;
 
         // PKCS#12（PEM ラベル検出 or Base64 貼り付け）
         const stripped = trimmed.replace(/\s/g, '');
         const isBase64 = /^[A-Za-z0-9+/]+=*$/.test(stripped);
         if (parseResult.unsupported === 'pkcs12') {
           const bytes = pemPkcs12ToBytes(trimmed);
-          pendingBytesRef.current = bytes;
           setPassword('');
           setDecodeState({ status: 'awaiting-password', bytes });
           return;
@@ -479,7 +495,6 @@ export function CertDecoder() {
         if (isBase64) {
           const bytes = base64ToBytesSafe(stripped);
           if (bytes && looksLikePkcs12(bytes)) {
-            pendingBytesRef.current = bytes;
             setPassword('');
             setDecodeState({ status: 'awaiting-password', bytes });
             return;
@@ -492,11 +507,11 @@ export function CertDecoder() {
         }
 
         const chainResult = await buildChain(parseResult.certs);
-        if (cancelled) return;
+        if (cancelled || !isCurrent()) return;
 
         setDecodeState({ status: 'done', parseResult, chainResult });
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelled && isCurrent()) {
           setDecodeState({
             status: 'error',
             message: err instanceof Error ? err.message : '解析中にエラーが発生しました',
@@ -513,71 +528,90 @@ export function CertDecoder() {
 
   // PKCS#12 パスワード復号ハンドラ
   const handleDecryptPkcs12 = useCallback(async (bytes: Uint8Array, pwd: string) => {
+    const generation = ++generationRef.current;
+    const isCurrent = () => generation === generationRef.current;
     setDecodeState({ status: 'decrypting' });
-    const result = await parsePkcs12(bytes, pwd);
-    if (result.errorKind === 'wrong-password') {
-      setDecodeState({
-        status: 'awaiting-password',
-        bytes,
-        error: result.error ?? 'パスワードが正しくありません。',
-      });
-      return;
+    try {
+      const result = await parsePkcs12(bytes, pwd);
+      if (!isCurrent()) return;
+      if (result.errorKind === 'wrong-password') {
+        setDecodeState({
+          status: 'awaiting-password',
+          bytes,
+          error: result.error ?? 'パスワードが正しくありません。',
+        });
+        return;
+      }
+      if (result.errorKind === 'unsupported-encryption') {
+        setDecodeState({ status: 'unsupported', reason: result.error! });
+        return;
+      }
+      if (result.error) {
+        setDecodeState({ status: 'error', message: result.error });
+        return;
+      }
+      const parseResult = await parseDerCertificates(result.certs);
+      if (!isCurrent()) return;
+      const chainResult = await buildChain(parseResult.certs);
+      if (!isCurrent()) return;
+      setDecodeState({ status: 'done', parseResult, chainResult, privateKeys: result.privateKeys });
+    } catch {
+      if (isCurrent()) setDecodeState({ status: 'error', message: '解析中にエラーが発生しました' });
     }
-    if (result.errorKind === 'unsupported-encryption') {
-      setDecodeState({ status: 'unsupported', reason: result.error! });
-      return;
-    }
-    if (result.error) {
-      setDecodeState({ status: 'error', message: result.error });
-      return;
-    }
-    const parseResult = await parseDerCertificates(result.certs);
-    const chainResult = await buildChain(parseResult.certs);
-    setDecodeState({ status: 'done', parseResult, chainResult, privateKeys: result.privateKeys });
   }, []);
 
   // ファイル読み込み
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // PKCS#12（.p12/.pfx）の場合はパスワード入力モードへ
-    const isPkcs12 = ['.p12', '.pfx'].some((ext) => file.name.toLowerCase().endsWith(ext));
-    if (isPkcs12) {
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      pendingBytesRef.current = bytes;
-      setInput(''); // text 経路の解析を止める
-      setPassword('');
-      setDecodeState({ status: 'awaiting-password', bytes });
-      e.target.value = '';
-      return;
-    }
-
-    const binaryExtensions = ['.der', '.cer'];
-    const isBinary = binaryExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
-
-    if (isBinary) {
-      const buf = await file.arrayBuffer();
-      // バイナリファイルは Base64 PEM に変換してテキスト入力欄に渡す。
-      // String.fromCharCode(...bytes) の spread は巨大ファイルでスタック超過の恐れがあるため
-      // チャンク単位で連結する。
-      const bytes = new Uint8Array(buf);
-      let binary = '';
-      const CHUNK = 0x8000;
-      for (let i = 0; i < bytes.length; i += CHUNK) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-      }
-      const b64 = btoa(binary);
-      const lines = b64.match(/.{1,64}/g) ?? [];
-      setInput(`-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----`);
-    } else {
-      const text = await file.text();
-      setInput(text);
-    }
-
-    // input をリセットして同じファイルを再選択可能にする
     e.target.value = '';
+    const generation = ++generationRef.current;
+    const isCurrent = () => generation === generationRef.current;
+    setPassword('');
+    setDecodeState({ status: 'loading' });
+
+    try {
+      // PKCS#12（.p12/.pfx）の場合はパスワード入力モードへ
+      const isPkcs12 = ['.p12', '.pfx'].some((ext) => file.name.toLowerCase().endsWith(ext));
+      if (isPkcs12) {
+        const buf = await file.arrayBuffer();
+        if (!isCurrent()) return;
+        const bytes = new Uint8Array(buf);
+        setInput({ value: '', generation }); // text 経路の解析を止める
+        setDecodeState({ status: 'awaiting-password', bytes });
+        return;
+      }
+
+      const binaryExtensions = ['.der', '.cer'];
+      const isBinary = binaryExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
+
+      if (isBinary) {
+        const buf = await file.arrayBuffer();
+        if (!isCurrent()) return;
+        // バイナリファイルは Base64 PEM に変換してテキスト入力欄に渡す。
+        // String.fromCharCode(...bytes) の spread は巨大ファイルでスタック超過の恐れがあるため
+        // チャンク単位で連結する。
+        const bytes = new Uint8Array(buf);
+        let binary = '';
+        const CHUNK = 0x8000;
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+        }
+        const b64 = btoa(binary);
+        const lines = b64.match(/.{1,64}/g) ?? [];
+        setInput({
+          value: `-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----`,
+          generation,
+        });
+      } else {
+        const text = await file.text();
+        if (!isCurrent()) return;
+        setInput({ value: text, generation });
+      }
+    } catch {
+      if (isCurrent())
+        setDecodeState({ status: 'error', message: 'ファイルの読み込みに失敗しました' });
+    }
   }, []);
 
   return (
@@ -587,9 +621,9 @@ export function CertDecoder() {
         <InputField
           id="cert-input"
           label="証明書を貼り付け"
-          value={input}
-          onChange={setInput}
-          onSampleClick={() => setInput(SAMPLE_CERT_CHAIN_PEM)}
+          value={input.value}
+          onChange={handleTextChange}
+          onSampleClick={() => handleTextChange(SAMPLE_CERT_CHAIN_PEM)}
           placeholder={'-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----'}
           hint="対応形式: PEM / DER（Base64）/ PKCS#7（.p7b）/ PKCS#12（.p12/.pfx）"
           multiline
