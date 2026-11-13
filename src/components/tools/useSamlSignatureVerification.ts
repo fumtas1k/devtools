@@ -103,8 +103,16 @@ export function useSamlSignatureVerification() {
         setVerifying(false);
         fail('署名検証を開始できませんでした');
       };
+      worker.onmessageerror = () => {
+        if (current !== generation.current) return;
+        cancelVerification();
+        setVerifying(false);
+        fail('署名検証の応答を読み取れませんでした');
+      };
       worker.postMessage({ xml, snapshot, pem: certificate });
     } catch (error) {
+      cancelVerification();
+      setVerifying(false);
       fail(error instanceof Error ? error.message : '署名検証を開始できませんでした');
     }
   };
