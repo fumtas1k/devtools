@@ -28,20 +28,9 @@ if [ ! -d node_modules ] || [ "$(cat node_modules/.lockhash 2>/dev/null)" != "$h
   npm ci && echo "$hash" >node_modules/.lockhash
 fi
 
-# Claude Code on the web 限定: `.claude/settings.json` の enabledPlugins を自動 install する。
-#
-# なぜ hook 側か:
-#   enabledPlugins の自動 install は trust dialog イベントに紐づいており、Web / headless では
-#   発火せず silent skip される（docs/setup/plugins.md 2 章 / upstream #23737）。
-#   PR #204 当時は hook からの `claude plugin install` が "not found in marketplace" で失敗したが、
-#   現行の Claude Code（2.1.173 で確認）はセッション開始時に extraKnownMarketplaces を
-#   ~/.claude/plugins/marketplaces へ自動 clone するため、hook 実行時点で install が成功する。
-#
-# 冪等性: install 済みなら "already installed" で即終了し再 clone しない（exit 0）。
-# 失敗時は warn のみで継続する（次セッションの再試行で self-healing。npm ci / playwright の
-# 結果に影響させないため非致命にする）。
-# 注意: プラグインのスキルはセッション開始時にロードされるため、新規コンテナの初回セッションでは
-# 反映されず、コンテナ状態キャッシュにより同一環境の次セッション以降で有効になる。
+# 条件を満たす remote セッションでは、enabledPlugins の有効かつ妥当な名前に install を試行する。
+# 失敗時は警告し、後続の処理を続行する。install の試行は登録やロードの成功を意味しない。
+# 実行条件と環境ごとの扱い: docs/setup/plugins.md
 if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -f .claude/settings.json ] && command -v claude >/dev/null 2>&1; then
   node -e '
     let s;
@@ -62,7 +51,7 @@ if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -f .claude/settings.json ] && com
       console.log(name);
     }
   ' | while IFS= read -r plugin; do
-    claude plugin install "$plugin" || echo "warn: plugin install failed: $plugin（次セッションで再試行されます）" >&2
+    claude plugin install "$plugin" </dev/null || echo "warn: plugin install failed: $plugin（後続の処理を続行します）" >&2
   done
 fi
 

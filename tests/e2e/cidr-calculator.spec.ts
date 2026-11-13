@@ -133,11 +133,23 @@ for (const [name, viewport, desktop] of [
             throw new Error('旧配置への変更に失敗');
         });
         const alignment = await row.evaluate((element) => ({
-          row: getComputedStyle(element).alignItems,
-          dd: getComputedStyle(element.querySelector('dd')!).alignItems,
+          row: {
+            display: getComputedStyle(element).display,
+            alignItems: getComputedStyle(element).alignItems,
+          },
+          dd: {
+            display: getComputedStyle(element.querySelector('dd')!).display,
+            alignItems: getComputedStyle(element.querySelector('dd')!).alignItems,
+          },
         }));
-        expect(alignment.dd).toBe('flex-start');
-        if (desktop) expect(alignment.row).toBe('flex-start');
+        // Chromium 158 は flex-start の computed value を flow-start と返す。
+        // flex container の cross-start としてどちらも同じ位置を表す。
+        expect(alignment.dd.display).toBe('flex');
+        expect(['flex-start', 'flow-start']).toContain(alignment.dd.alignItems);
+        if (desktop) {
+          expect(alignment.row.display).toBe('flex');
+          expect(['flex-start', 'flow-start']).toContain(alignment.row.alignItems);
+        }
         await expect.poll(() => layoutViolations(page, desktop)).toContain('0:value-copy-center');
         if (desktop)
           await expect

@@ -5976,3 +5976,11 @@ jsdom を 30.1.3 に更新する。29 では CSSOM が刷新され、30 では N
 `@exodus/bytes` の optional peer `@noble/hashes` は [181] の 1.8.0 を維持する。jsdom の optional peer `canvas` は導入せず、既存の DOM File テストを維持する。
 
 jsdom 30 の `CSSStyleSheet.replaceSync` はその実装を使い、未実装の `document.adoptedStyleSheets` のみ従来どおり補う。深さ 5000 のサニタイズ試験は jsdom 30 で DOM 構築が極端に遅いため、dev server の実モジュールを実ブラウザで読み込む E2E に移す。深度と script 除去・テキスト保持の検証は維持する。出典: [jsdom 29](https://github.com/jsdom/jsdom/releases/tag/v29.0.0)、[jsdom 30 のリリースノート](https://github.com/jsdom/jsdom/releases/tag/v30.0.0)。
+
+## [183] jsdom 31 の DOM・CSS テスト
+
+**2026-11-12 | ステータス: 採用 | 関連: Refs #774**
+
+jsdom を 31.0.0 に更新する。Node の対応範囲は [182] から変わらず、optional peer の `@napi-rs/canvas` は使用しないため追加しない。CSSOM が再実装され、`document.adoptedStyleSheets` も native で動作するため、既存の条件付き shim は未対応環境用に残し、実際の computed style の追加・更新・解除と非対象要素を検証する。typed `attr()` は native で検出されるので、ProgressBar の従来シートの検証では未対応環境を明示する。
+
+HTML 解析の変更を含むが、アプリが使う DOMParser のサニタイズと XML・FileReader、実ブラウザの CSP と深さ 5000 の検証は維持する。出典: [jsdom 31 リリースノート](https://github.com/jsdom/jsdom/releases/tag/v31.0.0)。
