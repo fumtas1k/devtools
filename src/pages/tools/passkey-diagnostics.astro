@@ -1,0 +1,26 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { PasskeyDiagnosticsTool } from '@/components/tools/PasskeyDiagnostics';
+import { tools } from '@/data/tools';
+const tool = tools.find((entry) => entry.slug === 'passkey-diagnostics')!;
+---
+
+<ToolLayout tool={tool}>
+  <PasskeyDiagnosticsTool client:load />
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      WebAuthn の読み取り専用 API
+      で、この環境の対応状況を確認します。認証情報の作成・使用や、端末内のパスキーの列挙は行いません。
+    </p>
+    <h3 class="mt-4 mb-2 tool-info-heading">結果の見方</h3>
+    <p class="tool-info-body">
+      「非対応」は問い合わせの結果が false だった場合などに表示します。API
+      が未実装、問い合わせ失敗、3
+      秒の待機上限に達した場合は「判定不可」として区別します。端末内認証器の結果から、外付けキーや別端末による認証の可否は判断できません。
+    </p>
+    <p class="tool-info-body">
+      同じページを別の端末・ブラウザで開いて比較すると、対応差の切り分けに役立ちます。判定結果は実際の登録・認証を検証するものではありません。
+    </p>
+  </ToolInfoSection>
+</ToolLayout>

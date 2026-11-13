@@ -91,12 +91,26 @@ for (const viewport of VIEWPORTS) {
           (globalThis as any).Date = PatchedDate;
         });
 
+        if (url === '/tools/passkey-diagnostics') {
+          await page.addInitScript(() => {
+            Object.defineProperty(window, 'PublicKeyCredential', {
+              configurable: true,
+              value: {
+                isUserVerifyingPlatformAuthenticatorAvailable: async () => false,
+                isConditionalMediationAvailable: async () => true,
+              },
+            });
+          });
+        }
         await page.goto(url);
         // 静的ページ (about / privacy / index) は React island 不在のため hydration 待ち不要。
         // それ以外は hydration 完了を待つ — timeout した場合は real bug として test を fail させる
         // （旧設計の `.catch(() => {})` は hydration バグを silent に baseline 化するリスクがあった）
         if (!STATIC_PAGES.has(url)) {
           await waitForReactHydration(page);
+        }
+        if (url === '/tools/passkey-diagnostics') {
+          await expect(page.getByRole('button', { name: '再確認する' })).toBeEnabled();
         }
 
         await expect(page).toHaveScreenshot({
