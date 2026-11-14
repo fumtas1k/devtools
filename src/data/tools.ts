@@ -12,6 +12,13 @@ export interface Tool {
 // ソース上は追加順のまま（可読性維持）。表示順は末尾で yomi 五十音順にソートして export する
 const toolEntries: Tool[] = [
   {
+    slug: 'webauthn-decoder',
+    name: 'WebAuthn レスポンス解析',
+    description: '登録・認証レスポンスをブラウザ内で解析します',
+    category: 'encode',
+    yomi: 'うぇぶおーすえぬれすぽんすかいせき',
+  },
+  {
     slug: 'passkey-diagnostics',
     name: 'パスキー環境診断',
     description: '登録・ログインせずに端末とブラウザのパスキー対応を確認します',
