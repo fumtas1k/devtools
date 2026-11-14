@@ -154,3 +154,39 @@ for (const placement of ['implicit', 'retrieval', 'empty-keyinfo'] as const) {
     await expect(page.getByRole('heading', { name: /復号結果（署名未検証）/ })).toBeVisible();
   });
 }
+
+test('復号 Worker の messageerror を即時表示し、再試行できる', async ({ page }) => {
+  await page.evaluate(() => {
+    const OriginalWorker = window.Worker;
+    let first = true;
+    class FailingWorker {
+      onmessageerror: ((event: MessageEvent) => void) | null = null;
+      postMessage() {
+        queueMicrotask(() => this.onmessageerror?.(new MessageEvent('messageerror')));
+      }
+      terminate() {}
+    }
+    Object.defineProperty(window, 'Worker', {
+      configurable: true,
+      value: function (url: string | URL, options?: WorkerOptions) {
+        if (first) {
+          first = false;
+          return new FailingWorker();
+        }
+        return new OriginalWorker(url, options);
+      },
+    });
+  });
+  await page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/).fill(read('xmlsec-aes128.xml'));
+  await page.getByLabel('復号する Assertion').selectOption('0');
+  const key = page.getByLabel('秘密鍵（PKCS#8 PEM）');
+  await key.fill(read('trial-key.pem'));
+  await page.getByRole('button', { name: '復号する', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('復号に失敗しました', { timeout: 5_000 });
+  await expect(page.getByText('復号中です')).toHaveCount(0);
+  await expect(key).toHaveValue('');
+  await key.fill(read('trial-key.pem'));
+  await page.getByRole('button', { name: '復号する', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /復号結果（署名未検証）/ })).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});

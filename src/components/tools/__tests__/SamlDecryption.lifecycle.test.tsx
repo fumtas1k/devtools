@@ -55,21 +55,68 @@ it('Worker error は timer と Worker を停止し、遅延平文を消去する
   expect(screen.queryByRole('heading', { name: /復号結果/ })).toBeNull();
 });
 
-it('現行の復号 messageerror は timeout 後に停止し、遅延平文を消去する', () => {
+it('現行の復号 messageerror は即時停止し、遅延平文を消去する', () => {
   vi.useFakeTimers();
   prepare();
   fireEvent.click(screen.getByRole('button', { name: '復号する' }));
   const worker = ControlledWorker.instances[0];
+  expect(vi.getTimerCount()).toBe(1);
   act(() => worker.onmessageerror?.(new MessageEvent('messageerror')));
-  expect(worker.terminate).not.toHaveBeenCalled();
-  expect(screen.getByText('復号中です')).toBeTruthy();
-  act(() => vi.advanceTimersByTime(15_000));
   expect(worker.terminate).toHaveBeenCalledOnce();
-  expect(screen.getByRole('alert').textContent).toContain('15 秒');
+  expect(vi.getTimerCount()).toBe(0);
+  expect(screen.queryByText('復号中です')).toBeNull();
+  expect(screen.getByRole('alert').textContent).toContain('復号に失敗しました');
   const stale = new TextEncoder().encode(fixture('expected.xml'));
   act(() => worker.onmessage?.({ data: { plaintext: stale } } as MessageEvent));
   expect(stale.every((byte) => byte === 0)).toBe(true);
+  act(() => vi.advanceTimersByTime(15_000));
+  expect(screen.getByRole('alert').textContent).toContain('復号に失敗しました');
   expect(screen.queryByRole('heading', { name: /復号結果/ })).toBeNull();
+});
+
+it('messageerror 後の再試行中に古いイベントは現行 Worker を停止しない', () => {
+  vi.useFakeTimers();
+  const key = prepare();
+  fireEvent.click(screen.getByRole('button', { name: '復号する' }));
+  const old = ControlledWorker.instances[0];
+  act(() => old.onmessageerror?.(new MessageEvent('messageerror')));
+  fireEvent.change(key, { target: { value: fixture('trial-key.pem') } });
+  fireEvent.click(screen.getByRole('button', { name: '復号する' }));
+  const current = ControlledWorker.instances[1];
+  act(() => old.onmessageerror?.(new MessageEvent('messageerror')));
+  expect(current.terminate).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(1);
+  expect(screen.getByText('復号中です')).toBeTruthy();
+  expect(screen.queryByRole('alert')).toBeNull();
+  const stale = new TextEncoder().encode(fixture('expected.xml'));
+  act(() => old.onmessage?.({ data: { plaintext: stale } } as MessageEvent));
+  expect(stale.every((byte) => byte === 0)).toBe(true);
+  const fresh = new TextEncoder().encode(fixture('expected.xml'));
+  act(() => current.onmessage?.({ data: { plaintext: fresh } } as MessageEvent));
+  expect(fresh.every((byte) => byte === 0)).toBe(true);
+  expect(screen.getByText(/REDACTED:PII_1/)).toBeTruthy();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it.each(['pagehide', 'unmount'] as const)('messageerror 後の再試行を %s で停止する', (action) => {
+  vi.useFakeTimers();
+  const key = prepare();
+  fireEvent.click(screen.getByRole('button', { name: '復号する' }));
+  const old = ControlledWorker.instances[0];
+  act(() => old.onmessageerror?.(new MessageEvent('messageerror')));
+  fireEvent.change(key, { target: { value: fixture('trial-key.pem') } });
+  fireEvent.click(screen.getByRole('button', { name: '復号する' }));
+  const current = ControlledWorker.instances[1];
+  if (action === 'pagehide') fireEvent(window, new PageTransitionEvent('pagehide'));
+  else cleanup();
+  expect(current.terminate).toHaveBeenCalledOnce();
+  expect(vi.getTimerCount()).toBe(0);
+  act(() => current.onmessageerror?.(new MessageEvent('messageerror')));
+  const stale = new TextEncoder().encode(fixture('expected.xml'));
+  act(() => current.onmessage?.({ data: { plaintext: stale } } as MessageEvent));
+  expect(stale.every((byte) => byte === 0)).toBe(true);
+  expect(screen.queryByRole('heading', { name: /復号結果/ })).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
 });
 
 it('成功後に時間が経過しても結果を保持し、timeout で上書きしない', () => {
