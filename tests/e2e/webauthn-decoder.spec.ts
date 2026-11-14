@@ -28,7 +28,9 @@ test('合成登録・認証レスポンスと RP ID を解析する', async ({ p
 });
 
 test('入力の案内と診断へのリンクを表示する', async ({ page }) => {
-  const guide = page.getByRole('region', { name: '使い方' });
+  const guide = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'このツールについて' }) });
   await expect(guide).toContainText('テスト環境のレスポンス JSON 全体');
   await expect(guide).toContainText('パスワードや秘密鍵は入力しない');
   await expect(guide).toContainText('許可リスト');
@@ -37,7 +39,11 @@ test('入力の案内と診断へのリンクを表示する', async ({ page }) 
     'href',
     '/tools/passkey-diagnostics'
   );
-  await expect(page.getByText('入力は送信・保存しません。', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText(
+      '入力は送信・保存しません。署名、challenge、認証の正当性を検証するものではありません。'
+    )
+  ).toBeVisible();
 });
 
 test('不正入力をエラーにし、出力をテキストとして扱う', async ({ page }) => {
