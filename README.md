@@ -72,7 +72,7 @@
 - **UI**: [React](https://react.dev/) 19 + [Tailwind CSS](https://tailwindcss.com/) v4
 - **言語**: TypeScript
 - **ランタイム**: Node.js 24（開発・CI・ビルドで使う版は `.node-version` で指定）
-- **対応 Node.js**: `^22.22.2 || ^24.15.0 || >=26.0.0`（依存関係の要件。通常の開発には `.node-version` を使用）
+- **対応 Node.js**: `^22.23.4 || ^24.15.0 || >=26.0.0`（依存関係の要件。通常の開発には `.node-version` を使用）
 
 ## 開発
 
