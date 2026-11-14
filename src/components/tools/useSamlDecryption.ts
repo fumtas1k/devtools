@@ -93,6 +93,12 @@ export function useSamlDecryption(xml: string) {
         setRunning(false);
         setError('復号を開始できませんでした');
       };
+      worker.onmessageerror = () => {
+        if (current !== generation.current) return;
+        cancel();
+        setRunning(false);
+        setError('復号に失敗しました');
+      };
       worker.postMessage({ plan, keyDer }, [
         keyDer.buffer,
         plan.label.buffer,
