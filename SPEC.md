@@ -101,10 +101,15 @@
 
 ※ すべて Tree-shakable で軽量なものを選定。バンドルサイズ最小化を優先。
 
+パスキー環境診断はブラウザ標準 API のみを使用し、依存追加なし。
+
 ### 2.4 ディレクトリ構成
 
 ```
 devtools/
+├── src/utils/passkeyDiagnostics.ts # パスキー環境の読み取り専用診断
+├── src/components/tools/PasskeyDiagnostics.tsx
+├── src/pages/tools/passkey-diagnostics.astro
 ├── astro.config.mjs
 ├── tsconfig.json
 ├── package.json
@@ -309,7 +314,7 @@ devtools/
 
 ---
 
-## 4. ツール一覧（全34ツール）
+## 4. ツール一覧（全35ツール）
 
 ### カテゴリ A: 生成ツール（`generate`）
 
@@ -364,6 +369,7 @@ devtools/
 | 29  | markdownエディタ                  | `markdown-editor`      | markdown を 2 ペインでリアルタイム HTML プレビュー。GFM（表・取り消し線・コードブロック）対応。`marked` で HTML 変換後に既存 `sanitizeHtml` でサニタイズ。HTML クリップボードコピー・.md ダウンロード。全処理ブラウザ内完結                             |
 | 30  | コントラスト比マトリクス          | `contrast-matrix`      | 任意の N 色の全組合せ（N×N）のコントラスト比を一覧表示。WCAG 2.x の AA/AAA 合否と APCA-W3 0.1.9 の Lc 値を併記。HEX / rgb() 形式の不透明色に対応。外部ライブラリなし・全処理ブラウザ内完結                                                              |
 | 31  | DDL → ER図ジェネレータ            | `ddl-er-diagram`       | `CREATE TABLE` 文（MySQL/PostgreSQL）を貼り付けると ER 図を即描画。明示的な外部キー（`FOREIGN KEY ... REFERENCES` / 列定義内 `REFERENCES`）からリレーション線を自動生成。Mermaid ER 記法のコピー・SVG/PNG ダウンロード対応。全処理ブラウザ内完結        |
+| 35  | パスキー環境診断                  | `passkey-diagnostics`  | 登録・認証なしで現在のブラウザの対応状況を確認                                                                                                                                                                                                          |
 | 34  | MCP 設定リスクインスペクタ        | `mcp-config-inspector` | MCP設定をローカルで静的に確認し、値をマスクして表示                                                                                                                                                                                                     |
 
 ---
@@ -1444,6 +1450,13 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 
 ---
 
+### 5.35 パスキー環境診断（`passkey-diagnostics`）
+
+- ページ表示時にセキュアコンテキスト、WebAuthn API、端末内のユーザー検証可能認証器、conditional mediation の可用性を確認する。
+- 対応・非対応・判定不可を分け、未実装・失敗・3 秒のタイムアウトは端末の非対応と断定しない。
+- 再確認と画面離脱時は旧結果を反映しない。登録・認証・保存・送信なし。
+- 他サイトのパスキー登録・同期状態や Touch ID が出ない原因は判定しない。
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1564,6 +1577,8 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
 ---
 
 ## 9. 開発フェーズ
+
+- [x] パスキー環境診断の追加（#996）。WebAuthn デコーダは別 Issue。
 
 > **ツール候補の詳細は §13 を参照。** Phase 2〜3 でのツール追加はそちらのリストから選定する。
 

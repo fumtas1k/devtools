@@ -5984,3 +5984,9 @@ jsdom 30 の `CSSStyleSheet.replaceSync` はその実装を使い、未実装の
 jsdom を 31.0.0 に更新する。Node の対応範囲は [182] から変わらず、optional peer の `@napi-rs/canvas` は使用しないため追加しない。CSSOM が再実装され、`document.adoptedStyleSheets` も native で動作するため、既存の条件付き shim は未対応環境用に残し、実際の computed style の追加・更新・解除と非対象要素を検証する。typed `attr()` は native で検出されるので、ProgressBar の従来シートの検証では未対応環境を明示する。
 
 HTML 解析の変更を含むが、アプリが使う DOMParser のサニタイズと XML・FileReader、実ブラウザの CSP と深さ 5000 の検証は維持する。出典: [jsdom 31 リリースノート](https://github.com/jsdom/jsdom/releases/tag/v31.0.0)。
+
+## [184] パスキーの受動的な環境診断
+
+**2026-11-13 | ステータス: 採用 | 関連: Refs #996**
+
+WebAuthn デコーダの前段として、登録・認証なしの環境診断を追加する。端末間・ブラウザ間の違いを確認する用途に絞り、API 未実装や失敗を端末の非対応と誤認させない。依存追加は不要。3 秒の待機上限は UI の応答性のためであり、ブラウザ内部の問い合わせをキャンセルするものではない。結果は保存・送信しない。

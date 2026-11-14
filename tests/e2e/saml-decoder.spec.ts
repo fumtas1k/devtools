@@ -292,6 +292,7 @@ test.describe('検証中の入力変更', () => {
       class DelayedWorker {
         onmessage: ((event: MessageEvent) => void) | null = null;
         onerror: ((event: ErrorEvent) => void) | null = null;
+        onmessageerror: ((event: MessageEvent) => void) | null = null;
         terminated = false;
         constructor() {
           (window as unknown as { delayedWorker: DelayedWorker }).delayedWorker = this;
@@ -395,6 +396,72 @@ test.describe('検証中の入力変更', () => {
     await expect(page.getByRole('list', { name: '署名検証の結果' })).toContainText(
       '署名検証を開始できませんでした'
     );
+  });
+
+  test('messageerror で即時停止し、遅延応答を反映せず再試行できる', async ({ page }) => {
+    await page.clock.install();
+    await page
+      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
+      .fill(readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8'));
+    await page.getByRole('button', { name: '署名を検証する' }).click();
+    await expect(page.getByText('署名を検証中です')).toBeVisible();
+    const terminated = await page.evaluate(() => {
+      const worker = (
+        window as unknown as {
+          delayedWorker: {
+            terminated: boolean;
+            onmessageerror: (event: MessageEvent) => void;
+            onmessage: (event: { data: unknown }) => void;
+          };
+        }
+      ).delayedWorker;
+      worker.onmessageerror(new MessageEvent('messageerror'));
+      worker.onmessage({
+        data: {
+          results: [
+            {
+              label: 'Response',
+              id: '_response',
+              signed: true,
+              status: 'match',
+              reason: '古い一致',
+            },
+          ],
+        },
+      });
+      return worker.terminated;
+    });
+    expect(terminated).toBe(true);
+    const results = page.getByRole('list', { name: '署名検証の結果' });
+    await expect(results).toContainText('署名検証の応答を読み取れませんでした');
+    await expect(results).not.toContainText('古い一致');
+    await page.clock.fastForward('00:15');
+    await expect(results).toContainText('署名検証の応答を読み取れませんでした');
+    await page.getByRole('button', { name: '署名を検証する' }).click();
+    await expect(page.getByText('署名を検証中です')).toBeVisible();
+  });
+
+  test('postMessage 同期失敗で即時停止し、timeout の理由に上書きされない', async ({ page }) => {
+    await page.clock.install();
+    await page.evaluate(() => {
+      Worker.prototype.postMessage = () => {
+        throw new Error('送信失敗');
+      };
+    });
+    await page
+      .getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/)
+      .fill(readFileSync('tests/fixtures/saml-signature/response.xml', 'utf8'));
+    await page.getByRole('button', { name: '署名を検証する' }).click();
+    await expect(page.getByRole('list', { name: '署名検証の結果' })).toContainText('送信失敗');
+    await expect(page.getByText('署名を検証中です')).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { delayedWorker: { terminated: boolean } }).delayedWorker.terminated
+      )
+    ).toBe(true);
+    await page.clock.fastForward('00:15');
+    await expect(page.getByRole('list', { name: '署名検証の結果' })).toContainText('送信失敗');
   });
 });
 

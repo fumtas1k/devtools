@@ -26,6 +26,11 @@ const attrs = {
 };
 ---
 
+{slug === 'webauthn-decoder' && <svg {...attrs}>
+  <circle cx="8" cy="10" r="4" />
+  <path d="M12 10h9v3h-3v3h-3v-3h-3" />
+</svg>}
+
 {slug === 'url-encode' && <svg {...attrs}>
   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
@@ -366,4 +371,9 @@ const attrs = {
   <path d="M12 2L20 6v6c0 5-4 9-8 10-4-1-8-5-8-10V6z" />
   <circle cx="12" cy="11" r="3" />
   <path d="M14 13l3 3" />
+</svg>}
+
+{slug === 'passkey-diagnostics' && <svg {...attrs}>
+  <circle cx="8" cy="8" r="5" />
+  <path d="m12 12 9 9m-3-3 3-3m-6 0 3-3" />
 </svg>}

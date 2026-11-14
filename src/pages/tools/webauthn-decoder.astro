@@ -1,0 +1,37 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { WebAuthnDecoderTool } from '@/components/tools/WebAuthnDecoder';
+import { tools } from '@/data/tools';
+const tool = tools.find((entry) => entry.slug === 'webauthn-decoder')!;
+---
+
+<ToolLayout tool={tool}>
+  <WebAuthnDecoderTool client:load />
+  <ToolInfoSection>
+    <div class="space-y-3 tool-info-body">
+      <p>
+        ブラウザがレスポンスを返したのにサーバーが登録・ログインを拒否する場合の切り分けに使います。
+      </p>
+      <p>
+        テスト環境のレスポンス JSON 全体（クライアントが送る公開資格情報の JSON
+        など）を貼り付けます。パスワードや秘密鍵は入力しないでください。
+      </p>
+      <p>
+        返された origin をサーバーの許可リストと、想定 RP ID のハッシュ照合結果を期待値と、UV
+        フラグをサーバーのポリシーと比較します。
+      </p>
+      <p>
+        「登録の合成サンプル」を選んで「解析する」を押すと example.test は一致します。想定 RP ID を
+        other.test に変えて再度解析すると不一致になります。
+      </p>
+      <p>まだレスポンスがない場合は、まず端末とブラウザを確認してください。</p>
+      <p class="py-2">
+        <a href="/tools/passkey-diagnostics" class="text-link hit-area inline-block"
+          >パスキー環境診断</a
+        >
+      </p>
+      <p>署名、challenge、認証の正当性は検証しません。入力は送信・保存しません。</p>
+    </div>
+  </ToolInfoSection>
+</ToolLayout>

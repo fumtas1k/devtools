@@ -1,13 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { SamlDecryption } from './SamlDecryption';
+import { useSamlSignatureVerification } from './useSamlSignatureVerification';
 import { ActionButton } from '@/components/ui/ActionButton';
-import {
-  MAX_CERT_BYTES,
-  MAX_SIGNATURE_XML_BYTES,
-  signatureSnapshot,
-  targetsFor,
-  type SignatureResult,
-} from '@/utils/saml/signature-profile';
+import { targetsFor, type SignatureResult } from '@/utils/saml/signature-profile';
 import { InputField } from '@/components/ui/InputField';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -15,7 +10,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { ResultTable, type TableColumn } from '@/components/ui/ResultTable';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { assertSamlInputSize, exceedsUtf8ByteLimit } from '@/utils/saml/limits';
+import { assertSamlInputSize } from '@/utils/saml/limits';
 import {
   decodeSamlInput,
   parseSamlDocument,
@@ -313,38 +308,8 @@ export function SamlDecoderTool() {
   const [spEntityId, setSpEntityId] = useState('');
   const [xmlView, setXmlView] = useState<XmlView>('raw');
   const [certificate, setCertificate] = useState('');
-  const [signatureResults, setSignatureResults] = useState<SignatureResult[] | null>(null);
-  const [signatureError, setSignatureError] = useState('');
-  const [verifying, setVerifying] = useState(false);
-  const active = useRef<{ worker: Worker; timer: ReturnType<typeof setTimeout> } | null>(null);
-  const generation = useRef(0);
-  const cancelVerification = () => {
-    generation.current++;
-    if (active.current) {
-      clearTimeout(active.current.timer);
-      active.current.worker.terminate();
-      active.current = null;
-    }
-  };
-  const resetVerification = () => {
-    cancelVerification();
-    setSignatureResults(null);
-    setSignatureError('');
-    setVerifying(false);
-  };
-  useEffect(() => {
-    const onPageHide = () => resetVerification();
-    const onPageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) resetVerification();
-    };
-    window.addEventListener('pagehide', onPageHide);
-    window.addEventListener('pageshow', onPageShow);
-    return () => {
-      window.removeEventListener('pagehide', onPageHide);
-      window.removeEventListener('pageshow', onPageShow);
-      cancelVerification();
-    };
-  }, []);
+  const { signatureResults, signatureError, verifying, resetVerification, verifySignature } =
+    useSamlSignatureVerification();
   const changeInput = (value: string) => {
     resetVerification();
     setInput(value);
@@ -385,70 +350,7 @@ export function SamlDecoderTool() {
 
   const verify = () => {
     if (!ok || !response) return;
-    resetVerification();
-    const entries = targetsFor(ok.document).map(({ target }) => target);
-    const fail = (reason: string) =>
-      setSignatureResults(entries.map((target) => ({ ...target, status: 'unsupported', reason })));
-    try {
-      if (exceedsUtf8ByteLimit(ok.decoded.xml, MAX_SIGNATURE_XML_BYTES))
-        throw new Error('署名検証は XML 2 MiB 以下に対応しています');
-      if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(ok.decoded.xml))
-        throw new Error('DTD / ENTITY は署名検証に対応していません');
-      if (exceedsUtf8ByteLimit(certificate, MAX_CERT_BYTES)) {
-        const reason = '証明書は 64 KiB 以下にしてください';
-        setSignatureError(reason);
-        setSignatureResults(
-          entries.map((target) => ({
-            ...target,
-            status: target.signed ? 'input-error' : 'unsigned',
-            reason: target.signed ? reason : '直下に署名がありません',
-          }))
-        );
-        return;
-      }
-      const snapshot = signatureSnapshot(ok.document);
-      const current = generation.current;
-      const worker = new Worker(
-        new URL('../../workers/saml-signature.worker.ts', import.meta.url),
-        { type: 'module' }
-      );
-      const timer = setTimeout(() => {
-        if (current !== generation.current) return;
-        cancelVerification();
-        setVerifying(false);
-        fail('検証が 15 秒を超えたため停止しました');
-      }, 15_000);
-      active.current = { worker, timer };
-      setVerifying(true);
-      setSignatureResults(
-        entries.map((target) => ({
-          ...target,
-          status: target.signed ? 'processing' : 'unsigned',
-          reason: target.signed ? '検証中です' : '直下に署名がありません',
-        }))
-      );
-      worker.onmessage = (event: MessageEvent<{ results?: SignatureResult[]; error?: string }>) => {
-        if (current !== generation.current) return;
-        cancelVerification();
-        setVerifying(false);
-        if (event.data.results) {
-          setSignatureResults(event.data.results);
-          setSignatureError(
-            event.data.results.find((item) => item.status === 'input-error')?.reason || ''
-          );
-        } else fail(event.data.error || '署名検証に失敗しました');
-      };
-      worker.onerror = (event) => {
-        event.preventDefault();
-        if (current !== generation.current) return;
-        cancelVerification();
-        setVerifying(false);
-        fail('署名検証を開始できませんでした');
-      };
-      worker.postMessage({ xml: ok.decoded.xml, snapshot, pem: certificate });
-    } catch (error) {
-      fail(error instanceof Error ? error.message : '署名検証を開始できませんでした');
-    }
+    verifySignature(ok.decoded.xml, ok.document, certificate);
   };
 
   return (

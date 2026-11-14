@@ -50,6 +50,8 @@ export const PAGES = [
   '/tools/ddl-er-diagram',
   '/tools/saml-decoder',
   '/tools/mcp-config-inspector',
+  '/tools/passkey-diagnostics',
+  '/tools/webauthn-decoder',
 ] as const;
 
 export const STATIC_PAGES = new Set<string>(['/', '/about', '/privacy', '/404']);

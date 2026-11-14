@@ -24,6 +24,7 @@
   - [JWTデコーダー](#jwtデコーダー)
   - [SSL/TLS証明書デコーダ](#ssltls証明書デコーダ)
   - [SAMLデコーダ](#samlデコーダ)
+  - [WebAuthn レスポンス解析](#webauthn-レスポンス解析)
 - [変換・解析](#変換解析)
   - [MCP 設定リスクインスペクタ](#mcp-設定リスクインスペクタ)
   - [JSON / XML 変換](#json--xml-変換)
@@ -402,6 +403,16 @@ JWT を `.` で 3 分割し、Header・Payload を base64url デコードして 
 - 全処理はブラウザ内で完結し、入力（Assertion に含まれる氏名・メール等の PII を含む）は外部に送信しない
 - XML は UTF-8 換算で 32 MiB 以下、deflate 展開後データも 32 MiB 以下に制限する。入力全体は trim や URL 解析前に 134,283,268 UTF-16 コード単位以下に制限する（全 percent エンコード base64 の最大長に URL・クエリ・空白の余裕 65,536 単位を加算）。これらはアプリの上限であり、SAML の仕様上限や総メモリ使用量の保証ではない。整形・マスクの直接呼び出しは XML 上限超過時に元の文字列を返す
 - 「共有用マスク XML」は構造上の PII フィールド（NameID・AttributeValue）と `secret-scrubber` の既知パターンの除去であり、完全な匿名化を保証するものではない。共有前に必ず目視で確認すること
+
+### WebAuthn レスポンス解析
+
+登録・認証レスポンスの JSON をブラウザ内で読み取り、`clientDataJSON` の type と origin を表示する。登録時は CBOR の `attestationObject` に含まれる `authData`、認証時は `authenticatorData` から、UP（ユーザーの存在確認）、UV（ユーザー検証）、BE（バックアップ可能）、BS（バックアップ済み）と署名カウンターを取り出す。
+
+任意の想定 RP ID を指定すると、SHA-256 ハッシュをレスポンスの `rpIdHash` と比較する。origin は WebAuthn を呼び出したページのオリジン、RP ID は資格情報を紐づけるドメインで、同一の値とは限らない。
+
+入力の送信・永続化は行わない。入力の上限、不正な形式、短い認証器データはエラーとする。合成サンプルは表示内容の確認に使える。このツールは調査用で、署名、challenge、登録・認証の成否を検証するものではない。
+
+準拠仕様: [Web Authentication Level 3](https://www.w3.org/TR/webauthn-3/)。
 
 ## 変換・解析
 
@@ -863,3 +874,11 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **命名規則推測なし**: `user_id → users.id` のような名前ベースの関係推測は行わない。明示的な FK 定義のみからリレーション線を生成する。
 - **mermaid ライブラリ不使用**: mermaid の `render()` は描画時に一時 DOM へインラインスタイルを挿入するため、本プロジェクトの strict CSP（`style-src 'unsafe-inline'` なし）と根本衝突する（詳細は `docs/decisions.md` [122]）。コピー用の Mermaid テキスト生成は自前実装で行い、描画は自前 SVG レンダラが担う。
 - **全処理はブラウザ内で完結し、入力 DDL を外部サーバーに送信しない**。
+
+### パスキー環境診断
+
+`window.isSecureContext` と `PublicKeyCredential` の有無、および `isUserVerifyingPlatformAuthenticatorAvailable()` / `isConditionalMediationAvailable()` を確認する。端末内認証器が利用不可でも外付けキーや別端末での認証まで否定しない。API 未実装・失敗・3 秒のタイムアウトは「判定不可」。登録・認証や秘密鍵へのアクセス、診断結果の保存・送信は行わない。
+
+ブラウザ標準 API の返答を表示する診断であり、他サイトのパスキー一覧・同期状態・ログイン成功を検証しない。
+
+仕様: https://www.w3.org/TR/webauthn-3/

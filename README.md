@@ -64,6 +64,7 @@
 | コントラスト比マトリクス          | 任意の N 色の全組合せ（N×N）のコントラスト比を一覧表示。WCAG 2.x の AA/AAA 合否と APCA Lc を併記。計算はブラウザ内で完結                                                                                                                                 |
 | DDL → ER図ジェネレータ            | CREATE TABLE 文（MySQL/PostgreSQL）から ER 図を描画。外部キーからリレーション線を自動生成し、Mermaid コード・SVG・PNG で出力。全処理ブラウザ内完結                                                                                                       |
 | SAMLデコーダ                      | SSO の SAMLResponse / AuthnRequest を自動判定デコードし、Assertion の内容と Status・有効期限・Audience の定番チェックを表示                                                                                                                              |
+| パスキー環境診断                  | 登録・ログインせずにセキュアコンテキスト、WebAuthn、端末内認証器、自動入力の可用性を確認                                                                                                                                                                 |
 
 ## 技術スタック
 
@@ -71,7 +72,7 @@
 - **UI**: [React](https://react.dev/) 19 + [Tailwind CSS](https://tailwindcss.com/) v4
 - **言語**: TypeScript
 - **ランタイム**: Node.js 24（開発・CI・ビルドで使う版は `.node-version` で指定）
-- **対応 Node.js**: `^22.22.2 || ^24.15.0 || >=26.0.0`（依存関係の要件。通常の開発には `.node-version` を使用）
+- **対応 Node.js**: `^24.15.0`（依存関係の要件。通常の開発には `.node-version` を使用）
 
 ## 開発
 
