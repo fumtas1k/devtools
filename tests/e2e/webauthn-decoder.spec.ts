@@ -17,11 +17,27 @@ test('合成登録・認証レスポンスと RP ID を解析する', async ({ p
   await expect(result).toContainText('BE（バックアップ可能）: あり');
   await expect(result).toContainText('BS（バックアップ済み）: あり');
   await expect(result).toContainText('一致');
+  await page.getByLabel('想定 RP ID（任意）').fill('other.test');
+  await page.getByRole('button', { name: '解析する' }).click();
+  await expect(result).toContainText('不一致');
   await page.getByRole('button', { name: '認証の合成サンプル' }).click();
   await page.getByLabel('想定 RP ID（任意）').fill('other.test');
   await page.getByRole('button', { name: '解析する' }).click();
   await expect(result).toContainText('webauthn.get');
   await expect(result).toContainText('不一致');
+});
+
+test('入力の案内と診断へのリンクを表示する', async ({ page }) => {
+  const guide = page.getByRole('region', { name: '使い方' });
+  await expect(guide).toContainText('テスト環境のレスポンス JSON 全体');
+  await expect(guide).toContainText('パスワードや秘密鍵は入力しない');
+  await expect(guide).toContainText('許可リスト');
+  await expect(guide).toContainText('UV');
+  await expect(guide.getByRole('link', { name: 'パスキー環境診断' })).toHaveAttribute(
+    'href',
+    '/tools/passkey-diagnostics'
+  );
+  await expect(page.getByText('入力は送信・保存しません。', { exact: false })).toBeVisible();
 });
 
 test('不正入力をエラーにし、出力をテキストとして扱う', async ({ page }) => {

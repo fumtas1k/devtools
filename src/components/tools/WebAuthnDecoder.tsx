@@ -88,6 +88,30 @@ export function WebAuthnDecoderTool() {
       <NotificationBanner variant="info" title="ブラウザ内で解析します">
         <p>入力は送信・保存しません。署名、challenge、認証の正当性を検証するものではありません。</p>
       </NotificationBanner>
+      <section aria-labelledby="webauthn-guide" className="space-y-2 text-body">
+        <h2 id="webauthn-guide" className="section-heading">
+          使い方
+        </h2>
+        <p>
+          ブラウザからテスト用の資格情報レスポンスが返ったのに、サーバーが登録・ログインを拒否する場合に使います。
+          テスト環境のレスポンス JSON 全体（WebAuthn クライアントが送る公開資格情報の JSON
+          など）を貼り付けてください。パスワードや秘密鍵は入力しないでください。
+        </p>
+        <p>
+          返された origin をサーバーの許可リストと、想定 RP ID のハッシュ照合結果を期待値と、UV
+          フラグをサーバーのポリシーと比較してください。
+        </p>
+        <p>まだレスポンスがない場合は、まず端末とブラウザを確認してください。</p>
+        <p className="py-2">
+          <a href="/tools/passkey-diagnostics" className="text-link hit-area inline-block">
+            パスキー環境診断
+          </a>
+        </p>
+        <p>
+          お試し: 「登録の合成サンプル」を選び「解析する」を押すと、example.test は一致します。 想定
+          RP ID を other.test に変えて再度解析すると、不一致になります。
+        </p>
+      </section>
       <p className="text-body">
         origin はスキーム・ホスト・ポートを含むページの出所です。RP ID
         は認証対象のホスト名で、origin とは異なります。
