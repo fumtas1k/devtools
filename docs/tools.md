@@ -863,3 +863,11 @@ YAML・JSON・TOML・.env を相互変換する。各フォーマットを中間
 - **命名規則推測なし**: `user_id → users.id` のような名前ベースの関係推測は行わない。明示的な FK 定義のみからリレーション線を生成する。
 - **mermaid ライブラリ不使用**: mermaid の `render()` は描画時に一時 DOM へインラインスタイルを挿入するため、本プロジェクトの strict CSP（`style-src 'unsafe-inline'` なし）と根本衝突する（詳細は `docs/decisions.md` [122]）。コピー用の Mermaid テキスト生成は自前実装で行い、描画は自前 SVG レンダラが担う。
 - **全処理はブラウザ内で完結し、入力 DDL を外部サーバーに送信しない**。
+
+### パスキー環境診断
+
+`window.isSecureContext` と `PublicKeyCredential` の有無、および `isUserVerifyingPlatformAuthenticatorAvailable()` / `isConditionalMediationAvailable()` を確認する。端末内認証器が利用不可でも外付けキーや別端末での認証まで否定しない。API 未実装・失敗・3 秒のタイムアウトは「判定不可」。登録・認証や秘密鍵へのアクセス、診断結果の保存・送信は行わない。
+
+ブラウザ標準 API の返答を表示する診断であり、他サイトのパスキー一覧・同期状態・ログイン成功を検証しない。
+
+仕様: https://www.w3.org/TR/webauthn-3/
