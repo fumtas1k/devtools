@@ -1,0 +1,16 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { WebAuthnDecoderTool } from '@/components/tools/WebAuthnDecoder';
+import { tools } from '@/data/tools';
+const tool = tools.find((entry) => entry.slug === 'webauthn-decoder')!;
+---
+
+<ToolLayout tool={tool}>
+  <WebAuthnDecoderTool client:load />
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      登録・認証レスポンスの構造を読み取ります。署名や challenge の検証はサーバーで行ってください。
+    </p>
+  </ToolInfoSection>
+</ToolLayout>
