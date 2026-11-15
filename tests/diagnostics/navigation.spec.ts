@@ -4,8 +4,63 @@ import { applyProductionCsp, waitForReactHydration } from '../e2e/helpers';
 import { PRODUCTION_CSP } from '../../src/utils/csp';
 import { cases } from './navigation-cases';
 import { releaseHeldReact, withHeldReact } from './hydration-barrier';
+import { waitForBase64Interaction } from './base64-readiness';
 
 const modes = ['load', 'domcontentloaded'] as const;
+
+test('Base64 公開操作: commit 保留中は準備完了せず解除後に応答する', async ({ browser }) => {
+  await withHeldReact(browser, async (page) => {
+    await page.evaluate(() => {
+      document.addEventListener(
+        'click',
+        (event) => {
+          if ((event.target as Element).textContent === 'URL-safe') {
+            const root = document.documentElement;
+            const count = Number(root.getAttribute('data-diagnostic-click') ?? '0');
+            root.setAttribute('data-diagnostic-click', String(count + 1));
+          }
+        },
+        true
+      );
+    });
+    let completed = false;
+    const readiness = waitForBase64Interaction(page).then(() => {
+      completed = true;
+    });
+    void readiness.catch(() => {});
+    // 2 回目の click を捕捉すれば、最初の試行が返って再試行されたと分かる。
+    await expect
+      .poll(async () => Number(await page.locator('html').getAttribute('data-diagnostic-click')))
+      .toBeGreaterThanOrEqual(2);
+    expect(completed).toBe(false);
+    await expect(page.getByRole('button', { name: 'URL-safe' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    await releaseHeldReact(page);
+    await readiness;
+    await encode(page);
+  });
+});
+
+test('Base64 公開操作: 通常条件で準備と変換を計測する', async ({ browser }, info) => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const guard = await applyProductionCsp(page);
+    const start = performance.now();
+    expect((await page.goto('/tools/base64'))?.status()).toBe(200);
+    const navigationMs = performance.now() - start;
+    await waitForBase64Interaction(page);
+    const readyMs = performance.now() - start;
+    await encode(page);
+    const checkedMs = performance.now() - start;
+    guard.assertNoViolations();
+    await record(page, info, { navigationMs, readyMs, checkedMs });
+  } finally {
+    await context.close();
+  }
+});
 
 function barrier() {
   let release!: () => void;

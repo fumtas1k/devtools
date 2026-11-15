@@ -117,3 +117,13 @@ npx playwright test --config tests/diagnostics/navigation.config.ts --grep '遅�
 Astro 7.3.3 は hydrator 呼び出しを await 後に `ssr` を除去し `astro:hydrate` を発火するが、`@astrojs/react` 6.0.6 は `startTransition` の React commit を待たず戻る。実 Base64 component と同じ React chunk を使う診断専用 wrapper で、公開 `React.use(Promise)` により commit を保留し、公開 `useEffect` で対象 commit の sentinel を付けた。3 回とも、保留中に event 発火・`ssr` 不在となる一方、effect 未実行・入力後の変換結果は空だった。現行 helper と同じ非公開キー predicate のその瞬間の値は false。解除後は別 test で effect と既存 helper、実変換結果を確認した。
 
 検知能力の確認として barrier を一時的に無効化し、effect 完了後に未commit assertion が fail することを確認、元に戻して成功させた。これは **対象 wrapper / Base64 の実 React 経路に限る**。effect sentinel は全 island、全 effect、非同期処理の完了を一般保証しない。wrapper の実 component と React chunk の抽出は build のファイル名・minified export に依存し、検出できないと診断は失敗する。これは製品 helper へ minified alias を採用する提案ではない。React 非公開キー依存の実運用置換は未完であり、現行 helper を維持する。
+
+## Base64 の公開操作による準備診断（#193 (d)）
+
+2026-11-15、develop `4315076` 起点、Linux x86_64、Node 24.22.1、Playwright 1.65.0 / Chromium 158.0.8127.18。fresh context・production CSP・1 worker・retry なしで、通常条件と React commit 保留条件を各 3 回、計 6 件成功した。`--grep 'Base64 公開操作' --repeat-each=3` で再実行できる。
+
+通常条件は `load` 後に URL-safe ボタンを繰り返しクリックし、`aria-pressed=true` を確認してから標準形式に戻す。その後 `Hello` の変換結果を検証する。3 回の中央値は navigation / 操作による準備確認 / 変換結果確認の順に **240 / 374 / 1175ms**（同一開始点からの累積）。順序・負荷・キャッシュの影響を分離していないため、性能比較や timeout 値の根拠にはならない。診断内の 10 秒は現行 hydration helper と同じ観測上限であり、採用値の妥当性を示さない。
+
+保留条件では上記の公開操作を同じ helper で実行し、捕捉段階の click を 2 回観測しても `aria-pressed` が false で helper が未完了であることを確認する。解除後は標準形式に戻し、変換結果まで確認する。状態検証を一時的に除去すると 2 回目の click が観測されず陽性対照が失敗し、復元後に上記 6 件が成功した。
+
+この方法は対象のトグルとその後の変換が応答したことを示すだけで、他の island・effect・非同期処理の完了を保証しない。操作により一時的に形式を切り替えるため、既存入力を持つページにはそのまま適用できない。保留診断は上記 wrapper の build 依存も受ける。通常 E2E の private-key helper、CI、予算は変更しておらず、実運用への置換は未完である。
