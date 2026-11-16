@@ -1,12 +1,19 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
+import { waitForBase64Interaction } from './base64-readiness';
 
 test.describe('Base64 エンコード/デコード（production CSP 適用）', () => {
   test('標準形式でエンコードできる（CSP 違反なし）', async ({ browser }) => {
-    await withProductionCsp(browser, '/tools/base64', async (page) => {
-      await page.getByLabel('入力').fill('Hello');
-      await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8=');
-    });
+    await withProductionCsp(
+      browser,
+      '/tools/base64',
+      async (page) => {
+        await waitForBase64Interaction(page);
+        await page.getByLabel('入力').fill('Hello');
+        await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8=');
+      },
+      { skipHydration: true }
+    );
   });
 
   test('標準形式でデコードできる（CSP 違反なし）', async ({ browser }) => {
