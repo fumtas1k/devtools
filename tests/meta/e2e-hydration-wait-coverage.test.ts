@@ -23,8 +23,8 @@ import { join } from 'node:path';
  * 既知の限界（false negative）:
  * - 変数経由の goto（`const P = '/tools/x'; goto(P)`）は検知できない
  * - `withProductionCsp` に `{ skipHydration: true }` を渡す spec は参照ありと
- *   みなされるが、ラッパ内部の hydration 待ちは skip される（static page 用
- *   オプションのため `/tools/` ページでの使用時は spec 側で待機を担保すること）
+ *   みなされるが、ラッパ内部の hydration 待ちは skip される。`/tools/`
+ *   ページでの使用時は spec 側で対象操作の準備を確認すること
  */
 
 const E2E_DIR = join(__dirname, '../e2e');
