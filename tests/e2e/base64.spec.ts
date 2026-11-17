@@ -17,11 +17,17 @@ test.describe('Base64 エンコード/デコード（production CSP 適用）', 
   });
 
   test('標準形式でデコードできる（CSP 違反なし）', async ({ browser }) => {
-    await withProductionCsp(browser, '/tools/base64', async (page) => {
-      await page.getByRole('button', { name: 'デコード' }).click();
-      await page.getByLabel('入力').fill('SGVsbG8=');
-      await expect(page.getByLabel('変換結果')).toHaveValue('Hello');
-    });
+    await withProductionCsp(
+      browser,
+      '/tools/base64',
+      async (page) => {
+        await waitForBase64Interaction(page);
+        await page.getByRole('button', { name: 'デコード' }).click();
+        await page.getByLabel('入力').fill('SGVsbG8=');
+        await expect(page.getByLabel('変換結果')).toHaveValue('Hello');
+      },
+      { skipHydration: true }
+    );
   });
 
   test('URL-safe 形式でエンコードできる（パディングなし、CSP 違反なし）', async ({ browser }) => {
