@@ -52,7 +52,7 @@
 
 `page.goto` の既定は `load`。`domcontentloaded` は画像等の完了を待たないが、どちらも React のイベントハンドラ登録を保証しない。`networkidle` を操作準備完了の代用とすることも公式は推奨していない。変更時は目的の状態を assertion で検証し、必要な hydration 待ちを別途確保する（[Navigations](https://playwright.dev/docs/navigations)、[page.goto](https://playwright.dev/docs/api/class-page#page-goto)）。
 
-#193 (c) に列挙された 20 spec は現在 `withProductionCsp` を使用しており、共通経路は `goto(path)` → hydration 待ち → テスト本体（`link-styles` の静的ページは `skipHydration` 指定で待機しない）。Base64 の標準エンコード 1 件は例外として `skipHydration` を使い、URL-safe トグルへの応答と標準形式への復帰を確認してから変換する。`config-converter` / `qr-reader` には直接 `goto` → hydration の経路もあり、`config-converter` / `uuid-v7` / `ulid-generator` にはレスポンスを調べる直接 `goto` もある。#219 の `a11y-live-region` も現在は共通ヘルパー経由で、当時の `domcontentloaded` 指定は残っていない。一律置換は共通ヘルパー利用先へ広く波及するため、現在の `load` を維持する。
+#193 (c) に列挙された 20 spec は現在 `withProductionCsp` を使用しており、共通経路は `goto(path)` → hydration 待ち → テスト本体（`link-styles` の静的ページは `skipHydration` 指定で待機しない）。Base64 の標準エンコードと標準デコードの各 1 件は例外として `skipHydration` を使い、URL-safe トグルへの応答と標準形式への復帰を確認してから変換する。`config-converter` / `qr-reader` には直接 `goto` → hydration の経路もあり、`config-converter` / `uuid-v7` / `ulid-generator` にはレスポンスを調べる直接 `goto` もある。#219 の `a11y-live-region` も現在は共通ヘルパー経由で、当時の `domcontentloaded` 指定は残っていない。一律置換は共通ヘルパー利用先へ広く波及するため、現在の `load` を維持する。
 
 Base64 の操作確認は空の初期画面に限定する。一時的に形式を変更するため、入力済みページへの汎用待機には使えず、他 island や非同期処理の完了も保証しない。通常 E2E の陽性対照は click を捕捉段階で遮断して再試行と解除後の応答を確認するもので、React commit 自体を保留する試験ではない。
 
