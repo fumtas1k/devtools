@@ -5923,6 +5923,8 @@ solo 開発では、user 側の hook 設定から repo 外に置いたレビュ�
 
 現在の ESLint 設定は projectService を使わず、呼出しの既定の optimization level は advisory の対象条件に入らない。ただし、経路の非到達と lockfile 上の対象版が存在することは別であり、後者に対応するため修正版を固定する。上流の正式リリースが修正版を採用し、公開から 7 日を経て互換性を確認できたら、この override を削除する。
 
+**2026-11-24 更新（解除）**: `@typescript-eslint/parser` を 8.73.0 に更新する。上流の typescript-estree 8.73.0 は minimatch `^11.0.1` を指定するため、限定 override を削除し、lockfile で 11.0.9 への解決を確認する。この版は [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249) と [GHSA-hqmv-qgp3-jx75](https://github.com/isaacs/minimatch/security/advisories/GHSA-hqmv-qgp3-jx75) の修正を含む。依存範囲の宣言だけでは後者の対象版を除外しないため、今後も lockfile の解決結果を監査する。
+
 ## [176] QRコード入力欄の内容に応じた高さ
 
 **2026-11-08 | ステータス: 採用 | 関連: [#891](https://github.com/fumtas1k/devtools/issues/891)**
