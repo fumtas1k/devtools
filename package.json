@@ -74,7 +74,7 @@
     "@types/jmespath": "0.15.2",
     "@types/jsbarcode": "^3.11.4",
     "@types/uuid": "10.0.0",
-    "@typescript-eslint/parser": "8.70.0",
+    "@typescript-eslint/parser": "8.73.0",
     "@vitest/coverage-v8": "5.0.5",
     "eslint": "9.39.4",
     "eslint-plugin-react": "7.37.5",
@@ -86,11 +86,6 @@
     "prettier-plugin-astro": "1.1.2",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
-  },
-  "overrides": {
-    "@typescript-eslint/typescript-estree@8.70.0": {
-      "minimatch": "11.0.3"
-    }
   },
   "lint-staged": {
     "*.{tsx,jsx}": [
