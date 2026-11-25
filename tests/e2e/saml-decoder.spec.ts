@@ -129,20 +129,28 @@ test.describe('SAMLデコーダ', () => {
     await expect(page.getByText('チェックリスト')).toBeHidden();
   });
 
-  test('陽性対照: XML サイズ超過を表示し、通常の入力で復帰する', async ({ page }) => {
-    test.setTimeout(90_000);
-    const input = page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/);
-    // ブラウザ内で生成し、巨大な文字列を Playwright の転送経路に載せない。
-    await input.evaluate((element) => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
-      setter?.call(element, `<a>${'x'.repeat(32 * 1024 * 1024 - 6)}</a>`);
-      element.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    await expect(page.getByText('XML のサイズが上限（UTF-8 で 32 MiB）を超えました')).toBeVisible();
-    await input.fill(AUTHN_REQUEST_XML);
-    await expect(page.getByText('AuthnRequest サマリ')).toBeVisible();
-    await expect(page.getByText('XML のサイズが上限（UTF-8 で 32 MiB）を超えました')).toBeHidden();
-  });
+  test(
+    '陽性対照: XML サイズ超過を表示し、通常の入力で復帰する',
+    { tag: '@saml-xml-size-boundary' },
+    async ({ page }) => {
+      test.setTimeout(90_000);
+      const input = page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/);
+      // ブラウザ内で生成し、巨大な文字列を Playwright の転送経路に載せない。
+      await input.evaluate((element) => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+        setter?.call(element, `<a>${'x'.repeat(32 * 1024 * 1024 - 6)}</a>`);
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await expect(
+        page.getByText('XML のサイズが上限（UTF-8 で 32 MiB）を超えました')
+      ).toBeVisible();
+      await input.fill(AUTHN_REQUEST_XML);
+      await expect(page.getByText('AuthnRequest サマリ')).toBeVisible();
+      await expect(
+        page.getByText('XML のサイズが上限（UTF-8 で 32 MiB）を超えました')
+      ).toBeHidden();
+    }
+  );
 
   test('不正な入力はエラーメッセージが表示される', async ({ page }) => {
     await page.getByLabel(/SAMLResponse \/ SAMLRequest を貼り付け/).fill('これはSAMLではない');

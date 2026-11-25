@@ -4,6 +4,7 @@ dist
 .playwright-mcp
 .DS_Store
 test-results/
+/test-results-saml-xml-size-boundary/
 playwright-report/
 vrt-slider-report/
 coverage/

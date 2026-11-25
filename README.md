@@ -84,6 +84,7 @@ npm run build    # 本番ビルド
 npm run preview  # ビルド結果をプレビュー
 npm test         # 単体テスト実行
 npm run test:e2e # E2Eテスト実行（内部で build + preview を起動）
+npm run test:e2e:local # 32 MiBのSAML境界テストだけを1 workerで先に実行し、残りを通常の並列設定で実行
 npm run format   # コード整形
 ```
 
