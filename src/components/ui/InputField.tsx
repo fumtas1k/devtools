@@ -27,6 +27,8 @@ type Props = {
   busy?: boolean;
   /** ブラウザの autofill / 保存挙動の制御（例: "off"）。秘密鍵など hardening が必要な欄で指定する。 */
   autoComplete?: string;
+  /** コードや機密情報の入力欄でブラウザのスペルチェックを抑止できる。 */
+  spellCheck?: boolean;
 } & (
   | { readOnly?: false; onChange: (value: string) => void }
   | { readOnly: true; onChange?: (value: string) => void }
@@ -53,6 +55,7 @@ export function InputField({
   onKeyDown,
   busy = false,
   autoComplete,
+  spellCheck,
 }: Props) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -106,6 +109,7 @@ export function InputField({
           aria-invalid={!!error}
           aria-busy={busy || undefined}
           autoComplete={autoComplete}
+          spellCheck={spellCheck}
           className={inputClass}
         />
       ) : (
@@ -122,6 +126,7 @@ export function InputField({
           aria-describedby={describedBy}
           aria-invalid={!!error}
           autoComplete={autoComplete}
+          spellCheck={spellCheck}
           className={inputClass}
         />
       )}

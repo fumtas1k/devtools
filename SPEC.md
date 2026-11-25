@@ -89,7 +89,7 @@
 | `sql-formatter`             | SQL 整形（インデント・キーワード大文字化）。MIT ライセンス v15.8.0                                                 | SQL整形・パラメータ埋め込み              |
 | `regexp-tree`               | 正規表現を位置情報付き AST へパース（CJS・純 JS・型同梱）                                                          | 正規表現ビジュアライザ                   |
 | `recheck`                   | ReDoS 脆弱性検出。browser エントリ（`lib/browser.js`）を使用し `checkSync` で同期判定。型同梱・install script なし | 正規表現ビジュアライザ                   |
-| `jsonc-parser`              | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア                       |
+| `jsonc-parser`              | JSON を位置情報付き AST へパース（strict オプションで構文エラー検知）。依存ゼロ・型同梱                            | JSON整形・ビューア、JSON差分比較         |
 | `jmespath`                  | JMESPath クエリ評価（eval 非使用・CSP 安全）。フィルタ・射影に対応                                                 | JSON整形・ビューア                       |
 | `xmldsigjs`                 | 限定 XMLDSig 署名検証                                                                                              | SAMLデコーダ                             |
 | `@xmldom/xmldom`            | Worker の XML パーサー                                                                                             | SAMLデコーダ                             |
@@ -196,6 +196,7 @@ devtools/
     │       ├── config-converter.astro
     │       ├── sql-formatter.astro
     │       ├── regex-visualizer.astro
+    │       ├── json-diff.astro
     │       ├── json-formatter.astro
     │       ├── cidr-calculator.astro
     │       ├── secret-scrubber.astro
@@ -234,6 +235,7 @@ devtools/
         ├── config-converter/   # 設定ファイル相互変換（json.ts / yaml.ts / toml.ts / dotenv.ts / schema-validator.ts）
         ├── sql/                # SQL 整形・埋め込みユーティリティ（format.ts / embedParams.ts / index.ts）
         ├── regex-visualizer/   # 正規表現 AST 変換・ReDoS 判定・鉄道図レイアウト・マッチ実行（parse.ts / redos.ts / railroad-layout.ts / railroad.ts / match.ts / index.ts）
+        ├── json-diff.ts         # JSON AST の構造差分
         ├── json-formatter/     # JSON 整形・最小化・検証・ツリー構築（parse.ts / format.ts / tree.ts / errors.ts / index.ts、__tests__ colocated）
         ├── cidr-calculator/    # CIDR/サブネット計算機（types.ts / ipv4.ts / ipv6.ts / parse.ts / index.ts、__tests__ colocated）
         ├── secret-scrubber/    # シークレットスクラバー（rules.ts / entropy.ts / scrub.ts / index.ts）
@@ -358,6 +360,7 @@ devtools/
 | 17  | 文字カウント                      | `char-count`           | 文字数・エンコーディング互換性・行数・SNS文字数制限・原稿枚数を集計。絵文字のDB投入エラー予測対応                                                                                                                                                       |
 | 18  | SQL整形・パラメータ埋め込み       | `sql-formatter`        | 汚れた SQL をインデント・キーワード大文字化で整形し、プレースホルダ（? / $n / :name）にJSONパラメータを埋め込む。MySQL / PostgreSQL / SQLite / SQL Server 方言対応                                                                                      |
 | 19  | 正規表現ビジュアライザ＆ReDoS検出 | `regex-visualizer`     | 正規表現を AST ツリー・鉄道図で可視化し、ReDoS 脆弱性を検出。テスト文字列に対するマッチハイライトとキャプチャグループ表示に対応。JavaScript（ECMAScript）正規表現対応                                                                                   |
+| 37  | JSON差分比較                      | `json-diff`            | JSONの追加・削除・変更をパス付きでブラウザ内表示。キー順・空白を無視し、数値は丸めない                                                                                                                                                                  |
 | 20  | JSON整形・ビューア                | `json-formatter`       | JSON を整形（2/4/タブ）・最小化し、折りたたみツリーで閲覧。構文エラーは行・列付きで表示。数値リテラル・大きな整数の精度を保持し、全処理をブラウザ内で完結。JMESPath クエリで値を抽出可能。PII/シークレットを検出してマスク。TypeScript 型を生成         |
 | 21  | CIDR/サブネット計算機             | `cidr-calculator`      | CIDR 記法でアドレスを入力しネットワーク情報を計算。IPv4/IPv6 対応。ネットワーク・ブロードキャスト・ホスト範囲・サブネットマスク・利用可能ホスト数を表示。BigInt による 128bit 統一処理。外部ライブラリなし                                              |
 | 22  | シークレットスクラバー            | `secret-scrubber`      | ログ・コード・設定からAPIキー・トークン・メール・IP等の機密情報を検出して一括マスク。同一値は同一プレースホルダに置換。全処理ブラウザ内完結・外部ライブラリなし                                                                                         |
@@ -1457,6 +1460,13 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 - 再確認と画面離脱時は旧結果を反映しない。登録・認証・保存・送信なし。
 - 他サイトのパスキー登録・同期状態や Touch ID が出ない原因は判定しない。
 
+### 5.36 JSON差分比較（`json-diff`）
+
+- 変更前後のJSONを手動で比較。追加・削除・変更をJSON Pointer形式のパスと値で表示。
+- キー順・空白を無視。配列は添字で比較し、並べ替え・移動は特別扱いしない。同じ数値は表記が違っても一致とし、丸めない。
+- 入力は各262,144 UTF-16コード単位・128階層まで。重複キーは拒否。差分件数は全件集計し、先頭200件を表示。パス・値は長い場合に省略。
+- 送信・履歴保存なし。JSON Patchの生成・適用は対象外。
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1624,6 +1634,7 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] SQL整形・パラメータ埋め込み（`sql-formatter`）
   - [x] 正規表現ビジュアライザ＆ReDoS検出（`regex-visualizer`）
   - [x] JSON整形・ビューア（`json-formatter`）
+  - [x] JSON差分比較（`json-diff`）
   - [x] CIDR/サブネット計算機（`cidr-calculator`）
   - [x] シークレットスクラバー（`secret-scrubber`）
   - [x] クリップボードインスペクタ（`clipboard-inspector`）
