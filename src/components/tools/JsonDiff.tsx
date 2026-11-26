@@ -103,35 +103,41 @@ export function JsonDiff() {
         {result?.ok && result.changes.length > 0 && (
           <ul className="space-y-3">
             {result.changes.map(({ kind, path, before: previous, after: next }, index) => (
-              <li key={index} className="space-y-2 rounded-lg border border-default p-4">
-                <p className="flex flex-wrap items-baseline gap-x-3">
+              <li key={index} className="min-w-0 overflow-hidden rounded-lg border border-default">
+                <p className="flex flex-wrap items-baseline gap-x-3 border-b border-default bg-subtle px-3 py-2">
                   <strong>{LABELS[kind]}</strong>
                   <code className="min-w-0 wrap-anywhere font-mono">{path || 'ルート'}</code>
                 </p>
-                <dl className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2">
-                  {(
-                    [
-                      ['変更前', previous],
-                      ['変更後', next],
-                    ] as const
-                  ).map(([label, value]) =>
-                    value === undefined ? null : (
-                      <div key={label} className="min-w-0 space-y-1">
-                        <dt className="text-muted">{label}</dt>
-                        <dd className="rounded-md bg-subtle p-2">
-                          <code className="whitespace-pre-wrap wrap-anywhere font-mono">
-                            {value}
-                          </code>
-                        </dd>
-                      </div>
-                    )
-                  )}
+                <dl>
+                  {previous !== undefined && <DiffLine side="before" value={previous} />}
+                  {next !== undefined && <DiffLine side="after" value={next} />}
                 </dl>
               </li>
             ))}
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+function DiffLine({ side, value }: { side: 'before' | 'after'; value: string }) {
+  const before = side === 'before';
+  return (
+    <div
+      className={`flex min-w-0 items-baseline gap-2 px-3 py-2 ${
+        before ? 'bg-error-tint' : 'bg-success-tint'
+      }`}
+    >
+      <dt
+        className={`w-4 shrink-0 text-center font-mono ${before ? 'text-error-text' : 'text-success'}`}
+      >
+        <span aria-hidden="true">{before ? '−' : '+'}</span>
+        <span className="sr-only">{before ? '変更前' : '変更後'}</span>
+      </dt>
+      <dd className="min-w-0">
+        <code className="whitespace-pre-wrap wrap-anywhere font-mono">{value}</code>
+      </dd>
     </div>
   );
 }

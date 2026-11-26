@@ -18,6 +18,17 @@ test('比較・編集・エラー修正・クリアを本番CSP下で使える',
     await expect(page.getByText('/preview', { exact: true })).toBeVisible();
     await expect(page.getByText('/region', { exact: true })).toBeVisible();
 
+    const changes = page.getByRole('region', { name: '比較結果' }).getByRole('listitem');
+    const changed = changes.filter({ hasText: '/version' });
+    const removed = changes.filter({ hasText: '/preview' });
+    const added = changes.filter({ hasText: '/region' });
+    await expect(changed.getByText('−', { exact: true })).toBeVisible();
+    await expect(changed.getByText('+', { exact: true })).toBeVisible();
+    await expect(removed.getByText('−', { exact: true })).toBeVisible();
+    await expect(removed.getByText('+', { exact: true })).toHaveCount(0);
+    await expect(added.getByText('+', { exact: true })).toBeVisible();
+    await expect(added.getByText('−', { exact: true })).toHaveCount(0);
+
     await after.fill('[1,]');
     await expect(page.getByText('/version', { exact: true })).toHaveCount(0);
     await compare.click();
@@ -60,3 +71,22 @@ for (const width of [320, 390, 1280]) {
     });
   });
 }
+
+test('狭い画面でも省略後の変更値を上下に並べて表示する', async ({ browser }) => {
+  await withProductionCsp(browser, '/tools/json-diff', async (page) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    const prefix = 'a'.repeat(600);
+    await page.getByLabel('変更前のJSON').fill(JSON.stringify({ x: prefix + 'OLD' }));
+    await page.getByLabel('変更後のJSON').fill(JSON.stringify({ x: prefix + 'NEW' }));
+    await page.getByRole('button', { name: '比較する' }).click();
+    const result = page.getByRole('region', { name: '比較結果' });
+    const before = result.getByText(/…a+OLD"$/);
+    const after = result.getByText(/…a+NEW"$/);
+    await expect(before).toBeVisible();
+    await expect(after).toBeVisible();
+    expect((await before.boundingBox())!.y).toBeLessThan((await after.boundingBox())!.y);
+    expect(await result.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      true
+    );
+  });
+});

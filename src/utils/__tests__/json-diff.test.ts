@@ -77,6 +77,36 @@ describe('compareJson', () => {
     });
   });
 
+  it('同じ長い先頭の後にある変更を、値の表示上限内で見せる', () => {
+    const prefix = 'あ'.repeat(600);
+    const result = compareJson(
+      JSON.stringify({ x: prefix + '😀' }),
+      JSON.stringify({ x: prefix + '😁' })
+    );
+    expect(result).toMatchObject({ ok: true, total: 1 });
+    if (!result.ok) throw new Error('比較できませんでした');
+    const [change] = result.changes;
+    expect(change.before).toMatch(/^…あ+😀"$/u);
+    expect(change.after).toMatch(/^…あ+😁"$/u);
+    expect(change.after!.length).toBeLessThanOrEqual(502);
+  });
+
+  it('抜粋の両端でサロゲートペアを分断しない', () => {
+    const prefix = 'a'.repeat(600) + '😀' + 'b'.repeat(31);
+    const suffix = 'c'.repeat(465) + '😁' + 'd'.repeat(20);
+    const json = (char: string) => JSON.stringify(prefix + char + suffix);
+    const result = compareJson(json('X'), json('Y'));
+    expect(result).toMatchObject({
+      ok: true,
+      changes: [
+        {
+          before: '…😀' + 'b'.repeat(31) + 'X' + 'c'.repeat(465) + '…',
+          after: '…😀' + 'b'.repeat(31) + 'Y' + 'c'.repeat(465) + '…',
+        },
+      ],
+    });
+  });
+
   it('結果件数は全件集計し、表示行とプレビューだけを制限する', () => {
     const values = JSON.stringify(Array.from({ length: 201 }, () => 'a'.repeat(600)));
     const result = compareJson('[]', values);

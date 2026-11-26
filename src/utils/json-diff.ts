@@ -95,11 +95,19 @@ function sameNumber(a: string, b: string): boolean {
 const source = (doc: Document, node: Node, length = node.length) =>
   doc.text.slice(node.offset, node.offset + length);
 
-function preview(doc: Document, node: Node): string {
-  if (node.length <= MAX_PREVIEW) return source(doc, node);
-  const prefix = source(doc, node, MAX_PREVIEW);
-  const last = prefix.charCodeAt(prefix.length - 1);
-  return (last >= 0xd800 && last <= 0xdbff ? prefix.slice(0, -1) : prefix) + '…';
+function preview(doc: Document, node: Node, from = 0): string {
+  const start = node.offset + from;
+  const nodeEnd = node.offset + node.length;
+  const first = doc.text.charCodeAt(start);
+  const offset = from > 0 && first >= 0xdc00 && first <= 0xdfff ? start - 1 : start;
+  const end = Math.min(offset + MAX_PREVIEW, nodeEnd);
+  if (end === nodeEnd) return (from > 0 ? '…' : '') + doc.text.slice(offset, end);
+  const last = doc.text.charCodeAt(end - 1);
+  return (
+    (from > 0 ? '…' : '') +
+    doc.text.slice(offset, last >= 0xd800 && last <= 0xdbff ? end - 1 : end) +
+    '…'
+  );
 }
 
 function displayPath(parts: string[]): string {
@@ -138,7 +146,17 @@ function compareDocuments(left: Document, right: Document): CompareResult {
     total++;
     if (changes.length >= MAX_VISIBLE_CHANGES) return;
     const path = displayPath(parts);
-    changes.push({ kind, path, before: a && preview(left, a), after: b && preview(right, b) });
+    let before = a && preview(left, a);
+    let after = b && preview(right, b);
+    if (a && b && before === after && a.length > MAX_PREVIEW && b.length > MAX_PREVIEW) {
+      // 先頭の抜粋が同じなら、最初に異なる文字の少し手前から表示する。
+      const limit = Math.min(a.length, b.length);
+      let at = MAX_PREVIEW - 1;
+      while (at < limit && left.text[a.offset + at] === right.text[b.offset + at]) at++;
+      before = preview(left, a, at - 32);
+      after = preview(right, b, at - 32);
+    }
+    changes.push({ kind, path, before, after });
   }
 
   function walk(a?: Node, b?: Node) {
