@@ -24,6 +24,17 @@ describe('compareJson', () => {
     );
   });
 
+  it('全文表示用の範囲は原文順で、変わった値と追加・削除のキーだけを示す', () => {
+    const before = '{"remove":null,"b":2,"a":1,"same":1.0}';
+    const after = '{"a":4,"b":3,"add":false,"same":1}';
+    const result = compareJson(before, after);
+    if (!result.ok) throw new Error('比較できませんでした');
+    const excerpt = (text: string, ranges: { start: number; end: number }[]) =>
+      ranges.map(({ start, end }) => text.slice(start, end));
+    expect(excerpt(before, result.beforeRanges)).toEqual(['"remove":null', '2', '1']);
+    expect(excerpt(after, result.afterRanges)).toEqual(['4', '3', '"add":false']);
+  });
+
   it('配列は同じ添字で比べ、ルート値の型変更も表示する', () => {
     expect(compareJson('[1,2]', '[2,1,3]')).toMatchObject({
       ok: true,

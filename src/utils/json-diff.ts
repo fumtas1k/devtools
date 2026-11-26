@@ -20,9 +20,17 @@ type Document = {
   objects: WeakMap<Node, Map<string, Node>>;
 };
 
+export type JsonDiffRange = { start: number; end: number };
+
 type CompareResult =
   | { ok: false; beforeError?: string; afterError?: string }
-  | { ok: true; total: number; changes: JsonChange[] };
+  | {
+      ok: true;
+      total: number;
+      changes: JsonChange[];
+      beforeRanges: JsonDiffRange[];
+      afterRanges: JsonDiffRange[];
+    };
 
 function prepare(text: string): Document | string {
   if (text.length > MAX_JSON_DIFF_INPUT) {
@@ -141,9 +149,18 @@ export function compareJson(before: string, after: string): CompareResult {
 function compareDocuments(left: Document, right: Document): CompareResult {
   let total = 0;
   const changes: JsonChange[] = [];
+  const beforeRanges: JsonDiffRange[] = [];
+  const afterRanges: JsonDiffRange[] = [];
   const parts: string[] = [];
+  const range = (node: Node, wholeProperty: boolean): JsonDiffRange => {
+    // 追加・削除時は値と一緒にプロパティ名も表示上の差分に含める。
+    const target = wholeProperty && node.parent?.type === 'property' ? node.parent : node;
+    return { start: target.offset, end: target.offset + target.length };
+  };
   function emit(kind: JsonChange['kind'], a?: Node, b?: Node) {
     total++;
+    if (a) beforeRanges.push(range(a, kind === 'removed'));
+    if (b) afterRanges.push(range(b, kind === 'added'));
     if (changes.length >= MAX_VISIBLE_CHANGES) return;
     const path = displayPath(parts);
     let before = a && preview(left, a);
@@ -193,5 +210,13 @@ function compareDocuments(left: Document, right: Document): CompareResult {
     }
   }
   walk(left.root, right.root);
-  return { ok: true, total, changes };
+  // 後のJSONのキー順が異なる場合も、表示には各原文の順序を使う。
+  const byStart = (a: JsonDiffRange, b: JsonDiffRange) => a.start - b.start;
+  return {
+    ok: true,
+    total,
+    changes,
+    beforeRanges: beforeRanges.sort(byStart),
+    afterRanges: afterRanges.sort(byStart),
+  };
 }
