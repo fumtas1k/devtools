@@ -20,9 +20,17 @@ type Document = {
   objects: WeakMap<Node, Map<string, Node>>;
 };
 
+export type JsonDiffRange = { start: number; end: number };
+
 type CompareResult =
   | { ok: false; beforeError?: string; afterError?: string }
-  | { ok: true; total: number; changes: JsonChange[] };
+  | {
+      ok: true;
+      total: number;
+      changes: JsonChange[];
+      beforeRanges: JsonDiffRange[];
+      afterRanges: JsonDiffRange[];
+    };
 
 function prepare(text: string): Document | string {
   if (text.length > MAX_JSON_DIFF_INPUT) {
@@ -95,11 +103,19 @@ function sameNumber(a: string, b: string): boolean {
 const source = (doc: Document, node: Node, length = node.length) =>
   doc.text.slice(node.offset, node.offset + length);
 
-function preview(doc: Document, node: Node): string {
-  if (node.length <= MAX_PREVIEW) return source(doc, node);
-  const prefix = source(doc, node, MAX_PREVIEW);
-  const last = prefix.charCodeAt(prefix.length - 1);
-  return (last >= 0xd800 && last <= 0xdbff ? prefix.slice(0, -1) : prefix) + '…';
+function preview(doc: Document, node: Node, from = 0): string {
+  const start = node.offset + from;
+  const nodeEnd = node.offset + node.length;
+  const first = doc.text.charCodeAt(start);
+  const offset = from > 0 && first >= 0xdc00 && first <= 0xdfff ? start - 1 : start;
+  const end = Math.min(offset + MAX_PREVIEW, nodeEnd);
+  if (end === nodeEnd) return (from > 0 ? '…' : '') + doc.text.slice(offset, end);
+  const last = doc.text.charCodeAt(end - 1);
+  return (
+    (from > 0 ? '…' : '') +
+    doc.text.slice(offset, last >= 0xd800 && last <= 0xdbff ? end - 1 : end) +
+    '…'
+  );
 }
 
 function displayPath(parts: string[]): string {
@@ -133,12 +149,31 @@ export function compareJson(before: string, after: string): CompareResult {
 function compareDocuments(left: Document, right: Document): CompareResult {
   let total = 0;
   const changes: JsonChange[] = [];
+  const beforeRanges: JsonDiffRange[] = [];
+  const afterRanges: JsonDiffRange[] = [];
   const parts: string[] = [];
+  const range = (node: Node, wholeProperty: boolean): JsonDiffRange => {
+    // 追加・削除時は値と一緒にプロパティ名も表示上の差分に含める。
+    const target = wholeProperty && node.parent?.type === 'property' ? node.parent : node;
+    return { start: target.offset, end: target.offset + target.length };
+  };
   function emit(kind: JsonChange['kind'], a?: Node, b?: Node) {
     total++;
+    if (a) beforeRanges.push(range(a, kind === 'removed'));
+    if (b) afterRanges.push(range(b, kind === 'added'));
     if (changes.length >= MAX_VISIBLE_CHANGES) return;
     const path = displayPath(parts);
-    changes.push({ kind, path, before: a && preview(left, a), after: b && preview(right, b) });
+    let before = a && preview(left, a);
+    let after = b && preview(right, b);
+    if (a && b && before === after && a.length > MAX_PREVIEW && b.length > MAX_PREVIEW) {
+      // 先頭の抜粋が同じなら、最初に異なる文字の少し手前から表示する。
+      const limit = Math.min(a.length, b.length);
+      let at = MAX_PREVIEW - 1;
+      while (at < limit && left.text[a.offset + at] === right.text[b.offset + at]) at++;
+      before = preview(left, a, at - 32);
+      after = preview(right, b, at - 32);
+    }
+    changes.push({ kind, path, before, after });
   }
 
   function walk(a?: Node, b?: Node) {
@@ -175,5 +210,13 @@ function compareDocuments(left: Document, right: Document): CompareResult {
     }
   }
   walk(left.root, right.root);
-  return { ok: true, total, changes };
+  // 後のJSONのキー順が異なる場合も、表示には各原文の順序を使う。
+  const byStart = (a: JsonDiffRange, b: JsonDiffRange) => a.start - b.start;
+  return {
+    ok: true,
+    total,
+    changes,
+    beforeRanges: beforeRanges.sort(byStart),
+    afterRanges: afterRanges.sort(byStart),
+  };
 }

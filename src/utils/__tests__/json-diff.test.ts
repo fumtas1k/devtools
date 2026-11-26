@@ -24,6 +24,17 @@ describe('compareJson', () => {
     );
   });
 
+  it('全文表示用の範囲は原文順で、変わった値と追加・削除のキーだけを示す', () => {
+    const before = '{"remove":null,"b":2,"a":1,"same":1.0}';
+    const after = '{"a":4,"b":3,"add":false,"same":1}';
+    const result = compareJson(before, after);
+    if (!result.ok) throw new Error('比較できませんでした');
+    const excerpt = (text: string, ranges: { start: number; end: number }[]) =>
+      ranges.map(({ start, end }) => text.slice(start, end));
+    expect(excerpt(before, result.beforeRanges)).toEqual(['"remove":null', '2', '1']);
+    expect(excerpt(after, result.afterRanges)).toEqual(['4', '3', '"add":false']);
+  });
+
   it('配列は同じ添字で比べ、ルート値の型変更も表示する', () => {
     expect(compareJson('[1,2]', '[2,1,3]')).toMatchObject({
       ok: true,
@@ -74,6 +85,36 @@ describe('compareJson', () => {
     expect(compareJson('null', nesting(129))).toMatchObject({
       ok: false,
       afterError: expect.stringContaining('深'),
+    });
+  });
+
+  it('同じ長い先頭の後にある変更を、値の表示上限内で見せる', () => {
+    const prefix = 'あ'.repeat(600);
+    const result = compareJson(
+      JSON.stringify({ x: prefix + '😀' }),
+      JSON.stringify({ x: prefix + '😁' })
+    );
+    expect(result).toMatchObject({ ok: true, total: 1 });
+    if (!result.ok) throw new Error('比較できませんでした');
+    const [change] = result.changes;
+    expect(change.before).toMatch(/^…あ+😀"$/u);
+    expect(change.after).toMatch(/^…あ+😁"$/u);
+    expect(change.after!.length).toBeLessThanOrEqual(502);
+  });
+
+  it('抜粋の両端でサロゲートペアを分断しない', () => {
+    const prefix = 'a'.repeat(600) + '😀' + 'b'.repeat(31);
+    const suffix = 'c'.repeat(465) + '😁' + 'd'.repeat(20);
+    const json = (char: string) => JSON.stringify(prefix + char + suffix);
+    const result = compareJson(json('X'), json('Y'));
+    expect(result).toMatchObject({
+      ok: true,
+      changes: [
+        {
+          before: '…😀' + 'b'.repeat(31) + 'X' + 'c'.repeat(465) + '…',
+          after: '…😀' + 'b'.repeat(31) + 'Y' + 'c'.repeat(465) + '…',
+        },
+      ],
     });
   });
 
