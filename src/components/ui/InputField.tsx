@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { SampleButton } from '@/components/ui/SampleButton';
 
 type Props = {
   id: string;
@@ -82,15 +83,7 @@ export function InputField({
         {(onSampleClick || headerRight) && (
           <div className="flex items-center gap-3">
             {headerRight}
-            {onSampleClick && (
-              <button
-                type="button"
-                onClick={onSampleClick}
-                className="caption text-link-plain btn-link-plain"
-              >
-                サンプルを入力
-              </button>
-            )}
+            {onSampleClick && <SampleButton onClick={onSampleClick} />}
           </div>
         )}
       </div>

@@ -8,7 +8,9 @@ test.beforeEach(async ({ page }) => {
 
 test('合成登録・認証レスポンスと RP ID を解析する', async ({ page }) => {
   const result = page.getByRole('region', { name: '解析結果' });
-  await page.getByRole('button', { name: '登録の合成サンプル' }).click();
+  const inputs = page.getByRole('group', { name: '解析するレスポンスとRP ID' });
+  await inputs.getByRole('button', { name: '登録の合成サンプル' }).click();
+  await expect(inputs.getByLabel('想定 RP ID（任意）')).toHaveValue('example.test');
   await page.getByRole('button', { name: '解析する' }).click();
   await expect(result).toContainText('webauthn.create');
   await expect(result).toContainText('https://example.test');
@@ -20,7 +22,8 @@ test('合成登録・認証レスポンスと RP ID を解析する', async ({ p
   await page.getByLabel('想定 RP ID（任意）').fill('other.test');
   await page.getByRole('button', { name: '解析する' }).click();
   await expect(result).toContainText('不一致');
-  await page.getByRole('button', { name: '認証の合成サンプル' }).click();
+  await inputs.getByRole('button', { name: '認証の合成サンプル' }).click();
+  await expect(inputs.getByLabel('想定 RP ID（任意）')).toHaveValue('example.test');
   await page.getByLabel('想定 RP ID（任意）').fill('other.test');
   await page.getByRole('button', { name: '解析する' }).click();
   await expect(result).toContainText('webauthn.get');

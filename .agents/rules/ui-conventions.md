@@ -43,6 +43,11 @@ CSP で `style-src 'unsafe-inline'` を撤去済み（issue #176）のため、J
 
 切替レイアウトは **`w-full md:flex-1 min-w-0`** をセットで使う（`min-w-0` が無いと長いコンテンツがはみ出す）。
 
+### サンプルボタンの配置
+
+- 1 欄に直接入力する場合は、連動する欄があっても入力元の欄のラベル行右端に `InputField.onSampleClick` を使う。複数のサンプルを選べる場合は `headerRight` に共通の `SampleButton` を置き、種類をラベルに含める。
+- 1 回の操作で複数欄に直接入力する場合は `SampleInputGroup` の右上に置く。比較・解析などの実行ボタンとは並べない。
+
 ### 2.4 ToggleGroup のモード切替時のリセット要否
 
 | トグルの種類                                 | リセット | 理由                       |

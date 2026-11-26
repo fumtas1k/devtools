@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { InputField } from '@/components/ui/InputField';
+import { SampleButton } from '@/components/ui/SampleButton';
 import { OutputField } from '@/components/ui/OutputField';
 import { FileInputButton } from '@/components/ui/FileInputButton';
 import { DownloadButton } from '@/components/ui/DownloadButton';
@@ -129,7 +130,7 @@ export function KeyConverter() {
       <div className="space-y-3">
         <InputField
           id="key-input"
-          label="鍵を貼り付け"
+          label={<span className="whitespace-nowrap">鍵を貼り付け</span>}
           value={input}
           onChange={setInput}
           placeholder={
@@ -141,22 +142,14 @@ export function KeyConverter() {
           mono
           resize
           headerRight={
-            <>
-              <button
-                type="button"
-                className="caption text-link-plain btn-link-plain"
-                onClick={() => setInput(SAMPLE_RSA_PUBLIC_KEY)}
-              >
-                RSA 公開鍵を入力
-              </button>
-              <button
-                type="button"
-                className="caption text-link-plain btn-link-plain"
-                onClick={() => setInput(SAMPLE_EC_PRIVATE_KEY)}
-              >
-                EC 秘密鍵を入力
-              </button>
-            </>
+            <div className="flex flex-wrap justify-end gap-x-3 gap-y-6">
+              <SampleButton onClick={() => setInput(SAMPLE_RSA_PUBLIC_KEY)}>
+                RSA公開鍵のサンプル
+              </SampleButton>
+              <SampleButton onClick={() => setInput(SAMPLE_EC_PRIVATE_KEY)}>
+                EC秘密鍵のサンプル
+              </SampleButton>
+            </div>
           }
         />
         {/* ファイル選択 */}
