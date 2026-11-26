@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { ClearButton } from '@/components/ui/ClearButton';
 import { InputField } from '@/components/ui/InputField';
+import { SampleButton } from '@/components/ui/SampleButton';
+import { SampleInputGroup } from '@/components/ui/SampleInputGroup';
 import { compareJson, type JsonChange } from '@/utils/json-diff';
 
 const LABELS: Record<JsonChange['kind'], string> = {
@@ -39,34 +41,37 @@ export function JsonDiff() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-        <InputField
-          id="json-diff-before"
-          label="変更前のJSON"
-          value={before}
-          onChange={changeBefore}
-          error={result?.ok === false ? result.beforeError : undefined}
-          multiline
-          rows={8}
-          resize
-          mono
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <InputField
-          id="json-diff-after"
-          label="変更後のJSON"
-          value={after}
-          onChange={changeAfter}
-          error={result?.ok === false ? result.afterError : undefined}
-          multiline
-          rows={8}
-          resize
-          mono
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </div>
+      <SampleInputGroup label="比較するJSON">
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+          <InputField
+            id="json-diff-before"
+            label="変更前のJSON"
+            value={before}
+            onChange={changeBefore}
+            headerRight={<SampleButton onClick={fillSample}>両方にサンプルを入力</SampleButton>}
+            error={result?.ok === false ? result.beforeError : undefined}
+            multiline
+            rows={8}
+            resize
+            mono
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <InputField
+            id="json-diff-after"
+            label="変更後のJSON"
+            value={after}
+            onChange={changeAfter}
+            error={result?.ok === false ? result.afterError : undefined}
+            multiline
+            rows={8}
+            resize
+            mono
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+      </SampleInputGroup>
       <div className="flex flex-wrap items-center gap-3">
         <ActionButton
           onClick={() => setResult(compareJson(before, after))}
@@ -75,7 +80,6 @@ export function JsonDiff() {
         >
           比較する
         </ActionButton>
-        <ActionButton onClick={fillSample}>サンプルを入力</ActionButton>
         <ClearButton onClick={clear} />
       </div>
       <p className="text-muted">
