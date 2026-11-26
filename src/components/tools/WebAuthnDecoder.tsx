@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { InputField } from '@/components/ui/InputField';
+import { SampleButton } from '@/components/ui/SampleButton';
+import { SampleInputGroup } from '@/components/ui/SampleInputGroup';
 import { NotificationBanner } from '@/components/ui/NotificationBanner';
 import { decodeClientData } from '@/utils/webauthnDecoder';
 import {
@@ -92,36 +94,43 @@ export function WebAuthnDecoderTool() {
         origin はスキーム・ホスト・ポートを含むページの出所です。RP ID
         は認証対象のホスト名で、origin とは異なります。
       </p>
-      <div className="flex flex-wrap gap-4">
-        <ActionButton onClick={() => sample('registration')}>登録の合成サンプル</ActionButton>
-        <ActionButton onClick={() => sample('authentication')}>認証の合成サンプル</ActionButton>
-      </div>
-      <InputField
-        id="webauthn-response"
-        label="レスポンス JSON（必須）"
-        value={input}
-        onChange={(value) => {
-          invalidate();
-          setInput(value);
-        }}
-        multiline
-        rows={10}
-        mono
-        resize
-        autoComplete="off"
-        hint="response 内の値をパディングなし base64url で指定してください。上限は 262,144 文字です。"
-      />
-      <InputField
-        id="webauthn-rp-id"
-        label="想定 RP ID（任意）"
-        value={rpId}
-        onChange={(value) => {
-          invalidate();
-          setRpId(value);
-        }}
-        autoComplete="off"
-        hint="例: example.test（URL ではなくホスト名）"
-      />
+      <SampleInputGroup label="解析するレスポンスとRP ID">
+        <InputField
+          id="webauthn-response"
+          label="レスポンス JSON（必須）"
+          stackHeaderOnMobile
+          headerRight={
+            <div className="flex flex-wrap justify-end gap-x-3 gap-y-6">
+              <SampleButton onClick={() => sample('registration')}>登録の合成サンプル</SampleButton>
+              <SampleButton onClick={() => sample('authentication')}>
+                認証の合成サンプル
+              </SampleButton>
+            </div>
+          }
+          value={input}
+          onChange={(value) => {
+            invalidate();
+            setInput(value);
+          }}
+          multiline
+          rows={10}
+          mono
+          resize
+          autoComplete="off"
+          hint="response 内の値をパディングなし base64url で指定してください。上限は 262,144 文字です。"
+        />
+        <InputField
+          id="webauthn-rp-id"
+          label="想定 RP ID（任意）"
+          value={rpId}
+          onChange={(value) => {
+            invalidate();
+            setRpId(value);
+          }}
+          autoComplete="off"
+          hint="例: example.test（URL ではなくホスト名）"
+        />
+      </SampleInputGroup>
       <ActionButton variant="primary" onClick={() => void decode()}>
         解析する
       </ActionButton>

@@ -337,15 +337,7 @@ export function CsrGenerator() {
             rows={7}
             mono
             resize
-            headerRight={
-              <button
-                type="button"
-                className="caption text-link-plain btn-link-plain"
-                onClick={() => handleParse(SAMPLE_CSR)}
-              >
-                サンプルを入力
-              </button>
-            }
+            onSampleClick={() => handleParse(SAMPLE_CSR)}
           />
           <div className="flex flex-wrap items-center gap-3">
             <FileInputButton accept=".csr,.pem,.der" onChange={handleFile}>

@@ -227,10 +227,10 @@ export async function applyProductionCsp(page: Page, options?: ApplyCspOptions):
  * React island を含まないページ) では `waitForReactHydration` が
  * `__react*` キーを持つ要素を見つけられず timeout する。これらのページに対しては
  * `{ skipHydration: true }` を渡してハイドレーション待機を skip する。
- * tools 配下 (React island あり) では skip しない。
+ * React island で skip する場合は、対象操作への応答を別途確認する。
  */
 export interface WithProductionCspOptions {
-  /** true のときは `waitForReactHydration` を skip (static page 用) */
+  /** true のときは `waitForReactHydration` を skip。操作準備は呼び出し側で確認する */
   skipHydration?: boolean;
   /** context 作成時に適用する viewport とタッチ設定。未対応キーは実行時にも渡さない */
   contextOptions?: Pick<BrowserContextOptions, 'viewport' | 'hasTouch'>;

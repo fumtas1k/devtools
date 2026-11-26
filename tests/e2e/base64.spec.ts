@@ -1,28 +1,49 @@
 import { test, expect } from '@playwright/test';
 import { withProductionCsp } from './helpers';
+import { waitForBase64Interaction } from './base64-readiness';
 
 test.describe('Base64 エンコード/デコード（production CSP 適用）', () => {
   test('標準形式でエンコードできる（CSP 違反なし）', async ({ browser }) => {
-    await withProductionCsp(browser, '/tools/base64', async (page) => {
-      await page.getByLabel('入力').fill('Hello');
-      await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8=');
-    });
+    await withProductionCsp(
+      browser,
+      '/tools/base64',
+      async (page) => {
+        await waitForBase64Interaction(page);
+        await page.getByLabel('入力').fill('Hello');
+        await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8=');
+      },
+      { skipHydration: true }
+    );
   });
 
   test('標準形式でデコードできる（CSP 違反なし）', async ({ browser }) => {
-    await withProductionCsp(browser, '/tools/base64', async (page) => {
-      await page.getByRole('button', { name: 'デコード' }).click();
-      await page.getByLabel('入力').fill('SGVsbG8=');
-      await expect(page.getByLabel('変換結果')).toHaveValue('Hello');
-    });
+    await withProductionCsp(
+      browser,
+      '/tools/base64',
+      async (page) => {
+        await waitForBase64Interaction(page);
+        await page.getByRole('button', { name: 'デコード' }).click();
+        await page.getByLabel('入力').fill('SGVsbG8=');
+        await expect(page.getByLabel('変換結果')).toHaveValue('Hello');
+      },
+      { skipHydration: true }
+    );
   });
 
   test('URL-safe 形式でエンコードできる（パディングなし、CSP 違反なし）', async ({ browser }) => {
-    await withProductionCsp(browser, '/tools/base64', async (page) => {
-      await page.getByRole('button', { name: 'URL-safe' }).click();
-      await page.getByLabel('入力').fill('Hello');
-      await expect(page.getByLabel('変換結果')).toHaveValue('SGVsbG8');
-    });
+    await withProductionCsp(
+      browser,
+      '/tools/base64',
+      async (page) => {
+        await waitForBase64Interaction(page);
+        const urlSafe = page.getByRole('button', { name: 'URL-safe', exact: true });
+        await urlSafe.click();
+        await expect(urlSafe).toHaveAttribute('aria-pressed', 'true');
+        await page.getByLabel('入力').fill('ÿÿ');
+        await expect(page.getByLabel('変換結果')).toHaveValue('w7_Dvw');
+      },
+      { skipHydration: true }
+    );
   });
 
   test('モード切替時に入力・出力がリセットされる（CSP 違反なし）', async ({ browser }) => {

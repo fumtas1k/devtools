@@ -171,6 +171,14 @@ const toolEntries: Tool[] = [
     yomi: 'せいきひょうげんびじゅあらいざ',
   },
   {
+    slug: 'json-diff',
+    name: 'JSON差分比較',
+    description:
+      '2つのJSONをブラウザ内で比較し、追加・削除・変更をパス付きで表示します。大きな数値も丸めません',
+    category: 'convert',
+    yomi: 'じぇいそんさぶんひかく',
+  },
+  {
     slug: 'json-formatter',
     name: 'JSON整形・ビューア',
     description:

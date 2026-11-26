@@ -35,6 +35,7 @@ export const PAGES = [
   '/tools/totp-hotp',
   '/tools/sql-formatter',
   '/tools/regex-visualizer',
+  '/tools/json-diff',
   '/tools/json-formatter',
   '/tools/cidr-calculator',
   '/tools/secret-scrubber',

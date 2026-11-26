@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { SampleButton } from '@/components/ui/SampleButton';
 
 type Props = {
   id: string;
@@ -18,6 +19,8 @@ type Props = {
   /** ラベル行の右端に差し込む追加要素（複数サンプルボタン等、標準の onSampleClick で
       1 つに収まらないケース用）。onSampleClick と併用も可。 */
   headerRight?: ReactNode;
+  /** 幅が狭いときはラベルの下にヘッダー操作をまとめる。 */
+  stackHeaderOnMobile?: boolean;
   inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
   maxLength?: number;
   mono?: boolean;
@@ -27,6 +30,8 @@ type Props = {
   busy?: boolean;
   /** ブラウザの autofill / 保存挙動の制御（例: "off"）。秘密鍵など hardening が必要な欄で指定する。 */
   autoComplete?: string;
+  /** コードや機密情報の入力欄でブラウザのスペルチェックを抑止できる。 */
+  spellCheck?: boolean;
 } & (
   | { readOnly?: false; onChange: (value: string) => void }
   | { readOnly: true; onChange?: (value: string) => void }
@@ -45,6 +50,7 @@ export function InputField({
   hint,
   onSampleClick,
   headerRight,
+  stackHeaderOnMobile = false,
   inputMode,
   maxLength,
   readOnly = false,
@@ -53,6 +59,7 @@ export function InputField({
   onKeyDown,
   busy = false,
   autoComplete,
+  spellCheck,
 }: Props) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -71,23 +78,21 @@ export function InputField({
   return (
     <div>
       <div
-        className={`flex items-center justify-between mb-3 min-h-9${labelVisible ? '' : ' sr-only'}`}
+        className={`flex justify-between mb-3 min-h-9${
+          stackHeaderOnMobile
+            ? ' flex-col items-start gap-2 md:flex-row md:items-center'
+            : ' items-center'
+        }${labelVisible ? '' : ' sr-only'}`}
       >
         <label htmlFor={id} className="body-emphasis text-default">
           {label}
         </label>
         {(onSampleClick || headerRight) && (
-          <div className="flex items-center gap-3">
+          <div
+            className={`flex items-center gap-3${stackHeaderOnMobile ? ' self-end md:self-auto' : ''}`}
+          >
             {headerRight}
-            {onSampleClick && (
-              <button
-                type="button"
-                onClick={onSampleClick}
-                className="caption text-link-plain btn-link-plain"
-              >
-                サンプルを入力
-              </button>
-            )}
+            {onSampleClick && <SampleButton onClick={onSampleClick} />}
           </div>
         )}
       </div>
@@ -106,6 +111,7 @@ export function InputField({
           aria-invalid={!!error}
           aria-busy={busy || undefined}
           autoComplete={autoComplete}
+          spellCheck={spellCheck}
           className={inputClass}
         />
       ) : (
@@ -122,6 +128,7 @@ export function InputField({
           aria-describedby={describedBy}
           aria-invalid={!!error}
           autoComplete={autoComplete}
+          spellCheck={spellCheck}
           className={inputClass}
         />
       )}

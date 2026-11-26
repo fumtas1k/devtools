@@ -1,0 +1,23 @@
+---
+import { JsonDiff } from '@/components/tools/JsonDiff';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { tools } from '@/data/tools';
+import ToolLayout from '@/layouts/ToolLayout.astro';
+
+const tool = tools.find((entry) => entry.slug === 'json-diff')!;
+---
+
+<ToolLayout tool={tool}>
+  <JsonDiff client:load />
+
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      APIレスポンスや設定ファイルの変更前後から、追加・削除・変更された箇所だけを確認できます。
+      パスはJSON Pointer形式で表示します。例えば <code>/items/0/name</code> は <code>items</code>
+      の先頭要素の <code>name</code> を表します。
+    </p>
+    <p class="tool-info-body">
+      大きな数値も丸めず比較します。結果が多い場合は先頭200件を表示し、長いパスや値は省略します。
+    </p>
+  </ToolInfoSection>
+</ToolLayout>

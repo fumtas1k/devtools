@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "pretest:e2e": "lsof -ti:4321 | xargs kill -9 2>/dev/null || true",
     "test:e2e": "playwright test --project=e2e",
+    "test:e2e:local": "playwright test --project=e2e --grep @saml-xml-size-boundary --workers=1 --reporter=list --output=test-results-saml-xml-size-boundary && playwright test --project=e2e --grep-invert @saml-xml-size-boundary",
     "pretest:vrt": "lsof -ti:4321 | xargs kill -9 2>/dev/null || true",
     "test:vrt": "playwright test --project=visual-regression",
     "pretest:e2e:dev": "lsof -ti:4321,4322 | xargs kill -9 2>/dev/null || true",
@@ -74,7 +75,7 @@
     "@types/jmespath": "0.15.2",
     "@types/jsbarcode": "^3.11.4",
     "@types/uuid": "10.0.0",
-    "@typescript-eslint/parser": "8.70.0",
+    "@typescript-eslint/parser": "8.73.0",
     "@vitest/coverage-v8": "5.0.5",
     "eslint": "9.39.4",
     "eslint-plugin-react": "7.37.5",
@@ -86,11 +87,6 @@
     "prettier-plugin-astro": "1.1.2",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
-  },
-  "overrides": {
-    "@typescript-eslint/typescript-estree@8.70.0": {
-      "minimatch": "11.0.3"
-    }
   },
   "lint-staged": {
     "*.{tsx,jsx}": [
