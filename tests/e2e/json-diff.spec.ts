@@ -11,7 +11,7 @@ test('比較・編集・エラー修正・クリアを本番CSP下で使える',
     await expect(before).toHaveAttribute('spellcheck', 'false');
     await expect(after).toHaveAttribute('spellcheck', 'false');
     await expect(compare).toBeDisabled();
-    await page.getByRole('button', { name: 'サンプルを入力' }).click();
+    await page.getByRole('button', { name: '両方にサンプルを入力' }).click();
     await compare.click();
     await expect(status).toHaveText('差分 3 件');
     await expect(page.getByText('/version', { exact: true })).toBeVisible();
@@ -35,21 +35,25 @@ test('比較・編集・エラー修正・クリアを本番CSP下で使える',
   });
 });
 
-for (const width of [390, 1280]) {
-  test(`サンプルは両方の入力欄の右上にある（${width}px）`, async ({ browser }) => {
+for (const width of [320, 390, 1280]) {
+  test(`変更前のラベルとサンプルが同じ行にある（${width}px）`, async ({ browser }) => {
     await withProductionCsp(browser, '/tools/json-diff', async (page) => {
       await page.setViewportSize({ width, height: 844 });
       const inputs = page.getByRole('group', { name: '比較するJSON' });
-      const sample = inputs.getByRole('button', { name: 'サンプルを入力', exact: true });
+      const sample = inputs.getByRole('button', { name: '両方にサンプルを入力', exact: true });
       const before = inputs.getByLabel('変更前のJSON');
       const after = inputs.getByLabel('変更後のJSON');
+      const label = inputs.getByText('変更前のJSON', { exact: true });
+      await page.evaluate(() => document.fonts.ready);
       await expect(sample).toBeVisible();
       const button = (await sample.boundingBox())!;
       const first = (await before.boundingBox())!;
-      const second = (await after.boundingBox())!;
-      expect(button.y + button.height).toBeLessThanOrEqual(Math.min(first.y, second.y));
-      const right = Math.max(first.x + first.width, second.x + second.width);
-      expect(Math.abs(button.x + button.width - right)).toBeLessThanOrEqual(1);
+      const caption = (await label.boundingBox())!;
+      expect(
+        Math.abs(button.y + button.height / 2 - (caption.y + caption.height / 2))
+      ).toBeLessThanOrEqual(1);
+      expect(button.y + button.height).toBeLessThanOrEqual(first.y);
+      expect(Math.abs(button.x + button.width - (first.x + first.width))).toBeLessThanOrEqual(1);
       await sample.click();
       await expect(before).toHaveValue(/"version": 1/);
       await expect(after).toHaveValue(/"version": 2/);

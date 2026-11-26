@@ -94,18 +94,19 @@ export function WebAuthnDecoderTool() {
         origin はスキーム・ホスト・ポートを含むページの出所です。RP ID
         は認証対象のホスト名で、origin とは異なります。
       </p>
-      <SampleInputGroup
-        label="解析するレスポンスとRP ID"
-        actions={
-          <>
-            <SampleButton onClick={() => sample('registration')}>登録の合成サンプル</SampleButton>
-            <SampleButton onClick={() => sample('authentication')}>認証の合成サンプル</SampleButton>
-          </>
-        }
-      >
+      <SampleInputGroup label="解析するレスポンスとRP ID">
         <InputField
           id="webauthn-response"
           label="レスポンス JSON（必須）"
+          stackHeaderOnMobile
+          headerRight={
+            <div className="flex flex-wrap justify-end gap-x-3 gap-y-6">
+              <SampleButton onClick={() => sample('registration')}>登録の合成サンプル</SampleButton>
+              <SampleButton onClick={() => sample('authentication')}>
+                認証の合成サンプル
+              </SampleButton>
+            </div>
+          }
           value={input}
           onChange={(value) => {
             invalidate();

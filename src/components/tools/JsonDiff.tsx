@@ -41,13 +41,14 @@ export function JsonDiff() {
 
   return (
     <div className="space-y-6">
-      <SampleInputGroup label="比較するJSON" actions={<SampleButton onClick={fillSample} />}>
+      <SampleInputGroup label="比較するJSON">
         <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
           <InputField
             id="json-diff-before"
             label="変更前のJSON"
             value={before}
             onChange={changeBefore}
+            headerRight={<SampleButton onClick={fillSample}>両方にサンプルを入力</SampleButton>}
             error={result?.ok === false ? result.beforeError : undefined}
             multiline
             rows={8}

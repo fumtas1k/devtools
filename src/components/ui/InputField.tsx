@@ -19,6 +19,8 @@ type Props = {
   /** ラベル行の右端に差し込む追加要素（複数サンプルボタン等、標準の onSampleClick で
       1 つに収まらないケース用）。onSampleClick と併用も可。 */
   headerRight?: ReactNode;
+  /** 幅が狭いときはラベルの下にヘッダー操作をまとめる。 */
+  stackHeaderOnMobile?: boolean;
   inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
   maxLength?: number;
   mono?: boolean;
@@ -48,6 +50,7 @@ export function InputField({
   hint,
   onSampleClick,
   headerRight,
+  stackHeaderOnMobile = false,
   inputMode,
   maxLength,
   readOnly = false,
@@ -75,13 +78,19 @@ export function InputField({
   return (
     <div>
       <div
-        className={`flex items-center justify-between mb-3 min-h-9${labelVisible ? '' : ' sr-only'}`}
+        className={`flex justify-between mb-3 min-h-9${
+          stackHeaderOnMobile
+            ? ' flex-col items-start gap-2 md:flex-row md:items-center'
+            : ' items-center'
+        }${labelVisible ? '' : ' sr-only'}`}
       >
         <label htmlFor={id} className="body-emphasis text-default">
           {label}
         </label>
         {(onSampleClick || headerRight) && (
-          <div className="flex items-center gap-3">
+          <div
+            className={`flex items-center gap-3${stackHeaderOnMobile ? ' self-end md:self-auto' : ''}`}
+          >
             {headerRight}
             {onSampleClick && <SampleButton onClick={onSampleClick} />}
           </div>

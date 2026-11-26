@@ -30,6 +30,24 @@ test('合成登録・認証レスポンスと RP ID を解析する', async ({ p
   await expect(result).toContainText('不一致');
 });
 
+test('スマホではレスポンスのラベル直下にサンプル2つをまとめる', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.evaluate(() => document.fonts.ready);
+  const inputs = page.getByRole('group', { name: '解析するレスポンスとRP ID' });
+  const label = (await inputs.getByText('レスポンス JSON（必須）', { exact: true }).boundingBox())!;
+  const registration = (await inputs
+    .getByRole('button', { name: '登録の合成サンプル' })
+    .boundingBox())!;
+  const authentication = (await inputs
+    .getByRole('button', { name: '認証の合成サンプル' })
+    .boundingBox())!;
+  const field = (await inputs.getByLabel('レスポンス JSON（必須）').boundingBox())!;
+  expect(registration.y).toBeGreaterThanOrEqual(label.y + label.height);
+  expect(Math.abs(registration.y - authentication.y)).toBeLessThanOrEqual(1);
+  expect(authentication.y + authentication.height).toBeLessThanOrEqual(field.y);
+  expect(authentication.x + authentication.width).toBeLessThanOrEqual(field.x + field.width + 1);
+});
+
 test('入力の案内と診断へのリンクを表示する', async ({ page }) => {
   const guide = page
     .locator('section')

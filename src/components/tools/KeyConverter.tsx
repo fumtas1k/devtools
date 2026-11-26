@@ -130,7 +130,7 @@ export function KeyConverter() {
       <div className="space-y-3">
         <InputField
           id="key-input"
-          label={<span className="whitespace-nowrap">鍵を貼り付け</span>}
+          label="鍵を貼り付け"
           value={input}
           onChange={setInput}
           placeholder={
@@ -141,6 +141,7 @@ export function KeyConverter() {
           rows={7}
           mono
           resize
+          stackHeaderOnMobile
           headerRight={
             <div className="flex flex-wrap justify-end gap-x-3 gap-y-6">
               <SampleButton onClick={() => setInput(SAMPLE_RSA_PUBLIC_KEY)}>
