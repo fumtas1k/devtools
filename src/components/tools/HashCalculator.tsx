@@ -6,7 +6,8 @@ import { FileInputButton } from '@/components/ui/FileInputButton';
 import { InputField } from '@/components/ui/InputField';
 import { OutputField } from '@/components/ui/OutputField';
 import { ToggleGroup } from '@/components/ui/ToggleGroup';
-import { hashFile, sha256 } from '@/utils/sha256';
+import { Select } from '@/components/ui/Select';
+import { SHA2_ALGORITHMS, hashBytes, hashFile, type Sha2Algorithm } from '@/utils/sha2';
 
 type Mode = 'text' | 'file';
 const options: { value: Mode; label: string }[] = [
@@ -14,8 +15,11 @@ const options: { value: Mode; label: string }[] = [
   { value: 'file', label: 'ファイル' },
 ];
 
+const algorithmOptions = SHA2_ALGORITHMS.map((value) => ({ value, label: value }));
+
 export function HashCalculator() {
   const [mode, setMode] = useState<Mode>('text');
+  const [algorithm, setAlgorithm] = useState<Sha2Algorithm>('SHA-256');
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState('');
@@ -53,8 +57,8 @@ export function HashCalculator() {
       }
       const digest =
         mode === 'file' && file
-          ? await hashFile(file)
-          : await sha256(new TextEncoder().encode(text));
+          ? await hashFile(algorithm, file)
+          : await hashBytes(algorithm, new TextEncoder().encode(text));
       if (started === revision.current) setResult(digest);
     } catch (cause) {
       if (started === revision.current) {
@@ -83,6 +87,21 @@ export function HashCalculator() {
           }
         }}
       />
+      <div className="max-w-xs space-y-2">
+        <label htmlFor="hash-algorithm" className="body-emphasis text-default">
+          ハッシュ方式
+        </label>
+        <Select
+          id="hash-algorithm"
+          options={algorithmOptions}
+          value={algorithm}
+          onChange={(next) => {
+            if (next === algorithm) return;
+            invalidate();
+            setAlgorithm(next);
+          }}
+        />
+      </div>
       {mode === 'text' ? (
         <InputField
           id="hash-text"
@@ -129,9 +148,9 @@ export function HashCalculator() {
       {error && <ErrorMessage message={error} />}
       <OutputField
         id="hash-result"
-        label="SHA-256（16進数）"
+        label={`${algorithm}（16進数）`}
         value={result}
-        rows={3}
+        rows={5}
         resize={false}
       />
     </div>

@@ -11,10 +11,10 @@ const tool = tools.find((item) => item.slug === 'hash-calculator')!;
   <HashCalculator client:load />
   <ToolInfoSection>
     <p class="tool-info-body">
-      配布元のSHA-256と照らし合わせて、ダウンロードしたファイルの内容を確認できます。
+      配布元と同じ方式を選び、ハッシュ値を照らし合わせて、ダウンロードしたファイルの内容を確認できます。
     </p>
     <p class="tool-info-body">
-      計算はブラウザ内で行い、入力・結果の送信や保存はしません。SHA-256単体はパスワードの保存には使えません。
+      計算はブラウザ内で行い、入力・結果の送信や保存はしません。これらのハッシュ方式をそのままパスワードの保存には使えません。
     </p>
   </ToolInfoSection>
 </ToolLayout>

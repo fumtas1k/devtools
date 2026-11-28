@@ -68,7 +68,7 @@ ULID の生成は [ulidx](https://github.com/perry-mitchell/ulidx) パッケー�
 
 ### ハッシュ生成
 
-[Web Crypto API](https://www.w3.org/TR/webcrypto-1/#sha) の `digest` で、UTF-8のテキストまたはファイルのバイト列からSHA-256を求める。出力は小文字16進数。ストリーミング非対応のため、ファイルは読込前に32 MiB以下に制限する。永続保存・外部送信なし。
+[Web Crypto API](https://www.w3.org/TR/webcrypto-1/#sha) の `digest` で、UTF-8のテキストまたはファイルのバイト列からSHA-256（初期値）・SHA-384・SHA-512を求める。出力は小文字16進数で順に64・96・128桁。方式変更は元の入力を保持する。ストリーミング非対応のため、ファイルは読込前に32 MiB以下に制限する。永続保存・外部送信なし。
 
 ### UUID 生成
 
