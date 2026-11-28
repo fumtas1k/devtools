@@ -8,6 +8,7 @@
 
 - [生成](#生成)
   - [ULID生成](#ulid生成)
+  - [ハッシュ生成](#ハッシュ生成)
   - [UUID 生成](#uuid-生成)
   - [ダミーテキスト生成](#ダミーテキスト生成)
   - [TOTP/HOTP ジェネレータ](#totphotp-ジェネレータ)
@@ -64,6 +65,10 @@ ULID の生成は [ulidx](https://github.com/perry-mitchell/ulidx) パッケー�
 #### 制限・エッジケース
 
 - 生成には素の `ulid()` を使うため、同一ミリ秒内に複数生成した場合の単調増加（monotonicity）は保証しない（ulidx の `monotonicFactory` は使用していない）。同一ミリ秒内ではランダム成分のみで区別される。
+
+### ハッシュ生成
+
+[Web Crypto API](https://www.w3.org/TR/webcrypto-1/#sha) の `digest` で、UTF-8のテキストまたはファイルのバイト列からSHA-256を求める。出力は小文字16進数。ストリーミング非対応のため、ファイルは読込前に32 MiB以下に制限する。永続保存・外部送信なし。
 
 ### UUID 生成
 

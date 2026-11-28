@@ -18,6 +18,7 @@ export const PAGES = [
   '/404',
   '/tools/ulid-generator',
   '/tools/uuid-v7',
+  '/tools/hash-calculator',
   '/tools/dummy-text',
   '/tools/qr-code',
   '/tools/jan-code',
