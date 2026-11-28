@@ -1,0 +1,20 @@
+---
+import ToolLayout from '@/layouts/ToolLayout.astro';
+import ToolInfoSection from '@/components/ui/ToolInfoSection.astro';
+import { HashCalculator } from '@/components/tools/HashCalculator';
+import { tools } from '@/data/tools';
+
+const tool = tools.find((item) => item.slug === 'hash-calculator')!;
+---
+
+<ToolLayout tool={tool}>
+  <HashCalculator client:load />
+  <ToolInfoSection>
+    <p class="tool-info-body">
+      配布元のSHA-256と照らし合わせて、ダウンロードしたファイルの内容を確認できます。
+    </p>
+    <p class="tool-info-body">
+      計算はブラウザ内で行い、入力・結果の送信や保存はしません。SHA-256単体はパスワードの保存には使えません。
+    </p>
+  </ToolInfoSection>
+</ToolLayout>

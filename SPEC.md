@@ -60,6 +60,7 @@
 | ライブラリ                  | 用途                                                                                                               | ツール                                   |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
 | `ulidx`                     | ULID生成                                                                                                           | ULID生成                                 |
+| Web Crypto API              | ブラウザ内でSHA-256を計算                                                                                          | ハッシュ生成                             |
 | `uuid`                      | UUID v4 / v7 生成（`v4()` / `v7()` 関数）                                                                          | UUID 生成                                |
 | 手動デコード（Base64URL）   | JWTデコード・署名検証                                                                                              | JWTデコーダー                            |
 | `qrcode-generator`          | QRコード生成                                                                                                       | QRコード生成                             |
@@ -159,6 +160,7 @@ devtools/
     │   │   └── ToolIcon.astro           # slug → SVG アイコンマッピング
     │   └── tools/
     │       ├── UlidGenerator.tsx
+    │       ├── HashCalculator.tsx
     │       ├── UuidV7Generator.tsx
     │       ├── JwtDecoder.tsx
     │       ├── Base64Codec.tsx
@@ -183,6 +185,7 @@ devtools/
     │   ├── privacy.astro
     │   └── tools/
     │       ├── ulid-generator.astro
+    │       ├── hash-calculator.astro
     │       ├── uuid-v7.astro
     │       ├── jwt-decoder.astro
     │       ├── base64.astro
@@ -253,6 +256,7 @@ devtools/
         ├── qr-reader.ts
         ├── qr-ticket.ts
         ├── qrcode.ts
+        ├── sha256.ts
         ├── uuid-v7.ts
         └── __tests__/
             ├── base64.test.ts
@@ -328,6 +332,7 @@ devtools/
 | 4   | TOTP/HOTP ジェネレータ     | `totp-hotp`           | TOTP（RFC 6238）・HOTP（RFC 4226）のワンタイムコードを生成・検証。シークレット鍵はブラウザ外に送信しない                                                                    |
 | 28  | CSR・鍵ペアジェネレータ    | `csr-generator`       | RSA（2048/3072/4096 bit）/ ECDSA（P-256/P-384/P-521）の鍵ペアを生成し PKCS#10 CSR を出力。Subject DN・SAN 設定対応。既存 CSR の解析・署名検証にも対応。全処理ブラウザ内完結 |
 | 29  | 日本語ダミー個人データ生成 | `dummy-personal-data` | 日本人の氏名（漢字＋フリガナ整合）・性別・生年月日・年齢・郵便番号・住所・固定電話・携帯・メールの架空データを指定件数生成し CSV/JSON で出力。全処理ブラウザ内完結          |
+| 38  | ハッシュ生成               | `hash-calculator`     | テキスト・ファイルのSHA-256を計算、コピー。ブラウザ内で完結                                                                                                                 |
 
 ### カテゴリ B: コード・バーコードツール（`code`）
 
@@ -1467,6 +1472,12 @@ SQL のプレースホルダにJSON形式のパラメータを埋め込み、人
 - 入力は各262,144 UTF-16コード単位・128階層まで。重複キーは拒否。差分件数は全件集計し、先頭200件を表示。パス・値は長い場合に省略。
 - 送信・履歴保存なし。JSON Patchの生成・適用は対象外。
 
+### 5.37 ハッシュ生成（`hash-calculator`）
+
+- テキストはUTF-8として計算（最大100万UTF-16コード単位、空入力可）。ファイルは元のバイト列のまま計算（1件、最大32 MiB）。
+- SHA-256を小文字16進数で表示し、コピーできる。入力変更、モード変更、クリアで結果を破棄する。
+- 外部送信・永続保存はしない。
+
 ## 6. 各ツール共通仕様
 
 ### 6.1 共通UIパターン
@@ -1649,7 +1660,8 @@ Phase 2 でアクセシビリティ要件（コントラスト比 4.5:1）を満
   - [x] DDL → ER図ジェネレータ（`ddl-er-diagram`）
   - [x] SAMLデコーダ（`saml-decoder`）
   - [x] MCP 設定リスクインスペクタ（`mcp-config-inspector`）
-  - [ ] Diff、パスワード生成、ハッシュ等
+  - [x] ハッシュ生成（`hash-calculator`）
+  - [ ] パスワード生成、その他の候補
 - [ ] 全文検索
 - [ ] お気に入り（localStorage）
 - [ ] OGP画像自動生成
