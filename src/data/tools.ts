@@ -14,7 +14,7 @@ const toolEntries: Tool[] = [
   {
     slug: 'hash-calculator',
     name: 'ハッシュ生成',
-    description: 'テキストやファイルのSHA-256をブラウザ内で計算します',
+    description: 'テキストやファイルのSHA-256・SHA-384・SHA-512をブラウザ内で計算します',
     category: 'generate',
     yomi: 'はっしゅせいせい',
   },
